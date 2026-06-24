@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -13,12 +14,14 @@ import (
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/database"
+	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type Server struct {
 	cfg *config.Config
+	bus eventbus.EventBus
 }
 
 func New(cfg *config.Config) *Server {
@@ -26,75 +29,126 @@ func New(cfg *config.Config) *Server {
 }
 
 func (s *Server) Run() error {
+	// ─── 初始化 EventBus ───
+	var bus eventbus.EventBus
+	natsBus, err := eventbus.NewNATSEventBus(s.cfg.NATS.URL)
+	if err != nil {
+		log.Printf("⚠️  NATS 连接失败，回退到内存事件总线: %v", err)
+		bus = eventbus.NewMemoryEventBus()
+	} else {
+		bus = natsBus
+	}
+	s.bus = bus
+	defer bus.Close()
+
+	// ─── 注册默认事件订阅（事件日志）───
+	s.registerDefaultSubscriptions(bus)
+
 	// ─── 初始化 PostgreSQL ───
 	pool, err := database.New(s.cfg.Database.DSN)
 	if err != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，回退到内存模式: %v", err)
-		return s.runMemoryMode()
+		return s.runMemoryMode(bus)
 	}
 	defer pool.Close()
 	log.Printf("✅ PostgreSQL 连接成功")
 
 	// ─── 初始化 JWT ───
-	accessTTL, _ := time.ParseDuration(s.cfg.JWT.AccessTTL)
-	refreshTTL, _ := time.ParseDuration(s.cfg.JWT.RefreshTTL)
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:     s.cfg.JWT.Secret,
-		AccessTTL:  accessTTL,
-		RefreshTTL: refreshTTL,
-		Issuer:     s.cfg.JWT.Issuer,
-	})
+	jwtMgr := s.newJWTManager()
 
 	// ─── 初始化仓储层（PostgreSQL）───
 	userRepo := identityrepo.NewPgUserRepository(pool)
 	threadRepo := repository.NewPgThreadRepository(pool)
 
 	// ─── 初始化服务层 ───
-	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo)
-	threadSvc := service.NewThreadService(threadRepo)
+	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
+	threadSvc := service.NewThreadService(threadRepo, bus)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
-	categoryHandler := handler.NewCategoryHandler(nil) // PG mode 会在下面初始化
+	categoryHandler := handler.NewCategoryHandler(nil)
 	postHandler := handler.NewPostHandler(nil)
 
-	// ─── 配置路由 ───
-	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler)
+	// 创建事件历史处理器（仅内存模式可用）
+	var memBus *eventbus.MemoryEventBus
+	if mb, ok := bus.(*eventbus.MemoryEventBus); ok {
+		memBus = mb
+	}
+	eventHandler := handler.NewEventHandler(memBus)
+
+	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
 }
 
-func (s *Server) runMemoryMode() error {
-	// 内存模式（兼容 v0.1.0-dev）
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:     s.cfg.JWT.Secret,
-		AccessTTL:  2 * time.Hour,
-		RefreshTTL: 30 * 24 * time.Hour,
-		Issuer:     s.cfg.JWT.Issuer,
-	})
+func (s *Server) runMemoryMode(bus eventbus.EventBus) error {
+	jwtMgr := s.newJWTManager()
 
 	userRepo := identityrepo.NewMemoryUserRepository()
 	threadRepo := repository.NewMemoryThreadRepository()
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
 
-	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil)
-	threadSvc := service.NewThreadService(threadRepo)
-	categorySvc := service.NewCategoryService(categoryRepo)
-	postSvc := service.NewPostService(postRepo)
+	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
+	threadSvc := service.NewThreadService(threadRepo, bus)
+	categorySvc := service.NewCategoryService(categoryRepo, bus)
+	postSvc := service.NewPostService(postRepo, bus)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
 
-	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler)
+	var memBus *eventbus.MemoryEventBus
+	if mb, ok := bus.(*eventbus.MemoryEventBus); ok {
+		memBus = mb
+	}
+	eventHandler := handler.NewEventHandler(memBus)
+
+	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
+}
+
+func (s *Server) newJWTManager() *auth.JWTManager {
+	accessTTL, _ := time.ParseDuration(s.cfg.JWT.AccessTTL)
+	refreshTTL, _ := time.ParseDuration(s.cfg.JWT.RefreshTTL)
+	return auth.NewJWTManager(auth.JWTConfig{
+		Secret:     s.cfg.JWT.Secret,
+		AccessTTL:  accessTTL,
+		RefreshTTL: refreshTTL,
+		Issuer:     s.cfg.JWT.Issuer,
+	})
+}
+
+func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
+	// 事件日志订阅器
+	bus.Subscribe("user.created", func(ctx context.Context, event eventbus.Event) error {
+		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+		return nil
+	})
+	bus.Subscribe("thread.created", func(ctx context.Context, event eventbus.Event) error {
+		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+		return nil
+	})
+	bus.Subscribe("thread.updated", func(ctx context.Context, event eventbus.Event) error {
+		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+		return nil
+	})
+	bus.Subscribe("thread.deleted", func(ctx context.Context, event eventbus.Event) error {
+		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+		return nil
+	})
+	bus.Subscribe("post.created", func(ctx context.Context, event eventbus.Event) error {
+		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+		return nil
+	})
+	log.Printf("✅ 已注册 5 个默认事件订阅")
 }
 
 func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	userHandler *identityhandler.UserHandler,
 	threadHandler *handler.ThreadHandler,
 	categoryHandler *handler.CategoryHandler,
-	postHandler *handler.PostHandler) error {
+	postHandler *handler.PostHandler,
+	eventHandler *handler.EventHandler) error {
 
 	r := gin.Default()
 
@@ -123,6 +177,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	public.GET("/categories/:id", categoryHandler.Get)
 	// 帖子回复接口
 	public.GET("/threads/:id/posts", postHandler.ListPosts)
+	// 事件历史接口
+	public.GET("/events", eventHandler.ListEvents)
 
 	// 需要 JWT 认证的接口
 	authenticated := v1.Group("")

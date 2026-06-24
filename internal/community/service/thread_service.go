@@ -7,17 +7,19 @@ import (
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
+	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/google/uuid"
 )
 
 // ThreadService 帖子服务
 type ThreadService struct {
 	repo repository.ThreadRepository
+	bus  eventbus.EventBus
 }
 
 // NewThreadService 创建帖子服务
-func NewThreadService(repo repository.ThreadRepository) *ThreadService {
-	return &ThreadService{repo: repo}
+func NewThreadService(repo repository.ThreadRepository, bus eventbus.EventBus) *ThreadService {
+	return &ThreadService{repo: repo, bus: bus}
 }
 
 // CreateThread 创建帖子
@@ -38,6 +40,13 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 
 	if err := s.repo.Create(ctx, thread); err != nil {
 		return nil, fmt.Errorf("create thread: %w", err)
+	}
+
+	// 发布 thread.created 事件
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventThreadCreated, "campusos.community", "thread."+thread.ID, thread,
+		))
 	}
 
 	return thread, nil
@@ -96,6 +105,13 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 		return nil, fmt.Errorf("update thread: %w", err)
 	}
 
+	// 发布 thread.updated 事件
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventThreadUpdated, "campusos.community", "thread."+thread.ID, thread,
+		))
+	}
+
 	return thread, nil
 }
 
@@ -110,5 +126,16 @@ func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) e
 		return fmt.Errorf("permission denied: you can only delete your own threads")
 	}
 
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// 发布 thread.deleted 事件
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventThreadDeleted, "campusos.community", "thread."+id, thread,
+		))
+	}
+
+	return nil
 }

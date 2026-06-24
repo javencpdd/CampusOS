@@ -7,15 +7,17 @@ import (
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
+	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/google/uuid"
 )
 
 type PostService struct {
 	repo repository.PostRepository
+	bus  eventbus.EventBus
 }
 
-func NewPostService(repo repository.PostRepository) *PostService {
-	return &PostService{repo: repo}
+func NewPostService(repo repository.PostRepository, bus eventbus.EventBus) *PostService {
+	return &PostService{repo: repo, bus: bus}
 }
 
 func (s *PostService) CreatePost(ctx context.Context, threadID, authorID, authorName string, req domain.CreatePostRequest) (*domain.Post, error) {
@@ -34,6 +36,13 @@ func (s *PostService) CreatePost(ctx context.Context, threadID, authorID, author
 	if err := s.repo.Create(ctx, post); err != nil {
 		return nil, fmt.Errorf("create post: %w", err)
 	}
+
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventPostCreated, "campusos.community", "post."+post.ID, post,
+		))
+	}
+
 	return post, nil
 }
 

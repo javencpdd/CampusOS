@@ -6,6 +6,7 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
+	NATS     NATSConfig
 	JWT      JWTConfig
 }
 
@@ -20,6 +21,10 @@ type DatabaseConfig struct {
 
 type RedisConfig struct {
 	Addr string
+}
+
+type NATSConfig struct {
+	URL string
 }
 
 type JWTConfig struct {
@@ -40,6 +45,9 @@ func Load() *Config {
 		},
 		Redis: RedisConfig{
 			Addr: getEnv("REDIS_ADDR", "localhost:6379"),
+		},
+		NATS: NATSConfig{
+			URL: getEnv("NATS_URL", "nats://localhost:4222"),
 		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "campusos-dev-secret-key-change-in-production"),

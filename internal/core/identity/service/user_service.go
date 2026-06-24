@@ -9,6 +9,7 @@ import (
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +17,7 @@ type UserService struct {
 	repo   repository.UserRepository
 	jwtMgr *auth.JWTManager
 	pgRepo PgUserRepo
+	bus    eventbus.EventBus
 }
 
 type PgUserRepo interface {
@@ -23,8 +25,8 @@ type PgUserRepo interface {
 	GetCredentialByEmail(ctx context.Context, email string) (string, string, error)
 }
 
-func NewUserService(repo repository.UserRepository, jwtMgr *auth.JWTManager, pgRepo PgUserRepo) *UserService {
-	return &UserService{repo: repo, jwtMgr: jwtMgr, pgRepo: pgRepo}
+func NewUserService(repo repository.UserRepository, jwtMgr *auth.JWTManager, pgRepo PgUserRepo, bus eventbus.EventBus) *UserService {
+	return &UserService{repo: repo, jwtMgr: jwtMgr, pgRepo: pgRepo, bus: bus}
 }
 
 func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest) (*domain.User, error) {
@@ -61,6 +63,13 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 		if err := s.pgRepo.CreateAccount(ctx, userID, req.Email, hashedPwd); err != nil {
 			return nil, fmt.Errorf("create account: %w", err)
 		}
+	}
+
+	// 发布 user.created 事件
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventUserCreated, "campusos.identity", "user."+userID, user,
+		))
 	}
 
 	return user, nil
