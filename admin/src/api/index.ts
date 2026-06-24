@@ -42,6 +42,15 @@ export const userApi = {
   activate: (id: string) => api.post(`/users/${id}/activate`),
 }
 
+// 角色管理 API
+export const roleApi = {
+  list: () => api.get('/roles'),
+  getUserRoles: (userId: string) => api.get(`/users/${userId}/roles`),
+  assign: (userId: string, roleId: number) => api.post(`/users/${userId}/roles`, { role_id: roleId }),
+  revoke: (userId: string, roleId: number) =>
+    api.delete(`/users/${userId}/roles`, { data: { role_id: roleId } }),
+}
+
 // 帖子管理 API
 export const threadApi = {
   list: (params?: {
@@ -51,6 +60,8 @@ export const threadApi = {
     keyword?: string
   }) => api.get('/threads', { params }),
   get: (id: string) => api.get(`/threads/${id}`),
+  update: (id: string, data: { status?: string; title?: string; content?: string }) =>
+    api.put(`/threads/${id}`, data),
   delete: (id: string) => api.delete(`/threads/${id}`),
   pin: (id: string) => api.post(`/threads/${id}/pin`),
   unpin: (id: string) => api.post(`/threads/${id}/unpin`),

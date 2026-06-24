@@ -32,6 +32,10 @@
             <el-icon><Connection /></el-icon>
             <span>插件管理</span>
           </el-menu-item>
+          <el-menu-item index="/reviews">
+            <el-icon><Stamp /></el-icon>
+            <span>帖子审核</span>
+          </el-menu-item>
           <el-menu-item index="/events">
             <el-icon><Bell /></el-icon>
             <span>事件日志</span>
@@ -77,6 +81,7 @@ import {
   FolderOpened,
   Connection,
   Bell,
+  Stamp,
   SwitchButton,
 } from '@element-plus/icons-vue'
 
@@ -94,6 +99,7 @@ const currentPageTitle = computed(() => {
     '/threads': '帖子管理',
     '/categories': '版块管理',
     '/plugins': '插件管理',
+    '/reviews': '帖子审核',
     '/events': '事件日志',
   }
   return titles[route.path] || ''

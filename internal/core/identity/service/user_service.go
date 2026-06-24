@@ -14,10 +14,11 @@ import (
 )
 
 type UserService struct {
-	repo   repository.UserRepository
-	jwtMgr *auth.JWTManager
-	pgRepo PgUserRepo
-	bus    eventbus.EventBus
+	repo     repository.UserRepository
+	jwtMgr   *auth.JWTManager
+	pgRepo   PgUserRepo
+	roleRepo RoleQuerier
+	bus      eventbus.EventBus
 }
 
 type PgUserRepo interface {
@@ -25,8 +26,17 @@ type PgUserRepo interface {
 	GetCredentialByEmail(ctx context.Context, email string) (string, string, error)
 }
 
+type RoleQuerier interface {
+	GetUserRoles(ctx context.Context, userID string) ([]*repository.Role, error)
+}
+
 func NewUserService(repo repository.UserRepository, jwtMgr *auth.JWTManager, pgRepo PgUserRepo, bus eventbus.EventBus) *UserService {
 	return &UserService{repo: repo, jwtMgr: jwtMgr, pgRepo: pgRepo, bus: bus}
+}
+
+// SetRoleRepository 设置角色仓储（用于登录时注入角色信息）
+func (s *UserService) SetRoleRepository(roleRepo RoleQuerier) {
+	s.roleRepo = roleRepo
 }
 
 func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest) (*domain.User, error) {
@@ -116,6 +126,26 @@ func (s *UserService) Login(ctx context.Context, req domain.LoginRequest) (*doma
 	}
 
 	return user, accessToken, refreshToken, nil
+}
+
+// GetUserRoles 获取用户角色列表
+func (s *UserService) GetUserRoles(ctx context.Context, userID string) ([]domain.RoleInfo, error) {
+	if s.roleRepo == nil {
+		// 默认返回 member 角色
+		return []domain.RoleInfo{{ID: 3, Name: "member", Description: "普通会员"}}, nil
+	}
+	roles, err := s.roleRepo.GetUserRoles(ctx, userID)
+	if err != nil {
+		return []domain.RoleInfo{{ID: 3, Name: "member", Description: "普通会员"}}, nil
+	}
+	if len(roles) == 0 {
+		return []domain.RoleInfo{{ID: 3, Name: "member", Description: "普通会员"}}, nil
+	}
+	var result []domain.RoleInfo
+	for _, r := range roles {
+		result = append(result, domain.RoleInfo{ID: r.ID, Name: r.Name, Description: r.Description})
+	}
+	return result, nil
 }
 
 func (s *UserService) GetByID(ctx context.Context, id string) (*domain.User, error) {

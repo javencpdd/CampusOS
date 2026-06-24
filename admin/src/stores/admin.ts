@@ -2,6 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api'
 
+interface AdminRole {
+  id: number
+  name: string
+  description: string
+}
+
 interface AdminUser {
   id: string
   username: string
@@ -9,6 +15,7 @@ interface AdminUser {
   email: string
   avatar: string
   status: string
+  roles?: AdminRole[]
 }
 
 export const useAdminStore = defineStore('admin', () => {
@@ -20,9 +27,11 @@ export const useAdminStore = defineStore('admin', () => {
   async function login(email: string, password: string) {
     const res: any = await authApi.login({ email, password })
     if (res.code === 0) {
-      user.value = res.data.user
+      // 将角色信息注入到用户对象中
+      const userData = { ...res.data.user, roles: res.data.roles || [] }
+      user.value = userData
       token.value = res.data.access_token
-      localStorage.setItem('admin_user', JSON.stringify(res.data.user))
+      localStorage.setItem('admin_user', JSON.stringify(userData))
       localStorage.setItem('admin_token', res.data.access_token)
     }
     return res
@@ -35,5 +44,22 @@ export const useAdminStore = defineStore('admin', () => {
     localStorage.removeItem('admin_token')
   }
 
-  return { user, token, isLoggedIn, login, logout }
+  // 获取用户主角色（第一个角色）
+  const primaryRole = computed(() => {
+    return user.value?.roles?.[0]?.name || 'member'
+  })
+
+  // 判断是否为管理员
+  const isAdmin = computed(() => {
+    const role = primaryRole.value
+    return role === 'admin' || role === 'super_admin'
+  })
+
+  // 判断是否为版主或管理员
+  const isModerator = computed(() => {
+    const role = primaryRole.value
+    return role === 'admin' || role === 'super_admin' || role === 'moderator'
+  })
+
+  return { user, token, isLoggedIn, primaryRole, isAdmin, isModerator, login, logout }
 })

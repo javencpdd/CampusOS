@@ -3,23 +3,31 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
+	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/google/uuid"
 )
 
 // ThreadService 帖子服务
 type ThreadService struct {
-	repo repository.ThreadRepository
-	bus  eventbus.EventBus
+	repo  repository.ThreadRepository
+	bus   eventbus.EventBus
+	cache cache.Cache
 }
 
 // NewThreadService 创建帖子服务
 func NewThreadService(repo repository.ThreadRepository, bus eventbus.EventBus) *ThreadService {
 	return &ThreadService{repo: repo, bus: bus}
+}
+
+// SetCache 设置缓存实例
+func (s *ThreadService) SetCache(c cache.Cache) {
+	s.cache = c
 }
 
 // CreateThread 创建帖子
@@ -41,6 +49,9 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 	if err := s.repo.Create(ctx, thread); err != nil {
 		return nil, fmt.Errorf("create thread: %w", err)
 	}
+
+	// 清除列表缓存
+	s.invalidateListCache(ctx)
 
 	// 发布 thread.created 事件
 	if s.bus != nil {
@@ -64,7 +75,7 @@ func (s *ThreadService) GetThread(ctx context.Context, id string) (*domain.Threa
 	return thread, nil
 }
 
-// ListThreads 获取帖子列表
+// ListThreads 获取帖子列表（支持缓存）
 func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
 	if filter.Page < 1 {
 		filter.Page = 1
@@ -76,7 +87,36 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	if filter.Status == "" {
 		filter.Status = string(domain.ThreadStatusPublished)
 	}
-	return s.repo.List(ctx, filter)
+
+	// 尝试从缓存获取（仅缓存第一页无筛选条件的查询）
+	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s", filter.Page, filter.PageSize, filter.Status)
+	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" {
+		type cachedResult struct {
+			Threads []*domain.Thread `json:"threads"`
+			Total   int64            `json:"total"`
+		}
+		var cached cachedResult
+		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
+			log.Printf("📦 缓存命中: %s", cacheKey)
+			return cached.Threads, cached.Total, nil
+		}
+	}
+
+	threads, total, err := s.repo.List(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 写入缓存（5 分钟 TTL）
+	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" {
+		type cachedResult struct {
+			Threads []*domain.Thread `json:"threads"`
+			Total   int64            `json:"total"`
+		}
+		_ = s.cache.Set(ctx, cacheKey, cachedResult{Threads: threads, Total: total}, 5*time.Minute)
+	}
+
+	return threads, total, nil
 }
 
 // UpdateThread 更新帖子
@@ -104,6 +144,9 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 	if err := s.repo.Update(ctx, thread); err != nil {
 		return nil, fmt.Errorf("update thread: %w", err)
 	}
+
+	// 清除列表缓存
+	s.invalidateListCache(ctx)
 
 	// 发布 thread.updated 事件
 	if s.bus != nil {
@@ -186,6 +229,9 @@ func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) e
 		return err
 	}
 
+	// 清除列表缓存
+	s.invalidateListCache(ctx)
+
 	// 发布 thread.deleted 事件
 	if s.bus != nil {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
@@ -194,4 +240,20 @@ func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) e
 	}
 
 	return nil
+}
+
+// invalidateListCache 清除帖子列表缓存
+func (s *ThreadService) invalidateListCache(ctx context.Context) {
+	if s.cache == nil {
+		return
+	}
+	// 清除常见的列表缓存 key
+	keys := []string{
+		"threads:list:1:20:published",
+		"threads:list:1:10:published",
+		"threads:list:1:5:published",
+	}
+	for _, key := range keys {
+		_ = s.cache.Delete(ctx, key)
+	}
 }

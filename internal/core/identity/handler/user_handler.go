@@ -53,8 +53,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// 获取用户角色
+	roles, _ := h.svc.GetUserRoles(c.Request.Context(), user.ID)
+
 	response.Success(c, domain.LoginResponse{
 		User:         user,
+		Roles:        roles,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",

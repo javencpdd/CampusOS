@@ -47,11 +47,19 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// RoleInfo 角色信息（用于登录响应）
+type RoleInfo struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 // LoginResponse 登录响应
 type LoginResponse struct {
-	User         *User  `json:"user"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
+	User         *User      `json:"user"`
+	Roles        []RoleInfo `json:"roles"`
+	AccessToken  string     `json:"access_token"`
+	RefreshToken string     `json:"refresh_token"`
+	TokenType    string     `json:"token_type"`
+	ExpiresIn    int        `json:"expires_in"`
 }

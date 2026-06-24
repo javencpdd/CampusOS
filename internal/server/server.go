@@ -16,6 +16,7 @@ import (
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/database"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -70,6 +71,19 @@ func (s *Server) Run() error {
 	// ─── 启动健康检查 ───
 	grpcRuntime.StartHealthChecker(context.Background(), 10*time.Second, s.manager)
 
+	// ─── 初始化缓存 ───
+	redisAddr := s.cfg.Redis.Addr
+	redisPassword := s.cfg.Redis.Password
+	redisDB := s.cfg.Redis.DB
+	redisEnabled := s.cfg.Redis.Enabled && redisAddr != ""
+	appCache := cache.NewCache(cache.CacheConfig{
+		Enabled:  redisEnabled,
+		Host:     redisAddr,
+		Port:     "6379",
+		Password: redisPassword,
+		DB:       redisDB,
+	})
+
 	// ─── 初始化 PostgreSQL ───
 	pool, err := database.New(s.cfg.Database.DSN)
 	if err != nil {
@@ -95,7 +109,9 @@ func (s *Server) Run() error {
 
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
+	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
+	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	permSvc := identitysvc.NewPermissionService(roleRepo)
@@ -107,8 +123,9 @@ func (s *Server) Run() error {
 	postHandler := handler.NewPostHandler(postSvc)
 	eventHandler := handler.NewEventHandler(memBus)
 	pluginHandler := plugin.NewHandler(s.manager)
+	roleHandler := identityhandler.NewRoleHandler(permSvc)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus) error {
@@ -125,6 +142,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	_ = hostAPI
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
+	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
@@ -136,8 +154,9 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	postHandler := handler.NewPostHandler(postSvc)
 	eventHandler := handler.NewEventHandler(memBus)
 	pluginHandler := plugin.NewHandler(s.manager)
+	roleHandler := identityhandler.NewRoleHandler(permSvc)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
 }
 
 func (s *Server) newJWTManager() *auth.JWTManager {
@@ -181,7 +200,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	categoryHandler *handler.CategoryHandler,
 	postHandler *handler.PostHandler,
 	eventHandler *handler.EventHandler,
-	pluginHandler *plugin.Handler) error {
+	pluginHandler *plugin.Handler,
+	roleHandler *identityhandler.RoleHandler) error {
 
 	r := gin.Default()
 
@@ -248,6 +268,12 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
+
+		// 角色管理
+		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)
+		admin.GET("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.GetUserRoles)
+		admin.POST("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.AssignRole)
+		admin.DELETE("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.RevokeRole)
 	}
 
 	// 服务关闭时停止所有插件
@@ -255,7 +281,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 36")
+	log.Printf("📋 API 端点总数: 40")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

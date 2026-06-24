@@ -20,7 +20,10 @@ type DatabaseConfig struct {
 }
 
 type RedisConfig struct {
-	Addr string
+	Addr     string
+	Password string
+	DB       int
+	Enabled  bool
 }
 
 type NATSConfig struct {
@@ -44,7 +47,10 @@ func Load() *Config {
 			DSN: getEnv("DATABASE_DSN", "postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable"),
 		},
 		Redis: RedisConfig{
-			Addr: getEnv("REDIS_ADDR", "localhost:6379"),
+			Addr:     getEnv("REDIS_ADDR", "localhost:6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       0,
+			Enabled:  getEnv("REDIS_ENABLED", "true") == "true",
 		},
 		NATS: NATSConfig{
 			URL: getEnv("NATS_URL", "nats://localhost:4222"),
