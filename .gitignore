@@ -1,0 +1,69 @@
+# ─── Go ───
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+campusos
+campusos-server
+
+# Test binary
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# Vendor (if not committed)
+# vendor/
+
+# ─── Build artifacts ───
+/tmp/
+/dist/
+/bin/
+/build/
+*.wasm
+
+# ─── IDE ───
+# VS Code
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── Node.js / 前端 ───
+node_modules/
+web/dist/
+web/.vite/
+*.local
+.env.local
+.env.*.local
+
+# ─── 环境变量与密钥 ───
+.env
+.env.production
+*.pem
+*.key
+
+# ─── 日志 ───
+*.log
+logs/
+
+# ─── Docker ───
+docker-compose.override.yml
+
+# ─── 数据目录 ───
+minio-data/
+postgres-data/
+redis-data/
+nats-data/
+
+# ─── 临时文件 ───
+*.tmp
+*.bak
+*.swp
+coverage.out
+coverage.html
