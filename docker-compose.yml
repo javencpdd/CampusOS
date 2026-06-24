@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: campusos-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: campusos
+      POSTGRES_USER: campusos
+      POSTGRES_PASSWORD: campusos_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    container_name: campusos-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["-js"]
+    healthcheck:
+      test: ["CMD", "nats-server", "--help"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

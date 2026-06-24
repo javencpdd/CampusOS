@@ -1,0 +1,12 @@
+-- 回滚初始化 Schema
+DROP TABLE IF EXISTS configurations;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS likes;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS threads;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS users;

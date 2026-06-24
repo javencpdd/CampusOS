@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "golang.go",
+    "Vue.volar",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "rangav.vscode-thunder-client",
+    "cweijan.vscode-postgresql-client2",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml"
+  ],
+  "unwantedRecommendations": [
+    "octref.vetur"
+  ]
+}

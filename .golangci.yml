@@ -1,0 +1,31 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - errcheck        # 检查未处理的错误
+    - gosimple        # 简化代码建议
+    - govet           # Go 官方 vet 工具
+    - ineffassign     # 检查无效赋值
+    - staticcheck     # 静态分析
+    - unused          # 检查未使用的代码
+    - gocritic        # 代码风格检查
+    - gofmt           # 格式检查
+    - goimports       # import 排序
+    - misspell        # 拼写检查
+    - revive          # 代码规范检查
+
+linters-settings:
+  govet:
+    shadow: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 50
+  max-same-issues: 10
