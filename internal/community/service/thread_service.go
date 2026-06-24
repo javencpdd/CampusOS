@@ -115,6 +115,62 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 	return thread, nil
 }
 
+// PinThread 置顶帖子
+func (s *ThreadService) PinThread(ctx context.Context, id string) (*domain.Thread, error) {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	thread.IsPinned = true
+	thread.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, thread); err != nil {
+		return nil, fmt.Errorf("pin thread: %w", err)
+	}
+	return thread, nil
+}
+
+// UnpinThread 取消置顶
+func (s *ThreadService) UnpinThread(ctx context.Context, id string) (*domain.Thread, error) {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	thread.IsPinned = false
+	thread.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, thread); err != nil {
+		return nil, fmt.Errorf("unpin thread: %w", err)
+	}
+	return thread, nil
+}
+
+// LockThread 锁定帖子
+func (s *ThreadService) LockThread(ctx context.Context, id string) (*domain.Thread, error) {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	thread.IsLocked = true
+	thread.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, thread); err != nil {
+		return nil, fmt.Errorf("lock thread: %w", err)
+	}
+	return thread, nil
+}
+
+// UnlockThread 解锁帖子
+func (s *ThreadService) UnlockThread(ctx context.Context, id string) (*domain.Thread, error) {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	thread.IsLocked = false
+	thread.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, thread); err != nil {
+		return nil, fmt.Errorf("unlock thread: %w", err)
+	}
+	return thread, nil
+}
+
 // DeleteThread 删除帖子
 func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) error {
 	thread, err := s.repo.GetByID(ctx, id)

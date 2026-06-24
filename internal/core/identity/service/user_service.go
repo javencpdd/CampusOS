@@ -139,6 +139,32 @@ func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) ([]*dom
 	return s.repo.List(ctx, page, pageSize)
 }
 
+func (s *UserService) SuspendUser(ctx context.Context, id string) (*domain.User, error) {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+	user.Status = domain.UserStatusSuspended
+	user.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, user); err != nil {
+		return nil, fmt.Errorf("suspend user: %w", err)
+	}
+	return user, nil
+}
+
+func (s *UserService) ActivateUser(ctx context.Context, id string) (*domain.User, error) {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+	user.Status = domain.UserStatusActive
+	user.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, user); err != nil {
+		return nil, fmt.Errorf("activate user: %w", err)
+	}
+	return user, nil
+}
+
 func (s *UserService) UpdateUser(ctx context.Context, id string, req domain.UpdateUserRequest) (*domain.User, error) {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {

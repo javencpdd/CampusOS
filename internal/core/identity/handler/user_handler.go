@@ -140,6 +140,36 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	response.Success(c, user)
 }
 
+// SuspendUser 封禁用户
+// POST /api/v1/users/:id/suspend
+func (h *UserHandler) SuspendUser(c *gin.Context) {
+	id := c.Param("id")
+	user, err := h.svc.SuspendUser(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		return
+	}
+	response.Success(c, user)
+}
+
+// ActivateUser 解封用户
+// POST /api/v1/users/:id/activate
+func (h *UserHandler) ActivateUser(c *gin.Context) {
+	id := c.Param("id")
+	user, err := h.svc.ActivateUser(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		return
+	}
+	response.Success(c, user)
+}
+
+// ListRoles 获取角色列表
+// GET /api/v1/roles
+func (h *UserHandler) ListRoles(c *gin.Context) {
+	response.Success(c, gin.H{"message": "roles list - use permission handler"})
+}
+
 // HealthCheck 健康检查
 // GET /api/v1/health
 func (h *UserHandler) HealthCheck(c *gin.Context) {

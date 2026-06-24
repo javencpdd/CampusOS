@@ -14,6 +14,8 @@ type PostRepository interface {
 	Create(ctx context.Context, post *domain.Post) error
 	GetByID(ctx context.Context, id string) (*domain.Post, error)
 	ListByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error)
+	Update(ctx context.Context, post *domain.Post) error
+	Delete(ctx context.Context, id string) error
 }
 
 type MemoryPostRepository struct {
@@ -40,6 +42,26 @@ func (r *MemoryPostRepository) GetByID(_ context.Context, id string) (*domain.Po
 		return nil, ErrPostNotFound
 	}
 	return p, nil
+}
+
+func (r *MemoryPostRepository) Update(_ context.Context, post *domain.Post) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.posts[post.ID]; !ok {
+		return ErrPostNotFound
+	}
+	r.posts[post.ID] = post
+	return nil
+}
+
+func (r *MemoryPostRepository) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.posts[id]; !ok {
+		return ErrPostNotFound
+	}
+	delete(r.posts, id)
+	return nil
 }
 
 func (r *MemoryPostRepository) ListByThread(_ context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {

@@ -121,6 +121,54 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 	response.Success(c, thread)
 }
 
+// PinThread 置顶帖子
+// POST /api/v1/threads/:id/pin
+func (h *ThreadHandler) PinThread(c *gin.Context) {
+	id := c.Param("id")
+	thread, err := h.svc.PinThread(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+	response.Success(c, thread)
+}
+
+// UnpinThread 取消置顶
+// POST /api/v1/threads/:id/unpin
+func (h *ThreadHandler) UnpinThread(c *gin.Context) {
+	id := c.Param("id")
+	thread, err := h.svc.UnpinThread(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+	response.Success(c, thread)
+}
+
+// LockThread 锁定帖子
+// POST /api/v1/threads/:id/lock
+func (h *ThreadHandler) LockThread(c *gin.Context) {
+	id := c.Param("id")
+	thread, err := h.svc.LockThread(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+	response.Success(c, thread)
+}
+
+// UnlockThread 解锁帖子
+// POST /api/v1/threads/:id/unlock
+func (h *ThreadHandler) UnlockThread(c *gin.Context) {
+	id := c.Param("id")
+	thread, err := h.svc.UnlockThread(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+	response.Success(c, thread)
+}
+
 // DeleteThread 删除帖子
 // DELETE /api/v1/threads/:id
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {

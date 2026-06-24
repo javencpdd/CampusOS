@@ -31,12 +31,17 @@ func New(cfg *config.Config) *Server {
 func (s *Server) Run() error {
 	// ─── 初始化 EventBus ───
 	var bus eventbus.EventBus
+	var memBus *eventbus.MemoryEventBus
 	natsBus, err := eventbus.NewNATSEventBus(s.cfg.NATS.URL)
 	if err != nil {
 		log.Printf("⚠️  NATS 连接失败，回退到内存事件总线: %v", err)
-		bus = eventbus.NewMemoryEventBus()
+		mb := eventbus.NewMemoryEventBus()
+		bus = mb
+		memBus = mb
 	} else {
 		bus = natsBus
+		// NATS 模式下也创建一个 MemoryEventBus 用于事件历史
+		memBus = eventbus.NewMemoryEventBus()
 	}
 	s.bus = bus
 	defer bus.Close()
@@ -48,7 +53,7 @@ func (s *Server) Run() error {
 	pool, err := database.New(s.cfg.Database.DSN)
 	if err != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，回退到内存模式: %v", err)
-		return s.runMemoryMode(bus)
+		return s.runMemoryMode(bus, memBus)
 	}
 	defer pool.Close()
 	log.Printf("✅ PostgreSQL 连接成功")
@@ -59,52 +64,49 @@ func (s *Server) Run() error {
 	// ─── 初始化仓储层（PostgreSQL）───
 	userRepo := identityrepo.NewPgUserRepository(pool)
 	threadRepo := repository.NewPgThreadRepository(pool)
+	categoryRepo := repository.NewPgCategoryRepository(pool)
+	postRepo := repository.NewPgPostRepository(pool)
+	roleRepo := identityrepo.NewPgRoleRepository(pool)
 
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
 	threadSvc := service.NewThreadService(threadRepo, bus)
+	categorySvc := service.NewCategoryService(categoryRepo, bus)
+	postSvc := service.NewPostService(postRepo, bus)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
-	categoryHandler := handler.NewCategoryHandler(nil)
-	postHandler := handler.NewPostHandler(nil)
-
-	// 创建事件历史处理器（仅内存模式可用）
-	var memBus *eventbus.MemoryEventBus
-	if mb, ok := bus.(*eventbus.MemoryEventBus); ok {
-		memBus = mb
-	}
+	categoryHandler := handler.NewCategoryHandler(categorySvc)
+	postHandler := handler.NewPostHandler(postSvc)
 	eventHandler := handler.NewEventHandler(memBus)
 
-	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
 }
 
-func (s *Server) runMemoryMode(bus eventbus.EventBus) error {
+func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus) error {
 	jwtMgr := s.newJWTManager()
 
 	userRepo := identityrepo.NewMemoryUserRepository()
 	threadRepo := repository.NewMemoryThreadRepository()
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
+	roleRepo := identityrepo.NewMemoryRoleRepository()
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
-
-	var memBus *eventbus.MemoryEventBus
-	if mb, ok := bus.(*eventbus.MemoryEventBus); ok {
-		memBus = mb
-	}
 	eventHandler := handler.NewEventHandler(memBus)
 
-	return s.setupRoutes(jwtMgr, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
 }
 
 func (s *Server) newJWTManager() *auth.JWTManager {
@@ -119,31 +121,21 @@ func (s *Server) newJWTManager() *auth.JWTManager {
 }
 
 func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
-	// 事件日志订阅器
-	bus.Subscribe("user.created", func(ctx context.Context, event eventbus.Event) error {
-		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
-		return nil
-	})
-	bus.Subscribe("thread.created", func(ctx context.Context, event eventbus.Event) error {
-		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
-		return nil
-	})
-	bus.Subscribe("thread.updated", func(ctx context.Context, event eventbus.Event) error {
-		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
-		return nil
-	})
-	bus.Subscribe("thread.deleted", func(ctx context.Context, event eventbus.Event) error {
-		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
-		return nil
-	})
-	bus.Subscribe("post.created", func(ctx context.Context, event eventbus.Event) error {
-		log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
-		return nil
-	})
-	log.Printf("✅ 已注册 5 个默认事件订阅")
+	eventTypes := []string{
+		"user.created", "thread.created", "thread.updated", "thread.deleted",
+		"post.created", "category.created",
+	}
+	for _, et := range eventTypes {
+		bus.Subscribe(et, func(ctx context.Context, event eventbus.Event) error {
+			log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+			return nil
+		})
+	}
+	log.Printf("✅ 已注册 %d 个默认事件订阅", len(eventTypes))
 }
 
 func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
+	permSvc *identitysvc.PermissionService,
 	userHandler *identityhandler.UserHandler,
 	threadHandler *handler.ThreadHandler,
 	categoryHandler *handler.CategoryHandler,
@@ -160,7 +152,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	v1 := r.Group("/api/v1")
 
-	// 公开接口
+	// ─── 公开接口（无需认证）───
 	public := v1.Group("")
 	{
 		public.GET("/health", userHandler.HealthCheck)
@@ -170,17 +162,13 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/threads/:id", threadHandler.GetThread)
 		public.GET("/users", userHandler.ListUsers)
 		public.GET("/users/:id", userHandler.GetUser)
+		public.GET("/categories", categoryHandler.List)
+		public.GET("/categories/:id", categoryHandler.Get)
+		public.GET("/threads/:id/posts", postHandler.ListPosts)
+		public.GET("/events", eventHandler.ListEvents)
 	}
 
-	// 版块接口
-	public.GET("/categories", categoryHandler.List)
-	public.GET("/categories/:id", categoryHandler.Get)
-	// 帖子回复接口
-	public.GET("/threads/:id/posts", postHandler.ListPosts)
-	// 事件历史接口
-	public.GET("/events", eventHandler.ListEvents)
-
-	// 需要 JWT 认证的接口
+	// ─── 需要 JWT 认证的接口（普通用户）───
 	authenticated := v1.Group("")
 	authenticated.Use(middleware.JWTAuth(jwtMgr))
 	{
@@ -189,12 +177,33 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
+		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
+		authenticated.PUT("/threads/:thread_id/posts/:post_id", postHandler.UpdatePost)
+		authenticated.DELETE("/threads/:thread_id/posts/:post_id", postHandler.DeletePost)
 		authenticated.POST("/categories", categoryHandler.Create)
 		authenticated.PUT("/categories/:id", categoryHandler.Update)
-		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
+	}
+
+	// ─── 管理员接口（需要权限）───
+	admin := v1.Group("")
+	admin.Use(middleware.JWTAuth(jwtMgr))
+	{
+		// 用户管理
+		admin.POST("/users/:id/suspend", middleware.RequirePermission(permSvc, "user", "suspend"), userHandler.SuspendUser)
+		admin.POST("/users/:id/activate", middleware.RequirePermission(permSvc, "user", "suspend"), userHandler.ActivateUser)
+
+		// 帖子管理
+		admin.POST("/threads/:id/pin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.PinThread)
+		admin.POST("/threads/:id/unpin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnpinThread)
+		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.LockThread)
+		admin.POST("/threads/:id/unlock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnlockThread)
+
+		// 版块管理
+		admin.DELETE("/categories/:id", middleware.RequirePermission(permSvc, "category", "delete"), categoryHandler.Delete)
 	}
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
+	log.Printf("📋 API 端点总数: 30")
 	return r.Run(addr)
 }

@@ -15,6 +15,7 @@ type CategoryRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Category, error)
 	List(ctx context.Context) ([]*domain.Category, error)
 	Update(ctx context.Context, cat *domain.Category) error
+	Delete(ctx context.Context, id string) error
 }
 
 type MemoryCategoryRepository struct {
@@ -60,5 +61,15 @@ func (r *MemoryCategoryRepository) Update(_ context.Context, cat *domain.Categor
 		return ErrCategoryNotFound
 	}
 	r.categories[cat.ID] = cat
+	return nil
+}
+
+func (r *MemoryCategoryRepository) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.categories[id]; !ok {
+		return ErrCategoryNotFound
+	}
+	delete(r.categories, id)
 	return nil
 }

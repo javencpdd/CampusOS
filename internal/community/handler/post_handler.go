@@ -37,6 +37,45 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	response.Created(c, post)
 }
 
+func (h *PostHandler) UpdatePost(c *gin.Context) {
+	authorID := c.GetHeader("X-User-ID")
+	if authorID == "" {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	postID := c.Param("post_id")
+
+	var req struct {
+		Content string `json:"content" binding:"required,min=1"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	post, err := h.svc.UpdatePost(c.Request.Context(), postID, authorID, req.Content)
+	if err != nil {
+		response.Error(c, http.StatusForbidden, 20004, err.Error())
+		return
+	}
+	response.Success(c, post)
+}
+
+func (h *PostHandler) DeletePost(c *gin.Context) {
+	authorID := c.GetHeader("X-User-ID")
+	if authorID == "" {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	postID := c.Param("post_id")
+
+	if err := h.svc.DeletePost(c.Request.Context(), postID, authorID); err != nil {
+		response.Error(c, http.StatusForbidden, 20004, err.Error())
+		return
+	}
+	response.NoContent(c)
+}
+
 func (h *PostHandler) ListPosts(c *gin.Context) {
 	threadID := c.Param("id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

@@ -49,6 +49,14 @@ func (h *CategoryHandler) List(c *gin.Context) {
 	response.Success(c, cats)
 }
 
+func (h *CategoryHandler) Delete(c *gin.Context) {
+	if err := h.svc.Delete(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, http.StatusNotFound, 50002, err.Error())
+		return
+	}
+	response.NoContent(c)
+}
+
 func (h *CategoryHandler) Update(c *gin.Context) {
 	var req domain.UpdateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

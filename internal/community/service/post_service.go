@@ -50,6 +50,33 @@ func (s *PostService) GetPost(ctx context.Context, id string) (*domain.Post, err
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s *PostService) UpdatePost(ctx context.Context, id, authorID string, content string) (*domain.Post, error) {
+	post, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get post: %w", err)
+	}
+	if post.AuthorID != authorID {
+		return nil, fmt.Errorf("permission denied: you can only edit your own posts")
+	}
+	post.Content = content
+	post.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(ctx, post); err != nil {
+		return nil, fmt.Errorf("update post: %w", err)
+	}
+	return post, nil
+}
+
+func (s *PostService) DeletePost(ctx context.Context, id, authorID string) error {
+	post, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get post: %w", err)
+	}
+	if post.AuthorID != authorID {
+		return fmt.Errorf("permission denied: you can only delete your own posts")
+	}
+	return s.repo.Delete(ctx, id)
+}
+
 func (s *PostService) ListByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {
 	if page < 1 {
 		page = 1

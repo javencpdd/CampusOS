@@ -52,6 +52,10 @@ func (s *CategoryService) List(ctx context.Context) ([]*domain.Category, error) 
 	return s.repo.List(ctx)
 }
 
+func (s *CategoryService) Delete(ctx context.Context, id string) error {
+	return s.repo.Delete(ctx, id)
+}
+
 func (s *CategoryService) Update(ctx context.Context, id string, req domain.UpdateCategoryRequest) (*domain.Category, error) {
 	cat, err := s.repo.GetByID(ctx, id)
 	if err != nil {
