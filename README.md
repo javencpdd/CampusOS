@@ -92,13 +92,16 @@ pnpm dev
 
 ### 访问
 
-| 服务 | 地址 |
-|:---|:---|
-| API Server | http://localhost:8080/api/v1 |
-| Web UI | http://localhost:3000 |
-| Grafana | http://localhost:3001 |
-| Jaeger | http://localhost:16686 |
-| MinIO Console | http://localhost:9001 |
+| 服务 | 地址 | 说明 |
+|:---|:---|:---|
+| **API Server** | http://localhost:8080/api/v1 | Go 后端 API 服务，提供 19 个 RESTful 端点（用户/帖子/版块/回复/事件），基于 Gin 框架，支持 JWT 认证和事件总线 |
+| **Web UI** | http://localhost:3000 | Vue 3 前端界面，包含首页、登录/注册、帖子列表/详情/发帖等 6 个页面，通过 Vite 代理请求后端 API |
+| **Grafana** | http://localhost:3001 | 可视化监控面板，展示 Prometheus 采集的系统指标（请求量/延迟/错误率），默认账号 admin/admin |
+| **Jaeger** | http://localhost:16686 | 分布式链路追踪系统，用于追踪跨服务请求的完整调用链路，排查性能瓶颈和错误 |
+| **MinIO Console** | http://localhost:9001 | 对象存储管理控制台，用于文件上传/下载管理（头像/附件/图片），兼容 S3 协议 |
+| **NATS** | http://localhost:8222 | NATS 消息服务器监控页面，查看事件总线的连接状态、消息吞吐量 |
+| **PostgreSQL** | localhost:5432 | 关系型数据库，存储用户/帖子/版块/回复等核心数据 |
+| **Redis** | localhost:6379 | 内存缓存，用于会话缓存、热点数据缓存、限流计数 |
 
 ## 📖 文档
 
