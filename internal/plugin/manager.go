@@ -1,0 +1,290 @@
+package plugin
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"sync"
+)
+
+// Manager 插件管理器
+type Manager struct {
+	mu       sync.RWMutex
+	plugins  map[string]*Plugin  // name -> plugin
+	runtimes map[string]Runtime  // runtime type -> runtime impl
+	registry map[string][]string // event type -> plugin names
+}
+
+// NewManager 创建插件管理器
+func NewManager() *Manager {
+	return &Manager{
+		plugins:  make(map[string]*Plugin),
+		runtimes: make(map[string]Runtime),
+		registry: make(map[string][]string),
+	}
+}
+
+// RegisterRuntime 注册运行时实现
+func (m *Manager) RegisterRuntime(runtimeType string, runtime Runtime) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.runtimes[runtimeType] = runtime
+	log.Printf("🔌 已注册插件运行时: %s", runtimeType)
+}
+
+// Install 从目录安装插件
+func (m *Manager) Install(dir string) (*Plugin, error) {
+	manifestPath := filepath.Join(dir, "plugin.yaml")
+	manifest, err := LoadManifest(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("load manifest from %s: %w", dir, err)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, exists := m.plugins[manifest.Name]; exists {
+		return nil, fmt.Errorf("plugin '%s' already installed", manifest.Name)
+	}
+
+	plugin := &Plugin{
+		ID:        manifest.Name,
+		Manifest:  manifest,
+		Status:    StatusInstalled,
+		Directory: dir,
+	}
+	m.plugins[manifest.Name] = plugin
+
+	// 注册事件订阅
+	for _, eventType := range manifest.Events.Subscribe {
+		m.registry[eventType] = append(m.registry[eventType], manifest.Name)
+	}
+
+	log.Printf("🔌 插件已安装: %s v%s (%s)", manifest.Name, manifest.Version, manifest.Runtime)
+	return plugin, nil
+}
+
+// Enable 启用插件
+func (m *Manager) Enable(name string) error {
+	m.mu.Lock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.Unlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	if p.Status != StatusInstalled && p.Status != StatusStopped {
+		m.mu.Unlock()
+		return fmt.Errorf("plugin '%s' cannot be enabled (status: %s)", name, p.Status)
+	}
+	p.Status = StatusEnabled
+	m.mu.Unlock()
+
+	return m.Start(name)
+}
+
+// Start 启动插件
+func (m *Manager) Start(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	runtimeType := p.Manifest.Runtime
+	m.mu.RUnlock()
+
+	m.mu.Lock()
+	runtime, ok := m.runtimes[runtimeType]
+	if !ok {
+		p.Status = StatusError
+		p.ErrorMsg = fmt.Sprintf("runtime '%s' not registered", runtimeType)
+		m.mu.Unlock()
+		return fmt.Errorf("runtime '%s' not registered", runtimeType)
+	}
+	m.mu.Unlock()
+
+	if err := runtime.Start(context.Background(), p); err != nil {
+		m.mu.Lock()
+		p.Status = StatusError
+		p.ErrorMsg = err.Error()
+		m.mu.Unlock()
+		return fmt.Errorf("start plugin '%s': %w", name, err)
+	}
+
+	m.mu.Lock()
+	p.Status = StatusRunning
+	p.ErrorMsg = ""
+	m.mu.Unlock()
+
+	log.Printf("🟢 插件已启动: %s", name)
+	return nil
+}
+
+// Stop 停止插件
+func (m *Manager) Stop(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	runtimeType := p.Manifest.Runtime
+	m.mu.RUnlock()
+
+	m.mu.Lock()
+	runtime, ok := m.runtimes[runtimeType]
+	if !ok {
+		m.mu.Unlock()
+		return fmt.Errorf("runtime '%s' not registered", runtimeType)
+	}
+	m.mu.Unlock()
+
+	if err := runtime.Stop(context.Background(), name); err != nil {
+		return fmt.Errorf("stop plugin '%s': %w", name, err)
+	}
+
+	m.mu.Lock()
+	p.Status = StatusStopped
+	m.mu.Unlock()
+
+	log.Printf("🔴 插件已停止: %s", name)
+	return nil
+}
+
+// DispatchEvent 分发事件到所有订阅的插件
+func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
+	m.mu.RLock()
+	pluginNames := m.registry[event.Type]
+	plugins := make([]*Plugin, 0, len(pluginNames))
+	for _, name := range pluginNames {
+		if p, ok := m.plugins[name]; ok && p.Status == StatusRunning {
+			plugins = append(plugins, p)
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, p := range plugins {
+		go func(pl *Plugin) {
+			m.mu.RLock()
+			runtimeType := pl.Manifest.Runtime
+			m.mu.RUnlock()
+
+			m.mu.Lock()
+			runtime, ok := m.runtimes[runtimeType]
+			m.mu.Unlock()
+			if !ok {
+				return
+			}
+
+			resp, err := runtime.SendEvent(ctx, pl.ID, event)
+			if err != nil {
+				log.Printf("⚠️  插件 %s 处理事件 %s 失败: %v", pl.ID, event.Type, err)
+				return
+			}
+			if resp != nil && !resp.Allowed {
+				log.Printf("🚫 插件 %s 拒绝事件 %s: %s", pl.ID, event.Type, resp.Message)
+			}
+		}(p)
+	}
+}
+
+// GetPlugin 获取插件信息
+func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[name]
+	return p, ok
+}
+
+// ListPlugins 列出所有插件
+func (m *Manager) ListPlugins() []*Plugin {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	plugins := make([]*Plugin, 0, len(m.plugins))
+	for _, p := range m.plugins {
+		plugins = append(plugins, p)
+	}
+	return plugins
+}
+
+// Uninstall 卸载插件
+func (m *Manager) Uninstall(name string) error {
+	m.mu.Lock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.Unlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+
+	// 停止运行中的插件
+	if p.Status == StatusRunning {
+		m.mu.Unlock()
+		if err := m.Stop(name); err != nil {
+			log.Printf("⚠️  停止插件 %s 失败: %v", name, err)
+		}
+		m.mu.Lock()
+	}
+
+	// 从注册表移除
+	for eventType, names := range m.registry {
+		for i, n := range names {
+			if n == name {
+				m.registry[eventType] = append(names[:i], names[i+1:]...)
+				break
+			}
+		}
+	}
+
+	delete(m.plugins, name)
+	m.mu.Unlock()
+
+	log.Printf("🗑️  插件已卸载: %s", name)
+	return nil
+}
+
+// StopAll 停止所有插件（服务关闭时调用）
+func (m *Manager) StopAll() {
+	m.mu.RLock()
+	names := make([]string, 0, len(m.plugins))
+	for name, p := range m.plugins {
+		if p.Status == StatusRunning {
+			names = append(names, name)
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, name := range names {
+		if err := m.Stop(name); err != nil {
+			log.Printf("⚠️  停止插件 %s 失败: %v", name, err)
+		}
+	}
+}
+
+// InstallFromPluginsDir 从插件目录批量安装
+func (m *Manager) InstallFromPluginsDir(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("📁 插件目录不存在，跳过: %s", dir)
+			return nil
+		}
+		return fmt.Errorf("read plugins dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pluginDir := filepath.Join(dir, entry.Name())
+		manifestPath := filepath.Join(pluginDir, "plugin.yaml")
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			continue
+		}
+		if _, err := m.Install(pluginDir); err != nil {
+			log.Printf("⚠️  安装插件 %s 失败: %v", entry.Name(), err)
+		}
+	}
+	return nil
+}

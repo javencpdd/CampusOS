@@ -1,0 +1,27 @@
+name: hello-plugin
+display_name: "Hello Plugin"
+version: "0.1.0"
+description: "一个简单的事件日志插件，接收并记录所有核心事件"
+author: "CampusOS Team"
+runtime: grpc
+
+events:
+  subscribe:
+    - "user.created"
+    - "thread.created"
+    - "thread.updated"
+    - "thread.deleted"
+    - "post.created"
+    - "category.created"
+
+permissions:
+  api:
+    - resource: "thread"
+      actions: ["read"]
+    - resource: "user"
+      actions: ["read"]
+
+storage:
+  type: sqlite
+  sqlite:
+    filename: "data.db"

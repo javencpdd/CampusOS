@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/handler"
@@ -11,6 +12,9 @@ import (
 	identityhandler "github.com/campusos/CampusOS/internal/core/identity/handler"
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	"github.com/campusos/CampusOS/internal/plugin"
+	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
+	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/database"
@@ -20,8 +24,9 @@ import (
 )
 
 type Server struct {
-	cfg *config.Config
-	bus eventbus.EventBus
+	cfg     *config.Config
+	bus     eventbus.EventBus
+	manager *plugin.Manager
 }
 
 func New(cfg *config.Config) *Server {
@@ -40,14 +45,30 @@ func (s *Server) Run() error {
 		memBus = mb
 	} else {
 		bus = natsBus
-		// NATS 模式下也创建一个 MemoryEventBus 用于事件历史
 		memBus = eventbus.NewMemoryEventBus()
 	}
 	s.bus = bus
 	defer bus.Close()
 
-	// ─── 注册默认事件订阅（事件日志）───
+	// ─── 初始化 Plugin Manager ───
+	s.manager = plugin.NewManager()
+	grpcRuntime := plugingrpc.NewGRPCRuntime()
+	s.manager.RegisterRuntime("grpc", grpcRuntime)
+
+	// ─── 注册默认事件订阅（事件日志 + 插件分发）───
 	s.registerDefaultSubscriptions(bus)
+
+	// ─── 加载插件 ───
+	pluginsDir := "examples/plugins"
+	if dir := os.Getenv("PLUGINS_DIR"); dir != "" {
+		pluginsDir = dir
+	}
+	if err := s.manager.InstallFromPluginsDir(pluginsDir); err != nil {
+		log.Printf("⚠️  加载插件失败: %v", err)
+	}
+
+	// ─── 启动健康检查 ───
+	grpcRuntime.StartHealthChecker(context.Background(), 10*time.Second, s.manager)
 
 	// ─── 初始化 PostgreSQL ───
 	pool, err := database.New(s.cfg.Database.DSN)
@@ -68,6 +89,10 @@ func (s *Server) Run() error {
 	postRepo := repository.NewPgPostRepository(pool)
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
 
+	// ─── 初始化 Host API ───
+	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
+	_ = hostAPI // 未来传递给插件进程
+
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
 	threadSvc := service.NewThreadService(threadRepo, bus)
@@ -81,8 +106,9 @@ func (s *Server) Run() error {
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
 	eventHandler := handler.NewEventHandler(memBus)
+	pluginHandler := plugin.NewHandler(s.manager)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus) error {
@@ -93,6 +119,10 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
 	roleRepo := identityrepo.NewMemoryRoleRepository()
+
+	// ─── 初始化 Host API ───
+	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
+	_ = hostAPI
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
 	threadSvc := service.NewThreadService(threadRepo, bus)
@@ -105,8 +135,9 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
 	eventHandler := handler.NewEventHandler(memBus)
+	pluginHandler := plugin.NewHandler(s.manager)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler)
 }
 
 func (s *Server) newJWTManager() *auth.JWTManager {
@@ -128,10 +159,19 @@ func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 	for _, et := range eventTypes {
 		bus.Subscribe(et, func(ctx context.Context, event eventbus.Event) error {
 			log.Printf("📢 Event: %s | Subject: %s | Source: %s", event.Type, event.Subject, event.Source)
+			// 分发事件到插件
+			if s.manager != nil {
+				s.manager.DispatchEvent(ctx, &plugin.EventMessage{
+					Type:    event.Type,
+					Source:  event.Source,
+					Subject: event.Subject,
+					Data:    event.Data,
+				})
+			}
 			return nil
 		})
 	}
-	log.Printf("✅ 已注册 %d 个默认事件订阅", len(eventTypes))
+	log.Printf("✅ 已注册 %d 个默认事件订阅（含插件分发）", len(eventTypes))
 }
 
 func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
@@ -140,7 +180,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	threadHandler *handler.ThreadHandler,
 	categoryHandler *handler.CategoryHandler,
 	postHandler *handler.PostHandler,
-	eventHandler *handler.EventHandler) error {
+	eventHandler *handler.EventHandler,
+	pluginHandler *plugin.Handler) error {
 
 	r := gin.Default()
 
@@ -200,10 +241,21 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 		// 版块管理
 		admin.DELETE("/categories/:id", middleware.RequirePermission(permSvc, "category", "delete"), categoryHandler.Delete)
+
+		// 插件管理
+		admin.GET("/plugins", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPlugins)
+		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
+		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
+		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
+		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
 	}
+
+	// 服务关闭时停止所有插件
+	defer s.manager.StopAll()
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 30")
+	log.Printf("📋 API 端点总数: 36")
+	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }
