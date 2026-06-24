@@ -36,4 +36,16 @@ const router = createRouter({
   ],
 })
 
+// 路由守卫
+router.beforeEach((to, _from, next) => {
+  const token = localStorage.getItem('access_token')
+
+  if (to.meta.requiresAuth && !token) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+    return
+  }
+
+  next()
+})
+
 export default router
