@@ -153,7 +153,51 @@ func (m *Manager) Stop(name string) error {
 	return nil
 }
 
-// DispatchEvent 分发事件到所有订阅的插件
+// DispatchBeforeEvent 分发 .before 事件（同步，可被插件拦截）
+func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) *PluginResponse {
+	beforeEvent := &EventMessage{
+		Type:    event.Type + ".before",
+		Source:  event.Source,
+		Subject: event.Subject,
+		Data:    event.Data,
+	}
+
+	m.mu.RLock()
+	pluginNames := m.registry[event.Type]
+	plugins := make([]*Plugin, 0, len(pluginNames))
+	for _, name := range pluginNames {
+		if p, ok := m.plugins[name]; ok && p.Status == StatusRunning {
+			plugins = append(plugins, p)
+		}
+	}
+	m.mu.RUnlock()
+
+	for _, p := range plugins {
+		m.mu.RLock()
+		runtimeType := p.Manifest.Runtime
+		m.mu.RUnlock()
+
+		m.mu.Lock()
+		runtime, ok := m.runtimes[runtimeType]
+		m.mu.Unlock()
+		if !ok {
+			continue
+		}
+
+		resp, err := runtime.SendEvent(ctx, p.ID, beforeEvent)
+		if err != nil {
+			log.Printf("⚠️  插件 %s 处理 .before 事件 %s 失败: %v", p.ID, event.Type, err)
+			continue
+		}
+		if resp != nil && !resp.Allowed {
+			log.Printf("🚫 插件 %s 阻止了事件 %s: %s", p.ID, event.Type, resp.Message)
+			return resp
+		}
+	}
+	return nil
+}
+
+// DispatchEvent 分发 .after 事件到所有订阅的插件（异步）
 func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 	m.mu.RLock()
 	pluginNames := m.registry[event.Type]

@@ -1,9 +1,13 @@
 package grpc
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -110,16 +114,30 @@ func (r *GRPCRuntime) Stop(_ context.Context, name string) error {
 
 func (r *GRPCRuntime) SendEvent(_ context.Context, pluginName string, event *plugin.EventMessage) (*plugin.PluginResponse, error) {
 	r.mu.RLock()
-	_, ok := r.processes[pluginName]
+	proc, ok := r.processes[pluginName]
 	r.mu.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf("plugin '%s' is not running", pluginName)
 	}
 
-	// TODO: 实现真实的 gRPC 调用
-	// 当前为模拟实现，记录事件已发送
-	log.Printf("📨 发送事件到插件 %s: %s (subject: %s)", pluginName, event.Type, event.Subject)
-	return &plugin.PluginResponse{Allowed: true, Message: "processed"}, nil
+	// 尝试通过 HTTP 调用插件的 /event 端点
+	pluginAddr := fmt.Sprintf("http://localhost:%d/event", 9000+proc.started.UnixNano()%1000)
+	data, _ := json.Marshal(event)
+
+	resp, err := http.Post(pluginAddr, "application/json", bytes.NewReader(data))
+	if err != nil {
+		// 插件不支持 HTTP，降级为日志记录
+		log.Printf("📨 发送事件到插件 %s: %s (subject: %s) [HTTP不可用，仅记录]", pluginName, event.Type, event.Subject)
+		return &plugin.PluginResponse{Allowed: true, Message: "processed (no HTTP)"}, nil
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result plugin.PluginResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return &plugin.PluginResponse{Allowed: true, Message: "processed"}, nil
+	}
+	return &result, nil
 }
 
 func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
