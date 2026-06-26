@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
-	"github.com/google/uuid"
+	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 type UserService struct {
@@ -46,10 +47,9 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	userID := uuid.New().String()
 	now := time.Now().UTC()
 	user := &domain.User{
-		ID:        userID,
+		ID:        strconv.FormatInt(idgen.New(), 10),
 		Username:  req.Username,
 		Nickname:  req.Nickname,
 		Email:     req.Email,
@@ -70,7 +70,7 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 
 	// 保存账号凭据
 	if s.pgRepo != nil {
-		if err := s.pgRepo.CreateAccount(ctx, userID, req.Email, hashedPwd); err != nil {
+		if err := s.pgRepo.CreateAccount(ctx, user.ID, req.Email, hashedPwd); err != nil {
 			return nil, fmt.Errorf("create account: %w", err)
 		}
 	}
@@ -78,7 +78,7 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 	// 发布 user.created 事件
 	if s.bus != nil {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
-			eventbus.EventUserCreated, "campusos.identity", "user."+userID, user,
+			eventbus.EventUserCreated, "campusos.identity", "user."+user.ID, user,
 		))
 	}
 

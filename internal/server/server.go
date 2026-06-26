@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/handler"
@@ -82,10 +83,17 @@ func (s *Server) Run() error {
 	redisPassword := s.cfg.Redis.Password
 	redisDB := s.cfg.Redis.DB
 	redisEnabled := s.cfg.Redis.Enabled && redisAddr != ""
+	// 解析 host:port（redisAddr 可能是 "localhost:6379" 格式）
+	redisHost := redisAddr
+	redisPort := "6379"
+	if idx := strings.LastIndex(redisAddr, ":"); idx > 0 {
+		redisHost = redisAddr[:idx]
+		redisPort = redisAddr[idx+1:]
+	}
 	appCache := cache.NewCache(cache.CacheConfig{
 		Enabled:  redisEnabled,
-		Host:     redisAddr,
-		Port:     "6379",
+		Host:     redisHost,
+		Port:     redisPort,
 		Password: redisPassword,
 		DB:       redisDB,
 	})
@@ -255,8 +263,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
 		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
-		authenticated.PUT("/threads/:thread_id/posts/:post_id", postHandler.UpdatePost)
-		authenticated.DELETE("/threads/:thread_id/posts/:post_id", postHandler.DeletePost)
+		authenticated.PUT("/threads/:id/posts/:post_id", postHandler.UpdatePost)
+		authenticated.DELETE("/threads/:id/posts/:post_id", postHandler.DeletePost)
 		authenticated.POST("/categories", categoryHandler.Create)
 		authenticated.PUT("/categories/:id", categoryHandler.Update)
 	}

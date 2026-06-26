@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
+	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -130,7 +131,7 @@ func (r *PgUserRepository) List(ctx context.Context, page, pageSize int) ([]*dom
 func (r *PgUserRepository) CreateAccount(ctx context.Context, userID, email, hashedPassword string) error {
 	query := `INSERT INTO accounts (id, user_id, type, identifier, credential, verified, created_at, updated_at)
 		VALUES ($1, $2, 'email', $3, $4, false, $5, $5)`
-	_, err := r.pool.Exec(ctx, query, userID, email, hashedPassword, time.Now().UTC())
+	_, err := r.pool.Exec(ctx, query, idgen.New(), userID, email, hashedPassword, time.Now().UTC())
 	return err
 }
 
