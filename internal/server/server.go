@@ -56,6 +56,12 @@ func (s *Server) Run() error {
 	grpcRuntime := plugingrpc.NewGRPCRuntime()
 	s.manager.RegisterRuntime("grpc", grpcRuntime)
 
+	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
+	var pluginRepo plugin.PluginRepository
+	var apiKeyRepo plugin.APIKeyRepository
+	_ = pluginRepo // 延迟赋值
+	_ = apiKeyRepo // 延迟赋值
+
 	// ─── 注册默认事件订阅（事件日志 + 插件分发）───
 	s.registerDefaultSubscriptions(bus)
 
@@ -92,6 +98,16 @@ func (s *Server) Run() error {
 	}
 	defer pool.Close()
 	log.Printf("✅ PostgreSQL 连接成功")
+
+	// ─── 设置 PG 插件仓储 ───
+	pluginRepo = plugin.NewPgPluginRepository(pool)
+	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
+	s.manager.SetPluginRepository(pluginRepo)
+
+	// ─── 种子数据（默认管理员）───
+	if err := SeedAdmin(pool); err != nil {
+		log.Printf("⚠️  种子数据初始化失败: %v", err)
+	}
 
 	// ─── 初始化 JWT ───
 	jwtMgr := s.newJWTManager()

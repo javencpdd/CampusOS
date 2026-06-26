@@ -15,6 +15,7 @@ type Manager struct {
 	plugins  map[string]*Plugin  // name -> plugin
 	runtimes map[string]Runtime  // runtime type -> runtime impl
 	registry map[string][]string // event type -> plugin names
+	repo     PluginRepository    // 可选：插件持久化仓储
 }
 
 // NewManager 创建插件管理器
@@ -24,6 +25,11 @@ func NewManager() *Manager {
 		runtimes: make(map[string]Runtime),
 		registry: make(map[string][]string),
 	}
+}
+
+// SetPluginRepository 设置插件持久化仓储
+func (m *Manager) SetPluginRepository(repo PluginRepository) {
+	m.repo = repo
 }
 
 // RegisterRuntime 注册运行时实现
