@@ -7,7 +7,23 @@
           <el-input v-model="form.title" placeholder="请输入帖子标题" maxlength="255" show-word-limit />
         </el-form-item>
         <el-form-item label="版块" required>
-          <el-input v-model="form.category_id" placeholder="版块 ID（如 cat_001）" />
+          <el-select
+            v-model="form.category_id"
+            :loading="categoryLoading"
+            filterable
+            placeholder="请选择版块"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="category in categories"
+              :key="category.id"
+              :label="category.name"
+              :value="category.id"
+            />
+          </el-select>
+          <div v-if="!categoryLoading && categories.length === 0" class="field-hint">
+            暂无可用版块，请先在后台创建版块
+          </div>
         </el-form-item>
         <el-form-item label="内容" required>
           <el-input v-model="form.content" type="textarea" :rows="10" placeholder="请输入帖子内容（支持 Markdown）" />
@@ -26,14 +42,33 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { threadApi } from '@/api'
+import { categoryApi, threadApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const loading = ref(false)
+const categoryLoading = ref(false)
+const categories = ref<Array<{ id: string; name: string }>>([])
 const form = reactive({ title: '', content: '', category_id: '', tags: [] as string[] })
+
+const loadCategories = async () => {
+  categoryLoading.value = true
+  try {
+    const res: any = await categoryApi.list()
+    if (res.code === 0) {
+      categories.value = res.data || []
+      if (!form.category_id && categories.value.length > 0) {
+        form.category_id = categories.value[0].id
+      }
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.msg || '获取版块失败')
+  } finally {
+    categoryLoading.value = false
+  }
+}
 
 const handleSubmit = async () => {
   if (!form.title || !form.content || !form.category_id) return ElMessage.warning('请填写标题、内容和版块')
@@ -48,8 +83,16 @@ const handleSubmit = async () => {
     ElMessage.error(e?.msg || '发布失败')
   } finally { loading.value = false }
 }
+
+onMounted(loadCategories)
 </script>
 
 <style scoped>
 .create-thread { max-width: 800px; margin: 0 auto; }
+.field-hint {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+  margin-top: 4px;
+}
 </style>

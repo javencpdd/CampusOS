@@ -20,8 +20,11 @@ func NewPostHandler(svc *service.PostService) *PostHandler {
 
 func (h *PostHandler) CreatePost(c *gin.Context) {
 	threadID := c.Param("id")
-	userID, _ := c.Get("user_id")
-	username, _ := c.Get("username")
+	userID, username, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
 
 	var req domain.CreatePostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -29,7 +32,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
-	post, err := h.svc.CreatePost(c.Request.Context(), threadID, userID.(string), username.(string), req)
+	post, err := h.svc.CreatePost(c.Request.Context(), threadID, userID, username, req)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 		return
@@ -38,8 +41,8 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 }
 
 func (h *PostHandler) UpdatePost(c *gin.Context) {
-	authorID := c.GetHeader("X-User-ID")
-	if authorID == "" {
+	authorID, _, ok := currentUser(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
@@ -62,8 +65,8 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 }
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
-	authorID := c.GetHeader("X-User-ID")
-	if authorID == "" {
+	authorID, _, ok := currentUser(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}

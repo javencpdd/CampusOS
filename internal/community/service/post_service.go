@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/pkg/eventbus"
-	"github.com/google/uuid"
+	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 type PostService struct {
@@ -23,7 +24,7 @@ func NewPostService(repo repository.PostRepository, bus eventbus.EventBus) *Post
 func (s *PostService) CreatePost(ctx context.Context, threadID, authorID, authorName string, req domain.CreatePostRequest) (*domain.Post, error) {
 	now := time.Now().UTC()
 	post := &domain.Post{
-		ID:         uuid.New().String(),
+		ID:         strconv.FormatInt(idgen.New(), 10),
 		ThreadID:   threadID,
 		AuthorID:   authorID,
 		AuthorName: authorName,

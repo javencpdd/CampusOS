@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/pkg/eventbus"
-	"github.com/google/uuid"
+	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 type CategoryService struct {
@@ -23,7 +24,7 @@ func NewCategoryService(repo repository.CategoryRepository, bus eventbus.EventBu
 func (s *CategoryService) Create(ctx context.Context, req domain.CreateCategoryRequest) (*domain.Category, error) {
 	now := time.Now().UTC()
 	cat := &domain.Category{
-		ID:          uuid.New().String(),
+		ID:          strconv.FormatInt(idgen.New(), 10),
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: req.Description,

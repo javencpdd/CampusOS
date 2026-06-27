@@ -14,6 +14,10 @@ func SeedAdmin(pool *pgxpool.Pool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	if err := ensureDefaultCategory(ctx, pool); err != nil {
+		return err
+	}
+
 	// 检查是否已有管理员
 	var count int
 	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE username = 'admin' AND deleted_at IS NULL`).Scan(&count)
@@ -70,5 +74,19 @@ func SeedAdmin(pool *pgxpool.Pool) error {
 	log.Printf("   邮箱: admin@campusos.local")
 	log.Printf("   密码: Admin@123456")
 	log.Printf("   角色: admin")
+	return nil
+}
+
+func ensureDefaultCategory(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+		INSERT INTO categories (id, name, slug, description, sort_order, created_at, updated_at)
+		VALUES ($1, '默认版块', 'default', '系统默认版块', 0, NOW(), NOW())
+		ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING`,
+		int64(1000000000000000004))
+	if err != nil {
+		return err
+	}
+
+	log.Printf("✅ 默认版块已就绪")
 	return nil
 }
