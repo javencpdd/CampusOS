@@ -19,8 +19,15 @@ ON CONFLICT DO NOTHING;
 
 -- 分配 admin 角色给管理员用户
 INSERT INTO user_roles (id, user_id, role_id, scope_type)
-VALUES (1000000000000000003, 1000000000000000001, 1, 'global')
-ON CONFLICT DO NOTHING;
+SELECT 1000000000000000003, 1000000000000000001, 1, 'global'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM user_roles
+    WHERE user_id = 1000000000000000001
+      AND role_id = 1
+      AND scope_type = 'global'
+      AND deleted_at IS NULL
+);
 
 -- 插入默认版块
 INSERT INTO categories (id, name, slug, description, sort_order, created_at, updated_at)

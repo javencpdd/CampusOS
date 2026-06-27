@@ -1,0 +1,212 @@
+name: Deploy
+
+# CD 流程：推送 v* 标签或手动触发时，构建发布包并部署到远程服务器。
+"on":
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 生产部署串行执行，避免两个 tag 同时覆盖远程目录。
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  GOFLAGS: -mod=mod
+  NODE_VERSION: "22"
+  PNPM_VERSION: "8"
+  DB_HOST: localhost
+  DB_PORT: "5432"
+  DB_USER: campusos
+  DB_NAME: campusos
+  DB_PASSWORD: campusos_dev
+  DATABASE_DSN: postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable
+
+jobs:
+  build:
+    name: Build Release Package
+    runs-on: ubuntu-latest
+
+    # CD 自己也验证迁移，避免手动 tag 绕过 CI 后发布坏包。
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: campusos
+          POSTGRES_USER: campusos
+          POSTGRES_PASSWORD: campusos_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U campusos -d campusos"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: |
+            web/pnpm-lock.yaml
+            admin/pnpm-lock.yaml
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run database migrations
+        run: make migrate-up
+
+      - name: Show migration status
+        run: make migrate-status
+
+      # CD 阶段再次运行后端测试，防止未经 CI 的手动 tag 直接发布。
+      - name: Run Go tests
+        run: go test ./... -v -count=1
+
+      - name: Build backend
+        run: |
+          mkdir -p release/package/bin
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags="-s -w" \
+            -o release/package/bin/campusos-server \
+            ./cmd/server/main.go
+
+      - name: Build web frontend
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build admin frontend
+        working-directory: admin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # 发布包只包含运行和迁移需要的内容，不把 node_modules、源码缓存等开发文件传到服务器。
+      - name: Assemble release package
+        id: package
+        run: |
+          ref_name="${GITHUB_REF_NAME//\//-}"
+          release_name="campusos-${ref_name}-${GITHUB_RUN_NUMBER}.tar.gz"
+          mkdir -p release/package/web release/package/admin
+          cp -R web/dist release/package/web/dist
+          cp -R admin/dist release/package/admin/dist
+          cp -R migrations release/package/migrations
+          cp -R scripts release/package/scripts
+          cp docker-compose.yml release/package/docker-compose.yml
+          cp .env.example release/package/.env.example
+          chmod +x release/package/bin/campusos-server
+          find release/package/scripts -type f -name "*.sh" -exec chmod +x {} \;
+          tar -czf "release/${release_name}" -C release/package .
+          echo "release_name=${release_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: campusos-release
+          path: release/${{ steps.package.outputs.release_name }}
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy To Server
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+
+    env:
+      # secrets.HOST、secrets.USERNAME、secrets.SSH_KEY 需要在 GitHub 仓库或组织的 Secrets 中配置。
+      DEPLOY_HOST: ${{ secrets.HOST }}
+      DEPLOY_USER: ${{ secrets.USERNAME }}
+      DEPLOY_KEY: ${{ secrets.SSH_KEY }}
+      DEPLOY_PORT: ${{ secrets.SSH_PORT || '22' }}
+      # DEPLOY_PATH 和 DEPLOY_RESTART_COMMAND 属于非敏感配置，推荐放在 GitHub Variables。
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/campusos' }}
+      DEPLOY_RESTART_COMMAND: ${{ vars.DEPLOY_RESTART_COMMAND }}
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: campusos-release
+          path: release
+
+      - name: Validate deployment configuration
+        run: |
+          test -n "${DEPLOY_HOST}" || { echo "Missing secret: HOST"; exit 1; }
+          test -n "${DEPLOY_USER}" || { echo "Missing secret: USERNAME"; exit 1; }
+          test -n "${DEPLOY_KEY}" || { echo "Missing secret: SSH_KEY"; exit 1; }
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_KEY}" > ~/.ssh/campusos_deploy_key
+          chmod 600 ~/.ssh/campusos_deploy_key
+          ssh-keyscan -p "${DEPLOY_PORT}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Resolve release package name
+        run: |
+          release_file="$(find release -maxdepth 1 -type f -name 'campusos-*.tar.gz' -print -quit)"
+          test -n "${release_file}" || { echo "Release package was not found"; exit 1; }
+          echo "RELEASE_FILE=${release_file}" >> "${GITHUB_ENV}"
+          echo "RELEASE_NAME=$(basename "${release_file}")" >> "${GITHUB_ENV}"
+
+      - name: Upload package to server
+        run: |
+          ssh -i ~/.ssh/campusos_deploy_key -p "${DEPLOY_PORT}" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "mkdir -p '${DEPLOY_PATH}/releases'"
+
+          scp -i ~/.ssh/campusos_deploy_key -P "${DEPLOY_PORT}" \
+            "${RELEASE_FILE}" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/releases/${RELEASE_NAME}"
+
+      - name: Activate release
+        run: |
+          ssh -i ~/.ssh/campusos_deploy_key -p "${DEPLOY_PORT}" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_PATH='${DEPLOY_PATH}' RELEASE_NAME='${RELEASE_NAME}' RESTART_COMMAND='${DEPLOY_RESTART_COMMAND}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          release_dir="${DEPLOY_PATH}/releases/${RELEASE_NAME%.tar.gz}"
+          rm -rf "${release_dir}"
+          mkdir -p "${release_dir}"
+          tar -xzf "${DEPLOY_PATH}/releases/${RELEASE_NAME}" -C "${release_dir}"
+          chmod +x "${release_dir}/bin/campusos-server"
+          find "${release_dir}/scripts" -type f -name "*.sh" -exec chmod +x {} \;
+          rm -rf "${DEPLOY_PATH}/current"
+          ln -s "${release_dir}" "${DEPLOY_PATH}/current"
+
+          if [ -n "${RESTART_COMMAND:-}" ]; then
+            eval "${RESTART_COMMAND}"
+          elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^campusos.service'; then
+            sudo systemctl restart campusos
+          else
+            echo "No DEPLOY_RESTART_COMMAND configured and campusos.service was not found; package has been extracted only."
+          fi
+          REMOTE

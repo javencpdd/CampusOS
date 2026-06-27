@@ -1,0 +1,360 @@
+openapi: 3.0.3
+info:
+  title: CampusOS API
+  version: v0.3-dev-pre
+  description: Core API baseline for auth, community, plugin, RBAC, and event routes.
+servers:
+  - url: http://localhost:8080/api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Response:
+      type: object
+      properties:
+        code:
+          type: integer
+        msg:
+          type: string
+        data:
+          nullable: true
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [username, nickname, email, password]
+      properties:
+        username:
+          type: string
+        nickname:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    ThreadCreate:
+      type: object
+      required: [title, content, category_id]
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        category_id:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    PostCreate:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        parent_id:
+          type: string
+paths:
+  /health:
+    get:
+      security: []
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /auth/register:
+    post:
+      security: []
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+  /auth/login:
+    post:
+      security: []
+      summary: Login and issue tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+  /auth/me:
+    get:
+      summary: Current user
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+  /users:
+    get:
+      security: []
+      summary: List users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+  /users/{id}:
+    get:
+      security: []
+      summary: Get user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    put:
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /categories:
+    get:
+      security: []
+      summary: List categories
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create category
+      responses:
+        "201":
+          description: Created
+  /categories/{id}:
+    get:
+      security: []
+      summary: Get category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    put:
+      summary: Update category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Delete category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+  /threads:
+    get:
+      security: []
+      summary: List threads
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+        - name: category_id
+          in: query
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create thread
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ThreadCreate"
+      responses:
+        "201":
+          description: Created
+        "401":
+          description: Unauthorized
+  /threads/{id}:
+    get:
+      security: []
+      summary: Get thread
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    put:
+      summary: Update thread
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Delete thread
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+  /threads/{id}/posts:
+    get:
+      security: []
+      summary: List posts in thread
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostCreate"
+      responses:
+        "201":
+          description: Created
+  /plugins:
+    get:
+      summary: List plugins
+      responses:
+        "200":
+          description: OK
+  /plugins/{name}:
+    get:
+      summary: Get plugin
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Uninstall plugin
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+  /plugins/{name}/enable:
+    post:
+      summary: Enable plugin
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /plugins/{name}/disable:
+    post:
+      summary: Disable plugin
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /events:
+    get:
+      security: []
+      summary: List recent events
+      responses:
+        "200":
+          description: OK

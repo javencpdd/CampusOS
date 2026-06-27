@@ -1,8 +1,8 @@
 # make migrate-up 实现原理教程
 
-> 适用项目：CampusOS  
-> 当前命令来源：项目根目录 `Makefile`  
-> 编写日期：2026-06-27  
+> 适用项目：CampusOS
+> 当前命令来源：项目根目录 `Makefile`
+> 编写日期：2026-06-27
 > 目标读者：刚接触 Makefile、PostgreSQL 迁移和 Docker 本地开发的项目维护者
 
 ## 1. 这条命令做了什么
@@ -13,27 +13,43 @@
 make migrate-up
 ```
 
-本质上不是 Go 程序在自动迁移数据库，也不是 `golang-migrate` 这样的迁移工具在管理版本。它是通过 `Makefile` 找到 `migrations` 目录下所有 `.up.sql` 文件，然后按文件名顺序交给 `psql` 执行。
+当前实现不是 `golang-migrate`，而是项目自带的轻量迁移脚本。`Makefile` 负责提供短命令入口，真正的迁移逻辑在 `scripts/migrate.sh` 和 `scripts/migrate.ps1` 中。
+
+脚本会：
+
+| 步骤 | 说明 |
+| --- | --- |
+| 1 | 创建 `schema_migrations` 版本表 |
+| 2 | 扫描 `migrations/*.up.sql` |
+| 3 | 按文件名顺序执行未记录过的迁移 |
+| 4 | 每成功执行一个迁移，就写入 `schema_migrations` |
+| 5 | 再次执行时跳过已完成的版本 |
 
 当前 `Makefile` 中的真实实现是：
 
 ```makefile
 # 数据库迁移
 migrate-up:
-	@echo "==> 执行数据库迁移"
-	@for f in $$(ls migrations/*.up.sql | sort); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh up
+
+migrate-down:
+	./scripts/migrate.sh down
+
+migrate-reset:
+	./scripts/migrate.sh reset
+
+migrate-status:
+	./scripts/migrate.sh status
 ```
 
-也就是说，`make migrate-up` 最终等价于按顺序手动执行：
+也就是说，`make migrate-up` 首次执行时会按顺序应用：
 
 ```bash
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000001_init_schema.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000002_add_roles.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000003_add_plugins.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000004_seed_admin.up.sql
+000001_init_schema.up.sql
+000002_add_roles.up.sql
+000003_add_plugins.up.sql
+000004_seed_admin.up.sql
+000005_plugin_schema_alignment.up.sql
 ```
 
 可以用下面的命令只查看 Make 会执行什么，而不真正执行数据库迁移：
@@ -42,7 +58,7 @@ PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_ST
 make -n migrate-up
 ```
 
-当前输出会展示 Makefile 中的循环命令，而不会真的连接数据库。它适合用来理解 `make migrate-up` 最终会执行什么。
+当前输出会展示 Makefile 调用的迁移脚本命令，而不会真的连接数据库。它适合用来理解 `make migrate-up` 最终会执行什么。
 
 ## 2. 为什么可以这样用
 
@@ -61,7 +77,7 @@ postgres:
   image: postgres:16-alpine
   container_name: campusos-postgres
   ports:
-    - "5432:5432"
+    - "${POSTGRES_PORT:-5432}:5432"
   environment:
     POSTGRES_DB: campusos
     POSTGRES_USER: campusos
@@ -72,7 +88,7 @@ postgres:
 
 ```yaml
 ports:
-  - "5432:5432"
+  - "${POSTGRES_PORT:-5432}:5432"
 ```
 
 它表示：
@@ -121,11 +137,7 @@ psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/00000
 
 ```makefile
 migrate-up:
-	@echo "==> 执行数据库迁移"
-	@for f in $$(ls migrations/*.up.sql | sort); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh up
 ```
 
 这里：
@@ -134,22 +146,20 @@ migrate-up:
 | --- | --- |
 | `migrate-up:` | Make 目标名称 |
 | 下一行前面的 Tab | Makefile 要求命令行必须以 Tab 开头 |
-| `for f in ...` | 遍历所有 `.up.sql` 文件 |
-| `sort` | 保证迁移按 `000001`、`000002`、`000003`、`000004` 顺序执行 |
-| `PGPASSWORD=... psql ...` | 对每个迁移文件执行一次 `psql -f` |
-| `|| exit 1` | 某个迁移失败时立即停止 Make 目标 |
+| `./scripts/migrate.sh up` | 调用项目迁移脚本，由脚本扫描 SQL、检查版本表并执行未完成的迁移 |
+| `schema_migrations` | 记录已经应用过的迁移版本，避免重复执行 |
 
 项目开头还有：
 
 ```makefile
-.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset
+.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset migrate-status
 ```
 
 `.PHONY` 表示这些名字是“伪目标”，不是文件名。这样即使目录里将来出现一个叫 `migrate-up` 的文件，执行 `make migrate-up` 时 Make 仍然会运行这个目标，而不是误判“文件已经存在，所以不用执行”。
 
 ## 5. `psql -f` 是如何执行 SQL 文件的
 
-`psql -f` 会读取指定 SQL 文件，并把里面的语句发送到 PostgreSQL 执行。当前 `migrate-up` 会按顺序执行 4 个 `.up.sql` 文件。
+`psql -f` 会读取指定 SQL 文件，并把里面的语句发送到 PostgreSQL 执行。当前 `migrate-up` 会按顺序执行 5 个 `.up.sql` 文件。
 
 当前迁移文件分工如下：
 
@@ -158,7 +168,8 @@ migrate-up:
 | `000001_init_schema.up.sql` | 创建用户、账号、会话、版块、主题、回复、标签、点赞、审计日志、通知、配置等核心表 |
 | `000002_add_roles.up.sql` | 创建 `roles`、`user_roles`、`permissions`，并插入内置角色和权限 |
 | `000003_add_plugins.up.sql` | 创建 `plugins`、`api_keys` |
-| `000004_seed_admin.up.sql` | 插入默认管理员账号和管理员角色绑定 |
+| `000004_seed_admin.up.sql` | 插入默认管理员账号、管理员角色绑定和默认版块 |
+| `000005_plugin_schema_alignment.up.sql` | 创建插件权限表和插件日志表 |
 
 这些文件中既包含建表语句，也包含唯一索引、普通索引和种子数据。例如：
 
@@ -167,7 +178,7 @@ CREATE UNIQUE INDEX uk_users_username ON users(username) WHERE deleted_at IS NUL
 CREATE INDEX idx_threads_created_at ON threads(created_at DESC) WHERE deleted_at IS NULL;
 ```
 
-执行成功后，数据库中就具备 CampusOS 当前阶段需要的核心表、权限表、插件表和默认管理员数据。
+执行成功后，数据库中就具备 CampusOS 当前阶段需要的核心表、权限表、插件表、插件权限/日志表、默认管理员和默认版块。
 
 ## 6. 当前项目中的前置条件
 
@@ -175,31 +186,33 @@ CREATE INDEX idx_threads_created_at ON threads(created_at DESC) WHERE deleted_at
 
 | 条件 | 检查方式 | 说明 |
 | --- | --- | --- |
-| PostgreSQL 容器已启动 | `docker ps` | 应能看到 `campusos-postgres` |
-| PostgreSQL 端口已映射 | `docker compose ps postgres` | 宿主机 `5432` 应映射到容器 `5432` |
-| 本机有 `psql` 客户端 | `psql --version` | 当前 Makefile 调用的是宿主机上的 `psql` |
+| PostgreSQL 服务可用 | `make docker-up` 或本机 PostgreSQL 服务 | 推荐 Docker Compose；如果本机已有 PostgreSQL 占用端口，脚本会提示跳过 |
+| PostgreSQL 端口可连接 | `psql -h localhost -p 5432 ...` | 默认连接宿主机 `5432`，也可通过 `POSTGRES_PORT`/`DB_PORT` 改端口 |
+| 本机有 `psql` 客户端 | `psql --version` | 当前迁移脚本默认调用宿主机上的 `psql` |
 | 数据库已创建 | `campusos` | Docker 初始化时由 `POSTGRES_DB` 创建 |
 | 用户已创建 | `campusos` | Docker 初始化时由 `POSTGRES_USER` 创建 |
 | 密码匹配 | `campusos_dev` | 必须与 `POSTGRES_PASSWORD` 一致 |
 | 当前目录正确 | 项目根目录 | 因为 SQL 文件路径是相对路径 `migrations/...` |
 
-需要特别注意：当前 `Makefile` 中的 `docker-up` 目标是：
+当前 `Makefile` 中的 `docker-up` 目标会启动迁移所需的基础服务：
 
 ```makefile
 docker-up:
-	docker compose up -d redis nats
+	./scripts/docker-up.sh
 ```
 
-它只启动 `redis` 和 `nats`，不会启动 `postgres`。因此首次准备数据库时，应该显式启动 PostgreSQL：
+`scripts/docker-up.sh` 会优先检查 PostgreSQL、Redis、NATS 是否已经运行。如果宿主机端口已经被本机服务占用，它会跳过对应 Docker 服务并提示修改 `POSTGRES_PORT`、`REDIS_PORT` 或 `NATS_CLIENT_PORT`，避免新开发者在端口冲突时直接卡住。
+
+因此首次准备数据库时，可以先执行：
 
 ```bash
-docker compose up -d postgres
+make docker-up
 ```
 
-或者一次启动全部服务：
+如果需要 pgAdmin，再额外执行：
 
 ```bash
-docker compose up -d
+make docker-tools-up
 ```
 
 ## 7. 推荐执行流程
@@ -210,11 +223,11 @@ docker compose up -d
 # 1. 进入项目根目录
 cd /home/jack/bbs/bbs01/CampusOS
 
-# 2. 启动 PostgreSQL
-docker compose up -d postgres
+# 2. 启动 PostgreSQL、Redis、NATS
+make docker-up
 
-# 3. 查看 PostgreSQL 是否运行
-docker ps --filter name=campusos-postgres
+# 3. 查看 PostgreSQL 是否可连接
+PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "SELECT 1"
 
 # 4. 确认本机 psql 可用
 psql --version
@@ -246,10 +259,11 @@ PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "\d users"
 
 因此 `migrate-up` 应该只执行 `.up.sql` 文件。如果把 `.down.sql` 也放进 `migrate-up`，这个命令就会变成“先删库表和数据，再重新建库表”，每次执行都有破坏性。
 
-更严重的是，回滚顺序不能按 `000001`、`000002`、`000003`、`000004` 正序执行，而必须逆序执行：
+更严重的是，回滚顺序不能按 `000001`、`000002`、`000003`、`000004`、`000005` 正序执行，而必须逆序执行：
 
 ```text
 正确回滚顺序：
+000005_plugin_schema_alignment.down.sql
 000004_seed_admin.down.sql
 000003_add_plugins.down.sql
 000002_add_roles.down.sql
@@ -268,35 +282,28 @@ PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "\d users"
 
 ## 9. 当前 Makefile 的完整迁移方式
 
-当前 `migrate-up` 使用循环按文件名顺序执行全部上行迁移：
+当前 `migrate-up` 通过 `scripts/migrate.sh` 执行全部上行迁移，并使用 `schema_migrations` 记录已执行版本：
 
 ```makefile
 migrate-up:
-	@echo "==> 执行数据库迁移"
-	@for f in $$(ls migrations/*.up.sql | sort); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh up
 ```
 
-等价于按顺序执行：
+脚本第一次执行时会按顺序应用：
 
 ```bash
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000001_init_schema.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000002_add_roles.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000003_add_plugins.up.sql
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000004_seed_admin.up.sql
+000001_init_schema.up.sql
+000002_add_roles.up.sql
+000003_add_plugins.up.sql
+000004_seed_admin.up.sql
+000005_plugin_schema_alignment.up.sql
 ```
 
 当前 `migrate-down` 使用逆序执行全部回滚迁移：
 
 ```makefile
 migrate-down:
-	@echo "==> 回滚数据库迁移"
-	@for f in $$(ls migrations/*.down.sql | sort -r); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh down
 ```
 
 如果你要表达“先删掉旧结构，再重新建一遍”的开发环境重建动作，应使用：
@@ -308,7 +315,14 @@ make migrate-reset
 它在 Makefile 中定义为：
 
 ```makefile
-migrate-reset: migrate-down migrate-up
+migrate-reset:
+	./scripts/migrate.sh reset
+```
+
+查看迁移版本：
+
+```bash
+make migrate-status
 ```
 
 注意：`migrate-reset` 会删除已有表和种子数据，只适合开发环境。不要在有真实数据的环境中随便执行。
@@ -323,7 +337,7 @@ migrate-reset: migrate-down migrate-up
 docker exec -i campusos-postgres psql -U campusos -d campusos < migrations/000001_init_schema.up.sql
 ```
 
-完整 4 个迁移可以这样执行：
+完整迁移也可以这样执行：
 
 ```bash
 for f in migrations/*.up.sql; do
@@ -400,9 +414,9 @@ docker exec -it campusos-postgres psql -U campusos -d postgres -c "\l"
 
 ### 11.5 `relation "users" already exists`
 
-原因：迁移已经执行过，再次执行 `000001_init_schema.up.sql` 时，`CREATE TABLE users` 会因为表已存在而失败。
+原因：数据库中已经存在旧版本手工迁移留下的对象，或当前 `schema_migrations` 版本表没有正确记录已执行版本。
 
-当前迁移没有版本记录表，也不是完整幂等设计，所以不要在同一个数据库上反复执行 `make migrate-up`。
+当前迁移脚本会创建 `schema_migrations`，并跳过已记录的版本。如果是从旧数据库升级，`000001` 到 `000004` 的建表、索引和种子数据已经做了基础幂等处理，首次补建版本表时可以通过 `make migrate-up` 回填执行记录。
 
 如果是开发环境想重来，可以使用：
 
@@ -424,7 +438,7 @@ make migrate-up
 
 ## 12. 推荐改进方向
 
-当前实现已经可以顺序执行所有 `.up.sql` 文件，也可以逆序执行所有 `.down.sql` 文件。但它仍然只是“顺序执行 SQL 文件”，还没有迁移版本管理。更长期的方案是引入下面任意一种方式：
+当前实现已经可以顺序执行所有 `.up.sql` 文件、逆序执行所有 `.down.sql` 文件，并通过 `schema_migrations` 记录已执行版本。但它仍然是项目内置的轻量脚本，生产环境长期可以继续演进为更正式的迁移工具：
 
 | 方案 | 优点 | 说明 |
 | --- | --- | --- |
@@ -444,6 +458,6 @@ campusosctl migrate status
 
 ## 13. 一句话总结
 
-`make migrate-up` 可以这样用，是因为 Makefile 会遍历 `migrations/*.up.sql`，把每个 SQL 文件交给 `psql -f` 执行；Docker Compose 又把 PostgreSQL 容器的 `5432` 端口映射到了宿主机的 `localhost:5432`，所以宿主机上的 `psql` 能连接到 Docker 里的 PostgreSQL，并执行项目中的 SQL 迁移文件。
+`make migrate-up` 可以这样用，是因为 Makefile 调用 `scripts/migrate.sh up`，脚本会连接 `localhost:5432` 上的 PostgreSQL（默认通常由 Docker Compose 提供，也可以是本机服务），创建 `schema_migrations`，按顺序执行未应用过的 SQL 迁移文件，并记录执行版本。
 
-`migrate-up` 只应该执行 `.up.sql`；`.down.sql` 属于 `migrate-down`。如果需要开发环境重建数据库，应使用 `make migrate-reset`。当前实现已经能跑完 `000001` 到 `000004`，但还不是完整迁移系统；后续仍建议引入正式迁移工具或跨平台 Go CLI 来记录版本和避免重复执行。
+`migrate-up` 只应该执行 `.up.sql`；`.down.sql` 属于 `migrate-down`。如果需要开发环境重建数据库，应使用 `make migrate-reset`。当前实现已经能跑完 `000001` 到 `000005`，并能通过 `make migrate-status` 查看版本状态；后续仍可升级为 `golang-migrate` 或跨平台 Go CLI。

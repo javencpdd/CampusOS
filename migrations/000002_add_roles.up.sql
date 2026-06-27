@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS roles (
     deleted_at  TIMESTAMP NULL
 );
 
-CREATE UNIQUE INDEX uk_roles_name ON roles(name) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_roles_name ON roles(name) WHERE deleted_at IS NULL;
 
 -- 用户-角色关联表
 CREATE TABLE IF NOT EXISTS user_roles (
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS user_roles (
     deleted_at  TIMESTAMP NULL
 );
 
-CREATE UNIQUE INDEX uk_user_roles ON user_roles(user_id, role_id, scope_type, scope_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_user_roles_user_id ON user_roles(user_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_user_roles ON user_roles(user_id, role_id, scope_type, scope_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id) WHERE deleted_at IS NULL;
 
 -- 权限表
 CREATE TABLE IF NOT EXISTS permissions (
@@ -36,14 +36,15 @@ CREATE TABLE IF NOT EXISTS permissions (
     deleted_at  TIMESTAMP NULL
 );
 
-CREATE UNIQUE INDEX uk_permissions ON permissions(role_id, resource, action) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_permissions ON permissions(role_id, resource, action) WHERE deleted_at IS NULL;
 
 -- 初始化角色
 INSERT INTO roles (id, name, description, is_system) VALUES
 (1, 'admin',     '系统管理员，拥有全部权限', TRUE),
 (2, 'moderator', '版主，管理帖子和用户',     TRUE),
 (3, 'member',    '普通会员，发帖回帖',       TRUE),
-(4, 'guest',     '未登录用户，只读浏览',     TRUE);
+(4, 'guest',     '未登录用户，只读浏览',     TRUE)
+ON CONFLICT DO NOTHING;
 
 -- admin 权限
 INSERT INTO permissions (id, role_id, resource, action) VALUES
@@ -61,7 +62,8 @@ INSERT INTO permissions (id, role_id, resource, action) VALUES
 (12, 1, 'category',  'read'),
 (13, 1, 'category',  'write'),
 (14, 1, 'category',  'delete'),
-(15, 1, 'role',      'manage');
+(15, 1, 'role',      'manage')
+ON CONFLICT DO NOTHING;
 
 -- moderator 权限
 INSERT INTO permissions (id, role_id, resource, action) VALUES
@@ -72,17 +74,20 @@ INSERT INTO permissions (id, role_id, resource, action) VALUES
 (20, 2, 'thread',    'delete'),
 (21, 2, 'thread',    'pin'),
 (22, 2, 'post',      'read'),
-(23, 2, 'post',      'delete');
+(23, 2, 'post',      'delete')
+ON CONFLICT DO NOTHING;
 
 -- member 权限
 INSERT INTO permissions (id, role_id, resource, action) VALUES
 (24, 3, 'thread',    'read'),
 (25, 3, 'thread',    'write'),
 (26, 3, 'post',      'read'),
-(27, 3, 'post',      'write');
+(27, 3, 'post',      'write')
+ON CONFLICT DO NOTHING;
 
 -- guest 权限（仅浏览）
 INSERT INTO permissions (id, role_id, resource, action) VALUES
 (28, 4, 'thread',    'read'),
 (29, 4, 'post',      'read'),
-(30, 4, 'category',  'read');
+(30, 4, 'category',  'read')
+ON CONFLICT DO NOTHING;
