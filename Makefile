@@ -1,4 +1,4 @@
-.PHONY: build run dev test lint clean migrate-up migrate-down
+.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset
 
 # 构建
 build:
@@ -31,10 +31,20 @@ clean:
 
 # 数据库迁移
 migrate-up:
-	PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -f migrations/000001_init_schema.up.sql
+	@echo "==> 执行数据库迁移"
+	@for f in $$(ls migrations/*.up.sql | sort); do \
+		echo "==> $$f"; \
+		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
+	done
 
 migrate-down:
-	PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -f migrations/000001_init_schema.down.sql
+	@echo "==> 回滚数据库迁移"
+	@for f in $$(ls migrations/*.down.sql | sort -r); do \
+		echo "==> $$f"; \
+		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
+	done
+
+migrate-reset: migrate-down migrate-up
 
 # Docker
 docker-up:
