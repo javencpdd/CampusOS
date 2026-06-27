@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,12 +21,17 @@ func NewPgPluginRepository(pool *pgxpool.Pool) *PgPluginRepository {
 }
 
 func (r *PgPluginRepository) Save(ctx context.Context, record *PluginRecord) error {
+	if record.ID == 0 {
+		record.ID = idgen.New()
+	}
+
 	query := `INSERT INTO plugins (id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, installed_by, installed_at, updated_at)
-		VALUES (nextval('plugins_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (name) WHERE deleted_at IS NULL
-		DO UPDATE SET display_name = $2, version = $3, description = $4, author = $5, runtime = $6, status = $7, config = $9, updated_at = $13`
+		DO UPDATE SET display_name = $3, version = $4, description = $5, author = $6, runtime = $7, status = $8, api_key = $9, config = $10, error_message = $11, updated_at = $14`
 
 	_, err := r.pool.Exec(ctx, query,
+		record.ID,
 		record.Name, record.DisplayName, record.Version, record.Description,
 		record.Author, record.Runtime, record.Status, record.APIKey,
 		record.Config, record.ErrorMsg, record.InstalledBy,
@@ -102,11 +108,16 @@ func NewPgAPIKeyRepository(pool *pgxpool.Pool) *PgAPIKeyRepository {
 }
 
 func (r *PgAPIKeyRepository) Create(ctx context.Context, record *APIKeyRecord) error {
+	if record.ID == 0 {
+		record.ID = idgen.New()
+	}
+
 	query := `INSERT INTO api_keys (id, key, name, user_id, plugin_name, permissions, is_active, last_used_at, expires_at, created_at)
-		VALUES (nextval('api_keys_id_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
 	permsJSON, _ := json.Marshal(record.Permissions)
 	_, err := r.pool.Exec(ctx, query,
+		record.ID,
 		record.Key, record.Name, record.UserID, record.PluginName,
 		string(permsJSON), record.IsActive, record.LastUsedAt, record.ExpiresAt,
 		record.CreatedAt,
@@ -119,7 +130,7 @@ func (r *PgAPIKeyRepository) GetByKey(ctx context.Context, key string) (*APIKeyR
 		FROM api_keys WHERE key = $1 AND deleted_at IS NULL`
 
 	record := &APIKeyRecord{}
-	var permsJSON string
+	var permsJSON []byte
 	err := r.pool.QueryRow(ctx, query, key).Scan(
 		&record.ID, &record.Key, &record.Name, &record.UserID,
 		&record.PluginName, &permsJSON, &record.IsActive,
@@ -131,7 +142,7 @@ func (r *PgAPIKeyRepository) GetByKey(ctx context.Context, key string) (*APIKeyR
 		}
 		return nil, err
 	}
-	json.Unmarshal([]byte(permsJSON), &record.Permissions)
+	json.Unmarshal(permsJSON, &record.Permissions)
 	return record, nil
 }
 
@@ -148,7 +159,7 @@ func (r *PgAPIKeyRepository) ListByUser(ctx context.Context, userID int64) ([]*A
 	var list []*APIKeyRecord
 	for rows.Next() {
 		record := &APIKeyRecord{}
-		var permsJSON string
+		var permsJSON []byte
 		if err := rows.Scan(
 			&record.ID, &record.Key, &record.Name, &record.UserID,
 			&record.PluginName, &permsJSON, &record.IsActive,
@@ -156,7 +167,7 @@ func (r *PgAPIKeyRepository) ListByUser(ctx context.Context, userID int64) ([]*A
 		); err != nil {
 			return nil, err
 		}
-		json.Unmarshal([]byte(permsJSON), &record.Permissions)
+		json.Unmarshal(permsJSON, &record.Permissions)
 		list = append(list, record)
 	}
 	return list, nil

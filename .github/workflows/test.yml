@@ -1,0 +1,127 @@
+name: Test
+
+# CI 流程：用于验证每次提交和 PR 是否仍能通过后端测试、数据库迁移和前端构建。
+"on":
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "codex/**"
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+# CI 只需要读取仓库内容，不需要写权限。
+permissions:
+  contents: read
+
+# 同一分支只保留最新一次 CI，避免连续 push 时浪费 runner。
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: -mod=mod
+  NODE_VERSION: "22"
+  PNPM_VERSION: "8"
+  DB_HOST: localhost
+  DB_PORT: "5432"
+  DB_USER: campusos
+  DB_NAME: campusos
+  DB_PASSWORD: campusos_dev
+  DATABASE_DSN: postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable
+
+jobs:
+  backend:
+    name: Backend Test
+    runs-on: ubuntu-latest
+
+    # PostgreSQL 用于验证 migrations 和需要数据库的后端测试。
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: campusos
+          POSTGRES_USER: campusos
+          POSTGRES_PASSWORD: campusos_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U campusos -d campusos"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # go-version-file 会读取 go.mod 中的 Go 版本，避免 workflow 和项目配置漂移。
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Run database migrations
+        run: make migrate-up
+
+      - name: Show migration status
+        run: make migrate-status
+
+      - name: Run Go tests
+        run: go test ./... -v -count=1
+
+      - name: Build Go server
+        run: go build -o bin/campusos-server ./cmd/server/main.go
+
+  frontend:
+    name: Frontend Build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: web
+            working-directory: web
+          - app: admin
+            working-directory: admin
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ matrix.working-directory }}/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.working-directory }}
+        run: pnpm install --frozen-lockfile
+
+      # 两个前端项目都会先做 vue-tsc 类型检查，再由 Vite 产出构建结果。
+      - name: Build ${{ matrix.app }}
+        working-directory: ${{ matrix.working-directory }}
+        run: pnpm build

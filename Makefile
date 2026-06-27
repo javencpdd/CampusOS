@@ -1,4 +1,4 @@
-.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset
+.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build
 
 # 构建
 build:
@@ -31,24 +31,25 @@ clean:
 
 # 数据库迁移
 migrate-up:
-	@echo "==> 执行数据库迁移"
-	@for f in $$(ls migrations/*.up.sql | sort); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh up
 
 migrate-down:
-	@echo "==> 回滚数据库迁移"
-	@for f in $$(ls migrations/*.down.sql | sort -r); do \
-		echo "==> $$f"; \
-		PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f "$$f" || exit 1; \
-	done
+	./scripts/migrate.sh down
 
-migrate-reset: migrate-down migrate-up
+migrate-reset:
+	./scripts/migrate.sh reset
+
+migrate-status:
+	./scripts/migrate.sh status
 
 # Docker
 docker-up:
-	docker compose up -d redis nats
+	./scripts/docker-up.sh
+
+docker-infra-up: docker-up
+
+docker-tools-up:
+	docker compose up -d pgadmin
 
 docker-down:
 	docker compose down

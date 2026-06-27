@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS plugins (
     deleted_at    TIMESTAMP NULL
 );
 
-CREATE UNIQUE INDEX uk_plugins_name ON plugins(name) WHERE deleted_at IS NULL;
-CREATE INDEX idx_plugins_status ON plugins(status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_plugins_api_key ON plugins(api_key) WHERE deleted_at IS NULL AND api_key != '';
+CREATE UNIQUE INDEX IF NOT EXISTS uk_plugins_name ON plugins(name) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_plugins_status ON plugins(status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_plugins_api_key ON plugins(api_key) WHERE deleted_at IS NULL AND api_key != '';
 
 -- API Key 表（独立管理，支持多 Key）
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -37,6 +37,6 @@ CREATE TABLE IF NOT EXISTS api_keys (
     deleted_at  TIMESTAMP NULL
 );
 
-CREATE UNIQUE INDEX uk_api_keys_key ON api_keys(key) WHERE deleted_at IS NULL;
-CREATE INDEX idx_api_keys_user_id ON api_keys(user_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_api_keys_plugin ON api_keys(plugin_name) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_api_keys_key ON api_keys(key) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_api_keys_plugin ON api_keys(plugin_name) WHERE deleted_at IS NULL;
