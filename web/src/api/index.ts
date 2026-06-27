@@ -60,6 +60,11 @@ export const threadApi = {
   delete: (id: string) => api.delete(`/threads/${id}`),
 }
 
+// 版块 API
+export const categoryApi = {
+  list: () => api.get('/categories'),
+}
+
 // 健康检查
 export const healthApi = {
   check: () => api.get('/health'),

@@ -21,3 +21,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO user_roles (id, user_id, role_id, scope_type)
 VALUES (1000000000000000003, 1000000000000000001, 1, 'global')
 ON CONFLICT DO NOTHING;
+
+-- 插入默认版块
+INSERT INTO categories (id, name, slug, description, sort_order, created_at, updated_at)
+VALUES (1000000000000000004, '默认版块', 'default', '系统默认版块', 0, NOW(), NOW())
+ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING;

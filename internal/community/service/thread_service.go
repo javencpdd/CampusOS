@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
-	"github.com/google/uuid"
+	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 // ThreadService 帖子服务
@@ -34,7 +35,7 @@ func (s *ThreadService) SetCache(c cache.Cache) {
 func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest) (*domain.Thread, error) {
 	now := time.Now().UTC()
 	thread := &domain.Thread{
-		ID:         uuid.New().String(),
+		ID:         strconv.FormatInt(idgen.New(), 10),
 		Title:      req.Title,
 		Content:    req.Content,
 		AuthorID:   authorID,

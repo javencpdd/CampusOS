@@ -32,6 +32,7 @@ const router = createRouter({
       path: '/threads/create',
       name: 'CreateThread',
       component: () => import('@/views/CreateThreadView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })

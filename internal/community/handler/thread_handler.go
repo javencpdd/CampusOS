@@ -23,14 +23,10 @@ func NewThreadHandler(svc *service.ThreadService) *ThreadHandler {
 // CreateThread 创建帖子
 // POST /api/v1/threads
 func (h *ThreadHandler) CreateThread(c *gin.Context) {
-	authorID := c.GetHeader("X-User-ID")
-	if authorID == "" {
+	authorID, authorName, ok := currentUser(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
-	}
-	authorName := c.GetHeader("X-User-Name")
-	if authorName == "" {
-		authorName = "Anonymous"
 	}
 
 	var req domain.CreateThreadRequest
@@ -100,8 +96,8 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 // PUT /api/v1/threads/:id
 func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 	id := c.Param("id")
-	authorID := c.GetHeader("X-User-ID")
-	if authorID == "" {
+	authorID, _, ok := currentUser(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
@@ -173,8 +169,8 @@ func (h *ThreadHandler) UnlockThread(c *gin.Context) {
 // DELETE /api/v1/threads/:id
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 	id := c.Param("id")
-	authorID := c.GetHeader("X-User-ID")
-	if authorID == "" {
+	authorID, _, ok := currentUser(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
