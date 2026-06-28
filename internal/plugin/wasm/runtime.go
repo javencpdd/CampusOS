@@ -20,14 +20,19 @@ var (
 	ErrModuleNotFound      = errors.New("wasm module not found")
 	ErrPluginNotRunning    = errors.New("wasm plugin is not running")
 	ErrEventHandlerMissing = errors.New("wasm event handler is missing")
+	ErrEventCallTimeout    = errors.New("wasm event call timed out")
 )
 
-const defaultEntrypoint = "handle_event"
+const (
+	defaultEntrypoint   = "handle_event"
+	defaultEventTimeout = 2 * time.Second
+)
 
 type moduleState struct {
 	name       string
 	modulePath string
 	entrypoint string
+	timeout    time.Duration
 	module     api.Module
 	startedAt  time.Time
 }
@@ -46,7 +51,9 @@ type Runtime struct {
 
 func NewRuntime() *Runtime {
 	return &Runtime{
-		runtime: wazero.NewRuntime(context.Background()),
+		runtime: wazero.NewRuntimeWithConfig(context.Background(),
+			wazero.NewRuntimeConfig().WithCloseOnContextDone(true),
+		),
 		modules: make(map[string]moduleState),
 	}
 }
@@ -75,6 +82,7 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 		return err
 	}
 	entrypoint := resolveEntrypoint(p)
+	timeout := resolveEventTimeout(p)
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -102,6 +110,7 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 		name:       p.Manifest.Name,
 		modulePath: modulePath,
 		entrypoint: entrypoint,
+		timeout:    timeout,
 		module:     module,
 		startedAt:  time.Now(),
 	}
@@ -137,8 +146,14 @@ func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.Ev
 		return nil, fmt.Errorf("%w: %s", ErrEventHandlerMissing, state.entrypoint)
 	}
 
-	results, err := handler.Call(ctx)
+	callCtx, cancel := context.WithTimeout(ctx, state.timeout)
+	defer cancel()
+
+	results, err := handler.Call(callCtx)
 	if err != nil {
+		if errors.Is(callCtx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: %s after %s: %v", ErrEventCallTimeout, pluginName, state.timeout, err)
+		}
 		return nil, err
 	}
 	if len(results) == 0 {
@@ -203,4 +218,33 @@ func resolveEntrypoint(p *plugin.Plugin) string {
 		}
 	}
 	return defaultEntrypoint
+}
+
+func resolveEventTimeout(p *plugin.Plugin) time.Duration {
+	raw, ok := p.Manifest.Config["event_timeout_ms"]
+	if !ok {
+		return defaultEventTimeout
+	}
+
+	switch value := raw.(type) {
+	case int:
+		return durationFromMilliseconds(int64(value))
+	case int64:
+		return durationFromMilliseconds(value)
+	case int32:
+		return durationFromMilliseconds(int64(value))
+	case float64:
+		return durationFromMilliseconds(int64(value))
+	case float32:
+		return durationFromMilliseconds(int64(value))
+	default:
+		return defaultEventTimeout
+	}
+}
+
+func durationFromMilliseconds(ms int64) time.Duration {
+	if ms <= 0 {
+		return defaultEventTimeout
+	}
+	return time.Duration(ms) * time.Millisecond
 }
