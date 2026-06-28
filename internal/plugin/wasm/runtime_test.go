@@ -177,6 +177,41 @@ func TestRuntimeTimesOutLongRunningEvent(t *testing.T) {
 	}
 }
 
+func TestRuntimeIsolatesTrappedEvent(t *testing.T) {
+	dir := t.TempDir()
+	modulePath := filepath.Join(dir, "plugin.wasm")
+	if err := os.WriteFile(modulePath, wasmHandleEventTrapping(), 0o644); err != nil {
+		t.Fatalf("write wasm module: %v", err)
+	}
+
+	runtime := NewRuntime()
+	p := &plugin.Plugin{
+		Directory: dir,
+		Manifest: &plugin.Manifest{
+			Name:    "trapping-wasm",
+			Runtime: "wasm",
+		},
+	}
+
+	if err := runtime.Start(context.Background(), p); err != nil {
+		t.Fatalf("start runtime: %v", err)
+	}
+
+	response, err := runtime.SendEvent(context.Background(), "trapping-wasm", &plugin.EventMessage{Type: "thread.created"})
+	if response != nil {
+		t.Fatalf("expected nil response, got %#v", response)
+	}
+	if !errors.Is(err, ErrEventCallFailed) {
+		t.Fatalf("expected event call failed error, got %v", err)
+	}
+	if runtime.IsRunning("trapping-wasm") {
+		t.Fatalf("expected trapped module to be isolated")
+	}
+	if err := runtime.HealthCheck(context.Background(), "trapping-wasm"); !errors.Is(err, ErrPluginNotRunning) {
+		t.Fatalf("expected plugin not running after trap, got %v", err)
+	}
+}
+
 func TestRuntimeReturnsModuleNotFound(t *testing.T) {
 	runtime := NewRuntime()
 	p := &plugin.Plugin{
@@ -189,6 +224,19 @@ func TestRuntimeReturnsModuleNotFound(t *testing.T) {
 
 	if err := runtime.Start(context.Background(), p); !errors.Is(err, ErrModuleNotFound) {
 		t.Fatalf("expected module not found error, got %v", err)
+	}
+}
+
+func wasmHandleEventTrapping() []byte {
+	return []byte{
+		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+		0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+		0x03, 0x02, 0x01, 0x00,
+		0x07, 0x10, 0x01, 0x0c,
+		0x68, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x5f,
+		0x65, 0x76, 0x65, 0x6e, 0x74,
+		0x00, 0x00,
+		0x0a, 0x05, 0x01, 0x03, 0x00, 0x00, 0x0b,
 	}
 }
 

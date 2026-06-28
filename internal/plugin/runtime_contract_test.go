@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,7 @@ type fakeRuntime struct {
 	stopped      []string
 	healthChecks []string
 	running      map[string]bool
+	sendErr      error
 }
 
 func newFakeRuntime() *fakeRuntime {
@@ -31,6 +33,9 @@ func (r *fakeRuntime) Stop(_ context.Context, pluginName string) error {
 }
 
 func (r *fakeRuntime) SendEvent(_ context.Context, _ string, _ *EventMessage) (*PluginResponse, error) {
+	if r.sendErr != nil {
+		return nil, r.sendErr
+	}
 	return &PluginResponse{Allowed: true}, nil
 }
 
@@ -131,6 +136,41 @@ runtime: wasm
 	}
 	if installed.ErrorMsg == "" {
 		t.Fatalf("expected error message")
+	}
+}
+
+func TestManagerMarksErrorWhenEventDispatchFails(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: event-error
+version: "0.1.0"
+runtime: wasm
+events:
+  subscribe:
+    - thread.created
+`)
+
+	manager := NewManager()
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+
+	installed, err := manager.Install(dir)
+	if err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	if err := manager.Enable("event-error"); err != nil {
+		t.Fatalf("enable plugin: %v", err)
+	}
+
+	runtime.sendErr = errors.New("event dispatch failed")
+	response := manager.DispatchBeforeEvent(context.Background(), &EventMessage{Type: "thread.created"})
+	if response != nil {
+		t.Fatalf("expected no blocking response, got %#v", response)
+	}
+	if installed.Status != StatusError {
+		t.Fatalf("expected error status, got %q", installed.Status)
+	}
+	if installed.ErrorMsg != "event dispatch failed" {
+		t.Fatalf("expected event error message, got %q", installed.ErrorMsg)
 	}
 }
 

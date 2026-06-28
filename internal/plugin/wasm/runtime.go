@@ -21,6 +21,7 @@ var (
 	ErrPluginNotRunning    = errors.New("wasm plugin is not running")
 	ErrEventHandlerMissing = errors.New("wasm event handler is missing")
 	ErrEventCallTimeout    = errors.New("wasm event call timed out")
+	ErrEventCallFailed     = errors.New("wasm event call failed")
 )
 
 const (
@@ -118,28 +119,25 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 }
 
 func (r *Runtime) Stop(ctx context.Context, pluginName string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	state, ok := r.modules[pluginName]
-	if !ok {
-		return nil
-	}
-	err := state.module.Close(ctx)
-	delete(r.modules, pluginName)
-	return err
+	return r.closeModule(ctx, pluginName)
 }
 
-func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.EventMessage) (*plugin.PluginResponse, error) {
+func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.EventMessage) (response *plugin.PluginResponse, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			_ = r.closeModule(context.Background(), pluginName)
+			response = nil
+			err = fmt.Errorf("%w: %s panic: %v", ErrEventCallFailed, pluginName, recovered)
+		}
+	}()
+
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	state, ok := r.modules[pluginName]
-	if !ok || state.module.IsClosed() {
-		return nil, fmt.Errorf("%w: %s", ErrPluginNotRunning, pluginName)
+	state, err := r.runningModule(pluginName)
+	if err != nil {
+		return nil, err
 	}
 	handler := state.module.ExportedFunction(state.entrypoint)
 	if handler == nil {
@@ -152,20 +150,22 @@ func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.Ev
 	results, err := handler.Call(callCtx)
 	if err != nil {
 		if errors.Is(callCtx.Err(), context.DeadlineExceeded) {
+			_ = r.closeModule(context.Background(), pluginName)
 			return nil, fmt.Errorf("%w: %s after %s: %v", ErrEventCallTimeout, pluginName, state.timeout, err)
 		}
-		return nil, err
+		_ = r.closeModule(context.Background(), pluginName)
+		return nil, fmt.Errorf("%w: %s: %v", ErrEventCallFailed, pluginName, err)
 	}
 	if len(results) == 0 {
 		return &plugin.PluginResponse{Allowed: true}, nil
 	}
 
 	allowed := results[0] != 0
-	response := &plugin.PluginResponse{Allowed: allowed}
+	resp := &plugin.PluginResponse{Allowed: allowed}
 	if !allowed {
-		response.Message = "wasm event handler rejected event"
+		resp.Message = "wasm event handler rejected event"
 	}
-	return response, nil
+	return resp, nil
 }
 
 func (r *Runtime) HealthCheck(ctx context.Context, pluginName string) error {
@@ -183,6 +183,30 @@ func (r *Runtime) IsRunning(pluginName string) bool {
 	defer r.mu.RUnlock()
 	state, ok := r.modules[pluginName]
 	return ok && !state.module.IsClosed()
+}
+
+func (r *Runtime) runningModule(pluginName string) (moduleState, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	state, ok := r.modules[pluginName]
+	if !ok || state.module.IsClosed() {
+		return moduleState{}, fmt.Errorf("%w: %s", ErrPluginNotRunning, pluginName)
+	}
+	return state, nil
+}
+
+func (r *Runtime) closeModule(ctx context.Context, pluginName string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	state, ok := r.modules[pluginName]
+	if !ok {
+		return nil
+	}
+	err := state.module.Close(ctx)
+	delete(r.modules, pluginName)
+	return err
 }
 
 func resolveModulePath(p *plugin.Plugin) (string, error) {

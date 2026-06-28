@@ -193,6 +193,7 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 		resp, err := runtime.SendEvent(ctx, p.ID, beforeEvent)
 		if err != nil {
 			log.Printf("⚠️  插件 %s 处理 .before 事件 %s 失败: %v", p.ID, event.Type, err)
+			m.markPluginError(p.ID, err)
 			continue
 		}
 		if resp != nil && !resp.Allowed {
@@ -231,6 +232,7 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 			resp, err := runtime.SendEvent(ctx, pl.ID, event)
 			if err != nil {
 				log.Printf("⚠️  插件 %s 处理事件 %s 失败: %v", pl.ID, event.Type, err)
+				m.markPluginError(pl.ID, err)
 				return
 			}
 			if resp != nil && !resp.Allowed {
@@ -246,6 +248,18 @@ func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 	defer m.mu.RUnlock()
 	p, ok := m.plugins[name]
 	return p, ok
+}
+
+func (m *Manager) markPluginError(name string, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	p, ok := m.plugins[name]
+	if !ok {
+		return
+	}
+	p.Status = StatusError
+	p.ErrorMsg = err.Error()
 }
 
 // ListPlugins 列出所有插件
