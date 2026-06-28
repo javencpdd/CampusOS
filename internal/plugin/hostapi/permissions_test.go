@@ -21,6 +21,32 @@ func TestHandleHostAPIRequestForPluginDeniesMissingPermission(t *testing.T) {
 	}
 }
 
+func TestHandleHostAPIRequestForPluginWritesPermissionDeniedLog(t *testing.T) {
+	hostAPI := NewHostAPIv2(nil, nil, nil)
+	repo := plugin.NewMemoryPluginRepository()
+	hostAPI.SetPluginLogRepository(repo)
+	manifest := &plugin.Manifest{Name: "denied-plugin"}
+
+	_, err := HandleHostAPIRequestForPlugin(hostAPI, manifest, "GetUser", []byte(`{"user_id":"1"}`))
+	if !errors.Is(err, ErrHostAPIPermissionDenied) {
+		t.Fatalf("expected permission denied, got %v", err)
+	}
+
+	logs, err := repo.ListLogs(t.Context(), "denied-plugin", 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected one permission log, got %#v", logs)
+	}
+	if logs[0].Level != "warn" || logs[0].Message != "host api permission denied" {
+		t.Fatalf("unexpected log record: %#v", logs[0])
+	}
+	if logs[0].Metadata["method"] != "GetUser" {
+		t.Fatalf("expected method metadata, got %#v", logs[0].Metadata)
+	}
+}
+
 func TestHandleHostAPIRequestForPluginAllowsDeclaredStoragePermission(t *testing.T) {
 	hostAPI := NewHostAPIv2(nil, nil, nil)
 	manifest := manifestWithPermissions("owned-storage", plugin.APIPermission{

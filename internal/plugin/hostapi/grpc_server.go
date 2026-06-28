@@ -266,6 +266,7 @@ type HostAPIv2 struct {
 	*HostAPI
 	notification *NotificationService
 	storage      *MemoryKVStore
+	logRepo      plugin.PluginLogRepository
 }
 
 func NewHostAPIv2(
@@ -287,6 +288,10 @@ func NewHostAPIv2(
 func (h *HostAPIv2) Notification() *NotificationService { return h.notification }
 func (h *HostAPIv2) Storage() *MemoryKVStore            { return h.storage }
 
+func (h *HostAPIv2) SetPluginLogRepository(repo plugin.PluginLogRepository) {
+	h.logRepo = repo
+}
+
 // HandleHostAPIRequest 处理来自插件的 Host API 请求。
 //
 // Deprecated: use HandleHostAPIRequestForPlugin so Host API calls are checked
@@ -299,6 +304,7 @@ func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byt
 func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest, method string, body []byte) ([]byte, error) {
 	ctx := context.Background()
 	if err := CheckHostAPIPermission(manifest, method); err != nil {
+		hostAPI.logPermissionDenied(ctx, manifest, method, err)
 		return nil, err
 	}
 
@@ -387,5 +393,26 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 
 	default:
 		return nil, errors.New("unknown method: " + method)
+	}
+}
+
+func (h *HostAPIv2) logPermissionDenied(ctx context.Context, manifest *plugin.Manifest, method string, permissionErr error) {
+	if h == nil || h.logRepo == nil || manifest == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	record := &plugin.PluginLogRecord{
+		PluginName: manifest.Name,
+		Level:      "warn",
+		Message:    "host api permission denied",
+		Metadata: map[string]interface{}{
+			"method": method,
+			"error":  permissionErr.Error(),
+		},
+	}
+	if err := h.logRepo.SaveLog(ctx, record); err != nil {
+		log.Printf("⚠️  Host API 权限拒绝日志写入失败: %s (%v)", manifest.Name, err)
 	}
 }

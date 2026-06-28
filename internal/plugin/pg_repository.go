@@ -98,6 +98,80 @@ func (r *PgPluginRepository) Delete(ctx context.Context, name string) error {
 	return err
 }
 
+func (r *PgPluginRepository) SaveLog(ctx context.Context, record *PluginLogRecord) error {
+	if record.ID == 0 {
+		record.ID = idgen.New()
+	}
+	if record.CreatedAt.IsZero() {
+		record.CreatedAt = time.Now()
+	}
+	if record.Metadata == nil {
+		record.Metadata = map[string]interface{}{}
+	}
+
+	metadataJSON, err := json.Marshal(record.Metadata)
+	if err != nil {
+		return err
+	}
+
+	query := `INSERT INTO plugin_logs (id, plugin_name, level, message, event_type, trace_id, metadata, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)`
+	_, err = r.pool.Exec(ctx, query,
+		record.ID,
+		record.PluginName,
+		record.Level,
+		record.Message,
+		record.EventType,
+		record.TraceID,
+		string(metadataJSON),
+		record.CreatedAt,
+	)
+	return err
+}
+
+func (r *PgPluginRepository) ListLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	query := `SELECT id, plugin_name, level, message, event_type, trace_id, metadata, created_at
+		FROM plugin_logs
+		WHERE deleted_at IS NULL AND ($1 = '' OR plugin_name = $1)
+		ORDER BY created_at DESC
+		LIMIT $2`
+	rows, err := r.pool.Query(ctx, query, pluginName, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []*PluginLogRecord
+	for rows.Next() {
+		record := &PluginLogRecord{}
+		var metadataJSON []byte
+		if err := rows.Scan(
+			&record.ID,
+			&record.PluginName,
+			&record.Level,
+			&record.Message,
+			&record.EventType,
+			&record.TraceID,
+			&metadataJSON,
+			&record.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if len(metadataJSON) > 0 {
+			_ = json.Unmarshal(metadataJSON, &record.Metadata)
+		}
+		if record.Metadata == nil {
+			record.Metadata = map[string]interface{}{}
+		}
+		logs = append(logs, record)
+	}
+	return logs, rows.Err()
+}
+
 // PgAPIKeyRepository PostgreSQL API Key 仓储
 type PgAPIKeyRepository struct {
 	pool *pgxpool.Pool

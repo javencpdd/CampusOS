@@ -174,6 +174,93 @@ events:
 	}
 }
 
+func TestManagerWritesPluginLogs(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: logged-plugin
+version: "0.1.0"
+runtime: wasm
+events:
+  subscribe:
+    - thread.created
+`)
+
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	if err := manager.Enable("logged-plugin"); err != nil {
+		t.Fatalf("enable plugin: %v", err)
+	}
+	if response := manager.DispatchBeforeEvent(context.Background(), &EventMessage{
+		Type:    "thread.created",
+		Source:  "test",
+		Subject: "thread:1",
+	}); response != nil {
+		t.Fatalf("expected no blocking response, got %#v", response)
+	}
+	if err := manager.Stop("logged-plugin"); err != nil {
+		t.Fatalf("stop plugin: %v", err)
+	}
+
+	logs, err := repo.ListLogs(context.Background(), "logged-plugin", 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+
+	assertLogMessage(t, logs, "plugin started")
+	assertLogMessage(t, logs, "plugin handled before-event")
+	assertLogMessage(t, logs, "plugin stopped")
+}
+
+func TestManagerWritesEventErrorLog(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: event-error-log
+version: "0.1.0"
+runtime: wasm
+events:
+  subscribe:
+    - thread.created
+`)
+
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	if err := manager.Enable("event-error-log"); err != nil {
+		t.Fatalf("enable plugin: %v", err)
+	}
+
+	runtime.sendErr = errors.New("event dispatch failed")
+	manager.DispatchBeforeEvent(context.Background(), &EventMessage{Type: "thread.created"})
+
+	logs, err := repo.ListLogs(context.Background(), "event-error-log", 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	assertLogMessage(t, logs, "plugin before-event failed")
+}
+
+func assertLogMessage(t *testing.T, logs []*PluginLogRecord, message string) {
+	t.Helper()
+
+	for _, record := range logs {
+		if record.Message == message {
+			return
+		}
+	}
+	t.Fatalf("expected log message %q, got %#v", message, logs)
+}
+
 func writePluginManifest(t *testing.T, content string) string {
 	t.Helper()
 
