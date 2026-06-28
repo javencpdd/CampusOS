@@ -7,21 +7,34 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/campusos/CampusOS/internal/plugin"
 )
+
+type PluginLookup func(name string) (*plugin.Plugin, bool)
 
 // HostAPIServer Host API 服务端（HTTP JSON-RPC 风格，兼容未来 gRPC）
 type HostAPIServer struct {
-	hostAPI *HostAPIv2
-	server  *http.Server
-	addr    string
+	hostAPI      *HostAPIv2
+	server       *http.Server
+	addr         string
+	pluginLookup PluginLookup
 }
 
 // NewHostAPIServer 创建 Host API 服务端
-func NewHostAPIServer(hostAPI *HostAPIv2, addr string) *HostAPIServer {
-	return &HostAPIServer{
+func NewHostAPIServer(hostAPI *HostAPIv2, addr string, lookup ...PluginLookup) *HostAPIServer {
+	server := &HostAPIServer{
 		hostAPI: hostAPI,
 		addr:    addr,
 	}
+	if len(lookup) > 0 {
+		server.pluginLookup = lookup[0]
+	}
+	return server
+}
+
+func (s *HostAPIServer) SetPluginLookup(lookup PluginLookup) {
+	s.pluginLookup = lookup
 }
 
 // Start 启动 HTTP 服务
@@ -55,26 +68,30 @@ func (s *HostAPIServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	// 从 URL 提取方法名: /api/host/GetUser -> "GetUser"
 	method := r.URL.Path[len("/api/host/"):]
 
-	var body []byte
-	if r.Body != nil {
-		body, _ = json.Marshal(json.RawMessage(func() []byte {
-			b, _ := json.Marshal(map[string]interface{}{})
-			return b
-		}()))
-	}
-
 	// 读取请求体
 	var reqBody map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		// 空 body 也允许
 		reqBody = make(map[string]interface{})
 	}
-	body, _ = json.Marshal(reqBody)
+	body, _ := json.Marshal(reqBody)
 
-	result, err := HandleHostAPIRequest(s.hostAPI, method, body)
+	manifest, err := s.resolvePluginManifest(r, reqBody)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	result, err := HandleHostAPIRequestForPlugin(s.hostAPI, manifest, method, body)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if errors.Is(err, ErrHostAPIPermissionDenied) {
+			w.WriteHeader(http.StatusForbidden)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
@@ -82,6 +99,30 @@ func (s *HostAPIServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
+}
+
+func (s *HostAPIServer) resolvePluginManifest(r *http.Request, reqBody map[string]interface{}) (*plugin.Manifest, error) {
+	if s.pluginLookup == nil {
+		return nil, fmt.Errorf("%w: plugin lookup is not configured", ErrHostAPIPermissionDenied)
+	}
+
+	pluginName := r.Header.Get("X-CampusOS-Plugin")
+	if pluginName == "" {
+		if raw, ok := reqBody["plugin_name"]; ok {
+			if value, ok := raw.(string); ok {
+				pluginName = value
+			}
+		}
+	}
+	if pluginName == "" {
+		return nil, fmt.Errorf("%w: plugin identity is required", ErrHostAPIPermissionDenied)
+	}
+
+	p, ok := s.pluginLookup(pluginName)
+	if !ok || p == nil || p.Manifest == nil {
+		return nil, fmt.Errorf("%w: plugin %s is not registered", ErrHostAPIPermissionDenied, pluginName)
+	}
+	return p.Manifest, nil
 }
 
 // ─── Host API Handler 实现（供插件通过 HTTP/gRPC 调用）───
@@ -246,9 +287,20 @@ func NewHostAPIv2(
 func (h *HostAPIv2) Notification() *NotificationService { return h.notification }
 func (h *HostAPIv2) Storage() *MemoryKVStore            { return h.storage }
 
-// HandleHostAPIRequest 处理来自插件的 Host API 请求
+// HandleHostAPIRequest 处理来自插件的 Host API 请求。
+//
+// Deprecated: use HandleHostAPIRequestForPlugin so Host API calls are checked
+// against the calling plugin manifest.
 func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byte, error) {
+	return HandleHostAPIRequestForPlugin(hostAPI, nil, method, body)
+}
+
+// HandleHostAPIRequestForPlugin 处理来自指定插件的 Host API 请求。
+func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest, method string, body []byte) ([]byte, error) {
 	ctx := context.Background()
+	if err := CheckHostAPIPermission(manifest, method); err != nil {
+		return nil, err
+	}
 
 	switch method {
 	case "GetUser":
@@ -305,6 +357,9 @@ func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byt
 		if err := json.Unmarshal(body, &req); err != nil {
 			return nil, fmt.Errorf("invalid request: %w", err)
 		}
+		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
+			return nil, err
+		}
 		val, found := hostAPI.Storage().Get(req.PluginName, req.Key)
 		return json.Marshal(StorageGetResponse{Value: val, Found: found})
 
@@ -313,6 +368,9 @@ func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byt
 		if err := json.Unmarshal(body, &req); err != nil {
 			return nil, fmt.Errorf("invalid request: %w", err)
 		}
+		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
+			return nil, err
+		}
 		hostAPI.Storage().Set(req.PluginName, req.Key, req.Value)
 		return json.Marshal(map[string]bool{"success": true})
 
@@ -320,6 +378,9 @@ func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byt
 		var req StorageDeleteRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
+			return nil, err
 		}
 		hostAPI.Storage().Delete(req.PluginName, req.Key)
 		return json.Marshal(map[string]bool{"success": true})
