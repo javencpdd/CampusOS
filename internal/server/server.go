@@ -16,6 +16,7 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
+	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -56,6 +57,7 @@ func (s *Server) Run() error {
 	s.manager = plugin.NewManager()
 	grpcRuntime := plugingrpc.NewGRPCRuntime()
 	s.manager.RegisterRuntime("grpc", grpcRuntime)
+	s.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
 
 	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
 	var pluginRepo plugin.PluginRepository
