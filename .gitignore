@@ -24,6 +24,7 @@ go.work.sum
 /bin/
 /build/
 *.wasm
+!examples/plugins/hello-wasm/plugin.wasm
 
 # ─── IDE ───
 # VS Code

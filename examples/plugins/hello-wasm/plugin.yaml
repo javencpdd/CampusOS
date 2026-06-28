@@ -1,0 +1,24 @@
+name: hello-wasm
+display_name: "Hello Wasm"
+version: "0.1.0"
+description: "CampusOS v0.3-dev minimal Wasm plugin example"
+author: "CampusOS Team"
+runtime: wasm
+
+events:
+  subscribe:
+    - "thread.created"
+    - "post.created"
+
+permissions:
+  api:
+    - resource: "log"
+      actions: ["write"]
+
+storage:
+  type: none
+
+config:
+  module: "plugin.wasm"
+  entrypoint: "handle_event"
+  event_timeout_ms: 1000
