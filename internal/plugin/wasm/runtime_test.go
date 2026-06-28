@@ -13,7 +13,7 @@ import (
 func TestRuntimeLifecycle(t *testing.T) {
 	dir := t.TempDir()
 	modulePath := filepath.Join(dir, "plugin.wasm")
-	if err := os.WriteFile(modulePath, []byte("placeholder"), 0o644); err != nil {
+	if err := os.WriteFile(modulePath, wasmHandleEventReturning(1), 0o644); err != nil {
 		t.Fatalf("write wasm module: %v", err)
 	}
 
@@ -36,8 +36,12 @@ func TestRuntimeLifecycle(t *testing.T) {
 		t.Fatalf("health check: %v", err)
 	}
 
-	if _, err := runtime.SendEvent(context.Background(), "hello-wasm", &plugin.EventMessage{Type: "thread.created"}); !errors.Is(err, ErrEventDispatchNotImplemented) {
-		t.Fatalf("expected event dispatch placeholder error, got %v", err)
+	response, err := runtime.SendEvent(context.Background(), "hello-wasm", &plugin.EventMessage{Type: "thread.created"})
+	if err != nil {
+		t.Fatalf("send event: %v", err)
+	}
+	if response == nil || !response.Allowed {
+		t.Fatalf("expected allowed response, got %#v", response)
 	}
 
 	if err := runtime.Stop(context.Background(), "hello-wasm"); err != nil {
@@ -54,7 +58,7 @@ func TestRuntimeUsesConfiguredModulePath(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(modulePath), 0o755); err != nil {
 		t.Fatalf("create module dir: %v", err)
 	}
-	if err := os.WriteFile(modulePath, []byte("placeholder"), 0o644); err != nil {
+	if err := os.WriteFile(modulePath, wasmHandleEventReturning(1), 0o644); err != nil {
 		t.Fatalf("write wasm module: %v", err)
 	}
 
@@ -75,6 +79,62 @@ func TestRuntimeUsesConfiguredModulePath(t *testing.T) {
 	}
 }
 
+func TestRuntimeReturnsMissingHandler(t *testing.T) {
+	dir := t.TempDir()
+	modulePath := filepath.Join(dir, "plugin.wasm")
+	if err := os.WriteFile(modulePath, wasmHandleEventReturning(1), 0o644); err != nil {
+		t.Fatalf("write wasm module: %v", err)
+	}
+
+	runtime := NewRuntime()
+	p := &plugin.Plugin{
+		Directory: dir,
+		Manifest: &plugin.Manifest{
+			Name:    "missing-handler",
+			Runtime: "wasm",
+			Config: map[string]interface{}{
+				"entrypoint": "missing_event_handler",
+			},
+		},
+	}
+
+	if err := runtime.Start(context.Background(), p); !errors.Is(err, ErrEventHandlerMissing) {
+		t.Fatalf("expected missing event handler error, got %v", err)
+	}
+	if runtime.IsRunning("missing-handler") {
+		t.Fatalf("expected plugin not to be running")
+	}
+}
+
+func TestRuntimeRejectsEventWhenHandlerReturnsZero(t *testing.T) {
+	dir := t.TempDir()
+	modulePath := filepath.Join(dir, "plugin.wasm")
+	if err := os.WriteFile(modulePath, wasmHandleEventReturning(0), 0o644); err != nil {
+		t.Fatalf("write wasm module: %v", err)
+	}
+
+	runtime := NewRuntime()
+	p := &plugin.Plugin{
+		Directory: dir,
+		Manifest: &plugin.Manifest{
+			Name:    "rejecting-wasm",
+			Runtime: "wasm",
+		},
+	}
+
+	if err := runtime.Start(context.Background(), p); err != nil {
+		t.Fatalf("start runtime: %v", err)
+	}
+
+	response, err := runtime.SendEvent(context.Background(), "rejecting-wasm", &plugin.EventMessage{Type: "thread.created"})
+	if err != nil {
+		t.Fatalf("send event: %v", err)
+	}
+	if response == nil || response.Allowed || response.Message == "" {
+		t.Fatalf("expected rejected response with message, got %#v", response)
+	}
+}
+
 func TestRuntimeReturnsModuleNotFound(t *testing.T) {
 	runtime := NewRuntime()
 	p := &plugin.Plugin{
@@ -87,5 +147,18 @@ func TestRuntimeReturnsModuleNotFound(t *testing.T) {
 
 	if err := runtime.Start(context.Background(), p); !errors.Is(err, ErrModuleNotFound) {
 		t.Fatalf("expected module not found error, got %v", err)
+	}
+}
+
+func wasmHandleEventReturning(value byte) []byte {
+	return []byte{
+		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+		0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+		0x03, 0x02, 0x01, 0x00,
+		0x07, 0x10, 0x01, 0x0c,
+		0x68, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x5f,
+		0x65, 0x76, 0x65, 0x6e, 0x74,
+		0x00, 0x00,
+		0x0a, 0x06, 0x01, 0x04, 0x00, 0x41, value, 0x0b,
 	}
 }
