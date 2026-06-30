@@ -82,6 +82,45 @@ func TestHandleHostAPIRequestForPluginAllowsWildcardPermission(t *testing.T) {
 	}
 }
 
+func TestHandleHostAPIRequestForPluginReturnsConfig(t *testing.T) {
+	hostAPI := NewHostAPIv2(nil, nil, nil)
+	manifest := manifestWithPermissions("config-plugin", plugin.APIPermission{
+		Resource: "config",
+		Actions:  []string{"read"},
+	})
+	manifest.Config = map[string]interface{}{
+		"entrypoint": "handle_event",
+	}
+
+	result, err := HandleHostAPIRequestForPlugin(hostAPI, manifest, "GetConfig", []byte(`{"key":"entrypoint"}`))
+	if err != nil {
+		t.Fatalf("get config: %v", err)
+	}
+
+	var response GetConfigResponse
+	if err := json.Unmarshal(result, &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !response.Found || response.Value != "handle_event" {
+		t.Fatalf("unexpected config response: %#v", response)
+	}
+}
+
+func TestHandleHostAPIRequestForPluginDeniesConfigWithoutPermission(t *testing.T) {
+	hostAPI := NewHostAPIv2(nil, nil, nil)
+	manifest := &plugin.Manifest{
+		Name: "config-denied-plugin",
+		Config: map[string]interface{}{
+			"entrypoint": "handle_event",
+		},
+	}
+
+	_, err := HandleHostAPIRequestForPlugin(hostAPI, manifest, "GetConfig", []byte(`{"key":"entrypoint"}`))
+	if !errors.Is(err, ErrHostAPIPermissionDenied) {
+		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
 func TestHandleHostAPIRequestForPluginDeniesForeignStorageNamespace(t *testing.T) {
 	hostAPI := NewHostAPIv2(nil, nil, nil)
 	manifest := manifestWithPermissions("owned-storage", plugin.APIPermission{

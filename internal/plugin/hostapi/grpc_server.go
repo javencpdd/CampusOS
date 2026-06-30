@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -42,9 +43,13 @@ func (s *HostAPIServer) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/host/", s.handleRequest)
 	s.server = &http.Server{Addr: s.addr, Handler: mux}
+	listener, err := net.Listen("tcp", s.addr)
+	if err != nil {
+		return fmt.Errorf("listen host api %s: %w", s.addr, err)
+	}
 	log.Printf("🔌 Host API 监听 %s", s.addr)
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := s.server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("⚠️  Host API 服务错误: %v", err)
 		}
 	}()
@@ -185,6 +190,16 @@ type SendNotificationRequest struct {
 	ActionURL string `json:"action_url"`
 }
 
+type GetConfigRequest struct {
+	Key string `json:"key,omitempty"`
+}
+
+type GetConfigResponse struct {
+	Config map[string]interface{} `json:"config,omitempty"`
+	Value  interface{}            `json:"value,omitempty"`
+	Found  bool                   `json:"found"`
+}
+
 type StorageGetRequest struct {
 	PluginName string `json:"plugin_name"`
 	Key        string `json:"key"`
@@ -274,12 +289,19 @@ func NewHostAPIv2(
 	data *DataAPI,
 	event *EventAPI,
 ) *HostAPIv2 {
+	return NewHostAPIv2FromHostAPI(&HostAPI{
+		identity: identity,
+		data:     data,
+		event:    event,
+	})
+}
+
+func NewHostAPIv2FromHostAPI(base *HostAPI) *HostAPIv2 {
+	if base == nil {
+		base = &HostAPI{}
+	}
 	return &HostAPIv2{
-		HostAPI: &HostAPI{
-			identity: identity,
-			data:     data,
-			event:    event,
-		},
+		HostAPI:      base,
 		notification: NewNotificationService(),
 		storage:      NewMemoryKVStore(),
 	}
@@ -357,6 +379,24 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 			return nil, fmt.Errorf("notification failed: %w", err)
 		}
 		return json.Marshal(map[string]bool{"success": true})
+
+	case "GetConfig":
+		if manifest == nil {
+			return nil, fmt.Errorf("%w: plugin manifest is required for GetConfig", ErrHostAPIPermissionDenied)
+		}
+		var req GetConfigRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		config := manifest.Config
+		if config == nil {
+			config = map[string]interface{}{}
+		}
+		if req.Key == "" {
+			return json.Marshal(GetConfigResponse{Config: config, Found: true})
+		}
+		value, found := config[req.Key]
+		return json.Marshal(GetConfigResponse{Value: value, Found: found})
 
 	case "StorageGet":
 		var req StorageGetRequest

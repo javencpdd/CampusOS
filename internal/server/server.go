@@ -130,8 +130,17 @@ func (s *Server) Run() error {
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
 
 	// ─── 初始化 Host API ───
-	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
-	_ = hostAPI // 未来传递给插件进程
+	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
+	if logRepo, ok := pluginRepo.(plugin.PluginLogRepository); ok {
+		hostAPI.SetPluginLogRepository(logRepo)
+	}
+	hostAPIServer, err := s.startHostAPIServer(hostAPI)
+	if err != nil {
+		return err
+	}
+	if hostAPIServer != nil {
+		defer hostAPIServer.Stop()
+	}
 
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
@@ -162,10 +171,19 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
 	roleRepo := identityrepo.NewMemoryRoleRepository()
+	pluginRepo := plugin.NewMemoryPluginRepository()
+	s.manager.SetPluginRepository(pluginRepo)
 
 	// ─── 初始化 Host API ───
-	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
-	_ = hostAPI
+	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
+	hostAPI.SetPluginLogRepository(pluginRepo)
+	hostAPIServer, err := s.startHostAPIServer(hostAPI)
+	if err != nil {
+		return err
+	}
+	if hostAPIServer != nil {
+		defer hostAPIServer.Stop()
+	}
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
 	userSvc.SetRoleRepository(roleRepo)
@@ -183,6 +201,18 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 
 	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
+}
+
+func (s *Server) startHostAPIServer(hostAPI *hostapi.HostAPIv2) (*hostapi.HostAPIServer, error) {
+	if !s.cfg.HostAPI.Enabled {
+		log.Printf("🔌 Host API 已禁用")
+		return nil, nil
+	}
+	server := hostapi.NewHostAPIServer(hostAPI, s.cfg.HostAPI.Addr, s.manager.GetPlugin)
+	if err := server.Start(); err != nil {
+		return nil, err
+	}
+	return server, nil
 }
 
 func (s *Server) newJWTManager() *auth.JWTManager {
