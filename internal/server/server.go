@@ -128,12 +128,14 @@ func (s *Server) Run() error {
 	categoryRepo := repository.NewPgCategoryRepository(pool)
 	postRepo := repository.NewPgPostRepository(pool)
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
 	if logRepo, ok := pluginRepo.(plugin.PluginLogRepository); ok {
 		hostAPI.SetPluginLogRepository(logRepo)
 	}
+	hostAPI.SetPermissionChecker(permSvc)
 	hostAPIServer, err := s.startHostAPIServer(hostAPI)
 	if err != nil {
 		return err
@@ -149,7 +151,6 @@ func (s *Server) Run() error {
 	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
-	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -173,10 +174,12 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
 	hostAPI.SetPluginLogRepository(pluginRepo)
+	hostAPI.SetPermissionChecker(permSvc)
 	hostAPIServer, err := s.startHostAPIServer(hostAPI)
 	if err != nil {
 		return err
@@ -190,7 +193,6 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
-	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)

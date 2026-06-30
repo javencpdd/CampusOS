@@ -153,6 +153,15 @@ type GetUserRequest struct {
 	UserID string `json:"user_id"`
 }
 
+type GetThreadRequest struct {
+	ThreadID string `json:"thread_id"`
+}
+
+type GetReplyRequest struct {
+	ReplyID string `json:"reply_id,omitempty"`
+	PostID  string `json:"post_id,omitempty"`
+}
+
 type GetUserResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
@@ -198,6 +207,29 @@ type GetConfigResponse struct {
 	Config map[string]interface{} `json:"config,omitempty"`
 	Value  interface{}            `json:"value,omitempty"`
 	Found  bool                   `json:"found"`
+}
+
+type SetConfigRequest struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
+
+type CheckPermissionRequest struct {
+	UserID   string `json:"user_id"`
+	Resource string `json:"resource"`
+	Action   string `json:"action"`
+}
+
+type CheckPermissionResponse struct {
+	Allowed bool `json:"allowed"`
+}
+
+type LogRequest struct {
+	Level     string                 `json:"level"`
+	Message   string                 `json:"message"`
+	EventType string                 `json:"event_type,omitempty"`
+	TraceID   string                 `json:"trace_id,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type StorageGetRequest struct {
@@ -282,6 +314,11 @@ type HostAPIv2 struct {
 	notification *NotificationService
 	storage      *MemoryKVStore
 	logRepo      plugin.PluginLogRepository
+	permission   PermissionChecker
+}
+
+type PermissionChecker interface {
+	Check(ctx context.Context, userID string, resource, action string) (bool, error)
 }
 
 func NewHostAPIv2(
@@ -314,6 +351,10 @@ func (h *HostAPIv2) SetPluginLogRepository(repo plugin.PluginLogRepository) {
 	h.logRepo = repo
 }
 
+func (h *HostAPIv2) SetPermissionChecker(permission PermissionChecker) {
+	h.permission = permission
+}
+
 // HandleHostAPIRequest 处理来自插件的 Host API 请求。
 //
 // Deprecated: use HandleHostAPIRequestForPlugin so Host API calls are checked
@@ -341,6 +382,32 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 			return nil, fmt.Errorf("user not found: %w", err)
 		}
 		return json.Marshal(user)
+
+	case "GetThread":
+		var req GetThreadRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		thread, err := hostAPI.Data().GetThread(ctx, req.ThreadID)
+		if err != nil {
+			return nil, fmt.Errorf("thread not found: %w", err)
+		}
+		return json.Marshal(thread)
+
+	case "GetReply":
+		var req GetReplyRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		replyID := req.ReplyID
+		if replyID == "" {
+			replyID = req.PostID
+		}
+		reply, err := hostAPI.Data().GetReply(ctx, replyID)
+		if err != nil {
+			return nil, fmt.Errorf("reply not found: %w", err)
+		}
+		return json.Marshal(reply)
 
 	case "QueryThreads":
 		var req QueryThreadsRequest
@@ -397,6 +464,65 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		}
 		value, found := config[req.Key]
 		return json.Marshal(GetConfigResponse{Value: value, Found: found})
+
+	case "SetConfig":
+		if manifest == nil {
+			return nil, fmt.Errorf("%w: plugin manifest is required for SetConfig", ErrHostAPIPermissionDenied)
+		}
+		var req SetConfigRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		if req.Key == "" {
+			return nil, errors.New("config key is required")
+		}
+		if manifest.Config == nil {
+			manifest.Config = map[string]interface{}{}
+		}
+		manifest.Config[req.Key] = req.Value
+		return json.Marshal(map[string]bool{"success": true})
+
+	case "CheckPermission":
+		var req CheckPermissionRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		if hostAPI.permission == nil {
+			return nil, errors.New("permission checker is not configured")
+		}
+		allowed, err := hostAPI.permission.Check(ctx, req.UserID, req.Resource, req.Action)
+		if err != nil {
+			return nil, fmt.Errorf("check permission failed: %w", err)
+		}
+		return json.Marshal(CheckPermissionResponse{Allowed: allowed})
+
+	case "Log":
+		if manifest == nil {
+			return nil, fmt.Errorf("%w: plugin manifest is required for Log", ErrHostAPIPermissionDenied)
+		}
+		var req LogRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		if req.Level == "" {
+			req.Level = "info"
+		}
+		if req.Metadata == nil {
+			req.Metadata = map[string]interface{}{}
+		}
+		if hostAPI.logRepo != nil {
+			if err := hostAPI.logRepo.SaveLog(ctx, &plugin.PluginLogRecord{
+				PluginName: manifest.Name,
+				Level:      req.Level,
+				Message:    req.Message,
+				EventType:  req.EventType,
+				TraceID:    req.TraceID,
+				Metadata:   req.Metadata,
+			}); err != nil {
+				return nil, fmt.Errorf("write plugin log failed: %w", err)
+			}
+		}
+		return json.Marshal(map[string]bool{"success": true})
 
 	case "StorageGet":
 		var req StorageGetRequest
