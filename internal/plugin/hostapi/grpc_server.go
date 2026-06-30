@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/campusos/CampusOS/internal/plugin"
 )
@@ -255,7 +256,14 @@ type StorageDeleteRequest struct {
 
 // ─── 内存 KV 存储（插件数据存储）───
 
+type KVStore interface {
+	Get(ctx context.Context, pluginName, key string) (string, bool, error)
+	Set(ctx context.Context, pluginName, key, value string) error
+	Delete(ctx context.Context, pluginName, key string) error
+}
+
 type MemoryKVStore struct {
+	mu   sync.RWMutex
 	data map[string]map[string]string // pluginName -> key -> value
 }
 
@@ -263,25 +271,36 @@ func NewMemoryKVStore() *MemoryKVStore {
 	return &MemoryKVStore{data: make(map[string]map[string]string)}
 }
 
-func (s *MemoryKVStore) Get(pluginName, key string) (string, bool) {
+func (s *MemoryKVStore) Get(_ context.Context, pluginName, key string) (string, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	if store, ok := s.data[pluginName]; ok {
 		val, found := store[key]
-		return val, found
+		return val, found, nil
 	}
-	return "", false
+	return "", false, nil
 }
 
-func (s *MemoryKVStore) Set(pluginName, key, value string) {
+func (s *MemoryKVStore) Set(_ context.Context, pluginName, key, value string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if _, ok := s.data[pluginName]; !ok {
 		s.data[pluginName] = make(map[string]string)
 	}
 	s.data[pluginName][key] = value
+	return nil
 }
 
-func (s *MemoryKVStore) Delete(pluginName, key string) {
+func (s *MemoryKVStore) Delete(_ context.Context, pluginName, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if store, ok := s.data[pluginName]; ok {
 		delete(store, key)
 	}
+	return nil
 }
 
 // ─── 通知服务（简化实现）───
@@ -312,8 +331,9 @@ func (s *NotificationService) Send(ctx context.Context, userID, title, content, 
 type HostAPIv2 struct {
 	*HostAPI
 	notification *NotificationService
-	storage      *MemoryKVStore
+	storage      KVStore
 	logRepo      plugin.PluginLogRepository
+	configRepo   plugin.PluginRepository
 	permission   PermissionChecker
 }
 
@@ -345,10 +365,23 @@ func NewHostAPIv2FromHostAPI(base *HostAPI) *HostAPIv2 {
 }
 
 func (h *HostAPIv2) Notification() *NotificationService { return h.notification }
-func (h *HostAPIv2) Storage() *MemoryKVStore            { return h.storage }
+func (h *HostAPIv2) Storage() KVStore                   { return h.storage }
+
+func (h *HostAPIv2) SetStorageStore(store KVStore) {
+	if store != nil {
+		h.storage = store
+	}
+}
 
 func (h *HostAPIv2) SetPluginLogRepository(repo plugin.PluginLogRepository) {
 	h.logRepo = repo
+}
+
+func (h *HostAPIv2) SetPluginRepository(repo plugin.PluginRepository) {
+	h.configRepo = repo
+	if logRepo, ok := repo.(plugin.PluginLogRepository); ok {
+		h.logRepo = logRepo
+	}
 }
 
 func (h *HostAPIv2) SetPermissionChecker(permission PermissionChecker) {
@@ -480,6 +513,14 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 			manifest.Config = map[string]interface{}{}
 		}
 		manifest.Config[req.Key] = req.Value
+		if hostAPI.configRepo != nil {
+			if err := hostAPI.configRepo.UpdateConfig(ctx, manifest.Name, manifest.Config); err != nil {
+				return nil, fmt.Errorf("persist plugin config failed: %w", err)
+			}
+		}
+		hostAPI.logPlugin(ctx, manifest, "info", "plugin config updated", "", map[string]interface{}{
+			"key": req.Key,
+		})
 		return json.Marshal(map[string]bool{"success": true})
 
 	case "CheckPermission":
@@ -532,7 +573,10 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
 			return nil, err
 		}
-		val, found := hostAPI.Storage().Get(req.PluginName, req.Key)
+		val, found, err := hostAPI.Storage().Get(ctx, req.PluginName, req.Key)
+		if err != nil {
+			return nil, fmt.Errorf("storage get failed: %w", err)
+		}
 		return json.Marshal(StorageGetResponse{Value: val, Found: found})
 
 	case "StorageSet":
@@ -543,7 +587,9 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
 			return nil, err
 		}
-		hostAPI.Storage().Set(req.PluginName, req.Key, req.Value)
+		if err := hostAPI.Storage().Set(ctx, req.PluginName, req.Key, req.Value); err != nil {
+			return nil, fmt.Errorf("storage set failed: %w", err)
+		}
 		return json.Marshal(map[string]bool{"success": true})
 
 	case "StorageDelete":
@@ -554,7 +600,9 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		if err := requireStorageOwner(manifest, req.PluginName); err != nil {
 			return nil, err
 		}
-		hostAPI.Storage().Delete(req.PluginName, req.Key)
+		if err := hostAPI.Storage().Delete(ctx, req.PluginName, req.Key); err != nil {
+			return nil, fmt.Errorf("storage delete failed: %w", err)
+		}
 		return json.Marshal(map[string]bool{"success": true})
 
 	default:
@@ -569,16 +617,30 @@ func (h *HostAPIv2) logPermissionDenied(ctx context.Context, manifest *plugin.Ma
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	h.logPlugin(ctx, manifest, "warn", "host api permission denied", "", map[string]interface{}{
+		"method": method,
+		"error":  permissionErr.Error(),
+	})
+}
+
+func (h *HostAPIv2) logPlugin(ctx context.Context, manifest *plugin.Manifest, level, message, eventType string, metadata map[string]interface{}) {
+	if h == nil || h.logRepo == nil || manifest == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+	}
 	record := &plugin.PluginLogRecord{
 		PluginName: manifest.Name,
-		Level:      "warn",
-		Message:    "host api permission denied",
-		Metadata: map[string]interface{}{
-			"method": method,
-			"error":  permissionErr.Error(),
-		},
+		Level:      level,
+		Message:    message,
+		EventType:  eventType,
+		Metadata:   metadata,
 	}
 	if err := h.logRepo.SaveLog(ctx, record); err != nil {
-		log.Printf("⚠️  Host API 权限拒绝日志写入失败: %s (%v)", manifest.Name, err)
+		log.Printf("⚠️  Host API 插件日志写入失败: %s (%v)", manifest.Name, err)
 	}
 }

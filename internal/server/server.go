@@ -132,8 +132,11 @@ func (s *Server) Run() error {
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
-	if logRepo, ok := pluginRepo.(plugin.PluginLogRepository); ok {
-		hostAPI.SetPluginLogRepository(logRepo)
+	hostAPI.SetPluginRepository(pluginRepo)
+	if store, err := hostapi.NewSQLiteKVStore(s.cfg.Plugin.DataDir); err != nil {
+		log.Printf("⚠️  SQLite 插件 KV 初始化失败，回退到内存存储: %v", err)
+	} else {
+		hostAPI.SetStorageStore(store)
 	}
 	hostAPI.SetPermissionChecker(permSvc)
 	hostAPIServer, err := s.startHostAPIServer(hostAPI)
@@ -178,7 +181,12 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
-	hostAPI.SetPluginLogRepository(pluginRepo)
+	hostAPI.SetPluginRepository(pluginRepo)
+	if store, err := hostapi.NewSQLiteKVStore(s.cfg.Plugin.DataDir); err != nil {
+		log.Printf("⚠️  SQLite 插件 KV 初始化失败，回退到内存存储: %v", err)
+	} else {
+		hostAPI.SetStorageStore(store)
+	}
 	hostAPI.SetPermissionChecker(permSvc)
 	hostAPIServer, err := s.startHostAPIServer(hostAPI)
 	if err != nil {

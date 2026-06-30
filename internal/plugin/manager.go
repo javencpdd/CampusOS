@@ -2,11 +2,14 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // Manager 插件管理器
@@ -30,9 +33,21 @@ func NewManager() *Manager {
 
 // SetPluginRepository 设置插件持久化仓储
 func (m *Manager) SetPluginRepository(repo PluginRepository) {
+	m.mu.Lock()
 	m.repo = repo
 	if logRepo, ok := repo.(PluginLogRepository); ok {
 		m.logRepo = logRepo
+	}
+	plugins := make([]*Plugin, 0, len(m.plugins))
+	for _, p := range m.plugins {
+		plugins = append(plugins, p)
+	}
+	m.mu.Unlock()
+
+	for _, p := range plugins {
+		if err := m.syncPluginRecord(context.Background(), p); err != nil {
+			log.Printf("⚠️  同步插件仓储失败: %s (%v)", p.ID, err)
+		}
 	}
 }
 
@@ -58,9 +73,9 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	if _, exists := m.plugins[manifest.Name]; exists {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("plugin '%s' already installed", manifest.Name)
 	}
 
@@ -76,9 +91,78 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	for _, eventType := range manifest.Events.Subscribe {
 		m.registry[eventType] = append(m.registry[eventType], manifest.Name)
 	}
+	m.mu.Unlock()
+
+	if err := m.syncPluginRecord(context.Background(), plugin); err != nil {
+		return nil, err
+	}
 
 	log.Printf("🔌 插件已安装: %s v%s (%s)", manifest.Name, manifest.Version, manifest.Runtime)
 	return plugin, nil
+}
+
+func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
+	m.mu.RLock()
+	repo := m.repo
+	m.mu.RUnlock()
+	if repo == nil || p == nil || p.Manifest == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	record, err := repo.GetByName(ctx, p.Manifest.Name)
+	if err == nil {
+		config := map[string]interface{}{}
+		if record.Config != "" {
+			if err := json.Unmarshal([]byte(record.Config), &config); err != nil {
+				return fmt.Errorf("decode persisted config for plugin %s: %w", p.Manifest.Name, err)
+			}
+		}
+		if len(config) > 0 {
+			m.mu.Lock()
+			p.Manifest.Config = config
+			m.mu.Unlock()
+		}
+		return nil
+	}
+	if !errors.Is(err, ErrAPIKeyNotFound) {
+		return err
+	}
+
+	configJSON, err := json.Marshal(p.Manifest.Config)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	record = &PluginRecord{
+		Name:        p.Manifest.Name,
+		DisplayName: p.Manifest.DisplayName,
+		Version:     p.Manifest.Version,
+		Description: p.Manifest.Description,
+		Author:      p.Manifest.Author,
+		Runtime:     p.Manifest.Runtime,
+		Status:      string(p.Status),
+		Config:      string(configJSON),
+		ErrorMsg:    p.ErrorMsg,
+		InstalledBy: p.InstalledBy,
+		InstalledAt: now,
+		UpdatedAt:   now,
+	}
+	if record.DisplayName == "" {
+		record.DisplayName = record.Name
+	}
+	if record.Version == "" {
+		record.Version = "0.0.0"
+	}
+	if record.Runtime == "" {
+		record.Runtime = "grpc"
+	}
+	if record.InstalledBy == "" {
+		record.InstalledBy = "system"
+	}
+	return repo.Save(ctx, record)
 }
 
 // Enable 启用插件

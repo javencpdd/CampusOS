@@ -182,6 +182,8 @@ func TestHandleHostAPIRequestForPluginReturnsReply(t *testing.T) {
 
 func TestHandleHostAPIRequestForPluginSetsConfig(t *testing.T) {
 	hostAPI := NewHostAPIv2(nil, nil, nil)
+	repo := plugin.NewMemoryPluginRepository()
+	hostAPI.SetPluginRepository(repo)
 	manifest := manifestWithPermissions("config-writer", plugin.APIPermission{
 		Resource: "config",
 		Actions:  []string{"write"},
@@ -193,6 +195,17 @@ func TestHandleHostAPIRequestForPluginSetsConfig(t *testing.T) {
 	}
 	if manifest.Config["threshold"] != float64(3) {
 		t.Fatalf("expected config update, got %#v", manifest.Config)
+	}
+	record, err := repo.GetByName(t.Context(), "config-writer")
+	if err != nil {
+		t.Fatalf("get plugin record: %v", err)
+	}
+	var persisted map[string]interface{}
+	if err := json.Unmarshal([]byte(record.Config), &persisted); err != nil {
+		t.Fatalf("decode persisted config: %v", err)
+	}
+	if persisted["threshold"] != float64(3) {
+		t.Fatalf("expected persisted config update, got %#v", persisted)
 	}
 }
 

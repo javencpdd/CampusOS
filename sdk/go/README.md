@@ -14,8 +14,8 @@
 | `GetConfig` | 已封装 |
 | `SetConfig` / `CheckPermission` / `Log` | 已封装 |
 | `StorageGet` / `StorageSet` / `StorageDelete` | 已封装 |
+| 本地插件测试 Harness | 已提供 |
 | Wasm 编译模板 | 后续任务 |
-| 本地插件测试工具 | 后续任务 |
 
 ## 示例
 
@@ -42,3 +42,19 @@ http://127.0.0.1:18080
 ```go
 client := campusos.NewHostClientWithBaseURL("http://127.0.0.1:18080", "hello-wasm")
 ```
+
+## 本地测试 Harness
+
+插件逻辑单元测试可以使用 `NewHarness` 模拟 Host API，不需要启动完整 CampusOS 服务：
+
+```go
+harness := campusos.NewHarness("hello-wasm")
+defer harness.Close()
+
+harness.Config["entrypoint"] = "handle_event"
+client := harness.Client()
+
+value, found, err := client.GetConfig(ctx, "entrypoint")
+```
+
+Harness 当前支持配置、存储、事件发布、日志、用户/主题/回复查询和权限检查的最小模拟。
