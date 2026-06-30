@@ -38,8 +38,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="270" align="center" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" size="small" plain @click="showLogs(row.name)">
+              <el-icon><Document /></el-icon>
+              日志
+            </el-button>
             <el-switch
               v-model="row.status"
               active-value="enabled"
@@ -67,17 +71,54 @@
 
       <el-empty v-if="!loading && plugins.length === 0" description="暂无已安装的插件" />
     </el-card>
+
+    <el-dialog v-model="logDialogVisible" :title="`${selectedPluginName} 运行日志`" width="860px">
+      <div class="log-toolbar">
+        <el-button size="small" @click="loadLogs" :loading="logsLoading">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
+      <el-table :data="pluginLogs" v-loading="logsLoading" stripe border style="width: 100%">
+        <el-table-column prop="created_at" label="时间" width="170">
+          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column prop="level" label="级别" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="logLevelTag(row.level)" size="small">{{ row.level || 'info' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="message" label="消息" min-width="210" show-overflow-tooltip />
+        <el-table-column prop="event_type" label="事件" width="150" show-overflow-tooltip />
+        <el-table-column label="元数据" width="100" align="center">
+          <template #default="{ row }">
+            <el-popover v-if="row.metadata" placement="left" width="420" trigger="click">
+              <pre class="metadata-pre">{{ formatMetadata(row.metadata) }}</pre>
+              <template #reference>
+                <el-button type="primary" size="small" text>查看</el-button>
+              </template>
+            </el-popover>
+            <span v-else class="empty-text">无</span>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Connection } from '@element-plus/icons-vue'
+import { Connection, Document, Refresh } from '@element-plus/icons-vue'
 import { pluginApi } from '@/api'
 
 const plugins = ref<any[]>([])
 const loading = ref(false)
+const logDialogVisible = ref(false)
+const logsLoading = ref(false)
+const selectedPluginName = ref('')
+const pluginLogs = ref<any[]>([])
 
 const load = async () => {
   loading.value = true
@@ -117,6 +158,51 @@ const doUninstall = async (name: string) => {
   }
 }
 
+const showLogs = async (name: string) => {
+  selectedPluginName.value = name
+  logDialogVisible.value = true
+  await loadLogs()
+}
+
+const loadLogs = async () => {
+  if (!selectedPluginName.value) return
+  logsLoading.value = true
+  try {
+    const r = (await pluginApi.logs(selectedPluginName.value, { limit: 100 })) as any
+    pluginLogs.value = r?.data?.items || r?.data || []
+  } catch {
+    pluginLogs.value = []
+    ElMessage.error('加载插件日志失败')
+  }
+  logsLoading.value = false
+}
+
+const logLevelTag = (level: string) => {
+  if (level === 'error') return 'danger'
+  if (level === 'warn') return 'warning'
+  if (level === 'info') return 'success'
+  return 'info'
+}
+
+const formatTime = (value: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
+}
+
+const formatMetadata = (metadata: any) => {
+  if (!metadata) return '无'
+  if (typeof metadata === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(metadata), null, 2)
+    } catch {
+      return metadata
+    }
+  }
+  return JSON.stringify(metadata, null, 2)
+}
+
 onMounted(load)
 </script>
 
@@ -134,5 +220,23 @@ onMounted(load)
 .plugin-name {
   display: flex;
   align-items: center;
+}
+
+.log-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.metadata-pre {
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty-text {
+  color: #a8abb2;
 }
 </style>

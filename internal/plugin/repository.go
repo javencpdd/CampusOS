@@ -45,6 +45,18 @@ type APIKeyRecord struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
+// PluginLogRecord 插件运行日志记录
+type PluginLogRecord struct {
+	ID         int64                  `json:"id"`
+	PluginName string                 `json:"plugin_name"`
+	Level      string                 `json:"level"`
+	Message    string                 `json:"message"`
+	EventType  string                 `json:"event_type"`
+	TraceID    string                 `json:"trace_id"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	CreatedAt  time.Time              `json:"created_at"`
+}
+
 // PluginRepository 插件仓储接口
 type PluginRepository interface {
 	Save(ctx context.Context, record *PluginRecord) error
@@ -64,10 +76,17 @@ type APIKeyRepository interface {
 	Delete(ctx context.Context, key string) error
 }
 
+// PluginLogRepository 插件日志仓储接口
+type PluginLogRepository interface {
+	SaveLog(ctx context.Context, record *PluginLogRecord) error
+	ListLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error)
+}
+
 // MemoryPluginRepository 内存插件仓储
 type MemoryPluginRepository struct {
 	mu      sync.RWMutex
 	plugins map[string]*PluginRecord
+	logs    []*PluginLogRecord
 }
 
 func NewMemoryPluginRepository() *MemoryPluginRepository {
@@ -119,6 +138,43 @@ func (r *MemoryPluginRepository) Delete(_ context.Context, name string) error {
 	defer r.mu.Unlock()
 	delete(r.plugins, name)
 	return nil
+}
+
+func (r *MemoryPluginRepository) SaveLog(_ context.Context, record *PluginLogRecord) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if record.ID == 0 {
+		record.ID = int64(len(r.logs) + 1)
+	}
+	if record.CreatedAt.IsZero() {
+		record.CreatedAt = time.Now()
+	}
+	if record.Metadata == nil {
+		record.Metadata = map[string]interface{}{}
+	}
+	copied := *record
+	r.logs = append(r.logs, &copied)
+	return nil
+}
+
+func (r *MemoryPluginRepository) ListLogs(_ context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if limit <= 0 {
+		limit = 100
+	}
+	logs := make([]*PluginLogRecord, 0, limit)
+	for i := len(r.logs) - 1; i >= 0 && len(logs) < limit; i-- {
+		record := r.logs[i]
+		if pluginName != "" && record.PluginName != pluginName {
+			continue
+		}
+		copied := *record
+		logs = append(logs, &copied)
+	}
+	return logs, nil
 }
 
 // MemoryAPIKeyRepository 内存 API Key 仓储

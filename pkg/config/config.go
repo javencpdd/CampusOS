@@ -4,6 +4,7 @@ import "os"
 
 type Config struct {
 	Server   ServerConfig
+	HostAPI  HostAPIConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
 	NATS     NATSConfig
@@ -13,6 +14,11 @@ type Config struct {
 type ServerConfig struct {
 	Host string
 	Port string
+}
+
+type HostAPIConfig struct {
+	Enabled bool
+	Addr    string
 }
 
 type DatabaseConfig struct {
@@ -42,6 +48,10 @@ func Load() *Config {
 		Server: ServerConfig{
 			Host: getEnv("SERVER_HOST", "0.0.0.0"),
 			Port: getEnv("SERVER_PORT", "8080"),
+		},
+		HostAPI: HostAPIConfig{
+			Enabled: getEnv("HOST_API_ENABLED", "true") == "true",
+			Addr:    getEnv("HOST_API_ADDR", "127.0.0.1:18080"),
 		},
 		Database: DatabaseConfig{
 			DSN: getEnv("DATABASE_DSN", "postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable"),

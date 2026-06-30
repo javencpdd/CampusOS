@@ -1,0 +1,221 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/campusos/CampusOS/internal/plugin"
+)
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		printUsage(stderr)
+		return 2
+	}
+	switch args[0] {
+	case "plugin":
+		return runPlugin(args[1:], stdout, stderr)
+	case "help", "-h", "--help":
+		printUsage(stdout)
+		return 0
+	default:
+		fmt.Fprintf(stderr, "unknown command: %s\n", args[0])
+		printUsage(stderr)
+		return 2
+	}
+}
+
+func runPlugin(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		printPluginUsage(stderr)
+		return 2
+	}
+	switch args[0] {
+	case "init":
+		if err := runPluginInit(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin init: %v\n", err)
+			return 1
+		}
+		return 0
+	case "inspect":
+		if err := runPluginInspect(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin inspect: %v\n", err)
+			return 1
+		}
+		return 0
+	case "help", "-h", "--help":
+		printPluginUsage(stdout)
+		return 0
+	default:
+		fmt.Fprintf(stderr, "unknown plugin command: %s\n", args[0])
+		printPluginUsage(stderr)
+		return 2
+	}
+}
+
+func runPluginInit(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin init", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	runtime := fs.String("runtime", "wasm", "plugin runtime: wasm or grpc")
+	dir := fs.String("dir", "", "target directory; defaults to the plugin name")
+	name := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		name = args[0]
+		args = args[1:]
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if name == "" {
+		if fs.NArg() != 1 {
+			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+		}
+		name = fs.Arg(0)
+	} else if fs.NArg() != 0 {
+		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+	}
+	if err := validatePluginName(name); err != nil {
+		return err
+	}
+	if *runtime != "wasm" && *runtime != "grpc" {
+		return fmt.Errorf("runtime must be wasm or grpc, got %q", *runtime)
+	}
+	targetDir := *dir
+	if targetDir == "" {
+		targetDir = name
+	}
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return err
+	}
+	manifestPath := filepath.Join(targetDir, "plugin.yaml")
+	if _, err := os.Stat(manifestPath); err == nil {
+		return fmt.Errorf("%s already exists", manifestPath)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if err := os.WriteFile(manifestPath, []byte(pluginManifestTemplate(name, *runtime)), 0o644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(targetDir, "README.md"), []byte(pluginReadmeTemplate(name)), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "created plugin scaffold: %s\n", targetDir)
+	return nil
+}
+
+func runPluginInspect(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin inspect", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: campusosctl plugin inspect <plugin-dir>")
+	}
+	pluginDir := fs.Arg(0)
+	manifest, err := plugin.LoadManifest(filepath.Join(pluginDir, "plugin.yaml"))
+	if err != nil {
+		return err
+	}
+	result := map[string]interface{}{
+		"name":         manifest.Name,
+		"display_name": manifest.DisplayName,
+		"version":      manifest.Version,
+		"runtime":      manifest.Runtime,
+		"events":       manifest.Events.Subscribe,
+		"permissions":  manifest.Permissions.API,
+		"storage":      manifest.Storage,
+		"config":       manifest.Config,
+	}
+	encoder := json.NewEncoder(stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(result)
+}
+
+func validatePluginName(name string) error {
+	if name == "" {
+		return errors.New("plugin name is required")
+	}
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			continue
+		}
+		return fmt.Errorf("plugin name %q can only contain lowercase letters, numbers, hyphen, and underscore", name)
+	}
+	return nil
+}
+
+func pluginManifestTemplate(name, runtime string) string {
+	module := ""
+	if runtime == "wasm" {
+		module = `  module: "plugin.wasm"
+  entrypoint: "handle_event"
+  event_timeout_ms: 1000`
+	} else {
+		module = `  command: "./plugin"
+  event_timeout_ms: 1000`
+	}
+	return strings.TrimSpace(fmt.Sprintf(`
+name: %s
+display_name: "%s"
+version: "0.1.0"
+description: "CampusOS plugin"
+author: "CampusOS Developer"
+runtime: %s
+
+events:
+  subscribe:
+    - "thread.created"
+
+permissions:
+  api:
+    - resource: "config"
+      actions: ["read"]
+
+storage:
+  type: none
+
+config:
+%s
+`, name, name, runtime, module)) + "\n"
+}
+
+func pluginReadmeTemplate(name string) string {
+	return strings.TrimSpace(fmt.Sprintf(`
+# %s
+
+CampusOS plugin scaffold generated by campusosctl.
+
+## Inspect
+
+`+"```bash"+`
+go run ./cmd/campusosctl plugin inspect .
+`+"```"+`
+`, name)) + "\n"
+}
+
+func printUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: campusosctl <command>")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "commands:")
+	fmt.Fprintln(w, "  plugin    plugin scaffolding and inspection")
+}
+
+func printPluginUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: campusosctl plugin <command>")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "commands:")
+	fmt.Fprintln(w, "  init      create a plugin scaffold")
+	fmt.Fprintln(w, "  inspect   inspect a plugin manifest")
+}

@@ -63,6 +63,53 @@ type DataAPI struct {
 	postRepo     repository.PostRepository
 }
 
+// GetThread 查询主题详情
+func (api *DataAPI) GetThread(ctx context.Context, threadID string) (map[string]interface{}, error) {
+	thread, err := api.threadRepo.GetByID(ctx, threadID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"id":             thread.ID,
+		"title":          thread.Title,
+		"content":        thread.Content,
+		"author_id":      thread.AuthorID,
+		"author_name":    thread.AuthorName,
+		"category_id":    thread.CategoryID,
+		"status":         thread.Status,
+		"is_pinned":      thread.IsPinned,
+		"is_locked":      thread.IsLocked,
+		"is_highlighted": thread.IsHighlighted,
+		"view_count":     thread.ViewCount,
+		"reply_count":    thread.ReplyCount,
+		"like_count":     thread.LikeCount,
+		"tags":           thread.Tags,
+		"created_at":     thread.CreatedAt,
+		"updated_at":     thread.UpdatedAt,
+	}, nil
+}
+
+// GetReply 查询回复详情
+func (api *DataAPI) GetReply(ctx context.Context, replyID string) (map[string]interface{}, error) {
+	post, err := api.postRepo.GetByID(ctx, replyID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"id":           post.ID,
+		"thread_id":    post.ThreadID,
+		"author_id":    post.AuthorID,
+		"author_name":  post.AuthorName,
+		"parent_id":    post.ParentID,
+		"content":      post.Content,
+		"status":       post.Status,
+		"like_count":   post.LikeCount,
+		"floor_number": post.FloorNumber,
+		"created_at":   post.CreatedAt,
+		"updated_at":   post.UpdatedAt,
+	}, nil
+}
+
 // QueryThreads 查询帖子列表
 func (api *DataAPI) QueryThreads(ctx context.Context, filter map[string]interface{}) ([]map[string]interface{}, error) {
 	f := domain.ThreadListFilter{}

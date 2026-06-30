@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -62,6 +63,30 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 		"permissions":  p.Manifest.Permissions,
 		"storage":      p.Manifest.Storage,
 	})
+}
+
+// ListPluginLogs 获取插件运行日志
+// GET /api/v1/plugins/:name/logs?limit=100
+func (h *Handler) ListPluginLogs(c *gin.Context) {
+	name := c.Param("name")
+	if _, ok := h.manager.GetPlugin(name); !ok {
+		response.Error(c, http.StatusNotFound, 60003, "plugin not found")
+		return
+	}
+
+	limit := 100
+	if raw := c.Query("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	logs, err := h.manager.ListPluginLogs(c.Request.Context(), name, limit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"items": logs, "total": len(logs)})
 }
 
 // EnablePlugin 启用插件

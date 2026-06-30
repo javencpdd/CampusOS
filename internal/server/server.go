@@ -16,6 +16,7 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
+	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -56,6 +57,7 @@ func (s *Server) Run() error {
 	s.manager = plugin.NewManager()
 	grpcRuntime := plugingrpc.NewGRPCRuntime()
 	s.manager.RegisterRuntime("grpc", grpcRuntime)
+	s.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
 
 	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
 	var pluginRepo plugin.PluginRepository
@@ -126,10 +128,21 @@ func (s *Server) Run() error {
 	categoryRepo := repository.NewPgCategoryRepository(pool)
 	postRepo := repository.NewPgPostRepository(pool)
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
-	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
-	_ = hostAPI // 未来传递给插件进程
+	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
+	if logRepo, ok := pluginRepo.(plugin.PluginLogRepository); ok {
+		hostAPI.SetPluginLogRepository(logRepo)
+	}
+	hostAPI.SetPermissionChecker(permSvc)
+	hostAPIServer, err := s.startHostAPIServer(hostAPI)
+	if err != nil {
+		return err
+	}
+	if hostAPIServer != nil {
+		defer hostAPIServer.Stop()
+	}
 
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
@@ -138,7 +151,6 @@ func (s *Server) Run() error {
 	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
-	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -160,17 +172,27 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
 	roleRepo := identityrepo.NewMemoryRoleRepository()
+	pluginRepo := plugin.NewMemoryPluginRepository()
+	s.manager.SetPluginRepository(pluginRepo)
+	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
-	hostAPI := hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus)
-	_ = hostAPI
+	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
+	hostAPI.SetPluginLogRepository(pluginRepo)
+	hostAPI.SetPermissionChecker(permSvc)
+	hostAPIServer, err := s.startHostAPIServer(hostAPI)
+	if err != nil {
+		return err
+	}
+	if hostAPIServer != nil {
+		defer hostAPIServer.Stop()
+	}
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
 	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
-	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
@@ -181,6 +203,18 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 
 	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
+}
+
+func (s *Server) startHostAPIServer(hostAPI *hostapi.HostAPIv2) (*hostapi.HostAPIServer, error) {
+	if !s.cfg.HostAPI.Enabled {
+		log.Printf("🔌 Host API 已禁用")
+		return nil, nil
+	}
+	server := hostapi.NewHostAPIServer(hostAPI, s.cfg.HostAPI.Addr, s.manager.GetPlugin)
+	if err := server.Start(); err != nil {
+		return nil, err
+	}
+	return server, nil
 }
 
 func (s *Server) newJWTManager() *auth.JWTManager {
@@ -289,6 +323,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		// 插件管理
 		admin.GET("/plugins", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPlugins)
 		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
+		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPluginLogs)
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)

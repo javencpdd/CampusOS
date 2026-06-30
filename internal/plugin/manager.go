@@ -16,6 +16,7 @@ type Manager struct {
 	runtimes map[string]Runtime  // runtime type -> runtime impl
 	registry map[string][]string // event type -> plugin names
 	repo     PluginRepository    // 可选：插件持久化仓储
+	logRepo  PluginLogRepository // 可选：插件运行日志仓储
 }
 
 // NewManager 创建插件管理器
@@ -30,6 +31,14 @@ func NewManager() *Manager {
 // SetPluginRepository 设置插件持久化仓储
 func (m *Manager) SetPluginRepository(repo PluginRepository) {
 	m.repo = repo
+	if logRepo, ok := repo.(PluginLogRepository); ok {
+		m.logRepo = logRepo
+	}
+}
+
+// SetPluginLogRepository 设置插件运行日志仓储
+func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
+	m.logRepo = repo
 }
 
 // RegisterRuntime 注册运行时实现
@@ -104,10 +113,20 @@ func (m *Manager) Start(name string) error {
 	m.mu.Lock()
 	runtime, ok := m.runtimes[runtimeType]
 	if !ok {
+		err := fmt.Errorf("runtime '%s' not registered", runtimeType)
 		p.Status = StatusError
-		p.ErrorMsg = fmt.Sprintf("runtime '%s' not registered", runtimeType)
+		p.ErrorMsg = err.Error()
 		m.mu.Unlock()
-		return fmt.Errorf("runtime '%s' not registered", runtimeType)
+		m.logPlugin(context.Background(), &PluginLogRecord{
+			PluginName: name,
+			Level:      "error",
+			Message:    "plugin start failed",
+			Metadata: map[string]interface{}{
+				"runtime": runtimeType,
+				"error":   err.Error(),
+			},
+		})
+		return err
 	}
 	m.mu.Unlock()
 
@@ -116,6 +135,15 @@ func (m *Manager) Start(name string) error {
 		p.Status = StatusError
 		p.ErrorMsg = err.Error()
 		m.mu.Unlock()
+		m.logPlugin(context.Background(), &PluginLogRecord{
+			PluginName: name,
+			Level:      "error",
+			Message:    "plugin start failed",
+			Metadata: map[string]interface{}{
+				"runtime": runtimeType,
+				"error":   err.Error(),
+			},
+		})
 		return fmt.Errorf("start plugin '%s': %w", name, err)
 	}
 
@@ -125,6 +153,14 @@ func (m *Manager) Start(name string) error {
 	m.mu.Unlock()
 
 	log.Printf("🟢 插件已启动: %s", name)
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "info",
+		Message:    "plugin started",
+		Metadata: map[string]interface{}{
+			"runtime": runtimeType,
+		},
+	})
 	return nil
 }
 
@@ -143,11 +179,29 @@ func (m *Manager) Stop(name string) error {
 	runtime, ok := m.runtimes[runtimeType]
 	if !ok {
 		m.mu.Unlock()
+		m.logPlugin(context.Background(), &PluginLogRecord{
+			PluginName: name,
+			Level:      "error",
+			Message:    "plugin stop failed",
+			Metadata: map[string]interface{}{
+				"runtime": runtimeType,
+				"error":   fmt.Sprintf("runtime '%s' not registered", runtimeType),
+			},
+		})
 		return fmt.Errorf("runtime '%s' not registered", runtimeType)
 	}
 	m.mu.Unlock()
 
 	if err := runtime.Stop(context.Background(), name); err != nil {
+		m.logPlugin(context.Background(), &PluginLogRecord{
+			PluginName: name,
+			Level:      "error",
+			Message:    "plugin stop failed",
+			Metadata: map[string]interface{}{
+				"runtime": runtimeType,
+				"error":   err.Error(),
+			},
+		})
 		return fmt.Errorf("stop plugin '%s': %w", name, err)
 	}
 
@@ -156,6 +210,14 @@ func (m *Manager) Stop(name string) error {
 	m.mu.Unlock()
 
 	log.Printf("🔴 插件已停止: %s", name)
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "info",
+		Message:    "plugin stopped",
+		Metadata: map[string]interface{}{
+			"runtime": runtimeType,
+		},
+	})
 	return nil
 }
 
@@ -193,12 +255,34 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 		resp, err := runtime.SendEvent(ctx, p.ID, beforeEvent)
 		if err != nil {
 			log.Printf("⚠️  插件 %s 处理 .before 事件 %s 失败: %v", p.ID, event.Type, err)
+			m.markPluginError(p.ID, err)
+			m.logPlugin(ctx, &PluginLogRecord{
+				PluginName: p.ID,
+				Level:      "error",
+				Message:    "plugin before-event failed",
+				EventType:  beforeEvent.Type,
+				Metadata:   eventLogMetadata(beforeEvent, err),
+			})
 			continue
 		}
 		if resp != nil && !resp.Allowed {
 			log.Printf("🚫 插件 %s 阻止了事件 %s: %s", p.ID, event.Type, resp.Message)
+			m.logPlugin(ctx, &PluginLogRecord{
+				PluginName: p.ID,
+				Level:      "warn",
+				Message:    "plugin blocked before-event",
+				EventType:  beforeEvent.Type,
+				Metadata:   eventLogMetadata(beforeEvent, nil),
+			})
 			return resp
 		}
+		m.logPlugin(ctx, &PluginLogRecord{
+			PluginName: p.ID,
+			Level:      "info",
+			Message:    "plugin handled before-event",
+			EventType:  beforeEvent.Type,
+			Metadata:   eventLogMetadata(beforeEvent, nil),
+		})
 	}
 	return nil
 }
@@ -231,11 +315,34 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 			resp, err := runtime.SendEvent(ctx, pl.ID, event)
 			if err != nil {
 				log.Printf("⚠️  插件 %s 处理事件 %s 失败: %v", pl.ID, event.Type, err)
+				m.markPluginError(pl.ID, err)
+				m.logPlugin(ctx, &PluginLogRecord{
+					PluginName: pl.ID,
+					Level:      "error",
+					Message:    "plugin event failed",
+					EventType:  event.Type,
+					Metadata:   eventLogMetadata(event, err),
+				})
 				return
 			}
 			if resp != nil && !resp.Allowed {
 				log.Printf("🚫 插件 %s 拒绝事件 %s: %s", pl.ID, event.Type, resp.Message)
+				m.logPlugin(ctx, &PluginLogRecord{
+					PluginName: pl.ID,
+					Level:      "warn",
+					Message:    "plugin rejected event",
+					EventType:  event.Type,
+					Metadata:   eventLogMetadata(event, nil),
+				})
+				return
 			}
+			m.logPlugin(ctx, &PluginLogRecord{
+				PluginName: pl.ID,
+				Level:      "info",
+				Message:    "plugin handled event",
+				EventType:  event.Type,
+				Metadata:   eventLogMetadata(event, nil),
+			})
 		}(p)
 	}
 }
@@ -246,6 +353,61 @@ func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 	defer m.mu.RUnlock()
 	p, ok := m.plugins[name]
 	return p, ok
+}
+
+func (m *Manager) markPluginError(name string, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	p, ok := m.plugins[name]
+	if !ok {
+		return
+	}
+	p.Status = StatusError
+	p.ErrorMsg = err.Error()
+}
+
+func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
+	m.mu.RLock()
+	logRepo := m.logRepo
+	m.mu.RUnlock()
+	if logRepo == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if record.Metadata == nil {
+		record.Metadata = map[string]interface{}{}
+	}
+	if err := logRepo.SaveLog(ctx, record); err != nil {
+		log.Printf("⚠️  插件日志写入失败: %s (%v)", record.PluginName, err)
+	}
+}
+
+func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
+	m.mu.RLock()
+	logRepo := m.logRepo
+	m.mu.RUnlock()
+	if logRepo == nil {
+		return []*PluginLogRecord{}, nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return logRepo.ListLogs(ctx, pluginName, limit)
+}
+
+func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {
+	metadata := map[string]interface{}{}
+	if event != nil {
+		metadata["source"] = event.Source
+		metadata["subject"] = event.Subject
+	}
+	if err != nil {
+		metadata["error"] = err.Error()
+	}
+	return metadata
 }
 
 // ListPlugins 列出所有插件

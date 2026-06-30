@@ -1,0 +1,147 @@
+# CampusOS v0.3-dev 流程 Skill 使用说明
+
+> 日期：2026-06-28
+> Skill 名称：`campusos-v03-dev-workflow`
+> 安装位置：`/home/jack/.codex/skills/campusos-v03-dev-workflow`
+
+## 1. 用途
+
+`campusos-v03-dev-workflow` 用于复用 CampusOS v0.3-dev 阶段的开发流程。
+
+它固化以下规则：
+
+1. 一次只完成一个明确的 v0.3-dev 任务。
+2. 每次任务完成后，在 `docs/进度/v0.3-dev/` 下新增或更新 `v0.3.X-dev.md`。
+3. 每次提交前运行必要验证。
+4. 每次完成后创建本地 commit。
+5. 默认不 push，除非用户明确要求。
+
+## 2. 触发方式
+
+在后续对 Codex 发起任务时，可以直接说明使用该 skill：
+
+```text
+使用 campusos-v03-dev-workflow 继续完成下一个 v0.3-dev 任务，更新进度文档并提交。
+```
+
+也可以使用显式 skill 名称：
+
+```text
+Use $campusos-v03-dev-workflow to complete the next CampusOS v0.3-dev task with docs and commit.
+```
+
+适用任务：
+
+| 场景 | 是否适用 |
+| --- | --- |
+| Wasm Runtime 开发 | 适用 |
+| Host API 权限检查 | 适用 |
+| 插件日志、插件存储 | 适用 |
+| SDK/CLI 初版 | 适用 |
+| v0.3-dev 进度文档维护 | 适用 |
+| 非 CampusOS 项目 | 不适用 |
+
+## 3. Skill 执行流程
+
+该 skill 会要求 Codex 按以下顺序执行：
+
+| 步骤 | 内容 |
+| --- | --- |
+| 1 | 检查 `git status -sb` 和当前分支 |
+| 2 | 阅读 v0.3-dev 计划和最新进度文档 |
+| 3 | 从首轮任务清单中选择一个明确任务 |
+| 4 | 实现代码或文档改动 |
+| 5 | 新增 `docs/进度/v0.3-dev/v0.3.X-dev.md` |
+| 6 | 执行验证 |
+| 7 | 本地 commit |
+| 8 | 输出完成内容、验证结果和 commit hash |
+
+## 4. 文档命名规范
+
+进度文档必须使用：
+
+```text
+docs/进度/v0.3-dev/v0.3.X-dev.md
+```
+
+示例：
+
+```text
+v0.3.0-dev.md
+v0.3.1-dev.md
+v0.3.2-dev.md
+```
+
+如果目录中还没有 `v0.3.X-dev.md`，从 `v0.3.0-dev.md` 开始。
+
+## 5. 默认验证命令
+
+所有任务至少运行：
+
+```bash
+git diff --check
+go test ./...
+```
+
+涉及前端时运行：
+
+```bash
+cd web && pnpm build
+cd admin && pnpm build
+```
+
+涉及迁移时运行：
+
+```bash
+make migrate-up
+make migrate-status
+```
+
+涉及 workflow 时运行：
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+import yaml
+for p in Path('.github/workflows').glob('*.yml'):
+    yaml.safe_load(p.read_text())
+    print(p, 'ok')
+PY
+```
+
+## 6. 辅助检查脚本
+
+skill 内置了辅助脚本：
+
+```bash
+/home/jack/.codex/skills/campusos-v03-dev-workflow/scripts/check_v03_task.sh /home/jack/bbs/bbs01/CampusOS
+```
+
+该脚本会检查：
+
+| 检查项 | 说明 |
+| --- | --- |
+| Git 状态 | 显示当前分支和工作区状态 |
+| 进度文档 | 列出已有 `v0.3.*-dev.md` |
+| 空白检查 | 执行 `git diff --check` |
+| 后端测试 | 执行 `go test ./...` |
+
+## 7. 当前 v0.3-dev 首轮建议顺序
+
+| 顺序 | 任务 |
+| --- | --- |
+| 1 | Runtime 接口复核 |
+| 2 | Wasm Runtime 骨架 |
+| 3 | Wasm 事件调用 |
+| 4 | Runtime 超时和错误隔离 |
+| 5 | Host API 权限检查 |
+| 6 | 插件日志落库 |
+| 7 | `hello-wasm` 示例插件 |
+| 8 | SDK/CLI 初版 |
+
+## 8. 注意事项
+
+- skill 创建在用户级 Codex 目录，不在 CampusOS 仓库内。
+- CampusOS 仓库只保存本说明文档和每次任务进度文档。
+- 如果后续需要迁移到另一台机器，需要复制 `/home/jack/.codex/skills/campusos-v03-dev-workflow`。
+- 每次任务只提交相关文件，不混入无关修改。
