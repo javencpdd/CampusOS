@@ -91,6 +91,80 @@ type GetConfigRequest struct {
 	Key string `json:"key,omitempty"`
 }
 
+type GetUserRequest struct {
+	UserID string `json:"user_id"`
+}
+
+func (c *HostClient) GetUser(ctx context.Context, userID string) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.Call(ctx, "GetUser", GetUserRequest{UserID: userID}, &response)
+	return response, err
+}
+
+type GetThreadRequest struct {
+	ThreadID string `json:"thread_id"`
+}
+
+func (c *HostClient) GetThread(ctx context.Context, threadID string) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.Call(ctx, "GetThread", GetThreadRequest{ThreadID: threadID}, &response)
+	return response, err
+}
+
+type GetReplyRequest struct {
+	ReplyID string `json:"reply_id,omitempty"`
+	PostID  string `json:"post_id,omitempty"`
+}
+
+func (c *HostClient) GetReply(ctx context.Context, replyID string) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.Call(ctx, "GetReply", GetReplyRequest{ReplyID: replyID}, &response)
+	return response, err
+}
+
+type QueryThreadsRequest struct {
+	CategoryID string `json:"category_id,omitempty"`
+	AuthorID   string `json:"author_id,omitempty"`
+	Keyword    string `json:"keyword,omitempty"`
+	Status     string `json:"status,omitempty"`
+	Page       int    `json:"page"`
+	PageSize   int    `json:"page_size"`
+}
+
+type QueryThreadsResponse struct {
+	Threads []map[string]interface{} `json:"threads"`
+	Total   int                      `json:"total"`
+}
+
+func (c *HostClient) QueryThreads(ctx context.Context, request QueryThreadsRequest) (*QueryThreadsResponse, error) {
+	var response QueryThreadsResponse
+	err := c.Call(ctx, "QueryThreads", request, &response)
+	return &response, err
+}
+
+type PublishEventRequest struct {
+	EventType string      `json:"event_type"`
+	Source    string      `json:"source"`
+	Subject   string      `json:"subject"`
+	Data      interface{} `json:"data"`
+}
+
+func (c *HostClient) PublishEvent(ctx context.Context, request PublishEventRequest) error {
+	return c.Call(ctx, "PublishEvent", request, nil)
+}
+
+type SendNotificationRequest struct {
+	UserID    string `json:"user_id"`
+	Template  string `json:"template,omitempty"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	ActionURL string `json:"action_url,omitempty"`
+}
+
+func (c *HostClient) SendNotification(ctx context.Context, request SendNotificationRequest) error {
+	return c.Call(ctx, "SendNotification", request, nil)
+}
+
 type GetConfigResponse struct {
 	Config map[string]interface{} `json:"config,omitempty"`
 	Value  interface{}            `json:"value,omitempty"`
@@ -114,6 +188,47 @@ func (c *HostClient) GetAllConfig(ctx context.Context) (map[string]interface{}, 
 		return map[string]interface{}{}, nil
 	}
 	return response.Config, nil
+}
+
+type SetConfigRequest struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
+
+func (c *HostClient) SetConfig(ctx context.Context, key string, value interface{}) error {
+	return c.Call(ctx, "SetConfig", SetConfigRequest{Key: key, Value: value}, nil)
+}
+
+type CheckPermissionRequest struct {
+	UserID   string `json:"user_id"`
+	Resource string `json:"resource"`
+	Action   string `json:"action"`
+}
+
+type CheckPermissionResponse struct {
+	Allowed bool `json:"allowed"`
+}
+
+func (c *HostClient) CheckPermission(ctx context.Context, userID, resource, action string) (bool, error) {
+	var response CheckPermissionResponse
+	err := c.Call(ctx, "CheckPermission", CheckPermissionRequest{
+		UserID:   userID,
+		Resource: resource,
+		Action:   action,
+	}, &response)
+	return response.Allowed, err
+}
+
+type LogRequest struct {
+	Level     string                 `json:"level"`
+	Message   string                 `json:"message"`
+	EventType string                 `json:"event_type,omitempty"`
+	TraceID   string                 `json:"trace_id,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func (c *HostClient) Log(ctx context.Context, request LogRequest) error {
+	return c.Call(ctx, "Log", request, nil)
 }
 
 type StorageGetRequest struct {

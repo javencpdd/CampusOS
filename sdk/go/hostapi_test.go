@@ -61,6 +61,84 @@ func TestHostClientStorageSetUsesPluginNamespace(t *testing.T) {
 	}
 }
 
+func TestHostClientGetThread(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/host/GetThread" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		var request GetThreadRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if request.ThreadID != "thread-1" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"id": "thread-1", "title": "Hello"})
+	}))
+	defer server.Close()
+
+	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
+	thread, err := client.GetThread(t.Context(), "thread-1")
+	if err != nil {
+		t.Fatalf("get thread: %v", err)
+	}
+	if thread["title"] != "Hello" {
+		t.Fatalf("unexpected thread: %#v", thread)
+	}
+}
+
+func TestHostClientCheckPermission(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/host/CheckPermission" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		var request CheckPermissionRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if request.UserID != "user-1" || request.Resource != "thread" || request.Action != "read" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(CheckPermissionResponse{Allowed: true})
+	}))
+	defer server.Close()
+
+	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
+	allowed, err := client.CheckPermission(t.Context(), "user-1", "thread", "read")
+	if err != nil {
+		t.Fatalf("check permission: %v", err)
+	}
+	if !allowed {
+		t.Fatalf("expected allowed")
+	}
+}
+
+func TestHostClientLog(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/host/Log" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		var request LogRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if request.Message != "handled event" || request.EventType != "thread.created" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	}))
+	defer server.Close()
+
+	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
+	if err := client.Log(t.Context(), LogRequest{
+		Level:     "info",
+		Message:   "handled event",
+		EventType: "thread.created",
+	}); err != nil {
+		t.Fatalf("log: %v", err)
+	}
+}
+
 func TestHostClientReturnsHTTPErrorBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)

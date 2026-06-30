@@ -9,7 +9,10 @@
 | Event 类型 | 已提供 |
 | Manifest 类型 | 已提供 |
 | Host API client | 已提供 |
+| `GetUser` / `GetThread` / `GetReply` / `QueryThreads` | 已封装 |
+| `PublishEvent` / `SendNotification` | 已封装 |
 | `GetConfig` | 已封装 |
+| `SetConfig` / `CheckPermission` / `Log` | 已封装 |
 | `StorageGet` / `StorageSet` / `StorageDelete` | 已封装 |
 | Wasm 编译模板 | 后续任务 |
 | 本地插件测试工具 | 后续任务 |
