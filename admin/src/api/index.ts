@@ -84,6 +84,7 @@ export const categoryApi = {
 export const pluginApi = {
   list: () => api.get('/plugins'),
   get: (name: string) => api.get(`/plugins/${name}`),
+  logs: (name: string, params?: { limit?: number }) => api.get(`/plugins/${name}/logs`, { params }),
   enable: (name: string) => api.post(`/plugins/${name}/enable`),
   disable: (name: string) => api.post(`/plugins/${name}/disable`),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),

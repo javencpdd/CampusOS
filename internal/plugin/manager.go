@@ -385,6 +385,19 @@ func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
 	}
 }
 
+func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
+	m.mu.RLock()
+	logRepo := m.logRepo
+	m.mu.RUnlock()
+	if logRepo == nil {
+		return []*PluginLogRecord{}, nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return logRepo.ListLogs(ctx, pluginName, limit)
+}
+
 func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {
 	metadata := map[string]interface{}{}
 	if event != nil {

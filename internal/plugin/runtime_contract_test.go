@@ -217,6 +217,28 @@ events:
 	assertLogMessage(t, logs, "plugin stopped")
 }
 
+func TestManagerListsPluginLogs(t *testing.T) {
+	repo := NewMemoryPluginRepository()
+	manager := NewManager()
+	manager.SetPluginRepository(repo)
+
+	if err := repo.SaveLog(context.Background(), &PluginLogRecord{
+		PluginName: "listed-plugin",
+		Level:      "info",
+		Message:    "plugin handled event",
+	}); err != nil {
+		t.Fatalf("save log: %v", err)
+	}
+
+	logs, err := manager.ListPluginLogs(context.Background(), "listed-plugin", 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Message != "plugin handled event" {
+		t.Fatalf("unexpected logs: %#v", logs)
+	}
+}
+
 func TestManagerWritesEventErrorLog(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: event-error-log
