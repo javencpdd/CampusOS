@@ -4,10 +4,23 @@
 > Skill 名称：`campusos-v03-dev-workflow`
 > 仓库内位置：`/home/jack/bbs/bbs01/CampusOS/skills/campusos-v03-dev-workflow`
 > Codex 用户级位置：`/home/jack/.codex/skills/campusos-v03-dev-workflow`
+> 当前定位：历史兼容入口；后续新阶段推荐使用 `campusos-dev-workflow`
 
 ## 1. 用途
 
 `campusos-v03-dev-workflow` 用于复用 CampusOS v0.3-dev 阶段的开发流程。
+
+如果任务涉及 `v0.4-dev`、`v0.5-dev` 或后续阶段，推荐改用通用 skill：
+
+```text
+campusos-dev-workflow
+```
+
+对应说明文档：
+
+```text
+docs/help/CampusOS-dev流程Skill使用说明.md
+```
 
 当前项目已将该 skill 及其相关工具移植到仓库内 `skills/campusos-v03-dev-workflow/`，便于后续开发、备份和迁移。`/home/jack/.codex/skills/campusos-v03-dev-workflow` 仍可作为 Codex 自动发现位置；如果更换机器或重装 Codex，可以从仓库内副本同步到用户级 skill 目录。
 

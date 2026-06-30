@@ -5,6 +5,8 @@ description: CampusOS v0.3-dev development workflow for completing implementatio
 
 # CampusOS v0.3-dev Workflow
 
+This is the legacy v0.3-dev workflow. For v0.4-dev, v0.5-dev, and later CampusOS stages, prefer `campusos-dev-workflow`.
+
 ## Core Rule
 
 Complete one coherent v0.3-dev task at a time. For each completed task:
