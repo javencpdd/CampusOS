@@ -9,6 +9,7 @@ type Config struct {
 	Redis    RedisConfig
 	NATS     NATSConfig
 	JWT      JWTConfig
+	Plugin   PluginConfig
 }
 
 type ServerConfig struct {
@@ -43,6 +44,10 @@ type JWTConfig struct {
 	Issuer     string
 }
 
+type PluginConfig struct {
+	DataDir string
+}
+
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -70,6 +75,9 @@ func Load() *Config {
 			AccessTTL:  getEnv("JWT_ACCESS_TTL", "2h"),
 			RefreshTTL: getEnv("JWT_REFRESH_TTL", "720h"),
 			Issuer:     getEnv("JWT_ISSUER", "campusos"),
+		},
+		Plugin: PluginConfig{
+			DataDir: getEnv("PLUGIN_DATA_DIR", ".campusos/plugin-data"),
 		},
 	}
 }

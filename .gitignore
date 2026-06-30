@@ -61,6 +61,7 @@ minio-data/
 postgres-data/
 redis-data/
 nats-data/
+.campusos/
 
 # ─── 临时文件 ───
 *.tmp

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -50,6 +53,18 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 	case "inspect":
 		if err := runPluginInspect(args[1:], stdout); err != nil {
 			fmt.Fprintf(stderr, "plugin inspect: %v\n", err)
+			return 1
+		}
+		return 0
+	case "pack":
+		if err := runPluginPack(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin pack: %v\n", err)
+			return 1
+		}
+		return 0
+	case "install":
+		if err := runPluginInstall(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin install: %v\n", err)
 			return 1
 		}
 		return 0
@@ -143,6 +158,313 @@ func runPluginInspect(args []string, stdout io.Writer) error {
 	return encoder.Encode(result)
 }
 
+func runPluginPack(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin pack", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	out := fs.String("out", "", "output package path")
+	pluginDir := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		pluginDir = args[0]
+		args = args[1:]
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if pluginDir == "" {
+		if fs.NArg() != 1 {
+			return errors.New("usage: campusosctl plugin pack <plugin-dir> [--out path]")
+		}
+		pluginDir = fs.Arg(0)
+	} else if fs.NArg() != 0 {
+		return errors.New("usage: campusosctl plugin pack <plugin-dir> [--out path]")
+	}
+	manifest, err := plugin.LoadManifest(filepath.Join(pluginDir, "plugin.yaml"))
+	if err != nil {
+		return err
+	}
+	if err := validatePluginPackageFiles(pluginDir, manifest); err != nil {
+		return err
+	}
+
+	outputPath := *out
+	if outputPath == "" {
+		outputPath = filepath.Join(filepath.Dir(filepath.Clean(pluginDir)), fmt.Sprintf("%s-%s.campusos-plugin.tar.gz", manifest.Name, manifest.Version))
+	}
+	if err := createPluginArchive(pluginDir, outputPath); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "packed plugin: %s\n", outputPath)
+	return nil
+}
+
+func runPluginInstall(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin install", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	dir := fs.String("dir", "examples/plugins", "target plugins directory")
+	replace := fs.Bool("replace", false, "replace existing plugin directory")
+	packagePath := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		packagePath = args[0]
+		args = args[1:]
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if packagePath == "" {
+		if fs.NArg() != 1 {
+			return errors.New("usage: campusosctl plugin install <package.tar.gz> [--dir plugins-dir] [--replace]")
+		}
+		packagePath = fs.Arg(0)
+	} else if fs.NArg() != 0 {
+		return errors.New("usage: campusosctl plugin install <package.tar.gz> [--dir plugins-dir] [--replace]")
+	}
+	if err := os.MkdirAll(*dir, 0o755); err != nil {
+		return err
+	}
+
+	tempDir, err := os.MkdirTemp(*dir, ".install-*")
+	if err != nil {
+		return err
+	}
+	keepTemp := false
+	defer func() {
+		if !keepTemp {
+			_ = os.RemoveAll(tempDir)
+		}
+	}()
+
+	if err := extractPluginArchive(packagePath, tempDir); err != nil {
+		return err
+	}
+	manifest, err := plugin.LoadManifest(filepath.Join(tempDir, "plugin.yaml"))
+	if err != nil {
+		return err
+	}
+	if err := validatePluginName(manifest.Name); err != nil {
+		return err
+	}
+	targetDir := filepath.Join(*dir, manifest.Name)
+	if _, err := os.Stat(targetDir); err == nil {
+		if !*replace {
+			return fmt.Errorf("%s already exists; use --replace to overwrite", targetDir)
+		}
+		if err := os.RemoveAll(targetDir); err != nil {
+			return err
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Rename(tempDir, targetDir); err != nil {
+		return err
+	}
+	keepTemp = true
+	fmt.Fprintf(stdout, "installed plugin: %s\n", targetDir)
+	return nil
+}
+
+func validatePluginPackageFiles(pluginDir string, manifest *plugin.Manifest) error {
+	if err := validatePluginName(manifest.Name); err != nil {
+		return err
+	}
+	if manifest.Runtime == "wasm" {
+		modulePath := "plugin.wasm"
+		if raw, ok := manifest.Config["module"]; ok {
+			if value, ok := raw.(string); ok && value != "" {
+				modulePath = value
+			}
+		}
+		if err := requireRelativePathInside(pluginDir, modulePath); err != nil {
+			return fmt.Errorf("invalid wasm module path: %w", err)
+		}
+		if _, err := os.Stat(filepath.Join(pluginDir, modulePath)); err != nil {
+			return fmt.Errorf("wasm module %s: %w", modulePath, err)
+		}
+	}
+	return nil
+}
+
+func createPluginArchive(pluginDir, outputPath string) error {
+	pluginRoot, err := filepath.Abs(filepath.Clean(pluginDir))
+	if err != nil {
+		return err
+	}
+	outputAbs, err := filepath.Abs(filepath.Clean(outputPath))
+	if err != nil {
+		return err
+	}
+	outputFile, err := os.Create(outputAbs)
+	if err != nil {
+		return err
+	}
+	defer outputFile.Close()
+
+	gz := gzip.NewWriter(outputFile)
+	defer gz.Close()
+	tw := tar.NewWriter(gz)
+	defer tw.Close()
+
+	return filepath.WalkDir(pluginRoot, func(filePath string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		fileAbs, err := filepath.Abs(filePath)
+		if err != nil {
+			return err
+		}
+		if fileAbs == outputAbs {
+			return nil
+		}
+		rel, err := filepath.Rel(pluginRoot, fileAbs)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return nil
+		}
+		if shouldSkipPluginPackagePath(rel, entry.IsDir()) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.ToSlash(rel)
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		file, err := os.Open(fileAbs)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(tw, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
+	})
+}
+
+func extractPluginArchive(packagePath, targetDir string) error {
+	file, err := os.Open(packagePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	gz, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+	tr := tar.NewReader(gz)
+
+	targetRoot, err := filepath.Abs(filepath.Clean(targetDir))
+	if err != nil {
+		return err
+	}
+	for {
+		header, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		cleanName, err := cleanArchiveName(header.Name)
+		if err != nil {
+			return err
+		}
+		if shouldSkipPluginPackagePath(cleanName, header.FileInfo().IsDir()) {
+			return fmt.Errorf("archive contains forbidden path: %s", header.Name)
+		}
+		targetPath := filepath.Join(targetRoot, filepath.FromSlash(cleanName))
+		targetAbs, err := filepath.Abs(filepath.Clean(targetPath))
+		if err != nil {
+			return err
+		}
+		if targetAbs != targetRoot && !strings.HasPrefix(targetAbs, targetRoot+string(os.PathSeparator)) {
+			return fmt.Errorf("archive path escapes target: %s", header.Name)
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetAbs, 0o755); err != nil {
+				return err
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			if err := os.MkdirAll(filepath.Dir(targetAbs), 0o755); err != nil {
+				return err
+			}
+			out, err := os.OpenFile(targetAbs, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode)&0o777)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(out, tr); err != nil {
+				out.Close()
+				return err
+			}
+			if err := out.Close(); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported archive entry type for %s", header.Name)
+		}
+	}
+}
+
+func cleanArchiveName(name string) (string, error) {
+	clean := path.Clean(strings.ReplaceAll(name, "\\", "/"))
+	if clean == "." || clean == "" || strings.HasPrefix(clean, "../") || clean == ".." || path.IsAbs(clean) {
+		return "", fmt.Errorf("unsafe archive path: %s", name)
+	}
+	return clean, nil
+}
+
+func shouldSkipPluginPackagePath(rel string, isDir bool) bool {
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	if len(parts) == 0 {
+		return false
+	}
+	switch parts[0] {
+	case ".git", "data", "node_modules":
+		return true
+	}
+	if !isDir {
+		base := filepath.Base(rel)
+		if strings.HasSuffix(base, ".log") || strings.HasSuffix(base, ".tmp") {
+			return true
+		}
+	}
+	return false
+}
+
+func requireRelativePathInside(rootDir, relPath string) error {
+	if relPath == "" || filepath.IsAbs(relPath) {
+		return fmt.Errorf("path must be relative: %s", relPath)
+	}
+	rootAbs, err := filepath.Abs(filepath.Clean(rootDir))
+	if err != nil {
+		return err
+	}
+	targetAbs, err := filepath.Abs(filepath.Clean(filepath.Join(rootAbs, relPath)))
+	if err != nil {
+		return err
+	}
+	if targetAbs != rootAbs && !strings.HasPrefix(targetAbs, rootAbs+string(os.PathSeparator)) {
+		return fmt.Errorf("path escapes plugin directory: %s", relPath)
+	}
+	return nil
+}
+
 func validatePluginName(name string) error {
 	if name == "" {
 		return errors.New("plugin name is required")
@@ -218,4 +540,6 @@ func printPluginUsage(w io.Writer) {
 	fmt.Fprintln(w, "commands:")
 	fmt.Fprintln(w, "  init      create a plugin scaffold")
 	fmt.Fprintln(w, "  inspect   inspect a plugin manifest")
+	fmt.Fprintln(w, "  pack      package a plugin directory")
+	fmt.Fprintln(w, "  install   install a packaged plugin")
 }

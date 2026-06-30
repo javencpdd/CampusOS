@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -63,6 +64,7 @@ type PluginRepository interface {
 	GetByName(ctx context.Context, name string) (*PluginRecord, error)
 	List(ctx context.Context) ([]*PluginRecord, error)
 	UpdateStatus(ctx context.Context, name, status, errorMsg string) error
+	UpdateConfig(ctx context.Context, name string, config map[string]interface{}) error
 	Delete(ctx context.Context, name string) error
 }
 
@@ -129,6 +131,32 @@ func (r *MemoryPluginRepository) UpdateStatus(_ context.Context, name, status, e
 	}
 	p.Status = status
 	p.ErrorMsg = errorMsg
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryPluginRepository) UpdateConfig(_ context.Context, name string, config map[string]interface{}) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	p, ok := r.plugins[name]
+	if !ok {
+		p = &PluginRecord{
+			Name:        name,
+			DisplayName: name,
+			Version:     "0.0.0",
+			Runtime:     "wasm",
+			Status:      "installed",
+			InstalledBy: "system",
+			InstalledAt: time.Now(),
+		}
+		r.plugins[name] = p
+	}
+	p.Config = string(configJSON)
 	p.UpdatedAt = time.Now()
 	return nil
 }

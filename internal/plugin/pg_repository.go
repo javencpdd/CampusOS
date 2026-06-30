@@ -92,6 +92,20 @@ func (r *PgPluginRepository) UpdateStatus(ctx context.Context, name, status, err
 	return err
 }
 
+func (r *PgPluginRepository) UpdateConfig(ctx context.Context, name string, config map[string]interface{}) error {
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	query := `INSERT INTO plugins (id, name, display_name, config, installed_at, updated_at)
+		VALUES ($1, $2, $3, $4::jsonb, $5, $5)
+		ON CONFLICT (name) WHERE deleted_at IS NULL
+		DO UPDATE SET config = EXCLUDED.config, updated_at = EXCLUDED.updated_at`
+	now := time.Now()
+	_, err = r.pool.Exec(ctx, query, idgen.New(), name, name, string(configJSON), now)
+	return err
+}
+
 func (r *PgPluginRepository) Delete(ctx context.Context, name string) error {
 	query := `UPDATE plugins SET deleted_at = NOW() WHERE name = $1 AND deleted_at IS NULL`
 	_, err := r.pool.Exec(ctx, query, name)
