@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	Server   ServerConfig
@@ -10,6 +13,7 @@ type Config struct {
 	NATS     NATSConfig
 	JWT      JWTConfig
 	Plugin   PluginConfig
+	AI       AIConfig
 }
 
 type ServerConfig struct {
@@ -48,6 +52,17 @@ type PluginConfig struct {
 	DataDir string
 }
 
+type AIConfig struct {
+	Enabled              bool
+	Provider             string
+	BaseURL              string
+	Model                string
+	APIKey               string
+	Timeout              string
+	MaxRequestsPerMinute int
+	MaxConcurrent        int
+}
+
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -79,6 +94,16 @@ func Load() *Config {
 		Plugin: PluginConfig{
 			DataDir: getEnv("PLUGIN_DATA_DIR", ".campusos/plugin-data"),
 		},
+		AI: AIConfig{
+			Enabled:              getEnv("AI_ENABLED", "false") == "true",
+			Provider:             getEnv("AI_PROVIDER", "openai-compatible"),
+			BaseURL:              getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
+			Model:                getEnv("AI_MODEL", "gpt-4o-mini"),
+			APIKey:               getEnv("AI_API_KEY", ""),
+			Timeout:              getEnv("AI_TIMEOUT", "30s"),
+			MaxRequestsPerMinute: getEnvInt("AI_MAX_REQUESTS_PER_MINUTE", 60),
+			MaxConcurrent:        getEnvInt("AI_MAX_CONCURRENT", 4),
+		},
 	}
 }
 
@@ -89,6 +114,16 @@ func (s *ServerConfig) Addr() string {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		parsed, err := strconv.Atoi(v)
+		if err == nil {
+			return parsed
+		}
 	}
 	return fallback
 }
