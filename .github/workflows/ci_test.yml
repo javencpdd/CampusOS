@@ -125,3 +125,25 @@ jobs:
       - name: Build ${{ matrix.app }}
         working-directory: ${{ matrix.working-directory }}
         run: pnpm build
+
+  windows-go:
+    name: Windows Go Test
+    runs-on: windows-latest
+
+    # Windows runner 先验证不依赖 Docker/PostgreSQL 的 Go 单元测试。
+    # 数据库迁移仍由 Ubuntu backend job 负责，避免 Windows CI 引入额外服务编排复杂度。
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Run Go tests
+        run: go test ./... -v -count=1
