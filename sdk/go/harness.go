@@ -10,7 +10,7 @@ import (
 
 type Harness struct {
 	mu          sync.Mutex
-	server      *httptest.Server
+	handler     http.Handler
 	pluginName  string
 	Config      map[string]interface{}
 	Storage     map[string]string
@@ -32,25 +32,36 @@ func NewHarness(pluginName string) *Harness {
 		Replies:     map[string]map[string]interface{}{},
 		Permissions: map[string]bool{},
 	}
-	h.server = httptest.NewServer(http.HandlerFunc(h.handle))
+	h.handler = http.HandlerFunc(h.handle)
 	return h
 }
 
 func (h *Harness) Close() {
-	if h != nil && h.server != nil {
-		h.server.Close()
-	}
 }
 
 func (h *Harness) BaseURL() string {
-	if h == nil || h.server == nil {
+	if h == nil {
 		return ""
 	}
-	return h.server.URL
+	return "http://campusos-harness"
 }
 
 func (h *Harness) Client() *HostClient {
-	return NewHostClientWithBaseURL(h.BaseURL(), h.pluginName)
+	return NewHostClientWithBaseURL(
+		h.BaseURL(),
+		h.pluginName,
+		WithHTTPClient(&http.Client{Transport: handlerTransport{handler: h.handler}}),
+	)
+}
+
+type handlerTransport struct {
+	handler http.Handler
+}
+
+func (t handlerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	t.handler.ServeHTTP(recorder, req)
+	return recorder.Result(), nil
 }
 
 func (h *Harness) SetPermission(userID, resource, action string, allowed bool) {

@@ -22,3 +22,18 @@ config:
   module: "plugin.wasm"
   entrypoint: "handle_event"
   event_timeout_ms: 1000
+
+config_schema:
+  fields:
+    - key: "entrypoint"
+      label: "Entrypoint"
+      type: "string"
+      description: "导出的 Wasm 事件处理函数名"
+      required: true
+      default: "handle_event"
+    - key: "event_timeout_ms"
+      label: "Event timeout"
+      type: "number"
+      description: "单次事件处理超时时间，单位毫秒"
+      required: true
+      default: 1000

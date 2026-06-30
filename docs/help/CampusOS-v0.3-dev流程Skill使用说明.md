@@ -1,12 +1,28 @@
 # CampusOS v0.3-dev 流程 Skill 使用说明
 
-> 日期：2026-06-28
+> 日期：2026-07-01
 > Skill 名称：`campusos-v03-dev-workflow`
-> 安装位置：`/home/jack/.codex/skills/campusos-v03-dev-workflow`
+> 仓库内位置：`/home/jack/bbs/bbs01/CampusOS/skills/campusos-v03-dev-workflow`
+> Codex 用户级位置：`/home/jack/.codex/skills/campusos-v03-dev-workflow`
+> 当前定位：历史兼容入口；后续新阶段推荐使用 `campusos-dev-workflow`
 
 ## 1. 用途
 
 `campusos-v03-dev-workflow` 用于复用 CampusOS v0.3-dev 阶段的开发流程。
+
+如果任务涉及 `v0.4-dev`、`v0.5-dev` 或后续阶段，推荐改用通用 skill：
+
+```text
+campusos-dev-workflow
+```
+
+对应说明文档：
+
+```text
+docs/help/CampusOS-dev流程Skill使用说明.md
+```
+
+当前项目已将该 skill 及其相关工具移植到仓库内 `skills/campusos-v03-dev-workflow/`，便于后续开发、备份和迁移。`/home/jack/.codex/skills/campusos-v03-dev-workflow` 仍可作为 Codex 自动发现位置；如果更换机器或重装 Codex，可以从仓库内副本同步到用户级 skill 目录。
 
 它固化以下规则：
 
@@ -111,10 +127,16 @@ PY
 
 ## 6. 辅助检查脚本
 
-skill 内置了辅助脚本：
+skill 内置了辅助脚本。仓库内副本推荐使用：
 
 ```bash
-/home/jack/.codex/skills/campusos-v03-dev-workflow/scripts/check_v03_task.sh /home/jack/bbs/bbs01/CampusOS
+skills/campusos-v03-dev-workflow/scripts/check_v03_task.sh
+```
+
+也可以显式指定仓库路径：
+
+```bash
+skills/campusos-v03-dev-workflow/scripts/check_v03_task.sh /home/jack/bbs/bbs01/CampusOS
 ```
 
 该脚本会检查：
@@ -126,7 +148,52 @@ skill 内置了辅助脚本：
 | 空白检查 | 执行 `git diff --check` |
 | 后端测试 | 执行 `go test ./...` |
 
-## 7. 当前 v0.3-dev 首轮建议顺序
+脚本默认使用：
+
+```bash
+GOCACHE=/tmp/campusos-go-cache
+```
+
+这样可以避免受限环境中默认 Go 构建缓存目录不可写导致测试失败。
+
+## 7. 仓库内 Skill 目录结构
+
+当前仓库内副本包含：
+
+```text
+skills/campusos-v03-dev-workflow/
+├── SKILL.md
+├── agents/
+│   └── openai.yaml
+├── references/
+│   └── campusos-v03-dev.md
+└── scripts/
+    └── check_v03_task.sh
+```
+
+| 文件 | 作用 |
+| --- | --- |
+| `SKILL.md` | skill 主说明，定义触发场景、执行流程、验证和提交规则 |
+| `agents/openai.yaml` | UI 展示元数据 |
+| `references/campusos-v03-dev.md` | v0.3-dev 任务优先级、文档规范和验证矩阵 |
+| `scripts/check_v03_task.sh` | 本地检查脚本，执行状态检查、空白检查和 Go 测试 |
+
+## 8. 同步到 Codex 用户级 Skill 目录
+
+如果需要让 Codex 在新环境中自动发现该 skill，可以从仓库内副本同步到用户级目录：
+
+```bash
+mkdir -p /home/jack/.codex/skills
+rsync -a skills/campusos-v03-dev-workflow/ /home/jack/.codex/skills/campusos-v03-dev-workflow/
+```
+
+同步后可通过以下方式触发：
+
+```text
+使用 campusos-v03-dev-workflow 继续完成下一个 v0.3-dev 任务，更新进度文档并提交。
+```
+
+## 9. 当前 v0.3-dev 首轮建议顺序
 
 | 顺序 | 任务 |
 | --- | --- |
@@ -139,9 +206,10 @@ skill 内置了辅助脚本：
 | 7 | `hello-wasm` 示例插件 |
 | 8 | SDK/CLI 初版 |
 
-## 8. 注意事项
+## 10. 注意事项
 
-- skill 创建在用户级 Codex 目录，不在 CampusOS 仓库内。
-- CampusOS 仓库只保存本说明文档和每次任务进度文档。
-- 如果后续需要迁移到另一台机器，需要复制 `/home/jack/.codex/skills/campusos-v03-dev-workflow`。
+- skill 已同时保留在 CampusOS 仓库内和用户级 Codex 目录中。
+- 仓库内副本用于项目归档、迁移和版本管理。
+- 用户级目录用于 Codex 自动发现和直接触发。
+- 如果后续更新 skill，建议先更新仓库内副本，再按需同步到 `/home/jack/.codex/skills/campusos-v03-dev-workflow`。
 - 每次任务只提交相关文件，不混入无关修改。

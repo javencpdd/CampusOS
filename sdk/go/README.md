@@ -8,6 +8,7 @@
 | --- | --- |
 | Event 类型 | 已提供 |
 | Manifest 类型 | 已提供 |
+| Manifest `config_schema` 类型 | 已提供 |
 | Host API client | 已提供 |
 | `GetUser` / `GetThread` / `GetReply` / `QueryThreads` | 已封装 |
 | `PublishEvent` / `SendNotification` | 已封装 |
@@ -57,4 +58,24 @@ client := harness.Client()
 value, found, err := client.GetConfig(ctx, "entrypoint")
 ```
 
-Harness 当前支持配置、存储、事件发布、日志、用户/主题/回复查询和权限检查的最小模拟。
+Harness 当前支持配置、存储、事件发布、日志、用户/主题/回复查询和权限检查的最小模拟。Harness 使用内存 HTTP transport，不监听本地端口，适合在受限 CI 或沙箱环境中运行。
+
+## 配置 Schema
+
+Manifest 可声明 `config_schema`，供后台或 CLI 渲染插件配置表单：
+
+```yaml
+config_schema:
+  fields:
+    - key: "entrypoint"
+      label: "Entrypoint"
+      type: "string"
+      required: true
+      default: "handle_event"
+```
+
+SDK 中对应 `ConfigSchema`、`ConfigField`、`ConfigOption` 类型。当前字段类型建议使用：
+
+```text
+string, text, number, boolean, select, json
+```

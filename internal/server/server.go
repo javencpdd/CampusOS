@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/ai"
 	"github.com/campusos/CampusOS/internal/community/handler"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/internal/community/service"
@@ -17,6 +18,7 @@ import (
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
+	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -100,11 +102,14 @@ func (s *Server) Run() error {
 		DB:       redisDB,
 	})
 
+	// ─── 初始化 AI Gateway ───
+	aiService := s.initAIService()
+
 	// ─── 初始化 PostgreSQL ───
 	pool, err := database.New(s.cfg.Database.DSN)
 	if err != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，回退到内存模式: %v", err)
-		return s.runMemoryMode(bus, memBus)
+		return s.runMemoryMode(bus, memBus, aiService)
 	}
 	defer pool.Close()
 	log.Printf("✅ PostgreSQL 连接成功")
@@ -113,6 +118,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
+	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
 	if err := SeedAdmin(pool); err != nil {
@@ -127,6 +133,7 @@ func (s *Server) Run() error {
 	threadRepo := repository.NewPgThreadRepository(pool)
 	categoryRepo := repository.NewPgCategoryRepository(pool)
 	postRepo := repository.NewPgPostRepository(pool)
+	spaceRepo := space.NewPgRepository(pool)
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
@@ -154,26 +161,30 @@ func (s *Server) Run() error {
 	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
+	spaceSvc := space.NewService(spaceRepo, userRepo)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
+	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
 	pluginHandler := plugin.NewHandler(s.manager)
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
+	aiHandler := ai.NewHandler(aiService)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler)
 }
 
-func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus) error {
+func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service) error {
 	jwtMgr := s.newJWTManager()
 
 	userRepo := identityrepo.NewMemoryUserRepository()
 	threadRepo := repository.NewMemoryThreadRepository()
 	categoryRepo := repository.NewMemoryCategoryRepository()
 	postRepo := repository.NewMemoryPostRepository()
+	spaceRepo := space.NewMemoryRepository()
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
@@ -201,16 +212,34 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
+	spaceSvc := space.NewService(spaceRepo, userRepo)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
 	categoryHandler := handler.NewCategoryHandler(categorySvc)
 	postHandler := handler.NewPostHandler(postSvc)
+	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
 	pluginHandler := plugin.NewHandler(s.manager)
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
+	aiHandler := ai.NewHandler(aiService)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, eventHandler, pluginHandler, roleHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler)
+}
+
+func (s *Server) initAIService() *ai.Service {
+	service, err := ai.NewServiceFromConfig(s.cfg.AI)
+	status := service.Status()
+	if err != nil {
+		log.Printf("⚠️  AI Gateway 初始化失败: %v", err)
+		return service
+	}
+	if status.Enabled && status.Ready {
+		log.Printf("✅ AI Gateway 已启用: provider=%s", status.Provider)
+		return service
+	}
+	log.Printf("🔌 AI Gateway 已禁用")
+	return service
 }
 
 func (s *Server) startHostAPIServer(hostAPI *hostapi.HostAPIv2) (*hostapi.HostAPIServer, error) {
@@ -265,9 +294,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	threadHandler *handler.ThreadHandler,
 	categoryHandler *handler.CategoryHandler,
 	postHandler *handler.PostHandler,
+	spaceHandler *space.Handler,
 	eventHandler *handler.EventHandler,
 	pluginHandler *plugin.Handler,
-	roleHandler *identityhandler.RoleHandler) error {
+	roleHandler *identityhandler.RoleHandler,
+	aiHandler *ai.Handler) error {
 
 	r := gin.Default()
 
@@ -289,6 +320,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/threads/:id", threadHandler.GetThread)
 		public.GET("/users", userHandler.ListUsers)
 		public.GET("/users/:id", userHandler.GetUser)
+		public.GET("/space/:user_id", spaceHandler.GetByUserID)
+		public.GET("/u/:username", spaceHandler.GetByUsername)
 		public.GET("/categories", categoryHandler.List)
 		public.GET("/categories/:id", categoryHandler.Get)
 		public.GET("/threads/:id/posts", postHandler.ListPosts)
@@ -301,6 +334,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	{
 		authenticated.GET("/auth/me", userHandler.GetMe)
 		authenticated.PUT("/users/:id", userHandler.UpdateUser)
+		authenticated.GET("/spaces/me", spaceHandler.GetMe)
+		authenticated.PUT("/spaces/me", spaceHandler.UpdateMe)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
@@ -336,6 +371,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
 
+		// AI Gateway 管理
+		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.GetStatus)
+		admin.GET("/ai/logs", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.ListLogs)
+
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)
 		admin.GET("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.GetUserRoles)
@@ -348,7 +387,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 40")
+	log.Printf("📋 API 端点总数: 46")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }
