@@ -144,14 +144,15 @@ func runPluginInspect(args []string, stdout io.Writer) error {
 		return err
 	}
 	result := map[string]interface{}{
-		"name":         manifest.Name,
-		"display_name": manifest.DisplayName,
-		"version":      manifest.Version,
-		"runtime":      manifest.Runtime,
-		"events":       manifest.Events.Subscribe,
-		"permissions":  manifest.Permissions.API,
-		"storage":      manifest.Storage,
-		"config":       manifest.Config,
+		"name":          manifest.Name,
+		"display_name":  manifest.DisplayName,
+		"version":       manifest.Version,
+		"runtime":       manifest.Runtime,
+		"events":        manifest.Events.Subscribe,
+		"permissions":   manifest.Permissions.API,
+		"storage":       manifest.Storage,
+		"config":        manifest.Config,
+		"config_schema": manifest.ConfigSchema,
 	}
 	encoder := json.NewEncoder(stdout)
 	encoder.SetIndent("", "  ")
@@ -479,14 +480,37 @@ func validatePluginName(name string) error {
 }
 
 func pluginManifestTemplate(name, runtime string) string {
-	module := ""
+	config := ""
+	configSchema := ""
 	if runtime == "wasm" {
-		module = `  module: "plugin.wasm"
+		config = `  module: "plugin.wasm"
   entrypoint: "handle_event"
   event_timeout_ms: 1000`
+		configSchema = `  fields:
+    - key: "entrypoint"
+      label: "Entrypoint"
+      type: "string"
+      required: true
+      default: "handle_event"
+    - key: "event_timeout_ms"
+      label: "Event timeout"
+      type: "number"
+      required: true
+      default: 1000`
 	} else {
-		module = `  command: "./plugin"
+		config = `  command: "./plugin"
   event_timeout_ms: 1000`
+		configSchema = `  fields:
+    - key: "command"
+      label: "Command"
+      type: "string"
+      required: true
+      default: "./plugin"
+    - key: "event_timeout_ms"
+      label: "Event timeout"
+      type: "number"
+      required: true
+      default: 1000`
 	}
 	return strings.TrimSpace(fmt.Sprintf(`
 name: %s
@@ -510,7 +534,10 @@ storage:
 
 config:
 %s
-`, name, name, runtime, module)) + "\n"
+
+config_schema:
+%s
+`, name, name, runtime, config, configSchema)) + "\n"
 }
 
 func pluginReadmeTemplate(name string) string {

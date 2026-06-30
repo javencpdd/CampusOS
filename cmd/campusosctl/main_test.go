@@ -34,8 +34,39 @@ func TestPluginInitCreatesScaffold(t *testing.T) {
 	if manifest.Config["entrypoint"] != "handle_event" {
 		t.Fatalf("expected wasm entrypoint config, got %#v", manifest.Config)
 	}
+	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
+		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
+	}
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); err != nil {
 		t.Fatalf("expected README: %v", err)
+	}
+}
+
+func TestPluginInitCreatesGRPCScaffold(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "grpc-plugin")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"plugin", "init", "grpc-plugin", "--runtime", "grpc", "--dir", dir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	manifest, err := plugin.LoadManifest(filepath.Join(dir, "plugin.yaml"))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if manifest.Runtime != "grpc" {
+		t.Fatalf("expected grpc runtime, got %q", manifest.Runtime)
+	}
+	if manifest.Config["command"] != "./plugin" {
+		t.Fatalf("expected grpc command config, got %#v", manifest.Config)
+	}
+	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
+		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
+	}
+	if manifest.ConfigSchema.Fields[0].Key != "command" {
+		t.Fatalf("expected command schema field, got %#v", manifest.ConfigSchema.Fields[0])
 	}
 }
 
@@ -50,6 +81,14 @@ events:
     - thread.created
 storage:
   type: none
+config_schema:
+  fields:
+    - key: theme
+      label: "Theme"
+      type: select
+      options:
+        - label: "Light"
+          value: "light"
 `), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
@@ -68,6 +107,9 @@ storage:
 	if summary["name"] != "inspected-plugin" || summary["runtime"] != "wasm" {
 		t.Fatalf("unexpected summary: %#v", summary)
 	}
+	if summary["config_schema"] == nil {
+		t.Fatalf("expected config_schema in summary: %#v", summary)
+	}
 }
 
 func TestPluginInitRejectsInvalidName(t *testing.T) {
@@ -79,6 +121,41 @@ func TestPluginInitRejectsInvalidName(t *testing.T) {
 		t.Fatalf("expected non-zero exit")
 	}
 	if !strings.Contains(stderr.String(), "can only contain") {
+		t.Fatalf("unexpected stderr: %s", stderr.String())
+	}
+}
+
+func TestPluginPackRejectsInvalidConfigSchema(t *testing.T) {
+	sourceDir := filepath.Join(t.TempDir(), "invalid-schema")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		t.Fatalf("create source dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.yaml"), []byte(`
+name: invalid-schema
+version: "0.1.0"
+runtime: wasm
+storage:
+  type: none
+config:
+  module: "plugin.wasm"
+config_schema:
+  fields:
+    - key: layout
+      type: select
+`), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), []byte("wasm"), 0o644); err != nil {
+		t.Fatalf("write wasm: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"plugin", "pack", sourceDir}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatalf("expected invalid schema to fail")
+	}
+	if !strings.Contains(stderr.String(), "requires options") {
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
 }

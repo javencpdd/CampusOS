@@ -3,12 +3,11 @@ package campusos
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
 func TestHostClientGetConfigSendsPluginIdentity(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
 		}
@@ -27,9 +26,7 @@ func TestHostClientGetConfigSendsPluginIdentity(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(GetConfigResponse{Value: "handle_event", Found: true})
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	value, found, err := client.GetConfig(t.Context(), "entrypoint")
 	if err != nil {
 		t.Fatalf("get config: %v", err)
@@ -40,7 +37,7 @@ func TestHostClientGetConfigSendsPluginIdentity(t *testing.T) {
 }
 
 func TestHostClientStorageSetUsesPluginNamespace(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/host/StorageSet" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -53,16 +50,14 @@ func TestHostClientStorageSetUsesPluginNamespace(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	if err := client.StorageSet(t.Context(), "hello", "world"); err != nil {
 		t.Fatalf("storage set: %v", err)
 	}
 }
 
 func TestHostClientGetThread(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/host/GetThread" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -75,9 +70,7 @@ func TestHostClientGetThread(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"id": "thread-1", "title": "Hello"})
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	thread, err := client.GetThread(t.Context(), "thread-1")
 	if err != nil {
 		t.Fatalf("get thread: %v", err)
@@ -88,7 +81,7 @@ func TestHostClientGetThread(t *testing.T) {
 }
 
 func TestHostClientCheckPermission(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/host/CheckPermission" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -101,9 +94,7 @@ func TestHostClientCheckPermission(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(CheckPermissionResponse{Allowed: true})
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	allowed, err := client.CheckPermission(t.Context(), "user-1", "thread", "read")
 	if err != nil {
 		t.Fatalf("check permission: %v", err)
@@ -114,7 +105,7 @@ func TestHostClientCheckPermission(t *testing.T) {
 }
 
 func TestHostClientLog(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/host/Log" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
@@ -127,9 +118,7 @@ func TestHostClientLog(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	if err := client.Log(t.Context(), LogRequest{
 		Level:     "info",
 		Message:   "handled event",
@@ -140,14 +129,20 @@ func TestHostClientLog(t *testing.T) {
 }
 
 func TestHostClientReturnsHTTPErrorBody(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`{"error":"permission denied"}`))
 	}))
-	defer server.Close()
 
-	client := NewHostClientWithBaseURL(server.URL, "sdk-plugin")
 	if _, _, err := client.GetConfig(t.Context(), "entrypoint"); err == nil {
 		t.Fatalf("expected error")
 	}
+}
+
+func newTestHostClient(pluginName string, handler http.Handler) *HostClient {
+	return NewHostClientWithBaseURL(
+		"http://campusos-host-test",
+		pluginName,
+		WithHTTPClient(&http.Client{Transport: handlerTransport{handler: handler}}),
+	)
 }

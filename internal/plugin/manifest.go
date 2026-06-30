@@ -27,6 +27,9 @@ type Manifest struct {
 
 	// 运行时配置
 	Config map[string]interface{} `yaml:"config" json:"config,omitempty"`
+
+	// 配置表单 schema，用于后台或 CLI 渲染可编辑配置项
+	ConfigSchema *ConfigSchema `yaml:"config_schema,omitempty" json:"config_schema,omitempty"`
 }
 
 type EventsConfig struct {
@@ -49,6 +52,25 @@ type StorageConfig struct {
 
 type SQLiteConfig struct {
 	Filename string `yaml:"filename" json:"filename"`
+}
+
+type ConfigSchema struct {
+	Fields []ConfigField `yaml:"fields" json:"fields"`
+}
+
+type ConfigField struct {
+	Key         string         `yaml:"key" json:"key"`
+	Label       string         `yaml:"label" json:"label"`
+	Type        string         `yaml:"type" json:"type"`
+	Description string         `yaml:"description,omitempty" json:"description,omitempty"`
+	Required    bool           `yaml:"required,omitempty" json:"required,omitempty"`
+	Default     interface{}    `yaml:"default,omitempty" json:"default,omitempty"`
+	Options     []ConfigOption `yaml:"options,omitempty" json:"options,omitempty"`
+}
+
+type ConfigOption struct {
+	Label string      `yaml:"label" json:"label"`
+	Value interface{} `yaml:"value" json:"value"`
 }
 
 // LoadManifest 从文件路径加载 Manifest
@@ -86,7 +108,46 @@ func (m *Manifest) Validate() error {
 	if m.Runtime != "grpc" && m.Runtime != "wasm" {
 		return fmt.Errorf("manifest: runtime must be 'grpc' or 'wasm', got '%s'", m.Runtime)
 	}
+	if err := m.validateConfigSchema(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (m *Manifest) validateConfigSchema() error {
+	if m.ConfigSchema == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for i := range m.ConfigSchema.Fields {
+		field := &m.ConfigSchema.Fields[i]
+		if field.Key == "" {
+			return fmt.Errorf("manifest: config_schema.fields[%d].key is required", i)
+		}
+		if seen[field.Key] {
+			return fmt.Errorf("manifest: config_schema field %q is duplicated", field.Key)
+		}
+		seen[field.Key] = true
+		if field.Type == "" {
+			field.Type = "string"
+		}
+		if !isAllowedConfigFieldType(field.Type) {
+			return fmt.Errorf("manifest: config_schema field %q has unsupported type %q", field.Key, field.Type)
+		}
+		if field.Type == "select" && len(field.Options) == 0 {
+			return fmt.Errorf("manifest: config_schema field %q requires options", field.Key)
+		}
+	}
+	return nil
+}
+
+func isAllowedConfigFieldType(fieldType string) bool {
+	switch fieldType {
+	case "string", "text", "number", "boolean", "select", "json":
+		return true
+	default:
+		return false
+	}
 }
 
 // HasEvent 检查插件是否订阅了指定事件
