@@ -2,7 +2,12 @@
 
 `hello-wasm` 是 CampusOS v0.3-dev 的最小 Wasm 插件示例。
 
-当前 Wasm Runtime 的事件 ABI 仍然很小：
+当前 Wasm Runtime 支持两种事件 ABI：
+
+- `handle_event()`：无参数兼容 ABI，返回非 0 表示允许事件继续。
+- `handle_event(i32 ptr, i32 len)`：payload ABI，Runtime 将 JSON 格式的 `EventMessage` 写入插件导出的 `memory`，再把 `ptr` 和 `len` 传给入口函数。
+
+本示例仍使用无参数兼容 ABI：
 
 - Runtime 启动时读取 `plugin.yaml` 中的 `config.module`。
 - Runtime 实例化 `plugin.wasm`。

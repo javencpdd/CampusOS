@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -22,27 +23,43 @@ var (
 	ErrEventHandlerMissing = errors.New("wasm event handler is missing")
 	ErrEventCallTimeout    = errors.New("wasm event call timed out")
 	ErrEventCallFailed     = errors.New("wasm event call failed")
+	ErrEventPayloadABI     = errors.New("wasm event payload abi is unsupported")
 )
 
 const (
-	defaultEntrypoint   = "handle_event"
-	defaultEventTimeout = 2 * time.Second
+	defaultEntrypoint         = "handle_event"
+	defaultEventTimeout       = 2 * time.Second
+	defaultEventPayloadOffset = uint32(0)
+	eventPayloadMemoryName    = "memory"
+	eventHeapBaseGlobalName   = "__heap_base"
+	maxUint32Value            = uint64(1<<32 - 1)
+	wasm32MemoryLimit         = uint64(1) << 32
+)
+
+type eventABI int
+
+const (
+	eventABINoArgs eventABI = iota
+	eventABIPayloadJSON
 )
 
 type moduleState struct {
-	name       string
-	modulePath string
-	entrypoint string
-	timeout    time.Duration
-	module     api.Module
-	startedAt  time.Time
+	name          string
+	modulePath    string
+	entrypoint    string
+	eventABI      eventABI
+	payloadOffset uint32
+	timeout       time.Duration
+	module        api.Module
+	startedAt     time.Time
 }
 
 // Runtime is the v0.3-dev Wasm runtime.
 //
-// The current event ABI is intentionally small: SendEvent invokes an exported
-// no-argument function named "handle_event" by default. A non-zero i32/i64
-// return value means the plugin allows the event.
+// The v0.3-dev event ABI supports either handle_event() for legacy examples,
+// or handle_event(i32 ptr, i32 len) where ptr/len reference JSON EventMessage
+// bytes written to exported guest memory. A non-zero i32/i64 return value means
+// the plugin allows the event.
 type Runtime struct {
 	runtime wazero.Runtime
 
@@ -106,14 +123,34 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 		_ = module.Close(ctx)
 		return fmt.Errorf("%w: %s", ErrEventHandlerMissing, entrypoint)
 	}
+	handler := module.ExportedFunction(entrypoint)
+	eventABI, err := detectEventABI(handler)
+	if err != nil {
+		_ = module.Close(ctx)
+		return err
+	}
+	payloadOffset := defaultEventPayloadOffset
+	if eventABI == eventABIPayloadJSON {
+		if eventPayloadMemory(module) == nil {
+			_ = module.Close(ctx)
+			return fmt.Errorf("%w: %s requires exported memory %q", ErrEventPayloadABI, entrypoint, eventPayloadMemoryName)
+		}
+		payloadOffset, err = resolveEventPayloadOffset(module)
+		if err != nil {
+			_ = module.Close(ctx)
+			return err
+		}
+	}
 
 	r.modules[p.Manifest.Name] = moduleState{
-		name:       p.Manifest.Name,
-		modulePath: modulePath,
-		entrypoint: entrypoint,
-		timeout:    timeout,
-		module:     module,
-		startedAt:  time.Now(),
+		name:          p.Manifest.Name,
+		modulePath:    modulePath,
+		entrypoint:    entrypoint,
+		eventABI:      eventABI,
+		payloadOffset: payloadOffset,
+		timeout:       timeout,
+		module:        module,
+		startedAt:     time.Now(),
 	}
 	return nil
 }
@@ -122,7 +159,7 @@ func (r *Runtime) Stop(ctx context.Context, pluginName string) error {
 	return r.closeModule(ctx, pluginName)
 }
 
-func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.EventMessage) (response *plugin.PluginResponse, err error) {
+func (r *Runtime) SendEvent(ctx context.Context, pluginName string, event *plugin.EventMessage) (response *plugin.PluginResponse, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			_ = r.closeModule(context.Background(), pluginName)
@@ -147,7 +184,12 @@ func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.Ev
 	callCtx, cancel := context.WithTimeout(ctx, state.timeout)
 	defer cancel()
 
-	results, err := handler.Call(callCtx)
+	params, err := r.eventHandlerParams(state, event)
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := handler.Call(callCtx, params...)
 	if err != nil {
 		if errors.Is(callCtx.Err(), context.DeadlineExceeded) {
 			_ = r.closeModule(context.Background(), pluginName)
@@ -166,6 +208,34 @@ func (r *Runtime) SendEvent(ctx context.Context, pluginName string, _ *plugin.Ev
 		resp.Message = "wasm event handler rejected event"
 	}
 	return resp, nil
+}
+
+func (r *Runtime) eventHandlerParams(state moduleState, event *plugin.EventMessage) ([]uint64, error) {
+	switch state.eventABI {
+	case eventABINoArgs:
+		return nil, nil
+	case eventABIPayloadJSON:
+		if event == nil {
+			event = &plugin.EventMessage{}
+		}
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return nil, fmt.Errorf("%w: marshal event: %v", ErrEventPayloadABI, err)
+		}
+		if uint64(len(payload)) > wasm32MemoryLimit-uint64(state.payloadOffset) {
+			return nil, fmt.Errorf("%w: event payload too large", ErrEventPayloadABI)
+		}
+		memory := eventPayloadMemory(state.module)
+		if memory == nil {
+			return nil, fmt.Errorf("%w: %s requires exported memory %q", ErrEventPayloadABI, state.entrypoint, eventPayloadMemoryName)
+		}
+		if !memory.Write(state.payloadOffset, payload) {
+			return nil, fmt.Errorf("%w: event payload does not fit guest memory", ErrEventPayloadABI)
+		}
+		return []uint64{uint64(state.payloadOffset), uint64(len(payload))}, nil
+	default:
+		return nil, fmt.Errorf("%w: unknown event ABI", ErrEventPayloadABI)
+	}
 }
 
 func (r *Runtime) HealthCheck(ctx context.Context, pluginName string) error {
@@ -271,4 +341,35 @@ func durationFromMilliseconds(ms int64) time.Duration {
 		return defaultEventTimeout
 	}
 	return time.Duration(ms) * time.Millisecond
+}
+
+func detectEventABI(handler api.Function) (eventABI, error) {
+	params := handler.Definition().ParamTypes()
+	switch {
+	case len(params) == 0:
+		return eventABINoArgs, nil
+	case len(params) == 2 && params[0] == api.ValueTypeI32 && params[1] == api.ValueTypeI32:
+		return eventABIPayloadJSON, nil
+	default:
+		return eventABINoArgs, fmt.Errorf("%w: %s params=%v", ErrEventPayloadABI, handler.Definition().DebugName(), params)
+	}
+}
+
+func resolveEventPayloadOffset(module api.Module) (uint32, error) {
+	global := module.ExportedGlobal(eventHeapBaseGlobalName)
+	if global == nil {
+		return defaultEventPayloadOffset, nil
+	}
+	if global.Type() != api.ValueTypeI32 && global.Type() != api.ValueTypeI64 {
+		return 0, fmt.Errorf("%w: %s must be an integer global", ErrEventPayloadABI, eventHeapBaseGlobalName)
+	}
+	value := global.Get()
+	if value > maxUint32Value {
+		return 0, fmt.Errorf("%w: %s is outside wasm32 memory", ErrEventPayloadABI, eventHeapBaseGlobalName)
+	}
+	return uint32(value), nil
+}
+
+func eventPayloadMemory(module api.Module) api.Memory {
+	return module.ExportedMemory(eventPayloadMemoryName)
 }
