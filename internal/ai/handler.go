@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/campusos/CampusOS/pkg/response"
@@ -26,6 +27,10 @@ func (h *Handler) ListLogs(c *gin.Context) {
 			limit = parsed
 		}
 	}
-	logs := h.service.ListLogs(limit)
+	logs, err := h.service.ListLogs(c.Request.Context(), limit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 70001, err.Error())
+		return
+	}
 	response.Success(c, gin.H{"items": logs, "total": len(logs)})
 }

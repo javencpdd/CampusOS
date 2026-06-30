@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"testing"
 
 	"github.com/campusos/CampusOS/pkg/config"
@@ -61,4 +62,41 @@ func TestNewServiceFromConfigInvalidTimeout(t *testing.T) {
 	if !status.Enabled || status.Ready || status.Error == "" {
 		t.Fatalf("unexpected invalid config status: %#v", status)
 	}
+}
+
+func TestServiceSetCallLogStore(t *testing.T) {
+	service, err := NewServiceFromConfig(config.AIConfig{
+		Enabled:              true,
+		Provider:             "openai-compatible",
+		BaseURL:              "https://ai.example.test/v1",
+		Model:                "campus-model",
+		APIKey:               "test-secret",
+		Timeout:              "30s",
+		MaxRequestsPerMinute: 60,
+		MaxConcurrent:        4,
+	})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	store := &fakeCallLogStore{}
+	service.SetCallLogStore(store)
+	if service.logger != store {
+		t.Fatalf("expected service logger to be replaced")
+	}
+	if service.gateway.logger != store {
+		t.Fatalf("expected gateway logger to be replaced")
+	}
+}
+
+type fakeCallLogStore struct {
+	logs []CallLog
+}
+
+func (s *fakeCallLogStore) Log(_ context.Context, entry CallLog) error {
+	s.logs = append(s.logs, entry)
+	return nil
+}
+
+func (s *fakeCallLogStore) List(_ context.Context, _ int) ([]CallLog, error) {
+	return s.logs, nil
 }

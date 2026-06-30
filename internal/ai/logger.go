@@ -29,6 +29,11 @@ type CallLogger interface {
 	Log(ctx context.Context, entry CallLog) error
 }
 
+type CallLogStore interface {
+	CallLogger
+	List(ctx context.Context, limit int) ([]CallLog, error)
+}
+
 type MemoryCallLogger struct {
 	mu   sync.Mutex
 	logs []CallLog
@@ -41,18 +46,22 @@ func NewMemoryCallLogger() *MemoryCallLogger {
 func (l *MemoryCallLogger) Log(_ context.Context, entry CallLog) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now()
+	}
 	l.logs = append(l.logs, entry)
 	return nil
 }
 
-func (l *MemoryCallLogger) List(limit int) []CallLog {
+func (l *MemoryCallLogger) List(_ context.Context, limit int) ([]CallLog, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if limit <= 0 || limit > len(l.logs) {
 		limit = len(l.logs)
 	}
-	start := len(l.logs) - limit
 	result := make([]CallLog, limit)
-	copy(result, l.logs[start:])
-	return result
+	for i := 0; i < limit; i++ {
+		result[i] = l.logs[len(l.logs)-1-i]
+	}
+	return result, nil
 }

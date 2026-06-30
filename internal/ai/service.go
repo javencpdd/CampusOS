@@ -14,7 +14,7 @@ type Service struct {
 	provider       string
 	providerConfig OpenAICompatibleConfig
 	gateway        *Gateway
-	logger         *MemoryCallLogger
+	logger         CallLogStore
 	err            error
 }
 
@@ -85,11 +85,12 @@ func (s *Service) Status() ServiceStatus {
 	if s == nil {
 		return ServiceStatus{Enabled: false, Ready: false}
 	}
+	logs, _ := s.ListLogs(context.Background(), 0)
 	status := ServiceStatus{
 		Enabled:  s.enabled,
 		Ready:    s.ready,
 		Provider: s.provider,
-		Logs:     len(s.ListLogs(0)),
+		Logs:     len(logs),
 	}
 	if s.providerConfig.BaseURL != "" || s.providerConfig.Model != "" {
 		status.Config = s.providerConfig.Redacted()
@@ -100,9 +101,19 @@ func (s *Service) Status() ServiceStatus {
 	return status
 }
 
-func (s *Service) ListLogs(limit int) []CallLog {
+func (s *Service) ListLogs(ctx context.Context, limit int) ([]CallLog, error) {
 	if s == nil || s.logger == nil {
-		return []CallLog{}
+		return []CallLog{}, nil
 	}
-	return s.logger.List(limit)
+	return s.logger.List(ctx, limit)
+}
+
+func (s *Service) SetCallLogStore(store CallLogStore) {
+	if s == nil || store == nil {
+		return
+	}
+	s.logger = store
+	if s.gateway != nil {
+		s.gateway.logger = store
+	}
 }

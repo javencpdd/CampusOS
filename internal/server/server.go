@@ -117,6 +117,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
+	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
 	if err := SeedAdmin(pool); err != nil {

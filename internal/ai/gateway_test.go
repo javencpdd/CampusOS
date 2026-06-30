@@ -41,7 +41,10 @@ func TestGatewayChatCompletionLogsSuccess(t *testing.T) {
 	if response.Content != "ok" {
 		t.Fatalf("unexpected response: %#v", response)
 	}
-	logs := logger.List(10)
+	logs, err := logger.List(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
 	if len(logs) != 1 {
 		t.Fatalf("expected one log, got %#v", logs)
 	}
@@ -69,7 +72,10 @@ func TestGatewayChatCompletionLogsProviderError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected provider error")
 	}
-	logs := logger.List(10)
+	logs, err := logger.List(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
 	if len(logs) != 1 || logs[0].Status != CallStatusError || logs[0].Error == "" {
 		t.Fatalf("unexpected logs: %#v", logs)
 	}
@@ -95,8 +101,11 @@ func TestGatewayRateLimit(t *testing.T) {
 	if _, err := gateway.ChatCompletion(t.Context(), request); err == nil {
 		t.Fatalf("second call should be rate limited")
 	}
-	logs := logger.List(10)
-	if len(logs) != 2 || logs[1].Status != CallStatusRateLimited {
+	logs, err := logger.List(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("list logs: %v", err)
+	}
+	if len(logs) != 2 || logs[0].Status != CallStatusRateLimited {
 		t.Fatalf("unexpected logs: %#v", logs)
 	}
 }
