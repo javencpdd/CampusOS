@@ -34,6 +34,17 @@ const router = createRouter({
       component: () => import('@/views/CreateThreadView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/space/settings',
+      name: 'SpaceSettings',
+      component: () => import('@/views/SpaceSettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/u/:username',
+      name: 'PublicSpace',
+      component: () => import('@/views/PublicSpaceView.vue'),
+    },
   ],
 })
 

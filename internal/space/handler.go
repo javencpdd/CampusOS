@@ -2,6 +2,7 @@ package space
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -48,6 +49,38 @@ func (h *Handler) GetByUsername(c *gin.Context) {
 	response.Success(c, space)
 }
 
+func (h *Handler) ListContentsByUserID(c *gin.Context) {
+	userID := c.Param("user_id")
+	if _, err := strconv.ParseInt(userID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+
+	page, pageSize := pagination(c)
+	contents, total, err := h.svc.ListPublicContentsByUserID(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
+func (h *Handler) ListContentsByUsername(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid username")
+		return
+	}
+
+	page, pageSize := pagination(c)
+	contents, total, err := h.svc.ListPublicContentsByUsername(c.Request.Context(), username, page, pageSize)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -84,6 +117,84 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	response.Success(c, space)
 }
 
+func (h *Handler) ValidateStylePackage(c *gin.Context) {
+	if _, ok := currentUserID(c); !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	response.Success(c, ValidateStylePackage(req))
+}
+
+func (h *Handler) PreviewStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	preview, err := h.svc.PreviewStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, preview)
+}
+
+func (h *Handler) ExportStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleExportRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	exported, err := h.svc.ExportStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, exported)
+}
+
+func (h *Handler) ApplyStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	applied, err := h.svc.ApplyStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {
@@ -93,10 +204,35 @@ func currentUserID(c *gin.Context) (string, bool) {
 	return userID, ok && userID != ""
 }
 
+func pagination(c *gin.Context) (int, int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page = normalizePage(page)
+	pageSize = normalizePageSize(pageSize)
+	return page, pageSize
+}
+
+func paginationMeta(page, pageSize int, total int64) *response.Pagination {
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	return &response.Pagination{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+}
+
 func writeSpaceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidVisibility):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrInvalidStyleExport):
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrContentRepositoryUnavailable):
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):
 		response.Error(c, http.StatusForbidden, 20004, err.Error())
 	case errors.Is(err, identityrepo.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):

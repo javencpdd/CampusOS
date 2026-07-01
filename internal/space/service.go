@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrInvalidVisibility = errors.New("invalid space visibility")
-	ErrSpaceNotPublic    = errors.New("space is not public")
+	ErrInvalidVisibility  = errors.New("invalid space visibility")
+	ErrInvalidStyleExport = errors.New("invalid style export")
+	ErrSpaceNotPublic     = errors.New("space is not public")
 )
 
 type UserLookup interface {
@@ -22,12 +23,19 @@ type UserLookup interface {
 }
 
 type Service struct {
-	repo  Repository
-	users UserLookup
+	repo        Repository
+	contentRepo ContentRepository
+	users       UserLookup
 }
 
-func NewService(repo Repository, users UserLookup) *Service {
-	return &Service{repo: repo, users: users}
+func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
+	var contentRepo ContentRepository
+	if len(contentRepos) > 0 {
+		contentRepo = contentRepos[0]
+	} else if repo, ok := repo.(ContentRepository); ok {
+		contentRepo = repo
+	}
+	return &Service{repo: repo, contentRepo: contentRepo, users: users}
 }
 
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {
@@ -97,6 +105,75 @@ func (s *Service) UpsertOwnSpace(ctx context.Context, userID string, req UpsertS
 	return buildPublicSpace(user, space), nil
 }
 
+func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StylePreview, error) {
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	preview := BuildStylePreview(current.Owner, current.Space, pkg)
+	return &preview, nil
+}
+
+func (s *Service) ExportStylePackage(ctx context.Context, userID string, req StyleExportRequest) (*StyleExportResult, error) {
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := BuildStyleExport(current.Owner, current.Space, req)
+	if !result.Validation.Valid {
+		return &result, fmt.Errorf("%w: %s", ErrInvalidStyleExport, strings.Join(result.Validation.Errors, "; "))
+	}
+	return &result, nil
+}
+
+func (s *Service) ApplyStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StyleApplyResult, error) {
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := BuildStyleApply(current.Owner, current.Space, pkg)
+	if !result.Validation.Valid {
+		return &result, fmt.Errorf("%w: %s", ErrInvalidStyleExport, strings.Join(result.Validation.Errors, "; "))
+	}
+
+	manifest := result.Applied
+	space := cloneSpace(current.Space)
+	if space == nil {
+		space = defaultSpace(&identitydomain.User{
+			ID:       current.Owner.ID,
+			Username: current.Owner.Username,
+			Nickname: current.Owner.Nickname,
+			Avatar:   current.Owner.Avatar,
+			Bio:      current.Owner.Bio,
+		})
+	}
+
+	now := time.Now().UTC()
+	if space.ID == "" {
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	if space.CreatedAt.IsZero() {
+		space.CreatedAt = now
+	}
+	space.UserID = current.Owner.ID
+	space.Theme = manifest.Name
+	space.Layout = manifest.Layout
+	space.StyleName = manifest.Name
+	space.StyleVersion = manifest.Version
+	space.StyleManifest = manifest
+	space.IsDefault = false
+	space.UpdatedAt = now
+	ensureDefaults(space)
+
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("save space style: %w", err)
+	}
+
+	result.Space = cloneSpace(space)
+	return &result, nil
+}
+
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {
 	space, err := s.repo.GetByUserID(ctx, user.ID)
 	if err != nil {
@@ -112,6 +189,7 @@ func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User)
 }
 
 func applyUpdate(space *Space, req UpsertSpaceRequest) error {
+	styleChanged := false
 	if req.Title != nil {
 		space.Title = strings.TrimSpace(*req.Title)
 	}
@@ -125,10 +203,14 @@ func applyUpdate(space *Space, req UpsertSpaceRequest) error {
 		space.CoverImage = strings.TrimSpace(*req.CoverImage)
 	}
 	if req.Theme != nil {
-		space.Theme = strings.TrimSpace(*req.Theme)
+		theme := strings.TrimSpace(*req.Theme)
+		styleChanged = styleChanged || theme != space.Theme
+		space.Theme = theme
 	}
 	if req.Layout != nil {
-		space.Layout = strings.TrimSpace(*req.Layout)
+		layout := strings.TrimSpace(*req.Layout)
+		styleChanged = styleChanged || layout != space.Layout
+		space.Layout = layout
 	}
 	if req.Visibility != nil {
 		visibility := Visibility(strings.TrimSpace(*req.Visibility))
@@ -146,8 +228,17 @@ func applyUpdate(space *Space, req UpsertSpaceRequest) error {
 	if req.SyncTags != nil {
 		space.SyncTags = normalizeList(req.SyncTags, 20)
 	}
+	if styleChanged {
+		clearAppliedStyle(space)
+	}
 	ensureDefaults(space)
 	return nil
+}
+
+func clearAppliedStyle(space *Space) {
+	space.StyleName = ""
+	space.StyleVersion = ""
+	space.StyleManifest = nil
 }
 
 func ensureDefaults(space *Space) {

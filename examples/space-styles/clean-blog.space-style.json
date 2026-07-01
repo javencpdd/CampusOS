@@ -1,0 +1,39 @@
+{
+  "manifest": {
+    "schema_version": "space-style.v1",
+    "name": "clean-blog",
+    "version": "0.1.0",
+    "author": "CampusOS Team",
+    "description": "A quiet blog layout for personal essays and study notes.",
+    "compatible_campusos": [">=0.4.0"],
+    "layout": "blog",
+    "components": [
+      {
+        "slot": "header",
+        "type": "profile-header",
+        "props": {
+          "align": "center",
+          "show_avatar": true,
+          "show_cover": false
+        }
+      },
+      {
+        "slot": "main",
+        "type": "content-list",
+        "props": {
+          "density": "comfortable",
+          "show_excerpt": true,
+          "show_meta": true
+        }
+      }
+    ],
+    "tokens": {
+      "color.primary": "#2563eb",
+      "color.background": "#ffffff",
+      "color.surface": "#f8fafc",
+      "font.body": "system-ui",
+      "radius.card": "8px",
+      "space.section": "24px"
+    }
+  }
+}

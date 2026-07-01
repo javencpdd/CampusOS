@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -71,10 +70,7 @@ func (s *Server) Run() error {
 	s.registerDefaultSubscriptions(bus)
 
 	// ─── 加载插件 ───
-	pluginsDir := "examples/plugins"
-	if dir := os.Getenv("PLUGINS_DIR"); dir != "" {
-		pluginsDir = dir
-	}
+	pluginsDir := plugin.PluginsDirFromEnv()
 	if err := s.manager.InstallFromPluginsDir(pluginsDir); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
 	}
@@ -162,6 +158,9 @@ func (s *Server) Run() error {
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
+		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
+	}
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -170,7 +169,7 @@ func (s *Server) Run() error {
 	postHandler := handler.NewPostHandler(postSvc)
 	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager)
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
 
@@ -213,6 +212,9 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
+		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
+	}
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
@@ -220,7 +222,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	postHandler := handler.NewPostHandler(postSvc)
 	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager)
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
 
@@ -320,7 +322,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/threads/:id", threadHandler.GetThread)
 		public.GET("/users", userHandler.ListUsers)
 		public.GET("/users/:id", userHandler.GetUser)
+		public.GET("/space/:user_id/contents", spaceHandler.ListContentsByUserID)
 		public.GET("/space/:user_id", spaceHandler.GetByUserID)
+		public.GET("/u/:username/contents", spaceHandler.ListContentsByUsername)
 		public.GET("/u/:username", spaceHandler.GetByUsername)
 		public.GET("/categories", categoryHandler.List)
 		public.GET("/categories/:id", categoryHandler.Get)
@@ -336,6 +340,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.PUT("/users/:id", userHandler.UpdateUser)
 		authenticated.GET("/spaces/me", spaceHandler.GetMe)
 		authenticated.PUT("/spaces/me", spaceHandler.UpdateMe)
+		authenticated.POST("/spaces/me/styles/validate", spaceHandler.ValidateStylePackage)
+		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
+		authenticated.POST("/spaces/me/styles/export", spaceHandler.ExportStylePackage)
+		authenticated.POST("/spaces/me/styles/apply", spaceHandler.ApplyStylePackage)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
@@ -367,9 +375,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.GET("/plugins", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPlugins)
 		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
 		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPluginLogs)
+		admin.GET("/plugins/:name/export", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ExportPlugin)
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
+		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ImportPluginPackage)
 
 		// AI Gateway 管理
 		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.GetStatus)
@@ -387,7 +397,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 46")
+	log.Printf("📋 API 端点总数: 50")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

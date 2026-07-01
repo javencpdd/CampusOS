@@ -65,6 +65,31 @@ export const categoryApi = {
   list: () => api.get('/categories'),
 }
 
+// 个人主页 Space API
+export const spaceApi = {
+  me: () => api.get('/spaces/me'),
+  updateMe: (data: {
+    title?: string
+    bio?: string
+    avatar?: string
+    cover_image?: string
+    theme?: string
+    layout?: string
+    visibility?: string
+    sync_enabled?: boolean
+    sync_categories?: string[]
+    sync_tags?: string[]
+  }) => api.put('/spaces/me', data),
+  validateStyle: (data: any) => api.post('/spaces/me/styles/validate', data),
+  previewStyle: (data: any) => api.post('/spaces/me/styles/preview', data),
+  exportStyle: (data?: { name?: string; version?: string; description?: string }) =>
+    api.post('/spaces/me/styles/export', data || {}),
+  applyStyle: (data: any) => api.post('/spaces/me/styles/apply', data),
+  publicByUsername: (username: string) => api.get(`/u/${username}`),
+  publicContentsByUsername: (username: string, params?: { page?: number; page_size?: number }) =>
+    api.get(`/u/${username}/contents`, { params }),
+}
+
 // 健康检查
 export const healthApi = {
   check: () => api.get('/health'),

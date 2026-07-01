@@ -12,9 +12,10 @@ import (
 
 // NATSEventBus 基于 NATS 的事件总线实现
 type NATSEventBus struct {
-	conn     *nats.Conn
-	mu       sync.RWMutex
-	handlers map[string][]EventHandler
+	conn          *nats.Conn
+	mu            sync.RWMutex
+	handlers      map[string][]EventHandler
+	subscriptions map[string]struct{}
 }
 
 // NewNATSEventBus 创建 NATS 事件总线
@@ -32,8 +33,9 @@ func NewNATSEventBus(url string) (*NATSEventBus, error) {
 		return nil, fmt.Errorf("connect nats: %w", err)
 	}
 	bus := &NATSEventBus{
-		conn:     nc,
-		handlers: make(map[string][]EventHandler),
+		conn:          nc,
+		handlers:      make(map[string][]EventHandler),
+		subscriptions: make(map[string]struct{}),
 	}
 	log.Printf("✅ NATS 连接成功: %s", nc.ConnectedUrl())
 	return bus, nil
@@ -50,6 +52,11 @@ func (b *NATSEventBus) Publish(_ context.Context, event Event) error {
 func (b *NATSEventBus) Subscribe(eventType string, handler EventHandler) error {
 	b.mu.Lock()
 	b.handlers[eventType] = append(b.handlers[eventType], handler)
+	if _, ok := b.subscriptions[eventType]; ok {
+		b.mu.Unlock()
+		return nil
+	}
+	b.subscriptions[eventType] = struct{}{}
 	b.mu.Unlock()
 
 	_, err := b.conn.Subscribe(eventType, func(msg *nats.Msg) {
@@ -67,6 +74,11 @@ func (b *NATSEventBus) Subscribe(eventType string, handler EventHandler) error {
 			}
 		}
 	})
+	if err != nil {
+		b.mu.Lock()
+		delete(b.subscriptions, eventType)
+		b.mu.Unlock()
+	}
 	return err
 }
 

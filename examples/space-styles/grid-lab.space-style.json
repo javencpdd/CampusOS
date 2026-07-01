@@ -1,0 +1,46 @@
+{
+  "manifest": {
+    "schema_version": "space-style.v1",
+    "name": "grid-lab",
+    "version": "0.1.0",
+    "author": "CampusOS Team",
+    "description": "A compact grid layout for projects, labs and course collections.",
+    "compatible_campusos": [">=0.4.0"],
+    "layout": "grid",
+    "components": [
+      {
+        "slot": "header",
+        "type": "profile-header",
+        "props": {
+          "align": "left",
+          "show_avatar": true,
+          "show_cover": true
+        }
+      },
+      {
+        "slot": "main",
+        "type": "category-tabs",
+        "props": {
+          "show_all": true
+        }
+      },
+      {
+        "slot": "main",
+        "type": "content-list",
+        "props": {
+          "columns": 3,
+          "density": "compact",
+          "show_excerpt": true
+        }
+      }
+    ],
+    "tokens": {
+      "color.primary": "#0891b2",
+      "color.background": "#ecfeff",
+      "color.surface": "#ffffff",
+      "font.body": "Inter",
+      "radius.card": "6px",
+      "space.section": "20px"
+    }
+  }
+}

@@ -3,8 +3,34 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>插件管理</span>
-          <el-tag type="info" size="small">已安装 {{ plugins.length }} 个插件</el-tag>
+          <div class="header-title">
+            <span>插件管理</span>
+            <el-tag type="info" size="small">已安装 {{ plugins.length }} 个插件</el-tag>
+          </div>
+          <div class="header-actions">
+            <el-switch
+              v-model="replaceOnImport"
+              inline-prompt
+              active-text="覆盖"
+              inactive-text="保留"
+            />
+            <el-upload
+              :auto-upload="false"
+              :show-file-list="false"
+              :disabled="importing"
+              accept=".tar.gz,.campusos-plugin.tar.gz,application/gzip"
+              :on-change="handleImportChange"
+            >
+              <el-button type="primary" size="small" :loading="importing">
+                <el-icon><Upload /></el-icon>
+                导入
+              </el-button>
+            </el-upload>
+            <el-button size="small" @click="load" :loading="loading">
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -33,26 +59,28 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'enabled' ? 'success' : 'danger'" size="small">
-              {{ row.status === 'enabled' ? '已启用' : '已禁用' }}
+            <el-tag :type="statusTag(row.status)" size="small">
+              {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="270" align="center" fixed="right">
+        <el-table-column label="操作" width="350" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" plain @click="showLogs(row.name)">
               <el-icon><Document /></el-icon>
               日志
             </el-button>
+            <el-button type="success" size="small" plain @click="doExport(row)">
+              <el-icon><Download /></el-icon>
+              导出
+            </el-button>
             <el-switch
-              v-model="row.status"
-              active-value="enabled"
-              inactive-value="disabled"
+              :model-value="isPluginEnabled(row.status)"
               active-text="启用"
               inactive-text="禁用"
               inline-prompt
               style="margin-right: 8px"
-              @change="togglePlugin(row)"
+              @change="onTogglePlugin(row, $event)"
             />
             <el-popconfirm
               title="确定要卸载该插件吗？此操作不可恢复。"
@@ -110,11 +138,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Connection, Document, Refresh } from '@element-plus/icons-vue'
+import type { UploadFile } from 'element-plus'
+import { Connection, Document, Download, Refresh, Upload } from '@element-plus/icons-vue'
 import { pluginApi } from '@/api'
 
 const plugins = ref<any[]>([])
 const loading = ref(false)
+const importing = ref(false)
+const replaceOnImport = ref(false)
 const logDialogVisible = ref(false)
 const logsLoading = ref(false)
 const selectedPluginName = ref('')
@@ -132,20 +163,25 @@ const load = async () => {
   loading.value = false
 }
 
-const togglePlugin = async (row: any) => {
+const togglePlugin = async (row: any, enabled: boolean) => {
+  const previousStatus = row.status
   try {
-    if (row.status === 'enabled') {
+    if (enabled) {
       await pluginApi.enable(row.name)
       ElMessage.success(`插件 ${row.name} 已启用`)
     } else {
       await pluginApi.disable(row.name)
       ElMessage.success(`插件 ${row.name} 已禁用`)
     }
+    await load()
   } catch {
     ElMessage.error('操作失败')
-    // 回滚状态
-    row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
+    row.status = previousStatus
   }
+}
+
+const onTogglePlugin = (row: any, enabled: boolean | string | number) => {
+  togglePlugin(row, Boolean(enabled))
 }
 
 const doUninstall = async (name: string) => {
@@ -155,6 +191,38 @@ const doUninstall = async (name: string) => {
     load()
   } catch {
     ElMessage.error('卸载失败')
+  }
+}
+
+const doExport = async (row: any) => {
+  try {
+    const blob = (await pluginApi.exportPackage(row.name)) as any
+    const downloadBlob = blob instanceof Blob ? blob : new Blob([blob])
+    const url = URL.createObjectURL(downloadBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${row.name}-${row.version || '0.0.0'}.campusos-plugin.tar.gz`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    ElMessage.success('插件包已导出')
+  } catch {
+    ElMessage.error('导出插件包失败')
+  }
+}
+
+const handleImportChange = async (uploadFile: UploadFile) => {
+  if (!uploadFile.raw) return
+  importing.value = true
+  try {
+    await pluginApi.importPackage(uploadFile.raw, replaceOnImport.value)
+    ElMessage.success('插件包已导入')
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '导入插件包失败')
+  } finally {
+    importing.value = false
   }
 }
 
@@ -175,6 +243,23 @@ const loadLogs = async () => {
     ElMessage.error('加载插件日志失败')
   }
   logsLoading.value = false
+}
+
+const isPluginEnabled = (status: string) => status === 'enabled' || status === 'running'
+
+const statusLabel = (status: string) => {
+  if (status === 'enabled' || status === 'running') return '已启用'
+  if (status === 'error') return '异常'
+  if (status === 'installed') return '未启用'
+  if (status === 'stopped') return '已禁用'
+  return status || '未知'
+}
+
+const statusTag = (status: string) => {
+  if (status === 'enabled' || status === 'running') return 'success'
+  if (status === 'error') return 'danger'
+  if (status === 'installed') return 'info'
+  return 'warning'
 }
 
 const logLevelTag = (level: string) => {
@@ -215,6 +300,14 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+}
+
+.header-title,
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .plugin-name {

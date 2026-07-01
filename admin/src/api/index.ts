@@ -85,6 +85,17 @@ export const pluginApi = {
   list: () => api.get('/plugins'),
   get: (name: string) => api.get(`/plugins/${name}`),
   logs: (name: string, params?: { limit?: number }) => api.get(`/plugins/${name}/logs`, { params }),
+  exportPackage: (name: string) =>
+    api.get(`/plugins/${name}/export`, { responseType: 'blob', timeout: 60000 }),
+  importPackage: (file: File, replace = false) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('replace', replace ? 'true' : 'false')
+    return api.post('/plugin-packages/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    })
+  },
   enable: (name: string) => api.post(`/plugins/${name}/enable`),
   disable: (name: string) => api.post(`/plugins/${name}/disable`),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
