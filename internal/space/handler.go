@@ -2,6 +2,7 @@ package space
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -152,6 +153,27 @@ func (h *Handler) PreviewStylePackage(c *gin.Context) {
 	response.Success(c, preview)
 }
 
+func (h *Handler) ExportStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleExportRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	exported, err := h.svc.ExportStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, exported)
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {
@@ -185,6 +207,8 @@ func paginationMeta(page, pageSize int, total int64) *response.Pagination {
 func writeSpaceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidVisibility):
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrInvalidStyleExport):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 	case errors.Is(err, ErrContentRepositoryUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())

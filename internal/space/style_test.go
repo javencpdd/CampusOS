@@ -225,6 +225,125 @@ func TestPreviewStylePackageHandler(t *testing.T) {
 	}
 }
 
+func TestExportStylePackageBuildsValidPackageFromCurrentSpace(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "Alice_Dev",
+		Nickname: "Alice",
+	}))
+	layout := "grid"
+	theme := "warm"
+	cover := "https://example.com/cover.png"
+	if _, err := svc.UpsertOwnSpace(testContext(), "1001", UpsertSpaceRequest{
+		Layout:     &layout,
+		Theme:      &theme,
+		CoverImage: &cover,
+		SyncTags:   []string{"go", "campusos"},
+	}); err != nil {
+		t.Fatalf("upsert own space: %v", err)
+	}
+
+	exported, err := svc.ExportStylePackage(testContext(), "1001", StyleExportRequest{})
+	if err != nil {
+		t.Fatalf("export style package: %v", err)
+	}
+	if !exported.Validation.Valid {
+		t.Fatalf("expected exported package to be valid, got %#v", exported.Validation.Errors)
+	}
+	manifest := exported.Package.Manifest
+	if manifest.Name != "alice-dev-space" {
+		t.Fatalf("expected slugged default name, got %q", manifest.Name)
+	}
+	if manifest.Layout != "grid" {
+		t.Fatalf("expected grid layout, got %q", manifest.Layout)
+	}
+	if manifest.Tokens["color.primary"] != "#b45309" {
+		t.Fatalf("expected warm theme primary token, got %#v", manifest.Tokens)
+	}
+	if len(manifest.Components) < 3 {
+		t.Fatalf("expected exported components, got %#v", manifest.Components)
+	}
+	foundTagCloud := false
+	for _, component := range manifest.Components {
+		if component.Type == "tag-cloud" {
+			foundTagCloud = true
+		}
+	}
+	if !foundTagCloud {
+		t.Fatalf("expected tag-cloud when sync tags exist, got %#v", manifest.Components)
+	}
+}
+
+func TestExportStylePackageRejectsInvalidVersion(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+	}))
+
+	exported, err := svc.ExportStylePackage(testContext(), "1001", StyleExportRequest{
+		Version: "next",
+	})
+	if err == nil {
+		t.Fatalf("expected invalid export version to fail")
+	}
+	if exported == nil || exported.Validation.Valid {
+		t.Fatalf("expected invalid validation result, got %#v", exported)
+	}
+}
+
+func TestExportStylePackageHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
+		Secret:    "test-secret",
+		AccessTTL: time.Hour,
+		Issuer:    "campusos-test",
+	})
+	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	handler := NewHandler(svc)
+
+	router := gin.New()
+	router.POST("/spaces/me/styles/export", middleware.JWTAuth(jwtMgr), handler.ExportStylePackage)
+
+	reqBody := `{"name":"Alice Clean Blog","version":"0.2.0","description":"Exported test style"}`
+	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/export", bytes.NewReader([]byte(reqBody)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Code int               `json:"code"`
+		Data StyleExportResult `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Code != 0 || !payload.Data.Validation.Valid {
+		t.Fatalf("expected valid export response, got %#v", payload)
+	}
+	if payload.Data.Package.Manifest.Name != "alice-clean-blog" || payload.Data.Package.Manifest.Version != "0.2.0" {
+		t.Fatalf("unexpected exported manifest: %#v", payload.Data.Package.Manifest)
+	}
+	if payload.Data.Filename != "alice-clean-blog-0.2.0.space-style.json" {
+		t.Fatalf("unexpected filename: %q", payload.Data.Filename)
+	}
+}
+
 func testContext() context.Context {
 	return context.Background()
 }

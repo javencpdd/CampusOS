@@ -342,6 +342,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.PUT("/spaces/me", spaceHandler.UpdateMe)
 		authenticated.POST("/spaces/me/styles/validate", spaceHandler.ValidateStylePackage)
 		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
+		authenticated.POST("/spaces/me/styles/export", spaceHandler.ExportStylePackage)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)

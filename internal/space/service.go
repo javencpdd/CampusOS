@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrInvalidVisibility = errors.New("invalid space visibility")
-	ErrSpaceNotPublic    = errors.New("space is not public")
+	ErrInvalidVisibility  = errors.New("invalid space visibility")
+	ErrInvalidStyleExport = errors.New("invalid style export")
+	ErrSpaceNotPublic     = errors.New("space is not public")
 )
 
 type UserLookup interface {
@@ -111,6 +112,18 @@ func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg St
 	}
 	preview := BuildStylePreview(current.Owner, current.Space, pkg)
 	return &preview, nil
+}
+
+func (s *Service) ExportStylePackage(ctx context.Context, userID string, req StyleExportRequest) (*StyleExportResult, error) {
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := BuildStyleExport(current.Owner, current.Space, req)
+	if !result.Validation.Valid {
+		return &result, fmt.Errorf("%w: %s", ErrInvalidStyleExport, strings.Join(result.Validation.Errors, "; "))
+	}
+	return &result, nil
 }
 
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {

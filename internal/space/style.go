@@ -18,6 +18,18 @@ type StylePackage struct {
 	Manifest StyleManifest `json:"manifest" binding:"required"`
 }
 
+type StyleExportRequest struct {
+	Name        string `json:"name,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type StyleExportResult struct {
+	Package    StylePackage          `json:"package"`
+	Filename   string                `json:"filename"`
+	Validation StyleValidationResult `json:"validation"`
+}
+
 type StyleManifest struct {
 	SchemaVersion      string            `json:"schema_version"`
 	Name               string            `json:"name"`
@@ -108,6 +120,49 @@ func BuildStylePreview(owner Owner, space *Space, pkg StylePackage) StylePreview
 	preview.Tokens = copyStringMap(manifest.Tokens)
 	preview.Assets = append([]StyleAsset(nil), manifest.Assets...)
 	return preview
+}
+
+func BuildStyleExport(owner Owner, space *Space, req StyleExportRequest) StyleExportResult {
+	if space == nil {
+		space = &Space{}
+	}
+
+	name := slugStyleName(req.Name)
+	if name == "" {
+		name = slugStyleName(owner.Username + "-space")
+	}
+	if name == "" {
+		name = "space-style"
+	}
+
+	version := strings.TrimSpace(req.Version)
+	if version == "" {
+		version = "0.1.0"
+	}
+
+	description := strings.TrimSpace(req.Description)
+	if description == "" {
+		description = "Exported CampusOS personal space style."
+	}
+	description = truncateRunes(description, 240)
+
+	manifest := NormalizeStyleManifest(StyleManifest{
+		SchemaVersion:      StyleSchemaVersion,
+		Name:               name,
+		Version:            version,
+		Author:             exportAuthor(owner),
+		Description:        description,
+		CompatibleCampusOS: []string{">=0.4.0"},
+		Layout:             exportLayout(space.Layout),
+		Components:         exportComponents(space),
+		Tokens:             exportTokens(space.Theme),
+	})
+	pkg := StylePackage{Manifest: manifest}
+	return StyleExportResult{
+		Package:    pkg,
+		Filename:   manifest.Name + "-" + manifest.Version + ".space-style.json",
+		Validation: ValidateStylePackage(pkg),
+	}
 }
 
 type styleValidator struct {
@@ -405,4 +460,175 @@ func copyStringMap(values map[string]string) map[string]string {
 		clone[key] = value
 	}
 	return clone
+}
+
+func slugStyleName(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	var builder strings.Builder
+	lastHyphen := false
+	for _, r := range value {
+		valid := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+		if valid {
+			builder.WriteRune(r)
+			lastHyphen = false
+			continue
+		}
+		if !lastHyphen && builder.Len() > 0 {
+			builder.WriteByte('-')
+			lastHyphen = true
+		}
+		if builder.Len() >= 63 {
+			break
+		}
+	}
+	name := strings.Trim(builder.String(), "-")
+	if len(name) > 63 {
+		name = strings.TrimRight(name[:63], "-")
+	}
+	if len(name) < 2 {
+		return ""
+	}
+	return name
+}
+
+func exportAuthor(owner Owner) string {
+	if strings.TrimSpace(owner.Nickname) != "" {
+		return strings.TrimSpace(owner.Nickname)
+	}
+	if strings.TrimSpace(owner.Username) != "" {
+		return strings.TrimSpace(owner.Username)
+	}
+	return "CampusOS User"
+}
+
+func exportLayout(layout string) string {
+	layout = strings.TrimSpace(layout)
+	if allowedLayout(layout) {
+		return layout
+	}
+	return "blog"
+}
+
+func exportComponents(space *Space) []StyleComponent {
+	layout := exportLayout(space.Layout)
+	components := []StyleComponent{
+		{
+			Slot: "header",
+			Type: "profile-header",
+			Props: map[string]interface{}{
+				"align":       "center",
+				"show_avatar": true,
+				"show_cover":  strings.TrimSpace(space.CoverImage) != "",
+			},
+		},
+	}
+
+	switch layout {
+	case "grid":
+		components = append(components,
+			StyleComponent{
+				Slot: "main",
+				Type: "category-tabs",
+				Props: map[string]interface{}{
+					"show_all": true,
+				},
+			},
+			StyleComponent{
+				Slot: "main",
+				Type: "content-list",
+				Props: map[string]interface{}{
+					"columns":      3,
+					"density":      "compact",
+					"show_excerpt": true,
+				},
+			},
+		)
+	case "timeline":
+		components = append(components, StyleComponent{
+			Slot: "main",
+			Type: "content-list",
+			Props: map[string]interface{}{
+				"variant":      "timeline",
+				"show_excerpt": true,
+				"show_meta":    true,
+			},
+		})
+	case "magazine":
+		components = []StyleComponent{
+			{
+				Slot: "header",
+				Type: "hero",
+				Props: map[string]interface{}{
+					"height":      "medium",
+					"show_avatar": true,
+				},
+			},
+			{
+				Slot: "main",
+				Type: "content-list",
+				Props: map[string]interface{}{
+					"variant":      "featured",
+					"density":      "comfortable",
+					"show_excerpt": true,
+				},
+			},
+		}
+	default:
+		components = append(components, StyleComponent{
+			Slot: "main",
+			Type: "content-list",
+			Props: map[string]interface{}{
+				"density":      "comfortable",
+				"show_excerpt": true,
+				"show_meta":    true,
+			},
+		})
+	}
+
+	if len(space.SyncTags) > 0 {
+		components = append(components, StyleComponent{
+			Slot: "sidebar",
+			Type: "tag-cloud",
+			Props: map[string]interface{}{
+				"max_items": 20,
+			},
+		})
+	}
+	return components
+}
+
+func exportTokens(theme string) map[string]string {
+	tokens := map[string]string{
+		"color.primary":    "#2563eb",
+		"color.background": "#ffffff",
+		"color.surface":    "#f8fafc",
+		"font.body":        "system-ui",
+		"radius.card":      "8px",
+		"space.section":    "24px",
+	}
+	switch strings.ToLower(strings.TrimSpace(theme)) {
+	case "ink":
+		tokens["color.primary"] = "#111827"
+		tokens["color.surface"] = "#f3f4f6"
+	case "dark":
+		tokens["color.primary"] = "#60a5fa"
+		tokens["color.background"] = "#111827"
+		tokens["color.surface"] = "#1f2937"
+	case "warm":
+		tokens["color.primary"] = "#b45309"
+		tokens["color.background"] = "#fff7ed"
+		tokens["color.surface"] = "#ffedd5"
+	}
+	return tokens
+}
+
+func truncateRunes(value string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit])
 }
