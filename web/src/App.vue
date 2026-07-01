@@ -12,6 +12,9 @@
           <router-link to="/threads/create" v-if="userStore.isLoggedIn">
             <el-button type="primary" size="small">发帖</el-button>
           </router-link>
+          <router-link to="/space/settings" v-if="userStore.isLoggedIn">
+            <el-button text>个人主页</el-button>
+          </router-link>
           <template v-if="userStore.isLoggedIn">
             <el-dropdown>
               <span class="user-info">
@@ -20,6 +23,8 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
+                  <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
                   <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -52,6 +57,15 @@ import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const goSpaceSettings = () => {
+  router.push('/space/settings')
+}
+
+const goPublicSpace = () => {
+  const username = userStore.user?.username
+  router.push(username ? `/u/${username}` : '/space/settings')
+}
 
 const handleLogout = () => {
   userStore.logout()

@@ -1,0 +1,45 @@
+{
+  "manifest": {
+    "schema_version": "space-style.v1",
+    "name": "magazine-focus",
+    "version": "0.1.0",
+    "author": "CampusOS Team",
+    "description": "A magazine style for featured articles and curated personal homepages.",
+    "compatible_campusos": [">=0.4.0"],
+    "layout": "magazine",
+    "components": [
+      {
+        "slot": "header",
+        "type": "hero",
+        "props": {
+          "height": "medium",
+          "show_avatar": true
+        }
+      },
+      {
+        "slot": "main",
+        "type": "content-list",
+        "props": {
+          "variant": "featured",
+          "density": "comfortable",
+          "show_excerpt": true
+        }
+      },
+      {
+        "slot": "footer",
+        "type": "footer",
+        "props": {
+          "show_powered_by": true
+        }
+      }
+    ],
+    "tokens": {
+      "color.primary": "#be123c",
+      "color.background": "#fff1f2",
+      "color.surface": "#ffffff",
+      "font.body": "Georgia",
+      "radius.card": "4px",
+      "space.section": "32px"
+    }
+  }
+}

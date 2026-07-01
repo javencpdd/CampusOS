@@ -1,0 +1,46 @@
+{
+  "manifest": {
+    "schema_version": "space-style.v1",
+    "name": "timeline-notes",
+    "version": "0.1.0",
+    "author": "CampusOS Team",
+    "description": "A timeline layout for logs, learning journals and release notes.",
+    "compatible_campusos": [">=0.4.0"],
+    "layout": "timeline",
+    "components": [
+      {
+        "slot": "header",
+        "type": "profile-header",
+        "props": {
+          "align": "left",
+          "show_avatar": true,
+          "show_cover": false
+        }
+      },
+      {
+        "slot": "main",
+        "type": "content-list",
+        "props": {
+          "variant": "timeline",
+          "show_excerpt": true,
+          "show_meta": true
+        }
+      },
+      {
+        "slot": "sidebar",
+        "type": "tag-cloud",
+        "props": {
+          "max_items": 20
+        }
+      }
+    ],
+    "tokens": {
+      "color.primary": "#4f46e5",
+      "color.background": "#f5f3ff",
+      "color.surface": "#ffffff",
+      "font.body": "system-ui",
+      "radius.card": "10px",
+      "space.section": "28px"
+    }
+  }
+}

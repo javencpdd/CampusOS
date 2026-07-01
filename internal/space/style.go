@@ -30,6 +30,13 @@ type StyleExportResult struct {
 	Validation StyleValidationResult `json:"validation"`
 }
 
+type StyleApplyResult struct {
+	Validation StyleValidationResult `json:"validation"`
+	Owner      Owner                 `json:"owner"`
+	Space      *Space                `json:"space"`
+	Applied    *StyleManifest        `json:"applied,omitempty"`
+}
+
 type StyleManifest struct {
 	SchemaVersion      string            `json:"schema_version"`
 	Name               string            `json:"name"`
@@ -127,6 +134,28 @@ func BuildStyleExport(owner Owner, space *Space, req StyleExportRequest) StyleEx
 		space = &Space{}
 	}
 
+	if space.StyleManifest != nil && len(space.StyleManifest.Components) > 0 {
+		manifest := NormalizeStyleManifest(*space.StyleManifest)
+		if name := slugStyleName(req.Name); name != "" {
+			manifest.Name = name
+		}
+		if version := strings.TrimSpace(req.Version); version != "" {
+			manifest.Version = version
+		}
+		if description := strings.TrimSpace(req.Description); description != "" {
+			manifest.Description = truncateRunes(description, 240)
+		}
+		if manifest.Author == "" {
+			manifest.Author = exportAuthor(owner)
+		}
+		pkg := StylePackage{Manifest: manifest}
+		return StyleExportResult{
+			Package:    pkg,
+			Filename:   manifest.Name + "-" + manifest.Version + ".space-style.json",
+			Validation: ValidateStylePackage(pkg),
+		}
+	}
+
 	name := slugStyleName(req.Name)
 	if name == "" {
 		name = slugStyleName(owner.Username + "-space")
@@ -163,6 +192,21 @@ func BuildStyleExport(owner Owner, space *Space, req StyleExportRequest) StyleEx
 		Filename:   manifest.Name + "-" + manifest.Version + ".space-style.json",
 		Validation: ValidateStylePackage(pkg),
 	}
+}
+
+func BuildStyleApply(owner Owner, space *Space, pkg StylePackage) StyleApplyResult {
+	validation := ValidateStylePackage(pkg)
+	result := StyleApplyResult{
+		Validation: validation,
+		Owner:      owner,
+		Space:      cloneSpace(space),
+	}
+	if !validation.Valid {
+		return result
+	}
+	manifest := NormalizeStyleManifest(pkg.Manifest)
+	result.Applied = &manifest
+	return result
 }
 
 type styleValidator struct {

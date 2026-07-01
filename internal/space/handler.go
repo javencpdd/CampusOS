@@ -174,6 +174,27 @@ func (h *Handler) ExportStylePackage(c *gin.Context) {
 	response.Success(c, exported)
 }
 
+func (h *Handler) ApplyStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	applied, err := h.svc.ApplyStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {

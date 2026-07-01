@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -341,6 +343,173 @@ func TestExportStylePackageHandler(t *testing.T) {
 	}
 	if payload.Data.Filename != "alice-clean-blog-0.2.0.space-style.json" {
 		t.Fatalf("unexpected filename: %q", payload.Data.Filename)
+	}
+}
+
+func TestApplyStylePackagePersistsStyleManifest(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	pkg := validStylePackage()
+	pkg.Manifest.Name = "timeline-note"
+	pkg.Manifest.Version = "0.3.0"
+	pkg.Manifest.Layout = "timeline"
+
+	applied, err := svc.ApplyStylePackage(testContext(), "1001", pkg)
+	if err != nil {
+		t.Fatalf("apply style package: %v", err)
+	}
+	if !applied.Validation.Valid {
+		t.Fatalf("expected valid apply, got %#v", applied.Validation.Errors)
+	}
+	if applied.Space.Theme != "timeline-note" || applied.Space.Layout != "timeline" {
+		t.Fatalf("expected applied theme/layout, got %#v", applied.Space)
+	}
+	if applied.Space.StyleManifest == nil || applied.Space.StyleManifest.Name != "timeline-note" {
+		t.Fatalf("expected persisted style manifest, got %#v", applied.Space.StyleManifest)
+	}
+
+	own, err := svc.GetOwnSpace(testContext(), "1001")
+	if err != nil {
+		t.Fatalf("get own space: %v", err)
+	}
+	if own.Space.StyleName != "timeline-note" || own.Space.StyleVersion != "0.3.0" {
+		t.Fatalf("expected persisted style metadata, got %#v", own.Space)
+	}
+
+	exported, err := svc.ExportStylePackage(testContext(), "1001", StyleExportRequest{})
+	if err != nil {
+		t.Fatalf("export applied style package: %v", err)
+	}
+	if exported.Package.Manifest.Name != "timeline-note" || exported.Package.Manifest.Layout != "timeline" {
+		t.Fatalf("expected exported applied manifest, got %#v", exported.Package.Manifest)
+	}
+}
+
+func TestApplyStylePackageRejectsInvalidManifestWithoutPersisting(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	pkg := validStylePackage()
+	pkg.Manifest.Components[0].Props["onclick"] = "alert(1)"
+
+	applied, err := svc.ApplyStylePackage(testContext(), "1001", pkg)
+	if err == nil {
+		t.Fatalf("expected invalid apply to fail")
+	}
+	if applied == nil || applied.Validation.Valid {
+		t.Fatalf("expected invalid validation result, got %#v", applied)
+	}
+
+	own, err := svc.GetOwnSpace(testContext(), "1001")
+	if err != nil {
+		t.Fatalf("get own space: %v", err)
+	}
+	if own.Space.StyleManifest != nil || own.Space.StyleName != "" {
+		t.Fatalf("invalid style should not be persisted, got %#v", own.Space)
+	}
+}
+
+func TestUpdateSpaceLayoutClearsAppliedStyleManifest(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	if _, err := svc.ApplyStylePackage(testContext(), "1001", validStylePackage()); err != nil {
+		t.Fatalf("apply style package: %v", err)
+	}
+
+	layout := "grid"
+	updated, err := svc.UpsertOwnSpace(testContext(), "1001", UpsertSpaceRequest{
+		Layout: &layout,
+	})
+	if err != nil {
+		t.Fatalf("update own space: %v", err)
+	}
+	if updated.Space.StyleName != "" || updated.Space.StyleManifest != nil {
+		t.Fatalf("manual layout change should clear applied style, got %#v", updated.Space)
+	}
+}
+
+func TestApplyStylePackageHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
+		Secret:    "test-secret",
+		AccessTTL: time.Hour,
+		Issuer:    "campusos-test",
+	})
+	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	handler := NewHandler(svc)
+
+	router := gin.New()
+	router.POST("/spaces/me/styles/apply", middleware.JWTAuth(jwtMgr), handler.ApplyStylePackage)
+
+	body, err := json.Marshal(validStylePackage())
+	if err != nil {
+		t.Fatalf("marshal package: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/apply", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Code int              `json:"code"`
+		Data StyleApplyResult `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Code != 0 || !payload.Data.Validation.Valid {
+		t.Fatalf("expected valid apply response, got %#v", payload)
+	}
+	if payload.Data.Space == nil || payload.Data.Space.StyleManifest == nil {
+		t.Fatalf("expected applied style space, got %#v", payload.Data.Space)
+	}
+}
+
+func TestExampleStylePackagesAreValid(t *testing.T) {
+	files, err := filepath.Glob(filepath.Join("..", "..", "examples", "space-styles", "*.space-style.json"))
+	if err != nil {
+		t.Fatalf("glob examples: %v", err)
+	}
+	if len(files) < 2 || len(files) > 5 {
+		t.Fatalf("expected 2 to 5 example style packages, got %d", len(files))
+	}
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		var pkg StylePackage
+		if err := json.Unmarshal(data, &pkg); err != nil {
+			t.Fatalf("decode %s: %v", file, err)
+		}
+		result := ValidateStylePackage(pkg)
+		if !result.Valid {
+			t.Fatalf("example %s should be valid, got %#v", file, result.Errors)
+		}
 	}
 }
 

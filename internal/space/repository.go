@@ -105,6 +105,17 @@ func cloneSpace(space *Space) *Space {
 	clone := *space
 	clone.SyncCategories = append([]string(nil), space.SyncCategories...)
 	clone.SyncTags = append([]string(nil), space.SyncTags...)
+	if space.StyleManifest != nil {
+		manifest := *space.StyleManifest
+		manifest.CompatibleCampusOS = append([]string(nil), space.StyleManifest.CompatibleCampusOS...)
+		manifest.Components = append([]StyleComponent(nil), space.StyleManifest.Components...)
+		for i := range manifest.Components {
+			manifest.Components[i].Props = copyInterfaceMap(space.StyleManifest.Components[i].Props)
+		}
+		manifest.Tokens = copyStringMap(space.StyleManifest.Tokens)
+		manifest.Assets = append([]StyleAsset(nil), space.StyleManifest.Assets...)
+		clone.StyleManifest = &manifest
+	}
 	return &clone
 }
 
@@ -115,4 +126,15 @@ func cloneContent(content *SpaceContent) *SpaceContent {
 	clone := *content
 	clone.Tags = append([]string(nil), content.Tags...)
 	return &clone
+}
+
+func copyInterfaceMap(values map[string]interface{}) map[string]interface{} {
+	if len(values) == 0 {
+		return nil
+	}
+	clone := make(map[string]interface{}, len(values))
+	for key, value := range values {
+		clone[key] = value
+	}
+	return clone
 }

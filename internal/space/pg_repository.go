@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -19,13 +20,17 @@ func NewPgRepository(pool *pgxpool.Pool) *PgRepository {
 
 func (r *PgRepository) GetByUserID(ctx context.Context, userID string) (*Space, error) {
 	query := `SELECT id, user_id, title, bio, avatar, cover_image, theme, layout,
+		style_name, style_version, style_manifest,
 		visibility, sync_enabled, sync_categories, sync_tags, created_at, updated_at
 		FROM user_spaces WHERE user_id = $1 AND deleted_at IS NULL`
 
 	space := &Space{}
+	var styleManifestJSON []byte
 	err := r.pool.QueryRow(ctx, query, userID).Scan(
 		&space.ID, &space.UserID, &space.Title, &space.Bio, &space.Avatar,
-		&space.CoverImage, &space.Theme, &space.Layout, &space.Visibility,
+		&space.CoverImage, &space.Theme, &space.Layout,
+		&space.StyleName, &space.StyleVersion, &styleManifestJSON,
+		&space.Visibility,
 		&space.SyncEnabled, &space.SyncCategories, &space.SyncTags,
 		&space.CreatedAt, &space.UpdatedAt,
 	)
@@ -35,16 +40,30 @@ func (r *PgRepository) GetByUserID(ctx context.Context, userID string) (*Space, 
 		}
 		return nil, err
 	}
+	if len(styleManifestJSON) > 0 && string(styleManifestJSON) != "{}" {
+		var manifest StyleManifest
+		if err := json.Unmarshal(styleManifestJSON, &manifest); err != nil {
+			return nil, fmt.Errorf("decode style manifest: %w", err)
+		}
+		space.StyleManifest = &manifest
+	}
 	return space, nil
 }
 
 func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
+	styleManifestJSON, err := json.Marshal(styleManifestForSave(space.StyleManifest))
+	if err != nil {
+		return err
+	}
+
 	query := `INSERT INTO user_spaces (
 			id, user_id, title, bio, avatar, cover_image, theme, layout,
+			style_name, style_version, style_manifest,
 			visibility, sync_enabled, sync_categories, sync_tags, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8,
-			$9, $10, $11, $12, $13, $14
+			$9, $10, $11::jsonb,
+			$12, $13, $14, $15, $16, $17
 		)
 		ON CONFLICT (user_id) WHERE deleted_at IS NULL DO UPDATE SET
 			title = EXCLUDED.title,
@@ -53,6 +72,9 @@ func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
 			cover_image = EXCLUDED.cover_image,
 			theme = EXCLUDED.theme,
 			layout = EXCLUDED.layout,
+			style_name = EXCLUDED.style_name,
+			style_version = EXCLUDED.style_version,
+			style_manifest = EXCLUDED.style_manifest,
 			visibility = EXCLUDED.visibility,
 			sync_enabled = EXCLUDED.sync_enabled,
 			sync_categories = EXCLUDED.sync_categories,
@@ -62,9 +84,17 @@ func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
 
 	return r.pool.QueryRow(ctx, query,
 		space.ID, space.UserID, space.Title, space.Bio, space.Avatar, space.CoverImage,
-		space.Theme, space.Layout, space.Visibility, space.SyncEnabled,
+		space.Theme, space.Layout, space.StyleName, space.StyleVersion, string(styleManifestJSON),
+		space.Visibility, space.SyncEnabled,
 		space.SyncCategories, space.SyncTags, space.CreatedAt, space.UpdatedAt,
 	).Scan(&space.ID, &space.CreatedAt, &space.UpdatedAt)
+}
+
+func styleManifestForSave(manifest *StyleManifest) interface{} {
+	if manifest == nil {
+		return map[string]interface{}{}
+	}
+	return manifest
 }
 
 func (r *PgRepository) UpsertContent(ctx context.Context, content *SpaceContent) error {
