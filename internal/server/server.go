@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -71,10 +70,7 @@ func (s *Server) Run() error {
 	s.registerDefaultSubscriptions(bus)
 
 	// ─── 加载插件 ───
-	pluginsDir := "examples/plugins"
-	if dir := os.Getenv("PLUGINS_DIR"); dir != "" {
-		pluginsDir = dir
-	}
+	pluginsDir := plugin.PluginsDirFromEnv()
 	if err := s.manager.InstallFromPluginsDir(pluginsDir); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
 	}
@@ -173,7 +169,7 @@ func (s *Server) Run() error {
 	postHandler := handler.NewPostHandler(postSvc)
 	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager)
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
 
@@ -226,7 +222,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	postHandler := handler.NewPostHandler(postSvc)
 	spaceHandler := space.NewHandler(spaceSvc)
 	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager)
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
 
@@ -377,9 +373,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.GET("/plugins", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPlugins)
 		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
 		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPluginLogs)
+		admin.GET("/plugins/:name/export", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ExportPlugin)
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
+		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ImportPluginPackage)
 
 		// AI Gateway 管理
 		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.GetStatus)

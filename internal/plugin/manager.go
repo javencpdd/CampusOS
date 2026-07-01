@@ -125,10 +125,10 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 			p.Manifest.Config = config
 			m.mu.Unlock()
 		}
-		return nil
-	}
-	if !errors.Is(err, ErrAPIKeyNotFound) {
+	} else if !errors.Is(err, ErrAPIKeyNotFound) {
 		return err
+	} else {
+		record = &PluginRecord{}
 	}
 
 	configJSON, err := json.Marshal(p.Manifest.Config)
@@ -136,19 +136,19 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 		return err
 	}
 	now := time.Now()
-	record = &PluginRecord{
-		Name:        p.Manifest.Name,
-		DisplayName: p.Manifest.DisplayName,
-		Version:     p.Manifest.Version,
-		Description: p.Manifest.Description,
-		Author:      p.Manifest.Author,
-		Runtime:     p.Manifest.Runtime,
-		Status:      string(p.Status),
-		Config:      string(configJSON),
-		ErrorMsg:    p.ErrorMsg,
-		InstalledBy: p.InstalledBy,
-		InstalledAt: now,
-		UpdatedAt:   now,
+	record.Name = p.Manifest.Name
+	record.DisplayName = p.Manifest.DisplayName
+	record.Version = p.Manifest.Version
+	record.Description = p.Manifest.Description
+	record.Author = p.Manifest.Author
+	record.Runtime = p.Manifest.Runtime
+	record.Status = string(p.Status)
+	record.Config = string(configJSON)
+	record.ErrorMsg = p.ErrorMsg
+	record.InstalledBy = p.InstalledBy
+	record.UpdatedAt = now
+	if record.InstalledAt.IsZero() {
+		record.InstalledAt = now
 	}
 	if record.DisplayName == "" {
 		record.DisplayName = record.Name
@@ -534,7 +534,14 @@ func (m *Manager) Uninstall(name string) error {
 	}
 
 	delete(m.plugins, name)
+	repo := m.repo
 	m.mu.Unlock()
+
+	if repo != nil {
+		if err := repo.Delete(context.Background(), name); err != nil {
+			return err
+		}
+	}
 
 	log.Printf("🗑️  插件已卸载: %s", name)
 	return nil
@@ -583,4 +590,45 @@ func (m *Manager) InstallFromPluginsDir(dir string) error {
 		}
 	}
 	return nil
+}
+
+func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+	manifest, err := InspectPluginPackage(packagePath)
+	if err != nil {
+		return nil, err
+	}
+
+	m.mu.RLock()
+	_, loaded := m.plugins[manifest.Name]
+	m.mu.RUnlock()
+	if loaded {
+		if !replace {
+			return nil, fmt.Errorf("plugin '%s' already installed; use replace to overwrite", manifest.Name)
+		}
+		if err := m.Uninstall(manifest.Name); err != nil {
+			return nil, err
+		}
+	}
+
+	info, err := InstallPluginPackage(packagePath, pluginsDir, replace)
+	if err != nil {
+		return nil, err
+	}
+	return m.Install(info.PluginDir)
+}
+
+func (m *Manager) ExportPackage(name, outputPath string) (*PackageInfo, error) {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	pluginDir := p.Directory
+	m.mu.RUnlock()
+
+	if pluginDir == "" {
+		return nil, fmt.Errorf("plugin '%s' has no plugin directory", name)
+	}
+	return PackagePlugin(pluginDir, outputPath)
 }
