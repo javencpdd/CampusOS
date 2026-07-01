@@ -50,14 +50,64 @@ type StyleValidationResult struct {
 	Warnings []string `json:"warnings,omitempty"`
 }
 
+type StylePreview struct {
+	Validation StyleValidationResult `json:"validation"`
+	Owner      Owner                 `json:"owner,omitempty"`
+	Space      *Space                `json:"space,omitempty"`
+	Manifest   *StyleManifest        `json:"manifest,omitempty"`
+	Layout     string                `json:"layout,omitempty"`
+	Components []StyleComponent      `json:"components,omitempty"`
+	Tokens     map[string]string     `json:"tokens,omitempty"`
+	Assets     []StyleAsset          `json:"assets,omitempty"`
+}
+
 func ValidateStylePackage(pkg StylePackage) StyleValidationResult {
 	validator := &styleValidator{}
-	validator.validateManifest(pkg.Manifest)
+	validator.validateManifest(NormalizeStyleManifest(pkg.Manifest))
 	return StyleValidationResult{
 		Valid:    len(validator.errors) == 0,
 		Errors:   validator.errors,
 		Warnings: validator.warnings,
 	}
+}
+
+func NormalizeStyleManifest(manifest StyleManifest) StyleManifest {
+	normalized := manifest
+	normalized.SchemaVersion = strings.TrimSpace(normalized.SchemaVersion)
+	normalized.Name = strings.TrimSpace(normalized.Name)
+	normalized.Version = strings.TrimSpace(normalized.Version)
+	normalized.Author = strings.TrimSpace(normalized.Author)
+	normalized.Description = strings.TrimSpace(normalized.Description)
+	normalized.PreviewImage = strings.TrimSpace(normalized.PreviewImage)
+	normalized.Layout = strings.TrimSpace(normalized.Layout)
+	if normalized.Layout == "" {
+		normalized.Layout = "blog"
+	}
+	normalized.CompatibleCampusOS = normalizeList(normalized.CompatibleCampusOS, 10)
+	normalized.Components = normalizeComponents(normalized.Components)
+	normalized.Tokens = normalizeTokens(normalized.Tokens)
+	normalized.Assets = normalizeAssets(normalized.Assets)
+	return normalized
+}
+
+func BuildStylePreview(owner Owner, space *Space, pkg StylePackage) StylePreview {
+	validation := ValidateStylePackage(pkg)
+	preview := StylePreview{
+		Validation: validation,
+		Owner:      owner,
+		Space:      cloneSpace(space),
+	}
+	if !validation.Valid {
+		return preview
+	}
+
+	manifest := NormalizeStyleManifest(pkg.Manifest)
+	preview.Manifest = &manifest
+	preview.Layout = manifest.Layout
+	preview.Components = append([]StyleComponent(nil), manifest.Components...)
+	preview.Tokens = copyStringMap(manifest.Tokens)
+	preview.Assets = append([]StyleAsset(nil), manifest.Assets...)
+	return preview
 }
 
 type styleValidator struct {
@@ -297,4 +347,62 @@ func dangerousString(value string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeComponents(components []StyleComponent) []StyleComponent {
+	normalized := make([]StyleComponent, 0, len(components))
+	for _, component := range components {
+		item := StyleComponent{
+			Slot:  strings.TrimSpace(component.Slot),
+			Type:  strings.TrimSpace(component.Type),
+			Props: normalizeProps(component.Props),
+		}
+		normalized = append(normalized, item)
+	}
+	return normalized
+}
+
+func normalizeProps(props map[string]interface{}) map[string]interface{} {
+	if len(props) == 0 {
+		return nil
+	}
+	normalized := make(map[string]interface{}, len(props))
+	for key, value := range props {
+		normalized[strings.TrimSpace(key)] = value
+	}
+	return normalized
+}
+
+func normalizeTokens(tokens map[string]string) map[string]string {
+	if len(tokens) == 0 {
+		return nil
+	}
+	normalized := make(map[string]string, len(tokens))
+	for key, value := range tokens {
+		normalized[strings.TrimSpace(key)] = strings.TrimSpace(value)
+	}
+	return normalized
+}
+
+func normalizeAssets(assets []StyleAsset) []StyleAsset {
+	normalized := make([]StyleAsset, 0, len(assets))
+	for _, asset := range assets {
+		normalized = append(normalized, StyleAsset{
+			Name: strings.TrimSpace(asset.Name),
+			Path: strings.TrimSpace(asset.Path),
+			Type: strings.TrimSpace(asset.Type),
+		})
+	}
+	return normalized
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	clone := make(map[string]string, len(values))
+	for key, value := range values {
+		clone[key] = value
+	}
+	return clone
 }

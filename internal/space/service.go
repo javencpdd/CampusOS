@@ -104,6 +104,15 @@ func (s *Service) UpsertOwnSpace(ctx context.Context, userID string, req UpsertS
 	return buildPublicSpace(user, space), nil
 }
 
+func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StylePreview, error) {
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	preview := BuildStylePreview(current.Owner, current.Space, pkg)
+	return &preview, nil
+}
+
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {
 	space, err := s.repo.GetByUserID(ctx, user.ID)
 	if err != nil {

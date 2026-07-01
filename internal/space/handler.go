@@ -131,6 +131,27 @@ func (h *Handler) ValidateStylePackage(c *gin.Context) {
 	response.Success(c, ValidateStylePackage(req))
 }
 
+func (h *Handler) PreviewStylePackage(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	preview, err := h.svc.PreviewStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, preview)
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {

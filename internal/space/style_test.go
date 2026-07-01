@@ -2,6 +2,7 @@ package space
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -116,6 +117,116 @@ func TestValidateStylePackageHandler(t *testing.T) {
 	if payload.Code != 0 || !payload.Data.Valid {
 		t.Fatalf("expected valid response, got %#v", payload)
 	}
+}
+
+func TestPreviewStylePackageIncludesCurrentSpace(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	title := "Alice Space"
+	if _, err := svc.UpsertOwnSpace(testContext(), "1001", UpsertSpaceRequest{Title: &title}); err != nil {
+		t.Fatalf("upsert own space: %v", err)
+	}
+
+	preview, err := svc.PreviewStylePackage(testContext(), "1001", validStylePackage())
+	if err != nil {
+		t.Fatalf("preview style package: %v", err)
+	}
+	if !preview.Validation.Valid {
+		t.Fatalf("expected valid preview, got %#v", preview.Validation.Errors)
+	}
+	if preview.Owner.Username != "alice" {
+		t.Fatalf("expected owner alice, got %q", preview.Owner.Username)
+	}
+	if preview.Space == nil || preview.Space.Title != "Alice Space" {
+		t.Fatalf("expected current space title, got %#v", preview.Space)
+	}
+	if preview.Manifest == nil || preview.Manifest.Layout != "blog" {
+		t.Fatalf("expected normalized manifest, got %#v", preview.Manifest)
+	}
+	if preview.Layout != "blog" || len(preview.Components) != 2 || len(preview.Tokens) == 0 {
+		t.Fatalf("unexpected preview data: %#v", preview)
+	}
+}
+
+func TestPreviewStylePackageWithInvalidManifestDoesNotExposePreviewManifest(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	pkg := validStylePackage()
+	pkg.Manifest.Components[0].Props["onload"] = "alert(1)"
+
+	preview, err := svc.PreviewStylePackage(testContext(), "1001", pkg)
+	if err != nil {
+		t.Fatalf("preview style package: %v", err)
+	}
+	if preview.Validation.Valid {
+		t.Fatalf("expected invalid preview")
+	}
+	if preview.Manifest != nil || preview.Layout != "" || len(preview.Components) != 0 {
+		t.Fatalf("invalid style package should not expose normalized preview: %#v", preview)
+	}
+}
+
+func TestPreviewStylePackageHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
+		Secret:    "test-secret",
+		AccessTTL: time.Hour,
+		Issuer:    "campusos-test",
+	})
+	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	handler := NewHandler(svc)
+
+	router := gin.New()
+	router.POST("/spaces/me/styles/preview", middleware.JWTAuth(jwtMgr), handler.PreviewStylePackage)
+
+	body, err := json.Marshal(validStylePackage())
+	if err != nil {
+		t.Fatalf("marshal package: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/preview", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Code int          `json:"code"`
+		Data StylePreview `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Code != 0 || !payload.Data.Validation.Valid {
+		t.Fatalf("expected valid preview response, got %#v", payload)
+	}
+	if payload.Data.Owner.ID != "1001" || payload.Data.Manifest == nil {
+		t.Fatalf("expected owner and manifest in preview, got %#v", payload.Data)
+	}
+}
+
+func testContext() context.Context {
+	return context.Background()
 }
 
 func validStylePackage() StylePackage {

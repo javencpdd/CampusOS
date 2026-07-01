@@ -345,6 +345,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.GET("/spaces/me", spaceHandler.GetMe)
 		authenticated.PUT("/spaces/me", spaceHandler.UpdateMe)
 		authenticated.POST("/spaces/me/styles/validate", spaceHandler.ValidateStylePackage)
+		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
@@ -396,7 +397,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 49")
+	log.Printf("📋 API 端点总数: 50")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }
