@@ -119,13 +119,20 @@ PLUGINS_DIR=examples/plugins
 PLUGIN_DATA_DIR=.campusos/plugin-data
 ```
 
+如果宿主机已经有 PostgreSQL 占用 `5432`，可以在 `.env` 中设置：
+
+```env
+POSTGRES_PORT=5433
+DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=disable
+```
+
 ### 2. 启动基础设施
 
 ```bash
 make docker-up
 ```
 
-该命令会调用 `scripts/docker-up.sh`，启动 PostgreSQL、Redis、NATS。需要 pgAdmin 时单独执行：
+该命令会调用 `scripts/docker-up.sh`，按端口占用情况启动 PostgreSQL、Redis、NATS 和 pgAdmin。只需要单独启动 pgAdmin 时执行：
 
 ```bash
 make docker-tools-up
@@ -154,6 +161,11 @@ make migrate-status
 000003_add_plugins
 000004_seed_admin
 000005_plugin_schema_alignment
+000006_add_ai_call_logs
+000007_add_user_spaces
+000008_add_user_space_contents
+000009_add_user_space_styles
+000010_fix_admin_seed_password
 ```
 
 迁移原理教程见 [`docs/help/make-migrate-up教程.md`](./docs/help/make-migrate-up教程.md)。
@@ -214,11 +226,30 @@ http://localhost:3001
 | Host API | `http://127.0.0.1:18080/api/host/{Method}` | 插件调用宿主能力，默认仅绑定本机回环地址 |
 | 用户前台 | `http://localhost:3000` | `web/` |
 | 管理后台 | `http://localhost:3001` | `admin/` |
-| PostgreSQL | `localhost:5432` | 用户 `campusos`，数据库 `campusos`，本地密码 `campusos_dev` |
+| PostgreSQL | `localhost:${POSTGRES_PORT:-5432}` | 用户 `campusos`，数据库 `campusos`，本地密码 `campusos_dev` |
 | Redis | `localhost:6379` | 本地缓存服务 |
 | NATS | `localhost:4222` | NATS client 端口 |
 | NATS Monitor | `http://localhost:8222` | NATS 监控页 |
-| pgAdmin | `http://localhost:5050` | 通过 `make docker-tools-up` 启动 |
+| pgAdmin | `http://localhost:5050` | 通过 `make docker-up` 或 `make docker-tools-up` 启动 |
+
+默认账号：
+
+| 服务 | 账号 | 密码 |
+| --- | --- | --- |
+| pgAdmin | `admin@campusos.dev` | `pgadmin123` |
+| CampusOS 管理员 | `admin@campusos.local` | `Admin@123456` |
+| PostgreSQL | `campusos` | `campusos_dev` |
+
+数据库说明：
+
+| 项目 | 值 |
+| --- | --- |
+| 数据库引擎 | PostgreSQL 16+ |
+| Go 驱动 | pgx 5 |
+| 数据库名 | `campusos` |
+| 用户名 | `campusos` |
+| 端口 | 容器内 `5432`，宿主机默认 `${POSTGRES_PORT:-5432}` |
+| 数据卷 | `campusos_postgres-data` |
 
 ## 常用命令
 
@@ -235,7 +266,7 @@ http://localhost:3001
 | `make migrate-down` | 按逆序执行 down migration |
 | `make migrate-reset` | 先 down 再 up |
 | `make migrate-status` | 查看 `schema_migrations` 状态 |
-| `make docker-up` | 启动 PostgreSQL、Redis、NATS |
+| `make docker-up` | 启动 PostgreSQL、Redis、NATS、pgAdmin |
 | `make docker-infra-up` | `make docker-up` 的别名 |
 | `make docker-tools-up` | 启动 pgAdmin |
 | `make docker-down` | 停止 Docker Compose 服务 |

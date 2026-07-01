@@ -11,6 +11,7 @@ fi
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 NATS_CLIENT_PORT="${NATS_CLIENT_PORT:-4222}"
+PGADMIN_PORT="${PGADMIN_PORT:-5050}"
 
 is_running() {
   local service="$1"
@@ -52,6 +53,7 @@ SERVICES=()
 queue_service postgres "$POSTGRES_PORT" POSTGRES_PORT
 queue_service redis "$REDIS_PORT" REDIS_PORT
 queue_service nats "$NATS_CLIENT_PORT" NATS_CLIENT_PORT
+queue_service pgadmin "$PGADMIN_PORT" PGADMIN_PORT
 
 if [[ ${#SERVICES[@]} -eq 0 ]]; then
   echo "==> no Docker infrastructure service needs to be started"

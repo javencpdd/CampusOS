@@ -51,12 +51,13 @@ services:
     ports:
       - "${PGADMIN_PORT:-5050}:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@campusos.local
+      PGADMIN_DEFAULT_EMAIL: admin@campusos.dev
       PGADMIN_DEFAULT_PASSWORD: pgadmin123
+      PGADMIN_LISTEN_ADDRESS: 0.0.0.0
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-    depends_on:
-      - postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres-data:

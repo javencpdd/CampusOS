@@ -370,6 +370,9 @@ func TestApplyStylePackagePersistsStyleManifest(t *testing.T) {
 	if applied.Space.StyleManifest == nil || applied.Space.StyleManifest.Name != "timeline-note" {
 		t.Fatalf("expected persisted style manifest, got %#v", applied.Space.StyleManifest)
 	}
+	if applied.Space.SyncCategories == nil || applied.Space.SyncTags == nil {
+		t.Fatalf("expected empty sync arrays to be initialized, got categories=%#v tags=%#v", applied.Space.SyncCategories, applied.Space.SyncTags)
+	}
 
 	own, err := svc.GetOwnSpace(testContext(), "1001")
 	if err != nil {

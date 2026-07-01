@@ -158,6 +158,7 @@ func (s *Server) Run() error {
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	spaceSvc.SetThreadRepository(threadRepo)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
@@ -212,6 +213,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	spaceSvc.SetThreadRepository(threadRepo)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
