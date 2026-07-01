@@ -116,6 +116,21 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	response.Success(c, space)
 }
 
+func (h *Handler) ValidateStylePackage(c *gin.Context) {
+	if _, ok := currentUserID(c); !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StylePackage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	response.Success(c, ValidateStylePackage(req))
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {
