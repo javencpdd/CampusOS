@@ -162,6 +162,9 @@ func (s *Server) Run() error {
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
+		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
+	}
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -213,6 +216,9 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
+	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
+		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
+	}
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
@@ -320,7 +326,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/threads/:id", threadHandler.GetThread)
 		public.GET("/users", userHandler.ListUsers)
 		public.GET("/users/:id", userHandler.GetUser)
+		public.GET("/space/:user_id/contents", spaceHandler.ListContentsByUserID)
 		public.GET("/space/:user_id", spaceHandler.GetByUserID)
+		public.GET("/u/:username/contents", spaceHandler.ListContentsByUsername)
 		public.GET("/u/:username", spaceHandler.GetByUsername)
 		public.GET("/categories", categoryHandler.List)
 		public.GET("/categories/:id", categoryHandler.Get)
@@ -387,7 +395,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 46")
+	log.Printf("📋 API 端点总数: 48")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

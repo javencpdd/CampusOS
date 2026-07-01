@@ -13,13 +13,23 @@ type Repository interface {
 	Upsert(ctx context.Context, space *Space) error
 }
 
+type ContentRepository interface {
+	UpsertContent(ctx context.Context, content *SpaceContent) error
+	DeleteContent(ctx context.Context, threadID string) error
+	ListContentsByUserID(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error)
+}
+
 type MemoryRepository struct {
-	mu     sync.RWMutex
-	spaces map[string]*Space
+	mu       sync.RWMutex
+	spaces   map[string]*Space
+	contents map[string]*SpaceContent
 }
 
 func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{spaces: make(map[string]*Space)}
+	return &MemoryRepository{
+		spaces:   make(map[string]*Space),
+		contents: make(map[string]*SpaceContent),
+	}
 }
 
 func (r *MemoryRepository) GetByUserID(_ context.Context, userID string) (*Space, error) {
@@ -41,6 +51,53 @@ func (r *MemoryRepository) Upsert(_ context.Context, space *Space) error {
 	return nil
 }
 
+func (r *MemoryRepository) UpsertContent(_ context.Context, content *SpaceContent) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.contents[content.ThreadID] = cloneContent(content)
+	return nil
+}
+
+func (r *MemoryRepository) DeleteContent(_ context.Context, threadID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.contents, threadID)
+	return nil
+}
+
+func (r *MemoryRepository) ListContentsByUserID(_ context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	filtered := make([]*SpaceContent, 0)
+	for _, content := range r.contents {
+		if content.UserID == userID {
+			filtered = append(filtered, cloneContent(content))
+		}
+	}
+	sortContents(filtered)
+
+	total := int64(len(filtered))
+	start := (page - 1) * pageSize
+	if start >= len(filtered) {
+		return []*SpaceContent{}, total, nil
+	}
+	end := start + pageSize
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[start:end], total, nil
+}
+
 func cloneSpace(space *Space) *Space {
 	if space == nil {
 		return nil
@@ -48,5 +105,14 @@ func cloneSpace(space *Space) *Space {
 	clone := *space
 	clone.SyncCategories = append([]string(nil), space.SyncCategories...)
 	clone.SyncTags = append([]string(nil), space.SyncTags...)
+	return &clone
+}
+
+func cloneContent(content *SpaceContent) *SpaceContent {
+	if content == nil {
+		return nil
+	}
+	clone := *content
+	clone.Tags = append([]string(nil), content.Tags...)
 	return &clone
 }

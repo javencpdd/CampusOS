@@ -22,12 +22,19 @@ type UserLookup interface {
 }
 
 type Service struct {
-	repo  Repository
-	users UserLookup
+	repo        Repository
+	contentRepo ContentRepository
+	users       UserLookup
 }
 
-func NewService(repo Repository, users UserLookup) *Service {
-	return &Service{repo: repo, users: users}
+func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
+	var contentRepo ContentRepository
+	if len(contentRepos) > 0 {
+		contentRepo = contentRepos[0]
+	} else if repo, ok := repo.(ContentRepository); ok {
+		contentRepo = repo
+	}
+	return &Service{repo: repo, contentRepo: contentRepo, users: users}
 }
 
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {

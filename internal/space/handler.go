@@ -48,6 +48,38 @@ func (h *Handler) GetByUsername(c *gin.Context) {
 	response.Success(c, space)
 }
 
+func (h *Handler) ListContentsByUserID(c *gin.Context) {
+	userID := c.Param("user_id")
+	if _, err := strconv.ParseInt(userID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+
+	page, pageSize := pagination(c)
+	contents, total, err := h.svc.ListPublicContentsByUserID(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
+func (h *Handler) ListContentsByUsername(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid username")
+		return
+	}
+
+	page, pageSize := pagination(c)
+	contents, total, err := h.svc.ListPublicContentsByUsername(c.Request.Context(), username, page, pageSize)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -93,10 +125,33 @@ func currentUserID(c *gin.Context) (string, bool) {
 	return userID, ok && userID != ""
 }
 
+func pagination(c *gin.Context) (int, int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page = normalizePage(page)
+	pageSize = normalizePageSize(pageSize)
+	return page, pageSize
+}
+
+func paginationMeta(page, pageSize int, total int64) *response.Pagination {
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	return &response.Pagination{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+	}
+}
+
 func writeSpaceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidVisibility):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrContentRepositoryUnavailable):
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):
 		response.Error(c, http.StatusForbidden, 20004, err.Error())
 	case errors.Is(err, identityrepo.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):

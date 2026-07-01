@@ -41,6 +41,21 @@ type PublicSpace struct {
 	Space *Space `json:"space"`
 }
 
+type SpaceContent struct {
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	ThreadID        string    `json:"thread_id"`
+	Title           string    `json:"title"`
+	Excerpt         string    `json:"excerpt"`
+	AuthorName      string    `json:"author_name"`
+	CategoryID      string    `json:"category_id"`
+	Tags            []string  `json:"tags,omitempty"`
+	Status          string    `json:"status"`
+	ThreadCreatedAt time.Time `json:"thread_created_at"`
+	ThreadUpdatedAt time.Time `json:"thread_updated_at"`
+	SyncedAt        time.Time `json:"synced_at"`
+}
+
 type UpsertSpaceRequest struct {
 	Title          *string  `json:"title,omitempty" binding:"omitempty,max=120"`
 	Bio            *string  `json:"bio,omitempty" binding:"omitempty,max=500"`
