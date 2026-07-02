@@ -2,10 +2,11 @@
 
 > 日期：2026-07-02
 > 场景：宿主机 `psql -p 5432` 查询数据正常，但 `docker exec campusos-postgres psql ...` 查询数据不全
+> 当前处理结果：已备份并删除宿主机 `127.0.0.1:5432` 上的本地 `campusos` 数据库，后续以 Docker PostgreSQL 为准。
 
 ## 1. 结论
 
-这不是 `psql` 查询命令本身的问题，而是当前机器上同时存在两套 PostgreSQL 实例：
+这不是 `psql` 查询命令本身的问题，而是此前当前机器上同时存在两套 PostgreSQL 实例：
 
 | 连接方式 | 实际连接到哪里 | 当前数据表现 |
 | --- | --- | --- |
@@ -21,6 +22,14 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=di
 ```
 
 也就是说，CampusOS 的 Docker PostgreSQL 现在映射在宿主机 `5433`，不是 `5432`。
+
+当前已经清理了宿主机 `5432` 上的本地 `campusos` 数据库。清理后：
+
+| 命令 | 预期结果 |
+| --- | --- |
+| `psql -h 127.0.0.1 -p 5432 -U campusos -d campusos` | 失败，提示数据库 `campusos` 不存在 |
+| `psql -h 127.0.0.1 -p 5433 -U campusos -d campusos` | 成功，连接 Docker PostgreSQL |
+| `docker exec -it campusos-postgres psql -U campusos -d campusos` | 成功，连接 Docker PostgreSQL |
 
 ## 2. 为什么两个命令看到的数据不一样
 
@@ -63,15 +72,15 @@ docker exec -it campusos-postgres psql -U campusos -d campusos
 
 因此，如果宿主机 PostgreSQL 和 Docker PostgreSQL 都有一个叫 `campusos` 的数据库，它们名字一样，但数据不是同一份。
 
-## 3. 本机验证结果
+## 3. 清理前的验证结果
 
-本机当前容器端口映射为：
+清理前，本机容器端口映射为：
 
 ```text
 campusos-postgres  0.0.0.0:5433->5432/tcp
 ```
 
-只读检查结果：
+清理前的只读检查结果：
 
 | 连接 | server | migration 数量 | users | threads | user_space_contents |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -86,9 +95,41 @@ campusos-postgres  0.0.0.0:5433->5432/tcp
 127.0.0.1:5433 == campusos-postgres 容器数据库
 ```
 
-## 4. 正确使用方式
+## 4. 清理后的验证结果
 
-### 4.1 如果以 Docker PostgreSQL 为准
+已执行宿主机 `5432` 本地库备份和删除。
+
+备份文件：
+
+```text
+/tmp/campusos-db-backups/campusos-host5432-20260702-180921.dump
+```
+
+清理命令逻辑：
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'campusos'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS campusos;
+```
+
+清理后验证：
+
+| 命令 | 结果 |
+| --- | --- |
+| `PGPASSWORD=campusos_dev psql -h 127.0.0.1 -p 5432 -U campusos -d campusos -c 'SELECT 1;'` | 失败，`数据库 "campusos" 不存在` |
+| `PGPASSWORD=campusos_dev psql -h 127.0.0.1 -p 5433 -U campusos -d campusos ...` | 成功 |
+| `docker exec campusos-postgres psql -U campusos -d campusos ...` | 成功 |
+| `docker compose ps postgres pgadmin` | `campusos-postgres` 健康，端口为 `0.0.0.0:5433->5432/tcp` |
+
+当前应以 Docker PostgreSQL 为唯一开发主库。
+
+## 5. 正确使用方式
+
+### 5.1 如果以 Docker PostgreSQL 为准
 
 推荐开发时统一使用 Docker PostgreSQL。此时命令应使用 `5433`：
 
@@ -115,9 +156,9 @@ Password = campusos_dev
 
 注意：pgAdmin 在 Docker 网络里访问 PostgreSQL 容器，所以使用容器内端口 `5432`，不是宿主机映射端口 `5433`。
 
-### 4.2 如果以宿主机 PostgreSQL 为准
+### 5.2 如果以宿主机 PostgreSQL 为准
 
-如果你想继续使用宿主机 `127.0.0.1:5432` 这份数据，那么后端 `.env` 应改为：
+当前已经不建议继续使用宿主机 `127.0.0.1:5432` 作为 CampusOS 主库。如果未来确实要改回宿主机 PostgreSQL，那么后端 `.env` 应改为：
 
 ```env
 DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable
@@ -132,11 +173,17 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=di
 
 因为 `docker exec` 永远查询 Docker 容器里的数据库。
 
-## 5. 如何把宿主机数据迁移到 Docker 数据库
+## 6. 如何把宿主机数据迁移到 Docker 数据库
 
-如果你确认宿主机 `5432` 里的数据才是需要保留的数据，可以先备份，再导入 Docker PostgreSQL。
+如果你确认此前宿主机 `5432` 里的数据才是需要保留的数据，可以用备份导入 Docker PostgreSQL。
 
-### 5.1 从宿主机 5432 备份
+本次清理前已经生成备份：
+
+```text
+/tmp/campusos-db-backups/campusos-host5432-20260702-180921.dump
+```
+
+如需重新备份宿主机 5432，则使用：
 
 ```bash
 mkdir -p backups
@@ -149,7 +196,7 @@ PGPASSWORD=campusos_dev pg_dump \
   -f backups/campusos-host5432.dump
 ```
 
-### 5.2 恢复到 Docker 5433
+### 6.1 恢复到 Docker 5433
 
 恢复前确认 Docker 数据库可以被覆盖：
 
@@ -161,7 +208,7 @@ PGPASSWORD=campusos_dev pg_restore \
   -d campusos \
   --clean \
   --if-exists \
-  backups/campusos-host5432.dump
+  /tmp/campusos-db-backups/campusos-host5432-20260702-180921.dump
 ```
 
 恢复后验证：
@@ -176,7 +223,7 @@ docker exec campusos-postgres psql -U campusos -d campusos -c \
 
 两个结果应该一致。
 
-## 6. 排查命令
+## 7. 排查命令
 
 查看宿主机端口监听：
 
@@ -212,14 +259,14 @@ docker exec campusos-postgres psql -U campusos -d campusos -c \
   "SELECT current_database(), current_user, version();"
 ```
 
-## 7. 建议
+## 8. 建议
 
-为避免后续继续混淆，建议只选择一个数据库作为开发主库：
+为避免后续继续混淆，建议只选择 Docker PostgreSQL 作为开发主库：
 
 | 推荐方案 | 说明 |
 | --- | --- |
 | Docker PostgreSQL 作为主库 | 推荐。保持 `.env` 使用 `POSTGRES_PORT=5433` 和 `DATABASE_DSN=...localhost:5433...` |
-| 宿主机 PostgreSQL 作为主库 | 可以，但不要再用 `docker exec campusos-postgres` 判断业务数据 |
+| 宿主机 PostgreSQL 作为主库 | 不建议。当前宿主机 `5432` 上的 `campusos` 数据库已删除 |
 
 如果继续使用 Docker PostgreSQL，后续查询数据时优先使用：
 
