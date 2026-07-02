@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS README Update"
+  short_description: "Update CampusOS README from plans, progress, code, and docs"
+  default_prompt: "Use $campusos-readme-update to refresh CampusOS README based on current project state, docs, and validation results."

@@ -51,6 +51,8 @@ func (r *PgRepository) GetByUserID(ctx context.Context, userID string) (*Space, 
 }
 
 func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
+	ensureDefaults(space)
+
 	styleManifestJSON, err := json.Marshal(styleManifestForSave(space.StyleManifest))
 	if err != nil {
 		return err
@@ -98,6 +100,8 @@ func styleManifestForSave(manifest *StyleManifest) interface{} {
 }
 
 func (r *PgRepository) UpsertContent(ctx context.Context, content *SpaceContent) error {
+	ensureContentDefaults(content)
+
 	query := `INSERT INTO user_space_contents (
 			id, user_id, thread_id, title, excerpt, author_name, category_id, tags,
 			status, thread_created_at, thread_updated_at, synced_at
@@ -123,6 +127,15 @@ func (r *PgRepository) UpsertContent(ctx context.Context, content *SpaceContent)
 		content.AuthorName, content.CategoryID, content.Tags, content.Status,
 		content.ThreadCreatedAt, content.ThreadUpdatedAt, content.SyncedAt,
 	).Scan(&content.ID, &content.SyncedAt)
+}
+
+func ensureContentDefaults(content *SpaceContent) {
+	if content == nil {
+		return
+	}
+	if content.Tags == nil {
+		content.Tags = []string{}
+	}
 }
 
 func (r *PgRepository) DeleteContent(ctx context.Context, threadID string) error {

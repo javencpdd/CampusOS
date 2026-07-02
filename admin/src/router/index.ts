@@ -8,6 +8,13 @@ const router = createRouter({
       name: 'Login',
       component: () => import('@/views/LoginView.vue'),
     },
+    { path: '/admin', redirect: '/' },
+    { path: '/admin/users', redirect: '/users' },
+    { path: '/admin/threads', redirect: '/threads' },
+    { path: '/admin/categories', redirect: '/categories' },
+    { path: '/admin/plugins', redirect: '/plugins' },
+    { path: '/admin/reviews', redirect: '/reviews' },
+    { path: '/admin/events', redirect: '/events' },
     {
       path: '/',
       component: () => import('@/components/AdminLayout.vue'),

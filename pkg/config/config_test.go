@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestLoadAIConfig(t *testing.T) {
 	t.Setenv("AI_ENABLED", "true")
@@ -34,5 +38,101 @@ func TestLoadAIConfigFallsBackOnInvalidIntegers(t *testing.T) {
 	cfg := Load()
 	if cfg.AI.MaxRequestsPerMinute != 60 || cfg.AI.MaxConcurrent != 4 {
 		t.Fatalf("expected fallback values, got %#v", cfg.AI)
+	}
+}
+
+func TestLoadReadsDotEnvFile(t *testing.T) {
+	tmp := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get wd: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	content := []byte(`
+# local development database
+DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=disable
+SERVER_PORT="18080"
+AI_MAX_CONCURRENT=7
+`)
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), content, 0o600); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+
+	t.Setenv("DATABASE_DSN", "")
+	t.Setenv("SERVER_PORT", "")
+	t.Setenv("AI_MAX_CONCURRENT", "")
+
+	cfg := Load()
+	if cfg.Database.DSN != "postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=disable" {
+		t.Fatalf("expected DATABASE_DSN from .env, got %q", cfg.Database.DSN)
+	}
+	if cfg.Server.Port != "18080" {
+		t.Fatalf("expected SERVER_PORT from .env, got %q", cfg.Server.Port)
+	}
+	if cfg.AI.MaxConcurrent != 7 {
+		t.Fatalf("expected AI_MAX_CONCURRENT from .env, got %d", cfg.AI.MaxConcurrent)
+	}
+}
+
+func TestLoadEnvironmentOverridesDotEnvFile(t *testing.T) {
+	tmp := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get wd: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), []byte("DATABASE_DSN=postgres://file-value\n"), 0o600); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+	t.Setenv("DATABASE_DSN", "postgres://env-value")
+
+	cfg := Load()
+	if cfg.Database.DSN != "postgres://env-value" {
+		t.Fatalf("expected environment DATABASE_DSN to override .env, got %q", cfg.Database.DSN)
+	}
+}
+
+func TestLoadAuthPasswordHashEnabledFromDotEnv(t *testing.T) {
+	tmp := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get wd: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), []byte("AUTH_PASSWORD_HASH_ENABLED=false\n"), 0o600); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+	t.Setenv("AUTH_PASSWORD_HASH_ENABLED", "")
+
+	cfg := Load()
+	if cfg.Auth.PasswordHashEnabled {
+		t.Fatalf("expected password hashing to be disabled from .env")
+	}
+}
+
+func TestLoadAuthPasswordHashEnabledDefaultsToTrue(t *testing.T) {
+	t.Setenv("AUTH_PASSWORD_HASH_ENABLED", "")
+
+	cfg := Load()
+	if !cfg.Auth.PasswordHashEnabled {
+		t.Fatalf("expected password hashing to be enabled by default")
 	}
 }

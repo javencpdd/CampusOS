@@ -5,7 +5,7 @@
 --   角色：admin（系统管理员）
 
 -- 注意：bcrypt 哈希对应密码 "Admin@123456"
--- $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+-- $2a$10$fL4UMGXtNMprJEykAqvor.TJWB4MXECJUbrHs6dIFHW6TC8P2vhXS
 
 -- 插入管理员用户（雪花 ID：1000000000000000001）
 INSERT INTO users (id, username, nickname, email, avatar, bio, status)
@@ -14,7 +14,7 @@ ON CONFLICT DO NOTHING;
 
 -- 插入管理员账号凭据
 INSERT INTO accounts (id, user_id, type, identifier, credential, verified)
-VALUES (1000000000000000002, 1000000000000000001, 'email', 'admin@campusos.local', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', TRUE)
+VALUES (1000000000000000002, 1000000000000000001, 'email', 'admin@campusos.local', '$2a$10$fL4UMGXtNMprJEykAqvor.TJWB4MXECJUbrHs6dIFHW6TC8P2vhXS', TRUE)
 ON CONFLICT DO NOTHING;
 
 -- 分配 admin 角色给管理员用户

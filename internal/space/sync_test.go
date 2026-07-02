@@ -6,6 +6,7 @@ import (
 	"time"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
+	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -125,6 +126,58 @@ func TestHandleThreadEventDecodesMapPayload(t *testing.T) {
 	}
 }
 
+func TestListPublicContentsBackfillsExistingThreads(t *testing.T) {
+	repo := NewMemoryRepository()
+	threadRepo := communityrepo.NewMemoryThreadRepository()
+	svc := NewService(repo, newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	svc.SetThreadRepository(threadRepo)
+
+	thread := testThread("1001", "1", []string{"go"})
+	if err := threadRepo.Create(context.Background(), thread); err != nil {
+		t.Fatalf("create thread: %v", err)
+	}
+
+	contents, total, err := svc.ListPublicContentsByUserID(context.Background(), "1001", 1, 20)
+	if err != nil {
+		t.Fatalf("list public contents: %v", err)
+	}
+	if total != 1 || len(contents) != 1 {
+		t.Fatalf("expected backfilled content, total=%d len=%d", total, len(contents))
+	}
+	if contents[0].ThreadID != thread.ID {
+		t.Fatalf("expected backfilled thread id %q, got %q", thread.ID, contents[0].ThreadID)
+	}
+}
+
+func TestSyncThreadNormalizesNilTags(t *testing.T) {
+	repo := NewMemoryRepository()
+	contentRepo := &capturingContentRepository{}
+	svc := NewService(repo, newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}), contentRepo)
+
+	thread := testThread("1001", "1", nil)
+	if err := svc.SyncThread(context.Background(), thread); err != nil {
+		t.Fatalf("sync thread: %v", err)
+	}
+
+	if contentRepo.last == nil {
+		t.Fatalf("expected synced content")
+	}
+	if contentRepo.last.Tags == nil {
+		t.Fatalf("expected nil thread tags to be normalized to an empty slice")
+	}
+	if len(contentRepo.last.Tags) != 0 {
+		t.Fatalf("expected empty tags, got %#v", contentRepo.last.Tags)
+	}
+}
+
 func testThread(authorID, categoryID string, tags []string) *communitydomain.Thread {
 	now := time.Now().UTC()
 	return &communitydomain.Thread{
@@ -139,4 +192,22 @@ func testThread(authorID, categoryID string, tags []string) *communitydomain.Thr
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
+}
+
+type capturingContentRepository struct {
+	last *SpaceContent
+}
+
+func (r *capturingContentRepository) UpsertContent(_ context.Context, content *SpaceContent) error {
+	copied := *content
+	r.last = &copied
+	return nil
+}
+
+func (r *capturingContentRepository) DeleteContent(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *capturingContentRepository) ListContentsByUserID(_ context.Context, _ string, _, _ int) ([]*SpaceContent, int64, error) {
+	return []*SpaceContent{}, 0, nil
 }

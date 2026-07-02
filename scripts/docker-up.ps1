@@ -14,6 +14,7 @@ if (Test-Path ".env") {
 $PostgresPort = if ($env:POSTGRES_PORT) { [int]$env:POSTGRES_PORT } else { 5432 }
 $RedisPort = if ($env:REDIS_PORT) { [int]$env:REDIS_PORT } else { 6379 }
 $NatsClientPort = if ($env:NATS_CLIENT_PORT) { [int]$env:NATS_CLIENT_PORT } else { 4222 }
+$PgAdminPort = if ($env:PGADMIN_PORT) { [int]$env:PGADMIN_PORT } else { 5050 }
 
 function Test-ServiceRunning([string]$Service) {
     $running = docker compose ps --services --filter status=running
@@ -56,6 +57,7 @@ $Services = @()
 Add-ServiceIfNeeded "postgres" $PostgresPort "POSTGRES_PORT"
 Add-ServiceIfNeeded "redis" $RedisPort "REDIS_PORT"
 Add-ServiceIfNeeded "nats" $NatsClientPort "NATS_CLIENT_PORT"
+Add-ServiceIfNeeded "pgadmin" $PgAdminPort "PGADMIN_PORT"
 
 if ($Services.Count -eq 0) {
     Write-Host "==> no Docker infrastructure service needs to be started"

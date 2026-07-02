@@ -151,11 +151,24 @@ const logsLoading = ref(false)
 const selectedPluginName = ref('')
 const pluginLogs = ref<any[]>([])
 
+const responseItems = (payload: any): any[] => {
+  const candidates = [
+    payload?.data?.items,
+    payload?.items,
+    payload?.data,
+    payload,
+  ]
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate
+  }
+  return []
+}
+
 const load = async () => {
   loading.value = true
   try {
     const r = (await pluginApi.list()) as any
-    plugins.value = r?.data?.items || r?.data || []
+    plugins.value = responseItems(r)
   } catch {
     // 插件接口可能不可用，静默处理
     plugins.value = []
@@ -237,7 +250,7 @@ const loadLogs = async () => {
   logsLoading.value = true
   try {
     const r = (await pluginApi.logs(selectedPluginName.value, { limit: 100 })) as any
-    pluginLogs.value = r?.data?.items || r?.data || []
+    pluginLogs.value = responseItems(r)
   } catch {
     pluginLogs.value = []
     ElMessage.error('加载插件日志失败')

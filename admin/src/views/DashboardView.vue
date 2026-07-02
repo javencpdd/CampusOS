@@ -56,19 +56,19 @@
             <span>快捷操作</span>
           </template>
           <el-space wrap>
-            <el-button type="primary" @click="$router.push('/admin/users')">
+            <el-button type="primary" @click="$router.push({ name: 'Users' })">
               <el-icon><User /></el-icon>用户管理
             </el-button>
-            <el-button type="success" @click="$router.push('/admin/threads')">
+            <el-button type="success" @click="$router.push({ name: 'Threads' })">
               <el-icon><Document /></el-icon>帖子管理
             </el-button>
-            <el-button type="warning" @click="$router.push('/admin/categories')">
+            <el-button type="warning" @click="$router.push({ name: 'Categories' })">
               <el-icon><FolderOpened /></el-icon>版块管理
             </el-button>
-            <el-button type="info" @click="$router.push('/admin/plugins')">
+            <el-button type="info" @click="$router.push({ name: 'Plugins' })">
               <el-icon><Connection /></el-icon>插件管理
             </el-button>
-            <el-button @click="$router.push('/admin/events')">
+            <el-button @click="$router.push({ name: 'Events' })">
               <el-icon><Bell /></el-icon>事件日志
             </el-button>
           </el-space>
@@ -83,7 +83,7 @@
           <template #header>
             <div class="card-header">
               <span>最新帖子</span>
-              <el-button text type="primary" size="small" @click="$router.push('/admin/threads')">
+              <el-button text type="primary" size="small" @click="$router.push({ name: 'Threads' })">
                 查看全部
               </el-button>
             </div>
@@ -109,7 +109,7 @@
           <template #header>
             <div class="card-header">
               <span>最新事件</span>
-              <el-button text type="primary" size="small" @click="$router.push('/admin/events')">
+              <el-button text type="primary" size="small" @click="$router.push({ name: 'Events' })">
                 查看全部
               </el-button>
             </div>

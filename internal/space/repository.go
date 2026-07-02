@@ -103,8 +103,8 @@ func cloneSpace(space *Space) *Space {
 		return nil
 	}
 	clone := *space
-	clone.SyncCategories = append([]string(nil), space.SyncCategories...)
-	clone.SyncTags = append([]string(nil), space.SyncTags...)
+	clone.SyncCategories = append([]string{}, space.SyncCategories...)
+	clone.SyncTags = append([]string{}, space.SyncTags...)
 	if space.StyleManifest != nil {
 		manifest := *space.StyleManifest
 		manifest.CompatibleCampusOS = append([]string(nil), space.StyleManifest.CompatibleCampusOS...)
@@ -124,7 +124,7 @@ func cloneContent(content *SpaceContent) *SpaceContent {
 		return nil
 	}
 	clone := *content
-	clone.Tags = append([]string(nil), content.Tags...)
+	clone.Tags = append([]string{}, content.Tags...)
 	return &clone
 }
 

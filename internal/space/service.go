@@ -25,6 +25,7 @@ type UserLookup interface {
 type Service struct {
 	repo        Repository
 	contentRepo ContentRepository
+	threadRepo  ThreadRepository
 	users       UserLookup
 }
 
@@ -36,6 +37,10 @@ func NewService(repo Repository, users UserLookup, contentRepos ...ContentReposi
 		contentRepo = repo
 	}
 	return &Service{repo: repo, contentRepo: contentRepo, users: users}
+}
+
+func (s *Service) SetThreadRepository(repo ThreadRepository) {
+	s.threadRepo = repo
 }
 
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {
@@ -253,6 +258,12 @@ func ensureDefaults(space *Space) {
 	}
 	if space.Visibility == "" {
 		space.Visibility = VisibilityPublic
+	}
+	if space.SyncCategories == nil {
+		space.SyncCategories = []string{}
+	}
+	if space.SyncTags == nil {
+		space.SyncTags = []string{}
 	}
 }
 

@@ -17,6 +17,10 @@ import (
 
 var ErrContentRepositoryUnavailable = errors.New("space content repository unavailable")
 
+type ThreadRepository interface {
+	List(ctx context.Context, filter communitydomain.ThreadListFilter) ([]*communitydomain.Thread, int64, error)
+}
+
 func (s *Service) RegisterEventHandlers(bus eventbus.EventBus) error {
 	if bus == nil {
 		return nil
@@ -70,7 +74,7 @@ func (s *Service) SyncThread(ctx context.Context, thread *communitydomain.Thread
 		Excerpt:         excerpt(thread.Content, 240),
 		AuthorName:      thread.AuthorName,
 		CategoryID:      thread.CategoryID,
-		Tags:            append([]string(nil), thread.Tags...),
+		Tags:            normalizedTags(thread.Tags),
 		Status:          string(thread.Status),
 		ThreadCreatedAt: thread.CreatedAt,
 		ThreadUpdatedAt: thread.UpdatedAt,
@@ -92,6 +96,9 @@ func (s *Service) ListPublicContentsByUserID(ctx context.Context, userID string,
 	if _, err := s.GetPublicByUserID(ctx, userID); err != nil {
 		return nil, 0, err
 	}
+	if err := s.BackfillUserContents(ctx, userID); err != nil {
+		return nil, 0, err
+	}
 	return s.contentRepo.ListContentsByUserID(ctx, userID, normalizePage(page), normalizePageSize(pageSize))
 }
 
@@ -106,7 +113,37 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 	if _, err := s.getPublicSpace(ctx, user); err != nil {
 		return nil, 0, err
 	}
+	if err := s.BackfillUserContents(ctx, user.ID); err != nil {
+		return nil, 0, err
+	}
 	return s.contentRepo.ListContentsByUserID(ctx, user.ID, normalizePage(page), normalizePageSize(pageSize))
+}
+
+func (s *Service) BackfillUserContents(ctx context.Context, userID string) error {
+	if s.threadRepo == nil || s.contentRepo == nil {
+		return nil
+	}
+
+	const pageSize = 100
+	for page := 1; ; page++ {
+		threads, total, err := s.threadRepo.List(ctx, communitydomain.ThreadListFilter{
+			AuthorID: userID,
+			Status:   string(communitydomain.ThreadStatusPublished),
+			Page:     page,
+			PageSize: pageSize,
+		})
+		if err != nil {
+			return fmt.Errorf("list user threads for space backfill: %w", err)
+		}
+		for _, thread := range threads {
+			if err := s.SyncThread(ctx, thread); err != nil {
+				return err
+			}
+		}
+		if len(threads) == 0 || int64(page*pageSize) >= total {
+			return nil
+		}
+	}
 }
 
 func (s *Service) deleteSyncedContent(ctx context.Context, threadID string) error {
@@ -177,6 +214,13 @@ func matchesAnyTag(allowed, tags []string) bool {
 		}
 	}
 	return false
+}
+
+func normalizedTags(tags []string) []string {
+	if tags == nil {
+		return []string{}
+	}
+	return append([]string(nil), tags...)
 }
 
 func threadFromEventData(data interface{}) (*communitydomain.Thread, error) {
