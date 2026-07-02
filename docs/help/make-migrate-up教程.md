@@ -42,7 +42,7 @@ migrate-status:
 	./scripts/migrate.sh status
 ```
 
-也就是说，`make migrate-up` 首次执行时会按顺序应用：
+也就是说，`make migrate-up` 首次执行时会按顺序应用当前目录中的全部 `.up.sql` 文件，例如当前版本会应用：
 
 ```bash
 000001_init_schema.up.sql
@@ -50,6 +50,11 @@ migrate-status:
 000003_add_plugins.up.sql
 000004_seed_admin.up.sql
 000005_plugin_schema_alignment.up.sql
+000006_add_ai_call_logs.up.sql
+000007_add_user_spaces.up.sql
+000008_add_user_space_contents.up.sql
+000009_add_user_space_styles.up.sql
+000010_fix_admin_seed_password.up.sql
 ```
 
 可以用下面的命令只查看 Make 会执行什么，而不真正执行数据库迁移：
@@ -67,8 +72,8 @@ make -n migrate-up
 | 层级 | 作用 |
 | --- | --- |
 | Makefile | 定义 `migrate-up` 目标，负责把短命令展开成完整命令 |
-| psql | PostgreSQL 官方命令行客户端，负责连接数据库并执行 SQL 文件 |
-| Docker Compose / PostgreSQL | 提供正在运行的 PostgreSQL 服务，监听 `localhost:5432` |
+| psql / docker exec psql | PostgreSQL 官方命令行客户端，负责连接数据库并执行 SQL 文件 |
+| Docker Compose / PostgreSQL | 提供正在运行的 PostgreSQL 服务，通过 `${POSTGRES_PORT:-5432}` 暴露到宿主机 |
 
 项目的 `docker-compose.yml` 中定义了 PostgreSQL：
 
@@ -95,17 +100,17 @@ ports:
 
 | 位置 | 端口 |
 | --- | --- |
-| 宿主机 | `localhost:5432` |
+| 宿主机 | `localhost:${POSTGRES_PORT:-5432}`，当前开发机通常是 `localhost:5433` |
 | Docker 容器内部 | `postgres:5432` |
 
-所以即使 PostgreSQL 服务运行在 Docker 容器里，宿主机上的 `psql` 仍然可以通过 `localhost:5432` 连接进去。
+所以即使 PostgreSQL 服务运行在 Docker 容器里，宿主机上的 `psql` 仍然可以通过映射端口连接进去。如果宿主机没有安装 `psql`，当前脚本会自动改用 `docker exec campusos-postgres psql`，直接调用 PostgreSQL 容器内部自带的客户端。
 
 ## 3. 命令逐段解释
 
-循环中每次真正执行的命令形态如下：
+宿主机有 `psql` 时，循环中每次真正执行的命令形态如下：
 
 ```bash
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f 某个迁移文件.sql
+PGPASSWORD=campusos_dev psql -h localhost -p "${POSTGRES_PORT:-5432}" -U campusos -d campusos -v ON_ERROR_STOP=1 -f 某个迁移文件.sql
 ```
 
 逐段含义：
@@ -115,6 +120,7 @@ PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_ST
 | `PGPASSWORD=campusos_dev` | 给本次 `psql` 进程临时设置数据库密码 |
 | `psql` | PostgreSQL 命令行客户端 |
 | `-h localhost` | 连接宿主机的 `localhost` |
+| `-p "${POSTGRES_PORT:-5432}"` | 连接 Docker 暴露到宿主机的端口，当前开发机通常是 `5433` |
 | `-U campusos` | 使用数据库用户 `campusos` |
 | `-d campusos` | 连接数据库 `campusos` |
 | `-v ON_ERROR_STOP=1` | SQL 出错时立即停止，避免后续迁移继续执行 |
@@ -126,10 +132,19 @@ PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -v ON_ERROR_ST
 
 ```bash
 export PGPASSWORD=campusos_dev
-psql -h localhost -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000001_init_schema.up.sql
+psql -h localhost -p "${POSTGRES_PORT:-5432}" -U campusos -d campusos -v ON_ERROR_STOP=1 -f migrations/000001_init_schema.up.sql
 ```
 
 但当前 Makefile 使用单行写法更简洁，也不会把 `PGPASSWORD` 长期留在当前 shell 会话里。
+
+宿主机没有 `psql`、但 Docker PostgreSQL 容器正在运行时，脚本会自动切换为下面这种形态：
+
+```bash
+docker exec -i -e PGPASSWORD=campusos_dev campusos-postgres \
+  psql -U campusos -d campusos -v ON_ERROR_STOP=1 < 某个迁移文件.sql
+```
+
+这里不能简单把 `-f migrations/xxx.sql` 传给容器内的 `psql`，因为 SQL 文件在宿主机项目目录里，不在 PostgreSQL 容器文件系统里。当前脚本会把 `-f 文件名` 转换成输入重定向，把 SQL 文件内容通过标准输入送进容器里的 `psql`。
 
 ## 4. Makefile 是如何执行它的
 
@@ -159,7 +174,7 @@ migrate-up:
 
 ## 5. `psql -f` 是如何执行 SQL 文件的
 
-`psql -f` 会读取指定 SQL 文件，并把里面的语句发送到 PostgreSQL 执行。当前 `migrate-up` 会按顺序执行 5 个 `.up.sql` 文件。
+`psql -f` 会读取指定 SQL 文件，并把里面的语句发送到 PostgreSQL 执行。当前 `migrate-up` 会按顺序执行 10 个 `.up.sql` 文件。
 
 当前迁移文件分工如下：
 
@@ -170,6 +185,11 @@ migrate-up:
 | `000003_add_plugins.up.sql` | 创建 `plugins`、`api_keys` |
 | `000004_seed_admin.up.sql` | 插入默认管理员账号、管理员角色绑定和默认版块 |
 | `000005_plugin_schema_alignment.up.sql` | 创建插件权限表和插件日志表 |
+| `000006_add_ai_call_logs.up.sql` | 创建 AI 调用日志表 |
+| `000007_add_user_spaces.up.sql` | 创建用户个人主页配置表 |
+| `000008_add_user_space_contents.up.sql` | 创建个人主页同步内容表 |
+| `000009_add_user_space_styles.up.sql` | 创建个人主页风格状态表 |
+| `000010_fix_admin_seed_password.up.sql` | 修复默认管理员种子密码哈希 |
 
 这些文件中既包含建表语句，也包含唯一索引、普通索引和种子数据。例如：
 
@@ -187,8 +207,8 @@ CREATE INDEX idx_threads_created_at ON threads(created_at DESC) WHERE deleted_at
 | 条件 | 检查方式 | 说明 |
 | --- | --- | --- |
 | PostgreSQL 服务可用 | `make docker-up` 或本机 PostgreSQL 服务 | 推荐 Docker Compose；如果本机已有 PostgreSQL 占用端口，脚本会提示跳过 |
-| PostgreSQL 端口可连接 | `psql -h localhost -p 5432 ...` | 默认连接宿主机 `5432`，也可通过 `POSTGRES_PORT`/`DB_PORT` 改端口 |
-| 本机有 `psql` 客户端 | `psql --version` | 当前迁移脚本默认调用宿主机上的 `psql` |
+| PostgreSQL 可连接 | `make migrate-status` | 有宿主机 `psql` 时走 `DB_HOST:DB_PORT`；没有宿主机 `psql` 时走 Docker 容器内连接 |
+| `psql` 执行入口 | `psql --version` 或 `docker ps --filter name=campusos-postgres` | 两者满足一个即可：宿主机客户端可用，或 Docker PostgreSQL 容器正在运行 |
 | 数据库已创建 | `campusos` | Docker 初始化时由 `POSTGRES_DB` 创建 |
 | 用户已创建 | `campusos` | Docker 初始化时由 `POSTGRES_USER` 创建 |
 | 密码匹配 | `campusos_dev` | 必须与 `POSTGRES_PASSWORD` 一致 |
@@ -226,26 +246,23 @@ cd /home/jack/bbs/bbs01/CampusOS
 # 2. 启动 PostgreSQL、Redis、NATS
 make docker-up
 
-# 3. 查看 PostgreSQL 是否可连接
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "SELECT 1"
+# 3. 查看迁移状态
+make migrate-status
 
-# 4. 确认本机 psql 可用
-psql --version
-
-# 5. 执行当前 Makefile 中定义的迁移
+# 4. 执行当前 Makefile 中定义的迁移
 make migrate-up
 ```
 
 执行完成后，可以检查表是否创建成功：
 
 ```bash
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "\dt"
+PGPASSWORD=campusos_dev psql -h localhost -p "${POSTGRES_PORT:-5432}" -U campusos -d campusos -c "\dt"
 ```
 
 也可以检查某张表：
 
 ```bash
-PGPASSWORD=campusos_dev psql -h localhost -U campusos -d campusos -c "\d users"
+PGPASSWORD=campusos_dev psql -h localhost -p "${POSTGRES_PORT:-5432}" -U campusos -d campusos -c "\d users"
 ```
 
 ## 8. 为什么 migrate-up 不应该包含 down 文件
@@ -329,42 +346,50 @@ make migrate-status
 
 ## 10. 如果本机没有 psql 怎么办
 
-当前 `make migrate-up` 依赖宿主机安装 `psql`。如果本机没有安装 PostgreSQL 客户端，可以使用 Docker 容器里的 `psql`。
-
-由于 SQL 文件在宿主机项目目录中，不在 PostgreSQL 容器内部，推荐用输入重定向：
+当前 `make migrate-up` 已经内置 Docker fallback。也就是说，宿主机没有安装 PostgreSQL 客户端时，不需要手动逐个执行 SQL 文件，只要 Docker PostgreSQL 容器正在运行即可：
 
 ```bash
-docker exec -i campusos-postgres psql -U campusos -d campusos < migrations/000001_init_schema.up.sql
+docker ps --filter name=campusos-postgres
+make migrate-up
 ```
 
-完整迁移也可以这样执行：
+脚本会输出类似信息：
+
+```text
+==> host psql not found; using docker exec campusos-postgres psql
+```
+
+此时迁移仍然会扫描本地 `migrations/*.up.sql`，并把 SQL 文件内容通过标准输入送进容器内的 `psql`。这种方式的优点是宿主机不需要安装 `psql`，只需要 Docker 可用。
+
+如果需要强制指定执行方式：
 
 ```bash
-for f in migrations/*.up.sql; do
-  echo "执行迁移: $f"
-  docker exec -i campusos-postgres psql -U campusos -d campusos < "$f" || exit 1
-done
+PSQL_MODE=host make migrate-up
+PSQL_MODE=docker make migrate-up
 ```
 
-这种方式的优点是宿主机不需要安装 `psql`，只需要 Docker 可用。
+如果 PostgreSQL 容器名发生变化：
+
+```bash
+POSTGRES_CONTAINER=新的容器名 PSQL_MODE=docker make migrate-up
+```
 
 ## 11. 常见问题排查
 
 ### 11.1 `psql: command not found`
 
-原因：宿主机没有安装 PostgreSQL 客户端。
+原因：宿主机没有安装 PostgreSQL 客户端。当前脚本会自动尝试使用 Docker 容器内的 `psql`，所以通常只需要确认容器正在运行：
 
-解决：
+```bash
+docker ps --filter name=campusos-postgres
+make migrate-up
+```
+
+如果希望继续使用宿主机 `psql`，再安装客户端：
 
 ```bash
 sudo apt update
 sudo apt install -y postgresql-client
-```
-
-或者改用 Docker 内的 `psql`：
-
-```bash
-docker exec -i campusos-postgres psql -U campusos -d campusos < migrations/000001_init_schema.up.sql
 ```
 
 ### 11.2 `connection refused`
@@ -458,6 +483,6 @@ campusosctl migrate status
 
 ## 13. 一句话总结
 
-`make migrate-up` 可以这样用，是因为 Makefile 调用 `scripts/migrate.sh up`，脚本会连接 `localhost:5432` 上的 PostgreSQL（默认通常由 Docker Compose 提供，也可以是本机服务），创建 `schema_migrations`，按顺序执行未应用过的 SQL 迁移文件，并记录执行版本。
+`make migrate-up` 可以这样用，是因为 Makefile 调用 `scripts/migrate.sh up`，脚本会先选择可用的 `psql` 执行入口：宿主机有 `psql` 时连接 `DB_HOST:DB_PORT`，宿主机没有 `psql` 时使用 `docker exec campusos-postgres psql`。随后脚本会创建 `schema_migrations`，按顺序执行未应用过的 SQL 迁移文件，并记录执行版本。
 
-`migrate-up` 只应该执行 `.up.sql`；`.down.sql` 属于 `migrate-down`。如果需要开发环境重建数据库，应使用 `make migrate-reset`。当前实现已经能跑完 `000001` 到 `000005`，并能通过 `make migrate-status` 查看版本状态；后续仍可升级为 `golang-migrate` 或跨平台 Go CLI。
+`migrate-up` 只应该执行 `.up.sql`；`.down.sql` 属于 `migrate-down`。如果需要开发环境重建数据库，应使用 `make migrate-reset`。当前实现已经能跑完 `000001` 到 `000010`，并能通过 `make migrate-status` 查看版本状态；后续仍可升级为 `golang-migrate` 或跨平台 Go CLI。
