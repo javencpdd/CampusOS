@@ -19,6 +19,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="name" label="名称" width="150" />
+        <el-table-column prop="slug" label="Slug" width="180" show-overflow-tooltip />
         <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
         <el-table-column prop="sort_order" label="排序" width="80" align="center" />
         <el-table-column prop="color" label="颜色" width="100" align="center">
@@ -64,6 +65,9 @@
         <el-form-item label="名称" required>
           <el-input v-model="formData.name" placeholder="请输入版块名称" maxlength="50" />
         </el-form-item>
+        <el-form-item label="Slug">
+          <el-input v-model="formData.slug" placeholder="留空自动生成，如 campus-news" maxlength="64" />
+        </el-form-item>
         <el-form-item label="描述">
           <el-input
             v-model="formData.description"
@@ -108,6 +112,7 @@ const editingId = ref('')
 
 const formData = reactive({
   name: '',
+  slug: '',
   description: '',
   icon: '',
   color: '',
@@ -116,6 +121,7 @@ const formData = reactive({
 
 const resetForm = () => {
   formData.name = ''
+  formData.slug = ''
   formData.description = ''
   formData.icon = ''
   formData.color = ''
@@ -144,6 +150,7 @@ const showEditDialog = (row: any) => {
   isEdit.value = true
   editingId.value = row.id
   formData.name = row.name || ''
+  formData.slug = row.slug || ''
   formData.description = row.description || ''
   formData.icon = row.icon || ''
   formData.color = row.color || ''
@@ -158,7 +165,13 @@ const submitForm = async () => {
   }
   submitting.value = true
   try {
-    const data = { ...formData }
+    const data = {
+      ...formData,
+      name: formData.name.trim(),
+      slug: formData.slug.trim(),
+      description: formData.description.trim(),
+      icon: formData.icon.trim(),
+    }
     if (isEdit.value) {
       await categoryApi.update(editingId.value, data)
       ElMessage.success('版块已更新')
@@ -168,8 +181,8 @@ const submitForm = async () => {
     }
     dialogVisible.value = false
     load()
-  } catch {
-    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+  } catch (err: any) {
+    ElMessage.error(err?.msg || (isEdit.value ? '更新失败' : '创建失败'))
   }
   submitting.value = false
 }

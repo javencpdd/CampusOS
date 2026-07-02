@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
@@ -23,12 +25,21 @@ func NewCategoryService(repo repository.CategoryRepository, bus eventbus.EventBu
 
 func (s *CategoryService) Create(ctx context.Context, req domain.CreateCategoryRequest) (*domain.Category, error) {
 	now := time.Now().UTC()
+	id := strconv.FormatInt(idgen.New(), 10)
+	name := strings.TrimSpace(req.Name)
+	slug := normalizeCategorySlug(req.Slug)
+	if slug == "" {
+		slug = fallbackCategorySlug(name, id)
+	}
 	cat := &domain.Category{
-		ID:          strconv.FormatInt(idgen.New(), 10),
-		Name:        req.Name,
-		Slug:        req.Slug,
-		Description: req.Description,
+		ID:          id,
+		Name:        name,
+		Slug:        slug,
+		Description: strings.TrimSpace(req.Description),
+		Icon:        strings.TrimSpace(req.Icon),
 		ParentID:    req.ParentID,
+		SortOrder:   req.SortOrder,
+		IsClosed:    req.IsClosed,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -63,10 +74,22 @@ func (s *CategoryService) Update(ctx context.Context, id string, req domain.Upda
 		return nil, err
 	}
 	if req.Name != nil {
-		cat.Name = *req.Name
+		cat.Name = strings.TrimSpace(*req.Name)
+	}
+	if req.Slug != nil {
+		slug := normalizeCategorySlug(*req.Slug)
+		if slug != "" {
+			cat.Slug = slug
+		}
 	}
 	if req.Description != nil {
-		cat.Description = *req.Description
+		cat.Description = strings.TrimSpace(*req.Description)
+	}
+	if req.Icon != nil {
+		cat.Icon = strings.TrimSpace(*req.Icon)
+	}
+	if req.ParentID != nil {
+		cat.ParentID = req.ParentID
 	}
 	if req.IsClosed != nil {
 		cat.IsClosed = *req.IsClosed
@@ -79,4 +102,43 @@ func (s *CategoryService) Update(ctx context.Context, id string, req domain.Upda
 		return nil, err
 	}
 	return cat, nil
+}
+
+func fallbackCategorySlug(name, id string) string {
+	slug := normalizeCategorySlug(name)
+	if slug != "" {
+		return slug
+	}
+	return "category-" + id
+}
+
+func normalizeCategorySlug(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	prevDash := false
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+			prevDash = false
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevDash = false
+		case r == '-' || r == '_' || unicode.IsSpace(r):
+			if !prevDash && b.Len() > 0 {
+				b.WriteByte('-')
+				prevDash = true
+			}
+		}
+	}
+
+	slug := strings.Trim(b.String(), "-")
+	if len(slug) > 64 {
+		slug = strings.TrimRight(slug[:64], "-")
+	}
+	return slug
 }
