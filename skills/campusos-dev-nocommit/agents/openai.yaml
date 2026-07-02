@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Dev Workflow"
+  short_description: "CampusOS versioned task, docs, validation, commit flow"
+  default_prompt: "Use $campusos-dev-workflow to complete the next CampusOS development task for the current version stage with docs and commit."
