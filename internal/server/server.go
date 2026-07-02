@@ -117,7 +117,7 @@ func (s *Server) Run() error {
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
-	if err := SeedAdmin(pool); err != nil {
+	if err := SeedAdmin(pool, s.cfg.Auth.PasswordHashEnabled); err != nil {
 		log.Printf("⚠️  种子数据初始化失败: %v", err)
 	}
 
@@ -152,6 +152,7 @@ func (s *Server) Run() error {
 
 	// ─── 初始化服务层 ───
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, userRepo, bus)
+	userSvc.SetPasswordHashEnabled(s.cfg.Auth.PasswordHashEnabled)
 	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	threadSvc.SetCache(appCache)
@@ -208,6 +209,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	}
 
 	userSvc := identitysvc.NewUserService(userRepo, jwtMgr, nil, bus)
+	userSvc.SetPasswordHashEnabled(s.cfg.Auth.PasswordHashEnabled)
 	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)

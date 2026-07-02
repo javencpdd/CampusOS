@@ -20,6 +20,8 @@ type UserService struct {
 	pgRepo   PgUserRepo
 	roleRepo RoleQuerier
 	bus      eventbus.EventBus
+
+	passwordHashEnabled bool
 }
 
 type PgUserRepo interface {
@@ -32,7 +34,13 @@ type RoleQuerier interface {
 }
 
 func NewUserService(repo repository.UserRepository, jwtMgr *auth.JWTManager, pgRepo PgUserRepo, bus eventbus.EventBus) *UserService {
-	return &UserService{repo: repo, jwtMgr: jwtMgr, pgRepo: pgRepo, bus: bus}
+	return &UserService{
+		repo:                repo,
+		jwtMgr:              jwtMgr,
+		pgRepo:              pgRepo,
+		bus:                 bus,
+		passwordHashEnabled: true,
+	}
 }
 
 // SetRoleRepository 设置角色仓储（用于登录时注入角色信息）
@@ -40,11 +48,20 @@ func (s *UserService) SetRoleRepository(roleRepo RoleQuerier) {
 	s.roleRepo = roleRepo
 }
 
+// SetPasswordHashEnabled 设置账号凭据是否使用 bcrypt 存储。
+// 该开关仅用于本地开发/调试；生产环境应保持启用。
+func (s *UserService) SetPasswordHashEnabled(enabled bool) {
+	s.passwordHashEnabled = enabled
+}
+
 func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest) (*domain.User, error) {
-	// bcrypt 哈希密码
-	hashedPwd, err := auth.HashPassword(req.Password)
-	if err != nil {
-		return nil, fmt.Errorf("hash password: %w", err)
+	credential := req.Password
+	if s.passwordHashEnabled {
+		var err error
+		credential, err = auth.HashPassword(req.Password)
+		if err != nil {
+			return nil, fmt.Errorf("hash password: %w", err)
+		}
 	}
 
 	now := time.Now().UTC()
@@ -70,7 +87,7 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 
 	// 保存账号凭据
 	if s.pgRepo != nil {
-		if err := s.pgRepo.CreateAccount(ctx, user.ID, req.Email, hashedPwd); err != nil {
+		if err := s.pgRepo.CreateAccount(ctx, user.ID, req.Email, credential); err != nil {
 			return nil, fmt.Errorf("create account: %w", err)
 		}
 	}
@@ -96,7 +113,7 @@ func (s *UserService) Login(ctx context.Context, req domain.LoginRequest) (*doma
 		if err != nil {
 			return nil, "", "", fmt.Errorf("invalid email or password")
 		}
-		if !auth.CheckPassword(req.Password, credential) {
+		if !s.checkPassword(req.Password, credential) {
 			return nil, "", "", fmt.Errorf("invalid email or password")
 		}
 		user, err = s.repo.GetByID(ctx, userID)
@@ -126,6 +143,13 @@ func (s *UserService) Login(ctx context.Context, req domain.LoginRequest) (*doma
 	}
 
 	return user, accessToken, refreshToken, nil
+}
+
+func (s *UserService) checkPassword(password, credential string) bool {
+	if !s.passwordHashEnabled {
+		return password == credential
+	}
+	return auth.CheckPassword(password, credential)
 }
 
 // GetUserRoles 获取用户角色列表

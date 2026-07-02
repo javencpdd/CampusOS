@@ -14,6 +14,7 @@ type Config struct {
 	Redis    RedisConfig
 	NATS     NATSConfig
 	JWT      JWTConfig
+	Auth     AuthConfig
 	Plugin   PluginConfig
 	AI       AIConfig
 }
@@ -50,6 +51,10 @@ type JWTConfig struct {
 	Issuer     string
 }
 
+type AuthConfig struct {
+	PasswordHashEnabled bool
+}
+
 type PluginConfig struct {
 	DataDir string
 }
@@ -72,6 +77,9 @@ func Load() *Config {
 	}
 	getInt := func(key string, fallback int) int {
 		return getEnvIntWithFile(fileEnv, key, fallback)
+	}
+	getBool := func(key string, fallback bool) bool {
+		return getEnvBoolWithFile(fileEnv, key, fallback)
 	}
 
 	return &Config{
@@ -100,6 +108,9 @@ func Load() *Config {
 			AccessTTL:  get("JWT_ACCESS_TTL", "2h"),
 			RefreshTTL: get("JWT_REFRESH_TTL", "720h"),
 			Issuer:     get("JWT_ISSUER", "campusos"),
+		},
+		Auth: AuthConfig{
+			PasswordHashEnabled: getBool("AUTH_PASSWORD_HASH_ENABLED", true),
 		},
 		Plugin: PluginConfig{
 			DataDir: get("PLUGIN_DATA_DIR", ".campusos/plugin-data"),
@@ -153,6 +164,18 @@ func getEnvIntWithFile(fileEnv map[string]string, key string, fallback int) int 
 		parsed, err := strconv.Atoi(v)
 		if err == nil {
 			return parsed
+		}
+	}
+	return fallback
+}
+
+func getEnvBoolWithFile(fileEnv map[string]string, key string, fallback bool) bool {
+	if v := getEnvWithFile(fileEnv, key, ""); v != "" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
 		}
 	}
 	return fallback

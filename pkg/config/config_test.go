@@ -103,3 +103,36 @@ func TestLoadEnvironmentOverridesDotEnvFile(t *testing.T) {
 		t.Fatalf("expected environment DATABASE_DSN to override .env, got %q", cfg.Database.DSN)
 	}
 }
+
+func TestLoadAuthPasswordHashEnabledFromDotEnv(t *testing.T) {
+	tmp := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get wd: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), []byte("AUTH_PASSWORD_HASH_ENABLED=false\n"), 0o600); err != nil {
+		t.Fatalf("write .env: %v", err)
+	}
+	t.Setenv("AUTH_PASSWORD_HASH_ENABLED", "")
+
+	cfg := Load()
+	if cfg.Auth.PasswordHashEnabled {
+		t.Fatalf("expected password hashing to be disabled from .env")
+	}
+}
+
+func TestLoadAuthPasswordHashEnabledDefaultsToTrue(t *testing.T) {
+	t.Setenv("AUTH_PASSWORD_HASH_ENABLED", "")
+
+	cfg := Load()
+	if !cfg.Auth.PasswordHashEnabled {
+		t.Fatalf("expected password hashing to be enabled by default")
+	}
+}
