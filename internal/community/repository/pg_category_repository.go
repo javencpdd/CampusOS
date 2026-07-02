@@ -68,9 +68,11 @@ func (r *PgCategoryRepository) List(ctx context.Context) ([]*domain.Category, er
 }
 
 func (r *PgCategoryRepository) Update(ctx context.Context, cat *domain.Category) error {
-	query := `UPDATE categories SET name=$1, description=$2, is_closed=$3, sort_order=$4, updated_at=$5
-		WHERE id = $6 AND deleted_at IS NULL`
-	tag, err := r.pool.Exec(ctx, query, cat.Name, cat.Description, cat.IsClosed, cat.SortOrder, time.Now().UTC(), cat.ID)
+	query := `UPDATE categories SET name=$1, slug=$2, description=$3, icon=$4, parent_id=$5, is_closed=$6, sort_order=$7, updated_at=$8
+		WHERE id = $9 AND deleted_at IS NULL`
+	tag, err := r.pool.Exec(ctx, query,
+		cat.Name, cat.Slug, cat.Description, cat.Icon, cat.ParentID,
+		cat.IsClosed, cat.SortOrder, time.Now().UTC(), cat.ID)
 	if err != nil {
 		return err
 	}

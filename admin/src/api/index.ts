@@ -74,9 +74,25 @@ export const threadApi = {
 export const categoryApi = {
   list: () => api.get('/categories'),
   get: (id: string) => api.get(`/categories/${id}`),
-  create: (data: { name: string; description?: string; icon?: string; color?: string; sort_order?: number }) =>
+  create: (data: {
+    name: string
+    slug?: string
+    description?: string
+    icon?: string
+    color?: string
+    sort_order?: number
+    is_closed?: boolean
+  }) =>
     api.post('/categories', data),
-  update: (id: string, data: { name?: string; description?: string; icon?: string; color?: string; sort_order?: number }) =>
+  update: (id: string, data: {
+    name?: string
+    slug?: string
+    description?: string
+    icon?: string
+    color?: string
+    sort_order?: number
+    is_closed?: boolean
+  }) =>
     api.put(`/categories/${id}`, data),
   delete: (id: string) => api.delete(`/categories/${id}`),
 }

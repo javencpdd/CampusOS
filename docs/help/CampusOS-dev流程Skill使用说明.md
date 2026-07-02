@@ -159,3 +159,4 @@ rsync -a skills/campusos-v03-dev-workflow/ /home/jack/.codex/skills/campusos-v03
 - 如果用户指定了版本阶段，以用户指定为准。
 - 如果当前任务是纯文档或 skill 更新，也应运行 `git diff --check` 和 skill 校验。
 - 默认只提交本地 commit，不 push。
+
