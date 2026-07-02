@@ -64,8 +64,17 @@ func SeedAdmin(pool *pgxpool.Pool) error {
 
 	_, err = pool.Exec(ctx, `
 		INSERT INTO user_roles (id, user_id, role_id, scope_type, created_at)
-		VALUES ($1, $2, 1, 'global', NOW())
-		ON CONFLICT (user_id, role_id, scope_type, scope_id) WHERE deleted_at IS NULL DO NOTHING`,
+		SELECT $1, $2, 1, 'global', NOW()
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM user_roles
+			WHERE user_id = $2
+			  AND role_id = 1
+			  AND scope_type = 'global'
+			  AND scope_id IS NULL
+			  AND deleted_at IS NULL
+		)
+		ON CONFLICT (id) DO NOTHING`,
 		defaultAdminRoleMapID, adminUserID)
 	if err != nil {
 		return err
