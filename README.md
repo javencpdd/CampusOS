@@ -251,6 +251,8 @@ http://localhost:3001
 | 端口 | 容器内 `5432`，宿主机默认 `${POSTGRES_PORT:-5432}` |
 | 数据卷 | `campusos_postgres-data` |
 
+宿主机可以通过5033端口访问连接
+
 ## 常用命令
 
 | 命令 | 说明 |
