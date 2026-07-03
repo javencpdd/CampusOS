@@ -31,14 +31,7 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 }
 
 func (r *PgThreadRepository) GetByID(ctx context.Context, id string) (*domain.Thread, error) {
-	query := `SELECT id, title, content, author_id, author_name, category_id, status,
-		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
-		FROM threads WHERE id = $1 AND deleted_at IS NULL`
-	t := &domain.Thread{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(
-		&t.ID, &t.Title, &t.Content, &t.AuthorID, &t.AuthorName, &t.CategoryID,
-		&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
-		&t.Tags, &t.CreatedAt, &t.UpdatedAt)
+	t, err := scanThread(r.pool.QueryRow(ctx, selectThreadSQL("id = $1"), id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrThreadNotFound
@@ -48,10 +41,58 @@ func (r *PgThreadRepository) GetByID(ctx context.Context, id string) (*domain.Th
 	return t, nil
 }
 
+func (r *PgThreadRepository) IncrementViewCount(ctx context.Context, id string) (*domain.Thread, error) {
+	query := `UPDATE threads
+		SET view_count = view_count + 1
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING id, title, content, author_id, author_name, category_id, status,
+			is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at`
+	t, err := scanThread(r.pool.QueryRow(ctx, query, id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrThreadNotFound
+		}
+		return nil, err
+	}
+	return t, nil
+}
+
+func (r *PgThreadRepository) IncrementReplyCount(ctx context.Context, id string, delta int64) error {
+	query := `UPDATE threads
+		SET reply_count = GREATEST(reply_count + $2, 0),
+			updated_at = NOW()
+		WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := r.pool.Exec(ctx, query, id, delta)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrThreadNotFound
+	}
+	return nil
+}
+
 func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) error {
-	query := `UPDATE threads SET title=$1, content=$2, tags=$3, updated_at=$4
-		WHERE id = $5 AND deleted_at IS NULL`
-	tag, err := r.pool.Exec(ctx, query, thread.Title, thread.Content, thread.Tags, time.Now().UTC(), thread.ID)
+	query := `UPDATE threads
+		SET title=$1,
+			content=$2,
+			category_id=$3,
+			status=$4,
+			is_pinned=$5,
+			is_locked=$6,
+			is_highlighted=$7,
+			view_count=$8,
+			reply_count=$9,
+			like_count=$10,
+			tags=$11,
+			updated_at=$12
+		WHERE id = $13 AND deleted_at IS NULL`
+	tag, err := r.pool.Exec(ctx, query,
+		thread.Title, thread.Content, thread.CategoryID, thread.Status,
+		thread.IsPinned, thread.IsLocked, thread.IsHighlighted,
+		thread.ViewCount, thread.ReplyCount, thread.LikeCount, thread.Tags,
+		time.Now().UTC(), thread.ID,
+	)
 	if err != nil {
 		return err
 	}
@@ -141,4 +182,24 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		threads = append(threads, t)
 	}
 	return threads, total, nil
+}
+
+type rowScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func selectThreadSQL(where string) string {
+	return `SELECT id, title, content, author_id, author_name, category_id, status,
+		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
+		FROM threads WHERE ` + where + ` AND deleted_at IS NULL`
+}
+
+func scanThread(row rowScanner) (*domain.Thread, error) {
+	t := &domain.Thread{}
+	err := row.Scan(
+		&t.ID, &t.Title, &t.Content, &t.AuthorID, &t.AuthorName, &t.CategoryID,
+		&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
+		&t.Tags, &t.CreatedAt, &t.UpdatedAt,
+	)
+	return t, err
 }

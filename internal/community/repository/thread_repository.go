@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 )
@@ -15,6 +16,8 @@ var ErrThreadNotFound = errors.New("thread not found")
 type ThreadRepository interface {
 	Create(ctx context.Context, thread *domain.Thread) error
 	GetByID(ctx context.Context, id string) (*domain.Thread, error)
+	IncrementViewCount(ctx context.Context, id string) (*domain.Thread, error)
+	IncrementReplyCount(ctx context.Context, id string, delta int64) error
 	Update(ctx context.Context, thread *domain.Thread) error
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error)
@@ -48,6 +51,34 @@ func (r *MemoryThreadRepository) GetByID(_ context.Context, id string) (*domain.
 		return nil, ErrThreadNotFound
 	}
 	return thread, nil
+}
+
+func (r *MemoryThreadRepository) IncrementViewCount(_ context.Context, id string) (*domain.Thread, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	thread, ok := r.threads[id]
+	if !ok {
+		return nil, ErrThreadNotFound
+	}
+	thread.ViewCount++
+	return thread, nil
+}
+
+func (r *MemoryThreadRepository) IncrementReplyCount(_ context.Context, id string, delta int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	thread, ok := r.threads[id]
+	if !ok {
+		return ErrThreadNotFound
+	}
+	thread.ReplyCount += delta
+	if thread.ReplyCount < 0 {
+		thread.ReplyCount = 0
+	}
+	thread.UpdatedAt = time.Now().UTC()
+	return nil
 }
 
 func (r *MemoryThreadRepository) Update(_ context.Context, thread *domain.Thread) error {

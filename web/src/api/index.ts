@@ -60,6 +60,17 @@ export const threadApi = {
   delete: (id: string) => api.delete(`/threads/${id}`),
 }
 
+// 回复 API
+export const postApi = {
+  list: (threadId: string, params?: { page?: number; page_size?: number }) =>
+    api.get(`/threads/${threadId}/posts`, { params }),
+  create: (threadId: string, data: { content: string; parent_id?: string }) =>
+    api.post(`/threads/${threadId}/posts`, data),
+  update: (threadId: string, postId: string, data: { content: string }) =>
+    api.put(`/threads/${threadId}/posts/${postId}`, data),
+  delete: (threadId: string, postId: string) => api.delete(`/threads/${threadId}/posts/${postId}`),
+}
+
 // 版块 API
 export const categoryApi = {
   list: () => api.get('/categories'),

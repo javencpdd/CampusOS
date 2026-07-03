@@ -30,6 +30,15 @@ func NewMemoryPostRepository() *MemoryPostRepository {
 func (r *MemoryPostRepository) Create(_ context.Context, post *domain.Post) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if post.FloorNumber <= 0 {
+		maxFloor := 0
+		for _, existing := range r.posts {
+			if existing.ThreadID == post.ThreadID && existing.FloorNumber > maxFloor {
+				maxFloor = existing.FloorNumber
+			}
+		}
+		post.FloorNumber = maxFloor + 1
+	}
 	r.posts[post.ID] = post
 	return nil
 }
