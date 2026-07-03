@@ -26,6 +26,11 @@ type Space struct {
 	SyncEnabled    bool           `json:"sync_enabled"`
 	SyncCategories []string       `json:"sync_categories,omitempty"`
 	SyncTags       []string       `json:"sync_tags,omitempty"`
+	DisabledAt     *time.Time     `json:"disabled_at,omitempty"`
+	DisabledBy     string         `json:"disabled_by,omitempty"`
+	DisabledReason string         `json:"disabled_reason,omitempty"`
+	LastSyncAt     *time.Time     `json:"last_sync_at,omitempty"`
+	LastSyncError  string         `json:"last_sync_error,omitempty"`
 	IsDefault      bool           `json:"is_default"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
@@ -70,4 +75,35 @@ type UpsertSpaceRequest struct {
 	SyncEnabled    *bool    `json:"sync_enabled,omitempty"`
 	SyncCategories []string `json:"sync_categories,omitempty"`
 	SyncTags       []string `json:"sync_tags,omitempty"`
+}
+
+type StyleSnapshot struct {
+	ID            string         `json:"id"`
+	UserID        string         `json:"user_id"`
+	SnapshotType  string         `json:"snapshot_type"`
+	StyleName     string         `json:"style_name,omitempty"`
+	StyleVersion  string         `json:"style_version,omitempty"`
+	Theme         string         `json:"theme"`
+	Layout        string         `json:"layout"`
+	StyleManifest *StyleManifest `json:"style_manifest,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+}
+
+type SpaceSyncStatus struct {
+	UserID        string     `json:"user_id"`
+	SyncEnabled   bool       `json:"sync_enabled"`
+	LastSyncAt    *time.Time `json:"last_sync_at,omitempty"`
+	LastSyncError string     `json:"last_sync_error,omitempty"`
+	ContentTotal  int64      `json:"content_total"`
+	Disabled      bool       `json:"disabled"`
+}
+
+type SpaceAdminSummary struct {
+	TotalSpaces       int64      `json:"total_spaces"`
+	PublicSpaces      int64      `json:"public_spaces"`
+	DisabledSpaces    int64      `json:"disabled_spaces"`
+	StyledSpaces      int64      `json:"styled_spaces"`
+	SyncEnabledSpaces int64      `json:"sync_enabled_spaces"`
+	LastSyncAt        *time.Time `json:"last_sync_at,omitempty"`
+	SyncErrorSpaces   int64      `json:"sync_error_spaces"`
 }

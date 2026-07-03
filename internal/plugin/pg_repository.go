@@ -25,30 +25,30 @@ func (r *PgPluginRepository) Save(ctx context.Context, record *PluginRecord) err
 		record.ID = idgen.New()
 	}
 
-	query := `INSERT INTO plugins (id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, installed_by, installed_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	query := `INSERT INTO plugins (id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, checksum, package_size, installed_by, installed_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		ON CONFLICT (name) WHERE deleted_at IS NULL
-		DO UPDATE SET display_name = $3, version = $4, description = $5, author = $6, runtime = $7, status = $8, api_key = $9, config = $10, error_message = $11, updated_at = $14`
+		DO UPDATE SET display_name = $3, version = $4, description = $5, author = $6, runtime = $7, status = $8, api_key = $9, config = $10, error_message = $11, checksum = $12, package_size = $13, updated_at = $16`
 
 	_, err := r.pool.Exec(ctx, query,
 		record.ID,
 		record.Name, record.DisplayName, record.Version, record.Description,
 		record.Author, record.Runtime, record.Status, record.APIKey,
-		record.Config, record.ErrorMsg, record.InstalledBy,
+		record.Config, record.ErrorMsg, record.Checksum, record.PackageSize, record.InstalledBy,
 		record.InstalledAt, record.UpdatedAt,
 	)
 	return err
 }
 
 func (r *PgPluginRepository) GetByName(ctx context.Context, name string) (*PluginRecord, error) {
-	query := `SELECT id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, installed_by, installed_at, updated_at
+	query := `SELECT id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, checksum, package_size, last_preflight_at, installed_by, installed_at, updated_at
 		FROM plugins WHERE name = $1 AND deleted_at IS NULL`
 
 	record := &PluginRecord{}
 	err := r.pool.QueryRow(ctx, query, name).Scan(
 		&record.ID, &record.Name, &record.DisplayName, &record.Version,
 		&record.Description, &record.Author, &record.Runtime, &record.Status,
-		&record.APIKey, &record.Config, &record.ErrorMsg, &record.InstalledBy,
+		&record.APIKey, &record.Config, &record.ErrorMsg, &record.Checksum, &record.PackageSize, &record.LastPreflightAt, &record.InstalledBy,
 		&record.InstalledAt, &record.UpdatedAt,
 	)
 	if err != nil {
@@ -61,7 +61,7 @@ func (r *PgPluginRepository) GetByName(ctx context.Context, name string) (*Plugi
 }
 
 func (r *PgPluginRepository) List(ctx context.Context) ([]*PluginRecord, error) {
-	query := `SELECT id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, installed_by, installed_at, updated_at
+	query := `SELECT id, name, display_name, version, description, author, runtime, status, api_key, config, error_message, checksum, package_size, last_preflight_at, installed_by, installed_at, updated_at
 		FROM plugins WHERE deleted_at IS NULL ORDER BY installed_at DESC`
 
 	rows, err := r.pool.Query(ctx, query)
@@ -76,7 +76,7 @@ func (r *PgPluginRepository) List(ctx context.Context) ([]*PluginRecord, error) 
 		if err := rows.Scan(
 			&record.ID, &record.Name, &record.DisplayName, &record.Version,
 			&record.Description, &record.Author, &record.Runtime, &record.Status,
-			&record.APIKey, &record.Config, &record.ErrorMsg, &record.InstalledBy,
+			&record.APIKey, &record.Config, &record.ErrorMsg, &record.Checksum, &record.PackageSize, &record.LastPreflightAt, &record.InstalledBy,
 			&record.InstalledAt, &record.UpdatedAt,
 		); err != nil {
 			return nil, err

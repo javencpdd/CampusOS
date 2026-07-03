@@ -21,6 +21,8 @@ type Plugin struct {
 	ErrorMsg    string       `json:"error_message,omitempty"`
 	Directory   string       `json:"directory"`
 	InstalledBy string       `json:"installed_by"`
+	Checksum    string       `json:"checksum,omitempty"`
+	PackageSize int64        `json:"package_size,omitempty"`
 }
 
 // EventMessage 传递给插件的事件消息

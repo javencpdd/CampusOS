@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 )
 
 var ErrSpaceNotFound = errors.New("space not found")
@@ -19,16 +20,30 @@ type ContentRepository interface {
 	ListContentsByUserID(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error)
 }
 
+type StyleSnapshotRepository interface {
+	SaveStyleSnapshot(ctx context.Context, snapshot *StyleSnapshot) error
+	GetLatestStyleSnapshot(ctx context.Context, userID string) (*StyleSnapshot, error)
+}
+
+type OperationalRepository interface {
+	UpdateSyncStatus(ctx context.Context, userID string, syncedAt *time.Time, syncErr string) error
+	CountContentsByUserID(ctx context.Context, userID string) (int64, error)
+	SetDisabled(ctx context.Context, userID string, disabledAt *time.Time, disabledBy, reason string) error
+	AdminSummary(ctx context.Context) (*SpaceAdminSummary, error)
+}
+
 type MemoryRepository struct {
-	mu       sync.RWMutex
-	spaces   map[string]*Space
-	contents map[string]*SpaceContent
+	mu        sync.RWMutex
+	spaces    map[string]*Space
+	contents  map[string]*SpaceContent
+	snapshots map[string][]*StyleSnapshot
 }
 
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
-		spaces:   make(map[string]*Space),
-		contents: make(map[string]*SpaceContent),
+		spaces:    make(map[string]*Space),
+		contents:  make(map[string]*SpaceContent),
+		snapshots: make(map[string][]*StyleSnapshot),
 	}
 }
 
@@ -56,6 +71,11 @@ func (r *MemoryRepository) UpsertContent(_ context.Context, content *SpaceConten
 	defer r.mu.Unlock()
 
 	r.contents[content.ThreadID] = cloneContent(content)
+	if space, ok := r.spaces[content.UserID]; ok {
+		now := content.SyncedAt
+		space.LastSyncAt = &now
+		space.LastSyncError = ""
+	}
 	return nil
 }
 
@@ -65,6 +85,100 @@ func (r *MemoryRepository) DeleteContent(_ context.Context, threadID string) err
 
 	delete(r.contents, threadID)
 	return nil
+}
+
+func (r *MemoryRepository) SaveStyleSnapshot(_ context.Context, snapshot *StyleSnapshot) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.snapshots[snapshot.UserID] = append(r.snapshots[snapshot.UserID], cloneSnapshot(snapshot))
+	return nil
+}
+
+func (r *MemoryRepository) GetLatestStyleSnapshot(_ context.Context, userID string) (*StyleSnapshot, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	items := r.snapshots[userID]
+	if len(items) == 0 {
+		return nil, ErrSpaceNotFound
+	}
+	return cloneSnapshot(items[len(items)-1]), nil
+}
+
+func (r *MemoryRepository) UpdateSyncStatus(_ context.Context, userID string, syncedAt *time.Time, syncErr string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	space, ok := r.spaces[userID]
+	if !ok {
+		return ErrSpaceNotFound
+	}
+	space.LastSyncAt = syncedAt
+	space.LastSyncError = syncErr
+	return nil
+}
+
+func (r *MemoryRepository) CountContentsByUserID(_ context.Context, userID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var total int64
+	for _, content := range r.contents {
+		if content.UserID == userID {
+			total++
+		}
+	}
+	return total, nil
+}
+
+func (r *MemoryRepository) SetDisabled(_ context.Context, userID string, disabledAt *time.Time, disabledBy, reason string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	space, ok := r.spaces[userID]
+	if !ok {
+		return ErrSpaceNotFound
+	}
+	space.DisabledAt = disabledAt
+	space.DisabledBy = disabledBy
+	space.DisabledReason = reason
+	if disabledAt == nil {
+		space.DisabledBy = ""
+		space.DisabledReason = ""
+	}
+	space.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (r *MemoryRepository) AdminSummary(_ context.Context) (*SpaceAdminSummary, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	summary := &SpaceAdminSummary{}
+	for _, space := range r.spaces {
+		summary.TotalSpaces++
+		if space.Visibility == VisibilityPublic && space.DisabledAt == nil {
+			summary.PublicSpaces++
+		}
+		if space.DisabledAt != nil {
+			summary.DisabledSpaces++
+		}
+		if space.StyleName != "" {
+			summary.StyledSpaces++
+		}
+		if space.SyncEnabled {
+			summary.SyncEnabledSpaces++
+		}
+		if space.LastSyncError != "" {
+			summary.SyncErrorSpaces++
+		}
+		if space.LastSyncAt != nil && (summary.LastSyncAt == nil || space.LastSyncAt.After(*summary.LastSyncAt)) {
+			last := *space.LastSyncAt
+			summary.LastSyncAt = &last
+		}
+	}
+	return summary, nil
 }
 
 func (r *MemoryRepository) ListContentsByUserID(_ context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
@@ -105,6 +219,14 @@ func cloneSpace(space *Space) *Space {
 	clone := *space
 	clone.SyncCategories = append([]string{}, space.SyncCategories...)
 	clone.SyncTags = append([]string{}, space.SyncTags...)
+	if space.DisabledAt != nil {
+		disabledAt := *space.DisabledAt
+		clone.DisabledAt = &disabledAt
+	}
+	if space.LastSyncAt != nil {
+		lastSyncAt := *space.LastSyncAt
+		clone.LastSyncAt = &lastSyncAt
+	}
 	if space.StyleManifest != nil {
 		manifest := *space.StyleManifest
 		manifest.CompatibleCampusOS = append([]string(nil), space.StyleManifest.CompatibleCampusOS...)
@@ -114,6 +236,25 @@ func cloneSpace(space *Space) *Space {
 		}
 		manifest.Tokens = copyStringMap(space.StyleManifest.Tokens)
 		manifest.Assets = append([]StyleAsset(nil), space.StyleManifest.Assets...)
+		clone.StyleManifest = &manifest
+	}
+	return &clone
+}
+
+func cloneSnapshot(snapshot *StyleSnapshot) *StyleSnapshot {
+	if snapshot == nil {
+		return nil
+	}
+	clone := *snapshot
+	if snapshot.StyleManifest != nil {
+		manifest := *snapshot.StyleManifest
+		manifest.CompatibleCampusOS = append([]string(nil), snapshot.StyleManifest.CompatibleCampusOS...)
+		manifest.Components = append([]StyleComponent(nil), snapshot.StyleManifest.Components...)
+		for i := range manifest.Components {
+			manifest.Components[i].Props = copyInterfaceMap(snapshot.StyleManifest.Components[i].Props)
+		}
+		manifest.Tokens = copyStringMap(snapshot.StyleManifest.Tokens)
+		manifest.Assets = append([]StyleAsset(nil), snapshot.StyleManifest.Assets...)
 		clone.StyleManifest = &manifest
 	}
 	return &clone

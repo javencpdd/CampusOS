@@ -142,6 +142,14 @@
               <el-icon><Switch /></el-icon>
               应用
             </el-button>
+            <el-button @click="rollbackStyle" :loading="rollbacking">
+              <el-icon><RefreshLeft /></el-icon>
+              回滚
+            </el-button>
+            <el-button @click="restoreDefaultStyle" :loading="defaulting">
+              <el-icon><Refresh /></el-icon>
+              默认
+            </el-button>
           </div>
 
           <div class="preview-panel" :style="previewStyleVars">
@@ -167,7 +175,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleCheck, Check, Download, Switch, View } from '@element-plus/icons-vue'
+import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/api'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
@@ -202,6 +210,10 @@ interface Space {
   sync_enabled: boolean
   sync_categories?: string[]
   sync_tags?: string[]
+  disabled_at?: string
+  disabled_reason?: string
+  last_sync_at?: string
+  last_sync_error?: string
 }
 
 interface PublicSpacePayload {
@@ -256,6 +268,8 @@ const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
 const exporting = ref(false)
+const rollbacking = ref(false)
+const defaulting = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
 const preview = ref<StylePreview | null>(null)
 const selectedStyleName = ref(styleExamples[0].manifest.name)
@@ -407,6 +421,38 @@ const applyStyle = async () => {
     ElMessage.error(error?.msg || '应用失败')
   } finally {
     applying.value = false
+  }
+}
+
+const rollbackStyle = async () => {
+  rollbacking.value = true
+  try {
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.rollbackStyle())
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    fillForm(payload.space)
+    preview.value = null
+    ElMessage.success('已回滚到上一个风格快照')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '回滚失败，可能还没有可用快照')
+  } finally {
+    rollbacking.value = false
+  }
+}
+
+const restoreDefaultStyle = async () => {
+  defaulting.value = true
+  try {
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.restoreDefaultStyle())
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    fillForm(payload.space)
+    preview.value = null
+    ElMessage.success('已恢复默认风格')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '恢复默认失败')
+  } finally {
+    defaulting.value = false
   }
 }
 

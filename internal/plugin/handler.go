@@ -56,6 +56,8 @@ func (h *Handler) ListPlugins(c *gin.Context) {
 			"status":       p.Status,
 			"error":        p.ErrorMsg,
 			"events":       p.Manifest.Events.Subscribe,
+			"checksum":     p.Checksum,
+			"package_size": p.PackageSize,
 		})
 	}
 	response.Success(c, gin.H{"items": items, "total": len(items)})
@@ -83,6 +85,8 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 		"events":       p.Manifest.Events.Subscribe,
 		"permissions":  p.Manifest.Permissions,
 		"storage":      p.Manifest.Storage,
+		"checksum":     p.Checksum,
+		"package_size": p.PackageSize,
 	})
 }
 
@@ -215,5 +219,42 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		"version":      installed.Manifest.Version,
 		"runtime":      installed.Manifest.Runtime,
 		"status":       installed.Status,
+		"checksum":     installed.Checksum,
+		"package_size": installed.PackageSize,
 	})
+}
+
+// PrecheckPluginPackage 校验插件包并预览权限、文件和冲突
+// POST /api/v1/plugin-packages/precheck
+func (h *Handler) PrecheckPluginPackage(c *gin.Context) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 60005, "plugin package file is required")
+		return
+	}
+	filename := strings.ToLower(fileHeader.Filename)
+	if !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, PluginPackageExtension) {
+		response.Error(c, http.StatusBadRequest, 60005, "plugin package must be a .tar.gz file")
+		return
+	}
+
+	tempDir, err := os.MkdirTemp("", "campusos-plugin-precheck-upload-*")
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
+	packagePath := filepath.Join(tempDir, "upload.tar.gz")
+	if err := c.SaveUploadedFile(fileHeader, packagePath); err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
+
+	precheck, err := PrecheckPluginPackage(packagePath, h.pluginsDir)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
+	response.Success(c, precheck)
 }

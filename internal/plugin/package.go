@@ -3,12 +3,15 @@ package plugin
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -21,6 +24,22 @@ type PackageInfo struct {
 	Manifest    *Manifest `json:"manifest"`
 	PluginDir   string    `json:"plugin_dir,omitempty"`
 	PackagePath string    `json:"package_path,omitempty"`
+	Checksum    string    `json:"checksum,omitempty"`
+	PackageSize int64     `json:"package_size,omitempty"`
+}
+
+type PackagePrecheck struct {
+	Manifest    *Manifest `json:"manifest,omitempty"`
+	Checksum    string    `json:"checksum"`
+	PackageSize int64     `json:"package_size"`
+	Files       []string  `json:"files"`
+	Permissions []string  `json:"permissions"`
+	Events      []string  `json:"events"`
+	Conflict    bool      `json:"conflict"`
+	TargetDir   string    `json:"target_dir,omitempty"`
+	Allowed     bool      `json:"allowed"`
+	Warnings    []string  `json:"warnings,omitempty"`
+	Errors      []string  `json:"errors,omitempty"`
 }
 
 func PluginsDirFromEnv() string {
@@ -41,10 +60,16 @@ func PackagePlugin(pluginDir, outputPath string) (*PackageInfo, error) {
 	if err := createPluginArchive(pluginDir, outputPath); err != nil {
 		return nil, err
 	}
+	checksum, size, err := FileSHA256(outputPath)
+	if err != nil {
+		return nil, err
+	}
 	return &PackageInfo{
 		Manifest:    manifest,
 		PluginDir:   filepath.Clean(pluginDir),
 		PackagePath: outputPath,
+		Checksum:    checksum,
+		PackageSize: size,
 	}, nil
 }
 
@@ -81,6 +106,10 @@ func InstallPluginPackage(packagePath, pluginsDir string, replace bool) (*Packag
 		}
 	}()
 
+	checksum, size, err := FileSHA256(packagePath)
+	if err != nil {
+		return nil, err
+	}
 	if err := ExtractPluginPackage(packagePath, tempDir); err != nil {
 		return nil, err
 	}
@@ -108,9 +137,93 @@ func InstallPluginPackage(packagePath, pluginsDir string, replace bool) (*Packag
 	keepTemp = true
 
 	return &PackageInfo{
-		Manifest:  manifest,
-		PluginDir: targetDir,
+		Manifest:    manifest,
+		PluginDir:   targetDir,
+		PackagePath: filepath.Clean(packagePath),
+		Checksum:    checksum,
+		PackageSize: size,
 	}, nil
+}
+
+func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, error) {
+	if pluginsDir == "" {
+		pluginsDir = PluginsDirFromEnv()
+	}
+	checksum, size, err := FileSHA256(packagePath)
+	if err != nil {
+		return nil, err
+	}
+	result := &PackagePrecheck{
+		Checksum:    checksum,
+		PackageSize: size,
+		Allowed:     true,
+	}
+
+	tempDir, err := os.MkdirTemp("", "campusos-plugin-precheck-*")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := ExtractPluginPackage(packagePath, tempDir); err != nil {
+		result.Allowed = false
+		result.Errors = append(result.Errors, err.Error())
+		return result, nil
+	}
+	files, err := listPackageFiles(tempDir)
+	if err != nil {
+		result.Allowed = false
+		result.Errors = append(result.Errors, err.Error())
+		return result, nil
+	}
+	result.Files = files
+
+	manifest, err := ValidatePluginPackageDir(tempDir)
+	if err != nil {
+		result.Allowed = false
+		result.Errors = append(result.Errors, err.Error())
+		return result, nil
+	}
+	result.Manifest = manifest
+	result.Events = append([]string(nil), manifest.Events.Subscribe...)
+	result.Permissions = flattenPermissions(manifest.Permissions)
+
+	targetDir, err := pluginTargetDir(pluginsDir, manifest.Name)
+	if err != nil {
+		result.Allowed = false
+		result.Errors = append(result.Errors, err.Error())
+		return result, nil
+	}
+	result.TargetDir = targetDir
+	if _, err := os.Stat(targetDir); err == nil {
+		result.Conflict = true
+		result.Warnings = append(result.Warnings, "plugin with the same name already exists; import requires replace=true")
+	} else if err != nil && !os.IsNotExist(err) {
+		result.Allowed = false
+		result.Errors = append(result.Errors, err.Error())
+	}
+	if len(result.Events) == 0 {
+		result.Warnings = append(result.Warnings, "plugin does not subscribe to any events")
+	}
+	if len(result.Permissions) == 0 {
+		result.Warnings = append(result.Warnings, "plugin declares no Host API permissions")
+	}
+	return result, nil
+}
+
+func FileSHA256(filePath string) (string, int64, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", 0, err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	size, err := io.Copy(hash, file)
+	if err != nil {
+		return "", 0, err
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), size, nil
 }
 
 func InspectPluginPackage(packagePath string) (*Manifest, error) {
@@ -353,6 +466,48 @@ func requireRelativePathInside(rootDir, relPath string) error {
 		return fmt.Errorf("path escapes plugin directory: %s", relPath)
 	}
 	return nil
+}
+
+func listPackageFiles(rootDir string) ([]string, error) {
+	rootAbs, err := filepath.Abs(filepath.Clean(rootDir))
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0)
+	err = filepath.WalkDir(rootAbs, func(filePath string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(rootAbs, filePath)
+		if err != nil {
+			return err
+		}
+		files = append(files, filepath.ToSlash(rel))
+		return nil
+	})
+	sort.Strings(files)
+	return files, err
+}
+
+func flattenPermissions(perms PermissionsConfig) []string {
+	flattened := make([]string, 0)
+	for _, perm := range perms.API {
+		resource := strings.TrimSpace(perm.Resource)
+		if resource == "" {
+			continue
+		}
+		for _, action := range perm.Actions {
+			action = strings.TrimSpace(action)
+			if action != "" {
+				flattened = append(flattened, resource+":"+action)
+			}
+		}
+	}
+	sort.Strings(flattened)
+	return flattened
 }
 
 func pluginTargetDir(pluginsDir, pluginName string) (string, error) {

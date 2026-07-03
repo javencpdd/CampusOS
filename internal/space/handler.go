@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -195,6 +196,90 @@ func (h *Handler) ApplyStylePackage(c *gin.Context) {
 	response.Success(c, applied)
 }
 
+func (h *Handler) RollbackStyle(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	space, err := h.svc.RollbackStyle(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, space)
+}
+
+func (h *Handler) RestoreDefaultStyle(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	space, err := h.svc.RestoreDefaultStyle(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, space)
+}
+
+func (h *Handler) GetSyncStatus(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	status, err := h.svc.GetSyncStatus(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+func (h *Handler) AdminSummary(c *gin.Context) {
+	summary, err := h.svc.AdminSummary(c.Request.Context())
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, summary)
+}
+
+func (h *Handler) DisableSpace(c *gin.Context) {
+	targetUserID := c.Param("user_id")
+	if _, err := strconv.ParseInt(targetUserID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+	actorUserID, _ := currentUserID(c)
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	space, err := h.svc.DisableSpace(c.Request.Context(), targetUserID, actorUserID, strings.TrimSpace(req.Reason))
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, space)
+}
+
+func (h *Handler) EnableSpace(c *gin.Context) {
+	targetUserID := c.Param("user_id")
+	if _, err := strconv.ParseInt(targetUserID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+	space, err := h.svc.EnableSpace(c.Request.Context(), targetUserID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, space)
+}
+
 func currentUserID(c *gin.Context) (string, bool) {
 	value, ok := c.Get("user_id")
 	if !ok {
@@ -231,6 +316,8 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 	case errors.Is(err, ErrInvalidStyleExport):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrStyleSnapshotNotFound):
+		response.Error(c, http.StatusNotFound, 30004, err.Error())
 	case errors.Is(err, ErrContentRepositoryUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):

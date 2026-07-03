@@ -13,6 +13,7 @@ const router = createRouter({
     { path: '/admin/threads', redirect: '/threads' },
     { path: '/admin/categories', redirect: '/categories' },
     { path: '/admin/plugins', redirect: '/plugins' },
+    { path: '/admin/integrations', redirect: '/integrations' },
     { path: '/admin/reviews', redirect: '/reviews' },
     { path: '/admin/events', redirect: '/events' },
     {
@@ -49,6 +50,12 @@ const router = createRouter({
           name: 'Plugins',
           component: () => import('@/views/PluginManageView.vue'),
           meta: { title: '插件管理' },
+        },
+        {
+          path: 'integrations',
+          name: 'Integrations',
+          component: () => import('@/views/IntegrationCenterView.vue'),
+          meta: { title: '集成中心' },
         },
         {
           path: 'reviews',
