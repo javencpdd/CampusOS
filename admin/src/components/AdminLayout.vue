@@ -32,6 +32,10 @@
             <el-icon><Connection /></el-icon>
             <span>插件管理</span>
           </el-menu-item>
+          <el-menu-item index="/integrations">
+            <el-icon><Operation /></el-icon>
+            <span>集成中心</span>
+          </el-menu-item>
           <el-menu-item index="/reviews">
             <el-icon><Stamp /></el-icon>
             <span>帖子审核</span>
@@ -80,6 +84,7 @@ import {
   Document,
   FolderOpened,
   Connection,
+  Operation,
   Bell,
   Stamp,
   SwitchButton,
@@ -99,6 +104,7 @@ const currentPageTitle = computed(() => {
     '/threads': '帖子管理',
     '/categories': '版块管理',
     '/plugins': '插件管理',
+    '/integrations': '集成中心',
     '/reviews': '帖子审核',
     '/events': '事件日志',
   }

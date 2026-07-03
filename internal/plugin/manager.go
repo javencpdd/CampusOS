@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -145,6 +146,8 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 	record.Status = string(p.Status)
 	record.Config = string(configJSON)
 	record.ErrorMsg = p.ErrorMsg
+	record.Checksum = p.Checksum
+	record.PackageSize = p.PackageSize
 	record.InstalledBy = p.InstalledBy
 	record.UpdatedAt = now
 	if record.InstalledAt.IsZero() {
@@ -593,10 +596,14 @@ func (m *Manager) InstallFromPluginsDir(dir string) error {
 }
 
 func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
-	manifest, err := InspectPluginPackage(packagePath)
+	precheck, err := PrecheckPluginPackage(packagePath, pluginsDir)
 	if err != nil {
 		return nil, err
 	}
+	if !precheck.Allowed || precheck.Manifest == nil {
+		return nil, fmt.Errorf("plugin package precheck failed: %s", strings.Join(precheck.Errors, "; "))
+	}
+	manifest := precheck.Manifest
 
 	m.mu.RLock()
 	_, loaded := m.plugins[manifest.Name]
@@ -614,7 +621,18 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 	if err != nil {
 		return nil, err
 	}
-	return m.Install(info.PluginDir)
+	installed, err := m.Install(info.PluginDir)
+	if err != nil {
+		return nil, err
+	}
+	m.mu.Lock()
+	installed.Checksum = info.Checksum
+	installed.PackageSize = info.PackageSize
+	m.mu.Unlock()
+	if err := m.syncPluginRecord(context.Background(), installed); err != nil {
+		return nil, err
+	}
+	return installed, nil
 }
 
 func (m *Manager) ExportPackage(name, outputPath string) (*PackageInfo, error) {

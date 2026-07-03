@@ -16,20 +16,23 @@ var ErrAPIKeyExpired = errors.New("api key is expired")
 
 // PluginRecord 插件数据库记录
 type PluginRecord struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	DisplayName string    `json:"display_name"`
-	Version     string    `json:"version"`
-	Description string    `json:"description"`
-	Author      string    `json:"author"`
-	Runtime     string    `json:"runtime"`
-	Status      string    `json:"status"`
-	APIKey      string    `json:"api_key,omitempty"`
-	Config      string    `json:"config"`
-	ErrorMsg    string    `json:"error_message"`
-	InstalledBy string    `json:"installed_by"`
-	InstalledAt time.Time `json:"installed_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID              int64      `json:"id"`
+	Name            string     `json:"name"`
+	DisplayName     string     `json:"display_name"`
+	Version         string     `json:"version"`
+	Description     string     `json:"description"`
+	Author          string     `json:"author"`
+	Runtime         string     `json:"runtime"`
+	Status          string     `json:"status"`
+	APIKey          string     `json:"api_key,omitempty"`
+	Config          string     `json:"config"`
+	ErrorMsg        string     `json:"error_message"`
+	Checksum        string     `json:"checksum"`
+	PackageSize     int64      `json:"package_size"`
+	LastPreflightAt *time.Time `json:"last_preflight_at,omitempty"`
+	InstalledBy     string     `json:"installed_by"`
+	InstalledAt     time.Time  `json:"installed_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // APIKeyRecord API Key 记录

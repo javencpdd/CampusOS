@@ -13,17 +13,22 @@ import (
 	identityhandler "github.com/campusos/CampusOS/internal/core/identity/handler"
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	"github.com/campusos/CampusOS/internal/integration"
+	"github.com/campusos/CampusOS/internal/mcp"
+	"github.com/campusos/CampusOS/internal/message"
 	"github.com/campusos/CampusOS/internal/plugin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/internal/space"
+	"github.com/campusos/CampusOS/internal/webhook"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/database"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/middleware"
+	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,6 +43,8 @@ func New(cfg *config.Config) *Server {
 }
 
 func (s *Server) Run() error {
+	metricsCollector := observability.NewCollector()
+
 	// ─── 初始化 EventBus ───
 	var bus eventbus.EventBus
 	var memBus *eventbus.MemoryEventBus
@@ -105,7 +112,7 @@ func (s *Server) Run() error {
 	pool, err := database.New(s.cfg.Database.DSN)
 	if err != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，回退到内存模式: %v", err)
-		return s.runMemoryMode(bus, memBus, aiService)
+		return s.runMemoryMode(bus, memBus, aiService, metricsCollector)
 	}
 	defer pool.Close()
 	log.Printf("✅ PostgreSQL 连接成功")
@@ -163,6 +170,12 @@ func (s *Server) Run() error {
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
+	webhookSvc := webhook.NewService(webhook.NewPgStore(pool), metricsCollector)
+	if err := webhookSvc.Register(bus); err != nil {
+		log.Printf("⚠️  Webhook 事件订阅失败: %v", err)
+	}
+	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewPgAuditStore(pool), metricsCollector)
+	messageSvc := message.NewService(message.NewPgStore(pool), metricsCollector)
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -174,11 +187,25 @@ func (s *Server) Run() error {
 	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
+	webhookHandler := webhook.NewHandler(webhookSvc)
+	mcpHandler := mcp.NewHandler(mcpSvc)
+	messageHandler := message.NewHandler(messageSvc)
+	integrationHandler := integration.NewHandler(
+		integration.WithPool(pool),
+		integration.WithConfig(s.cfg),
+		integration.WithPluginManager(s.manager),
+		integration.WithAIService(aiService),
+		integration.WithSpaceService(spaceSvc),
+		integration.WithWebhookService(webhookSvc),
+		integration.WithMCPService(mcpSvc),
+		integration.WithMessageService(messageSvc),
+		integration.WithMetrics(metricsCollector),
+	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, metricsCollector)
 }
 
-func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service) error {
+func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
 	jwtMgr := s.newJWTManager()
 
 	userRepo := identityrepo.NewMemoryUserRepository()
@@ -219,6 +246,12 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
+	webhookSvc := webhook.NewService(webhook.NewMemoryStore(), metricsCollector)
+	if err := webhookSvc.Register(bus); err != nil {
+		log.Printf("⚠️  Webhook 事件订阅失败: %v", err)
+	}
+	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewMemoryAuditStore(), metricsCollector)
+	messageSvc := message.NewService(message.NewMemoryStore(), metricsCollector)
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
@@ -229,8 +262,21 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
 	roleHandler := identityhandler.NewRoleHandler(permSvc)
 	aiHandler := ai.NewHandler(aiService)
+	webhookHandler := webhook.NewHandler(webhookSvc)
+	mcpHandler := mcp.NewHandler(mcpSvc)
+	messageHandler := message.NewHandler(messageSvc)
+	integrationHandler := integration.NewHandler(
+		integration.WithConfig(s.cfg),
+		integration.WithPluginManager(s.manager),
+		integration.WithAIService(aiService),
+		integration.WithSpaceService(spaceSvc),
+		integration.WithWebhookService(webhookSvc),
+		integration.WithMCPService(mcpSvc),
+		integration.WithMessageService(messageSvc),
+		integration.WithMetrics(metricsCollector),
+	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -304,7 +350,12 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	eventHandler *handler.EventHandler,
 	pluginHandler *plugin.Handler,
 	roleHandler *identityhandler.RoleHandler,
-	aiHandler *ai.Handler) error {
+	aiHandler *ai.Handler,
+	integrationHandler *integration.Handler,
+	webhookHandler *webhook.Handler,
+	mcpHandler *mcp.Handler,
+	messageHandler *message.Handler,
+	metricsCollector *observability.Collector) error {
 
 	r := gin.Default()
 
@@ -313,6 +364,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	r.Use(middleware.CORS())
 	r.Use(middleware.TraceID())
 	r.Use(middleware.Logger())
+	r.Use(observability.Middleware(metricsCollector))
 
 	v1 := r.Group("/api/v1")
 
@@ -348,6 +400,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
 		authenticated.POST("/spaces/me/styles/export", spaceHandler.ExportStylePackage)
 		authenticated.POST("/spaces/me/styles/apply", spaceHandler.ApplyStylePackage)
+		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
+		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
+		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
@@ -384,10 +439,38 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
 		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ImportPluginPackage)
+		admin.POST("/plugin-packages/precheck", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.PrecheckPluginPackage)
 
 		// AI Gateway 管理
 		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.GetStatus)
 		admin.GET("/ai/logs", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.ListLogs)
+
+		// v0.5 集成中心与运营化能力
+		admin.GET("/integrations/overview", middleware.RequirePermission(permSvc, "role", "manage"), integrationHandler.Overview)
+		admin.GET("/metrics/summary", middleware.RequirePermission(permSvc, "role", "manage"), integrationHandler.Metrics)
+		admin.GET("/spaces/admin/summary", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.AdminSummary)
+		admin.POST("/spaces/:user_id/disable", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.DisableSpace)
+		admin.POST("/spaces/:user_id/enable", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.EnableSpace)
+
+		admin.GET("/webhooks", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.ListEndpoints)
+		admin.POST("/webhooks", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.CreateEndpoint)
+		admin.GET("/webhooks/summary", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.Summary)
+		admin.POST("/webhooks/:id/test", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.TestEndpoint)
+		admin.POST("/webhooks/:id/enable", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.EnableEndpoint)
+		admin.POST("/webhooks/:id/disable", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.DisableEndpoint)
+		admin.GET("/webhooks/:id/deliveries", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.ListDeliveries)
+
+		admin.GET("/mcp/tools", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.ListTools)
+		admin.POST("/mcp/tools/:name/call", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.CallTool)
+		admin.GET("/mcp/audit", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.ListAudit)
+		admin.GET("/mcp/settings", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.GetSettings)
+		admin.PUT("/mcp/settings", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.UpdateSettings)
+
+		admin.GET("/messages/adapters", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ListAdapters)
+		admin.POST("/messages/local/inbound", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ReceiveLocal)
+		admin.GET("/messages/logs", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ListMessages)
+		admin.POST("/messages/bindings", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.CreateBinding)
+		admin.GET("/messages/summary", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.Summary)
 
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)
@@ -401,7 +484,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 50")
+	log.Printf("📋 API 端点总数: 75+")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

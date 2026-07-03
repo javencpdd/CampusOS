@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	ErrInvalidVisibility  = errors.New("invalid space visibility")
-	ErrInvalidStyleExport = errors.New("invalid style export")
-	ErrSpaceNotPublic     = errors.New("space is not public")
+	ErrInvalidVisibility     = errors.New("invalid space visibility")
+	ErrInvalidStyleExport    = errors.New("invalid style export")
+	ErrSpaceNotPublic        = errors.New("space is not public")
+	ErrStyleSnapshotNotFound = errors.New("style snapshot not found")
 )
 
 type UserLookup interface {
@@ -161,6 +162,9 @@ func (s *Service) ApplyStylePackage(ctx context.Context, userID string, pkg Styl
 	if space.CreatedAt.IsZero() {
 		space.CreatedAt = now
 	}
+	if err := s.saveStyleSnapshot(ctx, space, "before_apply"); err != nil {
+		return nil, err
+	}
 	space.UserID = current.Owner.ID
 	space.Theme = manifest.Name
 	space.Layout = manifest.Layout
@@ -179,6 +183,154 @@ func (s *Service) ApplyStylePackage(ctx context.Context, userID string, pkg Styl
 	return &result, nil
 }
 
+func (s *Service) RollbackStyle(ctx context.Context, userID string) (*PublicSpace, error) {
+	snapshotRepo, ok := s.repo.(StyleSnapshotRepository)
+	if !ok {
+		return nil, ErrStyleSnapshotNotFound
+	}
+	snapshot, err := snapshotRepo.GetLatestStyleSnapshot(ctx, userID)
+	if err != nil {
+		if errors.Is(err, ErrSpaceNotFound) {
+			return nil, ErrStyleSnapshotNotFound
+		}
+		return nil, err
+	}
+
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, err
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	space.Theme = snapshot.Theme
+	space.Layout = snapshot.Layout
+	space.StyleName = snapshot.StyleName
+	space.StyleVersion = snapshot.StyleVersion
+	space.StyleManifest = cloneManifest(snapshot.StyleManifest)
+	space.IsDefault = false
+	space.UpdatedAt = time.Now().UTC()
+	ensureDefaults(space)
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("rollback style: %w", err)
+	}
+	return buildPublicSpace(user, space), nil
+}
+
+func (s *Service) RestoreDefaultStyle(ctx context.Context, userID string) (*PublicSpace, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, err
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	if err := s.saveStyleSnapshot(ctx, space, "before_restore_default"); err != nil {
+		return nil, err
+	}
+	space.Theme = "default"
+	space.Layout = "blog"
+	clearAppliedStyle(space)
+	space.IsDefault = false
+	space.UpdatedAt = time.Now().UTC()
+	ensureDefaults(space)
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("restore default style: %w", err)
+	}
+	return buildPublicSpace(user, space), nil
+}
+
+func (s *Service) GetSyncStatus(ctx context.Context, userID string) (*SpaceSyncStatus, error) {
+	space, err := s.repo.GetByUserID(ctx, userID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, err
+		}
+		user, userErr := s.users.GetByID(ctx, userID)
+		if userErr != nil {
+			return nil, userErr
+		}
+		space = defaultSpace(user)
+	}
+	var total int64
+	if ops, ok := s.repo.(OperationalRepository); ok {
+		total, _ = ops.CountContentsByUserID(ctx, userID)
+	}
+	return &SpaceSyncStatus{
+		UserID:        userID,
+		SyncEnabled:   space.SyncEnabled,
+		LastSyncAt:    space.LastSyncAt,
+		LastSyncError: space.LastSyncError,
+		ContentTotal:  total,
+		Disabled:      space.DisabledAt != nil,
+	}, nil
+}
+
+func (s *Service) DisableSpace(ctx context.Context, targetUserID, actorUserID, reason string) (*PublicSpace, error) {
+	user, err := s.users.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, targetUserID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, err
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	now := time.Now().UTC()
+	space.DisabledAt = &now
+	space.DisabledBy = strings.TrimSpace(actorUserID)
+	space.DisabledReason = strings.TrimSpace(reason)
+	space.UpdatedAt = now
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("disable space: %w", err)
+	}
+	return buildPublicSpace(user, space), nil
+}
+
+func (s *Service) EnableSpace(ctx context.Context, targetUserID string) (*PublicSpace, error) {
+	user, err := s.users.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, targetUserID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, err
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	space.DisabledAt = nil
+	space.DisabledBy = ""
+	space.DisabledReason = ""
+	space.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("enable space: %w", err)
+	}
+	return buildPublicSpace(user, space), nil
+}
+
+func (s *Service) AdminSummary(ctx context.Context) (*SpaceAdminSummary, error) {
+	ops, ok := s.repo.(OperationalRepository)
+	if !ok {
+		return &SpaceAdminSummary{}, nil
+	}
+	return ops.AdminSummary(ctx)
+}
+
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {
 	space, err := s.repo.GetByUserID(ctx, user.ID)
 	if err != nil {
@@ -187,10 +339,60 @@ func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User)
 		}
 		return nil, fmt.Errorf("get space: %w", err)
 	}
-	if space.Visibility != VisibilityPublic {
+	if space.DisabledAt != nil || space.Visibility != VisibilityPublic {
 		return nil, ErrSpaceNotPublic
 	}
 	return buildPublicSpace(user, space), nil
+}
+
+func (s *Service) saveStyleSnapshot(ctx context.Context, space *Space, snapshotType string) error {
+	snapshotRepo, ok := s.repo.(StyleSnapshotRepository)
+	if !ok || space == nil || space.UserID == "" {
+		return nil
+	}
+	if space.ID == "" && space.StyleName == "" && space.Theme == "" && space.Layout == "" {
+		return nil
+	}
+	snapshot := &StyleSnapshot{
+		ID:            fmt.Sprintf("%d", idgen.New()),
+		UserID:        space.UserID,
+		SnapshotType:  snapshotType,
+		StyleName:     space.StyleName,
+		StyleVersion:  space.StyleVersion,
+		Theme:         space.Theme,
+		Layout:        space.Layout,
+		StyleManifest: cloneManifest(space.StyleManifest),
+		CreatedAt:     time.Now().UTC(),
+	}
+	ensureSnapshotDefaults(snapshot)
+	return snapshotRepo.SaveStyleSnapshot(ctx, snapshot)
+}
+
+func ensureSnapshotDefaults(snapshot *StyleSnapshot) {
+	if snapshot.SnapshotType == "" {
+		snapshot.SnapshotType = "before_apply"
+	}
+	if snapshot.Theme == "" {
+		snapshot.Theme = "default"
+	}
+	if snapshot.Layout == "" {
+		snapshot.Layout = "blog"
+	}
+}
+
+func cloneManifest(manifest *StyleManifest) *StyleManifest {
+	if manifest == nil {
+		return nil
+	}
+	clone := *manifest
+	clone.CompatibleCampusOS = append([]string(nil), manifest.CompatibleCampusOS...)
+	clone.Components = append([]StyleComponent(nil), manifest.Components...)
+	for i := range clone.Components {
+		clone.Components[i].Props = copyInterfaceMap(manifest.Components[i].Props)
+	}
+	clone.Tokens = copyStringMap(manifest.Tokens)
+	clone.Assets = append([]StyleAsset(nil), manifest.Assets...)
+	return &clone
 }
 
 func applyUpdate(space *Space, req UpsertSpaceRequest) error {

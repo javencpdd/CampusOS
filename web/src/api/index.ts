@@ -85,6 +85,9 @@ export const spaceApi = {
   exportStyle: (data?: { name?: string; version?: string; description?: string }) =>
     api.post('/spaces/me/styles/export', data || {}),
   applyStyle: (data: any) => api.post('/spaces/me/styles/apply', data),
+  rollbackStyle: () => api.post('/spaces/me/styles/rollback'),
+  restoreDefaultStyle: () => api.post('/spaces/me/styles/default'),
+  syncStatus: () => api.get('/spaces/me/sync-status'),
   publicByUsername: (username: string) => api.get(`/u/${username}`),
   publicContentsByUsername: (username: string, params?: { page?: number; page_size?: number }) =>
     api.get(`/u/${username}/contents`, { params }),

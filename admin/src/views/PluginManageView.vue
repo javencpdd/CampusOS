@@ -57,6 +57,7 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="checksum" label="Checksum" width="180" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)" size="small">
@@ -229,8 +230,18 @@ const handleImportChange = async (uploadFile: UploadFile) => {
   if (!uploadFile.raw) return
   importing.value = true
   try {
+    const precheckRes = (await pluginApi.precheckPackage(uploadFile.raw)) as any
+    const precheck = precheckRes?.data || precheckRes
+    if (precheck?.allowed === false) {
+      ElMessage.error(`插件包预检失败：${(precheck.errors || []).join('；') || '未知错误'}`)
+      return
+    }
+    if (precheck?.conflict && !replaceOnImport.value) {
+      ElMessage.warning('检测到同名插件，请开启“覆盖”后再导入')
+      return
+    }
     await pluginApi.importPackage(uploadFile.raw, replaceOnImport.value)
-    ElMessage.success('插件包已导入')
+    ElMessage.success(`插件包已导入${precheck?.checksum ? `：${precheck.checksum}` : ''}`)
     await load()
   } catch (error: any) {
     ElMessage.error(error?.message || '导入插件包失败')
