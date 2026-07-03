@@ -165,6 +165,8 @@ func (s *Server) Run() error {
 	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
+	postSvc.SetThreadRepository(threadRepo)
+	postSvc.SetCache(appCache)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
@@ -241,6 +243,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	threadSvc := service.NewThreadService(threadRepo, bus)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
+	postSvc.SetThreadRepository(threadRepo)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {

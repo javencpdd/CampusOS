@@ -66,13 +66,11 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 
 // GetThread 获取帖子详情
 func (s *ThreadService) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
-	thread, err := s.repo.GetByID(ctx, id)
+	thread, err := s.repo.IncrementViewCount(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
 	}
-	// 简单的浏览计数
-	thread.ViewCount++
-	_ = s.repo.Update(ctx, thread)
+	s.invalidateListCache(ctx)
 	return thread, nil
 }
 
@@ -257,4 +255,8 @@ func (s *ThreadService) invalidateListCache(ctx context.Context) {
 	for _, key := range keys {
 		_ = s.cache.Delete(ctx, key)
 	}
+}
+
+func (s *ThreadService) InvalidateListCache(ctx context.Context) {
+	s.invalidateListCache(ctx)
 }

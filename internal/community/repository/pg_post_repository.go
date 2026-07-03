@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
@@ -20,12 +19,20 @@ func NewPgPostRepository(pool *pgxpool.Pool) *PgPostRepository {
 }
 
 func (r *PgPostRepository) Create(ctx context.Context, post *domain.Post) error {
-	query := `INSERT INTO posts (id, thread_id, author_id, author_name, parent_id, content, content_format, status, like_count, floor_number, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-	_, err := r.pool.Exec(ctx, query,
+	query := `WITH next_floor AS (
+			SELECT COALESCE(MAX(floor_number), 0) + 1 AS floor_number
+			FROM posts
+			WHERE thread_id = $2 AND deleted_at IS NULL
+		)
+		INSERT INTO posts (id, thread_id, author_id, author_name, parent_id, content, content_format, status, like_count, floor_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+			CASE WHEN $10 > 0 THEN $10 ELSE (SELECT floor_number FROM next_floor) END,
+			$11, $12)
+		RETURNING floor_number`
+	err := r.pool.QueryRow(ctx, query,
 		post.ID, post.ThreadID, post.AuthorID, post.AuthorName,
 		post.ParentID, post.Content, "markdown", post.Status,
-		post.LikeCount, post.FloorNumber, post.CreatedAt, post.UpdatedAt)
+		post.LikeCount, post.FloorNumber, post.CreatedAt, post.UpdatedAt).Scan(&post.FloorNumber)
 	return err
 }
 
@@ -62,8 +69,8 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 	}
 
 	offset := (page - 1) * pageSize
-	query := fmt.Sprintf(`SELECT id, thread_id, author_id, author_name, parent_id, content, status, like_count, floor_number, created_at, updated_at
-		FROM posts WHERE thread_id = $1 AND deleted_at IS NULL ORDER BY floor_number ASC LIMIT $2 OFFSET $3`)
+	query := `SELECT id, thread_id, author_id, author_name, parent_id, content, status, like_count, floor_number, created_at, updated_at
+		FROM posts WHERE thread_id = $1 AND deleted_at IS NULL ORDER BY floor_number ASC LIMIT $2 OFFSET $3`
 	rows, err := r.pool.Query(ctx, query, threadID, pageSize, offset)
 	if err != nil {
 		return nil, 0, err

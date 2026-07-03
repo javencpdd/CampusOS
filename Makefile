@@ -1,4 +1,4 @@
-.PHONY: build run dev test lint clean migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build
+.PHONY: build run dev dev-all test lint clean migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build
 
 # 构建
 build:
@@ -11,6 +11,9 @@ run: build
 # 开发热重载
 dev:
 	air
+
+dev-all:
+	./scripts/start-dev.sh
 
 # 测试
 test:
