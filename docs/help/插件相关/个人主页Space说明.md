@@ -257,7 +257,7 @@ web/src/data/spaceStyleExamples.ts
 后端同源 JSON 示例位于：
 
 ```text
-examples/space-styles/
+data/plugins/personal-space/styles/
 ```
 
 ## 7. 后续任务

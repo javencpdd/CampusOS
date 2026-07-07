@@ -78,7 +78,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 func runPluginInit(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("plugin init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	runtime := fs.String("runtime", "wasm", "plugin runtime: wasm or grpc")
+	runtime := fs.String("runtime", "wasm", "plugin runtime: wasm, grpc or builtin")
 	dir := fs.String("dir", "", "target directory; defaults to the plugin name")
 	name := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -90,17 +90,17 @@ func runPluginInit(args []string, stdout io.Writer) error {
 	}
 	if name == "" {
 		if fs.NArg() != 1 {
-			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc|builtin] [--dir path]")
 		}
 		name = fs.Arg(0)
 	} else if fs.NArg() != 0 {
-		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc|builtin] [--dir path]")
 	}
 	if err := plugin.ValidatePluginName(name); err != nil {
 		return err
 	}
-	if *runtime != "wasm" && *runtime != "grpc" {
-		return fmt.Errorf("runtime must be wasm or grpc, got %q", *runtime)
+	if *runtime != "wasm" && *runtime != "grpc" && *runtime != "builtin" {
+		return fmt.Errorf("runtime must be wasm, grpc or builtin, got %q", *runtime)
 	}
 	targetDir := *dir
 	if targetDir == "" {
@@ -187,7 +187,7 @@ func runPluginPack(args []string, stdout io.Writer) error {
 func runPluginInstall(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("plugin install", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	dir := fs.String("dir", "examples/plugins", "target plugins directory")
+	dir := fs.String("dir", plugin.DefaultPluginsDir, "target plugins directory")
 	replace := fs.Bool("replace", false, "replace existing plugin directory")
 	packagePath := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -231,7 +231,7 @@ func pluginManifestTemplate(name, runtime string) string {
       type: "number"
       required: true
       default: 1000`
-	} else {
+	} else if runtime == "grpc" {
 		config = `  command: "./plugin"
   event_timeout_ms: 1000`
 		configSchema = `  fields:
@@ -245,6 +245,14 @@ func pluginManifestTemplate(name, runtime string) string {
       type: "number"
       required: true
       default: 1000`
+	} else {
+		config = `  mode: "metadata"`
+		configSchema = `  fields:
+    - key: "mode"
+      label: "Mode"
+      type: "string"
+      required: true
+      default: "metadata"`
 	}
 	return strings.TrimSpace(fmt.Sprintf(`
 name: %s

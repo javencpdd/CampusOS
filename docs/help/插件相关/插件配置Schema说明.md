@@ -86,20 +86,21 @@ config_schema:
 ```bash
 go run ./cmd/campusosctl plugin init my-plugin --runtime wasm
 go run ./cmd/campusosctl plugin init my-grpc-plugin --runtime grpc
+go run ./cmd/campusosctl plugin init my-builtin-plugin --runtime builtin
 ```
 
-Wasm 插件模板默认暴露 `entrypoint` 和 `event_timeout_ms`；gRPC 插件模板默认暴露 `command` 和 `event_timeout_ms`。
+Wasm 插件模板默认暴露 `entrypoint` 和 `event_timeout_ms`；gRPC 插件模板默认暴露 `command` 和 `event_timeout_ms`；built-in 插件模板默认暴露 `mode`。
 
 `campusosctl plugin inspect` 会输出 `config_schema`：
 
 ```bash
-go run ./cmd/campusosctl plugin inspect examples/plugins/hello-wasm
+go run ./cmd/campusosctl plugin inspect data/plugins/hello-wasm
 ```
 
 `campusosctl plugin pack` 会在打包前解析并校验 manifest：
 
 ```bash
-go run ./cmd/campusosctl plugin pack examples/plugins/hello-wasm
+go run ./cmd/campusosctl plugin pack data/plugins/hello-wasm
 ```
 
 当前校验规则：

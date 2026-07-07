@@ -113,7 +113,7 @@ func Load() *Config {
 			PasswordHashEnabled: getBool("AUTH_PASSWORD_HASH_ENABLED", true),
 		},
 		Plugin: PluginConfig{
-			DataDir: get("PLUGIN_DATA_DIR", ".campusos/plugin-data"),
+			DataDir: get("PLUGIN_DATA_DIR", "data/plugin_data"),
 		},
 		AI: AIConfig{
 			Enabled:              get("AI_ENABLED", "false") == "true",

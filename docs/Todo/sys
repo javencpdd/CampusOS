@@ -1,1 +1,2 @@
-/home/jack/bbs/bbs01/CampusOS/sh/git_commit.sh  是用来psuh，能不能再写一个用于提交pr保存在/home/jack/bbs/bbs01/CampusOS/sh？完成的同时也生成一个帮助文档保存/home/jack/bbs/bbs01/CampusOS/docs/help/github使用相关
+我觉得可以专门构建出一个data文件夹目录，里面有着 plugins 、plugin_data 、images 、dist 、config 、skills
+关于space-styles可以放在与之对应的插件目录中（个人主页插件），这种插件也可以作为一种内置默认的插件

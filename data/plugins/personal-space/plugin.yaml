@@ -1,0 +1,33 @@
+name: personal-space
+display_name: "Personal Space"
+version: "0.1.0"
+description: "CampusOS built-in personal homepage and style package plugin metadata"
+author: "CampusOS Team"
+runtime: builtin
+
+events:
+  subscribe:
+    - "thread.created"
+    - "post.created"
+
+permissions:
+  api:
+    - resource: "space"
+      actions: ["read", "write"]
+    - resource: "style"
+      actions: ["read"]
+
+storage:
+  type: none
+
+config:
+  styles_dir: "styles"
+
+config_schema:
+  fields:
+    - key: "styles_dir"
+      label: "Styles directory"
+      type: "string"
+      description: "Built-in personal space style package directory relative to this plugin."
+      required: true
+      default: "styles"

@@ -70,6 +70,28 @@ func TestPluginInitCreatesGRPCScaffold(t *testing.T) {
 	}
 }
 
+func TestPluginInitCreatesBuiltinScaffold(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "builtin-plugin")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"plugin", "init", "builtin-plugin", "--runtime", "builtin", "--dir", dir}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	manifest, err := plugin.LoadManifest(filepath.Join(dir, "plugin.yaml"))
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if manifest.Runtime != "builtin" {
+		t.Fatalf("expected builtin runtime, got %q", manifest.Runtime)
+	}
+	if manifest.Config["mode"] != "metadata" {
+		t.Fatalf("expected builtin mode config, got %#v", manifest.Config)
+	}
+}
+
 func TestPluginInspectPrintsManifestSummary(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`

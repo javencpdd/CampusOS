@@ -35,7 +35,7 @@
 当前仓库不要求开发机安装 TinyGo 或 wat2wasm。可以从 hex 文件重新生成：
 
 ```bash
-xxd -r -p examples/plugins/hello-wasm/src/plugin.wasm.hex examples/plugins/hello-wasm/plugin.wasm
+xxd -r -p data/plugins/hello-wasm/src/plugin.wasm.hex data/plugins/hello-wasm/plugin.wasm
 ```
 
 生成后可用 Go 测试验证：

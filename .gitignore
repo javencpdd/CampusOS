@@ -24,7 +24,7 @@ go.work.sum
 /bin/
 /build/
 *.wasm
-!examples/plugins/hello-wasm/plugin.wasm
+!data/plugins/hello-wasm/plugin.wasm
 
 # ─── IDE ───
 # VS Code
@@ -62,6 +62,16 @@ postgres-data/
 redis-data/
 nats-data/
 .campusos/
+/data/plugin_data/*
+!/data/plugin_data/.gitkeep
+/data/images/*
+!/data/images/.gitkeep
+/data/dist/*
+!/data/dist/.gitkeep
+/data/config/*
+!/data/config/.gitkeep
+/data/skills/*
+!/data/skills/.gitkeep
 
 # ─── 临时文件 ───
 *.tmp

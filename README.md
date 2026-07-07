@@ -2,7 +2,7 @@
 
 CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经从基础论坛演进到“社区核心 + 插件运行时 + 个人主页 + 管理后台集成中心 + 低风险外部集成”的开发基线。
 
-截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.7-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
+截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.8-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
 
 ## 当前状态
 
@@ -14,7 +14,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | 数据库迁移 | 已实现 | `scripts/migrate.sh` / `scripts/migrate.ps1` 自动扫描 `migrations/*.up.sql`，通过 `schema_migrations` 记录执行状态 |
 | Docker 依赖服务 | 已实现 | PostgreSQL、Redis、NATS、pgAdmin 由 Docker Compose 提供 |
 | 一键开发启动 | 已实现 | `make dev-all` 调用 `scripts/start-dev.sh`，可启动依赖服务、迁移、后端、用户前台和管理后台 |
-| 插件 Runtime | 已实现基础闭环 | 支持 gRPC Runtime 框架、Wasm Runtime(wazero)、事件分发、Host API、插件日志和插件 KV |
+| 插件 Runtime | 已实现基础闭环 | 支持 gRPC Runtime、Wasm Runtime(wazero)、Built-in Runtime、事件分发、Host API、插件日志和插件 KV |
 | 插件包治理 | 已实现基础闭环 | 支持 `campusosctl plugin init/inspect/pack/install`、后台导入导出、预检、checksum 和包大小记录 |
 | 个人主页/风格包 | 已实现核心闭环 | 支持公开个人主页、内容同步、风格包导入导出、预览、应用、回滚和恢复默认 |
 | AI Gateway | 已实现最小闭环 | OpenAI-compatible Provider、配置、限流和调用日志已存在；AI 内容审核插件暂缓 |
@@ -41,7 +41,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 总体计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分判断 |
 | [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 规划和边界 |
-| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.7 实施记录 |
+| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.8 实施记录 |
 
 ## 架构概览
 
@@ -69,7 +69,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 ┌───────────────▼──────┐   ┌───▼──────────────────┐
 │ PostgreSQL / Redis   │   │ Plugin Runtime        │
 │ NATS / pgAdmin       │   │ gRPC / Wasm(wazero)   │
-│ Docker Compose       │   │ examples/plugins/*    │
+│ Docker Compose       │   │ data/plugins/*        │
 └──────────────────────┘   └──────────────────────┘
 ```
 
@@ -83,7 +83,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | 数据库 | PostgreSQL 16 |
 | 缓存 | Redis 7 |
 | 消息 | NATS 2，启用 JetStream |
-| 插件 | gRPC Runtime、Wasm Runtime(wazero)、Host API、Go SDK、campusosctl |
+| 插件 | gRPC Runtime、Wasm Runtime(wazero)、Built-in Runtime、Host API、Go SDK、campusosctl |
 | 工程化 | Docker Compose、Makefile、GitHub Actions、pnpm |
 
 ## 本地环境要求
@@ -119,8 +119,8 @@ DB_PORT=5432
 POSTGRES_PORT=5432
 REDIS_ADDR=localhost:6379
 NATS_URL=nats://localhost:4222
-PLUGINS_DIR=examples/plugins
-PLUGIN_DATA_DIR=.campusos/plugin-data
+PLUGINS_DIR=data/plugins
+PLUGIN_DATA_DIR=data/plugin_data
 AUTH_PASSWORD_HASH_ENABLED=true
 AI_ENABLED=false
 ```
@@ -134,6 +134,8 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=di
 ```
 
 `.env.example` 只是模板，不会自动生效；实际启动时读取的是 `.env` 和当前 shell 环境变量。说明见 [关于 env 文件配置](./docs/help/系统设计相关/关于env文件配置.md)。
+
+如果本地已有旧 `.env`，请确认 `PLUGINS_DIR` 和 `PLUGIN_DATA_DIR` 已同步为 `data/plugins`、`data/plugin_data`；否则后端会继续扫描旧插件目录。
 
 ### 2. 一键启动开发环境
 
@@ -312,7 +314,7 @@ make migrate-status
 | 风格包导入、导出、校验、预览、应用 | 已实现 |
 | 风格应用前快照、回滚、恢复默认 | 已实现 |
 | 管理员禁用/启用个人主页 | 已实现 |
-| 示例风格包 | 已提供，位于 `examples/space-styles/` |
+| 示例风格包 | 已提供，位于 `data/plugins/personal-space/styles/` |
 | 任意 JavaScript 个人主页代码 | 未开放，后续需安全模型 |
 
 说明文档：
@@ -327,8 +329,9 @@ make migrate-status
 示例插件：
 
 ```text
-examples/plugins/hello-plugin
-examples/plugins/hello-wasm
+data/plugins/hello-plugin
+data/plugins/hello-wasm
+data/plugins/personal-space
 ```
 
 当前插件能力：
@@ -338,6 +341,7 @@ examples/plugins/hello-wasm
 | 插件 manifest | 已实现 |
 | gRPC Runtime 框架 | 已实现 |
 | Wasm Runtime(wazero) | 已实现 |
+| Built-in Runtime | 已实现，用于内置默认插件元数据和静态资产 |
 | Host API 权限校验 | 已实现 |
 | 插件日志 | 已实现 |
 | 插件 KV 存储 | 已实现，默认 SQLite-backed |
@@ -379,7 +383,8 @@ X-CampusOS-Plugin: <plugin-name>
 | [插件保存位置与当前插件作用汇总](./docs/help/插件相关/插件保存位置与当前插件作用汇总.md) | 插件目录和现有插件作用 |
 | [标准插件包导入导出要求](./docs/help/插件相关/标准插件包导入导出要求.md) | 插件包格式 |
 | [插件配置 Schema 说明](./docs/help/插件相关/插件配置Schema说明.md) | manifest 配置 schema |
-| [hello-wasm README](./examples/plugins/hello-wasm/README.md) | Wasm 插件示例 |
+| [hello-wasm README](./data/plugins/hello-wasm/README.md) | Wasm 插件示例 |
+| [personal-space README](./data/plugins/personal-space/README.md) | 内置个人主页插件与默认风格包 |
 | [Go SDK README](./sdk/go/README.md) | Go 插件 SDK |
 
 ### campusosctl CLI
@@ -395,13 +400,13 @@ go run ./cmd/campusosctl plugin init hello-demo --runtime wasm --dir /tmp/hello-
 检查插件 manifest：
 
 ```bash
-go run ./cmd/campusosctl plugin inspect examples/plugins/hello-wasm
+go run ./cmd/campusosctl plugin inspect data/plugins/hello-wasm
 ```
 
 打包插件：
 
 ```bash
-go run ./cmd/campusosctl plugin pack examples/plugins/hello-wasm \
+go run ./cmd/campusosctl plugin pack data/plugins/hello-wasm \
   --out /tmp/hello-wasm.campusos-plugin.tar.gz
 ```
 
@@ -409,7 +414,7 @@ go run ./cmd/campusosctl plugin pack examples/plugins/hello-wasm \
 
 ```bash
 go run ./cmd/campusosctl plugin install /tmp/hello-wasm.campusos-plugin.tar.gz \
-  --dir examples/plugins
+  --dir data/plugins
 ```
 
 ### AI Gateway
@@ -626,9 +631,13 @@ CampusOS/
 │   ├── campusosctl/               # 插件开发 CLI
 │   └── server/                    # 后端服务入口
 ├── docs/                          # 计划、进度、帮助文档
-├── examples/
-│   ├── plugins/                   # 示例插件
-│   └── space-styles/              # 示例个人主页风格包
+├── data/
+│   ├── plugins/                   # 已安装插件和内置默认插件
+│   ├── plugin_data/               # 插件运行期 KV 数据
+│   ├── images/                    # 本地图片和上传资源预留目录
+│   ├── dist/                      # 本地发布产物预留目录
+│   ├── config/                    # 本地运行配置预留目录
+│   └── skills/                    # 本地 runtime/imported skills 预留目录
 ├── internal/
 │   ├── ai/                        # AI Gateway
 │   ├── community/                 # 版块、主题、回复等社区领域

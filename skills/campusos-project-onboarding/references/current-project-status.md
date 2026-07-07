@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.7-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.8-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -30,7 +30,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | Database | PostgreSQL migrations `000001` through `000011`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
-| Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, Host API, plugin logs, plugin KV |
+| Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
 | Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export, precheck, checksum, package size |
 | Personal spaces | Public user pages, thread/content sync, style import/export/preview/apply, rollback, restore default |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
@@ -75,6 +75,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `internal/community/` | Categories, threads, replies, events |
 | `internal/core/identity/` | Users, accounts, roles, permissions |
 | `internal/plugin/` | Plugin manager, runtime, repository, package logic |
+| `internal/plugin/builtin/` | Built-in plugin runtime for bundled feature metadata and static assets |
 | `internal/plugin/hostapi/` | Host API bridge for plugins |
 | `internal/plugin/wasm/` | Wasm runtime |
 | `internal/space/` | Personal space, content sync, style packages |
@@ -86,8 +87,9 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `pkg/observability/` | Minimal metrics |
 | `web/src/` | User frontend |
 | `admin/src/` | Admin frontend |
-| `examples/plugins/` | Example plugins |
-| `examples/space-styles/` | Example personal space style packages |
+| `data/` | Default local data root for plugins, plugin data, images, dist, config, and local skills |
+| `data/plugins/` | Installed and built-in plugins |
+| `data/plugins/personal-space/styles/` | Built-in personal space style packages |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
 

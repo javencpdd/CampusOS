@@ -13,7 +13,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const defaultPluginDataDir = ".campusos/plugin-data"
+const defaultPluginDataDir = "data/plugin_data"
 
 type SQLiteKVStore struct {
 	rootDir string
