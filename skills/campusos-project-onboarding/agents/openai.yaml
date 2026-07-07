@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Project Onboarding"
+  short_description: "Quickly brief agents on CampusOS status"
+  default_prompt: "Use $campusos-project-onboarding to understand the current CampusOS project status before working."

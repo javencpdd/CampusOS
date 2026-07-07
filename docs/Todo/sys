@@ -1,1 +1,1 @@
-增加一个一键启动前后段的shell脚本？
+/home/jack/bbs/bbs01/CampusOS/sh/git_commit.sh  是用来psuh，能不能再写一个用于提交pr保存在/home/jack/bbs/bbs01/CampusOS/sh？完成的同时也生成一个帮助文档保存/home/jack/bbs/bbs01/CampusOS/docs/help/github使用相关
