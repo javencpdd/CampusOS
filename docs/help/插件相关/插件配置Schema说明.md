@@ -1,11 +1,11 @@
 # CampusOS 插件配置 Schema 说明
 
-> 日期：2026-07-01
-> 范围：v0.4-dev 插件配置 schema 草案
+> 日期：2026-07-07
+> 范围：v0.5-dev 插件配置 schema 与 Admin 配置表单
 
 ## 1. 设计目标
 
-插件可以在 `plugin.yaml` 中声明 `config_schema`，用于描述哪些配置项可以被后台、CLI 或测试工具展示和编辑。
+插件可以在 `plugin.yaml` 中声明 `config_schema`，用于描述哪些配置项可以被后台、CLI 或测试工具展示和编辑。v0.5.10 起，Admin 插件管理页已经可以按该 schema 渲染配置表单并写回插件配置。
 
 `config_schema` 不直接替代 `config`，两者关系如下：
 
@@ -79,7 +79,7 @@ config_schema:
 
 `select` 类型必须提供 `options`，否则 manifest 校验会失败。
 
-## 5. CLI 行为
+## 5. CLI 与 Admin 行为
 
 `campusosctl plugin init` 会为新插件生成最小 `config_schema`：
 
@@ -114,11 +114,35 @@ go run ./cmd/campusosctl plugin pack data/plugins/hello-wasm
 
 当前 CLI 校验只负责 schema 结构合法性，还不负责把 `default` 与 `type` 做强一致校验，也不会直接修改插件运行配置。
 
+Admin 插件管理页会在插件详情接口中读取：
+
+```text
+GET /api/v1/plugins/:name
+```
+
+响应中的 `config` 和 `config_schema` 会用于渲染配置弹窗。保存时调用：
+
+```text
+PUT /api/v1/plugins/:name/config
+```
+
+后端会按 `config_schema.fields` 对提交值做基础类型归一化：
+
+| 类型 | 归一化行为 |
+| --- | --- |
+| `boolean` | 接收布尔值或可解析布尔字符串 |
+| `number` | 接收数值或可解析数字字符串 |
+| `select` | 必须匹配 `options` 中的值 |
+| `string` / `text` | 转为字符串 |
+| `json` | 当前原样保存，后续可增加结构校验 |
+
+如果插件声明了 `config_schema`，未声明在 schema 中的字段不会被写入最终配置。缺失字段会优先沿用当前 `config`，再回退到 field `default`。
+
 ## 6. 后续方向
 
 | 方向 | 说明 |
 | --- | --- |
-| 后台表单渲染 | 插件详情页按 `config_schema` 自动渲染配置表单 |
-| 配置写入 | 表单提交后调用 Host API `SetConfig` 或管理端插件配置 API |
+| Host API 配置写入联动 | 管理端配置 API 已可写入；后续可继续统一 Host API `SetConfig` 的审计和权限策略 |
 | 类型校验增强 | 后续可校验 `default` 与 `type` 是否匹配 |
 | 风格插件复用 | 个人主页风格插件可使用 schema 描述颜色、布局、字体等可配置项 |
+| 自定义 HTML 安全模型 | 首页和个人主页当前只开放后端检测通过的受限 HTML 子集；任意 JS、未审查 HTML、CSP 强隔离和审核流仍是后续增强方向 |

@@ -1,2 +1,1 @@
-我觉得可以专门构建出一个data文件夹目录，里面有着 plugins 、plugin_data 、images 、dist 、config 、skills
-关于space-styles可以放在与之对应的插件目录中（个人主页插件），这种插件也可以作为一种内置默认的插件
+在readme中可以把git_commit.sh和git_pr.sh的使用介绍部分也加上，方便后续贡献者贡献代码

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -112,6 +113,180 @@ events:
 	}
 	if installed.Status != StatusStopped {
 		t.Fatalf("expected stopped status, got %q", installed.Status)
+	}
+}
+
+func TestManagerPersistsLifecycleStatus(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: persisted-lifecycle
+version: "0.1.0"
+runtime: wasm
+`)
+
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	if err := manager.Enable("persisted-lifecycle"); err != nil {
+		t.Fatalf("enable plugin: %v", err)
+	}
+	record, err := repo.GetByName(context.Background(), "persisted-lifecycle")
+	if err != nil {
+		t.Fatalf("get plugin record: %v", err)
+	}
+	if record.Status != string(StatusRunning) {
+		t.Fatalf("expected persisted running status, got %q", record.Status)
+	}
+
+	manager.StopAll()
+	record, err = repo.GetByName(context.Background(), "persisted-lifecycle")
+	if err != nil {
+		t.Fatalf("get plugin record after stop all: %v", err)
+	}
+	if record.Status != string(StatusRunning) {
+		t.Fatalf("stop all should not persist disabled status, got %q", record.Status)
+	}
+
+	if err := manager.Stop("persisted-lifecycle"); err != nil {
+		t.Fatalf("stop plugin: %v", err)
+	}
+	record, err = repo.GetByName(context.Background(), "persisted-lifecycle")
+	if err != nil {
+		t.Fatalf("get plugin record after stop: %v", err)
+	}
+	if record.Status != string(StatusStopped) {
+		t.Fatalf("expected persisted stopped status, got %q", record.Status)
+	}
+}
+
+func TestManagerUpdateConfigUsesSchemaAndPersists(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: configurable-plugin
+version: "0.1.0"
+runtime: builtin
+config:
+  title: Default
+  enabled: true
+  limit: 3
+config_schema:
+  fields:
+    - key: title
+      type: string
+      default: Default
+    - key: enabled
+      type: boolean
+      default: true
+    - key: limit
+      type: number
+      default: 3
+`)
+
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	manager.RegisterRuntime("builtin", newFakeRuntime())
+
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+	config, err := manager.UpdateConfig("configurable-plugin", map[string]interface{}{
+		"title":   "Updated",
+		"enabled": "false",
+		"limit":   "5",
+	})
+	if err != nil {
+		t.Fatalf("update config: %v", err)
+	}
+	if config["title"] != "Updated" || config["enabled"] != false || config["limit"] != float64(5) {
+		t.Fatalf("unexpected normalized config: %#v", config)
+	}
+	record, err := repo.GetByName(context.Background(), "configurable-plugin")
+	if err != nil {
+		t.Fatalf("get plugin record: %v", err)
+	}
+	if record.Config == "" {
+		t.Fatalf("expected persisted config")
+	}
+}
+
+func TestManagerUpdateConfigRejectsUnsafeHomepageCustomHTML(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: homepage-customizer
+version: "0.1.0"
+runtime: builtin
+config:
+  custom_html_enabled: false
+  custom_html: ""
+config_schema:
+  fields:
+    - key: custom_html_enabled
+      type: boolean
+      default: false
+    - key: custom_html
+      type: text
+      default: ""
+`)
+
+	manager := NewManager()
+	manager.RegisterRuntime("builtin", newFakeRuntime())
+	installed, err := manager.Install(dir)
+	if err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+
+	_, err = manager.UpdateConfig("homepage-customizer", map[string]interface{}{
+		"custom_html_enabled": true,
+		"custom_html":         `<img src=x onerror="alert(1)">`,
+	})
+	if err == nil {
+		t.Fatalf("expected unsafe html config to fail")
+	}
+	if !strings.Contains(err.Error(), "custom_html") {
+		t.Fatalf("expected custom_html error, got %v", err)
+	}
+	if installed.Manifest.Config["custom_html"] != "" {
+		t.Fatalf("unsafe html should not be stored: %#v", installed.Manifest.Config)
+	}
+}
+
+func TestManagerUpdateConfigAcceptsSafeHomepageCustomHTML(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: homepage-customizer
+version: "0.1.0"
+runtime: builtin
+config:
+  custom_html_enabled: false
+  custom_html: ""
+config_schema:
+  fields:
+    - key: custom_html_enabled
+      type: boolean
+      default: false
+    - key: custom_html
+      type: text
+      default: ""
+`)
+
+	manager := NewManager()
+	manager.RegisterRuntime("builtin", newFakeRuntime())
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+
+	config, err := manager.UpdateConfig("homepage-customizer", map[string]interface{}{
+		"custom_html_enabled": true,
+		"custom_html":         `<section><h2>CampusOS</h2><a href="/threads">Threads</a></section>`,
+	})
+	if err != nil {
+		t.Fatalf("update safe config: %v", err)
+	}
+	if config["custom_html"] == "" {
+		t.Fatalf("expected custom_html to be stored")
 	}
 }
 

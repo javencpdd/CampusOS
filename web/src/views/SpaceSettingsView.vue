@@ -190,6 +190,61 @@
             </div>
           </div>
         </el-card>
+
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="panel-header">
+              <span>HTML 风格</span>
+              <el-tag v-if="htmlValidation?.valid" type="success" effect="plain">检测通过</el-tag>
+              <el-tag v-else-if="htmlValidation" type="danger" effect="plain">检测失败</el-tag>
+            </div>
+          </template>
+
+          <el-input
+            v-model="htmlText"
+            type="textarea"
+            :rows="12"
+            class="style-editor"
+            spellcheck="false"
+            placeholder="<section>...</section>"
+          />
+
+          <div v-if="htmlValidation?.errors?.length" class="error-list">
+            <el-alert
+              v-for="error in htmlValidation.errors"
+              :key="error"
+              :title="error"
+              type="error"
+              show-icon
+              :closable="false"
+            />
+          </div>
+          <div v-if="htmlValidation?.warnings?.length" class="warning-list">
+            <el-alert
+              v-for="warning in htmlValidation.warnings"
+              :key="warning"
+              :title="warning"
+              type="warning"
+              show-icon
+              :closable="false"
+            />
+          </div>
+
+          <div class="style-actions">
+            <el-button @click="generateHTMLExample" :loading="htmlGenerating">
+              <el-icon><Download /></el-icon>
+              生成示例
+            </el-button>
+            <el-button @click="validateHTML" :loading="htmlValidating">
+              <el-icon><CircleCheck /></el-icon>
+              检测 HTML
+            </el-button>
+            <el-button type="primary" @click="applyHTMLStyle" :loading="htmlApplying">
+              <el-icon><Switch /></el-icon>
+              应用 HTML
+            </el-button>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
   </div>
@@ -271,6 +326,12 @@ interface StyleExportResult {
   validation: StyleValidationResult
 }
 
+interface StyleHTMLExampleResult {
+  html: string
+  package: StylePackage
+  validation: StyleValidationResult
+}
+
 interface SpaceStorageStatus {
   user_id: string
   quota_bytes: number
@@ -315,11 +376,16 @@ const applying = ref(false)
 const exporting = ref(false)
 const rollbacking = ref(false)
 const defaulting = ref(false)
+const htmlGenerating = ref(false)
+const htmlValidating = ref(false)
+const htmlApplying = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
+const htmlValidation = ref<StyleValidationResult | null>(null)
 const preview = ref<StylePreview | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
+const htmlText = ref('')
 
 const form = reactive<SpaceForm>({
   title: '',
@@ -363,6 +429,11 @@ const fillForm = (space: Space) => {
   form.sync_tags = [...(space.sync_tags || [])]
 }
 
+const syncHTMLEditor = (space: Space) => {
+  htmlText.value = space.style_manifest?.custom_html || ''
+  htmlValidation.value = null
+}
+
 const loadSpace = async () => {
   loading.value = true
   try {
@@ -371,6 +442,7 @@ const loadSpace = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     storage.value = unwrap<SpaceStorageStatus>(storageRes)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
@@ -386,6 +458,7 @@ const saveSpace = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     if (payload.owner.avatar) {
       userStore.setAvatar(payload.owner.avatar)
     }
@@ -412,6 +485,7 @@ const uploadAvatar = async (event: Event) => {
     currentSpace.value = payload.space
     storage.value = payload.storage
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     userStore.setAvatar(payload.url)
     ElMessage.success('头像已更新')
   } catch (error: any) {
@@ -510,11 +584,79 @@ const applyStyle = async () => {
         }
       : null
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     ElMessage.success('风格已应用')
   } catch (error: any) {
     ElMessage.error(error?.msg || '应用失败')
   } finally {
     applying.value = false
+  }
+}
+
+const generateHTMLExample = async () => {
+  htmlGenerating.value = true
+  try {
+    const payload = unwrap<StyleHTMLExampleResult>(await spaceApi.customHtmlExample())
+    htmlText.value = payload.html
+    htmlValidation.value = payload.validation
+    validation.value = payload.validation
+    styleText.value = JSON.stringify(payload.package, null, 2)
+    selectedStyleName.value = payload.package.manifest.name
+    if (payload.validation.valid) {
+      ElMessage.success('示例已生成')
+    } else {
+      ElMessage.warning('示例需要调整')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '生成示例失败')
+  } finally {
+    htmlGenerating.value = false
+  }
+}
+
+const validateHTML = async () => {
+  htmlValidating.value = true
+  try {
+    htmlValidation.value = unwrap<StyleValidationResult>(await spaceApi.validateCustomHtml(htmlText.value))
+    if (htmlValidation.value.valid) {
+      ElMessage.success('HTML 检测通过')
+    } else {
+      ElMessage.warning('HTML 检测失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || 'HTML 检测失败')
+  } finally {
+    htmlValidating.value = false
+  }
+}
+
+const applyHTMLStyle = async () => {
+  htmlApplying.value = true
+  try {
+    const payload = unwrap<StyleApplyResult>(await spaceApi.applyCustomHtml(htmlText.value))
+    validation.value = payload.validation
+    currentSpace.value = payload.space
+    preview.value = payload.applied
+      ? {
+          validation: payload.validation,
+          manifest: payload.applied,
+          layout: payload.applied.layout,
+          components: payload.applied.components,
+          tokens: payload.applied.tokens,
+        }
+      : null
+    if (payload.applied) {
+      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
+      selectedStyleName.value = payload.applied.name
+    }
+    fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    htmlValidation.value = payload.validation
+    ElMessage.success('HTML 风格已应用')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用 HTML 失败')
+  } finally {
+    htmlApplying.value = false
   }
 }
 
@@ -525,6 +667,7 @@ const rollbackStyle = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     preview.value = null
     ElMessage.success('已回滚到上一个风格快照')
   } catch (error: any) {
@@ -541,6 +684,7 @@ const restoreDefaultStyle = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     preview.value = null
     ElMessage.success('已恢复默认风格')
   } catch (error: any) {
@@ -675,6 +819,11 @@ onMounted(loadSpace)
   margin-bottom: 12px;
 }
 .error-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.warning-list {
   display: grid;
   gap: 8px;
   margin-bottom: 12px;

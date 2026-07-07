@@ -181,3 +181,23 @@ func TestUploadAvatarStoresPersonalSpaceAvatar(t *testing.T) {
 		t.Fatalf("saved avatar not reflected in own space: %#v", own)
 	}
 }
+
+func TestPersonalSpacePluginDisabledBlocksUserOperations(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	svc.SetPluginEnabledChecker(func() bool { return false })
+
+	if _, err := svc.GetOwnSpace(context.Background(), "1001"); !errors.Is(err, ErrSpacePluginDisabled) {
+		t.Fatalf("expected disabled plugin error for own space, got %v", err)
+	}
+	if _, err := svc.GetPublicByUsername(context.Background(), "alice"); !errors.Is(err, ErrSpacePluginDisabled) {
+		t.Fatalf("expected disabled plugin error for public space, got %v", err)
+	}
+	title := "Blocked"
+	if _, err := svc.UpsertOwnSpace(context.Background(), "1001", UpsertSpaceRequest{Title: &title}); !errors.Is(err, ErrSpacePluginDisabled) {
+		t.Fatalf("expected disabled plugin error for update, got %v", err)
+	}
+}

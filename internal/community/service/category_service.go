@@ -37,6 +37,7 @@ func (s *CategoryService) Create(ctx context.Context, req domain.CreateCategoryR
 		Slug:        slug,
 		Description: strings.TrimSpace(req.Description),
 		Icon:        strings.TrimSpace(req.Icon),
+		DefaultTags: normalizeTags(req.DefaultTags),
 		ParentID:    req.ParentID,
 		SortOrder:   req.SortOrder,
 		IsClosed:    req.IsClosed,
@@ -87,6 +88,9 @@ func (s *CategoryService) Update(ctx context.Context, id string, req domain.Upda
 	}
 	if req.Icon != nil {
 		cat.Icon = strings.TrimSpace(*req.Icon)
+	}
+	if req.DefaultTags != nil {
+		cat.DefaultTags = normalizeTags(req.DefaultTags)
 	}
 	if req.ParentID != nil {
 		cat.ParentID = req.ParentID

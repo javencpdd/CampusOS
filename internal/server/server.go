@@ -13,9 +13,11 @@ import (
 	identityhandler "github.com/campusos/CampusOS/internal/core/identity/handler"
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	"github.com/campusos/CampusOS/internal/homepage"
 	"github.com/campusos/CampusOS/internal/integration"
 	"github.com/campusos/CampusOS/internal/mcp"
 	"github.com/campusos/CampusOS/internal/message"
+	"github.com/campusos/CampusOS/internal/platformlog"
 	"github.com/campusos/CampusOS/internal/plugin"
 	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
@@ -123,6 +125,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer")
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
@@ -164,6 +167,7 @@ func (s *Server) Run() error {
 	userSvc.SetPasswordHashEnabled(s.cfg.Auth.PasswordHashEnabled)
 	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
+	threadSvc.SetCategoryRepository(categoryRepo)
 	threadSvc.SetCache(appCache)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
@@ -171,6 +175,9 @@ func (s *Server) Run() error {
 	postSvc.SetCache(appCache)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
+	spaceSvc.SetPluginEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning("personal-space")
+	})
 	s.configureSpaceFileStore(spaceSvc)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
@@ -181,6 +188,8 @@ func (s *Server) Run() error {
 	}
 	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewPgAuditStore(pool), metricsCollector)
 	messageSvc := message.NewService(message.NewPgStore(pool), metricsCollector)
+	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
+	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	// ─── 初始化处理器层 ───
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -195,6 +204,8 @@ func (s *Server) Run() error {
 	webhookHandler := webhook.NewHandler(webhookSvc)
 	mcpHandler := mcp.NewHandler(mcpSvc)
 	messageHandler := message.NewHandler(messageSvc)
+	homepageHandler := homepage.NewHandler(homepageSvc)
+	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithPool(pool),
 		integration.WithConfig(s.cfg),
@@ -207,7 +218,7 @@ func (s *Server) Run() error {
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
@@ -221,6 +232,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer")
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
@@ -244,11 +256,15 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	userSvc.SetPasswordHashEnabled(s.cfg.Auth.PasswordHashEnabled)
 	userSvc.SetRoleRepository(roleRepo)
 	threadSvc := service.NewThreadService(threadRepo, bus)
+	threadSvc.SetCategoryRepository(categoryRepo)
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	postSvc.SetThreadRepository(threadRepo)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
+	spaceSvc.SetPluginEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning("personal-space")
+	})
 	s.configureSpaceFileStore(spaceSvc)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
@@ -259,6 +275,8 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	}
 	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewMemoryAuditStore(), metricsCollector)
 	messageSvc := message.NewService(message.NewMemoryStore(), metricsCollector)
+	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
+	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
 	threadHandler := handler.NewThreadHandler(threadSvc)
@@ -272,6 +290,8 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	webhookHandler := webhook.NewHandler(webhookSvc)
 	mcpHandler := mcp.NewHandler(mcpSvc)
 	messageHandler := message.NewHandler(messageSvc)
+	homepageHandler := homepage.NewHandler(homepageSvc)
+	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithConfig(s.cfg),
 		integration.WithPluginManager(s.manager),
@@ -283,7 +303,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -348,6 +368,25 @@ func personalSpacePluginConfig(manager *plugin.Manager) map[string]interface{} {
 	return p.Manifest.Config
 }
 
+func (s *Server) startDefaultBuiltinPlugins(names ...string) {
+	if s.manager == nil {
+		return
+	}
+	for _, name := range names {
+		p, ok := s.manager.GetPlugin(name)
+		if !ok || p == nil || p.Manifest == nil || p.Manifest.Runtime != "builtin" {
+			continue
+		}
+		if p.Status == plugin.StatusStopped {
+			log.Printf("🔌 内置插件保持禁用: %s", name)
+			continue
+		}
+		if err := s.manager.Start(name); err != nil {
+			log.Printf("⚠️  内置插件启动失败: %s (%v)", name, err)
+		}
+	}
+}
+
 func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 	eventTypes := []string{
 		"user.created", "thread.created", "thread.updated", "thread.deleted",
@@ -386,6 +425,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	webhookHandler *webhook.Handler,
 	mcpHandler *mcp.Handler,
 	messageHandler *message.Handler,
+	homepageHandler *homepage.Handler,
+	platformLogHandler *platformlog.Handler,
 	metricsCollector *observability.Collector) error {
 
 	r := gin.Default()
@@ -403,6 +444,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	public := v1.Group("")
 	{
 		public.GET("/health", userHandler.HealthCheck)
+		public.GET("/home/config", homepageHandler.GetConfig)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
 		public.GET("/threads", threadHandler.ListThreads)
@@ -434,6 +476,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
 		authenticated.POST("/spaces/me/styles/export", spaceHandler.ExportStylePackage)
 		authenticated.POST("/spaces/me/styles/apply", spaceHandler.ApplyStylePackage)
+		authenticated.POST("/spaces/me/styles/html/validate", spaceHandler.ValidateCustomHTML)
+		authenticated.GET("/spaces/me/styles/html-example", spaceHandler.CustomHTMLExample)
+		authenticated.POST("/spaces/me/styles/html/apply", spaceHandler.ApplyCustomHTML)
 		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
 		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
@@ -469,6 +514,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
 		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPluginLogs)
 		admin.GET("/plugins/:name/export", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ExportPlugin)
+		admin.PUT("/plugins/:name/config", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UpdatePluginConfig)
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
@@ -505,6 +551,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.GET("/messages/logs", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ListMessages)
 		admin.POST("/messages/bindings", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.CreateBinding)
 		admin.GET("/messages/summary", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.Summary)
+
+		admin.GET("/platform/logs/sources", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Sources)
+		admin.GET("/platform/logs/stream", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Stream)
 
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)

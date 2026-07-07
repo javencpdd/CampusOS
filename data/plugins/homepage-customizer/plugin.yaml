@@ -1,0 +1,74 @@
+name: homepage-customizer
+display_name: "Homepage Customizer"
+version: "0.1.0"
+description: "CampusOS built-in web homepage customization plugin"
+author: "CampusOS Team"
+runtime: builtin
+
+events:
+  subscribe: []
+
+permissions:
+  api:
+    - resource: "homepage"
+      actions: ["read", "write"]
+    - resource: "config"
+      actions: ["read", "write"]
+
+storage:
+  type: none
+
+config:
+  hero_title: "欢迎来到 CampusOS"
+  hero_subtitle: "下一代校园社区引擎 - 事件驱动、AI Native 的社区操作系统"
+  background_image: ""
+  background_overlay: "rgba(15, 23, 42, 0.45)"
+  show_category_tags: true
+  category_tag_limit: 8
+  custom_html_enabled: false
+  custom_html: ""
+
+config_schema:
+  fields:
+    - key: "hero_title"
+      label: "Hero title"
+      type: "string"
+      description: "Homepage hero title on the user web app."
+      required: true
+      default: "欢迎来到 CampusOS"
+    - key: "hero_subtitle"
+      label: "Hero subtitle"
+      type: "text"
+      description: "Homepage hero subtitle on the user web app."
+      required: true
+      default: "下一代校园社区引擎 - 事件驱动、AI Native 的社区操作系统"
+    - key: "background_image"
+      label: "Background image"
+      type: "string"
+      description: "Optional background image URL for http://localhost:3000/."
+      default: ""
+    - key: "background_overlay"
+      label: "Background overlay"
+      type: "string"
+      description: "CSS color used as overlay when a background image is configured."
+      default: "rgba(15, 23, 42, 0.45)"
+    - key: "show_category_tags"
+      label: "Show category tags"
+      type: "boolean"
+      description: "Show category quick filters on the homepage."
+      default: true
+    - key: "category_tag_limit"
+      label: "Category tag limit"
+      type: "number"
+      description: "Maximum number of category tags shown on the homepage."
+      default: 8
+    - key: "custom_html_enabled"
+      label: "Custom HTML enabled"
+      type: "boolean"
+      description: "Render safe custom HTML on the homepage after backend validation."
+      default: false
+    - key: "custom_html"
+      label: "Custom HTML"
+      type: "text"
+      description: "Restricted HTML snippet for homepage layout customization. Scripts, event handlers and unsafe URLs are rejected."
+      default: ""

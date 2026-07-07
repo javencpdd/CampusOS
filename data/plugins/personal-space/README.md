@@ -1,6 +1,6 @@
 # personal-space
 
-`personal-space` is the built-in CampusOS plugin metadata directory for personal homepages, default style packages, and local personal-space file storage.
+`personal-space` is the built-in CampusOS plugin metadata directory for personal homepages, default style packages, safe custom HTML style snippets, and local personal-space file storage.
 
 The current implementation still lives in `internal/space/`. This plugin directory provides the default plugin manifest, keeps bundled style packages with the feature they belong to, and owns the default storage configuration used by the server.
 
@@ -10,6 +10,8 @@ The current implementation still lives in `internal/space/`. This plugin directo
 | --- | --- |
 | `plugin.yaml` | Built-in plugin manifest and config schema shown by the plugin manager. |
 | `styles/*.space-style.json` | Default personal homepage style packages. |
+
+Personal homepage HTML snippets are stored in the applied `user_spaces.style_manifest` as `custom_html_enabled` and `custom_html`. They are validated by the backend before apply and rendered only after passing the restricted HTML safety rules.
 
 ## Default Config
 

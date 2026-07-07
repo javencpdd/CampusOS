@@ -19,6 +19,8 @@ export interface StylePackage {
       path: string
       type: string
     }>
+    custom_html_enabled?: boolean
+    custom_html?: string
   }
 }
 

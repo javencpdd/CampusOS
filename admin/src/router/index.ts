@@ -16,6 +16,7 @@ const router = createRouter({
     { path: '/admin/integrations', redirect: '/integrations' },
     { path: '/admin/reviews', redirect: '/reviews' },
     { path: '/admin/events', redirect: '/events' },
+    { path: '/admin/platform-logs', redirect: '/platform-logs' },
     {
       path: '/',
       component: () => import('@/components/AdminLayout.vue'),
@@ -68,6 +69,12 @@ const router = createRouter({
           name: 'Events',
           component: () => import('@/views/EventLogView.vue'),
           meta: { title: '事件日志' },
+        },
+        {
+          path: 'platform-logs',
+          name: 'PlatformLogs',
+          component: () => import('@/views/PlatformLogsView.vue'),
+          meta: { title: '平台日志' },
         },
       ],
     },

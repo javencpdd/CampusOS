@@ -73,21 +73,46 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{
-		"id":           p.ID,
-		"name":         p.Manifest.Name,
-		"display_name": p.Manifest.DisplayName,
-		"version":      p.Manifest.Version,
-		"description":  p.Manifest.Description,
-		"author":       p.Manifest.Author,
-		"runtime":      p.Manifest.Runtime,
-		"status":       p.Status,
-		"error":        p.ErrorMsg,
-		"events":       p.Manifest.Events.Subscribe,
-		"permissions":  p.Manifest.Permissions,
-		"storage":      p.Manifest.Storage,
-		"checksum":     p.Checksum,
-		"package_size": p.PackageSize,
+		"id":            p.ID,
+		"name":          p.Manifest.Name,
+		"display_name":  p.Manifest.DisplayName,
+		"version":       p.Manifest.Version,
+		"description":   p.Manifest.Description,
+		"author":        p.Manifest.Author,
+		"runtime":       p.Manifest.Runtime,
+		"status":        p.Status,
+		"error":         p.ErrorMsg,
+		"events":        p.Manifest.Events.Subscribe,
+		"permissions":   p.Manifest.Permissions,
+		"storage":       p.Manifest.Storage,
+		"config":        p.Manifest.Config,
+		"config_schema": p.Manifest.ConfigSchema,
+		"checksum":      p.Checksum,
+		"package_size":  p.PackageSize,
 	})
+}
+
+// UpdatePluginConfig 更新插件配置
+// PUT /api/v1/plugins/:name/config
+func (h *Handler) UpdatePluginConfig(c *gin.Context) {
+	name := c.Param("name")
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 60005, "invalid config: "+err.Error())
+		return
+	}
+	config, err := h.manager.UpdateConfig(name, req)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "not found") {
+			status = http.StatusNotFound
+		} else if strings.Contains(err.Error(), "config field") {
+			status = http.StatusBadRequest
+		}
+		response.Error(c, status, 60004, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"name": name, "config": config})
 }
 
 // ListPluginLogs 获取插件运行日志

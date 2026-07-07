@@ -71,6 +71,31 @@ func TestValidateStylePackageRejectsDangerousTokenValue(t *testing.T) {
 	}
 }
 
+func TestValidateStylePackageAcceptsSafeCustomHTML(t *testing.T) {
+	pkg := validStylePackage()
+	pkg.Manifest.CustomHTMLEnabled = true
+	pkg.Manifest.CustomHTML = `<section style="padding:16px"><h2>Alice</h2><p>Course notes</p><a href="/threads">Threads</a></section>`
+
+	result := ValidateStylePackage(pkg)
+	if !result.Valid {
+		t.Fatalf("expected valid custom html style package, got %#v", result.Errors)
+	}
+}
+
+func TestValidateStylePackageRejectsUnsafeCustomHTML(t *testing.T) {
+	pkg := validStylePackage()
+	pkg.Manifest.CustomHTMLEnabled = true
+	pkg.Manifest.CustomHTML = `<img src=x onerror="alert(1)"><script>alert(1)</script>`
+
+	result := ValidateStylePackage(pkg)
+	if result.Valid {
+		t.Fatalf("expected invalid custom html style package")
+	}
+	if len(result.Errors) == 0 {
+		t.Fatalf("expected validation errors")
+	}
+}
+
 func TestValidateStylePackageHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -99,6 +124,150 @@ func TestValidateStylePackageHandler(t *testing.T) {
 		t.Fatalf("marshal package: %v", err)
 	}
 	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/validate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var payload struct {
+		Code int                   `json:"code"`
+		Data StyleValidationResult `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if payload.Code != 0 || !payload.Data.Valid {
+		t.Fatalf("expected valid response, got %#v", payload)
+	}
+}
+
+func TestCustomHTMLValidationAndApply(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+
+	validation, err := svc.ValidateCustomHTML(testContext(), "1001", `<section><h2>Alice</h2></section>`)
+	if err != nil {
+		t.Fatalf("validate custom html: %v", err)
+	}
+	if !validation.Valid {
+		t.Fatalf("expected valid html, got %#v", validation.Errors)
+	}
+
+	applied, err := svc.ApplyCustomHTML(testContext(), "1001", `<section><h2>Alice</h2><p>Notes</p></section>`)
+	if err != nil {
+		t.Fatalf("apply custom html: %v", err)
+	}
+	if applied.Space.StyleManifest == nil || !applied.Space.StyleManifest.CustomHTMLEnabled {
+		t.Fatalf("expected custom html manifest, got %#v", applied.Space.StyleManifest)
+	}
+	if applied.Space.StyleManifest.CustomHTML == "" {
+		t.Fatalf("expected custom html to be persisted")
+	}
+
+	if _, err := svc.ApplyCustomHTML(testContext(), "1001", `<script>alert(1)</script>`); err == nil {
+		t.Fatalf("expected unsafe html apply to fail")
+	}
+}
+
+func TestCustomHTMLExampleUsesCurrentStyle(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	title := "Alice Lab"
+	layout := "grid"
+	if _, err := svc.UpsertOwnSpace(testContext(), "1001", UpsertSpaceRequest{
+		Title:  &title,
+		Layout: &layout,
+	}); err != nil {
+		t.Fatalf("upsert own space: %v", err)
+	}
+
+	example, err := svc.CustomHTMLExample(testContext(), "1001")
+	if err != nil {
+		t.Fatalf("custom html example: %v", err)
+	}
+	if !example.Validation.Valid {
+		t.Fatalf("expected generated example to validate, got %#v", example.Validation.Errors)
+	}
+	if example.Package.Manifest.Layout != "grid" || !example.Package.Manifest.CustomHTMLEnabled {
+		t.Fatalf("expected example to use current style, got %#v", example.Package.Manifest)
+	}
+	if !bytes.Contains([]byte(example.HTML), []byte("Alice Lab")) {
+		t.Fatalf("expected generated html to include current title: %s", example.HTML)
+	}
+}
+
+func TestPublicSpaceResponseDropsUnsafePersistedCustomHTML(t *testing.T) {
+	user := &identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}
+	repo := NewMemoryRepository()
+	space := defaultSpace(user)
+	space.ID = "space-1"
+	space.StyleName = "legacy"
+	space.StyleVersion = "0.1.0"
+	space.StyleManifest = &StyleManifest{
+		SchemaVersion:     StyleSchemaVersion,
+		Name:              "legacy",
+		Version:           "0.1.0",
+		Layout:            "blog",
+		Components:        validStylePackage().Manifest.Components,
+		CustomHTMLEnabled: true,
+		CustomHTML:        `<script>alert(1)</script>`,
+	}
+	if err := repo.Upsert(testContext(), space); err != nil {
+		t.Fatalf("upsert legacy space: %v", err)
+	}
+	svc := NewService(repo, newFakeUserLookup(user))
+
+	got, err := svc.GetPublicByUsername(testContext(), "alice")
+	if err != nil {
+		t.Fatalf("get public space: %v", err)
+	}
+	if got.Space.StyleManifest == nil {
+		t.Fatalf("expected style manifest")
+	}
+	if got.Space.StyleManifest.CustomHTMLEnabled || got.Space.StyleManifest.CustomHTML != "" {
+		t.Fatalf("unsafe custom html should be hidden, got %#v", got.Space.StyleManifest)
+	}
+}
+
+func TestValidateCustomHTMLHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
+		Secret:    "test-secret",
+		AccessTTL: time.Hour,
+		Issuer:    "campusos-test",
+	})
+	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	handler := NewHandler(svc)
+
+	router := gin.New()
+	router.POST("/spaces/me/styles/html/validate", middleware.JWTAuth(jwtMgr), handler.ValidateCustomHTML)
+
+	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/html/validate", bytes.NewReader([]byte(`{"html":"<section><h2>Alice</h2></section>"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 

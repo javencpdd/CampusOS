@@ -65,11 +65,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="350" align="center" fixed="right">
+        <el-table-column label="操作" width="430" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" plain @click="showLogs(row.name)">
               <el-icon><Document /></el-icon>
               日志
+            </el-button>
+            <el-button size="small" plain @click="openConfig(row)">
+              <el-icon><Setting /></el-icon>
+              配置
             </el-button>
             <el-button type="success" size="small" plain @click="doExport(row)">
               <el-icon><Download /></el-icon>
@@ -133,6 +137,62 @@
       </el-table>
       <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
     </el-dialog>
+
+    <el-dialog v-model="configDialogVisible" :title="`${selectedPluginName} 插件配置`" width="720px">
+      <el-alert
+        v-if="configDescription"
+        :title="configDescription"
+        type="info"
+        show-icon
+        :closable="false"
+        class="config-alert"
+      />
+      <el-form label-position="top" v-loading="configLoading">
+        <el-form-item
+          v-for="field in configFields"
+          :key="field.key"
+          :label="field.label || field.key"
+        >
+          <el-switch
+            v-if="field.type === 'boolean'"
+            v-model="configForm[field.key]"
+            inline-prompt
+            active-text="开"
+            inactive-text="关"
+          />
+          <el-input-number
+            v-else-if="field.type === 'number'"
+            v-model="configForm[field.key]"
+            :min="0"
+            :max="1000000"
+            controls-position="right"
+          />
+          <el-select v-else-if="field.type === 'select'" v-model="configForm[field.key]" style="width: 100%">
+            <el-option
+              v-for="option in field.options || []"
+              :key="String(option.value)"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
+          <el-input
+            v-else-if="field.type === 'text' || field.type === 'json'"
+            v-model="configForm[field.key]"
+            type="textarea"
+            :rows="field.type === 'json' ? 6 : 3"
+          />
+          <el-input v-else v-model="configForm[field.key]" />
+          <p v-if="field.description" class="field-description">{{ field.description }}</p>
+        </el-form-item>
+      </el-form>
+      <el-empty v-if="!configLoading && configFields.length === 0" description="该插件没有声明可编辑配置" />
+      <template #footer>
+        <el-button @click="configDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveConfig" :loading="configSaving" :disabled="configFields.length === 0">
+          保存配置
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -140,7 +200,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import { Connection, Document, Download, Refresh, Upload } from '@element-plus/icons-vue'
+import { Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
 import { pluginApi } from '@/api'
 
 const plugins = ref<any[]>([])
@@ -151,6 +211,12 @@ const logDialogVisible = ref(false)
 const logsLoading = ref(false)
 const selectedPluginName = ref('')
 const pluginLogs = ref<any[]>([])
+const configDialogVisible = ref(false)
+const configLoading = ref(false)
+const configSaving = ref(false)
+const configFields = ref<any[]>([])
+const configForm = ref<Record<string, any>>({})
+const configDescription = ref('')
 
 const responseItems = (payload: any): any[] => {
   const candidates = [
@@ -256,6 +322,70 @@ const showLogs = async (name: string) => {
   await loadLogs()
 }
 
+const openConfig = async (row: any) => {
+  selectedPluginName.value = row.name
+  configDialogVisible.value = true
+  configLoading.value = true
+  configFields.value = []
+  configForm.value = {}
+  configDescription.value = ''
+  try {
+    const r = (await pluginApi.get(row.name)) as any
+    const detail = r?.data || r
+    const fields = detail?.config_schema?.fields || []
+    const config = detail?.config || {}
+    configDescription.value = detail?.description || ''
+    configFields.value = fields
+    const next: Record<string, any> = {}
+    for (const field of fields) {
+      const value = config[field.key] ?? field.default ?? defaultValueForField(field)
+      next[field.key] = normalizeFieldValue(field, value)
+    }
+    configForm.value = next
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '加载插件配置失败')
+  } finally {
+    configLoading.value = false
+  }
+}
+
+const saveConfig = async () => {
+  if (!selectedPluginName.value) return
+  configSaving.value = true
+  try {
+    const payload: Record<string, any> = {}
+    for (const field of configFields.value) {
+      payload[field.key] = normalizeFieldValue(field, configForm.value[field.key])
+    }
+    await pluginApi.updateConfig(selectedPluginName.value, payload)
+    ElMessage.success('插件配置已保存')
+    configDialogVisible.value = false
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '保存插件配置失败')
+  } finally {
+    configSaving.value = false
+  }
+}
+
+const defaultValueForField = (field: any) => {
+  if (field.type === 'boolean') return false
+  if (field.type === 'number') return 0
+  return ''
+}
+
+const normalizeFieldValue = (field: any, value: any) => {
+  if (field.type === 'boolean') {
+    if (typeof value === 'string') return ['true', '1', 'yes', 'on'].includes(value.trim().toLowerCase())
+    return Boolean(value)
+  }
+  if (field.type === 'number') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return value ?? ''
+}
+
 const loadLogs = async () => {
   if (!selectedPluginName.value) return
   logsLoading.value = true
@@ -343,6 +473,17 @@ onMounted(load)
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
+}
+
+.config-alert {
+  margin-bottom: 14px;
+}
+
+.field-description {
+  margin: 6px 0 0;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .metadata-pre {

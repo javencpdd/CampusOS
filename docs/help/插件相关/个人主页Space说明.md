@@ -1,7 +1,7 @@
 # CampusOS 个人主页 Space 说明
 
 > 适用阶段：v0.5-dev
-> 更新时间：2026-07-07
+> 更新时间：2026-07-08
 
 ## 1. 功能定位
 
@@ -20,6 +20,7 @@
 | 前端主页渲染页 | 已支持 |
 | 用户侧主页管理页 | 已支持 |
 | 风格包校验、预览、导出和应用 | 已支持 |
+| 受限 HTML 风格编辑、检测、示例生成和应用 | 已支持 |
 | 风格包回滚、恢复默认 | 已支持 |
 | 头像上传到个人空间 | 已支持 |
 | 默认 10MB 本地个人空间 | 已支持，可通过插件配置调整 |
@@ -231,6 +232,41 @@ GET /api/v1/spaces/files/:user_id/avatars/:filename
 
 文件名和用户 ID 都会经过路径段校验，避免路径穿越。
 
+### 2.10 HTML 风格检测、示例和应用
+
+个人空间允许用户在风格包基础上编写受限 HTML 片段，用于更开放地定制公开个人主页。该能力仍归属于 `personal-space` 默认插件，插件禁用后相关接口会返回不可用。
+
+检测接口：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/spaces/me/styles/html/validate \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"html":"<section><h2>Alice Space</h2></section>"}'
+```
+
+接口：
+
+```text
+POST /api/v1/spaces/me/styles/html/validate
+```
+
+基于当前风格生成示例：
+
+```text
+GET /api/v1/spaces/me/styles/html-example
+```
+
+应用 HTML 风格：
+
+```text
+POST /api/v1/spaces/me/styles/html/apply
+```
+
+应用接口会先把 HTML 写入当前风格 manifest 的 `custom_html_enabled` 和 `custom_html` 字段，再走风格包完整校验、快照保存和持久化流程。检测失败时不会写入 `user_spaces.style_manifest`。
+
+当前允许的是受限 HTML 子集，不允许脚本、事件处理器、`javascript:` / `data:` / `file:` URL、危险 CSS、过深嵌套或过大片段。公开主页接口在返回历史 `style_manifest` 前也会再次检查，不会把历史不合规 HTML 原样交给前端 `v-html`。
+
 ## 3. 数据表
 
 迁移文件：
@@ -258,7 +294,7 @@ user_space_contents
 | `avatar` / `cover_image` | 主页视觉资源 |
 | `theme` / `layout` | 风格包导出和后续前端渲染使用 |
 | `style_name` / `style_version` | 当前已应用风格包的名称和版本 |
-| `style_manifest` | 当前已应用风格包的规范化 manifest |
+| `style_manifest` | 当前已应用风格包的规范化 manifest，可包含检测通过的 `custom_html` |
 | `visibility` | 公开、隐藏链接、私有 |
 | `sync_enabled` | 是否参与内容同步 |
 | `sync_categories` / `sync_tags` | 内容同步筛选条件 |
@@ -324,7 +360,7 @@ thread.deleted
 
 ## 5. 安全边界
 
-当前阶段不允许用户提交任意 JavaScript 或 HTML 代码。主页配置只保存结构化字段，为后续风格包和受控组件渲染打基础。
+当前阶段不允许用户提交任意 JavaScript 或未审查 HTML 代码。个人主页只渲染后端安全检测通过的受限 HTML 子集，脚本、事件处理器、不安全 URL 和危险 CSS 会被拒绝。
 
 登录用户只能通过 `/api/v1/spaces/me` 修改自己的主页配置，不能通过请求体指定其他用户 ID。公开接口只读取 `public` 主页。
 
@@ -334,8 +370,8 @@ thread.deleted
 
 | 页面 | 路径 | 作用 |
 | --- | --- | --- |
-| 主页设置 | `/space/settings` | 编辑主页配置、选择示例风格包、校验、预览、应用和导出风格 |
-| 公开主页 | `/u/:username` | 按用户名展示用户个人主页和同步内容，并应用当前风格 token |
+| 主页设置 | `/space/settings` | 编辑主页配置、选择示例风格包、校验、预览、应用、导出风格和编辑受限 HTML |
+| 公开主页 | `/u/:username` | 按用户名展示用户个人主页、同步内容、当前风格 token 和检测通过的 HTML 片段 |
 
 前端示例风格包位于：
 
@@ -353,6 +389,4 @@ data/plugins/personal-space/styles/
 
 | 优先级 | 任务 |
 | --- | --- |
-| P1 | 增加管理员查看、禁用和恢复用户主页能力 |
-| P1 | 增加风格包应用前快照和回滚能力 |
 | P1 | 增加站内风格分享列表和管理员审核入口 |

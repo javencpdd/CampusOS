@@ -123,6 +123,10 @@ func (h *Handler) ValidateStylePackage(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
+	if err := h.svc.ensureEnabled(); err != nil {
+		writeSpaceError(c, err)
+		return
+	}
 
 	var req StylePackage
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -189,6 +193,63 @@ func (h *Handler) ApplyStylePackage(c *gin.Context) {
 	}
 
 	applied, err := h.svc.ApplyStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
+func (h *Handler) ValidateCustomHTML(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleHTMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	validation, err := h.svc.ValidateCustomHTML(c.Request.Context(), userID, req.HTML)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, validation)
+}
+
+func (h *Handler) CustomHTMLExample(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	example, err := h.svc.CustomHTMLExample(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, example)
+}
+
+func (h *Handler) ApplyCustomHTML(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleHTMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	applied, err := h.svc.ApplyCustomHTML(c.Request.Context(), userID, req.HTML)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -375,6 +436,8 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, 30004, err.Error())
 	case errors.Is(err, ErrContentRepositoryUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+	case errors.Is(err, ErrSpacePluginDisabled):
+		response.Error(c, http.StatusServiceUnavailable, 60006, err.Error())
 	case errors.Is(err, ErrSpaceFileStoreUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 	case errors.Is(err, ErrSpaceFileInvalidName), errors.Is(err, ErrSpaceFileUnsupportedType):

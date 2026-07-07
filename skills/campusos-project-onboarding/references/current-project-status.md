@@ -1,6 +1,6 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-07-07
+> Snapshot date: 2026-07-08
 > Repository: `/home/jack/bbs/bbs01/CampusOS`
 > Primary branch in recent work: `djw-update`
 
@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.9-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.12-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -24,15 +24,17 @@ The next recommended work mode is regression testing, defect fixing, and careful
 
 | Area | Current state |
 | --- | --- |
-| User frontend `web/` | Registration, login, thread list/detail, create thread, replies, personal space, style packages |
-| Admin frontend `admin/` | Users, threads, categories, plugins, events, AI, integration center, Webhook, MCP tools, Message local test |
-| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, spaces, plugins, AI, Webhook, MCP-like tools, Message, metrics |
-| Database | PostgreSQL migrations `000001` through `000011`; migration state recorded in `schema_migrations` |
+| User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, create thread with category default tags, replies, personal space, style packages |
+| Admin frontend `admin/` | Users, threads, categories/default tags, plugin config/import/export/lifecycle/logs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
+| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
+| Database | PostgreSQL migrations `000001` through `000012`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
 | Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
-| Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export, precheck, checksum, package size |
-| Personal spaces | Public user pages, thread/content sync, style import/export/preview/apply, rollback, restore default, local avatar storage with default quota |
+| Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size |
+| Personal spaces | Public user pages, thread/content sync, style import/export/preview/apply, safe custom HTML style snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
+| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, and safe custom HTML snippets through plugin config |
+| Platform logs | Admin-only fixed-source SSE log reader for `.campusos/logs/api.log`, `web.log`, and `admin.log` |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
 | Webhook | Endpoint management, event subscriptions, HMAC signature, test delivery, delivery records |
 | MCP-like tools | Internal admin API shape for read-only tools and audit; not yet a full standard MCP protocol server |
@@ -48,7 +50,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | v0.2 | User/admin frontend split, RBAC tables, plugin tables, API key, cache layer, admin UI, CI/CD, PR template |
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
-| v0.5-dev | Integration center, personal space operations, personal-space file storage, plugin governance, Webhook, MCP-like read-only tools, Message local adapter, metrics, backup docs |
+| v0.5-dev | Integration center, personal space operations, personal-space file storage/plugin gate, safe HTML style snippets, homepage customizer, category default tags, platform logs, plugin governance/config, Webhook, MCP-like read-only tools, Message local adapter, metrics, backup docs |
 
 ## 4. Current Migrations
 
@@ -65,6 +67,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `000009` | `add_user_space_styles` | Personal space style packages |
 | `000010` | `fix_admin_seed_password` | Default admin password hash correction |
 | `000011` | `v05_operational_features` | v0.5 operational fields, style snapshots, plugin checksum, Webhook, MCP audit, Message tables |
+| `000012` | `category_default_tags` | Category default tags for automatic tag merging during thread creation |
 
 ## 5. Important Directories
 
@@ -84,12 +87,14 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `internal/webhook/` | Webhook service and handlers |
 | `internal/mcp/` | MCP-like internal read-only tool layer |
 | `internal/message/` | Message protocol and local adapter |
+| `internal/platformlog/` | Admin-only platform log sources and SSE streaming |
 | `pkg/observability/` | Minimal metrics |
 | `web/src/` | User frontend |
 | `admin/src/` | Admin frontend |
 | `data/` | Default local data root for plugins, plugin data, images, dist, config, and local skills |
 | `data/plugins/` | Installed and built-in plugins |
 | `data/plugins/personal-space/styles/` | Built-in personal space style packages |
+| `data/plugins/homepage-customizer/` | Built-in user homepage configuration plugin |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
 
@@ -156,7 +161,7 @@ Do not overstate these items:
 | AI content moderation plugin | Deferred due to model stability and review workflow concerns |
 | Full Docker product packaging | Deferred; current Docker Compose mainly supports development dependencies |
 | Native Windows deployment | Deferred; recommended Windows path is WSL2 + Docker Desktop |
-| Arbitrary JavaScript user homepages | Not open; needs a security model before enabling |
+| Arbitrary JavaScript or unsandboxed HTML user/homepage rendering | Not open; only backend-validated restricted HTML snippets are rendered, while scripts, event handlers, unsafe URLs, and unsafe CSS are rejected |
 
 ## 10. Onboarding Checklist For Agents
 

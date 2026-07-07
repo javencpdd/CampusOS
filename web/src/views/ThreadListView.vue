@@ -32,10 +32,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { threadApi } from '@/api'
 
+const route = useRoute()
 const threads = ref<any[]>([])
 const loading = ref(false)
 const page = ref(1)
@@ -45,7 +47,13 @@ const keyword = ref('')
 const loadThreads = async () => {
   loading.value = true
   try {
-    const res: any = await threadApi.list({ page: page.value, page_size: 20, keyword: keyword.value })
+    const categoryID = String(route.query.category_id || '')
+    const res: any = await threadApi.list({
+      page: page.value,
+      page_size: 20,
+      keyword: keyword.value,
+      category_id: categoryID || undefined,
+    })
     if (res.code === 0) {
       threads.value = res.data?.items || []
       total.value = res.data?.pagination?.total || 0
@@ -55,6 +63,10 @@ const loadThreads = async () => {
 }
 
 onMounted(loadThreads)
+watch(() => route.query.category_id, () => {
+  page.value = 1
+  loadThreads()
+})
 </script>
 
 <style scoped>

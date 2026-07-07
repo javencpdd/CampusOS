@@ -76,6 +76,11 @@ export const categoryApi = {
   list: () => api.get('/categories'),
 }
 
+// 首页配置 API
+export const homeApi = {
+  config: () => api.get('/home/config'),
+}
+
 // 个人主页 Space API
 export const spaceApi = {
   me: () => api.get('/spaces/me'),
@@ -96,6 +101,9 @@ export const spaceApi = {
   exportStyle: (data?: { name?: string; version?: string; description?: string }) =>
     api.post('/spaces/me/styles/export', data || {}),
   applyStyle: (data: any) => api.post('/spaces/me/styles/apply', data),
+  validateCustomHtml: (html: string) => api.post('/spaces/me/styles/html/validate', { html }),
+  customHtmlExample: () => api.get('/spaces/me/styles/html-example'),
+  applyCustomHtml: (html: string) => api.post('/spaces/me/styles/html/apply', { html }),
   rollbackStyle: () => api.post('/spaces/me/styles/rollback'),
   restoreDefaultStyle: () => api.post('/spaces/me/styles/default'),
   syncStatus: () => api.get('/spaces/me/sync-status'),
