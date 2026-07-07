@@ -171,6 +171,7 @@ func (s *Server) Run() error {
 	postSvc.SetCache(appCache)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
+	s.configureSpaceFileStore(spaceSvc)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
@@ -248,6 +249,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	postSvc.SetThreadRepository(threadRepo)
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
+	s.configureSpaceFileStore(spaceSvc)
 	if err := spaceSvc.RegisterEventHandlers(bus); err != nil {
 		log.Printf("⚠️  个人主页内容同步订阅失败: %v", err)
 	}
@@ -322,6 +324,30 @@ func (s *Server) newJWTManager() *auth.JWTManager {
 	})
 }
 
+func (s *Server) configureSpaceFileStore(spaceSvc *space.Service) {
+	if spaceSvc == nil {
+		return
+	}
+	cfg := space.FileStorageConfigFromPluginConfig(personalSpacePluginConfig(s.manager))
+	store, err := space.NewLocalFileStore(cfg)
+	if err != nil {
+		log.Printf("⚠️  个人空间文件存储初始化失败: %v", err)
+		return
+	}
+	spaceSvc.SetFileStore(store)
+}
+
+func personalSpacePluginConfig(manager *plugin.Manager) map[string]interface{} {
+	if manager == nil {
+		return nil
+	}
+	p, ok := manager.GetPlugin("personal-space")
+	if !ok || p == nil || p.Manifest == nil {
+		return nil
+	}
+	return p.Manifest.Config
+}
+
 func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 	eventTypes := []string{
 		"user.created", "thread.created", "thread.updated", "thread.deleted",
@@ -385,6 +411,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/users/:id", userHandler.GetUser)
 		public.GET("/space/:user_id/contents", spaceHandler.ListContentsByUserID)
 		public.GET("/space/:user_id", spaceHandler.GetByUserID)
+		public.GET("/spaces/files/:user_id/avatars/:filename", spaceHandler.ServeAvatarFile)
 		public.GET("/u/:username/contents", spaceHandler.ListContentsByUsername)
 		public.GET("/u/:username", spaceHandler.GetByUsername)
 		public.GET("/categories", categoryHandler.List)
@@ -401,6 +428,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.PUT("/users/:id", userHandler.UpdateUser)
 		authenticated.GET("/spaces/me", spaceHandler.GetMe)
 		authenticated.PUT("/spaces/me", spaceHandler.UpdateMe)
+		authenticated.GET("/spaces/me/storage", spaceHandler.GetStorageStatus)
+		authenticated.POST("/spaces/me/avatar", spaceHandler.UploadAvatar)
 		authenticated.POST("/spaces/me/styles/validate", spaceHandler.ValidateStylePackage)
 		authenticated.POST("/spaces/me/styles/preview", spaceHandler.PreviewStylePackage)
 		authenticated.POST("/spaces/me/styles/export", spaceHandler.ExportStylePackage)

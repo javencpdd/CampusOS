@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.8-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.9-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -32,7 +32,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
 | Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
 | Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export, precheck, checksum, package size |
-| Personal spaces | Public user pages, thread/content sync, style import/export/preview/apply, rollback, restore default |
+| Personal spaces | Public user pages, thread/content sync, style import/export/preview/apply, rollback, restore default, local avatar storage with default quota |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
 | Webhook | Endpoint management, event subscriptions, HMAC signature, test delivery, delivery records |
 | MCP-like tools | Internal admin API shape for read-only tools and audit; not yet a full standard MCP protocol server |
@@ -48,7 +48,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | v0.2 | User/admin frontend split, RBAC tables, plugin tables, API key, cache layer, admin UI, CI/CD, PR template |
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
-| v0.5-dev | Integration center, personal space operations, plugin governance, Webhook, MCP-like read-only tools, Message local adapter, metrics, backup docs |
+| v0.5-dev | Integration center, personal space operations, personal-space file storage, plugin governance, Webhook, MCP-like read-only tools, Message local adapter, metrics, backup docs |
 
 ## 4. Current Migrations
 

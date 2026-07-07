@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
@@ -19,25 +20,26 @@ type PostRepository interface {
 }
 
 type MemoryPostRepository struct {
-	mu    sync.RWMutex
-	posts map[string]*domain.Post
+	mu              sync.RWMutex
+	posts           map[string]*domain.Post
+	nextFloorNumber map[string]int
 }
 
 func NewMemoryPostRepository() *MemoryPostRepository {
-	return &MemoryPostRepository{posts: make(map[string]*domain.Post)}
+	return &MemoryPostRepository{
+		posts:           make(map[string]*domain.Post),
+		nextFloorNumber: make(map[string]int),
+	}
 }
 
 func (r *MemoryPostRepository) Create(_ context.Context, post *domain.Post) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if post.FloorNumber <= 0 {
-		maxFloor := 0
-		for _, existing := range r.posts {
-			if existing.ThreadID == post.ThreadID && existing.FloorNumber > maxFloor {
-				maxFloor = existing.FloorNumber
-			}
-		}
-		post.FloorNumber = maxFloor + 1
+		r.nextFloorNumber[post.ThreadID]++
+		post.FloorNumber = r.nextFloorNumber[post.ThreadID]
+	} else if post.FloorNumber > r.nextFloorNumber[post.ThreadID] {
+		r.nextFloorNumber[post.ThreadID] = post.FloorNumber
 	}
 	r.posts[post.ID] = post
 	return nil
@@ -82,6 +84,12 @@ func (r *MemoryPostRepository) ListByThread(_ context.Context, threadID string, 
 			filtered = append(filtered, p)
 		}
 	}
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].FloorNumber == filtered[j].FloorNumber {
+			return filtered[i].CreatedAt.Before(filtered[j].CreatedAt)
+		}
+		return filtered[i].FloorNumber < filtered[j].FloorNumber
+	})
 	total := int64(len(filtered))
 	start := (page - 1) * pageSize
 	if start >= len(filtered) {

@@ -1,8 +1,10 @@
 package space
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
@@ -132,5 +134,50 @@ func TestPrivateSpaceIsNotPublic(t *testing.T) {
 	_, err := svc.GetPublicByUserID(context.Background(), "1001")
 	if !errors.Is(err, ErrSpaceNotPublic) {
 		t.Fatalf("expected ErrSpaceNotPublic, got %v", err)
+	}
+}
+
+func TestUploadAvatarStoresPersonalSpaceAvatar(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	store, err := NewLocalFileStore(FileStorageConfig{
+		RootDir:           t.TempDir(),
+		URLPrefix:         "/api/v1/spaces/files",
+		DefaultQuotaBytes: 10 * 1024 * 1024,
+		AvatarKeepLimit:   3,
+		MaxAvatarBytes:    1024,
+	})
+	if err != nil {
+		t.Fatalf("new file store: %v", err)
+	}
+	svc.SetFileStore(store)
+
+	uploaded, err := svc.UploadAvatar(context.Background(), "1001", "avatar.png", bytes.NewReader(tinyPNG))
+	if err != nil {
+		t.Fatalf("upload avatar: %v", err)
+	}
+	if !strings.HasPrefix(uploaded.URL, "/api/v1/spaces/files/1001/avatars/") {
+		t.Fatalf("unexpected avatar url: %q", uploaded.URL)
+	}
+	if uploaded.Owner.Avatar != uploaded.URL {
+		t.Fatalf("owner avatar should use uploaded space avatar")
+	}
+	if uploaded.Space == nil || uploaded.Space.Avatar != uploaded.URL {
+		t.Fatalf("space avatar was not persisted: %#v", uploaded.Space)
+	}
+	if uploaded.Storage.UsedBytes <= 0 {
+		t.Fatalf("expected used storage bytes")
+	}
+
+	own, err := svc.GetOwnSpace(context.Background(), "1001")
+	if err != nil {
+		t.Fatalf("get own space: %v", err)
+	}
+	if own.Owner.Avatar != uploaded.URL || own.Space.Avatar != uploaded.URL {
+		t.Fatalf("saved avatar not reflected in own space: %#v", own)
 	}
 }

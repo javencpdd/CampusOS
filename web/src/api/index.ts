@@ -99,6 +99,12 @@ export const spaceApi = {
   rollbackStyle: () => api.post('/spaces/me/styles/rollback'),
   restoreDefaultStyle: () => api.post('/spaces/me/styles/default'),
   syncStatus: () => api.get('/spaces/me/sync-status'),
+  storage: () => api.get('/spaces/me/storage'),
+  uploadAvatar: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/spaces/me/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
   publicByUsername: (username: string) => api.get(`/u/${username}`),
   publicContentsByUsername: (username: string, params?: { page?: number; page_size?: number }) =>
     api.get(`/u/${username}/contents`, { params }),

@@ -30,6 +30,29 @@
           </template>
 
           <el-form :model="form" label-position="top">
+            <el-form-item label="头像">
+              <div class="avatar-uploader">
+                <el-avatar :size="72" :src="form.avatar">
+                  {{ avatarInitial }}
+                </el-avatar>
+                <div class="avatar-controls">
+                  <input
+                    ref="avatarInput"
+                    class="avatar-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    @change="uploadAvatar"
+                  />
+                  <el-button @click="chooseAvatar" :loading="uploadingAvatar">
+                    上传头像
+                  </el-button>
+                  <span v-if="storage" class="storage-hint">
+                    {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}，保留最近
+                    {{ storage.avatar_keep_limit }} 个源文件
+                  </span>
+                </div>
+              </div>
+            </el-form-item>
             <el-form-item label="标题">
               <el-input v-model="form.title" maxlength="120" show-word-limit />
             </el-form-item>
@@ -179,6 +202,7 @@ import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, View } from
 import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/api'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
+import { useUserStore } from '@/stores/user'
 
 interface ApiResponse<T> {
   code: number
@@ -247,9 +271,27 @@ interface StyleExportResult {
   validation: StyleValidationResult
 }
 
+interface SpaceStorageStatus {
+  user_id: string
+  quota_bytes: number
+  used_bytes: number
+  available_bytes: number
+  avatar_keep_limit: number
+}
+
+interface AvatarUploadResult {
+  file_name: string
+  url: string
+  size: number
+  storage: SpaceStorageStatus
+  owner: Owner
+  space: Space
+}
+
 interface SpaceForm {
   title: string
   bio: string
+  avatar: string
   cover_image: string
   layout: string
   visibility: string
@@ -259,11 +301,14 @@ interface SpaceForm {
 }
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const owner = ref<Owner | null>(null)
 const currentSpace = ref<Space | null>(null)
+const storage = ref<SpaceStorageStatus | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const uploadingAvatar = ref(false)
 const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
@@ -272,12 +317,14 @@ const rollbacking = ref(false)
 const defaulting = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
 const preview = ref<StylePreview | null>(null)
+const avatarInput = ref<HTMLInputElement | null>(null)
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
 
 const form = reactive<SpaceForm>({
   title: '',
   bio: '',
+  avatar: '',
   cover_image: '',
   layout: 'blog',
   visibility: 'public',
@@ -288,6 +335,10 @@ const form = reactive<SpaceForm>({
 
 const activeManifest = computed(() => preview.value?.manifest || currentSpace.value?.style_manifest || null)
 const activeComponents = computed(() => activeManifest.value?.components || [])
+const avatarInitial = computed(() => {
+  const name = owner.value?.nickname || owner.value?.username || 'U'
+  return name.slice(0, 1).toUpperCase()
+})
 const previewStyleVars = computed<Record<string, string>>(() => {
   const tokens = activeManifest.value?.tokens || {}
   return {
@@ -303,6 +354,7 @@ const unwrap = <T,>(res: unknown): T => (res as ApiResponse<T>).data
 const fillForm = (space: Space) => {
   form.title = space.title || ''
   form.bio = space.bio || ''
+  form.avatar = space.avatar || owner.value?.avatar || ''
   form.cover_image = space.cover_image || ''
   form.layout = space.layout || 'blog'
   form.visibility = space.visibility || 'public'
@@ -314,10 +366,12 @@ const fillForm = (space: Space) => {
 const loadSpace = async () => {
   loading.value = true
   try {
-    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
+    const [spaceRes, storageRes] = await Promise.all([spaceApi.me(), spaceApi.storage()])
+    const payload = unwrap<PublicSpacePayload>(spaceRes)
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    storage.value = unwrap<SpaceStorageStatus>(storageRes)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
   } finally {
@@ -332,12 +386,52 @@ const saveSpace = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    if (payload.owner.avatar) {
+      userStore.setAvatar(payload.owner.avatar)
+    }
     ElMessage.success('已保存')
   } catch (error: any) {
     ElMessage.error(error?.msg || '保存失败')
   } finally {
     saving.value = false
   }
+}
+
+const chooseAvatar = () => {
+  avatarInput.value?.click()
+}
+
+const uploadAvatar = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadingAvatar.value = true
+  try {
+    const payload = unwrap<AvatarUploadResult>(await spaceApi.uploadAvatar(file))
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    storage.value = payload.storage
+    fillForm(payload.space)
+    userStore.setAvatar(payload.url)
+    ElMessage.success('头像已更新')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '头像上传失败')
+  } finally {
+    uploadingAvatar.value = false
+    input.value = ''
+  }
+}
+
+const formatBytes = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = value
+  let unit = 0
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024
+    unit++
+  }
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
 const parseStylePackage = (): StylePackage | null => {
@@ -515,6 +609,27 @@ onMounted(loadSpace)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.avatar-uploader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.avatar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.avatar-input {
+  display: none;
+}
+.storage-hint {
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .field-full {
   width: 100%;

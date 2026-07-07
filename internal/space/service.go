@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ type Service struct {
 	contentRepo ContentRepository
 	threadRepo  ThreadRepository
 	users       UserLookup
+	fileStore   *LocalFileStore
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -42,6 +44,10 @@ func NewService(repo Repository, users UserLookup, contentRepos ...ContentReposi
 
 func (s *Service) SetThreadRepository(repo ThreadRepository) {
 	s.threadRepo = repo
+}
+
+func (s *Service) SetFileStore(store *LocalFileStore) {
+	s.fileStore = store
 }
 
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {
@@ -331,6 +337,66 @@ func (s *Service) AdminSummary(ctx context.Context) (*SpaceAdminSummary, error) 
 	return ops.AdminSummary(ctx)
 }
 
+func (s *Service) StorageStatus(_ context.Context, userID string) (*SpaceStorageStatus, error) {
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	return s.fileStore.Status(userID)
+}
+
+func (s *Service) UploadAvatar(ctx context.Context, userID, originalName string, reader io.Reader) (*AvatarUploadResult, error) {
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, user.ID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, fmt.Errorf("get space: %w", err)
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	fileName, size, err := s.fileStore.SaveAvatar(user.ID, originalName, reader)
+	if err != nil {
+		return nil, err
+	}
+	space.UserID = user.ID
+	space.Avatar = s.fileStore.AvatarURL(user.ID, fileName)
+	space.IsDefault = false
+	if space.CreatedAt.IsZero() {
+		space.CreatedAt = time.Now().UTC()
+	}
+	space.UpdatedAt = time.Now().UTC()
+	ensureDefaults(space)
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("save space avatar: %w", err)
+	}
+	status, err := s.fileStore.Status(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	public := buildPublicSpace(user, space)
+	return &AvatarUploadResult{
+		FileName: fileName,
+		URL:      space.Avatar,
+		Size:     size,
+		Storage:  *status,
+		Owner:    public.Owner,
+		Space:    public.Space,
+	}, nil
+}
+
+func (s *Service) AvatarFilePath(userID, fileName string) (string, error) {
+	if s.fileStore == nil {
+		return "", ErrSpaceFileStoreUnavailable
+	}
+	return s.fileStore.AvatarPath(userID, fileName)
+}
+
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {
 	space, err := s.repo.GetByUserID(ctx, user.ID)
 	if err != nil {
@@ -493,12 +559,16 @@ func defaultSpace(user *identitydomain.User) *Space {
 }
 
 func buildPublicSpace(user *identitydomain.User, space *Space) *PublicSpace {
+	avatar := user.Avatar
+	if space != nil && strings.TrimSpace(space.Avatar) != "" {
+		avatar = space.Avatar
+	}
 	return &PublicSpace{
 		Owner: Owner{
 			ID:       user.ID,
 			Username: user.Username,
 			Nickname: user.Nickname,
-			Avatar:   user.Avatar,
+			Avatar:   avatar,
 			Bio:      user.Bio,
 		},
 		Space: cloneSpace(space),

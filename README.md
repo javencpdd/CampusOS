@@ -2,13 +2,13 @@
 
 CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经从基础论坛演进到“社区核心 + 插件运行时 + 个人主页 + 管理后台集成中心 + 低风险外部集成”的开发基线。
 
-截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.8-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
+截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.9-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
 
 ## 当前状态
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| 用户前台 `web/` | 已实现并持续增强 | 默认端口 `3000`，覆盖注册、登录、帖子列表、帖子详情、发帖、回帖、个人主页和风格包操作 |
+| 用户前台 `web/` | 已实现并持续增强 | 默认端口 `3000`，覆盖注册、登录、帖子列表、帖子详情、发帖、回帖、个人主页、头像上传和风格包操作 |
 | 管理后台 `admin/` | 已实现并持续增强 | 默认端口 `3001`，包含用户、帖子、版块、插件、AI、事件、集成中心、Webhook、MCP 工具和 Message local 测试入口 |
 | 后端 API | 已实现 | Go + Gin + pgx，提供认证、RBAC、社区、个人主页、插件、AI、Webhook、MCP-like 工具、Message 和 Metrics 接口 |
 | 数据库迁移 | 已实现 | `scripts/migrate.sh` / `scripts/migrate.ps1` 自动扫描 `migrations/*.up.sql`，通过 `schema_migrations` 记录执行状态 |
@@ -16,7 +16,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | 一键开发启动 | 已实现 | `make dev-all` 调用 `scripts/start-dev.sh`，可启动依赖服务、迁移、后端、用户前台和管理后台 |
 | 插件 Runtime | 已实现基础闭环 | 支持 gRPC Runtime、Wasm Runtime(wazero)、Built-in Runtime、事件分发、Host API、插件日志和插件 KV |
 | 插件包治理 | 已实现基础闭环 | 支持 `campusosctl plugin init/inspect/pack/install`、后台导入导出、预检、checksum 和包大小记录 |
-| 个人主页/风格包 | 已实现核心闭环 | 支持公开个人主页、内容同步、风格包导入导出、预览、应用、回滚和恢复默认 |
+| 个人主页/风格包/个人空间文件 | 已实现核心闭环 | 支持公开个人主页、内容同步、风格包导入导出、预览、应用、回滚、恢复默认、头像上传和默认 10MB 本地个人空间 |
 | AI Gateway | 已实现最小闭环 | OpenAI-compatible Provider、配置、限流和调用日志已存在；AI 内容审核插件暂缓 |
 | Webhook | 已实现基础闭环 | 支持 endpoint、事件订阅、HMAC 签名、测试投递、失败记录和后台入口 |
 | MCP-like 工具层 | 已实现受控实验闭环 | 当前是 CampusOS 内部 API 形态的只读工具层；标准 MCP 协议适配器仍是后续任务 |
@@ -41,7 +41,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 总体计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分判断 |
 | [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 规划和边界 |
-| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.8 实施记录 |
+| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.9 实施记录 |
 
 ## 架构概览
 
@@ -314,6 +314,8 @@ make migrate-status
 | 风格包导入、导出、校验、预览、应用 | 已实现 |
 | 风格应用前快照、回滚、恢复默认 | 已实现 |
 | 管理员禁用/启用个人主页 | 已实现 |
+| 个人空间文件默认插件配置 | 已实现，`personal-space` 默认每用户 10MB 本地空间 |
+| 头像上传和源文件保留 | 已实现，头像存入个人空间并默认保留最近 3 个源文件 |
 | 示例风格包 | 已提供，位于 `data/plugins/personal-space/styles/` |
 | 任意 JavaScript 个人主页代码 | 未开放，后续需安全模型 |
 
@@ -384,7 +386,7 @@ X-CampusOS-Plugin: <plugin-name>
 | [标准插件包导入导出要求](./docs/help/插件相关/标准插件包导入导出要求.md) | 插件包格式 |
 | [插件配置 Schema 说明](./docs/help/插件相关/插件配置Schema说明.md) | manifest 配置 schema |
 | [hello-wasm README](./data/plugins/hello-wasm/README.md) | Wasm 插件示例 |
-| [personal-space README](./data/plugins/personal-space/README.md) | 内置个人主页插件与默认风格包 |
+| [personal-space README](./data/plugins/personal-space/README.md) | 内置个人主页、个人空间文件和默认风格包 |
 | [Go SDK README](./sdk/go/README.md) | Go 插件 SDK |
 
 ### campusosctl CLI
@@ -634,7 +636,7 @@ CampusOS/
 ├── data/
 │   ├── plugins/                   # 已安装插件和内置默认插件
 │   ├── plugin_data/               # 插件运行期 KV 数据
-│   ├── images/                    # 本地图片和上传资源预留目录
+│   ├── images/                    # 本地图片、头像和上传资源目录
 │   ├── dist/                      # 本地发布产物预留目录
 │   ├── config/                    # 本地运行配置预留目录
 │   └── skills/                    # 本地 runtime/imported skills 预留目录
@@ -681,7 +683,7 @@ Windows 的主要难点不在 Go 或 pnpm 本身，而在 Docker Desktop 网络�
 | Message/IM | 只有 local adapter，本地验证 `ping -> pong` | 后续以插件或 adapter 接入 Discord、NapCat、AstrBot 等真实平台 |
 | Webhook | 基础投递、签名、记录已完成 | 后续增加 Dead Letter、secret 轮换、投递详情页和重放 |
 | 插件包治理 | 已有预检和 checksum | 后续增加签名、版本回滚、插件市场和审核流程 |
-| 个人主页 | 已支持风格包和回滚 | 后续再评估更强编辑器；任意 JS 主页暂不开放 |
+| 个人主页 | 已支持风格包、回滚、头像上传和默认本地空间 | 后续再评估更强编辑器、个人云盘接入；任意 JS 主页暂不开放 |
 | AI Gateway | 最小闭环已完成 | AI 内容审核插件暂缓，等待人工复核和样本评估体系 |
 | 部署 | CD 可构建发布包并 SSH 部署 | 后续补充 systemd、反向代理、TLS、备份演练和回滚策略 |
 | 原生 Windows | 未完成实机验证 | 后续作为兼容性专项，不作为当前主线 |
