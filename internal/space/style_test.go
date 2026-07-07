@@ -493,7 +493,7 @@ func TestApplyStylePackageHandler(t *testing.T) {
 }
 
 func TestExampleStylePackagesAreValid(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join("..", "..", "examples", "space-styles", "*.space-style.json"))
+	files, err := filepath.Glob(filepath.Join("..", "..", "data", "plugins", "personal-space", "styles", "*.space-style.json"))
 	if err != nil {
 		t.Fatalf("glob examples: %v", err)
 	}

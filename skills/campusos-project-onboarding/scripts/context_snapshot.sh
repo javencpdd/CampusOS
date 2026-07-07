@@ -35,4 +35,4 @@ section "Make targets"
 sed -n '1,120p' Makefile
 
 section "Key implementation directories"
-find internal cmd web/src admin/src sdk examples -maxdepth 2 -type d 2>/dev/null | sort | sed -n '1,160p'
+find internal cmd web/src admin/src sdk data skills -maxdepth 2 -type d 2>/dev/null | sort | sed -n '1,180p'

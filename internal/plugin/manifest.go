@@ -14,7 +14,7 @@ type Manifest struct {
 	Version     string `yaml:"version" json:"version"`
 	Description string `yaml:"description" json:"description"`
 	Author      string `yaml:"author" json:"author"`
-	Runtime     string `yaml:"runtime" json:"runtime"` // grpc / wasm
+	Runtime     string `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -105,8 +105,8 @@ func (m *Manifest) Validate() error {
 	if m.Runtime == "" {
 		m.Runtime = "grpc"
 	}
-	if m.Runtime != "grpc" && m.Runtime != "wasm" {
-		return fmt.Errorf("manifest: runtime must be 'grpc' or 'wasm', got '%s'", m.Runtime)
+	if m.Runtime != "grpc" && m.Runtime != "wasm" && m.Runtime != "builtin" {
+		return fmt.Errorf("manifest: runtime must be 'grpc', 'wasm' or 'builtin', got '%s'", m.Runtime)
 	}
 	if err := m.validateConfigSchema(); err != nil {
 		return err

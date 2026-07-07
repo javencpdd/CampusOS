@@ -22,7 +22,7 @@ The snapshot is useful, but it is not a substitute for checking live files. Trea
    - Runtime setup: `README.md`, `.env.example`, `Makefile`, `docker-compose.yml`, `scripts/`
    - Backend implementation: `internal/`, `cmd/server/`, `pkg/`
    - Frontend implementation: `web/src/`, `admin/src/`
-   - Plugins and SDK: `internal/plugin/`, `examples/plugins/`, `sdk/go/`, `cmd/campusosctl/`
+   - Plugins and SDK: `internal/plugin/`, `data/plugins/`, `sdk/go/`, `cmd/campusosctl/`
 5. Before editing, check `git status --short` and do not overwrite unrelated user changes.
 6. After edits, validate based on impact:
    - Go/backend: `GOCACHE=/tmp/campusos-go-cache go test ./... -count=1`

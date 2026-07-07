@@ -17,6 +17,7 @@ import (
 	"github.com/campusos/CampusOS/internal/mcp"
 	"github.com/campusos/CampusOS/internal/message"
 	"github.com/campusos/CampusOS/internal/plugin"
+	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
@@ -66,6 +67,7 @@ func (s *Server) Run() error {
 	grpcRuntime := plugingrpc.NewGRPCRuntime()
 	s.manager.RegisterRuntime("grpc", grpcRuntime)
 	s.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
+	s.manager.RegisterRuntime("builtin", pluginbuiltin.NewRuntime())
 
 	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
 	var pluginRepo plugin.PluginRepository

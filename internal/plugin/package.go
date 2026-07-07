@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	DefaultPluginsDir      = "examples/plugins"
+	DefaultPluginsDir      = "data/plugins"
 	PluginPackageExtension = ".campusos-plugin.tar.gz"
 )
 

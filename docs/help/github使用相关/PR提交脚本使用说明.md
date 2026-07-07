@@ -49,8 +49,8 @@ gh auth status
 PR 只能包含已经 commit 并 push 到远程分支的内容。推荐流程：
 
 ```bash
-./sh/git_commit.sh "docs: update readme"
-./sh/git_pr.sh -t "docs: update readme"
+./sh/git_commit.sh "更新参考CampusOS/docs/进度"
+./sh/git_pr.sh -t "更新参考CampusOS/docs/进度"
 ```
 
 如果当前工作区还有未提交改动，`git_pr.sh` 默认会停止，防止遗漏。

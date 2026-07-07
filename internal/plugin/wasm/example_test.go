@@ -9,7 +9,7 @@ import (
 )
 
 func TestHelloWasmExampleLifecycleAndLogging(t *testing.T) {
-	pluginDir := filepath.Clean(filepath.Join("..", "..", "..", "examples", "plugins", "hello-wasm"))
+	pluginDir := filepath.Clean(filepath.Join("..", "..", "..", "data", "plugins", "hello-wasm"))
 
 	manager := plugin.NewManager()
 	logRepo := plugin.NewMemoryPluginRepository()

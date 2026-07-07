@@ -49,6 +49,22 @@ config_schema:
 	}
 }
 
+func TestParseManifestAcceptsBuiltinRuntime(t *testing.T) {
+	manifest, err := ParseManifest([]byte(`
+name: personal-space
+version: "0.1.0"
+runtime: builtin
+storage:
+  type: none
+`))
+	if err != nil {
+		t.Fatalf("parse builtin manifest: %v", err)
+	}
+	if manifest.Runtime != "builtin" {
+		t.Fatalf("expected builtin runtime, got %q", manifest.Runtime)
+	}
+}
+
 func TestParseManifestRejectsDuplicateConfigSchemaKeys(t *testing.T) {
 	_, err := ParseManifest([]byte(`
 name: schema-plugin

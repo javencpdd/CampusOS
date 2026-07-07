@@ -68,7 +68,7 @@ skills/campusos-project-onboarding/
 
 | 内容 | 说明 |
 | --- | --- |
-| 当前基线 | `v0.5-dev` 已完成到 `v0.5.7-dev` |
+| 当前基线 | `v0.5-dev` 已完成到 `v0.5.8-dev` |
 | 已实现模块 | 用户前台、管理后台、后端 API、插件、个人主页、Webhook、MCP-like、Message、Metrics 等 |
 | 版本回顾 | v0.1 到 v0.5-dev 的核心完成内容 |
 | 数据库迁移 | `000001` 到 `000011` 的用途 |
