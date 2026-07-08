@@ -129,6 +129,28 @@ export const pluginApi = {
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
 }
 
+export const homeStylePackApi = {
+  validate: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/home/style-packs/validate', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    })
+  },
+  apply: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/home/style-packs/apply', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    })
+  },
+  example: () => api.get('/home/style-packs/example'),
+  exampleZip: () => api.get('/home/style-packs/example.zip', { responseType: 'blob', timeout: 60000 }) as Promise<Blob>,
+  applySource: (name: string) => api.post('/home/style-packs/apply-source', { name }),
+}
+
 // v0.5 集成中心 API
 export const integrationApi = {
   overview: () => api.get('/integrations/overview'),

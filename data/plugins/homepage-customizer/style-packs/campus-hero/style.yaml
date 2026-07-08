@@ -1,0 +1,16 @@
+schema_version: page-style-pack.v1
+target: homepage
+name: campus-hero
+version: 0.1.0
+display_name: "Campus Hero"
+author: "CampusOS Team"
+description: "Folder-based homepage style pack example."
+compatible_campusos:
+  - ">=0.5.0"
+entry: templates/page.html
+styles:
+  - styles/theme.css
+tokens:
+  color.primary: "#2563eb"
+  color.background: "#ffffff"
+  color.surface: "#f8fafc"

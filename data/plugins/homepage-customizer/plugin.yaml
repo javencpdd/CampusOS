@@ -27,6 +27,9 @@ config:
   category_tag_limit: 8
   custom_html_enabled: false
   custom_html: ""
+  custom_css: ""
+  active_style_pack: ""
+  style_pack_version: ""
 
 config_schema:
   fields:
@@ -71,4 +74,19 @@ config_schema:
       label: "Custom HTML"
       type: "text"
       description: "Restricted HTML snippet for homepage layout customization. Scripts, event handlers and unsafe URLs are rejected."
+      default: ""
+    - key: "custom_css"
+      label: "Custom CSS"
+      type: "text"
+      description: "Restricted CSS compiled from a homepage style pack. Dangerous URL, import and positioning rules are rejected."
+      default: ""
+    - key: "active_style_pack"
+      label: "Active style pack"
+      type: "string"
+      description: "Name of the currently applied homepage style pack."
+      default: ""
+    - key: "style_pack_version"
+      label: "Style pack version"
+      type: "string"
+      description: "Version of the currently applied homepage style pack."
       default: ""

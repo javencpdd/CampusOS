@@ -245,6 +245,57 @@
             </el-button>
           </div>
         </el-card>
+
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="panel-header">
+              <span>拓展风格包</span>
+              <el-tag v-if="stylePackValidation?.valid" type="success" effect="plain">筛查通过</el-tag>
+              <el-tag v-else-if="stylePackValidation" type="danger" effect="plain">筛查失败</el-tag>
+            </div>
+          </template>
+
+          <div class="pack-row">
+            <input
+              ref="stylePackInput"
+              class="avatar-input"
+              type="file"
+              accept=".zip,application/zip"
+              @change="selectStylePackFile"
+            />
+            <el-button @click="chooseStylePack">
+              <el-icon><Upload /></el-icon>
+              选择 zip
+            </el-button>
+            <span class="storage-hint">{{ stylePackFile?.name || '未选择文件' }}</span>
+          </div>
+
+          <div v-if="stylePackValidation?.errors?.length" class="error-list">
+            <el-alert
+              v-for="error in stylePackValidation.errors"
+              :key="error"
+              :title="error"
+              type="error"
+              show-icon
+              :closable="false"
+            />
+          </div>
+
+          <div class="style-actions">
+            <el-button @click="downloadStylePackExample" :loading="stylePackGenerating">
+              <el-icon><Download /></el-icon>
+              当前风格示例
+            </el-button>
+            <el-button @click="validateStylePack" :loading="stylePackValidating" :disabled="!stylePackFile">
+              <el-icon><CircleCheck /></el-icon>
+              筛查
+            </el-button>
+            <el-button type="primary" @click="applyStylePack" :loading="stylePackApplying" :disabled="!stylePackFile">
+              <el-icon><Switch /></el-icon>
+              应用拓展包
+            </el-button>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
   </div>
@@ -253,7 +304,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, View } from '@element-plus/icons-vue'
+import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, Upload, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/api'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
@@ -332,6 +383,17 @@ interface StyleHTMLExampleResult {
   validation: StyleValidationResult
 }
 
+interface StylePackResult {
+  validation: StyleValidationResult
+  package?: {
+    manifest: {
+      name: string
+      version: string
+      target: string
+    }
+  }
+}
+
 interface SpaceStorageStatus {
   user_id: string
   quota_bytes: number
@@ -379,10 +441,16 @@ const defaulting = ref(false)
 const htmlGenerating = ref(false)
 const htmlValidating = ref(false)
 const htmlApplying = ref(false)
+const stylePackGenerating = ref(false)
+const stylePackValidating = ref(false)
+const stylePackApplying = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
 const htmlValidation = ref<StyleValidationResult | null>(null)
+const stylePackValidation = ref<StyleValidationResult | null>(null)
 const preview = ref<StylePreview | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
+const stylePackInput = ref<HTMLInputElement | null>(null)
+const stylePackFile = ref<File | null>(null)
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
 const htmlText = ref('')
@@ -660,6 +728,78 @@ const applyHTMLStyle = async () => {
   }
 }
 
+const chooseStylePack = () => {
+  stylePackInput.value?.click()
+}
+
+const selectStylePackFile = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  stylePackFile.value = input.files?.[0] || null
+  stylePackValidation.value = null
+}
+
+const downloadStylePackExample = async () => {
+  stylePackGenerating.value = true
+  try {
+    const blob = await spaceApi.stylePackExampleZip()
+    downloadBlob(blob as Blob, 'personal-space-style-pack.zip', 'application/zip')
+    ElMessage.success('示例拓展风格包已生成')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '生成拓展包示例失败')
+  } finally {
+    stylePackGenerating.value = false
+  }
+}
+
+const validateStylePack = async () => {
+  if (!stylePackFile.value) return
+  stylePackValidating.value = true
+  try {
+    const payload = unwrap<StylePackResult>(await spaceApi.validateStylePack(stylePackFile.value))
+    stylePackValidation.value = payload.validation
+    if (payload.validation.valid) {
+      ElMessage.success(`筛查通过：${payload.package?.manifest?.name || stylePackFile.value.name}`)
+    } else {
+      ElMessage.warning('拓展包筛查失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '拓展包筛查失败')
+  } finally {
+    stylePackValidating.value = false
+  }
+}
+
+const applyStylePack = async () => {
+  if (!stylePackFile.value) return
+  stylePackApplying.value = true
+  try {
+    const payload = unwrap<StyleApplyResult>(await spaceApi.applyStylePack(stylePackFile.value))
+    validation.value = payload.validation
+    stylePackValidation.value = { valid: payload.validation.valid, errors: payload.validation.errors, warnings: payload.validation.warnings }
+    currentSpace.value = payload.space
+    preview.value = payload.applied
+      ? {
+          validation: payload.validation,
+          manifest: payload.applied,
+          layout: payload.applied.layout,
+          components: payload.applied.components,
+          tokens: payload.applied.tokens,
+        }
+      : null
+    if (payload.applied) {
+      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
+      selectedStyleName.value = payload.applied.name
+    }
+    fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    ElMessage.success('拓展风格包已应用')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用拓展包失败')
+  } finally {
+    stylePackApplying.value = false
+  }
+}
+
 const rollbackStyle = async () => {
   rollbacking.value = true
   try {
@@ -698,18 +838,27 @@ const exportCurrentStyle = async () => {
   exporting.value = true
   try {
     const payload = unwrap<StyleExportResult>(await spaceApi.exportStyle())
-    const blob = new Blob([JSON.stringify(payload.package, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = payload.filename
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadText(JSON.stringify(payload.package, null, 2), payload.filename, 'application/json')
   } catch (error: any) {
     ElMessage.error(error?.msg || '导出失败')
   } finally {
     exporting.value = false
   }
+}
+
+const downloadText = (content: string, filename: string, type: string) => {
+  const blob = new Blob([content], { type })
+  downloadBlob(blob, filename, type)
+}
+
+const downloadBlob = (blob: Blob, filename: string, type: string) => {
+  const fileBlob = blob.type ? blob : new Blob([blob], { type })
+  const url = URL.createObjectURL(fileBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 const goPublicSpace = () => {
@@ -774,6 +923,13 @@ onMounted(loadSpace)
   color: #606266;
   font-size: 13px;
   line-height: 1.5;
+}
+.pack-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 .field-full {
   width: 100%;

@@ -2,18 +2,25 @@ package homepage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/internal/safehtml"
+	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
 const pluginName = "homepage-customizer"
 
 type PluginLookup func(name string) (*plugin.Plugin, bool)
+type PluginConfigUpdater func(name string, config map[string]interface{}) (map[string]interface{}, error)
+
+var ErrStylePackInvalid = errors.New("homepage style pack invalid")
 
 type CategoryRepository interface {
 	List(ctx context.Context) ([]*communitydomain.Category, error)
@@ -22,6 +29,7 @@ type CategoryRepository interface {
 type Service struct {
 	plugins    PluginLookup
 	categories CategoryRepository
+	update     PluginConfigUpdater
 }
 
 type Config struct {
@@ -35,6 +43,9 @@ type Config struct {
 	CategoryTags      []CategoryTag `json:"category_tags"`
 	CustomHTMLEnabled bool          `json:"custom_html_enabled"`
 	CustomHTML        string        `json:"custom_html,omitempty"`
+	CustomCSS         string        `json:"custom_css,omitempty"`
+	ActiveStylePack   string        `json:"active_style_pack,omitempty"`
+	StylePackVersion  string        `json:"style_pack_version,omitempty"`
 }
 
 type CategoryTag struct {
@@ -45,8 +56,21 @@ type CategoryTag struct {
 	Icon  string `json:"icon,omitempty"`
 }
 
+type StylePackResult struct {
+	Validation stylepack.ValidationResult `json:"validation"`
+	Package    *stylepack.Package         `json:"package,omitempty"`
+}
+
+type StylePackApplySourceRequest struct {
+	Name string `json:"name"`
+}
+
 func NewService(plugins PluginLookup, categories CategoryRepository) *Service {
 	return &Service{plugins: plugins, categories: categories}
+}
+
+func (s *Service) SetConfigUpdater(update PluginConfigUpdater) {
+	s.update = update
 }
 
 func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
@@ -67,11 +91,88 @@ func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
 	cfg.CategoryTagLimit = intConfig(raw, "category_tag_limit", cfg.CategoryTagLimit)
 	cfg.CustomHTMLEnabled = boolConfig(raw, "custom_html_enabled", false)
 	cfg.CustomHTML = safeCustomHTML(raw, cfg.CustomHTMLEnabled)
+	cfg.CustomCSS = safeCustomCSS(raw, cfg.CustomHTMLEnabled)
+	cfg.ActiveStylePack = stringConfig(raw, "active_style_pack", "")
+	cfg.StylePackVersion = stringConfig(raw, "style_pack_version", "")
 	if cfg.CustomHTML == "" {
 		cfg.CustomHTMLEnabled = false
+		cfg.CustomCSS = ""
 	}
 	cfg.CategoryTags = s.categoryTags(ctx, cfg.CategoryTagLimit)
 	return cfg, nil
+}
+
+func (s *Service) ValidateStylePackZip(reader io.ReaderAt, size int64) (*StylePackResult, error) {
+	pack, validation := stylepack.LoadZip(reader, size)
+	if validation.Valid {
+		validation = ensureHomepageStylePackTarget(pack)
+	}
+	return &StylePackResult{Validation: validation, Package: pack}, nil
+}
+
+func (s *Service) StylePackExample(ctx context.Context) (*stylepack.FileBundle, error) {
+	cfg, err := s.PublicConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	example := stylepack.BuildExample(
+		"homepage",
+		"homepage-current-pack",
+		"Homepage Current Pack",
+		cfg.HeroTitle,
+		cfg.HeroSubtitle,
+		"#2563eb",
+		"#ffffff",
+		"#f8fafc",
+	)
+	return &example, nil
+}
+
+func (s *Service) ApplyStylePackZip(ctx context.Context, reader io.ReaderAt, size int64) (*Config, error) {
+	pack, validation := stylepack.LoadZip(reader, size)
+	if validation.Valid {
+		validation = ensureHomepageStylePackTarget(pack)
+	}
+	if !validation.Valid {
+		return nil, fmt.Errorf("%w: %s", ErrStylePackInvalid, strings.Join(validation.Errors, "; "))
+	}
+	return s.applyStylePack(ctx, pack)
+}
+
+func (s *Service) ApplySourceStylePack(ctx context.Context, name string) (*Config, error) {
+	name = strings.TrimSpace(name)
+	if !safeSourceStylePackName(name) {
+		return nil, fmt.Errorf("%w: source style pack name must use lowercase letters, numbers and hyphens", ErrStylePackInvalid)
+	}
+	root := filepath.Join("data", "plugins", "homepage-customizer", "style-packs", name)
+	pack, validation := stylepack.LoadDir(root)
+	if validation.Valid {
+		validation = ensureHomepageStylePackTarget(pack)
+	}
+	if !validation.Valid {
+		return nil, fmt.Errorf("%w: %s", ErrStylePackInvalid, strings.Join(validation.Errors, "; "))
+	}
+	return s.applyStylePack(ctx, pack)
+}
+
+func (s *Service) applyStylePack(ctx context.Context, pack *stylepack.Package) (*Config, error) {
+	if s.update == nil {
+		return nil, fmt.Errorf("homepage config updater is unavailable")
+	}
+	p, ok := s.lookupPlugin()
+	if !ok || p.Manifest == nil {
+		return nil, fmt.Errorf("homepage-customizer plugin is unavailable")
+	}
+	next := copyConfig(p.Manifest.Config)
+	next["custom_html_enabled"] = true
+	next["custom_html"] = pack.HTML
+	next["custom_css"] = pack.CSS
+	next["active_style_pack"] = pack.Manifest.Name
+	next["style_pack_version"] = pack.Manifest.Version
+	if _, err := s.update(pluginName, next); err != nil {
+		return nil, err
+	}
+	return s.PublicConfig(ctx)
 }
 
 func (s *Service) lookupPlugin() (*plugin.Plugin, bool) {
@@ -83,6 +184,40 @@ func (s *Service) lookupPlugin() (*plugin.Plugin, bool) {
 		return nil, false
 	}
 	return p, true
+}
+
+func ensureHomepageStylePackTarget(pack *stylepack.Package) stylepack.ValidationResult {
+	if pack == nil {
+		return stylepack.ValidationResult{Valid: false, Errors: []string{"style pack is empty"}}
+	}
+	if pack.Manifest.Target != "homepage" {
+		return stylepack.ValidationResult{Valid: false, Errors: []string{"style pack target must be homepage"}}
+	}
+	return stylepack.ValidationResult{Valid: true}
+}
+
+func copyConfig(input map[string]interface{}) map[string]interface{} {
+	copied := make(map[string]interface{}, len(input))
+	for key, value := range input {
+		copied[key] = value
+	}
+	return copied
+}
+
+func safeSourceStylePackName(name string) bool {
+	if len(name) < 2 || len(name) > 63 {
+		return false
+	}
+	for i, r := range name {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			continue
+		}
+		if r == '-' && i > 0 && i < len(name)-1 {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func (s *Service) categoryTags(ctx context.Context, limit int) []CategoryTag {
@@ -129,6 +264,9 @@ func defaultConfig() *Config {
 		CategoryTags:      []CategoryTag{},
 		CustomHTMLEnabled: false,
 		CustomHTML:        "",
+		CustomCSS:         "",
+		ActiveStylePack:   "",
+		StylePackVersion:  "",
 	}
 }
 
@@ -145,6 +283,24 @@ func safeCustomHTML(raw map[string]interface{}, enabled bool) string {
 		return ""
 	}
 	if result := safehtml.Validate(text); !result.Valid {
+		return ""
+	}
+	return text
+}
+
+func safeCustomCSS(raw map[string]interface{}, enabled bool) string {
+	if !enabled {
+		return ""
+	}
+	css, ok := raw["custom_css"]
+	if !ok {
+		return ""
+	}
+	text := strings.TrimSpace(fmt.Sprint(css))
+	if text == "" {
+		return ""
+	}
+	if result := stylepack.ValidateCSS(text); !result.Valid {
 		return ""
 	}
 	return text

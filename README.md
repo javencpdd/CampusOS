@@ -2,7 +2,7 @@
 
 CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经从基础论坛演进到“社区核心 + 插件运行时 + 个人主页 + 管理后台集成中心 + 低风险外部集成”的开发基线。
 
-截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.12-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
+截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.13-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
 
 ## 当前状态
 
@@ -16,7 +16,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | 一键开发启动 | 已实现 | `make dev-all` 调用 `scripts/start-dev.sh`，可启动依赖服务、迁移、后端、用户前台和管理后台 |
 | 插件 Runtime | 已实现基础闭环 | 支持 gRPC Runtime、Wasm Runtime(wazero)、Built-in Runtime、事件分发、Host API、插件日志和插件 KV |
 | 插件包治理 | 已实现基础闭环 | 支持 `campusosctl plugin init/inspect/pack/install`、后台导入导出、配置表单、预检、checksum 和包大小记录 |
-| 个人主页/风格包/个人空间文件 | 已实现核心闭环 | 支持公开个人主页、内容同步、风格包导入导出、受限 HTML 风格、预览、应用、回滚、恢复默认、头像上传和默认 10MB 本地个人空间 |
+| 个人主页/风格包/个人空间文件 | 已实现核心闭环 | 支持公开个人主页、内容同步、JSON 风格包、文件夹/zip 拓展风格包、受限 HTML/CSS 风格、预览、应用、回滚、恢复默认、头像上传和默认 10MB 本地个人空间 |
 | AI Gateway | 已实现最小闭环 | OpenAI-compatible Provider、配置、限流和调用日志已存在；AI 内容审核插件暂缓 |
 | Webhook | 已实现基础闭环 | 支持 endpoint、事件订阅、HMAC 签名、测试投递、失败记录和后台入口 |
 | MCP-like 工具层 | 已实现受控实验闭环 | 当前是 CampusOS 内部 API 形态的只读工具层；标准 MCP 协议适配器仍是后续任务 |
@@ -41,7 +41,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 总体计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分判断 |
 | [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 规划和边界 |
-| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.12 实施记录 |
+| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.13 实施记录 |
 
 ## 架构概览
 
@@ -312,13 +312,14 @@ make migrate-status
 | 公开个人主页 `/u/:username` | 已实现 |
 | 发帖同步到个人主页内容 | 已实现 |
 | 用户侧主页设置 | 已实现 |
-| 风格包导入、导出、校验、预览、应用 | 已实现 |
-| 受限 HTML 风格编辑、检测、示例生成和应用 | 已实现，禁止脚本、事件处理器和不安全 URL |
+| JSON 风格包导入、导出、校验、预览、应用 | 已实现 |
+| 文件夹/zip 拓展风格包 | 已实现，标准为 `page-style-pack.v1`，支持 personal-space 和 homepage 两类 target |
+| 受限 HTML/CSS 风格编辑、检测、示例生成和应用 | 已实现，禁止脚本、事件处理器、不安全 URL 和危险 CSS |
 | 风格应用前快照、回滚、恢复默认 | 已实现 |
 | 管理员禁用/启用个人主页 | 已实现 |
 | 个人空间文件默认插件配置 | 已实现，`personal-space` 默认每用户 10MB 本地空间 |
 | 头像上传和源文件保留 | 已实现，头像存入个人空间并默认保留最近 3 个源文件 |
-| 示例风格包 | 已提供，位于 `data/plugins/personal-space/styles/` |
+| 示例风格包 | 已提供，JSON 风格位于 `data/plugins/personal-space/styles/`，文件夹拓展风格位于 `data/plugins/personal-space/style-packs/` 和 `data/plugins/homepage-customizer/style-packs/` |
 | 任意 JavaScript 个人主页代码 | 未开放，当前仅支持后端检测通过的受限 HTML 子集 |
 
 说明文档：
@@ -554,6 +555,78 @@ curl -H "Authorization: Bearer ${ADMIN_TOKEN}" \
 | `cd admin && pnpm dev` | 启动管理后台开发服务 |
 | `cd admin && pnpm build` | 构建管理后台 |
 
+## 贡献辅助脚本
+
+以下命令建议在仓库根目录执行，主要用于本地开发、提交和创建 PR。
+
+### 一键启动并清理旧进程
+
+```bash
+STOP_EXISTING=true make dev-all
+```
+
+`make dev-all` 会调用 `scripts/start-dev.sh` 启动 Docker 依赖、迁移、后端、用户前台和管理后台。默认端口被占用时脚本会停止并提示；加上 `STOP_EXISTING=true` 后，会自动停止占用 `8080`、`3000`、`3001` 的旧监听进程，再启动当前项目服务。
+
+常用组合：
+
+```bash
+STOP_EXISTING=true make dev-all      # 自动清理旧进程后完整启动
+SKIP_INFRA=true make dev-all         # 不启动 Docker 依赖，适合依赖服务已在运行时
+SKIP_MIGRATE=true make dev-all       # 跳过 migration，适合只调前后端代码时
+```
+
+### 快捷提交
+
+```bash
+./sh/git_commit.sh
+./sh/git_commit.sh "docs: update contributor script guide"
+./sh/git_commit.sh -m "fix: handle plugin config validation"
+```
+
+`sh/git_commit.sh` 会自动切到项目根目录运行。提交模式会执行 `git add -A`，因此提交前应先用状态或 diff 模式确认没有把无关改动带进去。
+
+常用参数：
+
+| 命令 | 说明 |
+| --- | --- |
+| `./sh/git_commit.sh` | 交互模式，展示状态和变更统计后输入提交信息 |
+| `./sh/git_commit.sh "提交信息"` | 快速提交所有变更，随后询问是否 push |
+| `./sh/git_commit.sh -m "提交信息"` | 与快速提交等价 |
+| `./sh/git_commit.sh -s` | 只查看工作区状态和变更统计 |
+| `./sh/git_commit.sh -d` | 查看未暂存和已暂存 diff |
+| `./sh/git_commit.sh -l 5` | 查看最近 5 条提交 |
+| `./sh/git_commit.sh -p` | 仅 push 当前分支 |
+
+### 创建 Pull Request
+
+```bash
+./sh/git_pr.sh -t "docs: update contributor script guide"
+./sh/git_pr.sh -t "feat: add plugin config validation" --base main --draft
+./sh/git_pr.sh --fill
+```
+
+`sh/git_pr.sh` 基于 GitHub CLI 创建 PR。默认会检查工作区是否干净、阻止直接从 `main` / `master` / `develop` 创建 PR、自动推送当前分支，并优先使用 `.github/PULL_REQUEST_TEMPLATE/pull_request_template.md` 作为 PR 描述模板。
+
+前置要求：
+
+| 项目 | 说明 |
+| --- | --- |
+| `gh` | 需要安装 GitHub CLI |
+| `gh auth login` | 需要先登录 GitHub |
+| 功能分支 | 当前分支应已有至少一个 commit，且不应是主干分支 |
+| 干净工作区 | 默认要求无未提交改动；确需允许可加 `--allow-dirty` |
+
+常用参数：
+
+| 命令 | 说明 |
+| --- | --- |
+| `./sh/git_pr.sh -t "PR 标题"` | 指定标题并按默认模板创建 PR |
+| `./sh/git_pr.sh --fill` | 让 `gh` 根据 commit 自动填充标题和描述 |
+| `./sh/git_pr.sh --draft` | 创建 draft PR |
+| `./sh/git_pr.sh --web` | 打开浏览器创建 PR |
+| `./sh/git_pr.sh --no-push` | 不自动 push 当前分支 |
+| `./sh/git_pr.sh --dry-run` | 只打印将执行的命令 |
+
 ## 测试与构建
 
 后端测试：
@@ -656,6 +729,7 @@ CampusOS/
 │   ├── platformlog/               # 管理后台平台日志读取和 SSE 输出
 │   ├── plugin/                    # 插件 Manager、Runtime、Host API、仓储
 │   ├── space/                     # 个人主页、内容同步、风格包
+│   ├── stylepack/                 # 页面拓展风格包文件夹/zip 标准与安全筛查
 │   ├── webhook/                   # Webhook endpoint、投递和记录
 │   └── server/                    # 路由、依赖装配、服务启动
 ├── migrations/                    # SQL migration
@@ -690,8 +764,8 @@ Windows 的主要难点不在 Go 或 pnpm 本身，而在 Docker Desktop 网络�
 | Message/IM | 只有 local adapter，本地验证 `ping -> pong` | 后续以插件或 adapter 接入 Discord、NapCat、AstrBot 等真实平台 |
 | Webhook | 基础投递、签名、记录已完成 | 后续增加 Dead Letter、secret 轮换、投递详情页和重放 |
 | 插件包治理 | 已有预检和 checksum | 后续增加签名、版本回滚、插件市场和审核流程 |
-| 个人主页 | 已支持风格包、受限 HTML 风格、回滚、头像上传和默认本地空间 | 后续再评估更强编辑器、个人云盘接入；任意 JS 主页暂不开放 |
-| 首页自定义 | 已支持 `homepage-customizer` 结构化配置和受限 HTML 片段 | 后续如开放任意 HTML/JS，需要先补审核、CSP、版本回滚和更完整的隔离机制 |
+| 个人主页 | 已支持 JSON 风格包、文件夹/zip 拓展风格包、受限 HTML/CSS 风格、回滚、头像上传和默认本地空间 | 后续再评估更强编辑器、个人云盘接入；任意 JS 主页暂不开放 |
+| 首页自定义 | 已支持 `homepage-customizer` 结构化配置、文件夹/zip 拓展风格包和受限 HTML/CSS 片段 | 后续如开放任意 HTML/JS，需要先补审核、CSP、版本回滚和更完整的隔离机制 |
 | AI Gateway | 最小闭环已完成 | AI 内容审核插件暂缓，等待人工复核和样本评估体系 |
 | 部署 | CD 可构建发布包并 SSH 部署 | 后续补充 systemd、反向代理、TLS、备份演练和回滚策略 |
 | 原生 Windows | 未完成实机验证 | 后续作为兼容性专项，不作为当前主线 |

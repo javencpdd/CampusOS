@@ -104,6 +104,19 @@ export const spaceApi = {
   validateCustomHtml: (html: string) => api.post('/spaces/me/styles/html/validate', { html }),
   customHtmlExample: () => api.get('/spaces/me/styles/html-example'),
   applyCustomHtml: (html: string) => api.post('/spaces/me/styles/html/apply', { html }),
+  validateStylePack: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/spaces/me/styles/packs/validate', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  stylePackExample: () => api.get('/spaces/me/styles/packs/example'),
+  stylePackExampleZip: () => api.get('/spaces/me/styles/packs/example.zip', { responseType: 'blob', timeout: 60000 }) as Promise<Blob>,
+  applyStylePack: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post('/spaces/me/styles/packs/apply', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  applySourceStylePack: (name: string) => api.post('/spaces/me/styles/packs/apply-source', { name }),
   rollbackStyle: () => api.post('/spaces/me/styles/rollback'),
   restoreDefaultStyle: () => api.post('/spaces/me/styles/default'),
   syncStatus: () => api.get('/spaces/me/sync-status'),

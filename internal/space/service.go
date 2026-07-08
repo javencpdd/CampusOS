@@ -9,6 +9,7 @@ import (
 	"time"
 
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
+	"github.com/campusos/CampusOS/internal/stylepack"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
@@ -249,6 +250,77 @@ func (s *Service) ApplyCustomHTML(ctx context.Context, userID string, html strin
 	}
 	pkg := BuildStyleHTMLPackage(current.Owner, current.Space, html)
 	return s.ApplyStylePackage(ctx, userID, pkg)
+}
+
+func (s *Service) ValidateStylePackZip(ctx context.Context, userID string, reader io.ReaderAt, size int64) (*StylePackResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if _, err := s.users.GetByID(ctx, userID); err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	pack, validation := stylepack.LoadZip(reader, size)
+	if validation.Valid {
+		targetValidation := ensureStylePackTarget(pack, "personal-space")
+		if !targetValidation.Valid {
+			validation = targetValidation
+		}
+	}
+	return &StylePackResult{Validation: validation, Package: pack}, nil
+}
+
+func (s *Service) StylePackExample(ctx context.Context, userID string) (*stylepack.FileBundle, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	example := BuildStylePackExample(current.Owner, current.Space)
+	return &example, nil
+}
+
+func (s *Service) ApplyStylePackZip(ctx context.Context, userID string, reader io.ReaderAt, size int64) (*StyleApplyResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	pack, validation := stylepack.LoadZip(reader, size)
+	if validation.Valid {
+		targetValidation := ensureStylePackTarget(pack, "personal-space")
+		if !targetValidation.Valid {
+			validation = targetValidation
+		}
+	}
+	if !validation.Valid {
+		return nil, fmt.Errorf("%w: %s", ErrInvalidStyleExport, strings.Join(validation.Errors, "; "))
+	}
+	return s.ApplyStylePackage(ctx, userID, BuildStylePackPackage(current.Owner, current.Space, pack))
+}
+
+func (s *Service) ApplySourceStylePack(ctx context.Context, userID, name string) (*StyleApplyResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	pack, validation := loadPersonalSourceStylePack(name)
+	if validation.Valid {
+		targetValidation := ensureStylePackTarget(pack, "personal-space")
+		if !targetValidation.Valid {
+			validation = targetValidation
+		}
+	}
+	if !validation.Valid {
+		return nil, fmt.Errorf("%w: %s", ErrInvalidStyleExport, strings.Join(validation.Errors, "; "))
+	}
+	return s.ApplyStylePackage(ctx, userID, BuildStylePackPackage(current.Owner, current.Space, pack))
 }
 
 func (s *Service) RollbackStyle(ctx context.Context, userID string) (*PublicSpace, error) {
@@ -538,6 +610,7 @@ func cloneManifest(manifest *StyleManifest) *StyleManifest {
 		return nil
 	}
 	clone := *manifest
+	clone.SourceStylePack = cloneStylePackRef(manifest.SourceStylePack)
 	clone.CompatibleCampusOS = append([]string(nil), manifest.CompatibleCampusOS...)
 	clone.Components = append([]StyleComponent(nil), manifest.Components...)
 	for i := range clone.Components {
@@ -665,15 +738,23 @@ func buildPublicSpace(user *identitydomain.User, space *Space) *PublicSpace {
 }
 
 func sanitizeCustomHTMLForResponse(space *Space) {
-	if space == nil || space.StyleManifest == nil || strings.TrimSpace(space.StyleManifest.CustomHTML) == "" {
+	if space == nil || space.StyleManifest == nil {
 		return
 	}
-	result := ValidateCustomHTMLSnippet(space.StyleManifest.CustomHTML)
-	if result.Valid {
+	if strings.TrimSpace(space.StyleManifest.CustomCSS) != "" {
+		if cssResult := stylepack.ValidateCSS(space.StyleManifest.CustomCSS); !cssResult.Valid {
+			space.StyleManifest.CustomCSS = ""
+		}
+	}
+	if strings.TrimSpace(space.StyleManifest.CustomHTML) == "" {
+		return
+	}
+	if result := ValidateCustomHTMLSnippet(space.StyleManifest.CustomHTML); result.Valid {
 		return
 	}
 	space.StyleManifest.CustomHTMLEnabled = false
 	space.StyleManifest.CustomHTML = ""
+	space.StyleManifest.CustomCSS = ""
 }
 
 func validVisibility(visibility Visibility) bool {

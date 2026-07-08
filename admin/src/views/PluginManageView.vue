@@ -147,6 +147,63 @@
         :closable="false"
         class="config-alert"
       />
+      <div v-if="selectedPluginName === 'homepage-customizer'" class="style-pack-box">
+        <div class="style-pack-header">
+          <strong>首页拓展风格包</strong>
+          <el-tag v-if="homeStylePackValidation?.valid" type="success" effect="plain">筛查通过</el-tag>
+          <el-tag v-else-if="homeStylePackValidation" type="danger" effect="plain">筛查失败</el-tag>
+        </div>
+        <div class="style-pack-actions">
+          <input
+            ref="homeStylePackInput"
+            class="hidden-input"
+            type="file"
+            accept=".zip,application/zip"
+            @change="selectHomeStylePack"
+          />
+          <el-button size="small" @click="chooseHomeStylePack">
+            <el-icon><Upload /></el-icon>
+            选择 zip
+          </el-button>
+          <span class="pack-file-name">{{ homeStylePackFile?.name || '未选择文件' }}</span>
+          <el-button size="small" @click="downloadHomeStylePackExample" :loading="homeStylePackGenerating">
+            <el-icon><Download /></el-icon>
+            当前示例
+          </el-button>
+          <el-button size="small" @click="validateHomeStylePack" :loading="homeStylePackValidating" :disabled="!homeStylePackFile">
+            筛查
+          </el-button>
+          <el-button size="small" type="primary" @click="applyHomeStylePack" :loading="homeStylePackApplying" :disabled="!homeStylePackFile">
+            应用
+          </el-button>
+        </div>
+        <div class="style-pack-source-row">
+          <el-input
+            v-model="homeSourceStylePackName"
+            size="small"
+            placeholder="源码目录风格包名，例如 campus-hero"
+          />
+          <el-button
+            size="small"
+            type="primary"
+            plain
+            @click="applyHomeSourceStylePack"
+            :loading="homeSourceStylePackApplying"
+            :disabled="!homeSourceStylePackName"
+          >
+            应用源码目录
+          </el-button>
+        </div>
+        <el-alert
+          v-for="error in homeStylePackValidation?.errors || []"
+          :key="error"
+          :title="error"
+          type="error"
+          show-icon
+          :closable="false"
+          class="pack-error"
+        />
+      </div>
       <el-form label-position="top" v-loading="configLoading">
         <el-form-item
           v-for="field in configFields"
@@ -201,7 +258,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
-import { pluginApi } from '@/api'
+import { homeStylePackApi, pluginApi } from '@/api'
 
 const plugins = ref<any[]>([])
 const loading = ref(false)
@@ -217,6 +274,14 @@ const configSaving = ref(false)
 const configFields = ref<any[]>([])
 const configForm = ref<Record<string, any>>({})
 const configDescription = ref('')
+const homeStylePackInput = ref<HTMLInputElement | null>(null)
+const homeStylePackFile = ref<File | null>(null)
+const homeStylePackValidation = ref<any | null>(null)
+const homeStylePackGenerating = ref(false)
+const homeStylePackValidating = ref(false)
+const homeStylePackApplying = ref(false)
+const homeSourceStylePackName = ref('campus-hero')
+const homeSourceStylePackApplying = ref(false)
 
 const responseItems = (payload: any): any[] => {
   const candidates = [
@@ -329,6 +394,8 @@ const openConfig = async (row: any) => {
   configFields.value = []
   configForm.value = {}
   configDescription.value = ''
+  homeStylePackFile.value = null
+  homeStylePackValidation.value = null
   try {
     const r = (await pluginApi.get(row.name)) as any
     const detail = r?.data || r
@@ -346,6 +413,76 @@ const openConfig = async (row: any) => {
     ElMessage.error(error?.msg || '加载插件配置失败')
   } finally {
     configLoading.value = false
+  }
+}
+
+const chooseHomeStylePack = () => {
+  homeStylePackInput.value?.click()
+}
+
+const selectHomeStylePack = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  homeStylePackFile.value = input.files?.[0] || null
+  homeStylePackValidation.value = null
+}
+
+const validateHomeStylePack = async () => {
+  if (!homeStylePackFile.value) return
+  homeStylePackValidating.value = true
+  try {
+    const r = (await homeStylePackApi.validate(homeStylePackFile.value)) as any
+    const payload = r?.data || r
+    homeStylePackValidation.value = payload.validation
+    if (payload.validation?.valid) {
+      ElMessage.success(`筛查通过：${payload.package?.manifest?.name || homeStylePackFile.value.name}`)
+    } else {
+      ElMessage.warning('首页拓展风格包筛查失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '首页拓展风格包筛查失败')
+  } finally {
+    homeStylePackValidating.value = false
+  }
+}
+
+const applyHomeStylePack = async () => {
+  if (!homeStylePackFile.value) return
+  homeStylePackApplying.value = true
+  try {
+    await homeStylePackApi.apply(homeStylePackFile.value)
+    ElMessage.success('首页拓展风格包已应用')
+    await openConfig({ name: 'homepage-customizer' })
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用首页拓展风格包失败')
+  } finally {
+    homeStylePackApplying.value = false
+  }
+}
+
+const applyHomeSourceStylePack = async () => {
+  if (!homeSourceStylePackName.value) return
+  homeSourceStylePackApplying.value = true
+  try {
+    await homeStylePackApi.applySource(homeSourceStylePackName.value)
+    ElMessage.success('首页源码目录风格包已应用')
+    await openConfig({ name: 'homepage-customizer' })
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用首页源码目录风格包失败')
+  } finally {
+    homeSourceStylePackApplying.value = false
+  }
+}
+
+const downloadHomeStylePackExample = async () => {
+  homeStylePackGenerating.value = true
+  try {
+    const blob = await homeStylePackApi.exampleZip()
+    downloadBlob(blob as Blob, 'homepage-style-pack.zip', 'application/zip')
+    ElMessage.success('首页示例拓展风格包已生成')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '生成首页示例失败')
+  } finally {
+    homeStylePackGenerating.value = false
   }
 }
 
@@ -442,6 +579,16 @@ const formatMetadata = (metadata: any) => {
   return JSON.stringify(metadata, null, 2)
 }
 
+const downloadBlob = (blob: Blob, filename: string, type: string) => {
+  const fileBlob = blob.type ? blob : new Blob([blob], { type })
+  const url = URL.createObjectURL(fileBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 onMounted(load)
 </script>
 
@@ -484,6 +631,46 @@ onMounted(load)
   color: #909399;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.style-pack-box {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.style-pack-header,
+.style-pack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.style-pack-header {
+  margin-bottom: 10px;
+}
+
+.style-pack-source-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.pack-file-name {
+  color: #606266;
+  font-size: 13px;
+}
+
+.pack-error {
+  margin-top: 8px;
 }
 
 .metadata-pre {

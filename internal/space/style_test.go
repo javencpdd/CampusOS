@@ -1,6 +1,7 @@
 package space
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -207,6 +208,67 @@ func TestCustomHTMLExampleUsesCurrentStyle(t *testing.T) {
 	}
 }
 
+func TestApplyStylePackZipPersistsCompiledManifest(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	data := zipStylePack(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: personal-space
+name: alice-folder
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+tokens:
+  color.primary: "#0f766e"
+`,
+		"templates/page.html": `<section class="cstyle-page"><h2>Alice Folder</h2></section>`,
+		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #0f766e; }`,
+	})
+
+	applied, err := svc.ApplyStylePackZip(testContext(), "1001", bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatalf("apply style pack zip: %v", err)
+	}
+	if applied.Space.StyleManifest == nil || applied.Space.StyleManifest.SourceStylePack == nil {
+		t.Fatalf("expected source style pack metadata, got %#v", applied.Space.StyleManifest)
+	}
+	if applied.Space.StyleManifest.CustomHTML == "" || applied.Space.StyleManifest.CustomCSS == "" {
+		t.Fatalf("expected compiled html/css, got %#v", applied.Space.StyleManifest)
+	}
+	if applied.Space.StyleManifest.SourceStylePack.Name != "alice-folder" {
+		t.Fatalf("unexpected source style pack: %#v", applied.Space.StyleManifest.SourceStylePack)
+	}
+}
+
+func TestValidateStylePackZipRejectsWrongTarget(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+	data := zipStylePack(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: homepage-only
+version: 0.1.0
+entry: templates/page.html
+`,
+		"templates/page.html": `<section><h2>Home</h2></section>`,
+	})
+
+	result, err := svc.ValidateStylePackZip(testContext(), "1001", bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatalf("validate style pack zip: %v", err)
+	}
+	if result.Validation.Valid {
+		t.Fatalf("expected wrong target validation failure")
+	}
+}
+
 func TestPublicSpaceResponseDropsUnsafePersistedCustomHTML(t *testing.T) {
 	user := &identitydomain.User{
 		ID:       "1001",
@@ -242,6 +304,25 @@ func TestPublicSpaceResponseDropsUnsafePersistedCustomHTML(t *testing.T) {
 	if got.Space.StyleManifest.CustomHTMLEnabled || got.Space.StyleManifest.CustomHTML != "" {
 		t.Fatalf("unsafe custom html should be hidden, got %#v", got.Space.StyleManifest)
 	}
+}
+
+func zipStylePack(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, content := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("create zip entry: %v", err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatalf("write zip entry: %v", err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func TestValidateCustomHTMLHandler(t *testing.T) {
