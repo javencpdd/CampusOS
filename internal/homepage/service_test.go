@@ -182,6 +182,42 @@ func TestApplySourceStylePackUpdatesHomepageConfig(t *testing.T) {
 	}
 }
 
+func TestListSourceStylePacksIncludesCampusHero(t *testing.T) {
+	t.Chdir("../..")
+	t.Setenv("PLUGIN_DATA_DIR", "data/plugin_data")
+	p := &plugin.Plugin{
+		Status: plugin.StatusRunning,
+		Manifest: &plugin.Manifest{
+			Name:   pluginName,
+			Config: map[string]interface{}{},
+		},
+	}
+	svc := NewService(func(name string) (*plugin.Plugin, bool) {
+		return p, name == pluginName
+	}, nil)
+
+	result, err := svc.ListSourceStylePacks(context.Background())
+	if err != nil {
+		t.Fatalf("list source homepage style packs: %v", err)
+	}
+	var found bool
+	for _, item := range result.Items {
+		if item.Name != "campus-hero" {
+			continue
+		}
+		found = true
+		if !item.Validation.Valid {
+			t.Fatalf("expected campus-hero to be valid, got %#v", item.Validation.Errors)
+		}
+		if item.Target != "homepage" {
+			t.Fatalf("unexpected campus-hero target: %#v", item)
+		}
+	}
+	if !found {
+		t.Fatalf("expected campus-hero in source style pack list, got %#v", result.Items)
+	}
+}
+
 func zipHomepageStylePack(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer

@@ -87,6 +87,21 @@ type FileBundle struct {
 	Package  Package           `json:"package"`
 }
 
+type SourcePackInfo struct {
+	Name        string           `json:"name"`
+	Path        string           `json:"path"`
+	Target      string           `json:"target,omitempty"`
+	Version     string           `json:"version,omitempty"`
+	DisplayName string           `json:"display_name,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Manifest    *Manifest        `json:"manifest,omitempty"`
+	Validation  ValidationResult `json:"validation"`
+}
+
+type SourcePackList struct {
+	Items []SourcePackInfo `json:"items"`
+}
+
 func LoadDir(root string) (*Package, ValidationResult) {
 	files := map[string][]byte{}
 	var total int64
@@ -199,6 +214,55 @@ func LoadZip(reader io.ReaderAt, size int64) (*Package, ValidationResult) {
 		return nil, result.finish()
 	}
 	return buildPackage(stripArchiveRoot(raw))
+}
+
+func ListSourcePacks(pluginName string) ([]SourcePackInfo, error) {
+	root := SourceRoot(pluginName)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []SourcePackInfo{}, nil
+		}
+		return nil, err
+	}
+
+	items := make([]SourcePackInfo, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		fullPath := filepath.Join(root, name)
+		item := SourcePackInfo{
+			Name: name,
+			Path: filepath.ToSlash(fullPath),
+		}
+		if !packNamePattern.MatchString(name) {
+			validation := ValidationResult{
+				Valid:  false,
+				Errors: []string{"source style pack directory name must use lowercase letters, numbers and hyphens"},
+			}
+			item.Validation = validation.finish()
+			items = append(items, item)
+			continue
+		}
+		pack, validation := LoadDir(fullPath)
+		if pack != nil {
+			manifest := pack.Manifest
+			item.Manifest = &manifest
+			item.Target = manifest.Target
+			item.Version = manifest.Version
+			item.DisplayName = manifest.DisplayName
+			item.Description = manifest.Description
+			if item.DisplayName == "" {
+				item.DisplayName = manifest.Name
+			}
+		}
+		item.Validation = validation
+		items = append(items, item)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	return items, nil
 }
 
 func BuildExample(target, name, displayName, title, subtitle, primary, background, surface string) FileBundle {

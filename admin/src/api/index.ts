@@ -148,6 +148,7 @@ export const homeStylePackApi = {
   },
   example: () => api.get('/home/style-packs/example'),
   exampleZip: () => api.get('/home/style-packs/example.zip', { responseType: 'blob', timeout: 60000 }) as Promise<Blob>,
+  sources: () => api.get('/home/style-packs/sources'),
   applySource: (name: string) => api.post('/home/style-packs/apply-source', { name }),
 }
 

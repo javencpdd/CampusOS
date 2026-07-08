@@ -178,6 +178,35 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 	}
 }
 
+func TestListSourcePacksIncludesBuiltInExamples(t *testing.T) {
+	t.Chdir("../..")
+	t.Setenv("PLUGIN_DATA_DIR", DefaultPluginDataDir)
+
+	items, err := ListSourcePacks("personal-space")
+	if err != nil {
+		t.Fatalf("list source packs: %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatalf("expected built-in source style packs")
+	}
+	var found bool
+	for _, item := range items {
+		if item.Name != "clean-blog" {
+			continue
+		}
+		found = true
+		if !item.Validation.Valid {
+			t.Fatalf("expected clean-blog to be valid, got %#v", item.Validation.Errors)
+		}
+		if item.Target != "personal-space" || item.Manifest == nil {
+			t.Fatalf("unexpected clean-blog source info: %#v", item)
+		}
+	}
+	if !found {
+		t.Fatalf("expected clean-blog source pack, got %#v", items)
+	}
+}
+
 func zipFiles(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer

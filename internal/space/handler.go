@@ -312,6 +312,20 @@ func (h *Handler) StylePackExampleZip(c *gin.Context) {
 	c.Data(http.StatusOK, "application/zip", data)
 }
 
+func (h *Handler) ListSourceStylePacks(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	result, err := h.svc.ListSourceStylePacks(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func (h *Handler) ApplyStylePackZip(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {

@@ -101,6 +101,9 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | jq | 可选 | API smoke 和命令行调试 |
 
 ## 快速开始
+ 
+ps: find . -type f -print | xargs wc -l
+命令可以显示代码行数
 
 ### 1. 准备环境变量
 

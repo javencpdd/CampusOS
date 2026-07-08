@@ -127,6 +127,20 @@ func (s *Service) StylePackExample(ctx context.Context) (*stylepack.FileBundle, 
 	return &example, nil
 }
 
+func (s *Service) ListSourceStylePacks(ctx context.Context) (*stylepack.SourcePackList, error) {
+	if _, err := s.PublicConfig(ctx); err != nil {
+		return nil, err
+	}
+	items, err := stylepack.ListSourcePacks("homepage-customizer")
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		ensureHomepageSourcePackInfoTarget(&items[i])
+	}
+	return &stylepack.SourcePackList{Items: items}, nil
+}
+
 func (s *Service) ApplyStylePackZip(ctx context.Context, reader io.ReaderAt, size int64) (*Config, error) {
 	pack, validation := stylepack.LoadZip(reader, size)
 	if validation.Valid {
@@ -192,6 +206,20 @@ func ensureHomepageStylePackTarget(pack *stylepack.Package) stylepack.Validation
 		return stylepack.ValidationResult{Valid: false, Errors: []string{"style pack target must be homepage"}}
 	}
 	return stylepack.ValidationResult{Valid: true}
+}
+
+func ensureHomepageSourcePackInfoTarget(info *stylepack.SourcePackInfo) {
+	if info == nil || !info.Validation.Valid {
+		return
+	}
+	if info.Target == "homepage" {
+		return
+	}
+	info.Validation.Valid = false
+	info.Validation.Errors = []string{"style pack target must be homepage"}
+	if info.Validation.Warnings == nil {
+		info.Validation.Warnings = []string{}
+	}
 }
 
 func copyConfig(input map[string]interface{}) map[string]interface{} {

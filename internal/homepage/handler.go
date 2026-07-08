@@ -66,6 +66,15 @@ func (h *Handler) StylePackExampleZip(c *gin.Context) {
 	c.Data(http.StatusOK, "application/zip", data)
 }
 
+func (h *Handler) ListSourceStylePacks(c *gin.Context) {
+	result, err := h.svc.ListSourceStylePacks(c.Request.Context())
+	if err != nil {
+		writeHomepageError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 func (h *Handler) ApplyStylePack(c *gin.Context) {
 	file, size, ok := openUploadedStylePack(c)
 	if !ok {

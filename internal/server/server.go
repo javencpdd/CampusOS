@@ -484,6 +484,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/packs/validate", spaceHandler.ValidateStylePackZip)
 		authenticated.GET("/spaces/me/styles/packs/example", spaceHandler.StylePackExample)
 		authenticated.GET("/spaces/me/styles/packs/example.zip", spaceHandler.StylePackExampleZip)
+		authenticated.GET("/spaces/me/styles/packs/sources", spaceHandler.ListSourceStylePacks)
 		authenticated.POST("/spaces/me/styles/packs/apply", spaceHandler.ApplyStylePackZip)
 		authenticated.POST("/spaces/me/styles/packs/apply-source", spaceHandler.ApplySourceStylePack)
 		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
@@ -565,6 +566,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/home/style-packs/validate", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ValidateStylePack)
 		admin.GET("/home/style-packs/example", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExample)
 		admin.GET("/home/style-packs/example.zip", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExampleZip)
+		admin.GET("/home/style-packs/sources", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ListSourceStylePacks)
 		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplyStylePack)
 		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplySourceStylePack)
 

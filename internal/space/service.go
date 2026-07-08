@@ -281,6 +281,16 @@ func (s *Service) StylePackExample(ctx context.Context, userID string) (*stylepa
 	return &example, nil
 }
 
+func (s *Service) ListSourceStylePacks(ctx context.Context, userID string) (*stylepack.SourcePackList, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if _, err := s.users.GetByID(ctx, userID); err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	return listPersonalSourceStylePacks()
+}
+
 func (s *Service) ApplyStylePackZip(ctx context.Context, userID string, reader io.ReaderAt, size int64) (*StyleApplyResult, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err

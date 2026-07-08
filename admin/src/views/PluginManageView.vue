@@ -178,11 +178,32 @@
           </el-button>
         </div>
         <div class="style-pack-source-row">
-          <el-input
+          <el-select
             v-model="homeSourceStylePackName"
             size="small"
+            filterable
+            :loading="homeSourceStylePackLoading"
             placeholder="源码目录风格包名，例如 campus-hero"
-          />
+            style="width: 100%"
+          >
+            <el-option
+              v-for="pack in homeSourceStylePacks"
+              :key="pack.name"
+              :label="sourceStylePackLabel(pack)"
+              :value="pack.name"
+              :disabled="!pack.validation.valid"
+            >
+              <div class="source-pack-option">
+                <span>{{ sourceStylePackLabel(pack) }}</span>
+                <el-tag :type="pack.validation.valid ? 'success' : 'danger'" size="small" effect="plain">
+                  {{ pack.validation.valid ? '可应用' : '需修复' }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+          <el-button size="small" @click="loadHomeSourceStylePacks" :loading="homeSourceStylePackLoading">
+            刷新列表
+          </el-button>
           <el-button
             size="small"
             type="primary"
@@ -194,6 +215,15 @@
             应用源码目录
           </el-button>
         </div>
+        <el-alert
+          v-for="error in selectedHomeSourceStylePack?.validation.errors || []"
+          :key="error"
+          :title="error"
+          type="error"
+          show-icon
+          :closable="false"
+          class="pack-error"
+        />
         <el-alert
           v-for="error in homeStylePackValidation?.errors || []"
           :key="error"

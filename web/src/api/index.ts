@@ -111,6 +111,7 @@ export const spaceApi = {
   },
   stylePackExample: () => api.get('/spaces/me/styles/packs/example'),
   stylePackExampleZip: () => api.get('/spaces/me/styles/packs/example.zip', { responseType: 'blob', timeout: 60000 }) as Promise<Blob>,
+  sourceStylePacks: () => api.get('/spaces/me/styles/packs/sources'),
   applyStylePack: (file: File) => {
     const form = new FormData()
     form.append('file', file)
