@@ -40,13 +40,13 @@
 指定版本阶段：
 
 ```text
-使用 campusos-dev-workflow 继续完成 v0.4-dev 的下一个任务，更新进度文档并提交。
+使用 campusos-dev-workflow 继续完成 v0.5-dev 的下一个任务，更新进度文档并提交。
 ```
 
 英文显式触发：
 
 ```text
-Use $campusos-dev-workflow to complete the next CampusOS v0.4-dev task with docs and commit.
+Use $campusos-dev-workflow to complete the next CampusOS v0.5-dev task with docs and commit.
 ```
 
 ## 3. 版本阶段识别规则

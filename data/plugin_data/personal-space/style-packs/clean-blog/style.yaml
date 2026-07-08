@@ -1,10 +1,10 @@
 schema_version: page-style-pack.v1
-target: homepage
-name: campus-hero
+target: personal-space
+name: clean-blog
 version: 0.1.0
-display_name: "Campus Hero"
+display_name: "Clean Blog"
 author: "CampusOS Team"
-description: "Folder-based homepage style pack example following the source package standard."
+description: "Folder-based personal space style pack example following the source package standard."
 compatible_campusos:
   - ">=0.5.0"
 entry: templates/page.html

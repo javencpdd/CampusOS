@@ -270,7 +270,7 @@ POST /api/v1/spaces/me/styles/html/apply
 
 ### 2.11 页面拓展风格包检测、示例和应用
 
-页面拓展风格包使用 `page-style-pack.v1` 文件夹/zip 标准。用户可以在 `/space/settings` 下载基于当前风格生成的示例 zip，修改其中的 `templates/page.html` 和 `styles/theme.css`，再上传 zip 进行筛查和应用。
+页面拓展风格包使用 `page-style-pack.v1` 文件夹/zip 标准。用户可以在 `/space/settings` 下载基于当前风格生成的示例 zip，修改其中的 `templates/page.html`、`templates/card.html`、`styles/theme.css`、`assets/` 和 `config.schema.json`，再上传 zip 进行筛查和应用。后端会检测所有 HTML/CSS 文件、声明资源、相对路径和配置 schema，通过后才会应用。
 
 接口：
 

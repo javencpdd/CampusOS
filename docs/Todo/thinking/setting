@@ -4,7 +4,8 @@ cp -r  skills/campusos-dev-nocommit/ /home/jack/.codex/skills/
 rsync -a skills/campusos-dev-nocommit/ /home/jack/.codex/skills/campusos-dev-nocommit/
 不知道有没有用，明天试试
 
-使用 campusos-dev-nocommit 完成 v0.5-dev 的第一个任务，并更新进度文档。
+使用 campusos-dev-nocommit 完成 v0.5-dev 的后续任务，并更新进度文档。
 
 -- 有用
 ###############################################################
+，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.

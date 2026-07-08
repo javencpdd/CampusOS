@@ -3,6 +3,7 @@ package stylepack
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -41,10 +42,17 @@ type Manifest struct {
 	Description        string            `json:"description,omitempty" yaml:"description,omitempty"`
 	CompatibleCampusOS []string          `json:"compatible_campusos,omitempty" yaml:"compatible_campusos,omitempty"`
 	Entry              string            `json:"entry" yaml:"entry"`
+	Templates          []Template        `json:"templates,omitempty" yaml:"templates,omitempty"`
 	Styles             []string          `json:"styles,omitempty" yaml:"styles,omitempty"`
 	PreviewImage       string            `json:"preview_image,omitempty" yaml:"preview_image,omitempty"`
+	ConfigSchema       string            `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
 	Tokens             map[string]string `json:"tokens,omitempty" yaml:"tokens,omitempty"`
 	Assets             []Asset           `json:"assets,omitempty" yaml:"assets,omitempty"`
+}
+
+type Template struct {
+	Name string `json:"name" yaml:"name"`
+	Path string `json:"path" yaml:"path"`
 }
 
 type Asset struct {
@@ -218,7 +226,20 @@ func BuildExample(target, name, displayName, title, subtitle, primary, backgroun
 	}
 
 	files := map[string]string{
-		"README.md": fmt.Sprintf("# %s\n\nGenerated CampusOS page style pack example.\n", displayName),
+		"README.md": fmt.Sprintf(`# %s
+
+Generated CampusOS page style pack example.
+
+This folder follows the page-style-pack.v1 source package layout:
+
+- style.yaml
+- templates/page.html
+- templates/card.html
+- styles/theme.css
+- assets/
+- preview.png
+- config.schema.json
+`, displayName),
 		"style.yaml": fmt.Sprintf(`schema_version: %s
 target: %s
 name: %s
@@ -226,13 +247,29 @@ version: 0.1.0
 display_name: %q
 author: CampusOS
 description: Generated example style pack.
+compatible_campusos:
+  - ">=0.5.0"
 entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
 styles:
   - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
 tokens:
   color.primary: %q
   color.background: %q
   color.surface: %q
+assets:
+  - name: cover
+    path: assets/cover.webp
+    type: image/webp
+  - name: avatar-frame
+    path: assets/avatar-frame.png
+    type: image/png
 `, SchemaVersion, target, name, displayName, primary, background, surface),
 		"templates/page.html": fmt.Sprintf(`<section class="cstyle-page">
   <header class="cstyle-hero">
@@ -249,11 +286,39 @@ tokens:
     </article>
     <article>
       <strong>可维护文件</strong>
-      <p>修改 templates/page.html 和 styles/theme.css 后重新校验，通过后再应用。</p>
+      <p>修改 templates、styles、assets 和 config.schema.json 后重新校验，通过后再应用。</p>
     </article>
   </div>
 </section>
 `, escapeHTML(title), escapeHTML(subtitle), escapeHTML(target)),
+		"templates/card.html": `<article class="cstyle-card">
+  <strong>{{ title }}</strong>
+  <p>{{ summary }}</p>
+</article>
+`,
+		"config.schema.json": fmt.Sprintf(`{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "default": %q
+    },
+    "subtitle": {
+      "type": "string",
+      "default": %q
+    },
+    "primary_color": {
+      "type": "string",
+      "default": %q
+    }
+  }
+}
+`, title, subtitle, primary),
+		"preview.png":             "CampusOS style pack preview placeholder.\n",
+		"assets/cover.webp":       "CampusOS style pack cover placeholder.\n",
+		"assets/avatar-frame.png": "CampusOS avatar frame placeholder.\n",
 		"styles/theme.css": fmt.Sprintf(`.cstyle-page {
   padding: 24px;
   border: 1px solid #e5e7eb;
@@ -427,7 +492,9 @@ func NormalizeManifest(manifest Manifest) Manifest {
 	manifest.Description = strings.TrimSpace(manifest.Description)
 	manifest.Entry = cleanPackPath(manifest.Entry)
 	manifest.PreviewImage = cleanPackPath(manifest.PreviewImage)
+	manifest.ConfigSchema = cleanPackPath(manifest.ConfigSchema)
 	manifest.CompatibleCampusOS = normalizeList(manifest.CompatibleCampusOS, 10)
+	manifest.Templates = normalizeTemplates(manifest.Templates, 20)
 	manifest.Styles = normalizePaths(manifest.Styles, 8)
 	manifest.Tokens = normalizeTokens(manifest.Tokens)
 	for i := range manifest.Assets {
@@ -440,6 +507,21 @@ func NormalizeManifest(manifest Manifest) Manifest {
 
 func validateManifest(pkg *Package, files map[string][]byte, result *ValidationResult) {
 	manifest := pkg.Manifest
+	if manifest.PreviewImage == "" {
+		for _, candidate := range []string{"preview.png", "preview.jpg", "preview.jpeg", "preview.webp"} {
+			if _, ok := files[candidate]; ok {
+				manifest.PreviewImage = candidate
+				break
+			}
+		}
+	}
+	if manifest.ConfigSchema == "" {
+		if _, ok := files["config.schema.json"]; ok {
+			manifest.ConfigSchema = "config.schema.json"
+		}
+	}
+	pkg.Manifest = manifest
+
 	if manifest.SchemaVersion != SchemaVersion {
 		result.addError(fmt.Sprintf("schema_version must be %q", SchemaVersion))
 	}
@@ -452,47 +534,55 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	if !packVersionPattern.MatchString(manifest.Version) {
 		result.addError("version must be a semantic version like 0.1.0")
 	}
-	if err := validateFilePath(manifest.Entry); err != nil {
-		result.addError("entry: " + err.Error())
-	} else if path.Ext(manifest.Entry) != ".html" {
-		result.addError("entry must point to an html file")
-	} else if _, ok := files[manifest.Entry]; !ok {
-		result.addError("entry file is missing: " + manifest.Entry)
-	} else {
-		htmlResult := safehtml.Validate(string(files[manifest.Entry]))
-		result.addSafeHTMLPrefixed("html: ", htmlResult)
+
+	htmlSeen := map[string]struct{}{}
+	validateHTMLFile("entry", manifest.Entry, files, result, htmlSeen)
+	for i, template := range manifest.Templates {
+		prefix := fmt.Sprintf("templates[%d]", i)
+		if !packNamePattern.MatchString(template.Name) {
+			result.addError(prefix + ".name must use lowercase letters, numbers and hyphens")
+		}
+		validateHTMLFile(prefix+".path", template.Path, files, result, htmlSeen)
 	}
+	for filePath := range files {
+		if strings.ToLower(path.Ext(filePath)) == ".html" {
+			if _, ok := htmlSeen[filePath]; !ok {
+				validateHTMLFile("html "+filePath, filePath, files, result, htmlSeen)
+			}
+		}
+	}
+
+	cssSeen := map[string]struct{}{}
 	for _, cssPath := range manifest.Styles {
-		if err := validateFilePath(cssPath); err != nil {
-			result.addError("style: " + err.Error())
-			continue
+		validateCSSFile("style", cssPath, files, result, cssSeen)
+	}
+	for filePath := range files {
+		if strings.ToLower(path.Ext(filePath)) == ".css" {
+			if _, ok := cssSeen[filePath]; !ok {
+				validateCSSFile("css "+filePath, filePath, files, result, cssSeen)
+			}
 		}
-		if path.Ext(cssPath) != ".css" {
-			result.addError("style must point to a css file: " + cssPath)
-			continue
-		}
-		data, ok := files[cssPath]
-		if !ok {
-			result.addError("style file is missing: " + cssPath)
-			continue
-		}
-		cssResult := ValidateCSS(string(data))
-		result.addPrefixed("css "+cssPath+": ", cssResult)
 	}
 	if manifest.PreviewImage != "" {
-		validateAssetPath("preview_image", manifest.PreviewImage, result)
+		validateImagePath("preview_image", manifest.PreviewImage, files, result)
+	}
+	if manifest.ConfigSchema != "" {
+		validateConfigSchemaPath("config_schema", manifest.ConfigSchema, files, result)
 	}
 	for i, asset := range manifest.Assets {
 		prefix := fmt.Sprintf("assets[%d]", i)
 		if !packNamePattern.MatchString(asset.Name) {
 			result.addError(prefix + ".name must use lowercase letters, numbers and hyphens")
 		}
-		validateAssetPath(prefix+".path", asset.Path, result)
+		validateImagePath(prefix+".path", asset.Path, files, result)
 		if asset.Type != "" && !allowedAssetType(asset.Type) {
 			result.addError(prefix + ".type is not supported")
 		}
 	}
 	for name := range files {
+		if err := validateFilePath(name); err != nil {
+			result.addError("file path: " + err.Error())
+		}
 		if !allowedFileExtension(name) {
 			result.addError("file extension is not allowed: " + name)
 		}
@@ -500,15 +590,109 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	if len(manifest.CompatibleCampusOS) == 0 {
 		result.addWarning("compatible_campusos is empty")
 	}
+	addRecommendedStructureWarnings(manifest, files, result)
 }
 
-func validateAssetPath(field, value string, result *ValidationResult) {
+func validateHTMLFile(field, value string, files map[string][]byte, result *ValidationResult, seen map[string]struct{}) {
+	if err := validateFilePath(value); err != nil {
+		result.addError(field + ": " + err.Error())
+		return
+	}
+	if strings.ToLower(path.Ext(value)) != ".html" {
+		result.addError(field + " must point to an html file")
+		return
+	}
+	data, ok := files[value]
+	if !ok {
+		result.addError(field + " file is missing: " + value)
+		return
+	}
+	seen[value] = struct{}{}
+	htmlResult := safehtml.Validate(string(data))
+	result.addSafeHTMLPrefixed(field+": ", htmlResult)
+}
+
+func validateCSSFile(field, value string, files map[string][]byte, result *ValidationResult, seen map[string]struct{}) {
+	if err := validateFilePath(value); err != nil {
+		result.addError(field + ": " + err.Error())
+		return
+	}
+	if strings.ToLower(path.Ext(value)) != ".css" {
+		result.addError(field + " must point to a css file: " + value)
+		return
+	}
+	data, ok := files[value]
+	if !ok {
+		result.addError(field + " file is missing: " + value)
+		return
+	}
+	seen[value] = struct{}{}
+	cssResult := ValidateCSS(string(data))
+	result.addPrefixed("css "+value+": ", cssResult)
+}
+
+func validateImagePath(field, value string, files map[string][]byte, result *ValidationResult) {
 	if err := validateFilePath(value); err != nil {
 		result.addError(field + ": " + err.Error())
 		return
 	}
 	if !allowedImageExtension(value) {
 		result.addError(field + " must point to png, jpg, jpeg or webp")
+		return
+	}
+	if _, ok := files[value]; !ok {
+		result.addError(field + " file is missing: " + value)
+	}
+}
+
+func validateConfigSchemaPath(field, value string, files map[string][]byte, result *ValidationResult) {
+	if err := validateFilePath(value); err != nil {
+		result.addError(field + ": " + err.Error())
+		return
+	}
+	if value != "config.schema.json" {
+		result.addError(field + " must point to config.schema.json")
+		return
+	}
+	data, ok := files[value]
+	if !ok {
+		result.addError(field + " file is missing: " + value)
+		return
+	}
+	var schema map[string]interface{}
+	if err := json.Unmarshal(data, &schema); err != nil {
+		result.addError(field + " cannot be parsed as json")
+		return
+	}
+	if schemaType, ok := schema["type"].(string); ok && schemaType != "object" {
+		result.addError(field + ` type must be "object"`)
+	}
+}
+
+func addRecommendedStructureWarnings(manifest Manifest, files map[string][]byte, result *ValidationResult) {
+	recommended := map[string]string{
+		"README.md":           "README.md is recommended",
+		"templates/card.html": "templates/card.html is recommended for reusable card fragments",
+		"preview.png":         "preview.png is recommended for style pack previews",
+		"config.schema.json":  "config.schema.json is recommended for configurable style packs",
+	}
+	for name, message := range recommended {
+		if _, ok := files[name]; !ok {
+			result.addWarning(message)
+		}
+	}
+	if len(manifest.Templates) == 0 {
+		result.addWarning("style.yaml templates list is recommended")
+	}
+	hasAssetFiles := false
+	for name := range files {
+		if strings.HasPrefix(name, "assets/") {
+			hasAssetFiles = true
+			break
+		}
+	}
+	if hasAssetFiles && len(manifest.Assets) == 0 {
+		result.addWarning("style.yaml assets list is recommended when assets/ files are present")
 	}
 }
 
@@ -579,6 +763,32 @@ func normalizePaths(values []string, limit int) []string {
 	return normalized
 }
 
+func normalizeTemplates(values []Template, limit int) []Template {
+	seen := map[string]struct{}{}
+	normalized := make([]Template, 0, len(values))
+	for _, value := range values {
+		value.Path = cleanPackPath(value.Path)
+		value.Name = normalizePackName(value.Name)
+		if value.Path == "" {
+			continue
+		}
+		if value.Name == "" {
+			base := strings.TrimSuffix(path.Base(value.Path), path.Ext(value.Path))
+			value.Name = normalizePackName(base)
+		}
+		key := value.Name + "\x00" + value.Path
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
+		if len(normalized) >= limit {
+			break
+		}
+	}
+	return normalized
+}
+
 func normalizeList(values []string, limit int) []string {
 	seen := map[string]struct{}{}
 	normalized := make([]string, 0, len(values))
@@ -637,6 +847,9 @@ func normalizePackName(value string) string {
 }
 
 func allowedFileExtension(name string) bool {
+	if name == "config.schema.json" {
+		return true
+	}
 	switch strings.ToLower(path.Ext(name)) {
 	case ".yaml", ".yml", ".md", ".html", ".css", ".png", ".jpg", ".jpeg", ".webp":
 		return true
@@ -664,6 +877,9 @@ func allowedAssetType(assetType string) bool {
 }
 
 func fileType(name string) string {
+	if name == "config.schema.json" {
+		return "application/schema+json"
+	}
 	switch strings.ToLower(path.Ext(name)) {
 	case ".html":
 		return "text/html"

@@ -40,13 +40,18 @@ Source-folder examples live under plugin data:
 data/plugin_data/homepage-customizer/style-packs/
 ```
 
-Minimal pack structure:
+Source package structure:
 
 ```text
 style.yaml
-templates/page.html
-styles/theme.css
 README.md
+preview.png
+templates/page.html
+templates/card.html
+assets/cover.webp
+assets/avatar-frame.png
+styles/theme.css
+config.schema.json
 ```
 
 Admin endpoints:
@@ -59,7 +64,7 @@ POST /api/v1/home/style-packs/apply
 POST /api/v1/home/style-packs/apply-source
 ```
 
-Applying a zip or source-folder pack writes the screened HTML/CSS into the plugin config and records the active pack name/version.
+Applying a zip or source-folder pack writes the screened HTML/CSS into the plugin config and records the active pack name/version. Screening covers every HTML template and CSS file, declared image assets, safe relative paths, allowed extensions, and `config.schema.json` JSON parsing before anything is saved.
 
 ## Safety Boundary
 
