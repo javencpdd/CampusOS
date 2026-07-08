@@ -3,7 +3,6 @@ package stylepack
 import (
 	"archive/zip"
 	"bytes"
-	"path/filepath"
 	"testing"
 )
 
@@ -100,12 +99,14 @@ func TestZipBundleCanBeLoaded(t *testing.T) {
 }
 
 func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
+	t.Chdir("../..")
+	t.Setenv("PLUGIN_DATA_DIR", DefaultPluginDataDir)
 	cases := []struct {
 		root   string
 		target string
 	}{
-		{filepath.Join("..", "..", "data", "plugins", "personal-space", "style-packs", "clean-folder"), "personal-space"},
-		{filepath.Join("..", "..", "data", "plugins", "homepage-customizer", "style-packs", "campus-hero"), "homepage"},
+		{SourceDir("personal-space", "clean-folder"), "personal-space"},
+		{SourceDir("homepage-customizer", "campus-hero"), "homepage"},
 	}
 
 	for _, tc := range cases {

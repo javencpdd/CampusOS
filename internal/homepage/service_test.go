@@ -154,6 +154,7 @@ styles:
 
 func TestApplySourceStylePackUpdatesHomepageConfig(t *testing.T) {
 	t.Chdir("../..")
+	t.Setenv("PLUGIN_DATA_DIR", "data/plugin_data")
 	p := &plugin.Plugin{
 		Status: plugin.StatusRunning,
 		Manifest: &plugin.Manifest{

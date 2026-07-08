@@ -285,7 +285,7 @@ POST /api/v1/spaces/me/styles/packs/apply-source
 `apply-source` 用于应用源码目录中的内置风格包：
 
 ```text
-data/plugins/personal-space/style-packs/<name>/
+data/plugin_data/personal-space/style-packs/<name>/
 ```
 
 筛查通过后，服务会把风格包中的 HTML/CSS 编译到当前用户的 `style_manifest.custom_html`、`style_manifest.custom_css` 和 `style_manifest.source_style_pack`，并继续复用应用前快照、回滚和恢复默认流程。
@@ -411,7 +411,7 @@ data/plugins/personal-space/styles/
 文件夹拓展风格包示例位于：
 
 ```text
-data/plugins/personal-space/style-packs/
+data/plugin_data/personal-space/style-packs/
 ```
 
 ## 7. 后续任务

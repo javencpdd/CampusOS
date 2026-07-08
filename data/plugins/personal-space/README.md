@@ -1,8 +1,8 @@
 # personal-space
 
-`personal-space` is the built-in CampusOS plugin metadata directory for personal homepages, default style packages, page style-pack folders, safe custom HTML/CSS style snippets, and local personal-space file storage.
+`personal-space` is the built-in CampusOS plugin metadata directory for personal homepages, default JSON style packages, safe custom HTML/CSS style snippets, and local personal-space file storage.
 
-The current implementation still lives in `internal/space/`. This plugin directory provides the default plugin manifest, keeps bundled style packages with the feature they belong to, and owns the default storage configuration used by the server.
+The current implementation still lives in `internal/space/`. This plugin directory provides the default plugin manifest, keeps plugin-bundled JSON style packages with the feature they belong to, and owns the default storage configuration used by the server. Editable source-folder page style packs are plugin data and live under `data/plugin_data/personal-space/style-packs/`.
 
 ## Files
 
@@ -10,15 +10,12 @@ The current implementation still lives in `internal/space/`. This plugin directo
 | --- | --- |
 | `plugin.yaml` | Built-in plugin manifest and config schema shown by the plugin manager. |
 | `styles/*.space-style.json` | Default personal homepage style packages. |
-| `style-packs/<name>/style.yaml` | Source-folder page style packs using `page-style-pack.v1`. |
-| `style-packs/<name>/templates/page.html` | Restricted HTML entry for a folder style pack. |
-| `style-packs/<name>/styles/theme.css` | Restricted CSS for a folder style pack. |
 
 Personal homepage HTML/CSS snippets are stored in the applied `user_spaces.style_manifest` as `custom_html_enabled`, `custom_html`, and `custom_css`. They are validated by the backend before apply and rendered only after passing the restricted HTML and CSS safety rules.
 
 ## Page Style Packs
 
-`page-style-pack.v1` is the folder/zip format for more open page styling. A pack can be edited as a directory under `style-packs/`, or zipped and uploaded from the user frontend.
+`page-style-pack.v1` is the folder/zip format for more open page styling. A pack can be edited as a directory under `data/plugin_data/personal-space/style-packs/<name>/`, or zipped and uploaded from the user frontend.
 
 Minimal structure:
 

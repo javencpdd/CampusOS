@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -144,8 +143,7 @@ func (s *Service) ApplySourceStylePack(ctx context.Context, name string) (*Confi
 	if !safeSourceStylePackName(name) {
 		return nil, fmt.Errorf("%w: source style pack name must use lowercase letters, numbers and hyphens", ErrStylePackInvalid)
 	}
-	root := filepath.Join("data", "plugins", "homepage-customizer", "style-packs", name)
-	pack, validation := stylepack.LoadDir(root)
+	pack, validation := stylepack.LoadDir(stylepack.SourceDir("homepage-customizer", name))
 	if validation.Valid {
 		validation = ensureHomepageStylePackTarget(pack)
 	}

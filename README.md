@@ -2,7 +2,7 @@
 
 CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经从基础论坛演进到“社区核心 + 插件运行时 + 个人主页 + 管理后台集成中心 + 低风险外部集成”的开发基线。
 
-截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.13-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
+截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.16-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
 
 ## 当前状态
 
@@ -40,8 +40,9 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | --- | --- |
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 总体计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分判断 |
-| [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 规划和边界 |
-| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.13 实施记录 |
+| [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 原始规划和边界 |
+| [v5 版本计划书第二版](./docs/项目计划v5/01-v5版本计划书第二版.md) | 基于 v0.5.15-dev 的审查优化版和后续收口路线 |
+| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.16 实施记录 |
 
 ## 架构概览
 
@@ -319,7 +320,7 @@ make migrate-status
 | 管理员禁用/启用个人主页 | 已实现 |
 | 个人空间文件默认插件配置 | 已实现，`personal-space` 默认每用户 10MB 本地空间 |
 | 头像上传和源文件保留 | 已实现，头像存入个人空间并默认保留最近 3 个源文件 |
-| 示例风格包 | 已提供，JSON 风格位于 `data/plugins/personal-space/styles/`，文件夹拓展风格位于 `data/plugins/personal-space/style-packs/` 和 `data/plugins/homepage-customizer/style-packs/` |
+| 示例风格包 | 已提供，JSON 风格位于 `data/plugins/personal-space/styles/`，文件夹拓展风格位于 `data/plugin_data/personal-space/style-packs/` 和 `data/plugin_data/homepage-customizer/style-packs/` |
 | 任意 JavaScript 个人主页代码 | 未开放，当前仅支持后端检测通过的受限 HTML 子集 |
 
 说明文档：
@@ -779,7 +780,8 @@ Windows 的主要难点不在 Go 或 pnpm 本身，而在 Docker Desktop 网络�
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 插件运行时计划 |
 | [v4 版本计划书](./docs/项目计划v4/00-v4版本计划书.md) | v4 原计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分 |
-| [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 计划 |
+| [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 原始计划 |
+| [v5 版本计划书第二版](./docs/项目计划v5/01-v5版本计划书第二版.md) | v0.5-dev 当前基线和后续收口路线 |
 | [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5-dev 实施记录 |
 | [数据库管理指南](./docs/help/系统设计相关/数据库管理指南.md) | Docker PostgreSQL、pgAdmin、端口和数据一致性说明 |
 | [PostgreSQL 双实例数据不一致说明](./docs/help/系统设计相关/PostgreSQL双实例数据不一致说明.md) | 宿主机 PG 与 Docker PG 混用说明 |
