@@ -12,10 +12,21 @@
           <router-link to="/threads/create" v-if="userStore.isLoggedIn">
             <el-button type="primary" size="small">发帖</el-button>
           </router-link>
-          <router-link to="/space/settings" v-if="userStore.isLoggedIn">
+          <router-link :to="publicSpacePath" v-if="userStore.isLoggedIn">
             <el-button text>个人主页</el-button>
           </router-link>
           <template v-if="userStore.isLoggedIn">
+            <el-avatar
+              class="nav-avatar"
+              :size="32"
+              :src="displayAvatar"
+              role="button"
+              tabindex="0"
+              @click="goSpaceSettings"
+              @keyup.enter="goSpaceSettings"
+            >
+              {{ avatarInitial }}
+            </el-avatar>
             <el-dropdown>
               <span class="user-info">
                 {{ userStore.user?.nickname || userStore.user?.username }}
@@ -51,12 +62,37 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, watch } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import { spaceApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const publicSpacePath = computed(() => {
+  const username = userStore.user?.username
+  return username ? `/u/${username}` : '/space/settings'
+})
+const displayAvatar = computed(() => userStore.user?.avatar || '')
+const avatarInitial = computed(() => {
+  const name = userStore.user?.nickname || userStore.user?.username || 'U'
+  return name.slice(0, 1).toUpperCase()
+})
+
+const syncSpaceAvatar = async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    const res: any = await spaceApi.me()
+    const avatar = res?.data?.owner?.avatar || res?.data?.space?.avatar
+    if (avatar) {
+      userStore.setAvatar(avatar)
+    }
+  } catch {
+    // Header avatar is non-critical; settings page reports detailed errors.
+  }
+}
 
 const goSpaceSettings = () => {
   router.push('/space/settings')
@@ -71,6 +107,13 @@ const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
+
+onMounted(syncSpaceAvatar)
+watch(() => userStore.isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    void syncSpaceAvatar()
+  }
+})
 </script>
 
 <style scoped>
@@ -102,6 +145,14 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+.nav-avatar {
+  flex: 0 0 auto;
+  cursor: pointer;
+  outline: none;
+}
+.nav-avatar:focus-visible {
+  box-shadow: 0 0 0 2px #409eff;
 }
 .user-info {
   cursor: pointer;

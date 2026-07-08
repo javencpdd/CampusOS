@@ -123,6 +123,10 @@ func (h *Handler) ValidateStylePackage(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
+	if err := h.svc.ensureEnabled(); err != nil {
+		writeSpaceError(c, err)
+		return
+	}
 
 	var req StylePackage
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -196,6 +200,63 @@ func (h *Handler) ApplyStylePackage(c *gin.Context) {
 	response.Success(c, applied)
 }
 
+func (h *Handler) ValidateCustomHTML(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleHTMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	validation, err := h.svc.ValidateCustomHTML(c.Request.Context(), userID, req.HTML)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, validation)
+}
+
+func (h *Handler) CustomHTMLExample(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	example, err := h.svc.CustomHTMLExample(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, example)
+}
+
+func (h *Handler) ApplyCustomHTML(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	var req StyleHTMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+
+	applied, err := h.svc.ApplyCustomHTML(c.Request.Context(), userID, req.HTML)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
 func (h *Handler) RollbackStyle(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -236,6 +297,61 @@ func (h *Handler) GetSyncStatus(c *gin.Context) {
 		return
 	}
 	response.Success(c, status)
+}
+
+func (h *Handler) GetStorageStatus(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	status, err := h.svc.StorageStatus(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+func (h *Handler) UploadAvatar(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "avatar file is required")
+		return
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		return
+	}
+	defer file.Close()
+
+	uploaded, err := h.svc.UploadAvatar(c.Request.Context(), userID, fileHeader.Filename, file)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, uploaded)
+}
+
+func (h *Handler) ServeAvatarFile(c *gin.Context) {
+	userID := c.Param("user_id")
+	fileName := c.Param("filename")
+	if _, err := strconv.ParseInt(userID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+	filePath, err := h.svc.AvatarFilePath(userID, fileName)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	c.File(filePath)
 }
 
 func (h *Handler) AdminSummary(c *gin.Context) {
@@ -320,6 +436,16 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, 30004, err.Error())
 	case errors.Is(err, ErrContentRepositoryUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+	case errors.Is(err, ErrSpacePluginDisabled):
+		response.Error(c, http.StatusServiceUnavailable, 60006, err.Error())
+	case errors.Is(err, ErrSpaceFileStoreUnavailable):
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+	case errors.Is(err, ErrSpaceFileInvalidName), errors.Is(err, ErrSpaceFileUnsupportedType):
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrSpaceFileNotFound):
+		response.Error(c, http.StatusNotFound, 30004, err.Error())
+	case errors.Is(err, ErrSpaceFileTooLarge), errors.Is(err, ErrSpaceFileQuotaExceeded):
+		response.Error(c, http.StatusRequestEntityTooLarge, 10001, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):
 		response.Error(c, http.StatusForbidden, 20004, err.Error())
 	case errors.Is(err, identityrepo.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):

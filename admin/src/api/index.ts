@@ -80,6 +80,7 @@ export const categoryApi = {
     description?: string
     icon?: string
     color?: string
+    default_tags?: string[]
     sort_order?: number
     is_closed?: boolean
   }) =>
@@ -90,6 +91,7 @@ export const categoryApi = {
     description?: string
     icon?: string
     color?: string
+    default_tags?: string[]
     sort_order?: number
     is_closed?: boolean
   }) =>
@@ -123,6 +125,7 @@ export const pluginApi = {
   },
   enable: (name: string) => api.post(`/plugins/${name}/enable`),
   disable: (name: string) => api.post(`/plugins/${name}/disable`),
+  updateConfig: (name: string, config: Record<string, any>) => api.put(`/plugins/${name}/config`, config),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
 }
 
@@ -179,6 +182,17 @@ export const messageApi = {
 // 事件日志 API
 export const eventApi = {
   list: (params?: { limit?: number }) => api.get('/events', { params }),
+}
+
+export const platformLogApi = {
+  sources: () => api.get('/platform/logs/sources'),
+  streamUrl: (params: { source: string; lines?: number; follow?: boolean }) => {
+    const search = new URLSearchParams()
+    search.set('source', params.source)
+    search.set('lines', String(params.lines || 200))
+    search.set('follow', params.follow === false ? 'false' : 'true')
+    return `/api/v1/platform/logs/stream?${search.toString()}`
+  },
 }
 
 // 健康检查

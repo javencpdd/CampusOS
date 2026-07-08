@@ -22,7 +22,7 @@ func (r *PgPostRepository) Create(ctx context.Context, post *domain.Post) error 
 	query := `WITH next_floor AS (
 			SELECT COALESCE(MAX(floor_number), 0) + 1 AS floor_number
 			FROM posts
-			WHERE thread_id = $2 AND deleted_at IS NULL
+			WHERE thread_id = $2
 		)
 		INSERT INTO posts (id, thread_id, author_id, author_name, parent_id, content, content_format, status, like_count, floor_number, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,

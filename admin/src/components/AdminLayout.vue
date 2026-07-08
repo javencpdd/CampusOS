@@ -44,6 +44,10 @@
             <el-icon><Bell /></el-icon>
             <span>事件日志</span>
           </el-menu-item>
+          <el-menu-item index="/platform-logs">
+            <el-icon><Monitor /></el-icon>
+            <span>平台日志</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -86,6 +90,7 @@ import {
   Connection,
   Operation,
   Bell,
+  Monitor,
   Stamp,
   SwitchButton,
 } from '@element-plus/icons-vue'
@@ -107,6 +112,7 @@ const currentPageTitle = computed(() => {
     '/integrations': '集成中心',
     '/reviews': '帖子审核',
     '/events': '事件日志',
+    '/platform-logs': '平台日志',
   }
   return titles[route.path] || ''
 })

@@ -16,9 +16,10 @@ import (
 
 // ThreadService 帖子服务
 type ThreadService struct {
-	repo  repository.ThreadRepository
-	bus   eventbus.EventBus
-	cache cache.Cache
+	repo         repository.ThreadRepository
+	categoryRepo repository.CategoryRepository
+	bus          eventbus.EventBus
+	cache        cache.Cache
 }
 
 // NewThreadService 创建帖子服务
@@ -31,9 +32,21 @@ func (s *ThreadService) SetCache(c cache.Cache) {
 	s.cache = c
 }
 
+func (s *ThreadService) SetCategoryRepository(repo repository.CategoryRepository) {
+	s.categoryRepo = repo
+}
+
 // CreateThread 创建帖子
 func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest) (*domain.Thread, error) {
 	now := time.Now().UTC()
+	defaultTags := []string{}
+	if s.categoryRepo != nil {
+		category, err := s.categoryRepo.GetByID(ctx, req.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("get category: %w", err)
+		}
+		defaultTags = category.DefaultTags
+	}
 	thread := &domain.Thread{
 		ID:         strconv.FormatInt(idgen.New(), 10),
 		Title:      req.Title,
@@ -42,7 +55,7 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 		AuthorName: authorName,
 		CategoryID: req.CategoryID,
 		Status:     domain.ThreadStatusPublished,
-		Tags:       req.Tags,
+		Tags:       mergeTags(defaultTags, req.Tags),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -136,7 +149,7 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 		thread.Content = *req.Content
 	}
 	if req.Tags != nil {
-		thread.Tags = req.Tags
+		thread.Tags = normalizeTags(req.Tags)
 	}
 	thread.UpdatedAt = time.Now().UTC()
 

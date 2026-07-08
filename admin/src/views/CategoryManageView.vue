@@ -21,6 +21,20 @@
         <el-table-column prop="name" label="名称" width="150" />
         <el-table-column prop="slug" label="Slug" width="180" show-overflow-tooltip />
         <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
+        <el-table-column label="默认标签" min-width="180">
+          <template #default="{ row }">
+            <el-tag
+              v-for="tag in row.default_tags || []"
+              :key="tag"
+              size="small"
+              effect="plain"
+              class="tag-chip"
+            >
+              {{ tag }}
+            </el-tag>
+            <span v-if="!row.default_tags || row.default_tags.length === 0" style="color: #c0c4cc">无</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="sort_order" label="排序" width="80" align="center" />
         <el-table-column prop="color" label="颜色" width="100" align="center">
           <template #default="{ row }">
@@ -80,6 +94,18 @@
         <el-form-item label="图标">
           <el-input v-model="formData.icon" placeholder="输入 emoji 图标，如 📁" maxlength="10" style="width: 120px" />
         </el-form-item>
+        <el-form-item label="默认标签">
+          <el-select
+            v-model="formData.default_tags"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="输入默认标签后回车"
+            style="width: 100%"
+          />
+          <div class="field-hint">用户在该版块发帖时会自动带上这些标签，仍可继续添加自定义标签。</div>
+        </el-form-item>
         <el-form-item label="颜色">
           <el-color-picker v-model="formData.color" show-alpha />
         </el-form-item>
@@ -116,6 +142,7 @@ const formData = reactive({
   description: '',
   icon: '',
   color: '',
+  default_tags: [] as string[],
   sort_order: 0,
 })
 
@@ -125,6 +152,7 @@ const resetForm = () => {
   formData.description = ''
   formData.icon = ''
   formData.color = ''
+  formData.default_tags = []
   formData.sort_order = 0
 }
 
@@ -154,6 +182,7 @@ const showEditDialog = (row: any) => {
   formData.description = row.description || ''
   formData.icon = row.icon || ''
   formData.color = row.color || ''
+  formData.default_tags = [...(row.default_tags || [])]
   formData.sort_order = row.sort_order || 0
   dialogVisible.value = true
 }
@@ -171,6 +200,7 @@ const submitForm = async () => {
       slug: formData.slug.trim(),
       description: formData.description.trim(),
       icon: formData.icon.trim(),
+      default_tags: normalizeTags(formData.default_tags),
     }
     if (isEdit.value) {
       await categoryApi.update(editingId.value, data)
@@ -185,6 +215,20 @@ const submitForm = async () => {
     ElMessage.error(err?.msg || (isEdit.value ? '更新失败' : '创建失败'))
   }
   submitting.value = false
+}
+
+const normalizeTags = (tags: string[]) => {
+  const seen = new Set<string>()
+  const normalized: string[] = []
+  for (const tag of tags || []) {
+    const value = String(tag || '').trim()
+    if (!value) continue
+    const key = value.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    normalized.push(value)
+  }
+  return normalized.slice(0, 20)
 }
 
 const doDelete = async (id: string) => {
@@ -209,5 +253,17 @@ onMounted(load)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.tag-chip {
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.field-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
 }
 </style>

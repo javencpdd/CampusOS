@@ -21,6 +21,8 @@
         <el-tag v-if="payload.space.sync_enabled" type="info" effect="plain">内容同步</el-tag>
       </section>
 
+      <section v-if="customHTML" class="custom-space-html" v-html="customHTML" />
+
       <section class="content-section" :class="layoutClass">
         <article v-for="item in contents" :key="item.id" class="content-item">
           <router-link :to="`/threads/${item.thread_id}`" class="content-title">
@@ -62,6 +64,8 @@ interface StyleManifest {
   version: string
   layout: string
   tokens?: Record<string, string>
+  custom_html_enabled?: boolean
+  custom_html?: string
 }
 
 interface Space {
@@ -111,6 +115,11 @@ const spaceStyleVars = computed<Record<string, string>>(() => {
 })
 
 const layoutClass = computed(() => `layout-${payload.value?.space.layout || 'blog'}`)
+const customHTML = computed(() => {
+  const manifest = payload.value?.space.style_manifest
+  if (!manifest?.custom_html_enabled || !manifest.custom_html) return ''
+  return manifest.custom_html
+})
 const avatarText = computed(() => {
   const name = payload.value?.owner.nickname || payload.value?.owner.username || 'U'
   return name.slice(0, 1).toUpperCase()
@@ -178,6 +187,16 @@ watch(username, loadSpace, { immediate: true })
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 18px;
+}
+.custom-space-html {
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+}
+.custom-space-html :deep(*) {
+  max-width: 100%;
+}
+.custom-space-html :deep(img) {
+  height: auto;
 }
 .content-section {
   display: grid;

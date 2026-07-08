@@ -38,6 +38,9 @@ func (s *Service) RegisterEventHandlers(bus eventbus.EventBus) error {
 }
 
 func (s *Service) HandleThreadEvent(ctx context.Context, event eventbus.Event) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
 	thread, err := threadFromEventData(event.Data)
 	if err != nil {
 		return err
@@ -49,6 +52,9 @@ func (s *Service) HandleThreadEvent(ctx context.Context, event eventbus.Event) e
 }
 
 func (s *Service) SyncThread(ctx context.Context, thread *communitydomain.Thread) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
 	if thread == nil || thread.ID == "" {
 		return nil
 	}
@@ -90,6 +96,9 @@ func (s *Service) SyncThread(ctx context.Context, thread *communitydomain.Thread
 }
 
 func (s *Service) ListPublicContentsByUserID(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, 0, err
+	}
 	if s.contentRepo == nil {
 		return nil, 0, ErrContentRepositoryUnavailable
 	}
@@ -103,6 +112,9 @@ func (s *Service) ListPublicContentsByUserID(ctx context.Context, userID string,
 }
 
 func (s *Service) ListPublicContentsByUsername(ctx context.Context, username string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, 0, err
+	}
 	if s.contentRepo == nil {
 		return nil, 0, ErrContentRepositoryUnavailable
 	}
@@ -120,6 +132,9 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 }
 
 func (s *Service) BackfillUserContents(ctx context.Context, userID string) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
 	if s.threadRepo == nil || s.contentRepo == nil {
 		return nil
 	}

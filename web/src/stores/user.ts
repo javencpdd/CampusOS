@@ -41,5 +41,11 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('access_token')
   }
 
-  return { user, token, isLoggedIn, login, register, logout }
+  function setAvatar(avatar: string) {
+    if (!user.value) return
+    user.value = { ...user.value, avatar }
+    localStorage.setItem('user', JSON.stringify(user.value))
+  }
+
+  return { user, token, isLoggedIn, login, register, logout, setAvatar }
 })

@@ -30,6 +30,29 @@
           </template>
 
           <el-form :model="form" label-position="top">
+            <el-form-item label="头像">
+              <div class="avatar-uploader">
+                <el-avatar :size="72" :src="form.avatar">
+                  {{ avatarInitial }}
+                </el-avatar>
+                <div class="avatar-controls">
+                  <input
+                    ref="avatarInput"
+                    class="avatar-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    @change="uploadAvatar"
+                  />
+                  <el-button @click="chooseAvatar" :loading="uploadingAvatar">
+                    上传头像
+                  </el-button>
+                  <span v-if="storage" class="storage-hint">
+                    {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}，保留最近
+                    {{ storage.avatar_keep_limit }} 个源文件
+                  </span>
+                </div>
+              </div>
+            </el-form-item>
             <el-form-item label="标题">
               <el-input v-model="form.title" maxlength="120" show-word-limit />
             </el-form-item>
@@ -167,6 +190,61 @@
             </div>
           </div>
         </el-card>
+
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="panel-header">
+              <span>HTML 风格</span>
+              <el-tag v-if="htmlValidation?.valid" type="success" effect="plain">检测通过</el-tag>
+              <el-tag v-else-if="htmlValidation" type="danger" effect="plain">检测失败</el-tag>
+            </div>
+          </template>
+
+          <el-input
+            v-model="htmlText"
+            type="textarea"
+            :rows="12"
+            class="style-editor"
+            spellcheck="false"
+            placeholder="<section>...</section>"
+          />
+
+          <div v-if="htmlValidation?.errors?.length" class="error-list">
+            <el-alert
+              v-for="error in htmlValidation.errors"
+              :key="error"
+              :title="error"
+              type="error"
+              show-icon
+              :closable="false"
+            />
+          </div>
+          <div v-if="htmlValidation?.warnings?.length" class="warning-list">
+            <el-alert
+              v-for="warning in htmlValidation.warnings"
+              :key="warning"
+              :title="warning"
+              type="warning"
+              show-icon
+              :closable="false"
+            />
+          </div>
+
+          <div class="style-actions">
+            <el-button @click="generateHTMLExample" :loading="htmlGenerating">
+              <el-icon><Download /></el-icon>
+              生成示例
+            </el-button>
+            <el-button @click="validateHTML" :loading="htmlValidating">
+              <el-icon><CircleCheck /></el-icon>
+              检测 HTML
+            </el-button>
+            <el-button type="primary" @click="applyHTMLStyle" :loading="htmlApplying">
+              <el-icon><Switch /></el-icon>
+              应用 HTML
+            </el-button>
+          </div>
+        </el-card>
       </el-col>
     </el-row>
   </div>
@@ -179,6 +257,7 @@ import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, View } from
 import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/api'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
+import { useUserStore } from '@/stores/user'
 
 interface ApiResponse<T> {
   code: number
@@ -247,9 +326,33 @@ interface StyleExportResult {
   validation: StyleValidationResult
 }
 
+interface StyleHTMLExampleResult {
+  html: string
+  package: StylePackage
+  validation: StyleValidationResult
+}
+
+interface SpaceStorageStatus {
+  user_id: string
+  quota_bytes: number
+  used_bytes: number
+  available_bytes: number
+  avatar_keep_limit: number
+}
+
+interface AvatarUploadResult {
+  file_name: string
+  url: string
+  size: number
+  storage: SpaceStorageStatus
+  owner: Owner
+  space: Space
+}
+
 interface SpaceForm {
   title: string
   bio: string
+  avatar: string
   cover_image: string
   layout: string
   visibility: string
@@ -259,25 +362,35 @@ interface SpaceForm {
 }
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const owner = ref<Owner | null>(null)
 const currentSpace = ref<Space | null>(null)
+const storage = ref<SpaceStorageStatus | null>(null)
 const loading = ref(false)
 const saving = ref(false)
+const uploadingAvatar = ref(false)
 const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
 const exporting = ref(false)
 const rollbacking = ref(false)
 const defaulting = ref(false)
+const htmlGenerating = ref(false)
+const htmlValidating = ref(false)
+const htmlApplying = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
+const htmlValidation = ref<StyleValidationResult | null>(null)
 const preview = ref<StylePreview | null>(null)
+const avatarInput = ref<HTMLInputElement | null>(null)
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
+const htmlText = ref('')
 
 const form = reactive<SpaceForm>({
   title: '',
   bio: '',
+  avatar: '',
   cover_image: '',
   layout: 'blog',
   visibility: 'public',
@@ -288,6 +401,10 @@ const form = reactive<SpaceForm>({
 
 const activeManifest = computed(() => preview.value?.manifest || currentSpace.value?.style_manifest || null)
 const activeComponents = computed(() => activeManifest.value?.components || [])
+const avatarInitial = computed(() => {
+  const name = owner.value?.nickname || owner.value?.username || 'U'
+  return name.slice(0, 1).toUpperCase()
+})
 const previewStyleVars = computed<Record<string, string>>(() => {
   const tokens = activeManifest.value?.tokens || {}
   return {
@@ -303,6 +420,7 @@ const unwrap = <T,>(res: unknown): T => (res as ApiResponse<T>).data
 const fillForm = (space: Space) => {
   form.title = space.title || ''
   form.bio = space.bio || ''
+  form.avatar = space.avatar || owner.value?.avatar || ''
   form.cover_image = space.cover_image || ''
   form.layout = space.layout || 'blog'
   form.visibility = space.visibility || 'public'
@@ -311,13 +429,21 @@ const fillForm = (space: Space) => {
   form.sync_tags = [...(space.sync_tags || [])]
 }
 
+const syncHTMLEditor = (space: Space) => {
+  htmlText.value = space.style_manifest?.custom_html || ''
+  htmlValidation.value = null
+}
+
 const loadSpace = async () => {
   loading.value = true
   try {
-    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
+    const [spaceRes, storageRes] = await Promise.all([spaceApi.me(), spaceApi.storage()])
+    const payload = unwrap<PublicSpacePayload>(spaceRes)
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    storage.value = unwrap<SpaceStorageStatus>(storageRes)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
   } finally {
@@ -332,12 +458,54 @@ const saveSpace = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    if (payload.owner.avatar) {
+      userStore.setAvatar(payload.owner.avatar)
+    }
     ElMessage.success('已保存')
   } catch (error: any) {
     ElMessage.error(error?.msg || '保存失败')
   } finally {
     saving.value = false
   }
+}
+
+const chooseAvatar = () => {
+  avatarInput.value?.click()
+}
+
+const uploadAvatar = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadingAvatar.value = true
+  try {
+    const payload = unwrap<AvatarUploadResult>(await spaceApi.uploadAvatar(file))
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    storage.value = payload.storage
+    fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    userStore.setAvatar(payload.url)
+    ElMessage.success('头像已更新')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '头像上传失败')
+  } finally {
+    uploadingAvatar.value = false
+    input.value = ''
+  }
+}
+
+const formatBytes = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = value
+  let unit = 0
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024
+    unit++
+  }
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
 const parseStylePackage = (): StylePackage | null => {
@@ -416,11 +584,79 @@ const applyStyle = async () => {
         }
       : null
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     ElMessage.success('风格已应用')
   } catch (error: any) {
     ElMessage.error(error?.msg || '应用失败')
   } finally {
     applying.value = false
+  }
+}
+
+const generateHTMLExample = async () => {
+  htmlGenerating.value = true
+  try {
+    const payload = unwrap<StyleHTMLExampleResult>(await spaceApi.customHtmlExample())
+    htmlText.value = payload.html
+    htmlValidation.value = payload.validation
+    validation.value = payload.validation
+    styleText.value = JSON.stringify(payload.package, null, 2)
+    selectedStyleName.value = payload.package.manifest.name
+    if (payload.validation.valid) {
+      ElMessage.success('示例已生成')
+    } else {
+      ElMessage.warning('示例需要调整')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '生成示例失败')
+  } finally {
+    htmlGenerating.value = false
+  }
+}
+
+const validateHTML = async () => {
+  htmlValidating.value = true
+  try {
+    htmlValidation.value = unwrap<StyleValidationResult>(await spaceApi.validateCustomHtml(htmlText.value))
+    if (htmlValidation.value.valid) {
+      ElMessage.success('HTML 检测通过')
+    } else {
+      ElMessage.warning('HTML 检测失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || 'HTML 检测失败')
+  } finally {
+    htmlValidating.value = false
+  }
+}
+
+const applyHTMLStyle = async () => {
+  htmlApplying.value = true
+  try {
+    const payload = unwrap<StyleApplyResult>(await spaceApi.applyCustomHtml(htmlText.value))
+    validation.value = payload.validation
+    currentSpace.value = payload.space
+    preview.value = payload.applied
+      ? {
+          validation: payload.validation,
+          manifest: payload.applied,
+          layout: payload.applied.layout,
+          components: payload.applied.components,
+          tokens: payload.applied.tokens,
+        }
+      : null
+    if (payload.applied) {
+      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
+      selectedStyleName.value = payload.applied.name
+    }
+    fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    htmlValidation.value = payload.validation
+    ElMessage.success('HTML 风格已应用')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用 HTML 失败')
+  } finally {
+    htmlApplying.value = false
   }
 }
 
@@ -431,6 +667,7 @@ const rollbackStyle = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     preview.value = null
     ElMessage.success('已回滚到上一个风格快照')
   } catch (error: any) {
@@ -447,6 +684,7 @@ const restoreDefaultStyle = async () => {
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
+    syncHTMLEditor(payload.space)
     preview.value = null
     ElMessage.success('已恢复默认风格')
   } catch (error: any) {
@@ -516,6 +754,27 @@ onMounted(loadSpace)
   justify-content: space-between;
   gap: 12px;
 }
+.avatar-uploader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.avatar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.avatar-input {
+  display: none;
+}
+.storage-hint {
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.5;
+}
 .field-full {
   width: 100%;
 }
@@ -560,6 +819,11 @@ onMounted(loadSpace)
   margin-bottom: 12px;
 }
 .error-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.warning-list {
   display: grid;
   gap: 8px;
   margin-bottom: 12px;

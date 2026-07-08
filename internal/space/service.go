@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ var (
 	ErrInvalidStyleExport    = errors.New("invalid style export")
 	ErrSpaceNotPublic        = errors.New("space is not public")
 	ErrStyleSnapshotNotFound = errors.New("style snapshot not found")
+	ErrSpacePluginDisabled   = errors.New("personal-space plugin is disabled")
 )
 
 type UserLookup interface {
@@ -28,6 +30,8 @@ type Service struct {
 	contentRepo ContentRepository
 	threadRepo  ThreadRepository
 	users       UserLookup
+	fileStore   *LocalFileStore
+	enabled     func() bool
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -44,7 +48,18 @@ func (s *Service) SetThreadRepository(repo ThreadRepository) {
 	s.threadRepo = repo
 }
 
+func (s *Service) SetFileStore(store *LocalFileStore) {
+	s.fileStore = store
+}
+
+func (s *Service) SetPluginEnabledChecker(checker func() bool) {
+	s.enabled = checker
+}
+
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
@@ -53,6 +68,9 @@ func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*Public
 }
 
 func (s *Service) GetPublicByUsername(ctx context.Context, username string) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	user, err := s.users.GetByUsername(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
@@ -61,6 +79,9 @@ func (s *Service) GetPublicByUsername(ctx context.Context, username string) (*Pu
 }
 
 func (s *Service) GetOwnSpace(ctx context.Context, userID string) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
@@ -77,6 +98,9 @@ func (s *Service) GetOwnSpace(ctx context.Context, userID string) (*PublicSpace,
 }
 
 func (s *Service) UpsertOwnSpace(ctx context.Context, userID string, req UpsertSpaceRequest) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
@@ -112,6 +136,9 @@ func (s *Service) UpsertOwnSpace(ctx context.Context, userID string, req UpsertS
 }
 
 func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StylePreview, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	current, err := s.GetOwnSpace(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -121,6 +148,9 @@ func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg St
 }
 
 func (s *Service) ExportStylePackage(ctx context.Context, userID string, req StyleExportRequest) (*StyleExportResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	current, err := s.GetOwnSpace(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -133,6 +163,9 @@ func (s *Service) ExportStylePackage(ctx context.Context, userID string, req Sty
 }
 
 func (s *Service) ApplyStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StyleApplyResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	current, err := s.GetOwnSpace(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -183,7 +216,45 @@ func (s *Service) ApplyStylePackage(ctx context.Context, userID string, pkg Styl
 	return &result, nil
 }
 
+func (s *Service) ValidateCustomHTML(ctx context.Context, userID string, html string) (*StyleValidationResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if _, err := s.users.GetByID(ctx, userID); err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	result := ValidateCustomHTMLSnippet(html)
+	return &result, nil
+}
+
+func (s *Service) CustomHTMLExample(ctx context.Context, userID string) (*StyleHTMLExampleResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := BuildStyleHTMLExample(current.Owner, current.Space)
+	return &result, nil
+}
+
+func (s *Service) ApplyCustomHTML(ctx context.Context, userID string, html string) (*StyleApplyResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	current, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	pkg := BuildStyleHTMLPackage(current.Owner, current.Space, html)
+	return s.ApplyStylePackage(ctx, userID, pkg)
+}
+
 func (s *Service) RollbackStyle(ctx context.Context, userID string) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	snapshotRepo, ok := s.repo.(StyleSnapshotRepository)
 	if !ok {
 		return nil, ErrStyleSnapshotNotFound
@@ -223,6 +294,9 @@ func (s *Service) RollbackStyle(ctx context.Context, userID string) (*PublicSpac
 }
 
 func (s *Service) RestoreDefaultStyle(ctx context.Context, userID string) (*PublicSpace, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
@@ -251,6 +325,9 @@ func (s *Service) RestoreDefaultStyle(ctx context.Context, userID string) (*Publ
 }
 
 func (s *Service) GetSyncStatus(ctx context.Context, userID string) (*SpaceSyncStatus, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
 	space, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
 		if !errors.Is(err, ErrSpaceNotFound) {
@@ -329,6 +406,82 @@ func (s *Service) AdminSummary(ctx context.Context) (*SpaceAdminSummary, error) 
 		return &SpaceAdminSummary{}, nil
 	}
 	return ops.AdminSummary(ctx)
+}
+
+func (s *Service) StorageStatus(_ context.Context, userID string) (*SpaceStorageStatus, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	return s.fileStore.Status(userID)
+}
+
+func (s *Service) UploadAvatar(ctx context.Context, userID, originalName string, reader io.Reader) (*AvatarUploadResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	space, err := s.repo.GetByUserID(ctx, user.ID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, fmt.Errorf("get space: %w", err)
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	fileName, size, err := s.fileStore.SaveAvatar(user.ID, originalName, reader)
+	if err != nil {
+		return nil, err
+	}
+	space.UserID = user.ID
+	space.Avatar = s.fileStore.AvatarURL(user.ID, fileName)
+	space.IsDefault = false
+	if space.CreatedAt.IsZero() {
+		space.CreatedAt = time.Now().UTC()
+	}
+	space.UpdatedAt = time.Now().UTC()
+	ensureDefaults(space)
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("save space avatar: %w", err)
+	}
+	status, err := s.fileStore.Status(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	public := buildPublicSpace(user, space)
+	return &AvatarUploadResult{
+		FileName: fileName,
+		URL:      space.Avatar,
+		Size:     size,
+		Storage:  *status,
+		Owner:    public.Owner,
+		Space:    public.Space,
+	}, nil
+}
+
+func (s *Service) AvatarFilePath(userID, fileName string) (string, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return "", err
+	}
+	if s.fileStore == nil {
+		return "", ErrSpaceFileStoreUnavailable
+	}
+	return s.fileStore.AvatarPath(userID, fileName)
+}
+
+func (s *Service) ensureEnabled() error {
+	if s.enabled != nil && !s.enabled() {
+		return ErrSpacePluginDisabled
+	}
+	return nil
 }
 
 func (s *Service) getPublicSpace(ctx context.Context, user *identitydomain.User) (*PublicSpace, error) {
@@ -493,16 +646,34 @@ func defaultSpace(user *identitydomain.User) *Space {
 }
 
 func buildPublicSpace(user *identitydomain.User, space *Space) *PublicSpace {
+	avatar := user.Avatar
+	if space != nil && strings.TrimSpace(space.Avatar) != "" {
+		avatar = space.Avatar
+	}
+	spacePayload := cloneSpace(space)
+	sanitizeCustomHTMLForResponse(spacePayload)
 	return &PublicSpace{
 		Owner: Owner{
 			ID:       user.ID,
 			Username: user.Username,
 			Nickname: user.Nickname,
-			Avatar:   user.Avatar,
+			Avatar:   avatar,
 			Bio:      user.Bio,
 		},
-		Space: cloneSpace(space),
+		Space: spacePayload,
 	}
+}
+
+func sanitizeCustomHTMLForResponse(space *Space) {
+	if space == nil || space.StyleManifest == nil || strings.TrimSpace(space.StyleManifest.CustomHTML) == "" {
+		return
+	}
+	result := ValidateCustomHTMLSnippet(space.StyleManifest.CustomHTML)
+	if result.Valid {
+		return
+	}
+	space.StyleManifest.CustomHTMLEnabled = false
+	space.StyleManifest.CustomHTML = ""
 }
 
 func validVisibility(visibility Visibility) bool {

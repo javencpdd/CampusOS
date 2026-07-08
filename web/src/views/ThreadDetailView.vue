@@ -25,11 +25,14 @@
       <div v-if="posts.length > 0" class="reply-list">
         <div v-for="post in posts" :key="post.id" class="reply-item">
           <div class="reply-meta">
-            <strong>#{{ post.floor_number || '-' }} {{ post.author_name }}</strong>
+            <strong class="reply-floor">第 {{ post.floor_number || '-' }} 楼</strong>
+            <span class="reply-author">{{ post.author_name }}</span>
             <span>{{ new Date(post.created_at).toLocaleString() }}</span>
             <el-button text type="primary" size="small" @click="setReplyTarget(post)">回复</el-button>
           </div>
-          <div v-if="post.parent_id" class="reply-parent">回复：#{{ parentFloor(post.parent_id) || post.parent_id }}</div>
+          <div v-if="post.parent_id" class="reply-parent">
+            回复：第 {{ parentFloor(post.parent_id) || post.parent_id }} 楼
+          </div>
           <div class="reply-content">{{ post.content }}</div>
         </div>
       </div>
@@ -49,7 +52,7 @@
     <el-card v-if="thread" class="reply-editor">
       <template #header>
         <div class="reply-header">
-          <span>{{ replyTarget ? `回复 #${replyTarget.floor_number}` : '发表回复' }}</span>
+          <span>{{ replyTarget ? `回复第 ${replyTarget.floor_number || '-'} 楼` : '发表回复' }}</span>
           <el-button v-if="replyTarget" text size="small" @click="clearReplyTarget">取消引用</el-button>
         </div>
       </template>
@@ -211,6 +214,13 @@ onMounted(async () => {
 }
 .reply-meta strong {
   color: #303133;
+}
+.reply-floor {
+  min-width: 64px;
+}
+.reply-author {
+  color: #303133;
+  font-weight: 600;
 }
 .reply-parent {
   margin-top: 8px;

@@ -30,7 +30,16 @@
         </el-form-item>
         <el-form-item label="标签">
           <el-select v-model="form.tags" multiple filterable allow-create placeholder="输入标签后回车" style="width:100%">
+            <el-option
+              v-for="tag in currentCategory?.default_tags || []"
+              :key="tag"
+              :label="tag"
+              :value="tag"
+            />
           </el-select>
+          <div v-if="currentCategory?.default_tags?.length" class="field-hint">
+            已自动带入该版块默认标签，可继续添加自定义标签。
+          </div>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSubmit" :loading="loading">发布帖子</el-button>
@@ -42,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/api'
 import { ElMessage } from 'element-plus'
@@ -50,8 +59,11 @@ import { ElMessage } from 'element-plus'
 const router = useRouter()
 const loading = ref(false)
 const categoryLoading = ref(false)
-const categories = ref<Array<{ id: string; name: string }>>([])
+const categories = ref<Array<{ id: string; name: string; default_tags?: string[] }>>([])
 const form = reactive({ title: '', content: '', category_id: '', tags: [] as string[] })
+const appliedDefaultTags = ref<string[]>([])
+
+const currentCategory = computed(() => categories.value.find((category) => category.id === form.category_id))
 
 const loadCategories = async () => {
   categoryLoading.value = true
@@ -62,6 +74,7 @@ const loadCategories = async () => {
       if (!form.category_id && categories.value.length > 0) {
         form.category_id = categories.value[0].id
       }
+      applyCategoryDefaultTags()
     }
   } catch (e: any) {
     ElMessage.error(e?.msg || '获取版块失败')
@@ -83,6 +96,32 @@ const handleSubmit = async () => {
     ElMessage.error(e?.msg || '发布失败')
   } finally { loading.value = false }
 }
+
+const applyCategoryDefaultTags = () => {
+  const previousDefaults = new Set(appliedDefaultTags.value.map((tag) => tag.toLowerCase()))
+  const customTags = form.tags.filter((tag) => !previousDefaults.has(tag.toLowerCase()))
+  const defaults = currentCategory.value?.default_tags || []
+  form.tags = mergeTags(defaults, customTags)
+  appliedDefaultTags.value = [...defaults]
+}
+
+const mergeTags = (...groups: string[][]) => {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const tags of groups) {
+    for (const tag of tags || []) {
+      const value = String(tag || '').trim()
+      if (!value) continue
+      const key = value.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(value)
+    }
+  }
+  return result.slice(0, 20)
+}
+
+watch(() => form.category_id, applyCategoryDefaultTags)
 
 onMounted(loadCategories)
 </script>

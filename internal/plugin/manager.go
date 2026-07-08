@@ -126,6 +126,15 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 			p.Manifest.Config = config
 			m.mu.Unlock()
 		}
+		if record.Status != "" {
+			m.mu.Lock()
+			p.Status = restoredRuntimeStatus(record.Status)
+			p.ErrorMsg = record.ErrorMsg
+			p.Checksum = record.Checksum
+			p.PackageSize = record.PackageSize
+			p.InstalledBy = record.InstalledBy
+			m.mu.Unlock()
+		}
 	} else if !errors.Is(err, ErrAPIKeyNotFound) {
 		return err
 	} else {
@@ -204,6 +213,7 @@ func (m *Manager) Start(name string) error {
 		p.Status = StatusError
 		p.ErrorMsg = err.Error()
 		m.mu.Unlock()
+		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
 			Level:      "error",
@@ -222,6 +232,7 @@ func (m *Manager) Start(name string) error {
 		p.Status = StatusError
 		p.ErrorMsg = err.Error()
 		m.mu.Unlock()
+		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
 			Level:      "error",
@@ -238,6 +249,7 @@ func (m *Manager) Start(name string) error {
 	p.Status = StatusRunning
 	p.ErrorMsg = ""
 	m.mu.Unlock()
+	m.persistPluginStatus(context.Background(), name, StatusRunning, "")
 
 	log.Printf("🟢 插件已启动: %s", name)
 	m.logPlugin(context.Background(), &PluginLogRecord{
@@ -253,6 +265,10 @@ func (m *Manager) Start(name string) error {
 
 // Stop 停止插件
 func (m *Manager) Stop(name string) error {
+	return m.stop(name, true)
+}
+
+func (m *Manager) stop(name string, persist bool) error {
 	m.mu.RLock()
 	p, ok := m.plugins[name]
 	if !ok {
@@ -295,6 +311,9 @@ func (m *Manager) Stop(name string) error {
 	m.mu.Lock()
 	p.Status = StatusStopped
 	m.mu.Unlock()
+	if persist {
+		m.persistPluginStatus(context.Background(), name, StatusStopped, "")
+	}
 
 	log.Printf("🔴 插件已停止: %s", name)
 	m.logPlugin(context.Background(), &PluginLogRecord{
@@ -442,16 +461,83 @@ func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 	return p, ok
 }
 
-func (m *Manager) markPluginError(name string, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *Manager) IsPluginRunning(name string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[name]
+	return ok && p.Status == StatusRunning
+}
 
+func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
+	m.mu.Lock()
 	p, ok := m.plugins[name]
 	if !ok {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	normalized, err := normalizePluginConfig(p.Manifest, config)
+	if err != nil {
+		m.mu.Unlock()
+		return nil, err
+	}
+	if err := validatePluginSpecificConfig(name, normalized); err != nil {
+		m.mu.Unlock()
+		return nil, err
+	}
+	p.Manifest.Config = normalized
+	repo := m.repo
+	m.mu.Unlock()
+
+	if repo != nil {
+		if err := repo.UpdateConfig(context.Background(), name, normalized); err != nil {
+			return nil, err
+		}
+	}
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "info",
+		Message:    "plugin config updated by admin",
+	})
+	return copyConfigMap(normalized), nil
+}
+
+func (m *Manager) markPluginError(name string, err error) {
+	m.mu.Lock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.Unlock()
 		return
 	}
 	p.Status = StatusError
 	p.ErrorMsg = err.Error()
+	m.mu.Unlock()
+	m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
+}
+
+func restoredRuntimeStatus(status string) PluginStatus {
+	switch PluginStatus(status) {
+	case StatusStopped:
+		return StatusStopped
+	case StatusError:
+		return StatusError
+	default:
+		return StatusInstalled
+	}
+}
+
+func (m *Manager) persistPluginStatus(ctx context.Context, name string, status PluginStatus, errorMsg string) {
+	m.mu.RLock()
+	repo := m.repo
+	m.mu.RUnlock()
+	if repo == nil {
+		return
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := repo.UpdateStatus(ctx, name, string(status), errorMsg); err != nil {
+		log.Printf("⚠️  插件状态持久化失败: %s -> %s (%v)", name, status, err)
+	}
 }
 
 func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
@@ -562,7 +648,7 @@ func (m *Manager) StopAll() {
 	m.mu.RUnlock()
 
 	for _, name := range names {
-		if err := m.Stop(name); err != nil {
+		if err := m.stop(name, false); err != nil {
 			log.Printf("⚠️  停止插件 %s 失败: %v", name, err)
 		}
 	}

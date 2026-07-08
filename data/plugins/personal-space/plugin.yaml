@@ -1,7 +1,7 @@
 name: personal-space
 display_name: "Personal Space"
 version: "0.1.0"
-description: "CampusOS built-in personal homepage and style package plugin metadata"
+description: "CampusOS built-in personal homepage, style packages, and personal file storage"
 author: "CampusOS Team"
 runtime: builtin
 
@@ -16,12 +16,20 @@ permissions:
       actions: ["read", "write"]
     - resource: "style"
       actions: ["read"]
+    - resource: "space_file"
+      actions: ["read", "write"]
 
 storage:
   type: none
 
 config:
   styles_dir: "styles"
+  file_root: "data/images/personal-space"
+  file_url_prefix: "/api/v1/spaces/files"
+  default_quota_mb: 10
+  avatar_keep_limit: 3
+  max_avatar_mb: 2
+  future_storage_provider: "local"
 
 config_schema:
   fields:
@@ -31,3 +39,44 @@ config_schema:
       description: "Built-in personal space style package directory relative to this plugin."
       required: true
       default: "styles"
+    - key: "file_root"
+      label: "File root"
+      type: "string"
+      description: "Local root directory for personal space files."
+      required: true
+      default: "data/images/personal-space"
+    - key: "file_url_prefix"
+      label: "File URL prefix"
+      type: "string"
+      description: "Public API URL prefix for personal space files."
+      required: true
+      default: "/api/v1/spaces/files"
+    - key: "default_quota_mb"
+      label: "Default quota MB"
+      type: "number"
+      description: "Default local storage quota assigned to each user."
+      required: true
+      default: 10
+    - key: "avatar_keep_limit"
+      label: "Avatar keep limit"
+      type: "number"
+      description: "Number of recent avatar source files retained per user."
+      required: true
+      default: 3
+    - key: "max_avatar_mb"
+      label: "Max avatar MB"
+      type: "number"
+      description: "Maximum size of a single avatar upload."
+      required: true
+      default: 2
+    - key: "future_storage_provider"
+      label: "Storage provider"
+      type: "select"
+      description: "Reserved provider selector for future personal cloud drive integration."
+      required: true
+      default: "local"
+      options:
+        - label: "Local"
+          value: "local"
+        - label: "Cloud placeholder"
+          value: "cloud-placeholder"

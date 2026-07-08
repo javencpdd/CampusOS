@@ -60,3 +60,19 @@ func TestCreateCategoryKeepsProvidedSlugNormalized(t *testing.T) {
 		t.Fatalf("expected normalized slug custom-slug-01, got %q", category.Slug)
 	}
 }
+
+func TestCreateCategoryNormalizesDefaultTags(t *testing.T) {
+	svc := NewCategoryService(repository.NewMemoryCategoryRepository(), nil)
+
+	category, err := svc.Create(context.Background(), domain.CreateCategoryRequest{
+		Name:        "Questions",
+		DefaultTags: []string{" help ", "Help", "", "campus"},
+	})
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+
+	if got := strings.Join(category.DefaultTags, ","); got != "help,campus" {
+		t.Fatalf("unexpected default tags: %#v", category.DefaultTags)
+	}
+}

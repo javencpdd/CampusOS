@@ -1,11 +1,11 @@
 # CampusOS 个人主页 Space 说明
 
-> 适用阶段：v0.4-dev
-> 更新时间：2026-07-01
+> 适用阶段：v0.5-dev
+> 更新时间：2026-07-08
 
 ## 1. 功能定位
 
-个人主页 Space 是 v0.4 “个人主页/博客园插件”的后端基础能力。本阶段先提供公开主页入口、用户主页配置模型、持久化仓储和登录用户自助保存接口。
+个人主页 Space 是 `personal-space` 内置默认插件对应的后端基础能力，当前统一承载公开主页、风格包和个人空间文件能力。实现仍位于 `internal/space/`，插件目录位于 `data/plugins/personal-space/`，用于保存 manifest、默认风格包和默认文件存储配置。
 
 当前实现重点是稳定数据边界：
 
@@ -20,7 +20,12 @@
 | 前端主页渲染页 | 已支持 |
 | 用户侧主页管理页 | 已支持 |
 | 风格包校验、预览、导出和应用 | 已支持 |
-| 风格包回滚 | 后续任务 |
+| 受限 HTML 风格编辑、检测、示例生成和应用 | 已支持 |
+| 风格包回滚、恢复默认 | 已支持 |
+| 头像上传到个人空间 | 已支持 |
+| 默认 10MB 本地个人空间 | 已支持，可通过插件配置调整 |
+| 头像源文件保留最近 3 个 | 已支持，可通过插件配置调整 |
+| 个人云盘接入 | 后续任务，当前只保留配置占位 |
 
 ## 2. API 接口
 
@@ -164,6 +169,104 @@ http://localhost:3000/space/settings
 http://localhost:3000/u/<username>
 ```
 
+用户侧导航规则：
+
+| 操作 | 路径 |
+| --- | --- |
+| 点击顶部“个人主页” | 直接进入 `/u/<username>` 公开主页 |
+| 点击自己的头像 | 进入 `/space/settings` 主页设置 |
+
+### 2.7 查看个人空间存储状态
+
+```bash
+curl http://localhost:8080/api/v1/spaces/me/storage \
+  -H "Authorization: Bearer <access_token>"
+```
+
+接口：
+
+```text
+GET /api/v1/spaces/me/storage
+```
+
+返回字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `quota_bytes` | 当前用户本地个人空间配额，默认 10MB |
+| `used_bytes` | 已使用字节数 |
+| `available_bytes` | 剩余可用字节数 |
+| `avatar_keep_limit` | 头像源文件保留数量，默认 3 |
+
+### 2.8 上传个人主页头像
+
+```bash
+curl -X POST http://localhost:8080/api/v1/spaces/me/avatar \
+  -H "Authorization: Bearer <access_token>" \
+  -F "file=@avatar.png"
+```
+
+接口：
+
+```text
+POST /api/v1/spaces/me/avatar
+```
+
+规则：
+
+| 项目 | 当前默认 |
+| --- | --- |
+| 支持格式 | `jpeg`、`png`、`gif`、`webp` |
+| 单文件上限 | 2MB |
+| 用户默认配额 | 10MB |
+| 源文件保留 | 最近 3 个 |
+| 存储目录 | `data/images/personal-space/users/<user_id>/avatars/` |
+
+上传成功后，`user_spaces.avatar` 会更新为公开头像 URL，公开主页和顶部头像会优先使用该 URL。
+
+### 2.9 访问头像文件
+
+```text
+GET /api/v1/spaces/files/:user_id/avatars/:filename
+```
+
+文件名和用户 ID 都会经过路径段校验，避免路径穿越。
+
+### 2.10 HTML 风格检测、示例和应用
+
+个人空间允许用户在风格包基础上编写受限 HTML 片段，用于更开放地定制公开个人主页。该能力仍归属于 `personal-space` 默认插件，插件禁用后相关接口会返回不可用。
+
+检测接口：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/spaces/me/styles/html/validate \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"html":"<section><h2>Alice Space</h2></section>"}'
+```
+
+接口：
+
+```text
+POST /api/v1/spaces/me/styles/html/validate
+```
+
+基于当前风格生成示例：
+
+```text
+GET /api/v1/spaces/me/styles/html-example
+```
+
+应用 HTML 风格：
+
+```text
+POST /api/v1/spaces/me/styles/html/apply
+```
+
+应用接口会先把 HTML 写入当前风格 manifest 的 `custom_html_enabled` 和 `custom_html` 字段，再走风格包完整校验、快照保存和持久化流程。检测失败时不会写入 `user_spaces.style_manifest`。
+
+当前允许的是受限 HTML 子集，不允许脚本、事件处理器、`javascript:` / `data:` / `file:` URL、危险 CSS、过深嵌套或过大片段。公开主页接口在返回历史 `style_manifest` 前也会再次检查，不会把历史不合规 HTML 原样交给前端 `v-html`。
+
 ## 3. 数据表
 
 迁移文件：
@@ -191,7 +294,7 @@ user_space_contents
 | `avatar` / `cover_image` | 主页视觉资源 |
 | `theme` / `layout` | 风格包导出和后续前端渲染使用 |
 | `style_name` / `style_version` | 当前已应用风格包的名称和版本 |
-| `style_manifest` | 当前已应用风格包的规范化 manifest |
+| `style_manifest` | 当前已应用风格包的规范化 manifest，可包含检测通过的 `custom_html` |
 | `visibility` | 公开、隐藏链接、私有 |
 | `sync_enabled` | 是否参与内容同步 |
 | `sync_categories` / `sync_tags` | 内容同步筛选条件 |
@@ -207,6 +310,28 @@ user_space_contents
 | `status` | 来源帖子状态 |
 | `thread_created_at` / `thread_updated_at` | 来源帖子时间 |
 | `synced_at` | 最近同步时间 |
+
+个人空间文件当前不新增数据库表。头像 URL 写入 `user_spaces.avatar`，文件本体保存在 `personal-space` 插件配置指定的本地目录。后续如接入个人云盘，可以在不改变公开主页字段的前提下扩展 provider 配置和文件索引表。
+
+## 3.1 插件配置
+
+默认插件配置位于：
+
+```text
+data/plugins/personal-space/plugin.yaml
+```
+
+关键配置：
+
+| 配置项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `styles_dir` | `styles` | 默认风格包目录 |
+| `file_root` | `data/images/personal-space` | 个人空间本地文件根目录 |
+| `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
+| `default_quota_mb` | `10` | 每个用户初始本地空间 |
+| `avatar_keep_limit` | `3` | 头像源文件保留数量 |
+| `max_avatar_mb` | `2` | 单个头像大小上限 |
+| `future_storage_provider` | `local` | 后续个人云盘接入预留字段 |
 
 ## 4. 同步规则
 
@@ -235,7 +360,7 @@ thread.deleted
 
 ## 5. 安全边界
 
-当前阶段不允许用户提交任意 JavaScript 或 HTML 代码。主页配置只保存结构化字段，为后续风格包和受控组件渲染打基础。
+当前阶段不允许用户提交任意 JavaScript 或未审查 HTML 代码。个人主页只渲染后端安全检测通过的受限 HTML 子集，脚本、事件处理器、不安全 URL 和危险 CSS 会被拒绝。
 
 登录用户只能通过 `/api/v1/spaces/me` 修改自己的主页配置，不能通过请求体指定其他用户 ID。公开接口只读取 `public` 主页。
 
@@ -245,8 +370,8 @@ thread.deleted
 
 | 页面 | 路径 | 作用 |
 | --- | --- | --- |
-| 主页设置 | `/space/settings` | 编辑主页配置、选择示例风格包、校验、预览、应用和导出风格 |
-| 公开主页 | `/u/:username` | 按用户名展示用户个人主页和同步内容，并应用当前风格 token |
+| 主页设置 | `/space/settings` | 编辑主页配置、选择示例风格包、校验、预览、应用、导出风格和编辑受限 HTML |
+| 公开主页 | `/u/:username` | 按用户名展示用户个人主页、同步内容、当前风格 token 和检测通过的 HTML 片段 |
 
 前端示例风格包位于：
 
@@ -264,6 +389,4 @@ data/plugins/personal-space/styles/
 
 | 优先级 | 任务 |
 | --- | --- |
-| P1 | 增加管理员查看、禁用和恢复用户主页能力 |
-| P1 | 增加风格包应用前快照和回滚能力 |
 | P1 | 增加站内风格分享列表和管理员审核入口 |

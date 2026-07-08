@@ -2,9 +2,12 @@ package space
 
 import (
 	"fmt"
+	stdhtml "html"
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/campusos/CampusOS/internal/safehtml"
 )
 
 const StyleSchemaVersion = "space-style.v1"
@@ -30,6 +33,16 @@ type StyleExportResult struct {
 	Validation StyleValidationResult `json:"validation"`
 }
 
+type StyleHTMLRequest struct {
+	HTML string `json:"html"`
+}
+
+type StyleHTMLExampleResult struct {
+	HTML       string                `json:"html"`
+	Package    StylePackage          `json:"package"`
+	Validation StyleValidationResult `json:"validation"`
+}
+
 type StyleApplyResult struct {
 	Validation StyleValidationResult `json:"validation"`
 	Owner      Owner                 `json:"owner"`
@@ -49,6 +62,8 @@ type StyleManifest struct {
 	Components         []StyleComponent  `json:"components"`
 	Tokens             map[string]string `json:"tokens,omitempty"`
 	Assets             []StyleAsset      `json:"assets,omitempty"`
+	CustomHTMLEnabled  bool              `json:"custom_html_enabled,omitempty"`
+	CustomHTML         string            `json:"custom_html,omitempty"`
 }
 
 type StyleComponent struct {
@@ -106,6 +121,7 @@ func NormalizeStyleManifest(manifest StyleManifest) StyleManifest {
 	normalized.Components = normalizeComponents(normalized.Components)
 	normalized.Tokens = normalizeTokens(normalized.Tokens)
 	normalized.Assets = normalizeAssets(normalized.Assets)
+	normalized.CustomHTML = strings.TrimSpace(normalized.CustomHTML)
 	return normalized
 }
 
@@ -209,6 +225,36 @@ func BuildStyleApply(owner Owner, space *Space, pkg StylePackage) StyleApplyResu
 	return result
 }
 
+func ValidateCustomHTMLSnippet(input string) StyleValidationResult {
+	return styleValidationFromSafeHTML(safehtml.Validate(input))
+}
+
+func BuildStyleHTMLPackage(owner Owner, space *Space, input string) StylePackage {
+	html := strings.TrimSpace(input)
+	manifest := baseStyleHTMLManifest(owner, space)
+	manifest.CustomHTMLEnabled = html != ""
+	manifest.CustomHTML = html
+	return StylePackage{Manifest: NormalizeStyleManifest(manifest)}
+}
+
+func BuildStyleHTMLExample(owner Owner, space *Space) StyleHTMLExampleResult {
+	html := defaultStyleHTMLExample(owner, space)
+	pkg := BuildStyleHTMLPackage(owner, space, html)
+	return StyleHTMLExampleResult{
+		HTML:       html,
+		Package:    pkg,
+		Validation: ValidateStylePackage(pkg),
+	}
+}
+
+func styleValidationFromSafeHTML(result safehtml.ValidationResult) StyleValidationResult {
+	return StyleValidationResult{
+		Valid:    result.Valid,
+		Errors:   append([]string(nil), result.Errors...),
+		Warnings: append([]string(nil), result.Warnings...),
+	}
+}
+
 type styleValidator struct {
 	errors   []string
 	warnings []string
@@ -257,6 +303,7 @@ func (v *styleValidator) validateManifest(manifest StyleManifest) {
 	for i, asset := range manifest.Assets {
 		v.validateAsset(i, asset)
 	}
+	v.validateCustomHTML(manifest)
 	if len(manifest.CompatibleCampusOS) == 0 {
 		v.addWarning("manifest.compatible_campusos is empty; imports will assume current v0.4 compatibility")
 	}
@@ -337,6 +384,25 @@ func (v *styleValidator) validateAsset(index int, asset StyleAsset) {
 		v.addError(fmt.Sprintf("%s.type %q is not supported", prefix, asset.Type))
 	}
 	v.validateRelativePath(prefix+".path", asset.Path)
+}
+
+func (v *styleValidator) validateCustomHTML(manifest StyleManifest) {
+	if strings.TrimSpace(manifest.CustomHTML) == "" {
+		if manifest.CustomHTMLEnabled {
+			v.addError("manifest.custom_html is required when custom_html_enabled is true")
+		}
+		return
+	}
+	result := safehtml.Validate(manifest.CustomHTML)
+	for _, message := range result.Errors {
+		v.addError("manifest.custom_html: " + message)
+	}
+	for _, message := range result.Warnings {
+		v.addWarning("manifest.custom_html: " + message)
+	}
+	if !manifest.CustomHTMLEnabled {
+		v.addWarning("manifest.custom_html is present but custom_html_enabled is false; it will not be rendered")
+	}
 }
 
 func (v *styleValidator) validateRelativePath(field, value string) {
@@ -551,6 +617,108 @@ func exportLayout(layout string) string {
 		return layout
 	}
 	return "blog"
+}
+
+func baseStyleHTMLManifest(owner Owner, space *Space) StyleManifest {
+	if space != nil && space.StyleManifest != nil && len(space.StyleManifest.Components) > 0 {
+		manifest := NormalizeStyleManifest(*space.StyleManifest)
+		if manifest.SchemaVersion == "" {
+			manifest.SchemaVersion = StyleSchemaVersion
+		}
+		if manifest.Name == "" {
+			manifest.Name = fallbackHTMLStyleName(owner)
+		}
+		if manifest.Version == "" {
+			manifest.Version = "0.1.0"
+		}
+		if manifest.Author == "" {
+			manifest.Author = exportAuthor(owner)
+		}
+		if manifest.Description == "" {
+			manifest.Description = "Custom HTML style for CampusOS personal spaces."
+		}
+		if len(manifest.Components) == 0 {
+			manifest.Components = exportComponents(space)
+		}
+		if len(manifest.Tokens) == 0 {
+			manifest.Tokens = exportTokens(space.Theme)
+		}
+		return manifest
+	}
+
+	exported := BuildStyleExport(owner, space, StyleExportRequest{
+		Name:        fallbackHTMLStyleName(owner),
+		Version:     "0.1.0",
+		Description: "Custom HTML style for CampusOS personal spaces.",
+	})
+	return exported.Package.Manifest
+}
+
+func fallbackHTMLStyleName(owner Owner) string {
+	name := slugStyleName(owner.Username + "-html-space")
+	if name == "" {
+		return "custom-html-space"
+	}
+	return name
+}
+
+func defaultStyleHTMLExample(owner Owner, space *Space) string {
+	title := "个人主页"
+	bio := "写下你的主页介绍、项目入口或课程笔记导航。"
+	layout := "blog"
+	tokens := map[string]string{}
+	if space != nil {
+		if strings.TrimSpace(space.Title) != "" {
+			title = strings.TrimSpace(space.Title)
+		}
+		if strings.TrimSpace(space.Bio) != "" {
+			bio = strings.TrimSpace(space.Bio)
+		}
+		layout = exportLayout(space.Layout)
+		if space.StyleManifest != nil {
+			tokens = space.StyleManifest.Tokens
+		}
+	}
+	if title == "个人主页" && strings.TrimSpace(owner.Nickname) != "" {
+		title = strings.TrimSpace(owner.Nickname) + "的个人主页"
+	}
+	primary := safeInlineCSS(tokens["color.primary"], "#2563eb")
+	background := safeInlineCSS(tokens["color.background"], "#ffffff")
+	surface := safeInlineCSS(tokens["color.surface"], "#f8fafc")
+	radius := safeInlineCSS(tokens["radius.card"], "8px")
+
+	return fmt.Sprintf(`<section class="space-html-example" style="padding:24px;border:1px solid #e5e7eb;border-radius:%s;background:%s">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+    <div>
+      <h2 style="margin:0;color:%s">%s</h2>
+      <p style="margin:8px 0 0;color:#475569;line-height:1.7">%s</p>
+    </div>
+    <span style="padding:6px 10px;border-radius:999px;background:%s;color:%s">%s</span>
+  </header>
+  <div style="display:grid;gap:12px;margin-top:18px">
+    <article style="padding:16px;border-radius:%s;background:%s">
+      <strong>精选入口</strong>
+      <p style="margin:8px 0 0;color:#64748b">可以在这里放课程项目、社团页面、作品集或常用链接。</p>
+    </article>
+    <p style="margin:0;color:#64748b">这段 HTML 会先通过安全检查，通过后才会应用到公开个人主页。</p>
+  </div>
+</section>`, radius, background, primary, escapeHTML(title), escapeHTML(bio), surface, primary, escapeHTML(layout), radius, surface)
+}
+
+func safeInlineCSS(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	lower := strings.ToLower(value)
+	if dangerousString(value) || strings.ContainsAny(value, "<>\"'") || strings.Contains(lower, "url(") || strings.Contains(lower, "expression(") {
+		return fallback
+	}
+	return value
+}
+
+func escapeHTML(value string) string {
+	return stdhtml.EscapeString(value)
 }
 
 func exportComponents(space *Space) []StyleComponent {
