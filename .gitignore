@@ -64,6 +64,12 @@ nats-data/
 .campusos/
 /data/plugin_data/*
 !/data/plugin_data/.gitkeep
+!/data/plugin_data/personal-space/
+!/data/plugin_data/personal-space/style-packs/
+!/data/plugin_data/personal-space/style-packs/**
+!/data/plugin_data/homepage-customizer/
+!/data/plugin_data/homepage-customizer/style-packs/
+!/data/plugin_data/homepage-customizer/style-packs/**
 /data/images/*
 !/data/images/.gitkeep
 /data/dist/*

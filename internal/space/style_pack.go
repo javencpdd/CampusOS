@@ -2,7 +2,6 @@ package space
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/stylepack"
@@ -88,8 +87,7 @@ func loadPersonalSourceStylePack(name string) (*stylepack.Package, stylepack.Val
 			Errors: []string{"source style pack name must use lowercase letters, numbers and hyphens"},
 		}
 	}
-	root := filepath.Join("data", "plugins", "personal-space", "style-packs", name)
-	return stylepack.LoadDir(root)
+	return stylepack.LoadDir(stylepack.SourceDir("personal-space", name))
 }
 
 func ensureStylePackTarget(pack *stylepack.Package, target string) stylepack.ValidationResult {

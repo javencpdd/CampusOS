@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.13-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.16-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -95,8 +95,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `data/` | Default local data root for plugins, plugin data, images, dist, config, and local skills |
 | `data/plugins/` | Installed and built-in plugins |
 | `data/plugins/personal-space/styles/` | Built-in personal space style packages |
-| `data/plugins/personal-space/style-packs/` | Built-in/source-folder personal-space page style packs |
-| `data/plugins/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs |
+| `data/plugin_data/personal-space/style-packs/` | Built-in/source-folder personal-space page style packs |
+| `data/plugin_data/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs |
 | `data/plugins/homepage-customizer/` | Built-in user homepage configuration plugin |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
@@ -142,7 +142,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | Document | Use |
 | --- | --- |
 | `README.md` | Current repository overview and commands |
-| `docs/项目计划v5/00-v5版本计划书.md` | v0.5 plan and boundaries |
+| `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.15-dev |
 | `docs/进度/v0.5-dev/` | v0.5 implementation progress |
 | `docs/项目计划v4/02-v4实现状态与后续规划总结.md` | v4 completion and follow-up decisions |
 | `docs/help/系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 integration help |

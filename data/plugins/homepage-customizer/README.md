@@ -34,10 +34,10 @@ Homepage page style packs use the same `page-style-pack.v1` folder/zip standard 
 target: homepage
 ```
 
-Built-in source-folder examples live under:
+Source-folder examples live under plugin data:
 
 ```text
-data/plugins/homepage-customizer/style-packs/
+data/plugin_data/homepage-customizer/style-packs/
 ```
 
 Minimal pack structure:
