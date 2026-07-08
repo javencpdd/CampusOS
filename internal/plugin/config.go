@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/safehtml"
+	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
 func normalizePluginConfig(manifest *Manifest, input map[string]interface{}) (map[string]interface{}, error) {
@@ -113,6 +114,16 @@ func validatePluginSpecificConfig(pluginName string, config map[string]interface
 	if pluginName != "homepage-customizer" {
 		return nil
 	}
+	if err := validateHomepageCustomHTML(config); err != nil {
+		return err
+	}
+	if err := validateHomepageCustomCSS(config); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateHomepageCustomHTML(config map[string]interface{}) error {
 	value, ok := config["custom_html"]
 	if !ok || value == nil {
 		return nil
@@ -126,4 +137,20 @@ func validatePluginSpecificConfig(pluginName string, config map[string]interface
 		return nil
 	}
 	return fmt.Errorf("config field %q failed safe HTML validation: %s", "custom_html", strings.Join(result.Errors, "; "))
+}
+
+func validateHomepageCustomCSS(config map[string]interface{}) error {
+	value, ok := config["custom_css"]
+	if !ok || value == nil {
+		return nil
+	}
+	cssValue := strings.TrimSpace(fmt.Sprint(value))
+	if cssValue == "" {
+		return nil
+	}
+	result := stylepack.ValidateCSS(cssValue)
+	if result.Valid {
+		return nil
+	}
+	return fmt.Errorf("config field %q failed safe CSS validation: %s", "custom_css", strings.Join(result.Errors, "; "))
 }

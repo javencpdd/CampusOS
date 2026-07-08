@@ -229,6 +229,7 @@ func cloneSpace(space *Space) *Space {
 	}
 	if space.StyleManifest != nil {
 		manifest := *space.StyleManifest
+		manifest.SourceStylePack = cloneStylePackRef(space.StyleManifest.SourceStylePack)
 		manifest.CompatibleCampusOS = append([]string(nil), space.StyleManifest.CompatibleCampusOS...)
 		manifest.Components = append([]StyleComponent(nil), space.StyleManifest.Components...)
 		for i := range manifest.Components {
@@ -248,6 +249,7 @@ func cloneSnapshot(snapshot *StyleSnapshot) *StyleSnapshot {
 	clone := *snapshot
 	if snapshot.StyleManifest != nil {
 		manifest := *snapshot.StyleManifest
+		manifest.SourceStylePack = cloneStylePackRef(snapshot.StyleManifest.SourceStylePack)
 		manifest.CompatibleCampusOS = append([]string(nil), snapshot.StyleManifest.CompatibleCampusOS...)
 		manifest.Components = append([]StyleComponent(nil), snapshot.StyleManifest.Components...)
 		for i := range manifest.Components {

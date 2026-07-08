@@ -189,6 +189,7 @@ func (s *Server) Run() error {
 	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewPgAuditStore(pool), metricsCollector)
 	messageSvc := message.NewService(message.NewPgStore(pool), metricsCollector)
 	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
+	homepageSvc.SetConfigUpdater(s.manager.UpdateConfig)
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	// ─── 初始化处理器层 ───
@@ -276,6 +277,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	mcpSvc := mcp.NewService(categoryRepo, threadRepo, mcp.NewMemoryAuditStore(), metricsCollector)
 	messageSvc := message.NewService(message.NewMemoryStore(), metricsCollector)
 	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
+	homepageSvc.SetConfigUpdater(s.manager.UpdateConfig)
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -479,6 +481,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/html/validate", spaceHandler.ValidateCustomHTML)
 		authenticated.GET("/spaces/me/styles/html-example", spaceHandler.CustomHTMLExample)
 		authenticated.POST("/spaces/me/styles/html/apply", spaceHandler.ApplyCustomHTML)
+		authenticated.POST("/spaces/me/styles/packs/validate", spaceHandler.ValidateStylePackZip)
+		authenticated.GET("/spaces/me/styles/packs/example", spaceHandler.StylePackExample)
+		authenticated.GET("/spaces/me/styles/packs/example.zip", spaceHandler.StylePackExampleZip)
+		authenticated.POST("/spaces/me/styles/packs/apply", spaceHandler.ApplyStylePackZip)
+		authenticated.POST("/spaces/me/styles/packs/apply-source", spaceHandler.ApplySourceStylePack)
 		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
 		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
@@ -554,6 +561,12 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 		admin.GET("/platform/logs/sources", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Sources)
 		admin.GET("/platform/logs/stream", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Stream)
+
+		admin.POST("/home/style-packs/validate", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ValidateStylePack)
+		admin.GET("/home/style-packs/example", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExample)
+		admin.GET("/home/style-packs/example.zip", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExampleZip)
+		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplyStylePack)
+		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplySourceStylePack)
 
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)

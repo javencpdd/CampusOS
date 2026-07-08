@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { threadApi, userApi, healthApi, homeApi } from '@/api'
 
@@ -97,6 +97,7 @@ const homeConfig = reactive({
   category_tags: [] as Array<{ id: string; name: string; slug: string }>,
   custom_html_enabled: false,
   custom_html: '',
+  custom_css: '',
 })
 
 const heroStyle = computed<Record<string, string>>(() => {
@@ -126,10 +127,30 @@ onMounted(async () => {
       category_tags: homeRes?.data?.category_tags || [],
       custom_html_enabled: Boolean(homeRes?.data?.custom_html_enabled),
       custom_html: homeRes?.data?.custom_html || '',
+      custom_css: homeRes?.data?.custom_css || '',
     })
   } catch (e) {
     console.log('API not available yet')
   }
+})
+
+let injectedStyle: HTMLStyleElement | null = null
+
+watch(() => [homeConfig.custom_html_enabled, homeConfig.custom_css] as const, ([enabled, css]) => {
+  if (injectedStyle) {
+    injectedStyle.remove()
+    injectedStyle = null
+  }
+  if (!enabled || !css) return
+  injectedStyle = document.createElement('style')
+  injectedStyle.setAttribute('data-campos-style-pack', 'homepage')
+  injectedStyle.textContent = css
+  document.head.appendChild(injectedStyle)
+})
+
+onUnmounted(() => {
+  injectedStyle?.remove()
+  injectedStyle = null
 })
 </script>
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/stylepack"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -257,6 +258,99 @@ func (h *Handler) ApplyCustomHTML(c *gin.Context) {
 	response.Success(c, applied)
 }
 
+func (h *Handler) ValidateStylePackZip(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	file, size, ok := openUploadedStylePack(c)
+	if !ok {
+		return
+	}
+	defer file.Close()
+
+	result, err := h.svc.ValidateStylePackZip(c.Request.Context(), userID, file, size)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *Handler) StylePackExample(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	example, err := h.svc.StylePackExample(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, example)
+}
+
+func (h *Handler) StylePackExampleZip(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	example, err := h.svc.StylePackExample(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	data, err := stylepack.ZipBundle(*example)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	c.Header("Content-Disposition", `attachment; filename="`+example.Filename+`.zip"`)
+	c.Data(http.StatusOK, "application/zip", data)
+}
+
+func (h *Handler) ApplyStylePackZip(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	file, size, ok := openUploadedStylePack(c)
+	if !ok {
+		return
+	}
+	defer file.Close()
+
+	applied, err := h.svc.ApplyStylePackZip(c.Request.Context(), userID, file, size)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
+func (h *Handler) ApplySourceStylePack(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req StylePackApplySourceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+	applied, err := h.svc.ApplySourceStylePack(c.Request.Context(), userID, req.Name)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, applied)
+}
+
 func (h *Handler) RollbackStyle(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {
@@ -394,6 +488,31 @@ func (h *Handler) EnableSpace(c *gin.Context) {
 		return
 	}
 	response.Success(c, space)
+}
+
+type uploadedStylePackFile interface {
+	io.ReaderAt
+	io.Closer
+}
+
+func openUploadedStylePack(c *gin.Context) (uploadedStylePackFile, int64, bool) {
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "style pack zip file is required")
+		return nil, 0, false
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		return nil, 0, false
+	}
+	reader, ok := file.(uploadedStylePackFile)
+	if !ok {
+		_ = file.Close()
+		response.Error(c, http.StatusBadRequest, 10001, "style pack file must be seekable")
+		return nil, 0, false
+	}
+	return reader, fileHeader.Size, true
 }
 
 func currentUserID(c *gin.Context) (string, bool) {

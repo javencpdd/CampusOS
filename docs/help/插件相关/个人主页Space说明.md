@@ -19,8 +19,9 @@
 | 公开主页内容列表 | 已支持 |
 | 前端主页渲染页 | 已支持 |
 | 用户侧主页管理页 | 已支持 |
-| 风格包校验、预览、导出和应用 | 已支持 |
-| 受限 HTML 风格编辑、检测、示例生成和应用 | 已支持 |
+| JSON 风格包校验、预览、导出和应用 | 已支持 |
+| 文件夹/zip 页面拓展风格包校验、示例生成和应用 | 已支持 |
+| 受限 HTML/CSS 风格编辑、检测、示例生成和应用 | 已支持 |
 | 风格包回滚、恢复默认 | 已支持 |
 | 头像上传到个人空间 | 已支持 |
 | 默认 10MB 本地个人空间 | 已支持，可通过插件配置调整 |
@@ -267,6 +268,28 @@ POST /api/v1/spaces/me/styles/html/apply
 
 当前允许的是受限 HTML 子集，不允许脚本、事件处理器、`javascript:` / `data:` / `file:` URL、危险 CSS、过深嵌套或过大片段。公开主页接口在返回历史 `style_manifest` 前也会再次检查，不会把历史不合规 HTML 原样交给前端 `v-html`。
 
+### 2.11 页面拓展风格包检测、示例和应用
+
+页面拓展风格包使用 `page-style-pack.v1` 文件夹/zip 标准。用户可以在 `/space/settings` 下载基于当前风格生成的示例 zip，修改其中的 `templates/page.html` 和 `styles/theme.css`，再上传 zip 进行筛查和应用。
+
+接口：
+
+```text
+POST /api/v1/spaces/me/styles/packs/validate
+GET  /api/v1/spaces/me/styles/packs/example
+GET  /api/v1/spaces/me/styles/packs/example.zip
+POST /api/v1/spaces/me/styles/packs/apply
+POST /api/v1/spaces/me/styles/packs/apply-source
+```
+
+`apply-source` 用于应用源码目录中的内置风格包：
+
+```text
+data/plugins/personal-space/style-packs/<name>/
+```
+
+筛查通过后，服务会把风格包中的 HTML/CSS 编译到当前用户的 `style_manifest.custom_html`、`style_manifest.custom_css` 和 `style_manifest.source_style_pack`，并继续复用应用前快照、回滚和恢复默认流程。
+
 ## 3. 数据表
 
 迁移文件：
@@ -294,7 +317,7 @@ user_space_contents
 | `avatar` / `cover_image` | 主页视觉资源 |
 | `theme` / `layout` | 风格包导出和后续前端渲染使用 |
 | `style_name` / `style_version` | 当前已应用风格包的名称和版本 |
-| `style_manifest` | 当前已应用风格包的规范化 manifest，可包含检测通过的 `custom_html` |
+| `style_manifest` | 当前已应用风格包的规范化 manifest，可包含检测通过的 `custom_html`、`custom_css` 和 `source_style_pack` |
 | `visibility` | 公开、隐藏链接、私有 |
 | `sync_enabled` | 是否参与内容同步 |
 | `sync_categories` / `sync_tags` | 内容同步筛选条件 |
@@ -325,7 +348,7 @@ data/plugins/personal-space/plugin.yaml
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `styles_dir` | `styles` | 默认风格包目录 |
+| `styles_dir` | `styles` | 默认 JSON 风格包目录 |
 | `file_root` | `data/images/personal-space` | 个人空间本地文件根目录 |
 | `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
 | `default_quota_mb` | `10` | 每个用户初始本地空间 |
@@ -383,6 +406,12 @@ web/src/data/spaceStyleExamples.ts
 
 ```text
 data/plugins/personal-space/styles/
+```
+
+文件夹拓展风格包示例位于：
+
+```text
+data/plugins/personal-space/style-packs/
 ```
 
 ## 7. 后续任务

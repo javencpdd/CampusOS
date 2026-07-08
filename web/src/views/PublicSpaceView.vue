@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { spaceApi } from '@/api'
 
@@ -66,6 +66,7 @@ interface StyleManifest {
   tokens?: Record<string, string>
   custom_html_enabled?: boolean
   custom_html?: string
+  custom_css?: string
 }
 
 interface Space {
@@ -120,6 +121,11 @@ const customHTML = computed(() => {
   if (!manifest?.custom_html_enabled || !manifest.custom_html) return ''
   return manifest.custom_html
 })
+const customCSS = computed(() => {
+  const manifest = payload.value?.space.style_manifest
+  if (!manifest?.custom_html_enabled || !manifest.custom_css) return ''
+  return manifest.custom_css
+})
 const avatarText = computed(() => {
   const name = payload.value?.owner.nickname || payload.value?.owner.username || 'U'
   return name.slice(0, 1).toUpperCase()
@@ -153,6 +159,25 @@ const formatDate = (value: string) => {
 }
 
 watch(username, loadSpace, { immediate: true })
+
+let injectedStyle: HTMLStyleElement | null = null
+
+watch(customCSS, (css) => {
+  if (injectedStyle) {
+    injectedStyle.remove()
+    injectedStyle = null
+  }
+  if (!css) return
+  injectedStyle = document.createElement('style')
+  injectedStyle.setAttribute('data-campos-style-pack', 'personal-space')
+  injectedStyle.textContent = css
+  document.head.appendChild(injectedStyle)
+}, { immediate: true })
+
+onUnmounted(() => {
+  injectedStyle?.remove()
+  injectedStyle = null
+})
 </script>
 
 <style scoped>

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/safehtml"
+	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
 const StyleSchemaVersion = "space-style.v1"
@@ -64,6 +65,14 @@ type StyleManifest struct {
 	Assets             []StyleAsset      `json:"assets,omitempty"`
 	CustomHTMLEnabled  bool              `json:"custom_html_enabled,omitempty"`
 	CustomHTML         string            `json:"custom_html,omitempty"`
+	CustomCSS          string            `json:"custom_css,omitempty"`
+	SourceStylePack    *StylePackRef     `json:"source_style_pack,omitempty"`
+}
+
+type StylePackRef struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Target  string `json:"target"`
 }
 
 type StyleComponent struct {
@@ -122,6 +131,15 @@ func NormalizeStyleManifest(manifest StyleManifest) StyleManifest {
 	normalized.Tokens = normalizeTokens(normalized.Tokens)
 	normalized.Assets = normalizeAssets(normalized.Assets)
 	normalized.CustomHTML = strings.TrimSpace(normalized.CustomHTML)
+	normalized.CustomCSS = strings.TrimSpace(normalized.CustomCSS)
+	if normalized.SourceStylePack != nil {
+		normalized.SourceStylePack.Name = strings.TrimSpace(normalized.SourceStylePack.Name)
+		normalized.SourceStylePack.Version = strings.TrimSpace(normalized.SourceStylePack.Version)
+		normalized.SourceStylePack.Target = strings.TrimSpace(normalized.SourceStylePack.Target)
+		if normalized.SourceStylePack.Name == "" {
+			normalized.SourceStylePack = nil
+		}
+	}
 	return normalized
 }
 
@@ -387,9 +405,21 @@ func (v *styleValidator) validateAsset(index int, asset StyleAsset) {
 }
 
 func (v *styleValidator) validateCustomHTML(manifest StyleManifest) {
+	if strings.TrimSpace(manifest.CustomCSS) != "" {
+		cssResult := stylepack.ValidateCSS(manifest.CustomCSS)
+		for _, message := range cssResult.Errors {
+			v.addError("manifest.custom_css: " + message)
+		}
+		for _, message := range cssResult.Warnings {
+			v.addWarning("manifest.custom_css: " + message)
+		}
+	}
 	if strings.TrimSpace(manifest.CustomHTML) == "" {
 		if manifest.CustomHTMLEnabled {
 			v.addError("manifest.custom_html is required when custom_html_enabled is true")
+		}
+		if strings.TrimSpace(manifest.CustomCSS) != "" {
+			v.addWarning("manifest.custom_css is present but custom_html is empty; it will not be rendered")
 		}
 		return
 	}
