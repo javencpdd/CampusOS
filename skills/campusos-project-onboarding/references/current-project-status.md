@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.18-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.19-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -32,8 +32,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
 | Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
 | Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size |
-| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
-| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, and standard folder/zip homepage style packs through plugin config |
+| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, source-folder style-pack list/apply, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
+| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, standard folder/zip homepage style packs, and admin source-folder style-pack selection through plugin config |
 | Platform logs | Admin-only fixed-source SSE log reader for `.campusos/logs/api.log`, `web.log`, and `admin.log` |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
 | Webhook | Endpoint management, event subscriptions, HMAC signature, test delivery, delivery records |
@@ -143,7 +143,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | --- | --- |
 | `README.md` | Current repository overview and commands |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.18-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.19-dev |
 | `docs/进度/v0.5-dev/` | v0.5 implementation progress |
 | `docs/项目计划v4/02-v4实现状态与后续规划总结.md` | v4 completion and follow-up decisions |
 | `docs/help/系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 integration help |

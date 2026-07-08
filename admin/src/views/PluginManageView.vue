@@ -210,7 +210,7 @@
             plain
             @click="applyHomeSourceStylePack"
             :loading="homeSourceStylePackApplying"
-            :disabled="!homeSourceStylePackName"
+            :disabled="!selectedHomeSourceStylePack?.validation.valid"
           >
             应用源码目录
           </el-button>
@@ -284,11 +284,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
 import { homeStylePackApi, pluginApi } from '@/api'
+
+interface SourceStylePack {
+  name: string
+  path: string
+  target?: string
+  version?: string
+  display_name?: string
+  description?: string
+  validation: {
+    valid: boolean
+    errors?: string[]
+    warnings?: string[]
+  }
+}
 
 const plugins = ref<any[]>([])
 const loading = ref(false)
@@ -312,6 +326,12 @@ const homeStylePackValidating = ref(false)
 const homeStylePackApplying = ref(false)
 const homeSourceStylePackName = ref('campus-hero')
 const homeSourceStylePackApplying = ref(false)
+const homeSourceStylePackLoading = ref(false)
+const homeSourceStylePacks = ref<SourceStylePack[]>([])
+
+const selectedHomeSourceStylePack = computed(() =>
+  homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value) || null,
+)
 
 const responseItems = (payload: any): any[] => {
   const candidates = [
@@ -439,6 +459,15 @@ const openConfig = async (row: any) => {
       next[field.key] = normalizeFieldValue(field, value)
     }
     configForm.value = next
+    if (row.name === 'homepage-customizer') {
+      await loadHomeSourceStylePacks(false)
+      const active = String(config.active_style_pack || '').trim()
+      if (active && homeSourceStylePacks.value.some((pack) => pack.name === active && pack.validation.valid)) {
+        homeSourceStylePackName.value = active
+      } else {
+        homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+      }
+    }
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载插件配置失败')
   } finally {
@@ -489,8 +518,37 @@ const applyHomeStylePack = async () => {
   }
 }
 
+const loadHomeSourceStylePacks = async (showMessage = true) => {
+  homeSourceStylePackLoading.value = true
+  try {
+    const r = (await homeStylePackApi.sources()) as any
+    const payload = r?.data || r
+    homeSourceStylePacks.value = payload?.items || []
+    const current = homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value && pack.validation.valid)
+    if (!current) {
+      homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+    }
+    if (showMessage) {
+      ElMessage.success('源码目录风格包列表已刷新')
+    }
+  } catch (error: any) {
+    homeSourceStylePacks.value = []
+    homeSourceStylePackName.value = ''
+    if (showMessage) {
+      ElMessage.error(error?.msg || '加载源码目录风格包失败')
+    }
+  } finally {
+    homeSourceStylePackLoading.value = false
+  }
+}
+
+const sourceStylePackLabel = (pack: SourceStylePack) => {
+  const title = pack.display_name || pack.name
+  return `${title} (${pack.name}${pack.version ? ` v${pack.version}` : ''})`
+}
+
 const applyHomeSourceStylePack = async () => {
-  if (!homeSourceStylePackName.value) return
+  if (!selectedHomeSourceStylePack.value?.validation.valid) return
   homeSourceStylePackApplying.value = true
   try {
     await homeStylePackApi.applySource(homeSourceStylePackName.value)
@@ -685,9 +743,22 @@ onMounted(load)
 
 .style-pack-source-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: 10px;
   margin-top: 10px;
+}
+
+.source-pack-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.source-pack-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .hidden-input {
@@ -713,5 +784,11 @@ onMounted(load)
 
 .empty-text {
   color: #a8abb2;
+}
+
+@media (max-width: 720px) {
+  .style-pack-source-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
