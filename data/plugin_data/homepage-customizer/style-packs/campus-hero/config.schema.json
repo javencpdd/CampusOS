@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "hero_title": {
+      "type": "string",
+      "default": "CampusOS 首页拓展风格包"
+    },
+    "hero_subtitle": {
+      "type": "string",
+      "default": "这是 homepage-customizer 插件数据目录中的文件夹式首页风格示例。"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#2563eb"
+    }
+  }
+}

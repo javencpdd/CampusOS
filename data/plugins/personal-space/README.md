@@ -17,13 +17,18 @@ Personal homepage HTML/CSS snippets are stored in the applied `user_spaces.style
 
 `page-style-pack.v1` is the folder/zip format for more open page styling. A pack can be edited as a directory under `data/plugin_data/personal-space/style-packs/<name>/`, or zipped and uploaded from the user frontend.
 
-Minimal structure:
+Source package structure:
 
 ```text
 style.yaml
-templates/page.html
-styles/theme.css
 README.md
+preview.png
+templates/page.html
+templates/card.html
+assets/cover.webp
+assets/avatar-frame.png
+styles/theme.css
+config.schema.json
 ```
 
 Required manifest keys:
@@ -31,14 +36,28 @@ Required manifest keys:
 ```yaml
 schema_version: page-style-pack.v1
 target: personal-space
-name: clean-folder
+name: clean-blog
 version: 0.1.0
 entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
 styles:
   - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
+assets:
+  - name: cover
+    path: assets/cover.webp
+    type: image/webp
+  - name: avatar-frame
+    path: assets/avatar-frame.png
+    type: image/png
 ```
 
-Safety screening is handled by `internal/stylepack`: safe relative paths only, limited file count and size, allowed extensions, restricted HTML, and restricted CSS. A pack must pass screening before it can be applied.
+Safety screening is handled by `internal/stylepack`: safe relative paths only, limited file count and size, allowed extensions, restricted HTML for every template, restricted CSS for every stylesheet, image asset path checks, and `config.schema.json` JSON parsing. A pack must pass screening before it can be applied.
 
 User-facing endpoints:
 

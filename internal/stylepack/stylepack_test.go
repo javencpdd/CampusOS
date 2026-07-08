@@ -10,22 +10,40 @@ func TestLoadZipAcceptsValidStylePack(t *testing.T) {
 	data := zipFiles(t, map[string]string{
 		"campus/style.yaml": `schema_version: page-style-pack.v1
 target: personal-space
-name: clean-folder
+name: clean-blog
 version: 0.1.0
 entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
 styles:
   - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
+assets:
+  - name: avatar-frame
+    path: assets/avatar-frame.png
+    type: image/png
 `,
-		"campus/templates/page.html": `<section class="cstyle-page"><h2>Hello</h2><p>World</p></section>`,
-		"campus/styles/theme.css":    `.cstyle-page { padding: 16px; color: #2563eb; }`,
+		"campus/templates/page.html":     `<section class="cstyle-page"><h2>Hello</h2><p>World</p></section>`,
+		"campus/templates/card.html":     `<article class="cstyle-card"><strong>Card</strong></article>`,
+		"campus/styles/theme.css":        `.cstyle-page { padding: 16px; color: #2563eb; }`,
+		"campus/preview.png":             `preview placeholder`,
+		"campus/assets/avatar-frame.png": `avatar placeholder`,
+		"campus/config.schema.json":      `{"type":"object","properties":{"title":{"type":"string"}}}`,
 	})
 
 	pkg, result := LoadZip(bytes.NewReader(data), int64(len(data)))
 	if !result.Valid {
 		t.Fatalf("expected valid style pack, got %#v", result.Errors)
 	}
-	if pkg.Manifest.Name != "clean-folder" || pkg.HTML == "" || pkg.CSS == "" {
+	if pkg.Manifest.Name != "clean-blog" || pkg.HTML == "" || pkg.CSS == "" {
 		t.Fatalf("unexpected package: %#v", pkg)
+	}
+	if pkg.Manifest.ConfigSchema != "config.schema.json" || len(pkg.Manifest.Templates) != 2 {
+		t.Fatalf("unexpected normalized manifest: %#v", pkg.Manifest)
 	}
 }
 
@@ -63,6 +81,46 @@ styles:
 	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
 	if result.Valid {
 		t.Fatalf("expected unsafe css to fail")
+	}
+}
+
+func TestLoadZipRejectsUnsafeTemplateHTML(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: bad-template
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+`,
+		"templates/page.html": `<section><h2>Hello</h2></section>`,
+		"templates/card.html": `<img src=x onerror="alert(1)">`,
+		"styles/theme.css":    `.x { color: #111827; }`,
+	})
+
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected unsafe template html to fail")
+	}
+}
+
+func TestLoadZipRejectsInvalidConfigSchema(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: bad-config
+version: 0.1.0
+entry: templates/page.html
+config_schema: config.schema.json
+`,
+		"templates/page.html": `<section><h2>Hello</h2></section>`,
+		"config.schema.json":  `{not-json}`,
+	})
+
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected invalid config schema to fail")
 	}
 }
 
@@ -105,7 +163,7 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 		root   string
 		target string
 	}{
-		{SourceDir("personal-space", "clean-folder"), "personal-space"},
+		{SourceDir("personal-space", "clean-blog"), "personal-space"},
 		{SourceDir("homepage-customizer", "campus-hero"), "homepage"},
 	}
 

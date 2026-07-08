@@ -65,6 +65,9 @@
             <el-button type="warning" @click="$router.push({ name: 'Categories' })">
               <el-icon><FolderOpened /></el-icon>版块管理
             </el-button>
+            <el-button @click="$router.push({ name: 'DeveloperDocs' })">
+              <el-icon><Reading /></el-icon>说明文档
+            </el-button>
             <el-button type="info" @click="$router.push({ name: 'Plugins' })">
               <el-icon><Connection /></el-icon>插件管理
             </el-button>
@@ -132,7 +135,7 @@
 import { ref, onMounted } from 'vue'
 import { threadApi, userApi } from '@/api'
 import { categoryApi, eventApi, pluginApi } from '@/api'
-import { User, Document, FolderOpened, Connection, Bell } from '@element-plus/icons-vue'
+import { User, Document, FolderOpened, Connection, Bell, Reading } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const stats = ref({ users: 0, threads: 0, categories: 0, plugins: 0 })

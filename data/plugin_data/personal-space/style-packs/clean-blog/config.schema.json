@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile_title": {
+      "type": "string",
+      "default": "个人主页拓展风格包"
+    },
+    "profile_subtitle": {
+      "type": "string",
+      "default": "这是保存在 personal-space 插件数据目录中的文件夹式风格包示例。"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#2563eb"
+    }
+  }
+}

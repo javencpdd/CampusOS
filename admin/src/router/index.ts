@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/admin/users', redirect: '/users' },
     { path: '/admin/threads', redirect: '/threads' },
     { path: '/admin/categories', redirect: '/categories' },
+    { path: '/admin/docs', redirect: '/docs' },
     { path: '/admin/plugins', redirect: '/plugins' },
     { path: '/admin/integrations', redirect: '/integrations' },
     { path: '/admin/reviews', redirect: '/reviews' },
@@ -45,6 +46,12 @@ const router = createRouter({
           name: 'Categories',
           component: () => import('@/views/CategoryManageView.vue'),
           meta: { title: '版块管理' },
+        },
+        {
+          path: 'docs',
+          name: 'DeveloperDocs',
+          component: () => import('@/views/DeveloperDocsView.vue'),
+          meta: { title: '说明文档' },
         },
         {
           path: 'plugins',

@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.16-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.18-dev.md`.
 
 The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -25,15 +25,15 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | Area | Current state |
 | --- | --- |
 | User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, create thread with category default tags, replies, personal space, style packages |
-| Admin frontend `admin/` | Users, threads, categories/default tags, plugin config/import/export/lifecycle/logs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
+| Admin frontend `admin/` | Users, threads, categories/default tags, plugin config/import/export/lifecycle/logs, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
 | Backend API | Go + Gin + pgx APIs for auth, RBAC, community, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
 | Database | PostgreSQL migrations `000001` through `000012`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
 | Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
 | Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size |
-| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, folder/zip page style packs, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
-| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, and folder/zip homepage style packs through plugin config |
+| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
+| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, and standard folder/zip homepage style packs through plugin config |
 | Platform logs | Admin-only fixed-source SSE log reader for `.campusos/logs/api.log`, `web.log`, and `admin.log` |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
 | Webhook | Endpoint management, event subscriptions, HMAC signature, test delivery, delivery records |
@@ -82,7 +82,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `internal/plugin/hostapi/` | Host API bridge for plugins |
 | `internal/plugin/wasm/` | Wasm runtime |
 | `internal/space/` | Personal space, content sync, style packages |
-| `internal/stylepack/` | `page-style-pack.v1` folder/zip loader, validator, example zip builder |
+| `internal/stylepack/` | `page-style-pack.v1` folder/zip loader, validator, standard source package support, example zip builder |
 | `internal/ai/` | AI Gateway |
 | `internal/integration/` | Admin integration overview |
 | `internal/webhook/` | Webhook service and handlers |
@@ -95,8 +95,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `data/` | Default local data root for plugins, plugin data, images, dist, config, and local skills |
 | `data/plugins/` | Installed and built-in plugins |
 | `data/plugins/personal-space/styles/` | Built-in personal space style packages |
-| `data/plugin_data/personal-space/style-packs/` | Built-in/source-folder personal-space page style packs |
-| `data/plugin_data/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs |
+| `data/plugin_data/personal-space/style-packs/` | Built-in/source-folder personal-space page style packs (`clean-blog`) |
+| `data/plugin_data/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs (`campus-hero`) |
 | `data/plugins/homepage-customizer/` | Built-in user homepage configuration plugin |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
@@ -143,7 +143,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | --- | --- |
 | `README.md` | Current repository overview and commands |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.15-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.18-dev |
 | `docs/进度/v0.5-dev/` | v0.5 implementation progress |
 | `docs/项目计划v4/02-v4实现状态与后续规划总结.md` | v4 completion and follow-up decisions |
 | `docs/help/系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 integration help |

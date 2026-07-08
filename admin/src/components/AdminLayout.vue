@@ -28,6 +28,10 @@
             <el-icon><FolderOpened /></el-icon>
             <span>版块管理</span>
           </el-menu-item>
+          <el-menu-item index="/docs">
+            <el-icon><Reading /></el-icon>
+            <span>说明文档</span>
+          </el-menu-item>
           <el-menu-item index="/plugins">
             <el-icon><Connection /></el-icon>
             <span>插件管理</span>
@@ -91,6 +95,7 @@ import {
   Operation,
   Bell,
   Monitor,
+  Reading,
   Stamp,
   SwitchButton,
 } from '@element-plus/icons-vue'
@@ -108,6 +113,7 @@ const currentPageTitle = computed(() => {
     '/users': '用户管理',
     '/threads': '帖子管理',
     '/categories': '版块管理',
+    '/docs': '说明文档',
     '/plugins': '插件管理',
     '/integrations': '集成中心',
     '/reviews': '帖子审核',
