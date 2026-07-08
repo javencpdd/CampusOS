@@ -22,6 +22,11 @@ type ThreadService struct {
 	cache        cache.Cache
 }
 
+type CreateThreadOptions struct {
+	Status        domain.ThreadStatus
+	ContentFormat string
+}
+
 // NewThreadService 创建帖子服务
 func NewThreadService(repo repository.ThreadRepository, bus eventbus.EventBus) *ThreadService {
 	return &ThreadService{repo: repo, bus: bus}
@@ -38,6 +43,13 @@ func (s *ThreadService) SetCategoryRepository(repo repository.CategoryRepository
 
 // CreateThread 创建帖子
 func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest) (*domain.Thread, error) {
+	return s.CreateThreadWithOptions(ctx, authorID, authorName, req, CreateThreadOptions{
+		Status:        domain.ThreadStatusPublished,
+		ContentFormat: "markdown",
+	})
+}
+
+func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest, opts CreateThreadOptions) (*domain.Thread, error) {
 	now := time.Now().UTC()
 	defaultTags := []string{}
 	if s.categoryRepo != nil {
@@ -47,17 +59,26 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 		}
 		defaultTags = category.DefaultTags
 	}
+	status := opts.Status
+	if status == "" {
+		status = domain.ThreadStatusPublished
+	}
+	contentFormat := opts.ContentFormat
+	if contentFormat == "" {
+		contentFormat = "markdown"
+	}
 	thread := &domain.Thread{
-		ID:         strconv.FormatInt(idgen.New(), 10),
-		Title:      req.Title,
-		Content:    req.Content,
-		AuthorID:   authorID,
-		AuthorName: authorName,
-		CategoryID: req.CategoryID,
-		Status:     domain.ThreadStatusPublished,
-		Tags:       mergeTags(defaultTags, req.Tags),
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:            strconv.FormatInt(idgen.New(), 10),
+		Title:         req.Title,
+		Content:       req.Content,
+		ContentFormat: contentFormat,
+		AuthorID:      authorID,
+		AuthorName:    authorName,
+		CategoryID:    req.CategoryID,
+		Status:        status,
+		Tags:          mergeTags(defaultTags, req.Tags),
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	if err := s.repo.Create(ctx, thread); err != nil {

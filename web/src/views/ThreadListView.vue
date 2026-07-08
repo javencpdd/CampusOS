@@ -8,11 +8,16 @@
         </el-input>
       </div>
     </div>
+    <el-tabs v-model="contentTab" class="content-tabs" @tab-change="onTabChange">
+      <el-tab-pane label="全部帖子" name="all" />
+      <el-tab-pane label="图文文章" name="richtext" />
+    </el-tabs>
     <el-table :data="threads" style="width: 100%" v-loading="loading">
       <el-table-column prop="title" label="标题" min-width="300">
         <template #default="{ row }">
           <router-link :to="`/threads/${row.id}`" class="thread-link">
             <el-tag v-if="row.is_pinned" type="danger" size="small" style="margin-right:8px">置顶</el-tag>
+            <el-tag v-if="row.content_format === 'richtext_article'" type="success" size="small" style="margin-right:8px">图文</el-tag>
             {{ row.title }}
           </router-link>
         </template>
@@ -43,6 +48,7 @@ const loading = ref(false)
 const page = ref(1)
 const total = ref(0)
 const keyword = ref('')
+const contentTab = ref<'all' | 'richtext'>('all')
 
 const loadThreads = async () => {
   loading.value = true
@@ -53,6 +59,7 @@ const loadThreads = async () => {
       page_size: 20,
       keyword: keyword.value,
       category_id: categoryID || undefined,
+      content_format: contentTab.value === 'richtext' ? 'richtext_article' : undefined,
     })
     if (res.code === 0) {
       threads.value = res.data?.items || []
@@ -60,6 +67,11 @@ const loadThreads = async () => {
     }
   } catch (e) { console.error(e) }
   finally { loading.value = false }
+}
+
+const onTabChange = () => {
+  page.value = 1
+  loadThreads()
 }
 
 onMounted(loadThreads)
@@ -71,6 +83,7 @@ watch(() => route.query.category_id, () => {
 
 <style scoped>
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.content-tabs { margin-bottom: 12px; }
 .thread-link { color: #303133; text-decoration: none; }
 .thread-link:hover { color: #409eff; }
 .pagination { margin-top: 20px; display: flex; justify-content: center; }

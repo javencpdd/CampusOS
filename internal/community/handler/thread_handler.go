@@ -65,12 +65,13 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
 	filter := domain.ThreadListFilter{
-		CategoryID: c.Query("category_id"),
-		AuthorID:   c.Query("author_id"),
-		Status:     c.Query("status"),
-		Keyword:    c.Query("keyword"),
-		Page:       page,
-		PageSize:   pageSize,
+		CategoryID:    c.Query("category_id"),
+		AuthorID:      c.Query("author_id"),
+		Status:        c.Query("status"),
+		ContentFormat: c.Query("content_format"),
+		Keyword:       c.Query("keyword"),
+		Page:          page,
+		PageSize:      pageSize,
 	}
 
 	threads, total, err := h.svc.ListThreads(c.Request.Context(), filter)

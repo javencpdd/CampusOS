@@ -1,28 +1,6 @@
 如何把接口协议标准转成像 discord或者onebot v11那样提供
 
-需要做一个富文本的插件，拥有
-1. 图文文章创建
-2. 图文文章编辑
-3. 图片上传与插入
-4. 富文本排版
-5. 草稿保存
-6. 文章发布
-7. 文章预览
-8. 文章详情展示
-9. 文章上下架 / 删除
-等功能，用户可以选择发布的模板，富文本或是普通txt文本
-或许可以根据插件直接在帖子列表中加入一个富文本帖子区
-实现逻辑可以参考 /home/jack/bbs/bbs01/CampusOS/docs/Todo/richtext.md 或是下面这四个开源项目
-| 项目             | 特点                                     |
-| -------------- | -------------------------------------- |
-| **wangEditor** | 国内常用，开箱即用，支持 JS / Vue / React          |
-| **Tiptap**     | Headless 富文本编辑器框架，扩展性强，基于 ProseMirror  |
-| **BlockNote**  | 类 Notion 的块编辑器，基于 ProseMirror 和 Tiptap |
-| **Quill**      | 老牌开源 WYSIWYG 编辑器，API 简单，适合基础富文本        |
-,但总体还是需要针对项目进行适配，要有自己的设计思路
-，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
-更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.5-dev中
-
+不光富文本的可以编辑和删除，普通文本的应该也可以，同时还可以设置私密（仅自己可见）
 
 
 能不能将微信公众号的文章同步到个人主页，同时标注出该帖子来自什么什么公众号
