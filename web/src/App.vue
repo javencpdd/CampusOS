@@ -16,17 +16,24 @@
             <el-button text>个人主页</el-button>
           </router-link>
           <template v-if="userStore.isLoggedIn">
-            <el-avatar
-              class="nav-avatar"
-              :size="32"
-              :src="displayAvatar"
-              role="button"
-              tabindex="0"
-              @click="goSpaceSettings"
-              @keyup.enter="goSpaceSettings"
-            >
-              {{ avatarInitial }}
-            </el-avatar>
+            <el-dropdown trigger="click">
+              <el-avatar
+                class="nav-avatar"
+                :size="32"
+                :src="displayAvatar"
+                role="button"
+                tabindex="0"
+              >
+                {{ avatarInitial }}
+              </el-avatar>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
+                  <el-dropdown-item @click="goSchedule">个人课表</el-dropdown-item>
+                  <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <el-dropdown>
               <span class="user-info">
                 {{ userStore.user?.nickname || userStore.user?.username }}
@@ -35,6 +42,7 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
+                  <el-dropdown-item @click="goSchedule">个人课表</el-dropdown-item>
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
                   <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -101,6 +109,10 @@ const goSpaceSettings = () => {
 const goPublicSpace = () => {
   const username = userStore.user?.username
   router.push(username ? `/u/${username}` : '/space/settings')
+}
+
+const goSchedule = () => {
+  router.push('/schedule')
 }
 
 const handleLogout = () => {

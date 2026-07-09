@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
+	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/internal/community/service"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -83,9 +85,55 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	threadID := c.Param("id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
 
 	posts, total, err := h.svc.ListByThread(c.Request.Context(), threadID, page, pageSize)
 	if err != nil {
+		if errors.Is(err, repository.ErrThreadNotFound) {
+			response.Error(c, http.StatusNotFound, 40003, err.Error())
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+
+	response.List(c, posts, &response.Pagination{
+		Page: page, PageSize: pageSize, Total: total, TotalPages: totalPages,
+	})
+}
+
+func (h *PostHandler) ListPostsForCurrentUser(c *gin.Context) {
+	threadID := c.Param("id")
+	userID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	posts, total, err := h.svc.ListByThreadForViewer(c.Request.Context(), threadID, userID, page, pageSize)
+	if err != nil {
+		if errors.Is(err, repository.ErrThreadNotFound) {
+			response.Error(c, http.StatusNotFound, 40003, err.Error())
+			return
+		}
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 		return
 	}

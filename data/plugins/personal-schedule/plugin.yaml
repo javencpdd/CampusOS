@@ -1,0 +1,63 @@
+name: personal-schedule
+display_name: "Personal Schedule"
+version: "0.1.0"
+description: "CampusOS built-in personal timetable plugin stored in the user's personal-space files"
+author: "CampusOS Team"
+runtime: builtin
+
+events:
+  subscribe: []
+
+permissions:
+  api:
+    - resource: "schedule"
+      actions: ["read", "write"]
+    - resource: "space_file"
+      actions: ["read", "write"]
+
+storage:
+  type: none
+
+config:
+  data_root: "data/images/personal-space"
+  quota_mb: 10
+  max_courses: 200
+  max_import_mb: 2
+  future_cloud_provider: "local"
+
+config_schema:
+  fields:
+    - key: "data_root"
+      label: "Data root"
+      type: "string"
+      description: "Local root for schedule JSON files. Defaults to the personal-space file root."
+      required: true
+      default: "data/images/personal-space"
+    - key: "quota_mb"
+      label: "Quota MB"
+      type: "number"
+      description: "Personal-space quota used when saving schedule data."
+      required: true
+      default: 10
+    - key: "max_courses"
+      label: "Max courses"
+      type: "number"
+      description: "Maximum course records saved for one user."
+      required: true
+      default: 200
+    - key: "max_import_mb"
+      label: "Max import MB"
+      type: "number"
+      description: "Maximum spreadsheet import size."
+      required: true
+      default: 2
+    - key: "future_cloud_provider"
+      label: "Future cloud provider"
+      type: "select"
+      description: "Reserved provider selector for future personal cloud-drive backed schedule storage."
+      default: "local"
+      options:
+        - label: "Local"
+          value: "local"
+        - label: "Cloud placeholder"
+          value: "cloud-placeholder"

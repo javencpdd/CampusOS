@@ -11,6 +11,7 @@ const (
 	ThreadStatusDraft         ThreadStatus = "draft"
 	ThreadStatusPendingReview ThreadStatus = "pending_review"
 	ThreadStatusPublished     ThreadStatus = "published"
+	ThreadStatusPrivate       ThreadStatus = "private"
 	ThreadStatusArchived      ThreadStatus = "archived"
 )
 
@@ -41,13 +42,15 @@ type CreateThreadRequest struct {
 	Content    string   `json:"content" binding:"required,min=1"`
 	CategoryID string   `json:"category_id" binding:"required"`
 	Tags       []string `json:"tags,omitempty"`
+	IsPrivate  bool     `json:"is_private,omitempty"`
 }
 
 // UpdateThreadRequest 更新帖子请求
 type UpdateThreadRequest struct {
-	Title   *string  `json:"title,omitempty"`
-	Content *string  `json:"content,omitempty"`
-	Tags    []string `json:"tags,omitempty"`
+	Title   *string       `json:"title,omitempty"`
+	Content *string       `json:"content,omitempty"`
+	Tags    []string      `json:"tags,omitempty"`
+	Status  *ThreadStatus `json:"status,omitempty"`
 }
 
 // ThreadListFilter 帖子列表过滤条件

@@ -61,7 +61,7 @@ export const threadApi = {
     status?: string
     content_format?: string
     keyword?: string
-  }) => api.get('/threads', { params }),
+  }) => api.get('/admin/threads', { params }),
   get: (id: string) => api.get(`/threads/${id}`),
   update: (id: string, data: { status?: string; title?: string; content?: string }) =>
     api.put(`/threads/${id}`, data),

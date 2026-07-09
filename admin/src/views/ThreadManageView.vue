@@ -9,6 +9,7 @@
               <el-option label="全部状态" value="all" />
               <el-option label="已发布" value="published" />
               <el-option label="草稿" value="draft" />
+              <el-option label="私密" value="private" />
               <el-option label="已归档" value="archived" />
             </el-select>
             <el-select v-model="filterContentFormat" placeholder="内容类型" clearable style="width: 140px" @change="load">
@@ -149,6 +150,7 @@ const statusMap: Record<string, string> = {
   draft: '草稿',
   pending_review: '待审核',
   published: '已发布',
+  private: '私密',
   archived: '已归档',
 }
 
@@ -157,6 +159,7 @@ const statusTagType = (status: string) => {
     published: 'success',
     draft: 'info',
     pending_review: 'warning',
+    private: 'warning',
     archived: '',
   }
   return map[status] || ''

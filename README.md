@@ -2,19 +2,20 @@
 
 CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经从基础论坛演进到“社区核心 + 插件运行时 + 个人主页 + 管理后台集成中心 + 低风险外部集成”的开发基线。
 
-截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.23-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
+截至当前代码与文档状态，`v0.5-dev` 任务已经完成到 `docs/进度/v0.5-dev/v0.5.25-dev.md`。README 只记录已经落地或当前可验证的能力；真实 IM 平台适配、标准 MCP 协议适配器、完整插件市场、完整 Docker 产品化封装、原生 Windows 实机兼容和 AI 内容审核插件仍属于后续或暂缓事项。
 
 ## 当前状态
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| 用户前台 `web/` | 已实现并持续增强 | 默认端口 `3000`，覆盖注册、登录、首页插件配置、安全 HTML 首页片段、帖子列表、图文文章筛选、帖子详情、富文本图文编辑、图片插入、草稿、预览、发布、默认标签、回帖、个人主页、头像上传、源码目录风格包列表和风格包操作 |
-| 管理后台 `admin/` | 已实现并持续增强 | 默认端口 `3001`，包含用户、帖子、富文本文章治理、版块默认标签、插件配置、插件包风险预检、首页源码风格包选择与回滚、说明文档、AI、事件、平台日志、集成中心、Webhook、MCP 工具和 Message local 测试入口 |
-| 后端 API | 已实现 | Go + Gin + pgx，提供认证、RBAC、社区、受控富文本图文文章、个人主页、插件、AI、Webhook、MCP-like 工具、Message、平台日志和 Metrics 接口 |
+| 用户前台 `web/` | 已实现并持续增强 | 默认端口 `3000`，覆盖注册、登录、首页插件配置、安全 HTML 首页片段、帖子列表、图文文章筛选、帖子详情、普通文本编辑/删除/私密可见、富文本图文编辑、图片插入、草稿、预览、发布、默认标签、回帖、个人主页、头像上传、个人课表、源码目录风格包列表和风格包操作 |
+| 管理后台 `admin/` | 已实现并持续增强 | 默认端口 `3001`，包含用户、帖子状态筛选、私密帖子管理、富文本文章治理、版块默认标签、插件配置、插件包风险预检、首页源码风格包选择与回滚、说明文档、AI、事件、平台日志、集成中心、Webhook、MCP 工具和 Message local 测试入口 |
+| 后端 API | 已实现 | Go + Gin + pgx，提供认证、RBAC、社区、受控富文本图文文章、个人主页、个人课表、插件、AI、Webhook、MCP-like 工具、Message、平台日志和 Metrics 接口 |
 | 数据库迁移 | 已实现 | `scripts/migrate.sh` / `scripts/migrate.ps1` 自动扫描 `migrations/*.up.sql`，通过 `schema_migrations` 记录执行状态 |
 | Docker 依赖服务 | 已实现 | PostgreSQL、Redis、NATS、pgAdmin 由 Docker Compose 提供 |
 | 一键开发启动 | 已实现 | `make dev-all` 调用 `scripts/start-dev.sh`，可启动依赖服务、迁移、后端、用户前台和管理后台 |
 | 插件 Runtime | 已实现基础闭环 | 支持 gRPC Runtime、Wasm Runtime(wazero)、Built-in Runtime、事件分发、Host API、插件日志和插件 KV |
+| 个人课表插件 | 已实现 MVP 闭环 | 内置 `personal-schedule` 插件支持第一周开始日期、当周课表、手动编辑、JSON 编辑、`.xls` / `.csv` / `.json` 导入，并将课表 JSON 存入个人空间文件目录 |
 | 插件包治理 | 已实现 v0.5 闭环 | 支持 `campusosctl plugin init/inspect/pack/install`、后台导入导出、配置表单、预检、checksum、包大小、权限风险分级、版本比较、导入审计和手动回滚说明 |
 | 受控富文本图文文章 | 已实现 MVP 闭环 | 内置 `controlled-richtext-article` 插件支持图文草稿、编辑、图片上传、HTML 清洗、预览、发布、详情渲染、作者下架/删除和管理员治理 |
 | 个人主页/风格包/个人空间文件 | 已实现核心闭环 | 支持公开个人主页、内容同步、JSON 风格包、标准目录文件夹/zip 拓展风格包、源码目录风格包扫描列表、受限 HTML/CSS 风格、预览、应用、个人主页回滚、首页风格回滚、恢复默认、头像上传和默认 10MB 本地个人空间 |
@@ -42,8 +43,8 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，当前仓库已经�
 | [v0.3-dev 计划书](./docs/项目计划v3/02-v0.3-dev计划书.md) | v0.3-dev 总体计划 |
 | [v4 实现状态与后续规划总结](./docs/项目计划v4/02-v4实现状态与后续规划总结.md) | v4 完成度和后续拆分判断 |
 | [v5 版本计划书](./docs/项目计划v5/00-v5版本计划书.md) | v0.5-dev 原始规划和边界 |
-| [v5 版本计划书第二版](./docs/项目计划v5/01-v5版本计划书第二版.md) | 基于 v0.5.23-dev 的审查优化版和收口结论 |
-| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.23 实施记录 |
+| [v5 版本计划书第二版](./docs/项目计划v5/01-v5版本计划书第二版.md) | 基于 v0.5.25-dev 的审查优化版和收口结论 |
+| [v0.5-dev 进度目录](./docs/进度/v0.5-dev/) | v0.5.0 到 v0.5.25 实施记录 |
 | [接口协议适配器标准说明](./docs/help/系统设计相关/接口协议适配器标准说明.md) | 说明 Discord、OneBot v11 等外部协议如何转换为 CampusOS 统一适配器模型 |
 | [v0.5 回归 Smoke 测试说明](./docs/help/系统设计相关/v0.5回归Smoke测试说明.md) | 说明 v0.5 smoke 脚本的只读和写入模式 |
 | [插件包治理与回滚说明](./docs/help/系统设计相关/插件包治理与回滚说明.md) | 说明插件包风险分级、版本比较、导入审计、手动回滚和签名预研 |
@@ -276,6 +277,7 @@ Password: campusos_dev
 | `000010` | `fix_admin_seed_password` | 修复管理员种子密码哈希 |
 | `000011` | `v05_operational_features` | v0.5 运营化字段、风格快照、插件 checksum、Webhook、MCP audit、Message 表 |
 | `000012` | `category_default_tags` | 版块默认标签，用于发帖时自动合并版块标签和用户自定义标签 |
+| `000013` | `controlled_richtext_article` | 受控富文本图文文章内容和图片资源表 |
 
 常用命令：
 
@@ -307,7 +309,7 @@ make migrate-status
 | 注册、登录、JWT 会话 | 已实现 |
 | 用户资料、用户列表 | 已实现 |
 | 版块列表、创建、更新、删除 | 已实现，支持每个版块配置默认标签 |
-| 帖子列表、详情、创建、更新、删除 | 已实现，发帖时自动合并版块默认标签和用户自定义标签 |
+| 帖子列表、详情、创建、更新、删除 | 已实现，发帖时自动合并版块默认标签和用户自定义标签；普通文本帖子支持作者编辑、删除和私密状态 |
 | 管理员置顶、锁定、解锁帖子 | 已实现 |
 | 回帖、引用回复、楼层号 | 已实现 |
 | 浏览数、回复数同步 | 已实现 |
@@ -337,6 +339,18 @@ make migrate-status
 | [个人主页 Space 说明](./docs/help/插件相关/个人主页Space说明.md) | 个人主页能力和数据同步 |
 | [个人主页风格包说明](./docs/help/插件相关/个人主页风格包说明.md) | 风格包结构和使用 |
 
+### 个人课表
+
+| 能力 | 状态 |
+| --- | --- |
+| 头像菜单入口 | 已实现，登录用户可从头像下拉菜单进入 `/schedule` |
+| 第一周开始日期 | 已实现，用于计算当前周与周范围 |
+| 当周课表 | 已实现，按星期和节次展示当前选择周课程 |
+| 手动编辑课程 | 已实现，支持课程名称、教师、地点、星期、节次、周次、颜色和备注 |
+| 高级 JSON 编辑 | 已实现，可直接编辑课表数据结构 |
+| 表格导入 | 已实现，支持 `.xls` 示例课表、`.csv` 和 `.json` |
+| 个人空间存储 | 已实现，课表保存到 `data/images/personal-space/users/<user_id>/schedule/schedule.json` |
+
 ### 插件系统
 
 示例插件：
@@ -346,6 +360,8 @@ data/plugins/hello-plugin
 data/plugins/hello-wasm
 data/plugins/personal-space
 data/plugins/homepage-customizer
+data/plugins/personal-schedule
+data/plugins/controlled-richtext-article
 ```
 
 当前插件能力：
@@ -401,6 +417,8 @@ X-CampusOS-Plugin: <plugin-name>
 | [hello-wasm README](./data/plugins/hello-wasm/README.md) | Wasm 插件示例 |
 | [personal-space README](./data/plugins/personal-space/README.md) | 内置个人主页、个人空间文件和默认风格包 |
 | [homepage-customizer README](./data/plugins/homepage-customizer/README.md) | 内置用户前台首页配置插件 |
+| [personal-schedule README](./data/plugins/personal-schedule/README.md) | 内置个人课表插件 |
+| [controlled-richtext-article README](./data/plugins/controlled-richtext-article/README.md) | 内置受控富文本图文文章插件 |
 | [Go SDK README](./sdk/go/README.md) | Go 插件 SDK |
 
 ### campusosctl CLI

@@ -58,11 +58,50 @@ func (h *ThreadHandler) GetThread(c *gin.Context) {
 	response.Success(c, thread)
 }
 
+// GetThreadForCurrentUser 获取当前用户可见的帖子详情。
+// GET /api/v1/threads/:id/me
+func (h *ThreadHandler) GetThreadForCurrentUser(c *gin.Context) {
+	id := c.Param("id")
+	userID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+
+	thread, err := h.svc.GetThreadForViewer(c.Request.Context(), id, userID)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, 40003, err.Error())
+		return
+	}
+
+	response.Success(c, thread)
+}
+
 // ListThreads 获取帖子列表
 // GET /api/v1/threads
 func (h *ThreadHandler) ListThreads(c *gin.Context) {
+	filter, pageSize := h.threadListFilter(c)
+	filter.Status = string(domain.ThreadStatusPublished)
+
+	h.respondThreadList(c, filter, pageSize)
+}
+
+// AdminListThreads 获取管理端帖子列表，包含草稿、私密和归档状态。
+// GET /api/v1/admin/threads
+func (h *ThreadHandler) AdminListThreads(c *gin.Context) {
+	filter, pageSize := h.threadListFilter(c)
+	h.respondThreadList(c, filter, pageSize)
+}
+
+func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilter, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
 
 	filter := domain.ThreadListFilter{
 		CategoryID:    c.Query("category_id"),
@@ -73,7 +112,10 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 		Page:          page,
 		PageSize:      pageSize,
 	}
+	return filter, pageSize
+}
 
+func (h *ThreadHandler) respondThreadList(c *gin.Context, filter domain.ThreadListFilter, pageSize int) {
 	threads, total, err := h.svc.ListThreads(c.Request.Context(), filter)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
@@ -86,7 +128,7 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 	}
 
 	response.List(c, threads, &response.Pagination{
-		Page:       page,
+		Page:       filter.Page,
 		PageSize:   pageSize,
 		Total:      total,
 		TotalPages: totalPages,
