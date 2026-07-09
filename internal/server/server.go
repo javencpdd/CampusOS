@@ -24,6 +24,7 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/internal/richtext"
+	"github.com/campusos/CampusOS/internal/schedule"
 	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/internal/webhook"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -126,7 +127,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article")
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
@@ -196,6 +197,7 @@ func (s *Server) Run() error {
 		return s.manager.IsPluginRunning("controlled-richtext-article")
 	})
 	s.configureRichTextAssetStore(richTextSvc)
+	scheduleSvc := s.initScheduleService()
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	// ─── 初始化处理器层 ───
@@ -213,6 +215,7 @@ func (s *Server) Run() error {
 	messageHandler := message.NewHandler(messageSvc)
 	homepageHandler := homepage.NewHandler(homepageSvc)
 	richTextHandler := richtext.NewHandler(richTextSvc)
+	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithPool(pool),
@@ -226,7 +229,7 @@ func (s *Server) Run() error {
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
@@ -240,7 +243,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article")
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
@@ -290,6 +293,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		return s.manager.IsPluginRunning("controlled-richtext-article")
 	})
 	s.configureRichTextAssetStore(richTextSvc)
+	scheduleSvc := s.initScheduleService()
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -306,6 +310,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	messageHandler := message.NewHandler(messageSvc)
 	homepageHandler := homepage.NewHandler(homepageSvc)
 	richTextHandler := richtext.NewHandler(richTextSvc)
+	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithConfig(s.cfg),
@@ -318,7 +323,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -383,6 +388,23 @@ func (s *Server) configureRichTextAssetStore(richTextSvc *richtext.Service) {
 		return
 	}
 	richTextSvc.SetAssetStore(store)
+}
+
+func (s *Server) initScheduleService() *schedule.Service {
+	cfg := schedule.ConfigFromPluginConfig(pluginConfig(s.manager, "personal-schedule"), personalSpacePluginConfig(s.manager))
+	svc, err := schedule.NewService(cfg)
+	if err != nil {
+		log.Printf("⚠️  个人课表存储初始化失败，回退到默认 personal-space 目录: %v", err)
+		svc, err = schedule.NewService(schedule.Config{})
+		if err != nil {
+			log.Printf("⚠️  个人课表默认存储仍初始化失败: %v", err)
+			svc = schedule.NewDisabledService()
+		}
+	}
+	svc.SetEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning("personal-schedule")
+	})
+	return svc
 }
 
 func personalSpacePluginConfig(manager *plugin.Manager) map[string]interface{} {
@@ -459,6 +481,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	messageHandler *message.Handler,
 	homepageHandler *homepage.Handler,
 	richTextHandler *richtext.Handler,
+	scheduleHandler *schedule.Handler,
 	platformLogHandler *platformlog.Handler,
 	metricsCollector *observability.Collector) error {
 
@@ -479,6 +502,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/health", userHandler.HealthCheck)
 		public.GET("/home/config", homepageHandler.GetConfig)
 		public.GET("/richtext/status", richTextHandler.Status)
+		public.GET("/schedule/status", scheduleHandler.Status)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
 		public.GET("/threads", threadHandler.ListThreads)
@@ -524,6 +548,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
 		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
+		authenticated.GET("/schedule/me", scheduleHandler.GetMe)
+		authenticated.PUT("/schedule/me", scheduleHandler.SaveMe)
+		authenticated.POST("/schedule/me/import", scheduleHandler.ImportMe)
 		authenticated.POST("/richtext/articles", richTextHandler.CreateDraft)
 		authenticated.GET("/richtext/articles/:id/me", richTextHandler.GetMine)
 		authenticated.PUT("/richtext/articles/:id", richTextHandler.UpdateDraft)

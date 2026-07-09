@@ -111,6 +111,24 @@ export const postApi = {
   delete: (threadId: string, postId: string) => api.delete(`/threads/${threadId}/posts/${postId}`),
 }
 
+// 个人课表 API
+export const scheduleApi = {
+  status: () => api.get('/schedule/status'),
+  me: () => api.get('/schedule/me'),
+  save: (data: {
+    first_week_start: string
+    settings: Record<string, any>
+    courses: any[]
+    metadata?: Record<string, any>
+  }) => api.put('/schedule/me', data),
+  import: (file: File, replace = false) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('replace', replace ? 'true' : 'false')
+    return api.post('/schedule/me/import', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })
+  },
+}
+
 // 版块 API
 export const categoryApi = {
   list: () => api.get('/categories'),
