@@ -1,6 +1,6 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-07-08
+> Snapshot date: 2026-07-09
 > Repository: `/home/jack/bbs/bbs01/CampusOS`
 > Primary branch in recent work: `djw-update`
 
@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.23-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.24-dev.md`.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -24,9 +24,9 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 
 | Area | Current state |
 | --- | --- |
-| User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, richtext article editor/drafts/preview/publish, create plain thread with category default tags, replies, personal space, style packages |
-| Admin frontend `admin/` | Users, threads, richtext article governance, categories/default tags, plugin config/import/export/lifecycle/logs/risk precheck, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
-| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, controlled richtext articles, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
+| User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, plain-thread create/edit/delete/private visibility, unsaved edit prompts, richtext article editor/drafts/preview/publish, replies, personal space, style packages |
+| Admin frontend `admin/` | Users, threads/private status filters, richtext article governance, categories/default tags, plugin config/import/export/lifecycle/logs/risk precheck, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
+| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, private-thread visibility, controlled richtext articles, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
 | Database | PostgreSQL migrations `000001` through `000013`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
@@ -51,7 +51,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | v0.2 | User/admin frontend split, RBAC tables, plugin tables, API key, cache layer, admin UI, CI/CD, PR template |
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
-| v0.5-dev | Integration center, personal space operations, personal-space file storage/plugin gate, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, category default tags, platform logs, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
+| v0.5-dev | Integration center, personal space operations, personal-space file storage/plugin gate, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, ordinary plain-thread edit/delete/private visibility, category default tags, platform logs, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
 
 ## 4. Current Migrations
 
@@ -150,7 +150,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | --- | --- |
 | `README.md` | Current repository overview and commands |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.23-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.24-dev |
 | `docs/help/系统设计相关/接口协议适配器标准说明.md` | Discord/OneBot-style protocol adapter design |
 | `docs/help/系统设计相关/v0.5回归Smoke测试说明.md` | v0.5 read-only/write smoke usage |
 | `docs/help/系统设计相关/插件包治理与回滚说明.md` | Plugin package risk precheck, audit, rollback, and signature pre-research |

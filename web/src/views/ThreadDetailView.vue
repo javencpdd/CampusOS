@@ -11,13 +11,23 @@
               <span>浏览：{{ thread.view_count }}</span>
               <span>回复：{{ thread.reply_count }}</span>
               <el-tag v-if="thread.content_format === 'richtext_article'" type="success" size="small">图文</el-tag>
+              <el-tag v-if="thread.status === 'private'" type="warning" size="small">私密</el-tag>
               <el-tag v-for="tag in thread.tags" :key="tag" size="small">{{ tag }}</el-tag>
             </div>
           </div>
-          <div v-if="canManageArticle" class="article-actions">
-            <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
-            <el-button size="small" @click="offlineArticle" :loading="articleOperating">下架</el-button>
-            <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating">删除</el-button>
+          <div v-if="canManageArticle || canManagePlainThread" class="article-actions">
+            <template v-if="canManageArticle">
+              <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
+              <el-button size="small" @click="offlineArticle" :loading="articleOperating">下架</el-button>
+              <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating">删除</el-button>
+            </template>
+            <template v-else-if="canManagePlainThread">
+              <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
+              <el-button size="small" @click="togglePlainPrivacy" :loading="articleOperating">
+                {{ thread.status === 'private' ? '设为公开' : '设为私密' }}
+              </el-button>
+              <el-button size="small" type="danger" plain @click="deletePlainThread" :loading="articleOperating">删除</el-button>
+            </template>
           </div>
         </div>
       </template>
@@ -121,13 +131,20 @@ const postsPageSize = 20
 const postsTotal = ref(0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const canManageArticle = computed(() => Boolean(article.value && userStore.user?.id === thread.value?.author_id))
+const canManagePlainThread = computed(() => Boolean(
+  !article.value &&
+  thread.value?.content_format !== 'richtext_article' &&
+  userStore.user?.id === thread.value?.author_id,
+))
 
 const threadID = () => route.params.id as string
 
 const loadThread = async () => {
   loading.value = true
   try {
-    const res: any = await threadApi.get(threadID())
+    const res: any = userStore.isLoggedIn
+      ? await threadApi.getMine(threadID()).catch(() => threadApi.get(threadID()))
+      : await threadApi.get(threadID())
     if (res.code === 0) {
       thread.value = res.data
       await loadArticle()
@@ -156,7 +173,9 @@ const loadPosts = async () => {
   if (!threadID()) return
   postsLoading.value = true
   try {
-    const res: any = await postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize })
+    const res: any = userStore.isLoggedIn
+      ? await postApi.listMine(threadID(), { page: postsPage.value, page_size: postsPageSize }).catch(() => postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize }))
+      : await postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize })
     if (res.code === 0) {
       posts.value = res.data?.items || []
       postsTotal.value = res.data?.pagination?.total || 0
@@ -186,6 +205,36 @@ const deleteArticle = async () => {
   try {
     await richTextApi.delete(threadID())
     ElMessage.success('文章已删除')
+    router.push('/threads')
+  } catch (e: any) {
+    ElMessage.error(e?.msg || '删除失败')
+  } finally {
+    articleOperating.value = false
+  }
+}
+
+const togglePlainPrivacy = async () => {
+  if (!thread.value) return
+  articleOperating.value = true
+  try {
+    const nextStatus = thread.value.status === 'private' ? 'published' : 'private'
+    const res: any = await threadApi.update(threadID(), { status: nextStatus })
+    if (res.code === 0) {
+      thread.value = res.data
+      ElMessage.success(nextStatus === 'private' ? '已设为私密' : '已设为公开')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.msg || '可见性更新失败')
+  } finally {
+    articleOperating.value = false
+  }
+}
+
+const deletePlainThread = async () => {
+  articleOperating.value = true
+  try {
+    await threadApi.delete(threadID())
+    ElMessage.success('帖子已删除')
     router.push('/threads')
   } catch (e: any) {
     ElMessage.error(e?.msg || '删除失败')

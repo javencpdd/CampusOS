@@ -41,6 +41,9 @@ func (s *PostService) CreatePost(ctx context.Context, threadID, authorID, author
 		if thread.IsLocked {
 			return nil, fmt.Errorf("thread is locked")
 		}
+		if thread.Status != domain.ThreadStatusPublished && thread.AuthorID != authorID {
+			return nil, repository.ErrThreadNotFound
+		}
 	}
 
 	now := time.Now().UTC()
@@ -115,6 +118,20 @@ func (s *PostService) DeletePost(ctx context.Context, id, authorID string) error
 }
 
 func (s *PostService) ListByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {
+	if err := s.ensureThreadVisible(ctx, threadID, ""); err != nil {
+		return nil, 0, err
+	}
+	return s.listByThread(ctx, threadID, page, pageSize)
+}
+
+func (s *PostService) ListByThreadForViewer(ctx context.Context, threadID, viewerID string, page, pageSize int) ([]*domain.Post, int64, error) {
+	if err := s.ensureThreadVisible(ctx, threadID, viewerID); err != nil {
+		return nil, 0, err
+	}
+	return s.listByThread(ctx, threadID, page, pageSize)
+}
+
+func (s *PostService) listByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -124,14 +141,34 @@ func (s *PostService) ListByThread(ctx context.Context, threadID string, page, p
 	return s.repo.ListByThread(ctx, threadID, page, pageSize)
 }
 
+func (s *PostService) ensureThreadVisible(ctx context.Context, threadID, viewerID string) error {
+	if s.threadRepo == nil {
+		return nil
+	}
+	thread, err := s.threadRepo.GetByID(ctx, threadID)
+	if err != nil {
+		return fmt.Errorf("get thread: %w", err)
+	}
+	if thread.Status == domain.ThreadStatusPublished {
+		return nil
+	}
+	if viewerID != "" && thread.AuthorID == viewerID {
+		return nil
+	}
+	return repository.ErrThreadNotFound
+}
+
 func (s *PostService) invalidateThreadListCache(ctx context.Context) {
 	if s.cache == nil {
 		return
 	}
 	keys := []string{
 		"threads:list:1:20:published",
+		"threads:list:1:20:published:",
 		"threads:list:1:10:published",
+		"threads:list:1:10:published:",
 		"threads:list:1:5:published",
+		"threads:list:1:5:published:",
 	}
 	for _, key := range keys {
 		_ = s.cache.Delete(ctx, key)

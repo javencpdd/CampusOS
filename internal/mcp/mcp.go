@@ -176,7 +176,14 @@ func (s *Service) call(ctx context.Context, name string, args map[string]interfa
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
-		return s.threadRepo.GetByID(ctx, id)
+		thread, err := s.threadRepo.GetByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if thread.Status != domain.ThreadStatusPublished {
+			return nil, repository.ErrThreadNotFound
+		}
+		return thread, nil
 	default:
 		return nil, ErrToolNotFound
 	}

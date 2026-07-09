@@ -54,9 +54,10 @@ export const threadApi = {
     keyword?: string
   }) => api.get('/threads', { params }),
   get: (id: string) => api.get(`/threads/${id}`),
-  create: (data: { title: string; content: string; category_id: string; tags?: string[] }) =>
+  getMine: (id: string) => api.get(`/threads/${id}/me`),
+  create: (data: { title: string; content: string; category_id: string; tags?: string[]; is_private?: boolean }) =>
     api.post('/threads', data),
-  update: (id: string, data: { title?: string; content?: string; tags?: string[] }) =>
+  update: (id: string, data: { title?: string; content?: string; tags?: string[]; status?: string }) =>
     api.put(`/threads/${id}`, data),
   delete: (id: string) => api.delete(`/threads/${id}`),
 }
@@ -103,6 +104,8 @@ export const postApi = {
     api.get(`/threads/${threadId}/posts`, { params }),
   create: (threadId: string, data: { content: string; parent_id?: string }) =>
     api.post(`/threads/${threadId}/posts`, data),
+  listMine: (threadId: string, params?: { page?: number; page_size?: number }) =>
+    api.get(`/threads/${threadId}/posts/me`, { params }),
   update: (threadId: string, postId: string, data: { content: string }) =>
     api.put(`/threads/${threadId}/posts/${postId}`, data),
   delete: (threadId: string, postId: string) => api.delete(`/threads/${threadId}/posts/${postId}`),

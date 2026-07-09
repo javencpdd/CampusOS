@@ -3,7 +3,7 @@
     <el-card class="editor-card" shadow="never">
       <template #header>
         <div class="editor-header">
-          <h2>{{ isEditMode ? '编辑图文文章' : '发布帖子' }}</h2>
+          <h2>{{ editorTitle }}</h2>
           <el-segmented
             v-if="richTextEnabled && !isEditMode"
             v-model="templateMode"
@@ -17,7 +17,7 @@
           <el-input v-model="plainForm.title" placeholder="请输入帖子标题" maxlength="255" show-word-limit />
         </el-form-item>
         <el-form-item label="版块" required>
-          <el-select v-model="plainForm.category_id" :loading="categoryLoading" filterable placeholder="请选择版块" class="field-full">
+          <el-select v-model="plainForm.category_id" :loading="categoryLoading" filterable :disabled="isEditMode" placeholder="请选择版块" class="field-full">
             <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
           </el-select>
         </el-form-item>
@@ -29,8 +29,15 @@
             <el-option v-for="tag in currentPlainCategory?.default_tags || []" :key="tag" :label="tag" :value="tag" />
           </el-select>
         </el-form-item>
+        <el-form-item label="可见性">
+          <el-switch
+            v-model="plainForm.is_private"
+            active-text="私密，仅自己可见"
+            inactive-text="公开发布"
+          />
+        </el-form-item>
         <div class="editor-actions">
-          <el-button type="primary" @click="submitPlain" :loading="loading">发布帖子</el-button>
+          <el-button type="primary" @click="submitPlain" :loading="loading">{{ isEditMode ? '保存修改' : '发布帖子' }}</el-button>
           <el-button @click="$router.back()">取消</el-button>
         </div>
       </el-form>
@@ -98,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, richTextApi, threadApi } from '@/api'
 import { ElMessage } from 'element-plus'
@@ -125,6 +132,8 @@ const plainDefaults = ref<string[]>([])
 const articleDefaults = ref<string[]>([])
 const articleDirty = ref(false)
 const initializingArticle = ref(true)
+const plainDirty = ref(false)
+const initializingPlain = ref(true)
 const allowLeave = ref(false)
 
 const templateOptions = [
@@ -133,8 +142,18 @@ const templateOptions = [
 ]
 
 const isEditMode = computed(() => Boolean(route.params.id))
+const editorTitle = computed(() => {
+  if (!isEditMode.value) return '发布帖子'
+  return templateMode.value === 'plain_text' ? '编辑普通文本帖子' : '编辑图文文章'
+})
 
-const plainForm = reactive({ title: '', content: '', category_id: '', tags: [] as string[] })
+const plainForm = reactive({
+  title: '',
+  content: '',
+  category_id: '',
+  tags: [] as string[],
+  is_private: false,
+})
 const articleForm = reactive({
   title: '',
   summary: '',
@@ -179,16 +198,24 @@ const loadCategories = async () => {
   }
 }
 
-const loadEditingArticle = async () => {
+const loadEditingThread = async () => {
   if (!isEditMode.value) return
-  templateMode.value = 'richtext'
   draftThreadId.value = String(route.params.id)
   try {
-    const [threadRes, articleRes] = await Promise.all([
-      threadApi.get(draftThreadId.value),
-      richTextApi.getMine(draftThreadId.value),
-    ])
+    const threadRes = await threadApi.getMine(draftThreadId.value)
     const thread = unwrap(threadRes)
+    if (thread.content_format !== 'richtext_article') {
+      templateMode.value = 'plain_text'
+      plainForm.title = thread.title || ''
+      plainForm.content = thread.content || ''
+      plainForm.category_id = thread.category_id || plainForm.category_id
+      plainForm.tags = [...(thread.tags || [])]
+      plainForm.is_private = thread.status === 'private'
+      return
+    }
+
+    templateMode.value = 'richtext'
+    const articleRes = await richTextApi.getMine(draftThreadId.value)
     const article = unwrap(articleRes)
     articleForm.title = article.title || thread.title || ''
     articleForm.summary = article.summary || ''
@@ -199,7 +226,7 @@ const loadEditingArticle = async () => {
     articleForm.content_json = article.content_json || {}
     articleContentId.value = article.id || ''
   } catch (error: any) {
-    ElMessage.error(error?.msg || '加载图文文章失败')
+    ElMessage.error(error?.msg || '加载帖子失败')
   }
 }
 
@@ -210,13 +237,29 @@ const submitPlain = async () => {
   }
   loading.value = true
   try {
-    const res: any = await threadApi.create(plainForm)
+    const payload = {
+      title: plainForm.title,
+      content: plainForm.content,
+      category_id: plainForm.category_id,
+      tags: plainForm.tags,
+      is_private: plainForm.is_private,
+    }
+    const res: any = isEditMode.value
+      ? await threadApi.update(String(route.params.id), {
+        title: payload.title,
+        content: payload.content,
+        tags: payload.tags,
+        status: plainForm.is_private ? 'private' : 'published',
+      })
+      : await threadApi.create(payload)
     if (res.code === 0) {
-      ElMessage.success('发布成功')
+      ElMessage.success(isEditMode.value ? '修改已保存' : '发布成功')
+      plainDirty.value = false
+      allowLeave.value = true
       router.push(`/threads/${res.data.id}`)
     }
   } catch (error: any) {
-    ElMessage.error(error?.msg || '发布失败')
+    ElMessage.error(error?.msg || (isEditMode.value ? '保存失败' : '发布失败'))
   } finally {
     loading.value = false
   }
@@ -327,6 +370,7 @@ const insertSnippet = (snippet: string) => {
 }
 
 const applyPlainDefaultTags = () => {
+  if (isEditMode.value) return
   const custom = plainForm.tags.filter((tag) => !plainDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()))
   const defaults = currentPlainCategory.value?.default_tags || []
   plainForm.tags = mergeTags(defaults, custom)
@@ -359,24 +403,54 @@ const mergeTags = (...groups: string[][]) => {
 
 watch(() => plainForm.category_id, applyPlainDefaultTags)
 watch(() => articleForm.category_id, applyArticleDefaultTags)
+watch(plainForm, () => {
+  if (!initializingPlain.value && templateMode.value === 'plain_text') {
+    plainDirty.value = true
+  }
+}, { deep: true })
 watch(articleForm, () => {
   if (!initializingArticle.value && templateMode.value === 'richtext') {
     articleDirty.value = true
   }
 }, { deep: true })
 
+const hasUnsavedChanges = () => {
+  if (allowLeave.value) return false
+  if (templateMode.value === 'richtext') return articleDirty.value
+  return templateMode.value === 'plain_text' && plainDirty.value
+}
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges()) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
 onBeforeRouteLeave(() => {
-  if (allowLeave.value || templateMode.value !== 'richtext' || !articleDirty.value) {
+  if (!hasUnsavedChanges()) {
     return true
   }
-  return window.confirm('图文文章还有未保存的修改，离开前请先保存草稿或发布。确定要离开吗？')
+  if (templateMode.value === 'richtext' && articleDirty.value) {
+    return window.confirm('图文文章还有未保存的修改，离开前请先保存草稿或发布。确定要离开吗？')
+  }
+  if (templateMode.value === 'plain_text' && plainDirty.value) {
+    return window.confirm('普通文本帖子还有未保存的修改，离开前请先保存修改或发布。确定要离开吗？')
+  }
+  return true
 })
 
 onMounted(async () => {
   await Promise.all([loadStatus(), loadCategories()])
-  await loadEditingArticle()
+  await loadEditingThread()
   initializingArticle.value = false
+  initializingPlain.value = false
   articleDirty.value = false
+  plainDirty.value = false
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

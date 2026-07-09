@@ -63,6 +63,9 @@ func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, a
 	if status == "" {
 		status = domain.ThreadStatusPublished
 	}
+	if req.IsPrivate && status == domain.ThreadStatusPublished {
+		status = domain.ThreadStatusPrivate
+	}
 	contentFormat := opts.ContentFormat
 	if contentFormat == "" {
 		contentFormat = "markdown"
@@ -100,11 +103,37 @@ func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, a
 
 // GetThread 获取帖子详情
 func (s *ThreadService) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	if current.Status != domain.ThreadStatusPublished {
+		return nil, repository.ErrThreadNotFound
+	}
 	thread, err := s.repo.IncrementViewCount(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
 	}
 	s.invalidateListCache(ctx)
+	return thread, nil
+}
+
+func (s *ThreadService) GetThreadForViewer(ctx context.Context, id, viewerID string) (*domain.Thread, error) {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get thread: %w", err)
+	}
+	if thread.Status == domain.ThreadStatusPublished {
+		thread, err = s.repo.IncrementViewCount(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("get thread: %w", err)
+		}
+		s.invalidateListCache(ctx)
+		return thread, nil
+	}
+	if viewerID == "" || thread.AuthorID != viewerID {
+		return nil, repository.ErrThreadNotFound
+	}
 	return thread, nil
 }
 
@@ -127,7 +156,12 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 
 	// 尝试从缓存获取（仅缓存第一页无筛选条件的查询）
 	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s:%s", filter.Page, filter.PageSize, filter.Status, filter.ContentFormat)
-	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" && filter.ContentFormat == "" {
+	cacheablePublicList := filter.Status == string(domain.ThreadStatusPublished) &&
+		filter.Keyword == "" &&
+		filter.CategoryID == "" &&
+		filter.AuthorID == "" &&
+		filter.ContentFormat == ""
+	if s.cache != nil && cacheablePublicList {
 		type cachedResult struct {
 			Threads []*domain.Thread `json:"threads"`
 			Total   int64            `json:"total"`
@@ -145,7 +179,7 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	}
 
 	// 写入缓存（5 分钟 TTL）
-	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" && filter.ContentFormat == "" {
+	if s.cache != nil && cacheablePublicList {
 		type cachedResult struct {
 			Threads []*domain.Thread `json:"threads"`
 			Total   int64            `json:"total"`
@@ -175,6 +209,17 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 	}
 	if req.Tags != nil {
 		thread.Tags = normalizeTags(req.Tags)
+	}
+	if req.Status != nil {
+		if thread.ContentFormat == "richtext_article" {
+			return nil, fmt.Errorf("richtext article status must be managed through richtext article APIs")
+		}
+		switch *req.Status {
+		case domain.ThreadStatusPublished, domain.ThreadStatusPrivate:
+			thread.Status = *req.Status
+		default:
+			return nil, fmt.Errorf("invalid thread status: %s", *req.Status)
+		}
 	}
 	thread.UpdatedAt = time.Now().UTC()
 
@@ -304,8 +349,13 @@ func (s *ThreadService) invalidateListCache(ctx context.Context) {
 	// 清除常见的列表缓存 key
 	keys := []string{
 		"threads:list:1:20:published",
+		"threads:list:1:20:published:",
 		"threads:list:1:10:published",
+		"threads:list:1:10:published:",
 		"threads:list:1:5:published",
+		"threads:list:1:5:published:",
+		"threads:list:1:20:private",
+		"threads:list:1:20:private:",
 	}
 	for _, key := range keys {
 		_ = s.cache.Delete(ctx, key)

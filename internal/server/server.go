@@ -533,8 +533,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/richtext/articles/:id/offline", richTextHandler.Offline)
 		authenticated.DELETE("/richtext/articles/:id", richTextHandler.Delete)
 		authenticated.POST("/threads", threadHandler.CreateThread)
+		authenticated.GET("/threads/:id/me", threadHandler.GetThreadForCurrentUser)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
+		authenticated.GET("/threads/:id/posts/me", postHandler.ListPostsForCurrentUser)
 		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
 		authenticated.PUT("/threads/:id/posts/:post_id", postHandler.UpdatePost)
 		authenticated.DELETE("/threads/:id/posts/:post_id", postHandler.DeletePost)
@@ -551,6 +553,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/users/:id/activate", middleware.RequirePermission(permSvc, "user", "suspend"), userHandler.ActivateUser)
 
 		// 帖子管理
+		admin.GET("/admin/threads", middleware.RequirePermission(permSvc, "role", "manage"), threadHandler.AdminListThreads)
 		admin.POST("/threads/:id/pin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.PinThread)
 		admin.POST("/threads/:id/unpin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnpinThread)
 		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.LockThread)
