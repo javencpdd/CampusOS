@@ -22,7 +22,7 @@
               :on-change="handleImportChange"
             >
               <el-button type="primary" size="small" :loading="importing">
-                <el-icon><Upload /></el-icon>
+                <el-icon><Download /></el-icon>
                 导入
               </el-button>
             </el-upload>
@@ -76,7 +76,7 @@
               配置
             </el-button>
             <el-button type="success" size="small" plain @click="doExport(row)">
-              <el-icon><Download /></el-icon>
+              <el-icon><Upload /></el-icon>
               导出
             </el-button>
             <el-switch
@@ -136,6 +136,76 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
+    </el-dialog>
+
+    <el-dialog v-model="precheckDialogVisible" title="插件包导入预检" width="820px">
+      <div v-if="pendingPrecheck" class="precheck-panel">
+        <div class="precheck-summary">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="插件">{{ pendingPrecheck.manifest?.name || '未知' }}</el-descriptions-item>
+            <el-descriptions-item label="版本变化">
+              {{ pendingPrecheck.existing_version || '无' }} -> {{ pendingPrecheck.import_version || '未知' }}
+              <el-tag size="small" effect="plain">{{ versionChangeLabel(pendingPrecheck.version_change) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="风险等级">
+              <el-tag :type="riskTag(pendingPrecheck.risk_level)" effect="plain">
+                {{ riskLabel(pendingPrecheck.risk_level) }} / {{ pendingPrecheck.risk_score || 0 }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="签名">
+              <el-tag :type="pendingPrecheck.signature_status === 'unsigned' ? 'warning' : 'success'" effect="plain">
+                {{ pendingPrecheck.signature_status === 'unsigned' ? '未签名' : '存在签名文件，暂未验签' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="Checksum" :span="2">{{ pendingPrecheck.checksum }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+        <el-alert
+          v-for="error in pendingPrecheck.errors || []"
+          :key="`error-${error}`"
+          :title="error"
+          type="error"
+          show-icon
+          :closable="false"
+          class="precheck-alert"
+        />
+        <el-alert
+          v-for="warning in pendingPrecheck.warnings || []"
+          :key="`warning-${warning}`"
+          :title="warning"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="precheck-alert"
+        />
+        <el-collapse class="precheck-collapse">
+          <el-collapse-item title="权限风险" name="permissions">
+            <div class="tag-list">
+              <el-tag v-for="perm in pendingPrecheck.permissions || []" :key="perm" type="warning" effect="plain">
+                {{ perm }}
+              </el-tag>
+              <span v-if="!pendingPrecheck.permissions?.length" class="empty-text">未声明 Host API 权限</span>
+            </div>
+            <ul class="risk-reasons">
+              <li v-for="reason in pendingPrecheck.risk_reasons || []" :key="reason">{{ reason }}</li>
+            </ul>
+          </el-collapse-item>
+          <el-collapse-item title="包内文件" name="files">
+            <pre class="metadata-pre">{{ (pendingPrecheck.files || []).join('\n') }}</pre>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+      <template #footer>
+        <el-button @click="clearPendingImport">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="pendingPrecheck?.allowed === false || (pendingPrecheck?.conflict && !replaceOnImport)"
+          :loading="importing"
+          @click="confirmImport"
+        >
+          确认导入
+        </el-button>
+      </template>
     </el-dialog>
 
     <el-dialog v-model="configDialogVisible" :title="`${selectedPluginName} 插件配置`" width="720px">
@@ -213,6 +283,9 @@
             :disabled="!selectedHomeSourceStylePack?.validation.valid"
           >
             应用源码目录
+          </el-button>
+          <el-button size="small" type="warning" plain @click="rollbackHomeStylePack" :loading="homeStylePackRollbacking">
+            回滚
           </el-button>
         </div>
         <el-alert
@@ -324,10 +397,14 @@ const homeStylePackValidation = ref<any | null>(null)
 const homeStylePackGenerating = ref(false)
 const homeStylePackValidating = ref(false)
 const homeStylePackApplying = ref(false)
+const homeStylePackRollbacking = ref(false)
 const homeSourceStylePackName = ref('campus-hero')
 const homeSourceStylePackApplying = ref(false)
 const homeSourceStylePackLoading = ref(false)
 const homeSourceStylePacks = ref<SourceStylePack[]>([])
+const precheckDialogVisible = ref(false)
+const pendingImportFile = ref<File | null>(null)
+const pendingPrecheck = ref<any | null>(null)
 
 const selectedHomeSourceStylePack = computed(() =>
   homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value) || null,
@@ -413,6 +490,9 @@ const handleImportChange = async (uploadFile: UploadFile) => {
   try {
     const precheckRes = (await pluginApi.precheckPackage(uploadFile.raw)) as any
     const precheck = precheckRes?.data || precheckRes
+    pendingImportFile.value = uploadFile.raw
+    pendingPrecheck.value = precheck
+    precheckDialogVisible.value = true
     if (precheck?.allowed === false) {
       ElMessage.error(`插件包预检失败：${(precheck.errors || []).join('；') || '未知错误'}`)
       return
@@ -421,11 +501,29 @@ const handleImportChange = async (uploadFile: UploadFile) => {
       ElMessage.warning('检测到同名插件，请开启“覆盖”后再导入')
       return
     }
-    await pluginApi.importPackage(uploadFile.raw, replaceOnImport.value)
-    ElMessage.success(`插件包已导入${precheck?.checksum ? `：${precheck.checksum}` : ''}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '插件包预检失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+const clearPendingImport = () => {
+  precheckDialogVisible.value = false
+  pendingImportFile.value = null
+  pendingPrecheck.value = null
+}
+
+const confirmImport = async () => {
+  if (!pendingImportFile.value || !pendingPrecheck.value) return
+  importing.value = true
+  try {
+    await pluginApi.importPackage(pendingImportFile.value, replaceOnImport.value)
+    ElMessage.success(`插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ''}`)
+    clearPendingImport()
     await load()
   } catch (error: any) {
-    ElMessage.error(error?.message || '导入插件包失败')
+    ElMessage.error(error?.msg || error?.message || '导入插件包失败')
   } finally {
     importing.value = false
   }
@@ -561,6 +659,19 @@ const applyHomeSourceStylePack = async () => {
   }
 }
 
+const rollbackHomeStylePack = async () => {
+  homeStylePackRollbacking.value = true
+  try {
+    await homeStylePackApi.rollback()
+    ElMessage.success('首页风格已回滚到上一份配置')
+    await openConfig({ name: 'homepage-customizer' })
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '首页风格回滚失败')
+  } finally {
+    homeStylePackRollbacking.value = false
+  }
+}
+
 const downloadHomeStylePackExample = async () => {
   homeStylePackGenerating.value = true
   try {
@@ -646,6 +757,28 @@ const logLevelTag = (level: string) => {
   if (level === 'warn') return 'warning'
   if (level === 'info') return 'success'
   return 'info'
+}
+
+const riskTag = (level: string) => {
+  if (level === 'high') return 'danger'
+  if (level === 'medium') return 'warning'
+  if (level === 'low') return 'success'
+  return 'info'
+}
+
+const riskLabel = (level: string) => {
+  if (level === 'high') return '高风险'
+  if (level === 'medium') return '中风险'
+  if (level === 'low') return '低风险'
+  return '未知'
+}
+
+const versionChangeLabel = (change: string) => {
+  if (change === 'new') return '新安装'
+  if (change === 'upgrade') return '升级'
+  if (change === 'downgrade') return '降级'
+  if (change === 'same') return '同版本'
+  return '未知'
 }
 
 const formatTime = (value: string) => {
@@ -772,6 +905,32 @@ onMounted(load)
 
 .pack-error {
   margin-top: 8px;
+}
+
+.precheck-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.precheck-alert {
+  margin-top: 0;
+}
+
+.precheck-collapse {
+  border-top: 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.risk-reasons {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #606266;
+  line-height: 1.6;
 }
 
 .metadata-pre {

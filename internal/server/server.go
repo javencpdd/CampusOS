@@ -555,6 +555,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/threads/:id/unpin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnpinThread)
 		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.LockThread)
 		admin.POST("/threads/:id/unlock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnlockThread)
+		admin.DELETE("/admin/threads/:id", middleware.RequirePermission(permSvc, "thread", "delete"), threadHandler.AdminDeleteThread)
+		admin.POST("/richtext/articles/:id/admin/offline", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminOffline)
+		admin.POST("/richtext/articles/:id/admin/restore", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminRestore)
+		admin.DELETE("/richtext/articles/:id/admin", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminDelete)
 
 		// 版块管理
 		admin.DELETE("/categories/:id", middleware.RequirePermission(permSvc, "category", "delete"), categoryHandler.Delete)
@@ -611,6 +615,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.GET("/home/style-packs/sources", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ListSourceStylePacks)
 		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplyStylePack)
 		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplySourceStylePack)
+		admin.POST("/home/style-packs/rollback", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.RollbackStylePack)
 
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)

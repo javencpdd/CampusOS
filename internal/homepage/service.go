@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -15,6 +16,7 @@ import (
 )
 
 const pluginName = "homepage-customizer"
+const configSnapshotKey = "last_config_snapshot"
 
 type PluginLookup func(name string) (*plugin.Plugin, bool)
 type PluginConfigUpdater func(name string, config map[string]interface{}) (map[string]interface{}, error)
@@ -45,6 +47,8 @@ type Config struct {
 	CustomCSS         string        `json:"custom_css,omitempty"`
 	ActiveStylePack   string        `json:"active_style_pack,omitempty"`
 	StylePackVersion  string        `json:"style_pack_version,omitempty"`
+	HasStyleSnapshot  bool          `json:"has_style_snapshot"`
+	StyleSnapshotAt   string        `json:"style_snapshot_at,omitempty"`
 }
 
 type CategoryTag struct {
@@ -62,6 +66,12 @@ type StylePackResult struct {
 
 type StylePackApplySourceRequest struct {
 	Name string `json:"name"`
+}
+
+type ConfigSnapshot struct {
+	Reason    string                 `json:"reason"`
+	CreatedAt string                 `json:"created_at"`
+	Config    map[string]interface{} `json:"config"`
 }
 
 func NewService(plugins PluginLookup, categories CategoryRepository) *Service {
@@ -93,6 +103,7 @@ func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
 	cfg.CustomCSS = safeCustomCSS(raw, cfg.CustomHTMLEnabled)
 	cfg.ActiveStylePack = stringConfig(raw, "active_style_pack", "")
 	cfg.StylePackVersion = stringConfig(raw, "style_pack_version", "")
+	cfg.HasStyleSnapshot, cfg.StyleSnapshotAt = snapshotStatus(raw)
 	if cfg.CustomHTML == "" {
 		cfg.CustomHTMLEnabled = false
 		cfg.CustomCSS = ""
@@ -176,11 +187,32 @@ func (s *Service) applyStylePack(ctx context.Context, pack *stylepack.Package) (
 		return nil, fmt.Errorf("homepage-customizer plugin is unavailable")
 	}
 	next := copyConfig(p.Manifest.Config)
+	next[configSnapshotKey] = snapshotConfig(p.Manifest.Config, "before_homepage_style_pack_apply")
 	next["custom_html_enabled"] = true
 	next["custom_html"] = pack.HTML
 	next["custom_css"] = pack.CSS
 	next["active_style_pack"] = pack.Manifest.Name
 	next["style_pack_version"] = pack.Manifest.Version
+	if _, err := s.update(pluginName, next); err != nil {
+		return nil, err
+	}
+	return s.PublicConfig(ctx)
+}
+
+func (s *Service) RollbackStylePack(ctx context.Context) (*Config, error) {
+	if s.update == nil {
+		return nil, fmt.Errorf("homepage config updater is unavailable")
+	}
+	p, ok := s.lookupPlugin()
+	if !ok || p.Manifest == nil {
+		return nil, fmt.Errorf("homepage-customizer plugin is unavailable")
+	}
+	previous, ok := snapshotConfigValue(p.Manifest.Config)
+	if !ok {
+		return nil, fmt.Errorf("%w: homepage style snapshot not found", ErrStylePackInvalid)
+	}
+	next := copyConfig(previous)
+	next[configSnapshotKey] = snapshotConfig(p.Manifest.Config, "before_homepage_style_pack_rollback")
 	if _, err := s.update(pluginName, next); err != nil {
 		return nil, err
 	}
@@ -228,6 +260,56 @@ func copyConfig(input map[string]interface{}) map[string]interface{} {
 		copied[key] = value
 	}
 	return copied
+}
+
+func snapshotConfig(input map[string]interface{}, reason string) ConfigSnapshot {
+	copied := copyConfig(input)
+	delete(copied, configSnapshotKey)
+	return ConfigSnapshot{
+		Reason:    reason,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Config:    copied,
+	}
+}
+
+func snapshotConfigValue(input map[string]interface{}) (map[string]interface{}, bool) {
+	raw, ok := input[configSnapshotKey]
+	if !ok {
+		return nil, false
+	}
+	switch snapshot := raw.(type) {
+	case ConfigSnapshot:
+		if len(snapshot.Config) == 0 {
+			return nil, false
+		}
+		return snapshot.Config, true
+	case map[string]interface{}:
+		config, ok := snapshot["config"].(map[string]interface{})
+		if !ok || len(config) == 0 {
+			return nil, false
+		}
+		return config, true
+	default:
+		return nil, false
+	}
+}
+
+func snapshotStatus(input map[string]interface{}) (bool, string) {
+	raw, ok := input[configSnapshotKey]
+	if !ok {
+		return false, ""
+	}
+	switch snapshot := raw.(type) {
+	case ConfigSnapshot:
+		return len(snapshot.Config) > 0, snapshot.CreatedAt
+	case map[string]interface{}:
+		if _, ok := snapshot["config"].(map[string]interface{}); !ok {
+			return false, ""
+		}
+		return true, strings.TrimSpace(fmt.Sprint(snapshot["created_at"]))
+	default:
+		return false, ""
+	}
 }
 
 func safeSourceStylePackName(name string) bool {

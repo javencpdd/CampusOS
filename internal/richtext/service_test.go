@@ -75,6 +75,51 @@ func TestUpdateDraftRejectsNonAuthor(t *testing.T) {
 	}
 }
 
+func TestAdminCanOfflineRestoreAndDeleteArticle(t *testing.T) {
+	svc, threadRepo := newTestService(true)
+	ctx := context.Background()
+	created, err := svc.CreateDraft(ctx, "1001", "alice", SaveArticleRequest{
+		Title:       "Admin Managed",
+		CategoryID:  "1",
+		ContentHTML: `<p>正文</p>`,
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	if _, err := svc.Publish(ctx, created.ThreadID, "1001"); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	offlined, err := svc.AdminOffline(ctx, created.ThreadID, "9001")
+	if err != nil {
+		t.Fatalf("admin offline: %v", err)
+	}
+	if offlined.Status != StatusOffline {
+		t.Fatalf("expected offline status, got %s", offlined.Status)
+	}
+	thread, err := threadRepo.GetByID(ctx, created.ThreadID)
+	if err != nil {
+		t.Fatalf("get thread: %v", err)
+	}
+	if thread.Status != communitydomain.ThreadStatusArchived {
+		t.Fatalf("expected archived thread, got %s", thread.Status)
+	}
+
+	restored, err := svc.AdminRestore(ctx, created.ThreadID, "9001")
+	if err != nil {
+		t.Fatalf("admin restore: %v", err)
+	}
+	if restored.Status != StatusPublished {
+		t.Fatalf("expected published status, got %s", restored.Status)
+	}
+	if err := svc.AdminDelete(ctx, created.ThreadID, "9001"); err != nil {
+		t.Fatalf("admin delete: %v", err)
+	}
+	if _, err := svc.GetArticle(ctx, created.ThreadID, "1001"); !errors.Is(err, ErrArticleNotFound) {
+		t.Fatalf("expected article not found after admin delete, got %v", err)
+	}
+}
+
 func TestPluginDisabledDoesNotBlockPlainThreadService(t *testing.T) {
 	svc, threadRepo := newTestService(false)
 	ctx := context.Background()

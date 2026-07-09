@@ -217,6 +217,89 @@ func (s *Service) Delete(ctx context.Context, threadID, userID string) error {
 	return nil
 }
 
+func (s *Service) AdminOffline(ctx context.Context, threadID, adminID string) (*ArticleResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	article, thread, err := s.managedArticle(ctx, threadID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	article.Status = StatusOffline
+	article.UpdatedBy = adminID
+	article.UpdatedAt = now
+	if err := s.store.UpdateArticle(ctx, article); err != nil {
+		return nil, err
+	}
+	thread.Status = domain.ThreadStatusArchived
+	thread.UpdatedAt = now
+	if err := s.threads.Update(ctx, thread); err != nil {
+		return nil, err
+	}
+	s.invalidateList(ctx)
+	return articleResult(article), nil
+}
+
+func (s *Service) AdminRestore(ctx context.Context, threadID, adminID string) (*ArticleResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	article, thread, err := s.managedArticle(ctx, threadID)
+	if err != nil {
+		return nil, err
+	}
+	sanitized, err := Sanitize(article.ContentHTML)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(article.Title) == "" {
+		return nil, fmt.Errorf("%w: title is required", ErrInvalidArticle)
+	}
+	now := time.Now().UTC()
+	article.SanitizedHTML = sanitized.HTML
+	article.RenderHTML = RenderArticleHTML(sanitized.HTML)
+	article.Status = StatusPublished
+	article.PublishedAt = &now
+	article.UpdatedBy = adminID
+	article.UpdatedAt = now
+	if err := s.store.UpdateArticle(ctx, article); err != nil {
+		return nil, err
+	}
+	thread.Title = article.Title
+	thread.Content = excerpt(sanitized.Text, 500)
+	thread.ContentFormat = ContentFormat
+	thread.Status = domain.ThreadStatusPublished
+	thread.UpdatedAt = now
+	if err := s.threads.Update(ctx, thread); err != nil {
+		return nil, err
+	}
+	s.invalidateList(ctx)
+	return articleResult(article), nil
+}
+
+func (s *Service) AdminDelete(ctx context.Context, threadID, adminID string) error {
+	if err := s.ensureEnabled(); err != nil {
+		return err
+	}
+	article, _, err := s.managedArticle(ctx, threadID)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	article.Status = StatusDeleted
+	article.UpdatedBy = adminID
+	article.UpdatedAt = now
+	if err := s.store.UpdateArticle(ctx, article); err != nil {
+		return err
+	}
+	if err := s.threads.Delete(ctx, threadID); err != nil {
+		return err
+	}
+	s.invalidateList(ctx)
+	return nil
+}
+
 func (s *Service) Preview(_ context.Context, html string) (*PreviewResult, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
@@ -283,6 +366,21 @@ func (s *Service) editableArticle(ctx context.Context, threadID, userID string) 
 	}
 	if article.CreatedBy != userID {
 		return nil, nil, ErrPermissionDenied
+	}
+	if article.Status == StatusDeleted {
+		return nil, nil, ErrArticleNotFound
+	}
+	thread, err := s.threads.GetByID(ctx, threadID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return article, thread, nil
+}
+
+func (s *Service) managedArticle(ctx context.Context, threadID string) (*Article, *domain.Thread, error) {
+	article, err := s.store.GetArticleByThreadID(ctx, threadID)
+	if err != nil {
+		return nil, nil, err
 	}
 	if article.Status == StatusDeleted {
 		return nil, nil, ErrArticleNotFound

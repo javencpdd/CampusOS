@@ -104,6 +104,15 @@ func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 	response.Success(c, cfg)
 }
 
+func (h *Handler) RollbackStylePack(c *gin.Context) {
+	cfg, err := h.svc.RollbackStylePack(c.Request.Context())
+	if err != nil {
+		writeHomepageError(c, err)
+		return
+	}
+	response.Success(c, cfg)
+}
+
 type uploadedStylePackFile interface {
 	io.ReaderAt
 	io.Closer

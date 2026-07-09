@@ -103,6 +103,36 @@ func TestManagerImportPackageReplaceAndExport(t *testing.T) {
 	}
 }
 
+func TestPrecheckPluginPackageReportsRiskAndVersionChange(t *testing.T) {
+	installDir := t.TempDir()
+	installed := writePackablePlugin(t, installDir, "governed", "0.2.0")
+	if err := os.Rename(installed, filepath.Join(installDir, "governed")); err != nil {
+		t.Fatalf("install existing plugin dir: %v", err)
+	}
+	source := writeRiskyPlugin(t, t.TempDir(), "governed", "0.1.0")
+	packagePath := filepath.Join(t.TempDir(), "governed.campusos-plugin.tar.gz")
+	if _, err := PackagePlugin(source, packagePath); err != nil {
+		t.Fatalf("package governed plugin: %v", err)
+	}
+
+	precheck, err := PrecheckPluginPackage(packagePath, installDir)
+	if err != nil {
+		t.Fatalf("precheck plugin package: %v", err)
+	}
+	if !precheck.Conflict {
+		t.Fatalf("expected conflict in precheck: %#v", precheck)
+	}
+	if precheck.ExistingVersion != "0.2.0" || precheck.ImportVersion != "0.1.0" || precheck.VersionChange != "downgrade" {
+		t.Fatalf("unexpected version comparison: %#v", precheck)
+	}
+	if precheck.RiskLevel != "high" || precheck.RiskScore == 0 || len(precheck.RiskReasons) == 0 {
+		t.Fatalf("expected high risk package, got %#v", precheck)
+	}
+	if precheck.SignatureStatus != "unsigned" {
+		t.Fatalf("expected unsigned package, got %q", precheck.SignatureStatus)
+	}
+}
+
 func TestExtractPluginPackageRejectsUnsafeArchivePath(t *testing.T) {
 	packagePath := filepath.Join(t.TempDir(), "unsafe.campusos-plugin.tar.gz")
 	file, err := os.Create(packagePath)
@@ -154,6 +184,37 @@ config:
 	}
 	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), []byte("wasm"), 0o644); err != nil {
 		t.Fatalf("write wasm: %v", err)
+	}
+	return sourceDir
+}
+
+func writeRiskyPlugin(t *testing.T, root, name, version string) string {
+	t.Helper()
+	sourceDir := filepath.Join(root, name+"-"+version)
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		t.Fatalf("create source dir: %v", err)
+	}
+	manifest := fmt.Sprintf(`
+name: %s
+version: %q
+runtime: grpc
+events:
+  subscribe:
+    - "thread.created.before"
+permissions:
+  api:
+    - resource: "*"
+      actions: ["*"]
+storage:
+  type: postgresql
+config:
+  command: "./plugin"
+`, name, version)
+	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "plugin"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write plugin executable: %v", err)
 	}
 	return sourceDir
 }

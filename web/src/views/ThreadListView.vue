@@ -38,28 +38,34 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { threadApi } from '@/api'
 
 const route = useRoute()
+const router = useRouter()
 const threads = ref<any[]>([])
 const loading = ref(false)
 const page = ref(1)
 const total = ref(0)
 const keyword = ref('')
-const contentTab = ref<'all' | 'richtext'>('all')
+const routeContentTab = () => route.query.content_format === 'richtext_article' ? 'richtext' : 'all'
+const contentTab = ref<'all' | 'richtext'>(routeContentTab())
 
 const loadThreads = async () => {
   loading.value = true
   try {
     const categoryID = String(route.query.category_id || '')
+    const queryContentFormat = String(route.query.content_format || '')
+    if (queryContentFormat === 'richtext_article' && contentTab.value !== 'richtext') {
+      contentTab.value = 'richtext'
+    }
     const res: any = await threadApi.list({
       page: page.value,
       page_size: 20,
       keyword: keyword.value,
       category_id: categoryID || undefined,
-      content_format: contentTab.value === 'richtext' ? 'richtext_article' : undefined,
+      content_format: contentTab.value === 'richtext' || queryContentFormat === 'richtext_article' ? 'richtext_article' : undefined,
     })
     if (res.code === 0) {
       threads.value = res.data?.items || []
@@ -70,12 +76,24 @@ const loadThreads = async () => {
 }
 
 const onTabChange = () => {
+  const query = { ...route.query }
+  if (contentTab.value === 'richtext') {
+    query.content_format = 'richtext_article'
+  } else {
+    delete query.content_format
+  }
+  router.replace({ path: route.path, query })
   page.value = 1
   loadThreads()
 }
 
 onMounted(loadThreads)
 watch(() => route.query.category_id, () => {
+  page.value = 1
+  loadThreads()
+})
+watch(() => route.query.content_format, () => {
+  contentTab.value = routeContentTab()
   page.value = 1
   loadThreads()
 })

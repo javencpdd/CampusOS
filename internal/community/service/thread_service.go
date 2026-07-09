@@ -116,14 +116,18 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
+	includeAllStatuses := filter.Status == "all"
+	if includeAllStatuses {
+		filter.Status = ""
+	}
 	// 默认只显示已发布的帖子
-	if filter.Status == "" {
+	if filter.Status == "" && !includeAllStatuses {
 		filter.Status = string(domain.ThreadStatusPublished)
 	}
 
 	// 尝试从缓存获取（仅缓存第一页无筛选条件的查询）
-	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s", filter.Page, filter.PageSize, filter.Status)
-	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" {
+	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s:%s", filter.Page, filter.PageSize, filter.Status, filter.ContentFormat)
+	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" && filter.ContentFormat == "" {
 		type cachedResult struct {
 			Threads []*domain.Thread `json:"threads"`
 			Total   int64            `json:"total"`
@@ -141,7 +145,7 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	}
 
 	// 写入缓存（5 分钟 TTL）
-	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" {
+	if s.cache != nil && filter.Keyword == "" && filter.CategoryID == "" && filter.AuthorID == "" && filter.ContentFormat == "" {
 		type cachedResult struct {
 			Threads []*domain.Thread `json:"threads"`
 			Total   int64            `json:"total"`
@@ -272,6 +276,23 @@ func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) e
 		))
 	}
 
+	return nil
+}
+
+func (s *ThreadService) AdminDeleteThread(ctx context.Context, id string) error {
+	thread, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get thread: %w", err)
+	}
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	s.invalidateListCache(ctx)
+	if s.bus != nil {
+		_ = s.bus.Publish(ctx, eventbus.NewEvent(
+			eventbus.EventThreadDeleted, "campusos.community.admin", "thread."+id, thread,
+		))
+	}
 	return nil
 }
 

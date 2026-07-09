@@ -480,6 +480,7 @@ func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[
 		m.mu.Unlock()
 		return nil, err
 	}
+	preservePluginInternalConfig(name, normalized, config, p.Manifest.Config)
 	if err := validatePluginSpecificConfig(name, normalized); err != nil {
 		m.mu.Unlock()
 		return nil, err
@@ -569,6 +570,25 @@ func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit i
 		ctx = context.Background()
 	}
 	return logRepo.ListLogs(ctx, pluginName, limit)
+}
+
+func (m *Manager) RecordPluginAudit(ctx context.Context, pluginName, level, message string, metadata map[string]interface{}) {
+	if strings.TrimSpace(pluginName) == "" {
+		pluginName = "unknown"
+	}
+	if strings.TrimSpace(level) == "" {
+		level = "info"
+	}
+	if strings.TrimSpace(message) == "" {
+		message = "plugin audit"
+	}
+	m.logPlugin(ctx, &PluginLogRecord{
+		PluginName: pluginName,
+		Level:      level,
+		Message:    message,
+		EventType:  "plugin.package",
+		Metadata:   metadata,
+	})
 }
 
 func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {

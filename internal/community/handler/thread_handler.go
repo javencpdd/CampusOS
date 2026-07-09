@@ -183,3 +183,13 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 
 	response.NoContent(c)
 }
+
+// AdminDeleteThread 管理员删除任意帖子。
+// DELETE /api/v1/admin/threads/:id
+func (h *ThreadHandler) AdminDeleteThread(c *gin.Context) {
+	if err := h.svc.AdminDeleteThread(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
+	response.NoContent(c)
+}

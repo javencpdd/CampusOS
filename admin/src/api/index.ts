@@ -58,16 +58,25 @@ export const threadApi = {
     page?: number
     page_size?: number
     category_id?: string
+    status?: string
+    content_format?: string
     keyword?: string
   }) => api.get('/threads', { params }),
   get: (id: string) => api.get(`/threads/${id}`),
   update: (id: string, data: { status?: string; title?: string; content?: string }) =>
     api.put(`/threads/${id}`, data),
   delete: (id: string) => api.delete(`/threads/${id}`),
+  adminDelete: (id: string) => api.delete(`/admin/threads/${id}`),
   pin: (id: string) => api.post(`/threads/${id}/pin`),
   unpin: (id: string) => api.post(`/threads/${id}/unpin`),
   lock: (id: string) => api.post(`/threads/${id}/lock`),
   unlock: (id: string) => api.post(`/threads/${id}/unlock`),
+}
+
+export const richTextAdminApi = {
+  offline: (id: string) => api.post(`/richtext/articles/${id}/admin/offline`),
+  restore: (id: string) => api.post(`/richtext/articles/${id}/admin/restore`),
+  delete: (id: string) => api.delete(`/richtext/articles/${id}/admin`),
 }
 
 // 版块管理 API
@@ -150,6 +159,7 @@ export const homeStylePackApi = {
   exampleZip: () => api.get('/home/style-packs/example.zip', { responseType: 'blob', timeout: 60000 }) as Promise<Blob>,
   sources: () => api.get('/home/style-packs/sources'),
   applySource: (name: string) => api.post('/home/style-packs/apply-source', { name }),
+  rollback: () => api.post('/home/style-packs/rollback'),
 }
 
 // v0.5 集成中心 API

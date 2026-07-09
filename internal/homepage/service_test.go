@@ -150,6 +150,56 @@ styles:
 	if cfg.ActiveStylePack != "home-folder" || cfg.StylePackVersion != "0.1.0" {
 		t.Fatalf("unexpected style pack metadata: %#v", cfg)
 	}
+	if !cfg.HasStyleSnapshot {
+		t.Fatalf("expected homepage style snapshot after applying pack")
+	}
+}
+
+func TestRollbackStylePackRestoresPreviousHomepageConfig(t *testing.T) {
+	p := &plugin.Plugin{
+		Status: plugin.StatusRunning,
+		Manifest: &plugin.Manifest{
+			Name: pluginName,
+			Config: map[string]interface{}{
+				"hero_title":          "Original",
+				"custom_html_enabled": false,
+				"active_style_pack":   "",
+			},
+		},
+	}
+	svc := NewService(func(name string) (*plugin.Plugin, bool) {
+		return p, name == pluginName
+	}, nil)
+	svc.SetConfigUpdater(func(name string, config map[string]interface{}) (map[string]interface{}, error) {
+		p.Manifest.Config = config
+		return config, nil
+	})
+	data := zipHomepageStylePack(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: rollback-pack
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+`,
+		"templates/page.html": `<section class="cstyle-page"><h2>Changed</h2></section>`,
+		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #2563eb; }`,
+	})
+	if _, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data))); err != nil {
+		t.Fatalf("apply homepage style pack: %v", err)
+	}
+
+	cfg, err := svc.RollbackStylePack(context.Background())
+	if err != nil {
+		t.Fatalf("rollback homepage style pack: %v", err)
+	}
+	if cfg.HeroTitle != "Original" || cfg.CustomHTMLEnabled || cfg.ActiveStylePack != "" {
+		t.Fatalf("expected original homepage config after rollback, got %#v", cfg)
+	}
+	if !cfg.HasStyleSnapshot {
+		t.Fatalf("expected rollback to keep a new reverse snapshot")
+	}
 }
 
 func TestApplySourceStylePackUpdatesHomepageConfig(t *testing.T) {

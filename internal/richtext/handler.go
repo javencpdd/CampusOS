@@ -99,6 +99,47 @@ func (h *Handler) Delete(c *gin.Context) {
 	response.NoContent(c)
 }
 
+func (h *Handler) AdminOffline(c *gin.Context) {
+	adminID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	result, err := h.svc.AdminOffline(c.Request.Context(), c.Param("id"), adminID)
+	if err != nil {
+		writeRichTextError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *Handler) AdminRestore(c *gin.Context) {
+	adminID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	result, err := h.svc.AdminRestore(c.Request.Context(), c.Param("id"), adminID)
+	if err != nil {
+		writeRichTextError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *Handler) AdminDelete(c *gin.Context) {
+	adminID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	if err := h.svc.AdminDelete(c.Request.Context(), c.Param("id"), adminID); err != nil {
+		writeRichTextError(c, err)
+		return
+	}
+	response.NoContent(c)
+}
+
 func (h *Handler) Preview(c *gin.Context) {
 	var req PreviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

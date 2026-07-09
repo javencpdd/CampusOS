@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, richTextApi, threadApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
@@ -123,6 +123,9 @@ const bodyImageInput = ref<HTMLInputElement | null>(null)
 const categories = ref<Array<{ id: string; name: string; default_tags?: string[] }>>([])
 const plainDefaults = ref<string[]>([])
 const articleDefaults = ref<string[]>([])
+const articleDirty = ref(false)
+const initializingArticle = ref(true)
+const allowLeave = ref(false)
 
 const templateOptions = [
   { label: '图文文章', value: 'richtext' },
@@ -242,6 +245,7 @@ const saveDraft = async () => {
     const data = unwrap(res)
     draftThreadId.value = data.thread_id
     articleContentId.value = data.article_content_id
+    articleDirty.value = false
     ElMessage.success('草稿已保存')
     return draftThreadId.value
   } catch (error: any) {
@@ -260,6 +264,7 @@ const publishArticle = async () => {
     const res: any = await richTextApi.publish(threadId)
     const data = unwrap(res)
     ElMessage.success('文章已发布')
+    allowLeave.value = true
     router.push(`/threads/${data.thread_id}`)
   } catch (error: any) {
     ElMessage.error(error?.msg || '发布文章失败')
@@ -354,10 +359,24 @@ const mergeTags = (...groups: string[][]) => {
 
 watch(() => plainForm.category_id, applyPlainDefaultTags)
 watch(() => articleForm.category_id, applyArticleDefaultTags)
+watch(articleForm, () => {
+  if (!initializingArticle.value && templateMode.value === 'richtext') {
+    articleDirty.value = true
+  }
+}, { deep: true })
+
+onBeforeRouteLeave(() => {
+  if (allowLeave.value || templateMode.value !== 'richtext' || !articleDirty.value) {
+    return true
+  }
+  return window.confirm('图文文章还有未保存的修改，离开前请先保存草稿或发布。确定要离开吗？')
+})
 
 onMounted(async () => {
   await Promise.all([loadStatus(), loadCategories()])
   await loadEditingArticle()
+  initializingArticle.value = false
+  articleDirty.value = false
 })
 </script>
 

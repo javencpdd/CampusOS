@@ -27,6 +27,10 @@ POST   /api/v1/richtext/assets
 POST   /api/v1/richtext/articles/:id/publish
 POST   /api/v1/richtext/articles/:id/offline
 DELETE /api/v1/richtext/articles/:id
+
+POST   /api/v1/richtext/articles/:id/admin/offline
+POST   /api/v1/richtext/articles/:id/admin/restore
+DELETE /api/v1/richtext/articles/:id/admin
 ```
 
 ## Safety Boundary
