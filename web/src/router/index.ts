@@ -35,6 +35,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/threads/:id/edit',
+      name: 'EditThread',
+      component: () => import('@/views/CreateThreadView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/space/settings',
       name: 'SpaceSettings',
       component: () => import('@/views/SpaceSettingsView.vue'),

@@ -65,12 +65,13 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
 	filter := domain.ThreadListFilter{
-		CategoryID: c.Query("category_id"),
-		AuthorID:   c.Query("author_id"),
-		Status:     c.Query("status"),
-		Keyword:    c.Query("keyword"),
-		Page:       page,
-		PageSize:   pageSize,
+		CategoryID:    c.Query("category_id"),
+		AuthorID:      c.Query("author_id"),
+		Status:        c.Query("status"),
+		ContentFormat: c.Query("content_format"),
+		Keyword:       c.Query("keyword"),
+		Page:          page,
+		PageSize:      pageSize,
 	}
 
 	threads, total, err := h.svc.ListThreads(c.Request.Context(), filter)
@@ -180,5 +181,15 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 		return
 	}
 
+	response.NoContent(c)
+}
+
+// AdminDeleteThread 管理员删除任意帖子。
+// DELETE /api/v1/admin/threads/:id
+func (h *ThreadHandler) AdminDeleteThread(c *gin.Context) {
+	if err := h.svc.AdminDeleteThread(c.Request.Context(), c.Param("id")); err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		return
+	}
 	response.NoContent(c)
 }

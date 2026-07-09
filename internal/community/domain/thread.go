@@ -19,6 +19,7 @@ type Thread struct {
 	ID            string       `json:"id"`
 	Title         string       `json:"title"`
 	Content       string       `json:"content"`
+	ContentFormat string       `json:"content_format"`
 	AuthorID      string       `json:"author_id"`
 	AuthorName    string       `json:"author_name"`
 	CategoryID    string       `json:"category_id"`
@@ -51,10 +52,11 @@ type UpdateThreadRequest struct {
 
 // ThreadListFilter 帖子列表过滤条件
 type ThreadListFilter struct {
-	CategoryID string
-	AuthorID   string
-	Status     string
-	Keyword    string
-	Page       int
-	PageSize   int
+	CategoryID    string
+	AuthorID      string
+	Status        string
+	ContentFormat string
+	Keyword       string
+	Page          int
+	PageSize      int
 }

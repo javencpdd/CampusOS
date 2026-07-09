@@ -23,6 +23,7 @@ import (
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
+	"github.com/campusos/CampusOS/internal/richtext"
 	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/internal/webhook"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -125,7 +126,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer")
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article")
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
@@ -190,6 +191,11 @@ func (s *Server) Run() error {
 	messageSvc := message.NewService(message.NewPgStore(pool), metricsCollector)
 	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
 	homepageSvc.SetConfigUpdater(s.manager.UpdateConfig)
+	richTextSvc := richtext.NewService(richtext.NewPgStore(pool), threadRepo, threadSvc)
+	richTextSvc.SetEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning("controlled-richtext-article")
+	})
+	s.configureRichTextAssetStore(richTextSvc)
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	// ─── 初始化处理器层 ───
@@ -206,6 +212,7 @@ func (s *Server) Run() error {
 	mcpHandler := mcp.NewHandler(mcpSvc)
 	messageHandler := message.NewHandler(messageSvc)
 	homepageHandler := homepage.NewHandler(homepageSvc)
+	richTextHandler := richtext.NewHandler(richTextSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithPool(pool),
@@ -219,7 +226,7 @@ func (s *Server) Run() error {
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
@@ -233,7 +240,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer")
+	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article")
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
@@ -278,6 +285,11 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	messageSvc := message.NewService(message.NewMemoryStore(), metricsCollector)
 	homepageSvc := homepage.NewService(s.manager.GetPlugin, categoryRepo)
 	homepageSvc.SetConfigUpdater(s.manager.UpdateConfig)
+	richTextSvc := richtext.NewService(richtext.NewMemoryStore(), threadRepo, threadSvc)
+	richTextSvc.SetEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning("controlled-richtext-article")
+	})
+	s.configureRichTextAssetStore(richTextSvc)
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	userHandler := identityhandler.NewUserHandler(userSvc)
@@ -293,6 +305,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	mcpHandler := mcp.NewHandler(mcpSvc)
 	messageHandler := message.NewHandler(messageSvc)
 	homepageHandler := homepage.NewHandler(homepageSvc)
+	richTextHandler := richtext.NewHandler(richTextSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithConfig(s.cfg),
@@ -305,7 +318,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, platformLogHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -359,11 +372,28 @@ func (s *Server) configureSpaceFileStore(spaceSvc *space.Service) {
 	spaceSvc.SetFileStore(store)
 }
 
+func (s *Server) configureRichTextAssetStore(richTextSvc *richtext.Service) {
+	if richTextSvc == nil {
+		return
+	}
+	cfg := richtext.AssetStoreConfigFromPluginConfig(pluginConfig(s.manager, "controlled-richtext-article"))
+	store, err := richtext.NewLocalAssetStore(cfg)
+	if err != nil {
+		log.Printf("⚠️  富文本图片存储初始化失败: %v", err)
+		return
+	}
+	richTextSvc.SetAssetStore(store)
+}
+
 func personalSpacePluginConfig(manager *plugin.Manager) map[string]interface{} {
+	return pluginConfig(manager, "personal-space")
+}
+
+func pluginConfig(manager *plugin.Manager, name string) map[string]interface{} {
 	if manager == nil {
 		return nil
 	}
-	p, ok := manager.GetPlugin("personal-space")
+	p, ok := manager.GetPlugin(name)
 	if !ok || p == nil || p.Manifest == nil {
 		return nil
 	}
@@ -428,6 +458,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	mcpHandler *mcp.Handler,
 	messageHandler *message.Handler,
 	homepageHandler *homepage.Handler,
+	richTextHandler *richtext.Handler,
 	platformLogHandler *platformlog.Handler,
 	metricsCollector *observability.Collector) error {
 
@@ -447,10 +478,13 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	{
 		public.GET("/health", userHandler.HealthCheck)
 		public.GET("/home/config", homepageHandler.GetConfig)
+		public.GET("/richtext/status", richTextHandler.Status)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
 		public.GET("/threads", threadHandler.ListThreads)
 		public.GET("/threads/:id", threadHandler.GetThread)
+		public.GET("/richtext/articles/:id", richTextHandler.GetPublished)
+		public.GET("/richtext/assets/:user_id/:filename", richTextHandler.ServeAsset)
 		public.GET("/users", userHandler.ListUsers)
 		public.GET("/users/:id", userHandler.GetUser)
 		public.GET("/space/:user_id/contents", spaceHandler.ListContentsByUserID)
@@ -484,11 +518,20 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/packs/validate", spaceHandler.ValidateStylePackZip)
 		authenticated.GET("/spaces/me/styles/packs/example", spaceHandler.StylePackExample)
 		authenticated.GET("/spaces/me/styles/packs/example.zip", spaceHandler.StylePackExampleZip)
+		authenticated.GET("/spaces/me/styles/packs/sources", spaceHandler.ListSourceStylePacks)
 		authenticated.POST("/spaces/me/styles/packs/apply", spaceHandler.ApplyStylePackZip)
 		authenticated.POST("/spaces/me/styles/packs/apply-source", spaceHandler.ApplySourceStylePack)
 		authenticated.POST("/spaces/me/styles/rollback", spaceHandler.RollbackStyle)
 		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
+		authenticated.POST("/richtext/articles", richTextHandler.CreateDraft)
+		authenticated.GET("/richtext/articles/:id/me", richTextHandler.GetMine)
+		authenticated.PUT("/richtext/articles/:id", richTextHandler.UpdateDraft)
+		authenticated.POST("/richtext/preview", richTextHandler.Preview)
+		authenticated.POST("/richtext/assets", richTextHandler.UploadAsset)
+		authenticated.POST("/richtext/articles/:id/publish", richTextHandler.Publish)
+		authenticated.POST("/richtext/articles/:id/offline", richTextHandler.Offline)
+		authenticated.DELETE("/richtext/articles/:id", richTextHandler.Delete)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
 		authenticated.DELETE("/threads/:id", threadHandler.DeleteThread)
@@ -512,6 +555,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/threads/:id/unpin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnpinThread)
 		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.LockThread)
 		admin.POST("/threads/:id/unlock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnlockThread)
+		admin.DELETE("/admin/threads/:id", middleware.RequirePermission(permSvc, "thread", "delete"), threadHandler.AdminDeleteThread)
+		admin.POST("/richtext/articles/:id/admin/offline", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminOffline)
+		admin.POST("/richtext/articles/:id/admin/restore", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminRestore)
+		admin.DELETE("/richtext/articles/:id/admin", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminDelete)
 
 		// 版块管理
 		admin.DELETE("/categories/:id", middleware.RequirePermission(permSvc, "category", "delete"), categoryHandler.Delete)
@@ -565,8 +612,10 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/home/style-packs/validate", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ValidateStylePack)
 		admin.GET("/home/style-packs/example", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExample)
 		admin.GET("/home/style-packs/example.zip", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExampleZip)
+		admin.GET("/home/style-packs/sources", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ListSourceStylePacks)
 		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplyStylePack)
 		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplySourceStylePack)
+		admin.POST("/home/style-packs/rollback", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.RollbackStylePack)
 
 		// 角色管理
 		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)

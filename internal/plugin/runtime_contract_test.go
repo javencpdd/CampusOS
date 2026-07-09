@@ -290,6 +290,65 @@ config_schema:
 	}
 }
 
+func TestManagerUpdateConfigPreservesHomepageInternalSnapshot(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: homepage-customizer
+version: "0.1.0"
+runtime: builtin
+config:
+  custom_html_enabled: false
+  custom_html: ""
+config_schema:
+  fields:
+    - key: custom_html_enabled
+      type: boolean
+      default: false
+    - key: custom_html
+      type: text
+      default: ""
+`)
+
+	manager := NewManager()
+	manager.RegisterRuntime("builtin", newFakeRuntime())
+	installed, err := manager.Install(dir)
+	if err != nil {
+		t.Fatalf("install plugin: %v", err)
+	}
+
+	snapshot := map[string]interface{}{
+		"created_at": "2026-07-08T00:00:00Z",
+		"config": map[string]interface{}{
+			"custom_html_enabled": false,
+			"custom_html":         "",
+		},
+	}
+	config, err := manager.UpdateConfig("homepage-customizer", map[string]interface{}{
+		"custom_html_enabled":  true,
+		"custom_html":          `<section>ok</section>`,
+		"last_config_snapshot": snapshot,
+	})
+	if err != nil {
+		t.Fatalf("update config with snapshot: %v", err)
+	}
+	if _, ok := config["last_config_snapshot"]; !ok {
+		t.Fatalf("expected snapshot to be returned: %#v", config)
+	}
+
+	config, err = manager.UpdateConfig("homepage-customizer", map[string]interface{}{
+		"custom_html_enabled": false,
+		"custom_html":         "",
+	})
+	if err != nil {
+		t.Fatalf("update config preserving snapshot: %v", err)
+	}
+	if _, ok := config["last_config_snapshot"]; !ok {
+		t.Fatalf("expected snapshot to be preserved: %#v", config)
+	}
+	if _, ok := installed.Manifest.Config["last_config_snapshot"]; !ok {
+		t.Fatalf("expected installed config to keep snapshot: %#v", installed.Manifest.Config)
+	}
+}
+
 func TestManagerMarksErrorWhenRuntimeMissing(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: missing-runtime

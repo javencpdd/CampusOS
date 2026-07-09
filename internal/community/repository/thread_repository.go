@@ -117,6 +117,9 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 		if filter.Status != "" && string(t.Status) != filter.Status {
 			continue
 		}
+		if filter.ContentFormat != "" && t.ContentFormat != filter.ContentFormat {
+			continue
+		}
 		if filter.Keyword != "" && !strings.Contains(strings.ToLower(t.Title), strings.ToLower(filter.Keyword)) && !strings.Contains(strings.ToLower(t.Content), strings.ToLower(filter.Keyword)) {
 			continue
 		}

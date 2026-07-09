@@ -21,10 +21,14 @@ func NewPgThreadRepository(pool *pgxpool.Pool) *PgThreadRepository {
 }
 
 func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) error {
+	contentFormat := thread.ContentFormat
+	if contentFormat == "" {
+		contentFormat = "markdown"
+	}
 	query := `INSERT INTO threads (id, title, content, content_format, author_id, author_name, category_id, status, tags, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 	_, err := r.pool.Exec(ctx, query,
-		thread.ID, thread.Title, thread.Content, "markdown",
+		thread.ID, thread.Title, thread.Content, contentFormat,
 		thread.AuthorID, thread.AuthorName, thread.CategoryID,
 		thread.Status, thread.Tags, thread.CreatedAt, thread.UpdatedAt)
 	return err
@@ -45,7 +49,7 @@ func (r *PgThreadRepository) IncrementViewCount(ctx context.Context, id string) 
 	query := `UPDATE threads
 		SET view_count = view_count + 1
 		WHERE id = $1 AND deleted_at IS NULL
-		RETURNING id, title, content, author_id, author_name, category_id, status,
+		RETURNING id, title, content, content_format, author_id, author_name, category_id, status,
 			is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at`
 	t, err := scanThread(r.pool.QueryRow(ctx, query, id))
 	if err != nil {
@@ -76,6 +80,7 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 	query := `UPDATE threads
 		SET title=$1,
 			content=$2,
+			content_format=$14,
 			category_id=$3,
 			status=$4,
 			is_pinned=$5,
@@ -87,11 +92,15 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 			tags=$11,
 			updated_at=$12
 		WHERE id = $13 AND deleted_at IS NULL`
+	contentFormat := thread.ContentFormat
+	if contentFormat == "" {
+		contentFormat = "markdown"
+	}
 	tag, err := r.pool.Exec(ctx, query,
 		thread.Title, thread.Content, thread.CategoryID, thread.Status,
 		thread.IsPinned, thread.IsLocked, thread.IsHighlighted,
 		thread.ViewCount, thread.ReplyCount, thread.LikeCount, thread.Tags,
-		time.Now().UTC(), thread.ID,
+		time.Now().UTC(), thread.ID, contentFormat,
 	)
 	if err != nil {
 		return err
@@ -134,6 +143,11 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		args = append(args, filter.Status)
 		argIdx++
 	}
+	if filter.ContentFormat != "" {
+		where = append(where, fmt.Sprintf("content_format = $%d", argIdx))
+		args = append(args, filter.ContentFormat)
+		argIdx++
+	}
 	if filter.Keyword != "" {
 		where = append(where, fmt.Sprintf("(title ILIKE $%d OR content ILIKE $%d)", argIdx, argIdx))
 		args = append(args, "%"+filter.Keyword+"%")
@@ -159,7 +173,7 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 	}
 	offset := (page - 1) * pageSize
 
-	query := fmt.Sprintf(`SELECT id, title, content, author_id, author_name, category_id, status,
+	query := fmt.Sprintf(`SELECT id, title, content, content_format, author_id, author_name, category_id, status,
 		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
 		FROM threads WHERE %s ORDER BY is_pinned DESC, created_at DESC LIMIT $%d OFFSET $%d`,
 		whereStr, argIdx, argIdx+1)
@@ -174,7 +188,7 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 	var threads []*domain.Thread
 	for rows.Next() {
 		t := &domain.Thread{}
-		if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.AuthorID, &t.AuthorName, &t.CategoryID,
+		if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.ContentFormat, &t.AuthorID, &t.AuthorName, &t.CategoryID,
 			&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
 			&t.Tags, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, 0, err
@@ -189,7 +203,7 @@ type rowScanner interface {
 }
 
 func selectThreadSQL(where string) string {
-	return `SELECT id, title, content, author_id, author_name, category_id, status,
+	return `SELECT id, title, content, content_format, author_id, author_name, category_id, status,
 		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
 		FROM threads WHERE ` + where + ` AND deleted_at IS NULL`
 }
@@ -197,7 +211,7 @@ func selectThreadSQL(where string) string {
 func scanThread(row rowScanner) (*domain.Thread, error) {
 	t := &domain.Thread{}
 	err := row.Scan(
-		&t.ID, &t.Title, &t.Content, &t.AuthorID, &t.AuthorName, &t.CategoryID,
+		&t.ID, &t.Title, &t.Content, &t.ContentFormat, &t.AuthorID, &t.AuthorName, &t.CategoryID,
 		&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
 		&t.Tags, &t.CreatedAt, &t.UpdatedAt,
 	)

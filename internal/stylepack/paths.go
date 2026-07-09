@@ -17,5 +17,9 @@ func PluginDataDir() string {
 }
 
 func SourceDir(pluginName, packName string) string {
-	return filepath.Join(PluginDataDir(), pluginName, "style-packs", packName)
+	return filepath.Join(SourceRoot(pluginName), packName)
+}
+
+func SourceRoot(pluginName string) string {
+	return filepath.Join(PluginDataDir(), pluginName, "style-packs")
 }

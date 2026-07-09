@@ -228,8 +228,50 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 	}
 
 	replace := c.PostForm("replace") == "true" || c.Query("replace") == "true"
+	precheck, err := PrecheckPluginPackage(packagePath, h.pluginsDir)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
+	pluginName := "unknown"
+	if precheck.Manifest != nil {
+		pluginName = precheck.Manifest.Name
+	}
+	actorID, actorName := currentActor(c)
+	auditMetadata := map[string]interface{}{
+		"actor_id":          actorID,
+		"actor_name":        actorName,
+		"checksum":          precheck.Checksum,
+		"package_size":      precheck.PackageSize,
+		"risk_level":        precheck.RiskLevel,
+		"risk_score":        precheck.RiskScore,
+		"risk_reasons":      precheck.RiskReasons,
+		"replace":           replace,
+		"conflict":          precheck.Conflict,
+		"existing_version":  precheck.ExistingVersion,
+		"import_version":    precheck.ImportVersion,
+		"version_change":    precheck.VersionChange,
+		"signature_status":  precheck.SignatureStatus,
+		"precheck_warnings": precheck.Warnings,
+	}
+	if !precheck.Allowed {
+		auditMetadata["outcome"] = "precheck_failed"
+		auditMetadata["errors"] = precheck.Errors
+		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import rejected by precheck", auditMetadata)
+		response.Error(c, http.StatusBadRequest, 60005, "plugin package precheck failed: "+strings.Join(precheck.Errors, "; "))
+		return
+	}
+	if precheck.Conflict && !replace {
+		auditMetadata["outcome"] = "conflict_without_replace"
+		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import blocked by version conflict", auditMetadata)
+		response.Error(c, http.StatusConflict, 60004, "plugin with the same name already exists; enable replace to overwrite")
+		return
+	}
 	installed, err := h.manager.ImportPackage(packagePath, h.pluginsDir, replace)
 	if err != nil {
+		auditMetadata["outcome"] = "failed"
+		auditMetadata["error"] = err.Error()
+		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "error", "plugin package import failed", auditMetadata)
 		status := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "already installed") || strings.Contains(err.Error(), "already exists") {
 			status = http.StatusConflict
@@ -237,6 +279,8 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		response.Error(c, status, 60004, err.Error())
 		return
 	}
+	auditMetadata["outcome"] = "imported"
+	h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "info", "plugin package imported by admin", auditMetadata)
 
 	response.Success(c, gin.H{
 		"name":         installed.Manifest.Name,
@@ -282,4 +326,20 @@ func (h *Handler) PrecheckPluginPackage(c *gin.Context) {
 		return
 	}
 	response.Success(c, precheck)
+}
+
+func currentActor(c *gin.Context) (string, string) {
+	id := ""
+	name := ""
+	if raw, ok := c.Get("user_id"); ok {
+		if value, ok := raw.(string); ok {
+			id = value
+		}
+	}
+	if raw, ok := c.Get("username"); ok {
+		if value, ok := raw.(string); ok {
+			name = value
+		}
+	}
+	return id, name
 }

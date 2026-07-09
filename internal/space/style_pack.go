@@ -90,6 +90,17 @@ func loadPersonalSourceStylePack(name string) (*stylepack.Package, stylepack.Val
 	return stylepack.LoadDir(stylepack.SourceDir("personal-space", name))
 }
 
+func listPersonalSourceStylePacks() (*stylepack.SourcePackList, error) {
+	items, err := stylepack.ListSourcePacks("personal-space")
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		ensureSourcePackInfoTarget(&items[i], "personal-space")
+	}
+	return &stylepack.SourcePackList{Items: items}, nil
+}
+
 func ensureStylePackTarget(pack *stylepack.Package, target string) stylepack.ValidationResult {
 	if pack == nil {
 		return stylepack.ValidationResult{Valid: false, Errors: []string{"style pack is empty"}}
@@ -101,6 +112,20 @@ func ensureStylePackTarget(pack *stylepack.Package, target string) stylepack.Val
 		}
 	}
 	return stylepack.ValidationResult{Valid: true}
+}
+
+func ensureSourcePackInfoTarget(info *stylepack.SourcePackInfo, target string) {
+	if info == nil || !info.Validation.Valid {
+		return
+	}
+	if info.Target == target {
+		return
+	}
+	info.Validation.Valid = false
+	info.Validation.Errors = []string{fmt.Sprintf("style pack target must be %s", target)}
+	if info.Validation.Warnings == nil {
+		info.Validation.Warnings = []string{}
+	}
 }
 
 func stylePackToken(tokens map[string]string, key, fallback string) string {

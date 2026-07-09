@@ -295,6 +295,57 @@
               应用拓展包
             </el-button>
           </div>
+
+          <div class="source-pack-panel">
+            <div class="source-pack-header">
+              <strong>源码目录风格包</strong>
+              <el-button text type="primary" size="small" @click="loadSourceStylePacks" :loading="sourceStylePackLoading">
+                刷新
+              </el-button>
+            </div>
+            <div v-if="sourceStylePacks.length" class="source-pack-grid">
+              <button
+                v-for="pack in sourceStylePacks"
+                :key="pack.name"
+                type="button"
+                class="source-pack-option"
+                :class="{ active: selectedSourceStylePackName === pack.name, invalid: !pack.validation.valid }"
+                :disabled="!pack.validation.valid"
+                @click="selectedSourceStylePackName = pack.name"
+              >
+                <span>
+                  <strong>{{ pack.display_name || pack.name }}</strong>
+                  <small>{{ pack.name }} · {{ pack.version || 'unknown' }}</small>
+                </span>
+                <el-tag :type="pack.validation.valid ? 'success' : 'danger'" effect="plain" size="small">
+                  {{ pack.validation.valid ? '可应用' : '需修复' }}
+                </el-tag>
+              </button>
+            </div>
+            <el-empty v-else-if="!sourceStylePackLoading" description="暂无源码目录风格包" />
+            <div v-if="selectedSourceStylePack?.validation.errors?.length" class="error-list">
+              <el-alert
+                v-for="error in selectedSourceStylePack.validation.errors"
+                :key="error"
+                :title="error"
+                type="error"
+                show-icon
+                :closable="false"
+              />
+            </div>
+            <div class="style-actions">
+              <el-button
+                type="primary"
+                plain
+                @click="applySourceStylePack"
+                :loading="sourceStylePackApplying"
+                :disabled="!selectedSourceStylePackName"
+              >
+                <el-icon><Switch /></el-icon>
+                应用源码目录
+              </el-button>
+            </div>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -394,6 +445,20 @@ interface StylePackResult {
   }
 }
 
+interface SourceStylePack {
+  name: string
+  path: string
+  target?: string
+  version?: string
+  display_name?: string
+  description?: string
+  validation: StyleValidationResult
+}
+
+interface SourceStylePackList {
+  items: SourceStylePack[]
+}
+
 interface SpaceStorageStatus {
   user_id: string
   quota_bytes: number
@@ -444,6 +509,8 @@ const htmlApplying = ref(false)
 const stylePackGenerating = ref(false)
 const stylePackValidating = ref(false)
 const stylePackApplying = ref(false)
+const sourceStylePackLoading = ref(false)
+const sourceStylePackApplying = ref(false)
 const validation = ref<StyleValidationResult | null>(null)
 const htmlValidation = ref<StyleValidationResult | null>(null)
 const stylePackValidation = ref<StyleValidationResult | null>(null)
@@ -451,6 +518,8 @@ const preview = ref<StylePreview | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const stylePackInput = ref<HTMLInputElement | null>(null)
 const stylePackFile = ref<File | null>(null)
+const sourceStylePacks = ref<SourceStylePack[]>([])
+const selectedSourceStylePackName = ref('')
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
 const htmlText = ref('')
@@ -469,6 +538,7 @@ const form = reactive<SpaceForm>({
 
 const activeManifest = computed(() => preview.value?.manifest || currentSpace.value?.style_manifest || null)
 const activeComponents = computed(() => activeManifest.value?.components || [])
+const selectedSourceStylePack = computed(() => sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value) || null)
 const avatarInitial = computed(() => {
   const name = owner.value?.nickname || owner.value?.username || 'U'
   return name.slice(0, 1).toUpperCase()
@@ -512,10 +582,31 @@ const loadSpace = async () => {
     fillForm(payload.space)
     syncHTMLEditor(payload.space)
     storage.value = unwrap<SpaceStorageStatus>(storageRes)
+    await loadSourceStylePacks(false)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadSourceStylePacks = async (showError = true) => {
+  sourceStylePackLoading.value = true
+  try {
+    const payload = unwrap<SourceStylePackList>(await spaceApi.sourceStylePacks())
+    sourceStylePacks.value = payload.items || []
+    const current = sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value && pack.validation.valid)
+    if (!current) {
+      selectedSourceStylePackName.value = sourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+    }
+  } catch (error: any) {
+    sourceStylePacks.value = []
+    selectedSourceStylePackName.value = ''
+    if (showError) {
+      ElMessage.error(error?.msg || '加载源码目录风格包失败')
+    }
+  } finally {
+    sourceStylePackLoading.value = false
   }
 }
 
@@ -800,6 +891,37 @@ const applyStylePack = async () => {
   }
 }
 
+const applySourceStylePack = async () => {
+  if (!selectedSourceStylePackName.value) return
+  sourceStylePackApplying.value = true
+  try {
+    const payload = unwrap<StyleApplyResult>(await spaceApi.applySourceStylePack(selectedSourceStylePackName.value))
+    validation.value = payload.validation
+    stylePackValidation.value = { valid: payload.validation.valid, errors: payload.validation.errors, warnings: payload.validation.warnings }
+    currentSpace.value = payload.space
+    preview.value = payload.applied
+      ? {
+          validation: payload.validation,
+          manifest: payload.applied,
+          layout: payload.applied.layout,
+          components: payload.applied.components,
+          tokens: payload.applied.tokens,
+        }
+      : null
+    if (payload.applied) {
+      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
+      selectedStyleName.value = payload.applied.name
+    }
+    fillForm(payload.space)
+    syncHTMLEditor(payload.space)
+    ElMessage.success('源码目录风格包已应用')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '应用源码目录风格包失败')
+  } finally {
+    sourceStylePackApplying.value = false
+  }
+}
+
 const rollbackStyle = async () => {
   rollbacking.value = true
   try {
@@ -930,6 +1052,59 @@ onMounted(loadSpace)
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+}
+.source-pack-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.source-pack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.source-pack-grid {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.source-pack-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.source-pack-option.active {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+.source-pack-option.invalid {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+.source-pack-option span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.source-pack-option strong,
+.source-pack-option small {
+  overflow-wrap: anywhere;
+}
+.source-pack-option small {
+  color: #909399;
 }
 .field-full {
   width: 100%;

@@ -22,7 +22,7 @@
               :on-change="handleImportChange"
             >
               <el-button type="primary" size="small" :loading="importing">
-                <el-icon><Upload /></el-icon>
+                <el-icon><Download /></el-icon>
                 导入
               </el-button>
             </el-upload>
@@ -76,7 +76,7 @@
               配置
             </el-button>
             <el-button type="success" size="small" plain @click="doExport(row)">
-              <el-icon><Download /></el-icon>
+              <el-icon><Upload /></el-icon>
               导出
             </el-button>
             <el-switch
@@ -138,6 +138,76 @@
       <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
     </el-dialog>
 
+    <el-dialog v-model="precheckDialogVisible" title="插件包导入预检" width="820px">
+      <div v-if="pendingPrecheck" class="precheck-panel">
+        <div class="precheck-summary">
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="插件">{{ pendingPrecheck.manifest?.name || '未知' }}</el-descriptions-item>
+            <el-descriptions-item label="版本变化">
+              {{ pendingPrecheck.existing_version || '无' }} -> {{ pendingPrecheck.import_version || '未知' }}
+              <el-tag size="small" effect="plain">{{ versionChangeLabel(pendingPrecheck.version_change) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="风险等级">
+              <el-tag :type="riskTag(pendingPrecheck.risk_level)" effect="plain">
+                {{ riskLabel(pendingPrecheck.risk_level) }} / {{ pendingPrecheck.risk_score || 0 }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="签名">
+              <el-tag :type="pendingPrecheck.signature_status === 'unsigned' ? 'warning' : 'success'" effect="plain">
+                {{ pendingPrecheck.signature_status === 'unsigned' ? '未签名' : '存在签名文件，暂未验签' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="Checksum" :span="2">{{ pendingPrecheck.checksum }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+        <el-alert
+          v-for="error in pendingPrecheck.errors || []"
+          :key="`error-${error}`"
+          :title="error"
+          type="error"
+          show-icon
+          :closable="false"
+          class="precheck-alert"
+        />
+        <el-alert
+          v-for="warning in pendingPrecheck.warnings || []"
+          :key="`warning-${warning}`"
+          :title="warning"
+          type="warning"
+          show-icon
+          :closable="false"
+          class="precheck-alert"
+        />
+        <el-collapse class="precheck-collapse">
+          <el-collapse-item title="权限风险" name="permissions">
+            <div class="tag-list">
+              <el-tag v-for="perm in pendingPrecheck.permissions || []" :key="perm" type="warning" effect="plain">
+                {{ perm }}
+              </el-tag>
+              <span v-if="!pendingPrecheck.permissions?.length" class="empty-text">未声明 Host API 权限</span>
+            </div>
+            <ul class="risk-reasons">
+              <li v-for="reason in pendingPrecheck.risk_reasons || []" :key="reason">{{ reason }}</li>
+            </ul>
+          </el-collapse-item>
+          <el-collapse-item title="包内文件" name="files">
+            <pre class="metadata-pre">{{ (pendingPrecheck.files || []).join('\n') }}</pre>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+      <template #footer>
+        <el-button @click="clearPendingImport">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="pendingPrecheck?.allowed === false || (pendingPrecheck?.conflict && !replaceOnImport)"
+          :loading="importing"
+          @click="confirmImport"
+        >
+          确认导入
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="configDialogVisible" :title="`${selectedPluginName} 插件配置`" width="720px">
       <el-alert
         v-if="configDescription"
@@ -178,22 +248,55 @@
           </el-button>
         </div>
         <div class="style-pack-source-row">
-          <el-input
+          <el-select
             v-model="homeSourceStylePackName"
             size="small"
+            filterable
+            :loading="homeSourceStylePackLoading"
             placeholder="源码目录风格包名，例如 campus-hero"
-          />
+            style="width: 100%"
+          >
+            <el-option
+              v-for="pack in homeSourceStylePacks"
+              :key="pack.name"
+              :label="sourceStylePackLabel(pack)"
+              :value="pack.name"
+              :disabled="!pack.validation.valid"
+            >
+              <div class="source-pack-option">
+                <span>{{ sourceStylePackLabel(pack) }}</span>
+                <el-tag :type="pack.validation.valid ? 'success' : 'danger'" size="small" effect="plain">
+                  {{ pack.validation.valid ? '可应用' : '需修复' }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+          <el-button size="small" @click="loadHomeSourceStylePacks" :loading="homeSourceStylePackLoading">
+            刷新列表
+          </el-button>
           <el-button
             size="small"
             type="primary"
             plain
             @click="applyHomeSourceStylePack"
             :loading="homeSourceStylePackApplying"
-            :disabled="!homeSourceStylePackName"
+            :disabled="!selectedHomeSourceStylePack?.validation.valid"
           >
             应用源码目录
           </el-button>
+          <el-button size="small" type="warning" plain @click="rollbackHomeStylePack" :loading="homeStylePackRollbacking">
+            回滚
+          </el-button>
         </div>
+        <el-alert
+          v-for="error in selectedHomeSourceStylePack?.validation.errors || []"
+          :key="error"
+          :title="error"
+          type="error"
+          show-icon
+          :closable="false"
+          class="pack-error"
+        />
         <el-alert
           v-for="error in homeStylePackValidation?.errors || []"
           :key="error"
@@ -254,11 +357,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
 import { homeStylePackApi, pluginApi } from '@/api'
+
+interface SourceStylePack {
+  name: string
+  path: string
+  target?: string
+  version?: string
+  display_name?: string
+  description?: string
+  validation: {
+    valid: boolean
+    errors?: string[]
+    warnings?: string[]
+  }
+}
 
 const plugins = ref<any[]>([])
 const loading = ref(false)
@@ -280,8 +397,18 @@ const homeStylePackValidation = ref<any | null>(null)
 const homeStylePackGenerating = ref(false)
 const homeStylePackValidating = ref(false)
 const homeStylePackApplying = ref(false)
+const homeStylePackRollbacking = ref(false)
 const homeSourceStylePackName = ref('campus-hero')
 const homeSourceStylePackApplying = ref(false)
+const homeSourceStylePackLoading = ref(false)
+const homeSourceStylePacks = ref<SourceStylePack[]>([])
+const precheckDialogVisible = ref(false)
+const pendingImportFile = ref<File | null>(null)
+const pendingPrecheck = ref<any | null>(null)
+
+const selectedHomeSourceStylePack = computed(() =>
+  homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value) || null,
+)
 
 const responseItems = (payload: any): any[] => {
   const candidates = [
@@ -363,6 +490,9 @@ const handleImportChange = async (uploadFile: UploadFile) => {
   try {
     const precheckRes = (await pluginApi.precheckPackage(uploadFile.raw)) as any
     const precheck = precheckRes?.data || precheckRes
+    pendingImportFile.value = uploadFile.raw
+    pendingPrecheck.value = precheck
+    precheckDialogVisible.value = true
     if (precheck?.allowed === false) {
       ElMessage.error(`插件包预检失败：${(precheck.errors || []).join('；') || '未知错误'}`)
       return
@@ -371,11 +501,29 @@ const handleImportChange = async (uploadFile: UploadFile) => {
       ElMessage.warning('检测到同名插件，请开启“覆盖”后再导入')
       return
     }
-    await pluginApi.importPackage(uploadFile.raw, replaceOnImport.value)
-    ElMessage.success(`插件包已导入${precheck?.checksum ? `：${precheck.checksum}` : ''}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '插件包预检失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+const clearPendingImport = () => {
+  precheckDialogVisible.value = false
+  pendingImportFile.value = null
+  pendingPrecheck.value = null
+}
+
+const confirmImport = async () => {
+  if (!pendingImportFile.value || !pendingPrecheck.value) return
+  importing.value = true
+  try {
+    await pluginApi.importPackage(pendingImportFile.value, replaceOnImport.value)
+    ElMessage.success(`插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ''}`)
+    clearPendingImport()
     await load()
   } catch (error: any) {
-    ElMessage.error(error?.message || '导入插件包失败')
+    ElMessage.error(error?.msg || error?.message || '导入插件包失败')
   } finally {
     importing.value = false
   }
@@ -409,6 +557,15 @@ const openConfig = async (row: any) => {
       next[field.key] = normalizeFieldValue(field, value)
     }
     configForm.value = next
+    if (row.name === 'homepage-customizer') {
+      await loadHomeSourceStylePacks(false)
+      const active = String(config.active_style_pack || '').trim()
+      if (active && homeSourceStylePacks.value.some((pack) => pack.name === active && pack.validation.valid)) {
+        homeSourceStylePackName.value = active
+      } else {
+        homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+      }
+    }
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载插件配置失败')
   } finally {
@@ -459,8 +616,37 @@ const applyHomeStylePack = async () => {
   }
 }
 
+const loadHomeSourceStylePacks = async (showMessage = true) => {
+  homeSourceStylePackLoading.value = true
+  try {
+    const r = (await homeStylePackApi.sources()) as any
+    const payload = r?.data || r
+    homeSourceStylePacks.value = payload?.items || []
+    const current = homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value && pack.validation.valid)
+    if (!current) {
+      homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+    }
+    if (showMessage) {
+      ElMessage.success('源码目录风格包列表已刷新')
+    }
+  } catch (error: any) {
+    homeSourceStylePacks.value = []
+    homeSourceStylePackName.value = ''
+    if (showMessage) {
+      ElMessage.error(error?.msg || '加载源码目录风格包失败')
+    }
+  } finally {
+    homeSourceStylePackLoading.value = false
+  }
+}
+
+const sourceStylePackLabel = (pack: SourceStylePack) => {
+  const title = pack.display_name || pack.name
+  return `${title} (${pack.name}${pack.version ? ` v${pack.version}` : ''})`
+}
+
 const applyHomeSourceStylePack = async () => {
-  if (!homeSourceStylePackName.value) return
+  if (!selectedHomeSourceStylePack.value?.validation.valid) return
   homeSourceStylePackApplying.value = true
   try {
     await homeStylePackApi.applySource(homeSourceStylePackName.value)
@@ -470,6 +656,19 @@ const applyHomeSourceStylePack = async () => {
     ElMessage.error(error?.msg || '应用首页源码目录风格包失败')
   } finally {
     homeSourceStylePackApplying.value = false
+  }
+}
+
+const rollbackHomeStylePack = async () => {
+  homeStylePackRollbacking.value = true
+  try {
+    await homeStylePackApi.rollback()
+    ElMessage.success('首页风格已回滚到上一份配置')
+    await openConfig({ name: 'homepage-customizer' })
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '首页风格回滚失败')
+  } finally {
+    homeStylePackRollbacking.value = false
   }
 }
 
@@ -558,6 +757,28 @@ const logLevelTag = (level: string) => {
   if (level === 'warn') return 'warning'
   if (level === 'info') return 'success'
   return 'info'
+}
+
+const riskTag = (level: string) => {
+  if (level === 'high') return 'danger'
+  if (level === 'medium') return 'warning'
+  if (level === 'low') return 'success'
+  return 'info'
+}
+
+const riskLabel = (level: string) => {
+  if (level === 'high') return '高风险'
+  if (level === 'medium') return '中风险'
+  if (level === 'low') return '低风险'
+  return '未知'
+}
+
+const versionChangeLabel = (change: string) => {
+  if (change === 'new') return '新安装'
+  if (change === 'upgrade') return '升级'
+  if (change === 'downgrade') return '降级'
+  if (change === 'same') return '同版本'
+  return '未知'
 }
 
 const formatTime = (value: string) => {
@@ -655,9 +876,22 @@ onMounted(load)
 
 .style-pack-source-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: 10px;
   margin-top: 10px;
+}
+
+.source-pack-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.source-pack-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .hidden-input {
@@ -673,6 +907,32 @@ onMounted(load)
   margin-top: 8px;
 }
 
+.precheck-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.precheck-alert {
+  margin-top: 0;
+}
+
+.precheck-collapse {
+  border-top: 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.risk-reasons {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #606266;
+  line-height: 1.6;
+}
+
 .metadata-pre {
   max-height: 320px;
   overflow-y: auto;
@@ -683,5 +943,11 @@ onMounted(load)
 
 .empty-text {
   color: #a8abb2;
+}
+
+@media (max-width: 720px) {
+  .style-pack-source-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -25,6 +25,7 @@ Admin users can edit the config from the admin Plugin Management page by opening
 | `custom_css` | Restricted CSS snippet rendered with `custom_html` after backend validation. |
 | `active_style_pack` | Name of the last applied homepage page style pack. |
 | `style_pack_version` | Version of the last applied homepage page style pack. |
+| `last_config_snapshot` | Internal rollback snapshot saved before applying or rolling back a homepage style pack. |
 
 ## Page Style Packs
 
@@ -62,9 +63,10 @@ GET  /api/v1/home/style-packs/example
 GET  /api/v1/home/style-packs/example.zip
 POST /api/v1/home/style-packs/apply
 POST /api/v1/home/style-packs/apply-source
+POST /api/v1/home/style-packs/rollback
 ```
 
-Applying a zip or source-folder pack writes the screened HTML/CSS into the plugin config and records the active pack name/version. Screening covers every HTML template and CSS file, declared image assets, safe relative paths, allowed extensions, and `config.schema.json` JSON parsing before anything is saved.
+Applying a zip or source-folder pack writes the screened HTML/CSS into the plugin config, records the active pack name/version, and saves one previous config snapshot for admin rollback. Screening covers every HTML template and CSS file, declared image assets, safe relative paths, allowed extensions, and `config.schema.json` JSON parsing before anything is saved.
 
 ## Safety Boundary
 

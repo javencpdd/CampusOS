@@ -1,0 +1,93 @@
+name: controlled-richtext-article
+display_name: "Controlled RichText Article"
+version: "0.1.0"
+description: "CampusOS built-in controlled richtext article plugin for image-text threads, drafts, previews, publishing, and safe rendering"
+author: "CampusOS Team"
+runtime: builtin
+
+events:
+  subscribe:
+    - "thread.created"
+    - "thread.updated"
+
+permissions:
+  api:
+    - resource: "thread"
+      actions: ["read", "write"]
+    - resource: "richtext_article"
+      actions: ["read", "write"]
+    - resource: "richtext_asset"
+      actions: ["read", "write"]
+
+storage:
+  type: none
+
+config:
+  editor_mode: "controlled-html"
+  file_root: "data/images/richtext"
+  file_url_prefix: "/api/v1/richtext/assets"
+  max_image_mb: 5
+  allow_plain_text_template: true
+  default_template: "richtext"
+  future_editor_provider: "textarea-controlled-html"
+
+config_schema:
+  fields:
+    - key: "editor_mode"
+      label: "Editor mode"
+      type: "select"
+      description: "Current richtext editor mode. The MVP uses a controlled HTML textarea and can later switch to Tiptap, wangEditor, BlockNote, or Quill."
+      required: true
+      default: "controlled-html"
+      options:
+        - label: "Controlled HTML"
+          value: "controlled-html"
+    - key: "file_root"
+      label: "File root"
+      type: "string"
+      description: "Local root directory for richtext article images."
+      required: true
+      default: "data/images/richtext"
+    - key: "file_url_prefix"
+      label: "File URL prefix"
+      type: "string"
+      description: "Public API URL prefix for richtext article image files."
+      required: true
+      default: "/api/v1/richtext/assets"
+    - key: "max_image_mb"
+      label: "Max image MB"
+      type: "number"
+      description: "Maximum size of a single uploaded article image."
+      required: true
+      default: 5
+    - key: "allow_plain_text_template"
+      label: "Allow plain text"
+      type: "boolean"
+      description: "Keep the legacy plain text thread template available when this plugin is enabled."
+      default: true
+    - key: "default_template"
+      label: "Default template"
+      type: "select"
+      description: "Default posting template shown to users."
+      default: "richtext"
+      options:
+        - label: "RichText article"
+          value: "richtext"
+        - label: "Plain text"
+          value: "plain_text"
+    - key: "future_editor_provider"
+      label: "Future editor provider"
+      type: "select"
+      description: "Reserved editor provider selector for future full WYSIWYG integration."
+      default: "textarea-controlled-html"
+      options:
+        - label: "Textarea controlled HTML"
+          value: "textarea-controlled-html"
+        - label: "Tiptap placeholder"
+          value: "tiptap-placeholder"
+        - label: "wangEditor placeholder"
+          value: "wangeditor-placeholder"
+        - label: "BlockNote placeholder"
+          value: "blocknote-placeholder"
+        - label: "Quill placeholder"
+          value: "quill-placeholder"

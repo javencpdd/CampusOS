@@ -1,69 +1,165 @@
 <template>
   <div class="create-thread">
-    <el-card>
-      <template #header><h2>发布帖子</h2></template>
-      <el-form :model="form" @submit.prevent="handleSubmit" label-position="top">
+    <el-card class="editor-card" shadow="never">
+      <template #header>
+        <div class="editor-header">
+          <h2>{{ isEditMode ? '编辑图文文章' : '发布帖子' }}</h2>
+          <el-segmented
+            v-if="richTextEnabled && !isEditMode"
+            v-model="templateMode"
+            :options="templateOptions"
+          />
+        </div>
+      </template>
+
+      <el-form v-if="templateMode === 'plain_text'" :model="plainForm" @submit.prevent="submitPlain" label-position="top">
         <el-form-item label="标题" required>
-          <el-input v-model="form.title" placeholder="请输入帖子标题" maxlength="255" show-word-limit />
+          <el-input v-model="plainForm.title" placeholder="请输入帖子标题" maxlength="255" show-word-limit />
         </el-form-item>
         <el-form-item label="版块" required>
-          <el-select
-            v-model="form.category_id"
-            :loading="categoryLoading"
-            filterable
-            placeholder="请选择版块"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="category in categories"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
-            />
+          <el-select v-model="plainForm.category_id" :loading="categoryLoading" filterable placeholder="请选择版块" class="field-full">
+            <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
           </el-select>
-          <div v-if="!categoryLoading && categories.length === 0" class="field-hint">
-            暂无可用版块，请先在后台创建版块
-          </div>
         </el-form-item>
         <el-form-item label="内容" required>
-          <el-input v-model="form.content" type="textarea" :rows="10" placeholder="请输入帖子内容（支持 Markdown）" />
+          <el-input v-model="plainForm.content" type="textarea" :rows="10" placeholder="请输入帖子内容" />
         </el-form-item>
         <el-form-item label="标签">
-          <el-select v-model="form.tags" multiple filterable allow-create placeholder="输入标签后回车" style="width:100%">
-            <el-option
-              v-for="tag in currentCategory?.default_tags || []"
-              :key="tag"
-              :label="tag"
-              :value="tag"
-            />
+          <el-select v-model="plainForm.tags" multiple filterable allow-create placeholder="输入标签后回车" class="field-full">
+            <el-option v-for="tag in currentPlainCategory?.default_tags || []" :key="tag" :label="tag" :value="tag" />
           </el-select>
-          <div v-if="currentCategory?.default_tags?.length" class="field-hint">
-            已自动带入该版块默认标签，可继续添加自定义标签。
+        </el-form-item>
+        <div class="editor-actions">
+          <el-button type="primary" @click="submitPlain" :loading="loading">发布帖子</el-button>
+          <el-button @click="$router.back()">取消</el-button>
+        </div>
+      </el-form>
+
+      <el-form v-else :model="articleForm" @submit.prevent="publishArticle" label-position="top">
+        <el-form-item label="标题" required>
+          <el-input v-model="articleForm.title" placeholder="请输入文章标题" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-row :gutter="14">
+          <el-col :xs="24" :md="12">
+            <el-form-item label="版块" required>
+              <el-select v-model="articleForm.category_id" :loading="categoryLoading" filterable :disabled="isEditMode" placeholder="请选择版块" class="field-full">
+                <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="标签">
+              <el-select v-model="articleForm.tags" multiple filterable allow-create :disabled="isEditMode" placeholder="输入标签后回车" class="field-full">
+                <el-option v-for="tag in currentArticleCategory?.default_tags || []" :key="tag" :label="tag" :value="tag" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="摘要">
+          <el-input v-model="articleForm.summary" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="用于列表和详情页的文章摘要" />
+        </el-form-item>
+        <el-form-item label="封面图">
+          <div class="cover-row">
+            <el-input v-model="articleForm.cover_url" placeholder="https://example.com/cover.jpg 或上传站内图片" />
+            <input ref="coverInput" class="hidden-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" @change="uploadCover" />
+            <el-button @click="chooseCover" :loading="assetUploading">上传封面</el-button>
           </div>
         </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSubmit" :loading="loading">发布帖子</el-button>
-          <el-button @click="$router.back()">取消</el-button>
+        <el-form-item label="正文 HTML" required>
+          <div class="body-toolbar">
+            <el-button size="small" @click="insertSnippet('<h2>小标题</h2>')">H2</el-button>
+            <el-button size="small" @click="insertSnippet('<p>段落内容</p>')">段落</el-button>
+            <el-button size="small" @click="insertSnippet('<blockquote>引用内容</blockquote>')">引用</el-button>
+            <input ref="bodyImageInput" class="hidden-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" @change="uploadBodyImage" />
+            <el-button size="small" @click="chooseBodyImage" :loading="assetUploading">插入图片</el-button>
+          </div>
+          <el-input
+            v-model="articleForm.content_html"
+            type="textarea"
+            :rows="14"
+            class="html-editor"
+            spellcheck="false"
+            placeholder="<p>从这里开始写文章正文...</p>"
+          />
         </el-form-item>
+        <div class="editor-actions">
+          <el-button @click="saveDraft" :loading="savingDraft">保存草稿</el-button>
+          <el-button @click="previewArticle" :loading="previewing">预览</el-button>
+          <el-button type="primary" @click="publishArticle" :loading="publishing">发布文章</el-button>
+          <el-button @click="$router.back()">取消</el-button>
+        </div>
       </el-form>
     </el-card>
+
+    <el-drawer v-model="previewVisible" title="文章预览" size="60%">
+      <article class="article-content" v-html="previewHtml"></article>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { categoryApi, threadApi } from '@/api'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { categoryApi, richTextApi, threadApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
+const route = useRoute()
 const router = useRouter()
+
 const loading = ref(false)
 const categoryLoading = ref(false)
+const savingDraft = ref(false)
+const publishing = ref(false)
+const previewing = ref(false)
+const assetUploading = ref(false)
+const richTextEnabled = ref(false)
+const templateMode = ref<'richtext' | 'plain_text'>('richtext')
+const draftThreadId = ref('')
+const articleContentId = ref('')
+const previewVisible = ref(false)
+const previewHtml = ref('')
+const coverInput = ref<HTMLInputElement | null>(null)
+const bodyImageInput = ref<HTMLInputElement | null>(null)
 const categories = ref<Array<{ id: string; name: string; default_tags?: string[] }>>([])
-const form = reactive({ title: '', content: '', category_id: '', tags: [] as string[] })
-const appliedDefaultTags = ref<string[]>([])
+const plainDefaults = ref<string[]>([])
+const articleDefaults = ref<string[]>([])
+const articleDirty = ref(false)
+const initializingArticle = ref(true)
+const allowLeave = ref(false)
 
-const currentCategory = computed(() => categories.value.find((category) => category.id === form.category_id))
+const templateOptions = [
+  { label: '图文文章', value: 'richtext' },
+  { label: '普通文本', value: 'plain_text' },
+]
+
+const isEditMode = computed(() => Boolean(route.params.id))
+
+const plainForm = reactive({ title: '', content: '', category_id: '', tags: [] as string[] })
+const articleForm = reactive({
+  title: '',
+  summary: '',
+  cover_url: '',
+  category_id: '',
+  tags: [] as string[],
+  content_html: '<p></p>',
+  content_json: {} as Record<string, any>,
+})
+
+const currentPlainCategory = computed(() => categories.value.find((category) => category.id === plainForm.category_id))
+const currentArticleCategory = computed(() => categories.value.find((category) => category.id === articleForm.category_id))
+
+const unwrap = (res: any) => res?.data || res
+
+const loadStatus = async () => {
+  try {
+    const status = unwrap(await richTextApi.status())
+    richTextEnabled.value = Boolean(status.enabled)
+    templateMode.value = richTextEnabled.value ? 'richtext' : 'plain_text'
+  } catch {
+    richTextEnabled.value = false
+    templateMode.value = 'plain_text'
+  }
+}
 
 const loadCategories = async () => {
   categoryLoading.value = true
@@ -71,38 +167,178 @@ const loadCategories = async () => {
     const res: any = await categoryApi.list()
     if (res.code === 0) {
       categories.value = res.data || []
-      if (!form.category_id && categories.value.length > 0) {
-        form.category_id = categories.value[0].id
-      }
-      applyCategoryDefaultTags()
+      if (!plainForm.category_id && categories.value.length > 0) plainForm.category_id = categories.value[0].id
+      if (!articleForm.category_id && categories.value.length > 0) articleForm.category_id = categories.value[0].id
+      applyPlainDefaultTags()
+      applyArticleDefaultTags()
     }
-  } catch (e: any) {
-    ElMessage.error(e?.msg || '获取版块失败')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '获取版块失败')
   } finally {
     categoryLoading.value = false
   }
 }
 
-const handleSubmit = async () => {
-  if (!form.title || !form.content || !form.category_id) return ElMessage.warning('请填写标题、内容和版块')
+const loadEditingArticle = async () => {
+  if (!isEditMode.value) return
+  templateMode.value = 'richtext'
+  draftThreadId.value = String(route.params.id)
+  try {
+    const [threadRes, articleRes] = await Promise.all([
+      threadApi.get(draftThreadId.value),
+      richTextApi.getMine(draftThreadId.value),
+    ])
+    const thread = unwrap(threadRes)
+    const article = unwrap(articleRes)
+    articleForm.title = article.title || thread.title || ''
+    articleForm.summary = article.summary || ''
+    articleForm.cover_url = article.cover_url || ''
+    articleForm.category_id = thread.category_id || articleForm.category_id
+    articleForm.tags = [...(thread.tags || [])]
+    articleForm.content_html = article.content_html || article.sanitized_html || '<p></p>'
+    articleForm.content_json = article.content_json || {}
+    articleContentId.value = article.id || ''
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '加载图文文章失败')
+  }
+}
+
+const submitPlain = async () => {
+  if (!plainForm.title || !plainForm.content || !plainForm.category_id) {
+    ElMessage.warning('请填写标题、内容和版块')
+    return
+  }
   loading.value = true
   try {
-    const res: any = await threadApi.create(form)
+    const res: any = await threadApi.create(plainForm)
     if (res.code === 0) {
       ElMessage.success('发布成功')
       router.push(`/threads/${res.data.id}`)
     }
-  } catch (e: any) {
-    ElMessage.error(e?.msg || '发布失败')
-  } finally { loading.value = false }
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '发布失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-const applyCategoryDefaultTags = () => {
-  const previousDefaults = new Set(appliedDefaultTags.value.map((tag) => tag.toLowerCase()))
-  const customTags = form.tags.filter((tag) => !previousDefaults.has(tag.toLowerCase()))
-  const defaults = currentCategory.value?.default_tags || []
-  form.tags = mergeTags(defaults, customTags)
-  appliedDefaultTags.value = [...defaults]
+const articlePayload = () => ({
+  title: articleForm.title,
+  summary: articleForm.summary,
+  cover_url: articleForm.cover_url,
+  category_id: articleForm.category_id,
+  tags: articleForm.tags,
+  content_html: articleForm.content_html,
+  content_json: articleForm.content_json,
+})
+
+const saveDraft = async () => {
+  if (!articleForm.title || !articleForm.content_html || (!draftThreadId.value && !articleForm.category_id)) {
+    ElMessage.warning('请填写标题、正文和版块')
+    return ''
+  }
+  savingDraft.value = true
+  try {
+    const res: any = draftThreadId.value
+      ? await richTextApi.updateDraft(draftThreadId.value, articlePayload())
+      : await richTextApi.createDraft(articlePayload())
+    const data = unwrap(res)
+    draftThreadId.value = data.thread_id
+    articleContentId.value = data.article_content_id
+    articleDirty.value = false
+    ElMessage.success('草稿已保存')
+    return draftThreadId.value
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '保存草稿失败')
+    return ''
+  } finally {
+    savingDraft.value = false
+  }
+}
+
+const publishArticle = async () => {
+  const threadId = draftThreadId.value || await saveDraft()
+  if (!threadId) return
+  publishing.value = true
+  try {
+    const res: any = await richTextApi.publish(threadId)
+    const data = unwrap(res)
+    ElMessage.success('文章已发布')
+    allowLeave.value = true
+    router.push(`/threads/${data.thread_id}`)
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '发布文章失败')
+  } finally {
+    publishing.value = false
+  }
+}
+
+const previewArticle = async () => {
+  previewing.value = true
+  try {
+    const res: any = await richTextApi.preview(articleForm.content_html)
+    const data = unwrap(res)
+    previewHtml.value = data.sanitized_html
+    previewVisible.value = true
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '预览失败')
+  } finally {
+    previewing.value = false
+  }
+}
+
+const chooseCover = () => coverInput.value?.click()
+const chooseBodyImage = () => bodyImageInput.value?.click()
+
+const uploadCover = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const asset = await uploadSelectedAsset(input)
+  if (asset?.file_url) articleForm.cover_url = asset.file_url
+}
+
+const uploadBodyImage = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const asset = await uploadSelectedAsset(input)
+  if (asset?.file_url) insertSnippet(`<figure><img src="${asset.file_url}" alt="${asset.file_name || 'image'}" loading="lazy"><figcaption>图片说明</figcaption></figure>`)
+}
+
+const uploadSelectedAsset = async (input: HTMLInputElement) => {
+  const file = input.files?.[0]
+  if (!file) return null
+  assetUploading.value = true
+  try {
+    const res: any = await richTextApi.uploadAsset(file, {
+      thread_id: draftThreadId.value,
+      article_content_id: articleContentId.value,
+    })
+    return unwrap(res)
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '图片上传失败')
+    return null
+  } finally {
+    input.value = ''
+    assetUploading.value = false
+  }
+}
+
+const insertSnippet = (snippet: string) => {
+  const prefix = articleForm.content_html.trim()
+  articleForm.content_html = `${prefix}${prefix ? '\n' : ''}${snippet}`
+}
+
+const applyPlainDefaultTags = () => {
+  const custom = plainForm.tags.filter((tag) => !plainDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()))
+  const defaults = currentPlainCategory.value?.default_tags || []
+  plainForm.tags = mergeTags(defaults, custom)
+  plainDefaults.value = [...defaults]
+}
+
+const applyArticleDefaultTags = () => {
+  if (isEditMode.value) return
+  const custom = articleForm.tags.filter((tag) => !articleDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()))
+  const defaults = currentArticleCategory.value?.default_tags || []
+  articleForm.tags = mergeTags(defaults, custom)
+  articleDefaults.value = [...defaults]
 }
 
 const mergeTags = (...groups: string[][]) => {
@@ -121,17 +357,96 @@ const mergeTags = (...groups: string[][]) => {
   return result.slice(0, 20)
 }
 
-watch(() => form.category_id, applyCategoryDefaultTags)
+watch(() => plainForm.category_id, applyPlainDefaultTags)
+watch(() => articleForm.category_id, applyArticleDefaultTags)
+watch(articleForm, () => {
+  if (!initializingArticle.value && templateMode.value === 'richtext') {
+    articleDirty.value = true
+  }
+}, { deep: true })
 
-onMounted(loadCategories)
+onBeforeRouteLeave(() => {
+  if (allowLeave.value || templateMode.value !== 'richtext' || !articleDirty.value) {
+    return true
+  }
+  return window.confirm('图文文章还有未保存的修改，离开前请先保存草稿或发布。确定要离开吗？')
+})
+
+onMounted(async () => {
+  await Promise.all([loadStatus(), loadCategories()])
+  await loadEditingArticle()
+  initializingArticle.value = false
+  articleDirty.value = false
+})
 </script>
 
 <style scoped>
-.create-thread { max-width: 800px; margin: 0 auto; }
-.field-hint {
-  font-size: 12px;
-  color: #909399;
-  line-height: 1.5;
-  margin-top: 4px;
+.create-thread {
+  max-width: 920px;
+  margin: 0 auto;
+}
+.editor-card {
+  border-radius: 8px;
+}
+.editor-header,
+.editor-actions,
+.cover-row,
+.body-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.editor-header {
+  justify-content: space-between;
+}
+.editor-header h2 {
+  margin: 0;
+}
+.field-full {
+  width: 100%;
+}
+.cover-row {
+  width: 100%;
+}
+.cover-row .el-input {
+  flex: 1;
+  min-width: 240px;
+}
+.body-toolbar {
+  margin-bottom: 8px;
+}
+.html-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.hidden-input {
+  display: none;
+}
+.article-content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 0 24px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #222;
+}
+.article-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+  border-radius: 8px;
+}
+.article-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: #f6f8fa;
+  border-left: 4px solid #dcdfe6;
+}
+@media (max-width: 720px) {
+  .editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

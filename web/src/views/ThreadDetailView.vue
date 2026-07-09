@@ -2,16 +2,31 @@
   <div class="thread-detail" v-loading="loading">
     <el-card v-if="thread" class="thread-card">
       <template #header>
-        <h2>{{ thread.title }}</h2>
-        <div class="meta">
-          <span>作者：{{ thread.author_name }}</span>
-          <span>发布于：{{ new Date(thread.created_at).toLocaleString() }}</span>
-          <span>浏览：{{ thread.view_count }}</span>
-          <span>回复：{{ thread.reply_count }}</span>
-          <el-tag v-for="tag in thread.tags" :key="tag" size="small" style="margin-left:8px">{{ tag }}</el-tag>
+        <div class="thread-heading">
+          <div>
+            <h2>{{ article?.title || thread.title }}</h2>
+            <div class="meta">
+              <span>作者：{{ thread.author_name }}</span>
+              <span>发布于：{{ new Date(article?.published_at || thread.created_at).toLocaleString() }}</span>
+              <span>浏览：{{ thread.view_count }}</span>
+              <span>回复：{{ thread.reply_count }}</span>
+              <el-tag v-if="thread.content_format === 'richtext_article'" type="success" size="small">图文</el-tag>
+              <el-tag v-for="tag in thread.tags" :key="tag" size="small">{{ tag }}</el-tag>
+            </div>
+          </div>
+          <div v-if="canManageArticle" class="article-actions">
+            <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
+            <el-button size="small" @click="offlineArticle" :loading="articleOperating">下架</el-button>
+            <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating">删除</el-button>
+          </div>
         </div>
       </template>
-      <div class="content">{{ thread.content }}</div>
+      <template v-if="article">
+        <img v-if="article.cover_url" class="article-cover" :src="article.cover_url" alt="cover" />
+        <p v-if="article.summary" class="article-summary">{{ article.summary }}</p>
+        <article class="article-content" v-html="article.sanitized_html"></article>
+      </template>
+      <div v-else class="content">{{ thread.content }}</div>
     </el-card>
 
     <el-card v-if="thread" class="reply-card" v-loading="postsLoading">
@@ -83,23 +98,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { postApi, threadApi } from '@/api'
+import { postApi, richTextApi, threadApi } from '@/api'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 const thread = ref<any>(null)
+const article = ref<any>(null)
 const posts = ref<any[]>([])
 const loading = ref(false)
 const postsLoading = ref(false)
 const submitting = ref(false)
+const articleOperating = ref(false)
 const replyContent = ref('')
 const replyTarget = ref<any>(null)
 const postsPage = ref(1)
 const postsPageSize = 20
 const postsTotal = ref(0)
-const isLoggedIn = ref(Boolean(localStorage.getItem('access_token')))
+const isLoggedIn = computed(() => userStore.isLoggedIn)
+const canManageArticle = computed(() => Boolean(article.value && userStore.user?.id === thread.value?.author_id))
 
 const threadID = () => route.params.id as string
 
@@ -107,11 +128,27 @@ const loadThread = async () => {
   loading.value = true
   try {
     const res: any = await threadApi.get(threadID())
-    if (res.code === 0) thread.value = res.data
+    if (res.code === 0) {
+      thread.value = res.data
+      await loadArticle()
+    }
   } catch (e: any) {
     ElMessage.error(e?.msg || '加载帖子失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadArticle = async () => {
+  article.value = null
+  if (!threadID()) return
+  try {
+    const res: any = userStore.isLoggedIn
+      ? await richTextApi.getMine(threadID()).catch(() => richTextApi.getPublished(threadID()))
+      : await richTextApi.getPublished(threadID())
+    if (res.code === 0) article.value = res.data
+  } catch {
+    article.value = null
   }
 }
 
@@ -128,6 +165,32 @@ const loadPosts = async () => {
     ElMessage.error(e?.msg || '加载回复失败')
   } finally {
     postsLoading.value = false
+  }
+}
+
+const offlineArticle = async () => {
+  articleOperating.value = true
+  try {
+    await richTextApi.offline(threadID())
+    ElMessage.success('文章已下架')
+    router.push('/threads')
+  } catch (e: any) {
+    ElMessage.error(e?.msg || '下架失败')
+  } finally {
+    articleOperating.value = false
+  }
+}
+
+const deleteArticle = async () => {
+  articleOperating.value = true
+  try {
+    await richTextApi.delete(threadID())
+    ElMessage.success('文章已删除')
+    router.push('/threads')
+  } catch (e: any) {
+    ElMessage.error(e?.msg || '删除失败')
+  } finally {
+    articleOperating.value = false
   }
 }
 
@@ -186,8 +249,67 @@ onMounted(async () => {
 .reply-editor {
   border-radius: 8px;
 }
+.thread-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.thread-heading h2 {
+  margin: 0 0 8px;
+}
+.article-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-end;
+}
 .meta { display: flex; gap: 16px; color: #909399; font-size: 14px; flex-wrap: wrap; align-items: center; }
 .content { line-height: 1.8; white-space: pre-wrap; }
+.article-cover {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.article-summary {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-left: 4px solid #409eff;
+  background: #f5f7fa;
+  color: #606266;
+  line-height: 1.7;
+}
+.article-content {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #222;
+}
+.article-content :deep(p) {
+  margin: 12px 0;
+}
+.article-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 16px auto;
+  border-radius: 8px;
+}
+.article-content :deep(h1),
+.article-content :deep(h2),
+.article-content :deep(h3) {
+  margin: 24px 0 12px;
+  line-height: 1.5;
+}
+.article-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: #f6f8fa;
+  border-left: 4px solid #ddd;
+}
 .reply-header {
   display: flex;
   align-items: center;
@@ -247,5 +369,13 @@ onMounted(async () => {
   margin-top: 16px;
   display: flex;
   justify-content: center;
+}
+@media (max-width: 720px) {
+  .thread-heading {
+    flex-direction: column;
+  }
+  .article-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

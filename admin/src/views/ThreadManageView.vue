@@ -5,6 +5,17 @@
         <div class="card-header">
           <span>帖子管理</span>
           <div class="header-actions">
+            <el-select v-model="filterStatus" placeholder="状态" style="width: 120px" @change="load">
+              <el-option label="全部状态" value="all" />
+              <el-option label="已发布" value="published" />
+              <el-option label="草稿" value="draft" />
+              <el-option label="已归档" value="archived" />
+            </el-select>
+            <el-select v-model="filterContentFormat" placeholder="内容类型" clearable style="width: 140px" @change="load">
+              <el-option label="全部类型" value="" />
+              <el-option label="普通文本" value="markdown" />
+              <el-option label="图文文章" value="richtext_article" />
+            </el-select>
             <el-select v-model="filterCategory" placeholder="筛选版块" clearable style="width: 150px" @change="load">
               <el-option label="全部版块" value="" />
               <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
@@ -31,10 +42,18 @@
           <template #default="{ row }">
             <el-tag v-if="row.is_pinned" type="warning" size="small" style="margin-right: 4px">置顶</el-tag>
             <el-tag v-if="row.is_locked" type="info" size="small" style="margin-right: 4px">锁定</el-tag>
+            <el-tag v-if="isRichText(row)" type="success" size="small" style="margin-right: 4px">图文</el-tag>
             <span>{{ row.title }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="author_name" label="作者" width="100" />
+        <el-table-column label="类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="isRichText(row) ? 'success' : 'info'" size="small" effect="plain">
+              {{ isRichText(row) ? '图文' : '普通' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="view_count" label="浏览" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -46,9 +65,19 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" align="center" fixed="right">
+        <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button-group>
+              <el-tooltip v-if="isRichText(row) && row.status === 'published'" content="下架图文文章" placement="top">
+                <el-button type="warning" size="small" plain @click="offlineRichText(row)">
+                  下架
+                </el-button>
+              </el-tooltip>
+              <el-tooltip v-if="isRichText(row) && row.status === 'archived'" content="恢复图文文章" placement="top">
+                <el-button type="success" size="small" plain @click="restoreRichText(row)">
+                  恢复
+                </el-button>
+              </el-tooltip>
               <el-tooltip :content="row.is_pinned ? '取消置顶' : '置顶'" placement="top">
                 <el-button
                   :type="row.is_pinned ? 'warning' : 'default'"
@@ -74,7 +103,7 @@
                 confirm-button-text="删除"
                 cancel-button-text="取消"
                 confirm-button-type="danger"
-                @confirm="doDelete(row.id)"
+                @confirm="doDelete(row)"
               >
                 <template #reference>
                   <el-button type="danger" size="small" plain>
@@ -104,7 +133,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Top, Lock, Delete } from '@element-plus/icons-vue'
-import { threadApi, categoryApi } from '@/api'
+import { threadApi, categoryApi, richTextAdminApi } from '@/api'
 
 const threads = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -113,6 +142,8 @@ const page = ref(1)
 const total = ref(0)
 const searchKeyword = ref('')
 const filterCategory = ref('')
+const filterStatus = ref('published')
+const filterContentFormat = ref('')
 
 const statusMap: Record<string, string> = {
   draft: '草稿',
@@ -137,6 +168,8 @@ const load = async () => {
     const params: any = { page: page.value, page_size: 20 }
     if (searchKeyword.value) params.keyword = searchKeyword.value
     if (filterCategory.value) params.category_id = filterCategory.value
+    if (filterStatus.value) params.status = filterStatus.value
+    if (filterContentFormat.value) params.content_format = filterContentFormat.value
     const r = (await threadApi.list(params)) as any
     threads.value = r?.data?.items || []
     total.value = r?.data?.pagination?.total || 0
@@ -185,9 +218,35 @@ const toggleLock = async (row: any) => {
   }
 }
 
-const doDelete = async (id: string) => {
+const isRichText = (row: any) => row?.content_format === 'richtext_article'
+
+const offlineRichText = async (row: any) => {
   try {
-    await threadApi.delete(id)
+    await richTextAdminApi.offline(row.id)
+    ElMessage.success('图文文章已下架')
+    load()
+  } catch {
+    ElMessage.error('下架失败')
+  }
+}
+
+const restoreRichText = async (row: any) => {
+  try {
+    await richTextAdminApi.restore(row.id)
+    ElMessage.success('图文文章已恢复')
+    load()
+  } catch {
+    ElMessage.error('恢复失败')
+  }
+}
+
+const doDelete = async (row: any) => {
+  try {
+    if (isRichText(row)) {
+      await richTextAdminApi.delete(row.id)
+    } else {
+      await threadApi.adminDelete(row.id)
+    }
     ElMessage.success('已删除')
     load()
   } catch {

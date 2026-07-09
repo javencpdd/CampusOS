@@ -150,6 +150,56 @@ styles:
 	if cfg.ActiveStylePack != "home-folder" || cfg.StylePackVersion != "0.1.0" {
 		t.Fatalf("unexpected style pack metadata: %#v", cfg)
 	}
+	if !cfg.HasStyleSnapshot {
+		t.Fatalf("expected homepage style snapshot after applying pack")
+	}
+}
+
+func TestRollbackStylePackRestoresPreviousHomepageConfig(t *testing.T) {
+	p := &plugin.Plugin{
+		Status: plugin.StatusRunning,
+		Manifest: &plugin.Manifest{
+			Name: pluginName,
+			Config: map[string]interface{}{
+				"hero_title":          "Original",
+				"custom_html_enabled": false,
+				"active_style_pack":   "",
+			},
+		},
+	}
+	svc := NewService(func(name string) (*plugin.Plugin, bool) {
+		return p, name == pluginName
+	}, nil)
+	svc.SetConfigUpdater(func(name string, config map[string]interface{}) (map[string]interface{}, error) {
+		p.Manifest.Config = config
+		return config, nil
+	})
+	data := zipHomepageStylePack(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: rollback-pack
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+`,
+		"templates/page.html": `<section class="cstyle-page"><h2>Changed</h2></section>`,
+		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #2563eb; }`,
+	})
+	if _, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data))); err != nil {
+		t.Fatalf("apply homepage style pack: %v", err)
+	}
+
+	cfg, err := svc.RollbackStylePack(context.Background())
+	if err != nil {
+		t.Fatalf("rollback homepage style pack: %v", err)
+	}
+	if cfg.HeroTitle != "Original" || cfg.CustomHTMLEnabled || cfg.ActiveStylePack != "" {
+		t.Fatalf("expected original homepage config after rollback, got %#v", cfg)
+	}
+	if !cfg.HasStyleSnapshot {
+		t.Fatalf("expected rollback to keep a new reverse snapshot")
+	}
 }
 
 func TestApplySourceStylePackUpdatesHomepageConfig(t *testing.T) {
@@ -179,6 +229,42 @@ func TestApplySourceStylePackUpdatesHomepageConfig(t *testing.T) {
 	}
 	if cfg.ActiveStylePack != "campus-hero" || cfg.StylePackVersion != "0.1.0" {
 		t.Fatalf("unexpected style pack metadata: %#v", cfg)
+	}
+}
+
+func TestListSourceStylePacksIncludesCampusHero(t *testing.T) {
+	t.Chdir("../..")
+	t.Setenv("PLUGIN_DATA_DIR", "data/plugin_data")
+	p := &plugin.Plugin{
+		Status: plugin.StatusRunning,
+		Manifest: &plugin.Manifest{
+			Name:   pluginName,
+			Config: map[string]interface{}{},
+		},
+	}
+	svc := NewService(func(name string) (*plugin.Plugin, bool) {
+		return p, name == pluginName
+	}, nil)
+
+	result, err := svc.ListSourceStylePacks(context.Background())
+	if err != nil {
+		t.Fatalf("list source homepage style packs: %v", err)
+	}
+	var found bool
+	for _, item := range result.Items {
+		if item.Name != "campus-hero" {
+			continue
+		}
+		found = true
+		if !item.Validation.Valid {
+			t.Fatalf("expected campus-hero to be valid, got %#v", item.Validation.Errors)
+		}
+		if item.Target != "homepage" {
+			t.Fatalf("unexpected campus-hero target: %#v", item)
+		}
+	}
+	if !found {
+		t.Fatalf("expected campus-hero in source style pack list, got %#v", result.Items)
 	}
 }
 

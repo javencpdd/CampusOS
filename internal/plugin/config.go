@@ -123,6 +123,20 @@ func validatePluginSpecificConfig(pluginName string, config map[string]interface
 	return nil
 }
 
+func preservePluginInternalConfig(pluginName string, normalized, incoming, current map[string]interface{}) {
+	if pluginName != "homepage-customizer" {
+		return
+	}
+	const snapshotKey = "last_config_snapshot"
+	if value, ok := incoming[snapshotKey]; ok {
+		normalized[snapshotKey] = value
+		return
+	}
+	if value, ok := current[snapshotKey]; ok {
+		normalized[snapshotKey] = value
+	}
+}
+
 func validateHomepageCustomHTML(config map[string]interface{}) error {
 	value, ok := config["custom_html"]
 	if !ok || value == nil {

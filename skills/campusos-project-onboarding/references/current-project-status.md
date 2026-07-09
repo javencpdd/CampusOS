@@ -16,24 +16,25 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.18-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.23-dev.md`.
 
-The next recommended work mode is regression testing, defect fixing, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
+The next recommended work mode is defect fixing, smoke-driven regression, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
 ## 2. Implemented Areas
 
 | Area | Current state |
 | --- | --- |
-| User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, create thread with category default tags, replies, personal space, style packages |
-| Admin frontend `admin/` | Users, threads, categories/default tags, plugin config/import/export/lifecycle/logs, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
-| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
-| Database | PostgreSQL migrations `000001` through `000012`; migration state recorded in `schema_migrations` |
+| User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, richtext article editor/drafts/preview/publish, create plain thread with category default tags, replies, personal space, style packages |
+| Admin frontend `admin/` | Users, threads, richtext article governance, categories/default tags, plugin config/import/export/lifecycle/logs/risk precheck, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
+| Backend API | Go + Gin + pgx APIs for auth, RBAC, community, controlled richtext articles, spaces, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
+| Database | PostgreSQL migrations `000001` through `000013`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
 | Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
-| Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size |
-| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
-| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, and standard folder/zip homepage style packs through plugin config |
+| Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size, risk grading, version comparison, import audit, and manual rollback docs |
+| Controlled richtext articles | Built-in `controlled-richtext-article` plugin for image-text drafts, edit, image upload, HTML sanitization, preview, publish, details, author operations, and admin governance |
+| Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, source-folder style-pack list/apply, safe custom HTML/CSS snippets, rollback, restore default, local avatar storage with default quota; gated by `personal-space` plugin status |
+| Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, standard folder/zip homepage style packs, admin source-folder style-pack selection, and one-step rollback through plugin config |
 | Platform logs | Admin-only fixed-source SSE log reader for `.campusos/logs/api.log`, `web.log`, and `admin.log` |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
 | Webhook | Endpoint management, event subscriptions, HMAC signature, test delivery, delivery records |
@@ -50,7 +51,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | v0.2 | User/admin frontend split, RBAC tables, plugin tables, API key, cache layer, admin UI, CI/CD, PR template |
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
-| v0.5-dev | Integration center, personal space operations, personal-space file storage/plugin gate, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer, category default tags, platform logs, plugin governance/config, Webhook, MCP-like read-only tools, Message local adapter, metrics, backup docs |
+| v0.5-dev | Integration center, personal space operations, personal-space file storage/plugin gate, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, category default tags, platform logs, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
 
 ## 4. Current Migrations
 
@@ -68,6 +69,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `000010` | `fix_admin_seed_password` | Default admin password hash correction |
 | `000011` | `v05_operational_features` | v0.5 operational fields, style snapshots, plugin checksum, Webhook, MCP audit, Message tables |
 | `000012` | `category_default_tags` | Category default tags for automatic tag merging during thread creation |
+| `000013` | `controlled_richtext_article` | Richtext article content and image asset tables |
 
 ## 5. Important Directories
 
@@ -89,6 +91,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `internal/mcp/` | MCP-like internal read-only tool layer |
 | `internal/message/` | Message protocol and local adapter |
 | `internal/platformlog/` | Admin-only platform log sources and SSE streaming |
+| `internal/richtext/` | Controlled richtext article plugin service, sanitizer, asset store, handlers |
+| `scripts/smoke/` | v0.5 API smoke runner for read-only and write-path regression |
 | `pkg/observability/` | Minimal metrics |
 | `web/src/` | User frontend |
 | `admin/src/` | Admin frontend |
@@ -98,6 +102,7 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | `data/plugin_data/personal-space/style-packs/` | Built-in/source-folder personal-space page style packs (`clean-blog`) |
 | `data/plugin_data/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs (`campus-hero`) |
 | `data/plugins/homepage-customizer/` | Built-in user homepage configuration plugin |
+| `data/plugins/controlled-richtext-article/` | Built-in controlled richtext article plugin manifest and README |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
 
@@ -114,6 +119,8 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | Run backend tests | `GOCACHE=/tmp/campusos-go-cache go test ./... -count=1` |
 | Build user frontend | `cd web && pnpm build` |
 | Build admin frontend | `cd admin && pnpm build` |
+| Run v0.5 read-only smoke | `python3 scripts/smoke/v05_smoke.py` |
+| Run v0.5 write smoke | `python3 scripts/smoke/v05_smoke.py --write` |
 | Create commit helper | `./sh/git_commit.sh "message"` |
 | Create PR helper | `./sh/git_pr.sh -t "PR title"` |
 
@@ -143,7 +150,10 @@ The next recommended work mode is regression testing, defect fixing, and careful
 | --- | --- |
 | `README.md` | Current repository overview and commands |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.18-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.23-dev |
+| `docs/help/系统设计相关/接口协议适配器标准说明.md` | Discord/OneBot-style protocol adapter design |
+| `docs/help/系统设计相关/v0.5回归Smoke测试说明.md` | v0.5 read-only/write smoke usage |
+| `docs/help/系统设计相关/插件包治理与回滚说明.md` | Plugin package risk precheck, audit, rollback, and signature pre-research |
 | `docs/进度/v0.5-dev/` | v0.5 implementation progress |
 | `docs/项目计划v4/02-v4实现状态与后续规划总结.md` | v4 completion and follow-up decisions |
 | `docs/help/系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 integration help |
