@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/campusos/CampusOS/internal/space"
 )
 
 func TestSaveAndGetSchedule(t *testing.T) {
@@ -43,6 +46,27 @@ func TestSaveAndGetSchedule(t *testing.T) {
 	}
 	if len(got.Schedule.Courses) != 1 || got.Schedule.Courses[0].Name != "机器学习" {
 		t.Fatalf("unexpected courses: %#v", got.Schedule.Courses)
+	}
+	path, err := svc.schedulePath("1001")
+	if err != nil {
+		t.Fatalf("schedule path: %v", err)
+	}
+	if want := filepath.Join("1001", space.PersonalSpaceFileDir, "schedule", "schedule.json"); !strings.HasSuffix(path, want) {
+		t.Fatalf("unexpected schedule path: %q", path)
+	}
+}
+
+func TestConfigUsesPersonalSpaceRoot(t *testing.T) {
+	cfg := ConfigFromPluginConfig(
+		map[string]interface{}{"data_root": "data/separate-schedule-root"},
+		map[string]interface{}{"file_root": "data/personal-space"},
+	)
+	if cfg.RootDir != "data/personal-space" {
+		t.Fatalf("schedule should use the personal-space root, got %q", cfg.RootDir)
+	}
+	defaultOnly := ConfigFromPluginConfig(map[string]interface{}{"data_root": "data/separate-schedule-root"}, nil)
+	if defaultOnly.RootDir != "data/personal-space" {
+		t.Fatalf("legacy schedule data_root must not override the unified root, got %q", defaultOnly.RootDir)
 	}
 }
 

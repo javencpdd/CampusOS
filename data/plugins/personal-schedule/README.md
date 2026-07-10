@@ -9,10 +9,10 @@ The implementation lives in `internal/schedule`. This plugin directory provides 
 Schedule data is stored with the user's personal-space files:
 
 ```text
-data/images/personal-space/users/<user_id>/schedule/schedule.json
+data/personal-space/<user_id>/file/schedule/schedule.json
 ```
 
-Because the file is under the same personal-space user directory, it is counted by personal-space local quota and can later be moved to a cloud-drive backed provider.
+Because the file is under the same personal-space user directory, it is counted by personal-space local quota and can later be moved to a cloud-drive backed provider. The storage root is owned by the `personal-space` plugin; `personal-schedule` does not maintain a separate data root.
 
 ## Current Capabilities
 

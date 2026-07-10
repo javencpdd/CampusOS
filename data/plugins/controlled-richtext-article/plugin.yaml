@@ -24,7 +24,6 @@ storage:
 
 config:
   editor_mode: "controlled-html"
-  file_root: "data/images/richtext"
   file_url_prefix: "/api/v1/richtext/assets"
   max_image_mb: 5
   allow_plain_text_template: true
@@ -42,12 +41,6 @@ config_schema:
       options:
         - label: "Controlled HTML"
           value: "controlled-html"
-    - key: "file_root"
-      label: "File root"
-      type: "string"
-      description: "Local root directory for richtext article images."
-      required: true
-      default: "data/images/richtext"
     - key: "file_url_prefix"
       label: "File URL prefix"
       type: "string"

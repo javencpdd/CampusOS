@@ -72,6 +72,8 @@ nats-data/
 !/data/plugin_data/homepage-customizer/style-packs/**
 /data/images/*
 !/data/images/.gitkeep
+/data/personal-space/*
+!/data/personal-space/.gitkeep
 /data/dist/*
 !/data/dist/.gitkeep
 /data/config/*

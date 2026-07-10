@@ -15,11 +15,20 @@ import (
 )
 
 const (
-	defaultSpaceFileRoot       = "data/images/personal-space"
+	defaultSpaceFileRoot       = "data/personal-space"
+	legacySpaceFileRoot        = "data/images/personal-space"
 	defaultSpaceFileURLPrefix  = "/api/v1/spaces/files"
 	defaultSpaceFileQuotaBytes = int64(10 * 1024 * 1024)
 	defaultAvatarKeepLimit     = 3
 	defaultMaxAvatarBytes      = int64(2 * 1024 * 1024)
+)
+
+const (
+	PersonalSpaceFileDir  = "file"
+	PersonalSpaceImageDir = "img"
+	PersonalSpaceExcelDir = "excel"
+	PersonalSpaceWordDir  = "word"
+	PersonalSpacePDFDir   = "pdf"
 )
 
 var (
@@ -76,7 +85,7 @@ func FileStorageConfigFromPluginConfig(raw map[string]interface{}) FileStorageCo
 		return cfg
 	}
 	if value := stringConfig(raw, "file_root"); value != "" {
-		cfg.RootDir = value
+		cfg.RootDir = NormalizePersonalSpaceFileRoot(value)
 	}
 	if value := stringConfig(raw, "file_url_prefix"); value != "" {
 		cfg.URLPrefix = "/" + strings.Trim(strings.TrimSpace(value), "/")
@@ -109,6 +118,9 @@ func NewLocalFileStore(cfg FileStorageConfig) (*LocalFileStore, error) {
 		return nil, err
 	}
 	cfg.RootDir = root
+	if err := MigrateLegacyPersonalSpaceStorage(root); err != nil {
+		return nil, err
+	}
 	return &LocalFileStore{cfg: cfg}, nil
 }
 
@@ -117,6 +129,7 @@ func (cfg FileStorageConfig) withDefaults() FileStorageConfig {
 	if strings.TrimSpace(cfg.RootDir) == "" {
 		cfg.RootDir = defaults.RootDir
 	}
+	cfg.RootDir = NormalizePersonalSpaceFileRoot(cfg.RootDir)
 	if strings.TrimSpace(cfg.URLPrefix) == "" {
 		cfg.URLPrefix = defaults.URLPrefix
 	}
@@ -131,6 +144,258 @@ func (cfg FileStorageConfig) withDefaults() FileStorageConfig {
 		cfg.MaxAvatarBytes = defaults.MaxAvatarBytes
 	}
 	return cfg
+}
+
+// NormalizePersonalSpaceFileRoot moves the former default root to the current
+// data/personal-space root while leaving an explicitly configured custom root intact.
+func NormalizePersonalSpaceFileRoot(root string) string {
+	if sameStoragePath(root, legacySpaceFileRoot) {
+		return defaultSpaceFileRoot
+	}
+	return root
+}
+
+// PersonalSpaceUserDir returns the root directory reserved for one user's data.
+func PersonalSpaceUserDir(rootDir, userID string) (string, error) {
+	if err := validateStorageSegment(userID); err != nil {
+		return "", err
+	}
+	root, err := filepath.Abs(filepath.Clean(NormalizePersonalSpaceFileRoot(rootDir)))
+	if err != nil {
+		return "", err
+	}
+	target := filepath.Join(root, userID)
+	targetAbs, err := filepath.Abs(filepath.Clean(target))
+	if err != nil {
+		return "", err
+	}
+	if targetAbs != root && !strings.HasPrefix(targetAbs, root+string(os.PathSeparator)) {
+		return "", ErrSpaceFileInvalidName
+	}
+	return targetAbs, nil
+}
+
+// PersonalSpacePath builds a checked path below one user's personal-space root.
+func PersonalSpacePath(rootDir, userID string, parts ...string) (string, error) {
+	userDir, err := PersonalSpaceUserDir(rootDir, userID)
+	if err != nil {
+		return "", err
+	}
+	for _, part := range parts {
+		if err := validateStorageSegment(part); err != nil {
+			return "", err
+		}
+		userDir = filepath.Join(userDir, part)
+	}
+	path, err := filepath.Abs(filepath.Clean(userDir))
+	if err != nil {
+		return "", err
+	}
+	base, err := PersonalSpaceUserDir(rootDir, userID)
+	if err != nil {
+		return "", err
+	}
+	if path != base && !strings.HasPrefix(path, base+string(os.PathSeparator)) {
+		return "", ErrSpaceFileInvalidName
+	}
+	return path, nil
+}
+
+// EnsurePersonalSpaceLayout creates the standard directories for one user.
+func EnsurePersonalSpaceLayout(rootDir, userID string) (string, error) {
+	userDir, err := PersonalSpaceUserDir(rootDir, userID)
+	if err != nil {
+		return "", err
+	}
+	for _, category := range []string{
+		PersonalSpaceFileDir,
+		PersonalSpaceImageDir,
+		PersonalSpaceExcelDir,
+		PersonalSpaceWordDir,
+		PersonalSpacePDFDir,
+	} {
+		if err := os.MkdirAll(filepath.Join(userDir, category), 0o755); err != nil {
+			return "", err
+		}
+	}
+	return userDir, nil
+}
+
+// FileCategoryForName assigns ordinary uploaded files to a stable user directory.
+func FileCategoryForName(fileName string) string {
+	switch strings.ToLower(filepath.Ext(strings.TrimSpace(fileName))) {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg":
+		return PersonalSpaceImageDir
+	case ".xls", ".xlsx", ".csv", ".ods":
+		return PersonalSpaceExcelDir
+	case ".doc", ".docx", ".odt", ".rtf":
+		return PersonalSpaceWordDir
+	case ".pdf":
+		return PersonalSpacePDFDir
+	default:
+		return PersonalSpaceFileDir
+	}
+}
+
+func (s *LocalFileStore) CategorizedFileDir(userID, fileName string) (string, error) {
+	if s == nil {
+		return "", ErrSpaceFileStoreUnavailable
+	}
+	return PersonalSpacePath(s.cfg.RootDir, userID, FileCategoryForName(fileName))
+}
+
+// MigrateLegacyPersonalSpaceStorage migrates the old default layout once.
+// Custom storage roots are deliberately left untouched.
+func MigrateLegacyPersonalSpaceStorage(targetRoot string) error {
+	if !sameStoragePath(targetRoot, defaultSpaceFileRoot) {
+		return nil
+	}
+	legacyRoot, err := filepath.Abs(filepath.Clean(legacySpaceFileRoot))
+	if err != nil {
+		return err
+	}
+	legacyUsers := filepath.Join(legacyRoot, "users")
+	entries, err := os.ReadDir(legacyUsers)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || validateStorageSegment(entry.Name()) != nil {
+			continue
+		}
+		legacyUserDir := filepath.Join(legacyUsers, entry.Name())
+		userDir, err := PersonalSpaceUserDir(targetRoot, entry.Name())
+		if err != nil {
+			return err
+		}
+		if err := migrateLegacyUserDir(legacyUserDir, userDir); err != nil {
+			return err
+		}
+		if _, err := EnsurePersonalSpaceLayout(targetRoot, entry.Name()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func migrateLegacyUserDir(legacyUserDir, userDir string) error {
+	entries, err := os.ReadDir(legacyUserDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := validateStorageSegment(entry.Name()); err != nil {
+			continue
+		}
+		destination := legacyDestination(userDir, entry.Name())
+		if err := moveLegacyPath(filepath.Join(legacyUserDir, entry.Name()), destination); err != nil {
+			return err
+		}
+	}
+	// Retaining an empty legacy directory is harmless; it keeps migration tolerant
+	// of unexpected entries that should not be moved automatically.
+	_ = os.Remove(legacyUserDir)
+	return nil
+}
+
+func legacyDestination(userDir, name string) string {
+	switch name {
+	case "avatars":
+		return filepath.Join(userDir, PersonalSpaceImageDir, "avatars")
+	case "schedule":
+		return filepath.Join(userDir, PersonalSpaceFileDir, "schedule")
+	case "file", "files":
+		return filepath.Join(userDir, PersonalSpaceFileDir)
+	case "img", "images":
+		return filepath.Join(userDir, PersonalSpaceImageDir)
+	case "excel", "execl":
+		return filepath.Join(userDir, PersonalSpaceExcelDir)
+	case "word":
+		return filepath.Join(userDir, PersonalSpaceWordDir)
+	case "pdf":
+		return filepath.Join(userDir, PersonalSpacePDFDir)
+	default:
+		return filepath.Join(userDir, PersonalSpaceFileDir, "legacy", name)
+	}
+}
+
+func moveLegacyPath(source, target string) error {
+	info, err := os.Stat(source)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return moveLegacyFile(source, target)
+	}
+	if _, err := os.Stat(target); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(source, target); err == nil {
+			return nil
+		}
+	} else if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(source)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := moveLegacyPath(filepath.Join(source, entry.Name()), filepath.Join(target, entry.Name())); err != nil {
+			return err
+		}
+	}
+	return os.Remove(source)
+}
+
+func moveLegacyFile(source, target string) error {
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	if _, err := os.Stat(target); err == nil {
+		base := strings.TrimSuffix(filepath.Base(target), filepath.Ext(target))
+		ext := filepath.Ext(target)
+		target = filepath.Join(filepath.Dir(target), fmt.Sprintf("%s.legacy-%d%s", base, time.Now().UTC().UnixNano(), ext))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Rename(source, target); err == nil {
+		return nil
+	}
+	from, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	info, err := from.Stat()
+	if err != nil {
+		return err
+	}
+	to, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(to, from); err != nil {
+		to.Close()
+		return err
+	}
+	if err := to.Close(); err != nil {
+		return err
+	}
+	return os.Remove(source)
 }
 
 func (s *LocalFileStore) Status(userID string) (*SpaceStorageStatus, error) {
@@ -163,6 +428,9 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	}
 	if reader == nil {
 		return "", 0, ErrSpaceFileInvalidName
+	}
+	if _, err := EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
+		return "", 0, err
 	}
 	avatarDir, err := s.avatarDir(userID)
 	if err != nil {
@@ -361,30 +629,11 @@ func normalizeKeepLimit(keep, length int) int {
 }
 
 func (s *LocalFileStore) userDir(userID string) (string, error) {
-	if err := validateStorageSegment(userID); err != nil {
-		return "", err
-	}
-	root, err := filepath.Abs(filepath.Clean(s.cfg.RootDir))
-	if err != nil {
-		return "", err
-	}
-	target := filepath.Join(root, "users", userID)
-	targetAbs, err := filepath.Abs(filepath.Clean(target))
-	if err != nil {
-		return "", err
-	}
-	if targetAbs != root && !strings.HasPrefix(targetAbs, root+string(os.PathSeparator)) {
-		return "", ErrSpaceFileInvalidName
-	}
-	return targetAbs, nil
+	return PersonalSpaceUserDir(s.cfg.RootDir, userID)
 }
 
 func (s *LocalFileStore) avatarDir(userID string) (string, error) {
-	userDir, err := s.userDir(userID)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(userDir, "avatars"), nil
+	return PersonalSpacePath(s.cfg.RootDir, userID, PersonalSpaceImageDir, "avatars")
 }
 
 func avatarExtension(originalName string, data []byte) (string, error) {
@@ -463,4 +712,10 @@ func int64Config(raw map[string]interface{}, key string) int64 {
 	default:
 		return 0
 	}
+}
+
+func sameStoragePath(a, b string) bool {
+	aAbs, aErr := filepath.Abs(filepath.Clean(a))
+	bAbs, bErr := filepath.Abs(filepath.Clean(b))
+	return aErr == nil && bErr == nil && aAbs == bAbs
 }

@@ -128,6 +128,7 @@ func (s *Server) Run() error {
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
 	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
+	s.normalizePersonalStoragePluginConfigs()
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
 	// ─── 种子数据（默认管理员）───
@@ -244,6 +245,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
 	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
+	s.normalizePersonalStoragePluginConfigs()
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
 	// ─── 初始化 Host API ───
@@ -381,7 +383,7 @@ func (s *Server) configureRichTextAssetStore(richTextSvc *richtext.Service) {
 	if richTextSvc == nil {
 		return
 	}
-	cfg := richtext.AssetStoreConfigFromPluginConfig(pluginConfig(s.manager, "controlled-richtext-article"))
+	cfg := richtext.AssetStoreConfigFromPluginConfig(pluginConfig(s.manager, "controlled-richtext-article"), personalSpacePluginConfig(s.manager))
 	store, err := richtext.NewLocalAssetStore(cfg)
 	if err != nil {
 		log.Printf("⚠️  富文本图片存储初始化失败: %v", err)
@@ -405,6 +407,49 @@ func (s *Server) initScheduleService() *schedule.Service {
 		return s.manager.IsPluginRunning("personal-schedule")
 	})
 	return svc
+}
+
+func (s *Server) normalizePersonalStoragePluginConfigs() {
+	if s.manager == nil {
+		return
+	}
+	if personalSpace, ok := s.manager.GetPlugin("personal-space"); ok && personalSpace != nil && personalSpace.Manifest != nil {
+		config := copyPluginConfig(personalSpace.Manifest.Config)
+		if root, ok := config["file_root"].(string); ok {
+			if normalized := space.NormalizePersonalSpaceFileRoot(root); normalized != root {
+				config["file_root"] = normalized
+				if _, err := s.manager.UpdateConfig("personal-space", config); err != nil {
+					log.Printf("⚠️  个人空间存储配置迁移失败: %v", err)
+				}
+			}
+		}
+	}
+	if personalSchedule, ok := s.manager.GetPlugin("personal-schedule"); ok && personalSchedule != nil && personalSchedule.Manifest != nil {
+		config := copyPluginConfig(personalSchedule.Manifest.Config)
+		if _, exists := config["data_root"]; exists {
+			delete(config, "data_root")
+			if _, err := s.manager.UpdateConfig("personal-schedule", config); err != nil {
+				log.Printf("⚠️  个人课表存储配置迁移失败: %v", err)
+			}
+		}
+	}
+	if richText, ok := s.manager.GetPlugin("controlled-richtext-article"); ok && richText != nil && richText.Manifest != nil {
+		config := copyPluginConfig(richText.Manifest.Config)
+		if _, exists := config["file_root"]; exists {
+			delete(config, "file_root")
+			if _, err := s.manager.UpdateConfig("controlled-richtext-article", config); err != nil {
+				log.Printf("⚠️  富文本图片存储配置迁移失败: %v", err)
+			}
+		}
+	}
+}
+
+func copyPluginConfig(config map[string]interface{}) map[string]interface{} {
+	copy := make(map[string]interface{}, len(config))
+	for key, value := range config {
+		copy[key] = value
+	}
+	return copy
 }
 
 func personalSpacePluginConfig(manager *plugin.Manager) map[string]interface{} {

@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 const (
-	defaultRootDir        = "data/images/personal-space"
+	defaultRootDir        = "data/personal-space"
 	defaultQuotaBytes     = int64(10 * 1024 * 1024)
 	defaultMaxCourses     = 200
 	defaultMaxImportBytes = int64(2 * 1024 * 1024)
@@ -55,6 +56,9 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, err
 	}
 	cfg.RootDir = root
+	if err := space.MigrateLegacyPersonalSpaceStorage(root); err != nil {
+		return nil, err
+	}
 	return &Service{
 		cfg:     cfg,
 		enabled: func() bool { return true },
@@ -78,16 +82,13 @@ func ConfigFromPluginConfig(raw, personalSpace map[string]interface{}) Config {
 		MaxImportBytes: defaultMaxImportBytes,
 	}
 	if value := stringConfig(personalSpace, "file_root"); value != "" {
-		cfg.RootDir = value
+		cfg.RootDir = space.NormalizePersonalSpaceFileRoot(value)
 	}
 	if value := int64Config(personalSpace, "default_quota_bytes"); value > 0 {
 		cfg.QuotaBytes = value
 	}
 	if value := int64Config(personalSpace, "default_quota_mb"); value > 0 {
 		cfg.QuotaBytes = value * 1024 * 1024
-	}
-	if value := stringConfig(raw, "data_root"); value != "" {
-		cfg.RootDir = value
 	}
 	if value := int64Config(raw, "quota_bytes"); value > 0 {
 		cfg.QuotaBytes = value
@@ -111,6 +112,7 @@ func (cfg Config) withDefaults() Config {
 	if strings.TrimSpace(cfg.RootDir) == "" {
 		cfg.RootDir = defaultRootDir
 	}
+	cfg.RootDir = space.NormalizePersonalSpaceFileRoot(cfg.RootDir)
 	if cfg.QuotaBytes <= 0 {
 		cfg.QuotaBytes = defaultQuotaBytes
 	}
@@ -253,6 +255,9 @@ func (s *Service) write(_ context.Context, schedule *Schedule) error {
 	if err := s.checkQuota(schedule.UserID, int64(len(raw)), path); err != nil {
 		return err
 	}
+	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, schedule.UserID); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -344,30 +349,18 @@ func (s *Service) response(schedule *Schedule) *ScheduleResponse {
 }
 
 func (s *Service) schedulePath(userID string) (string, error) {
-	userDir, err := s.userDir(userID)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(userDir, "schedule", "schedule.json"), nil
+	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "schedule.json")
 }
 
 func (s *Service) userDir(userID string) (string, error) {
 	if err := validateUserID(userID); err != nil {
 		return "", err
 	}
-	root, err := filepath.Abs(filepath.Clean(s.cfg.RootDir))
+	target, err := space.PersonalSpaceUserDir(s.cfg.RootDir, userID)
 	if err != nil {
-		return "", err
-	}
-	target := filepath.Join(root, "users", userID)
-	targetAbs, err := filepath.Abs(filepath.Clean(target))
-	if err != nil {
-		return "", err
-	}
-	if targetAbs != root && !strings.HasPrefix(targetAbs, root+string(os.PathSeparator)) {
 		return "", fmt.Errorf("%w: invalid storage path", ErrInvalidInput)
 	}
-	return targetAbs, nil
+	return target, nil
 }
 
 func (s *Service) checkQuota(userID string, newSize int64, schedulePath string) error {

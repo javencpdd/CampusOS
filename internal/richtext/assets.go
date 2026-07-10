@@ -9,24 +9,30 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/campusos/CampusOS/internal/space"
 )
 
 const (
-	defaultAssetRoot      = "data/images/richtext"
+	defaultAssetRoot      = "data/personal-space"
+	legacyAssetRoot       = "data/images/richtext"
 	defaultAssetURLPrefix = "/api/v1/richtext/assets"
 	defaultMaxAssetBytes  = int64(5 * 1024 * 1024)
+	defaultQuotaBytes     = int64(10 * 1024 * 1024)
 )
 
 type AssetStoreConfig struct {
 	RootDir       string
 	URLPrefix     string
 	MaxAssetBytes int64
+	QuotaBytes    int64
 }
 
 type LocalAssetStore struct {
@@ -38,13 +44,20 @@ func DefaultAssetStoreConfig() AssetStoreConfig {
 		RootDir:       defaultAssetRoot,
 		URLPrefix:     defaultAssetURLPrefix,
 		MaxAssetBytes: defaultMaxAssetBytes,
+		QuotaBytes:    defaultQuotaBytes,
 	}
 }
 
-func AssetStoreConfigFromPluginConfig(raw map[string]interface{}) AssetStoreConfig {
+func AssetStoreConfigFromPluginConfig(raw, personalSpace map[string]interface{}) AssetStoreConfig {
 	cfg := DefaultAssetStoreConfig()
-	if value := stringConfig(raw, "file_root"); value != "" {
-		cfg.RootDir = value
+	if value := stringConfig(personalSpace, "file_root"); value != "" {
+		cfg.RootDir = space.NormalizePersonalSpaceFileRoot(value)
+	}
+	if value := int64Config(personalSpace, "default_quota_bytes"); value > 0 {
+		cfg.QuotaBytes = value
+	}
+	if value := int64Config(personalSpace, "default_quota_mb"); value > 0 {
+		cfg.QuotaBytes = value * 1024 * 1024
 	}
 	if value := stringConfig(raw, "file_url_prefix"); value != "" {
 		cfg.URLPrefix = "/" + strings.Trim(value, "/")
@@ -68,6 +81,9 @@ func NewLocalAssetStore(cfg AssetStoreConfig) (*LocalAssetStore, error) {
 		return nil, err
 	}
 	cfg.RootDir = root
+	if err := MigrateLegacyAssets(root); err != nil {
+		return nil, err
+	}
 	return &LocalAssetStore{cfg: cfg}, nil
 }
 
@@ -76,11 +92,15 @@ func (cfg AssetStoreConfig) withDefaults() AssetStoreConfig {
 	if strings.TrimSpace(cfg.RootDir) == "" {
 		cfg.RootDir = defaults.RootDir
 	}
+	cfg.RootDir = space.NormalizePersonalSpaceFileRoot(cfg.RootDir)
 	if strings.TrimSpace(cfg.URLPrefix) == "" {
 		cfg.URLPrefix = defaults.URLPrefix
 	}
 	if cfg.MaxAssetBytes <= 0 {
 		cfg.MaxAssetBytes = defaults.MaxAssetBytes
+	}
+	if cfg.QuotaBytes <= 0 {
+		cfg.QuotaBytes = defaults.QuotaBytes
 	}
 	cfg.URLPrefix = "/" + strings.Trim(strings.TrimSpace(cfg.URLPrefix), "/")
 	return cfg
@@ -114,7 +134,16 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 		width = cfg.Width
 		height = cfg.Height
 	}
-	dir := filepath.Join(s.cfg.RootDir, "users", userID)
+	dir, err := s.assetDir(userID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkQuota(userID, int64(len(data))); err != nil {
+		return nil, err
+	}
+	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
+		return nil, err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -147,7 +176,10 @@ func (s *LocalAssetStore) Path(userID, fileName string) (string, error) {
 	if err := validateStorageSegment(fileName); err != nil {
 		return "", err
 	}
-	root := filepath.Join(s.cfg.RootDir, "users", userID)
+	root, err := s.assetDir(userID)
+	if err != nil {
+		return "", err
+	}
 	target := filepath.Join(root, fileName)
 	rootAbs, err := filepath.Abs(filepath.Clean(root))
 	if err != nil {
@@ -167,6 +199,129 @@ func (s *LocalAssetStore) Path(userID, fileName string) (string, error) {
 		return "", err
 	}
 	return targetAbs, nil
+}
+
+func (s *LocalAssetStore) assetDir(userID string) (string, error) {
+	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceImageDir, "richtext")
+}
+
+func (s *LocalAssetStore) checkQuota(userID string, incomingBytes int64) error {
+	userDir, err := space.PersonalSpaceUserDir(s.cfg.RootDir, userID)
+	if err != nil {
+		return err
+	}
+	var usage int64
+	err = filepath.WalkDir(userDir, func(_ string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			if errors.Is(walkErr, os.ErrNotExist) {
+				return nil
+			}
+			return walkErr
+		}
+		if entry == nil || entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		usage += info.Size()
+		return nil
+	})
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if usage+incomingBytes > s.cfg.QuotaBytes {
+		return ErrAssetQuotaExceeded
+	}
+	return nil
+}
+
+// MigrateLegacyAssets moves files from the former richtext-only root into
+// the shared personal-space image directory. Custom personal-space roots are left untouched.
+func MigrateLegacyAssets(targetRoot string) error {
+	if !sameStoragePath(targetRoot, defaultAssetRoot) {
+		return nil
+	}
+	legacyRoot, err := filepath.Abs(filepath.Clean(legacyAssetRoot))
+	if err != nil {
+		return err
+	}
+	return migrateLegacyAssetRoot(legacyRoot, targetRoot)
+}
+
+func migrateLegacyAssetRoot(legacyRoot, targetRoot string) error {
+	entries, err := os.ReadDir(filepath.Join(legacyRoot, "users"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, user := range entries {
+		if !user.IsDir() || validateStorageSegment(user.Name()) != nil {
+			continue
+		}
+		legacyUserDir := filepath.Join(legacyRoot, "users", user.Name())
+		targetDir, err := space.PersonalSpacePath(targetRoot, user.Name(), space.PersonalSpaceImageDir, "richtext")
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			return err
+		}
+		files, err := os.ReadDir(legacyUserDir)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			if file.IsDir() || validateStorageSegment(file.Name()) != nil {
+				continue
+			}
+			if err := moveLegacyAssetFile(filepath.Join(legacyUserDir, file.Name()), filepath.Join(targetDir, file.Name())); err != nil {
+				return err
+			}
+		}
+		if _, err := space.EnsurePersonalSpaceLayout(targetRoot, user.Name()); err != nil {
+			return err
+		}
+		_ = os.Remove(legacyUserDir)
+	}
+	return nil
+}
+
+func moveLegacyAssetFile(source, target string) error {
+	if _, err := os.Stat(target); err == nil {
+		base := strings.TrimSuffix(filepath.Base(target), filepath.Ext(target))
+		ext := filepath.Ext(target)
+		target = filepath.Join(filepath.Dir(target), fmt.Sprintf("%s.legacy-%d%s", base, time.Now().UTC().UnixNano(), ext))
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Rename(source, target); err == nil {
+		return nil
+	}
+	from, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	info, err := from.Stat()
+	if err != nil {
+		return err
+	}
+	to, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(to, from); err != nil {
+		to.Close()
+		return err
+	}
+	if err := to.Close(); err != nil {
+		return err
+	}
+	return os.Remove(source)
 }
 
 func imageExtension(originalName, mimeType string) (string, error) {
@@ -235,4 +390,10 @@ func int64Config(raw map[string]interface{}, key string) int64 {
 		}
 	}
 	return 0
+}
+
+func sameStoragePath(a, b string) bool {
+	aAbs, aErr := filepath.Abs(filepath.Clean(a))
+	bAbs, bErr := filepath.Abs(filepath.Clean(b))
+	return aErr == nil && bErr == nil && aAbs == bAbs
 }

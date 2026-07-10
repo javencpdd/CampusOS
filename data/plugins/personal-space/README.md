@@ -74,18 +74,29 @@ POST /api/v1/spaces/me/styles/packs/apply-source
 | Key | Default | Purpose |
 | --- | --- | --- |
 | `styles_dir` | `styles` | Style package directory relative to this plugin. |
-| `file_root` | `data/images/personal-space` | Local root for user personal-space files. |
+| `file_root` | `data/personal-space` | Local root for user personal-space files. |
 | `file_url_prefix` | `/api/v1/spaces/files` | Public API prefix for stored files. |
 | `default_quota_mb` | `10` | Initial local storage quota per user. |
 | `avatar_keep_limit` | `3` | Keep the latest 3 avatar source files per user. |
 | `max_avatar_mb` | `2` | Maximum size of one avatar upload. |
 | `future_storage_provider` | `local` | Reserved selector for future personal cloud drive integration. |
 
-Avatar uploads are stored under:
+Each user has one direct storage root. The current layout is:
 
 ```text
-data/images/personal-space/users/<user_id>/avatars/
+data/personal-space/<user_id>/
+  file/
+    schedule/schedule.json
+  img/
+    avatars/
+  excel/
+  word/
+  pdf/
 ```
+
+Avatar uploads are stored under `img/avatars/` and the latest three source files are retained. Ordinary uploads are assigned by extension: image files to `img/`, `.xls`/`.xlsx`/`.csv` to `excel/`, Word-compatible files to `word/`, PDF files to `pdf/`, and other files to `file/`. Data saved by a feature without an uploaded extension can use a named subdirectory under `file/`; the personal schedule uses `file/schedule/`.
+
+On startup, the former default layout `data/images/personal-space/users/<user_id>/` is migrated into this structure. Existing public avatar URLs remain unchanged.
 
 Public avatar URLs use:
 
