@@ -4,6 +4,7 @@ version: "0.1.0"
 description: "CampusOS built-in personal timetable plugin stored in the user's personal-space files"
 author: "CampusOS Team"
 runtime: builtin
+scope: system
 
 events:
   subscribe: []

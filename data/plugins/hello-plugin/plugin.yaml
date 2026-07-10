@@ -4,6 +4,7 @@ version: "0.1.0"
 description: "一个简单的事件日志插件，接收并记录所有核心事件"
 author: "CampusOS Team"
 runtime: grpc
+scope: user
 
 events:
   subscribe:

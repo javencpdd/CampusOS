@@ -10,6 +10,10 @@ GET /api/v1/home/config
 
 Admin users can edit the config from the admin Plugin Management page by opening this plugin's config dialog. The same dialog also supports importing a folder-designed page style pack as a zip file.
 
+## Lifecycle
+
+This is a `scope: system` plugin. Admin enable/disable changes are applied when the CampusOS API service restarts, not while the current process is running.
+
 ## Current Config
 
 | Key | Purpose |

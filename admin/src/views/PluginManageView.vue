@@ -34,6 +34,14 @@
         </div>
       </template>
 
+      <el-alert
+        title="系统级插件的启用或停用会记录为待生效状态，重启 API 服务后才应用；用户级插件可直接加载、重载和覆盖更新。"
+        type="info"
+        show-icon
+        :closable="false"
+        class="lifecycle-alert"
+      />
+
       <el-table :data="plugins" v-loading="loading" stripe border style="width: 100%">
         <el-table-column prop="name" label="插件名称" width="180">
           <template #default="{ row }">
@@ -57,15 +65,27 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="checksum" label="Checksum" width="180" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column label="级别" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTag(row.status)" size="small">
-              {{ statusLabel(row.status) }}
+            <el-tag :type="isSystemPlugin(row) ? 'warning' : 'success'" size="small" effect="plain">
+              {{ scopeLabel(row.scope) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="430" align="center" fixed="right">
+        <el-table-column label="生效方式" width="110" align="center">
+          <template #default="{ row }">
+            <span class="activation-mode">{{ isSystemPlugin(row) ? '重启后生效' : '热加载' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="checksum" label="Checksum" width="180" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="130" align="center">
+          <template #default="{ row }">
+            <el-tag :type="statusTag(row)" size="small">
+              {{ statusLabel(row) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="520" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" plain @click="showLogs(row.name)">
               <el-icon><Document /></el-icon>
@@ -79,15 +99,26 @@
               <el-icon><Upload /></el-icon>
               导出
             </el-button>
+            <el-button
+              v-if="!isSystemPlugin(row)"
+              size="small"
+              plain
+              :loading="reloadingPluginName === row.name"
+              @click="reloadUserPlugin(row)"
+            >
+              <el-icon><Refresh /></el-icon>
+              {{ isPluginEnabled(row) ? '重载' : '加载' }}
+            </el-button>
             <el-switch
-              :model-value="isPluginEnabled(row.status)"
-              active-text="启用"
-              inactive-text="禁用"
+              :model-value="isPluginEnabled(row)"
+              :active-text="isSystemPlugin(row) ? '重启启用' : '已加载'"
+              :inactive-text="isSystemPlugin(row) ? '重启停用' : '未加载'"
               inline-prompt
               style="margin-right: 8px"
               @change="onTogglePlugin(row, $event)"
             />
             <el-popconfirm
+              v-if="!isSystemPlugin(row)"
               title="确定要卸载该插件吗？此操作不可恢复。"
               confirm-button-text="卸载"
               cancel-button-text="取消"
@@ -98,6 +129,7 @@
                 <el-button type="danger" size="small" plain>卸载</el-button>
               </template>
             </el-popconfirm>
+            <el-tag v-else type="info" size="small" effect="plain">随服务部署</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -143,6 +175,11 @@
         <div class="precheck-summary">
           <el-descriptions :column="2" border size="small">
             <el-descriptions-item label="插件">{{ pendingPrecheck.manifest?.name || '未知' }}</el-descriptions-item>
+            <el-descriptions-item label="级别">
+              <el-tag :type="pendingPrecheck.manifest?.scope === 'system' ? 'warning' : 'success'" effect="plain">
+                {{ scopeLabel(pendingPrecheck.manifest?.scope) }}
+              </el-tag>
+            </el-descriptions-item>
             <el-descriptions-item label="版本变化">
               {{ pendingPrecheck.existing_version || '无' }} -> {{ pendingPrecheck.import_version || '未知' }}
               <el-tag size="small" effect="plain">{{ versionChangeLabel(pendingPrecheck.version_change) }}</el-tag>
@@ -380,6 +417,7 @@ interface SourceStylePack {
 const plugins = ref<any[]>([])
 const loading = ref(false)
 const importing = ref(false)
+const reloadingPluginName = ref('')
 const replaceOnImport = ref(false)
 const logDialogVisible = ref(false)
 const logsLoading = ref(false)
@@ -423,6 +461,8 @@ const responseItems = (payload: any): any[] => {
   return []
 }
 
+const unwrap = (payload: any) => payload?.data || payload
+
 const load = async () => {
   loading.value = true
   try {
@@ -436,24 +476,35 @@ const load = async () => {
 }
 
 const togglePlugin = async (row: any, enabled: boolean) => {
-  const previousStatus = row.status
   try {
     if (enabled) {
-      await pluginApi.enable(row.name)
-      ElMessage.success(`插件 ${row.name} 已启用`)
+      const payload = unwrap(await pluginApi.enable(row.name))
+      ElMessage.success(payload?.message || (isSystemPlugin(row) ? `插件 ${row.name} 将在重启后启用` : `插件 ${row.name} 已加载`))
     } else {
-      await pluginApi.disable(row.name)
-      ElMessage.success(`插件 ${row.name} 已禁用`)
+      const payload = unwrap(await pluginApi.disable(row.name))
+      ElMessage.success(payload?.message || (isSystemPlugin(row) ? `插件 ${row.name} 将在重启后停用` : `插件 ${row.name} 已停止`))
     }
     await load()
   } catch {
     ElMessage.error('操作失败')
-    row.status = previousStatus
   }
 }
 
 const onTogglePlugin = (row: any, enabled: boolean | string | number) => {
   togglePlugin(row, Boolean(enabled))
+}
+
+const reloadUserPlugin = async (row: any) => {
+  reloadingPluginName.value = row.name
+  try {
+    const payload = unwrap(await pluginApi.reload(row.name))
+    ElMessage.success(payload?.message || `插件 ${row.name} 已加载`)
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || error?.message || '用户级插件加载失败')
+  } finally {
+    reloadingPluginName.value = ''
+  }
 }
 
 const doUninstall = async (name: string) => {
@@ -518,8 +569,9 @@ const confirmImport = async () => {
   if (!pendingImportFile.value || !pendingPrecheck.value) return
   importing.value = true
   try {
-    await pluginApi.importPackage(pendingImportFile.value, replaceOnImport.value)
-    ElMessage.success(`插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ''}`)
+    const payload = unwrap(await pluginApi.importPackage(pendingImportFile.value, replaceOnImport.value))
+    const suffix = payload?.hot_reloaded ? '，已热更新并重新加载' : ''
+    ElMessage.success(`插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ''}${suffix}`)
     clearPendingImport()
     await load()
   } catch (error: any) {
@@ -735,9 +787,18 @@ const loadLogs = async () => {
   logsLoading.value = false
 }
 
-const isPluginEnabled = (status: string) => status === 'enabled' || status === 'running'
+const isSystemPlugin = (row: any) => row?.scope === 'system'
 
-const statusLabel = (status: string) => {
+const isPluginEnabled = (row: any) => {
+  if (typeof row?.desired_enabled === 'boolean') return row.desired_enabled
+  return row?.status === 'enabled' || row?.status === 'running'
+}
+
+const scopeLabel = (scope?: string) => scope === 'system' ? '系统级' : '用户级'
+
+const statusLabel = (row: any) => {
+  if (row?.pending_restart) return row?.desired_enabled ? '待重启启用' : '待重启停用'
+  const status = row?.status
   if (status === 'enabled' || status === 'running') return '已启用'
   if (status === 'error') return '异常'
   if (status === 'installed') return '未启用'
@@ -745,7 +806,9 @@ const statusLabel = (status: string) => {
   return status || '未知'
 }
 
-const statusTag = (status: string) => {
+const statusTag = (row: any) => {
+  if (row?.pending_restart) return 'warning'
+  const status = row?.status
   if (status === 'enabled' || status === 'running') return 'success'
   if (status === 'error') return 'danger'
   if (status === 'installed') return 'info'
@@ -835,6 +898,15 @@ onMounted(load)
 .plugin-name {
   display: flex;
   align-items: center;
+}
+
+.lifecycle-alert {
+  margin-bottom: 14px;
+}
+
+.activation-mode {
+  color: #606266;
+  font-size: 12px;
 }
 
 .log-toolbar {

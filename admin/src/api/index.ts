@@ -134,6 +134,7 @@ export const pluginApi = {
   },
   enable: (name: string) => api.post(`/plugins/${name}/enable`),
   disable: (name: string) => api.post(`/plugins/${name}/disable`),
+  reload: (name: string) => api.post(`/plugins/${name}/reload`),
   updateConfig: (name: string, config: Record<string, any>) => api.put(`/plugins/${name}/config`, config),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
 }

@@ -197,6 +197,10 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 	result.Events = append([]string(nil), manifest.Events.Subscribe...)
 	result.Permissions = flattenPermissions(manifest.Permissions)
 	result.ImportVersion = manifest.Version
+	if manifest.IsSystemLevel() {
+		result.Allowed = false
+		result.Errors = append(result.Errors, "system-level plugins must be deployed with server code and take effect after restart")
+	}
 
 	targetDir, err := pluginTargetDir(pluginsDir, manifest.Name)
 	if err != nil {

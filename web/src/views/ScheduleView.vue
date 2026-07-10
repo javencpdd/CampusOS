@@ -29,26 +29,37 @@
       />
 
       <div class="toolbar">
-        <el-input-number
-          v-model="schedule.term_year"
-          :min="2000"
-          :max="2200"
-          controls-position="right"
-          aria-label="学期年份"
-          @change="markDirty"
-        />
-        <el-radio-group v-model="schedule.semester" @change="markDirty">
-          <el-radio-button label="spring">春季学期</el-radio-button>
-          <el-radio-button label="fall">秋季学期</el-radio-button>
-        </el-radio-group>
-        <el-date-picker
-          v-model="schedule.first_week_start"
-          type="date"
-          value-format="YYYY-MM-DD"
-          placeholder="第一周开始日期"
-          aria-label="第一周开始日期"
-          @change="onFirstWeekStartChange"
-        />
+        <el-tooltip content="切换到已经保存的某个学期课表" placement="top">
+          <el-select v-model="selectedTermKey" class="term-select" placeholder="选择已保存课表" @change="selectSavedTerm">
+            <el-option
+              v-for="term in terms"
+              :key="termKey(term.term_year, term.semester)"
+              :label="termOptionLabel(term)"
+              :value="termKey(term.term_year, term.semester)"
+            />
+          </el-select>
+        </el-tooltip>
+        <el-tooltip content="选择要打开或新建的课表年份" placement="top">
+          <el-input-number
+            v-model="termDraft.term_year"
+            :min="2000"
+            :max="2200"
+            controls-position="right"
+            aria-label="课表年份"
+          />
+        </el-tooltip>
+        <el-tooltip content="选择课表所属的春季或秋季学期" placement="top">
+          <el-radio-group v-model="termDraft.semester">
+            <el-radio-button label="spring">春季学期</el-radio-button>
+            <el-radio-button label="fall">秋季学期</el-radio-button>
+          </el-radio-group>
+        </el-tooltip>
+        <el-tooltip content="打开该学期的 JSON 课表；不存在时会创建空课表" placement="top">
+          <el-button @click="openTerm" :loading="termSwitching">打开课表</el-button>
+        </el-tooltip>
+        <el-tooltip content="为当前选中的学期设置第一周开始日期" placement="top">
+          <el-button @click="openFirstWeekDialog">设置第一周</el-button>
+        </el-tooltip>
         <el-input-number
           v-model="schedule.settings.periods_per_day"
           :min="1"
@@ -62,11 +73,17 @@
           inactive-text="工作日"
           @change="markDirty"
         />
-        <el-checkbox v-model="replaceImport">导入时替换</el-checkbox>
+        <el-tooltip content="Excel、CSV 或 JSON 导入的数据只会写入当前选中的学期课表" placement="top">
+          <el-checkbox v-model="replaceImport">导入时替换</el-checkbox>
+        </el-tooltip>
         <input ref="importInput" class="hidden-input" type="file" accept=".xls,.csv,.json" @change="handleImport" />
-        <el-button @click="chooseImport" :loading="importing">导入</el-button>
+        <el-tooltip content="导入课程到当前学期对应的 JSON 课表" placement="top">
+          <el-button @click="chooseImport" :loading="importing">导入</el-button>
+        </el-tooltip>
         <el-button @click="openCourseDialog()">新增课程</el-button>
-        <el-button @click="openJsonEditor">JSON</el-button>
+        <el-tooltip content="编辑当前学期课表对应的 JSON 数据" placement="top">
+          <el-button @click="openJsonEditor">JSON</el-button>
+        </el-tooltip>
       </div>
 
       <el-tabs v-model="viewMode" class="schedule-tabs">
@@ -182,6 +199,23 @@
         <el-button type="primary" @click="applyJson">应用</el-button>
       </div>
     </el-drawer>
+
+    <el-dialog v-model="firstWeekDialog" title="设置第一周" width="420px">
+      <el-tooltip content="选择当前学期第一周的开始日期，周课表和日历会据此计算课程日期" placement="top">
+        <el-date-picker
+          v-model="firstWeekDraft"
+          type="date"
+          value-format="YYYY-MM-DD"
+          placeholder="第一周开始日期"
+          aria-label="第一周开始日期"
+          class="field-full"
+        />
+      </el-tooltip>
+      <template #footer>
+        <el-button @click="firstWeekDialog = false">取消</el-button>
+        <el-button type="primary" @click="applyFirstWeekStart">应用</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -209,6 +243,15 @@ interface Course {
 
 type Semester = 'spring' | 'fall'
 
+interface TermSummary {
+  term_year: number
+  semester: Semester
+  first_week_start: string
+  course_count: number
+  updated_at: string
+  active: boolean
+}
+
 const loading = ref(false)
 const saving = ref(false)
 const importing = ref(false)
@@ -217,13 +260,22 @@ const dirty = ref(false)
 const selectedWeek = ref(1)
 const viewMode = ref<'week' | 'calendar'>('week')
 const calendarDate = ref(new Date())
+const terms = ref<TermSummary[]>([])
+const selectedTermKey = ref('')
+const termSwitching = ref(false)
 const replaceImport = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
 const courseDrawer = ref(false)
 const jsonDrawer = ref(false)
 const editingCourseId = ref('')
 const rawJson = ref('')
+const firstWeekDialog = ref(false)
+const firstWeekDraft = ref('')
 const week = reactive({ current_week: 1, week_start: '', week_end: '', today: '' })
+const termDraft = reactive({
+  term_year: new Date().getFullYear(),
+  semester: 'spring' as Semester,
+})
 const schedule = reactive({
   term_year: new Date().getFullYear(),
   semester: 'spring' as Semester,
@@ -276,8 +328,10 @@ const unwrap = (res: any) => res?.data || res
 const loadSchedule = async () => {
   loading.value = true
   try {
-    const payload = unwrap(await scheduleApi.me())
+    const [scheduleResult, termsResult] = await Promise.all([scheduleApi.me(), scheduleApi.terms()])
+    const payload = unwrap(scheduleResult)
     applyPayload(payload)
+    applyTerms(unwrap(termsResult))
     dirty.value = false
   } catch (error: any) {
     disabled.value = true
@@ -293,6 +347,9 @@ const applyPayload = (payload: any) => {
   const fallbackDate = new Date()
   schedule.term_year = Number(value?.term_year || fallbackDate.getFullYear())
   schedule.semester = value?.semester === 'fall' ? 'fall' : 'spring'
+  termDraft.term_year = schedule.term_year
+  termDraft.semester = schedule.semester
+  selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
   schedule.first_week_start = value?.first_week_start || ''
   schedule.settings.periods_per_day = Number(value?.settings?.periods_per_day || 12)
   schedule.settings.show_weekend = value?.settings?.show_weekend !== false
@@ -308,6 +365,61 @@ const applyPayload = (payload: any) => {
   if (calendarStart) calendarDate.value = calendarStart
 }
 
+const applyTerms = (payload: any) => {
+  terms.value = (payload?.items || []).map((term: any) => ({
+    term_year: Number(term.term_year),
+    semester: term.semester === 'fall' ? 'fall' : 'spring',
+    first_week_start: term.first_week_start || '',
+    course_count: Number(term.course_count || 0),
+    updated_at: term.updated_at || '',
+    active: Boolean(term.active),
+  }))
+  const active = terms.value.find((term) => term.active)
+  if (active) selectedTermKey.value = termKey(active.term_year, active.semester)
+}
+
+const loadTerms = async () => {
+  const payload = unwrap(await scheduleApi.terms())
+  applyTerms(payload)
+}
+
+const termKey = (termYear: number, semester: Semester) => `${termYear}-${semester}`
+
+const termOptionLabel = (term: TermSummary) =>
+  `${term.term_year} 年${term.semester === 'fall' ? '秋季' : '春季'}学期 (${term.course_count} 门)`
+
+const confirmTermSwitch = () => !dirty.value || window.confirm('当前课表还有未保存的修改，确定切换吗？')
+
+const openTerm = async () => {
+  if (!confirmTermSwitch()) {
+    selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
+    return
+  }
+  termSwitching.value = true
+  try {
+    const payload = unwrap(await scheduleApi.activate({
+      term_year: Number(termDraft.term_year),
+      semester: termDraft.semester,
+    }))
+    applyPayload(payload)
+    await loadTerms()
+    dirty.value = false
+  } catch (error: any) {
+    selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
+    ElMessage.error(error?.msg || '打开课表失败')
+  } finally {
+    termSwitching.value = false
+  }
+}
+
+const selectSavedTerm = (value: string) => {
+  const term = terms.value.find((item) => termKey(item.term_year, item.semester) === value)
+  if (!term) return
+  termDraft.term_year = term.term_year
+  termDraft.semester = term.semester
+  void openTerm()
+}
+
 const saveSchedule = async () => {
   saving.value = true
   try {
@@ -321,6 +433,7 @@ const saveSchedule = async () => {
     }
     const res = unwrap(await scheduleApi.save(payload))
     applyPayload(res)
+    await loadTerms()
     dirty.value = false
     ElMessage.success('课表已保存')
   } catch (error: any) {
@@ -338,8 +451,12 @@ const handleImport = async (event: Event) => {
   if (!file) return
   importing.value = true
   try {
-    const res = unwrap(await scheduleApi.import(file, replaceImport.value))
+    const res = unwrap(await scheduleApi.import(file, {
+      term_year: schedule.term_year,
+      semester: schedule.semester,
+    }, replaceImport.value))
     applyPayload(res.schedule)
+    await loadTerms()
     dirty.value = false
     ElMessage.success(`已导入 ${res.imported || 0} 条课程`)
     if (res.warnings?.length) {
@@ -471,10 +588,21 @@ const markDirty = () => {
   dirty.value = true
 }
 
-const onFirstWeekStartChange = () => {
+const openFirstWeekDialog = () => {
+  firstWeekDraft.value = schedule.first_week_start
+  firstWeekDialog.value = true
+}
+
+const applyFirstWeekStart = () => {
+  if (!firstWeekDraft.value) {
+    ElMessage.warning('请选择第一周开始日期')
+    return
+  }
+  schedule.first_week_start = firstWeekDraft.value
   selectedWeek.value = 1
   syncCalendarToSelectedWeek()
   markDirty()
+  firstWeekDialog.value = false
 }
 
 const weekDate = (weekNumber: number, offset: number) => {
@@ -634,6 +762,9 @@ onBeforeUnmount(() => {
 }
 .toolbar {
   margin-bottom: 14px;
+}
+.term-select {
+  width: min(240px, 100%);
 }
 .schedule-tabs :deep(.el-tabs__header) {
   margin-bottom: 14px;

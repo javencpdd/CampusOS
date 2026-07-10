@@ -4,6 +4,10 @@
 
 The current implementation still lives in `internal/space/`. This plugin directory provides the default plugin manifest, keeps plugin-bundled JSON style packages with the feature they belong to, and owns the default storage configuration used by the server. Editable source-folder page style packs are plugin data and live under `data/plugin_data/personal-space/style-packs/`.
 
+## Lifecycle
+
+This is a `scope: system` plugin. Changing its enabled state in Admin records the requested state and takes effect only after the CampusOS API service restarts.
+
 ## Files
 
 | File | Purpose |

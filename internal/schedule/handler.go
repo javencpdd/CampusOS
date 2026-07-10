@@ -28,7 +28,52 @@ func (h *Handler) GetMe(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	schedule, err := h.svc.Get(c.Request.Context(), userID)
+	termYear, semester, hasTerm, err := termFromQuery(c)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		return
+	}
+	var schedule *ScheduleResponse
+	if hasTerm {
+		schedule, err = h.svc.GetTerm(c.Request.Context(), userID, termYear, semester)
+	} else {
+		schedule, err = h.svc.Get(c.Request.Context(), userID)
+	}
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	response.Success(c, schedule)
+}
+
+// ListTerms returns all independent semester JSON files for the current user.
+func (h *Handler) ListTerms(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	terms, err := h.svc.ListTerms(c.Request.Context(), userID)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	response.Success(c, terms)
+}
+
+// ActivateTerm selects or creates one semester JSON as the user's active schedule.
+func (h *Handler) ActivateTerm(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req ActivateTermRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+	schedule, err := h.svc.ActivateTerm(c.Request.Context(), userID, req.TermYear, req.Semester)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -77,12 +122,38 @@ func (h *Handler) ImportMe(c *gin.Context) {
 		size = int64(len(data))
 	}
 	replace := boolForm(c.PostForm("replace"))
-	result, err := h.svc.Import(c.Request.Context(), userID, header.Filename, size, data, replace)
+	termYear, err := strconv.Atoi(c.PostForm("term_year"))
+	if err != nil || termYear == 0 {
+		response.Error(c, http.StatusBadRequest, 10001, "term_year is required")
+		return
+	}
+	semester := c.PostForm("semester")
+	if semester == "" {
+		response.Error(c, http.StatusBadRequest, 10001, "semester is required")
+		return
+	}
+	result, err := h.svc.Import(c.Request.Context(), userID, header.Filename, size, data, replace, termYear, semester)
 	if err != nil {
 		writeError(c, err)
 		return
 	}
 	response.Success(c, result)
+}
+
+func termFromQuery(c *gin.Context) (int, string, bool, error) {
+	rawYear := c.Query("term_year")
+	semester := c.Query("semester")
+	if rawYear == "" && semester == "" {
+		return 0, "", false, nil
+	}
+	if rawYear == "" || semester == "" {
+		return 0, "", false, errors.New("term_year and semester must be provided together")
+	}
+	termYear, err := strconv.Atoi(rawYear)
+	if err != nil || termYear == 0 {
+		return 0, "", false, errors.New("invalid term_year")
+	}
+	return termYear, semester, true, nil
 }
 
 func currentUserID(c *gin.Context) (string, bool) {

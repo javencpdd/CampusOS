@@ -152,6 +152,52 @@ func (s *Service) Get(ctx context.Context, userID string) (*ScheduleResponse, er
 	return s.response(schedule), nil
 }
 
+// GetTerm returns one semester-specific schedule JSON without changing the
+// user's active schedule selection.
+func (s *Service) GetTerm(ctx context.Context, userID string, termYear int, semester string) (*ScheduleResponse, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	schedule, err := s.loadTerm(ctx, userID, termYear, semester, false)
+	if err != nil {
+		return nil, err
+	}
+	return s.response(schedule), nil
+}
+
+// ListTerms lists the independent JSON schedules available to one user.
+func (s *Service) ListTerms(ctx context.Context, userID string) (*TermsResponse, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if err := validateUserID(userID); err != nil {
+		return nil, err
+	}
+	if err := s.migrateLegacySchedule(ctx, userID); err != nil {
+		return nil, err
+	}
+	return s.listTerms(ctx, userID)
+}
+
+// ActivateTerm selects an existing term or creates an empty term JSON. The
+// first-week date remains user-configurable after the selection is made.
+func (s *Service) ActivateTerm(ctx context.Context, userID string, termYear int, semester string) (*ScheduleResponse, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	schedule, err := s.loadTerm(ctx, userID, termYear, semester, true)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.writeTerm(ctx, schedule); err != nil {
+		return nil, err
+	}
+	if err := s.writeActiveTerm(ctx, schedule); err != nil {
+		return nil, err
+	}
+	return s.response(schedule), nil
+}
+
 func (s *Service) Save(ctx context.Context, userID string, req UpsertRequest) (*ScheduleResponse, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
@@ -169,13 +215,16 @@ func (s *Service) Save(ctx context.Context, userID string, req UpsertRequest) (*
 	if err := s.normalize(schedule); err != nil {
 		return nil, err
 	}
-	if err := s.write(ctx, schedule); err != nil {
+	if err := s.writeTerm(ctx, schedule); err != nil {
+		return nil, err
+	}
+	if err := s.writeActiveTerm(ctx, schedule); err != nil {
 		return nil, err
 	}
 	return s.response(schedule), nil
 }
 
-func (s *Service) Import(ctx context.Context, userID, filename string, size int64, data []byte, replace bool) (*ImportResult, error) {
+func (s *Service) Import(ctx context.Context, userID, filename string, size int64, data []byte, replace bool, termYear int, semester string) (*ImportResult, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
@@ -186,7 +235,7 @@ func (s *Service) Import(ctx context.Context, userID, filename string, size int6
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.load(ctx, userID)
+	current, err := s.loadTerm(ctx, userID, termYear, semester, true)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +248,10 @@ func (s *Service) Import(ctx context.Context, userID, filename string, size int6
 	if err := s.normalize(current); err != nil {
 		return nil, err
 	}
-	if err := s.write(ctx, current); err != nil {
+	if err := s.writeTerm(ctx, current); err != nil {
+		return nil, err
+	}
+	if err := s.writeActiveTerm(ctx, current); err != nil {
 		return nil, err
 	}
 	return &ImportResult{
@@ -217,18 +269,50 @@ func (s *Service) ensureEnabled() error {
 	return nil
 }
 
-func (s *Service) load(_ context.Context, userID string) (*Schedule, error) {
+func (s *Service) load(ctx context.Context, userID string) (*Schedule, error) {
 	if err := validateUserID(userID); err != nil {
 		return nil, err
 	}
-	path, err := s.schedulePath(userID)
+	if err := s.migrateLegacySchedule(ctx, userID); err != nil {
+		return nil, err
+	}
+	index, err := s.readActiveTerm(userID)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+		terms, listErr := s.listTerms(ctx, userID)
+		if listErr != nil {
+			return nil, listErr
+		}
+		if len(terms.Items) == 0 {
+			return s.defaultSchedule(userID), nil
+		}
+		selected := terms.Items[0]
+		return s.loadTerm(ctx, userID, selected.TermYear, selected.Semester, false)
+	}
+	return s.loadTerm(ctx, userID, index.TermYear, index.Semester, false)
+}
+
+func (s *Service) loadTerm(_ context.Context, userID string, termYear int, semester string, create bool) (*Schedule, error) {
+	if err := validateUserID(userID); err != nil {
+		return nil, err
+	}
+	termYear, semester, err := s.normalizeTerm(termYear, semester)
+	if err != nil {
+		return nil, err
+	}
+	path, err := s.termSchedulePath(userID, termYear, semester)
 	if err != nil {
 		return nil, err
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return s.defaultSchedule(userID), nil
+			if create {
+				return s.defaultScheduleForTerm(userID, termYear, semester), nil
+			}
+			return nil, fmt.Errorf("%w: schedule term not found", ErrInvalidInput)
 		}
 		return nil, err
 	}
@@ -242,11 +326,14 @@ func (s *Service) load(_ context.Context, userID string) (*Schedule, error) {
 	if err := s.normalize(&schedule); err != nil {
 		return nil, err
 	}
+	if schedule.TermYear != termYear || schedule.Semester != semester {
+		return nil, fmt.Errorf("%w: schedule term does not match file path", ErrInvalidInput)
+	}
 	return &schedule, nil
 }
 
-func (s *Service) write(_ context.Context, schedule *Schedule) error {
-	path, err := s.schedulePath(schedule.UserID)
+func (s *Service) writeTerm(_ context.Context, schedule *Schedule) error {
+	path, err := s.termSchedulePath(schedule.UserID, schedule.TermYear, schedule.Semester)
 	if err != nil {
 		return err
 	}
@@ -345,10 +432,14 @@ func (s *Service) normalize(schedule *Schedule) error {
 }
 
 func (s *Service) defaultSchedule(userID string) *Schedule {
+	return s.defaultScheduleForTerm(userID, defaultTermYear(s.now()), defaultTermSemester(s.now()))
+}
+
+func (s *Service) defaultScheduleForTerm(userID string, termYear int, semester string) *Schedule {
 	return &Schedule{
 		UserID:         userID,
-		TermYear:       defaultTermYear(s.now()),
-		Semester:       defaultTermSemester(s.now()),
+		TermYear:       termYear,
+		Semester:       semester,
 		FirstWeekStart: mondayOf(s.now()).Format(dateLayout),
 		Settings: Settings{
 			PeriodsPerDay: 12,
@@ -390,7 +481,224 @@ func (s *Service) response(schedule *Schedule) *ScheduleResponse {
 }
 
 func (s *Service) schedulePath(userID string) (string, error) {
+	return s.legacySchedulePath(userID)
+}
+
+func (s *Service) legacySchedulePath(userID string) (string, error) {
 	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "schedule.json")
+}
+
+func (s *Service) termsDir(userID string) (string, error) {
+	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "terms")
+}
+
+func (s *Service) indexPath(userID string) (string, error) {
+	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "index.json")
+}
+
+func (s *Service) termSchedulePath(userID string, termYear int, semester string) (string, error) {
+	termYear, semester, err := s.normalizeTerm(termYear, semester)
+	if err != nil {
+		return "", err
+	}
+	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "terms", termKey(termYear, semester)+".json")
+}
+
+func (s *Service) normalizeTerm(termYear int, semester string) (int, string, error) {
+	if termYear == 0 {
+		termYear = defaultTermYear(s.now())
+	}
+	if termYear < 2000 || termYear > 2200 {
+		return 0, "", fmt.Errorf("%w: term_year must be between 2000 and 2200", ErrInvalidInput)
+	}
+	if strings.TrimSpace(semester) == "" {
+		semester = defaultTermSemester(s.now())
+	}
+	normalized, err := normalizeSemester(semester)
+	if err != nil {
+		return 0, "", err
+	}
+	return termYear, normalized, nil
+}
+
+func termKey(termYear int, semester string) string {
+	return fmt.Sprintf("%d-%s", termYear, semester)
+}
+
+func (s *Service) readActiveTerm(userID string) (*scheduleIndex, error) {
+	path, err := s.indexPath(userID)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var index scheduleIndex
+	if err := json.Unmarshal(raw, &index); err != nil {
+		return nil, fmt.Errorf("%w: schedule index json is invalid", ErrInvalidInput)
+	}
+	if index.UserID == "" {
+		index.UserID = userID
+	}
+	if index.UserID != userID {
+		return nil, fmt.Errorf("%w: schedule index user does not match", ErrInvalidInput)
+	}
+	termYear, semester, err := s.normalizeTerm(index.TermYear, index.Semester)
+	if err != nil {
+		return nil, err
+	}
+	index.TermYear = termYear
+	index.Semester = semester
+	return &index, nil
+}
+
+func (s *Service) writeActiveTerm(_ context.Context, schedule *Schedule) error {
+	path, err := s.indexPath(schedule.UserID)
+	if err != nil {
+		return err
+	}
+	index := scheduleIndex{
+		UserID:    schedule.UserID,
+		TermYear:  schedule.TermYear,
+		Semester:  schedule.Semester,
+		UpdatedAt: s.now().UTC(),
+	}
+	raw, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := s.checkQuota(schedule.UserID, int64(len(raw)), path); err != nil {
+		return err
+	}
+	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, schedule.UserID); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, raw, 0o644)
+}
+
+func (s *Service) listTerms(_ context.Context, userID string) (*TermsResponse, error) {
+	index, indexErr := s.readActiveTerm(userID)
+	if indexErr != nil && !errors.Is(indexErr, os.ErrNotExist) {
+		return nil, indexErr
+	}
+	dir, err := s.termsDir(userID)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &TermsResponse{Items: []TermSummary{}}, nil
+		}
+		return nil, err
+	}
+	items := make([]TermSummary, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		var schedule Schedule
+		if err := json.Unmarshal(raw, &schedule); err != nil {
+			return nil, fmt.Errorf("%w: schedule json is invalid", ErrInvalidInput)
+		}
+		if schedule.UserID == "" {
+			schedule.UserID = userID
+		}
+		if err := s.normalize(&schedule); err != nil {
+			return nil, err
+		}
+		expectedPath, err := s.termSchedulePath(userID, schedule.TermYear, schedule.Semester)
+		if err != nil {
+			return nil, err
+		}
+		if !samePath(expectedPath, filepath.Join(dir, entry.Name())) {
+			return nil, fmt.Errorf("%w: schedule term file name does not match content", ErrInvalidInput)
+		}
+		items = append(items, TermSummary{
+			TermYear:       schedule.TermYear,
+			Semester:       schedule.Semester,
+			FirstWeekStart: schedule.FirstWeekStart,
+			CourseCount:    len(schedule.Courses),
+			UpdatedAt:      schedule.UpdatedAt,
+			Active:         index != nil && index.TermYear == schedule.TermYear && index.Semester == schedule.Semester,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].TermYear != items[j].TermYear {
+			return items[i].TermYear > items[j].TermYear
+		}
+		return items[i].Semester == SemesterFall && items[j].Semester != SemesterFall
+	})
+	return &TermsResponse{Items: items}, nil
+}
+
+func (s *Service) migrateLegacySchedule(ctx context.Context, userID string) error {
+	legacyPath, err := s.legacySchedulePath(userID)
+	if err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(legacyPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	var schedule Schedule
+	if err := json.Unmarshal(raw, &schedule); err != nil {
+		return fmt.Errorf("%w: legacy schedule json is invalid", ErrInvalidInput)
+	}
+	if schedule.UserID == "" {
+		schedule.UserID = userID
+	}
+	if err := s.normalize(&schedule); err != nil {
+		return err
+	}
+	if schedule.UserID != userID {
+		return fmt.Errorf("%w: legacy schedule user does not match", ErrInvalidInput)
+	}
+	termPath, err := s.termSchedulePath(userID, schedule.TermYear, schedule.Semester)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(termPath); errors.Is(err, os.ErrNotExist) {
+		migrated, err := json.MarshalIndent(&schedule, "", "  ")
+		if err != nil {
+			return err
+		}
+		// The legacy file was already counted in this user's quota. Do not fail
+		// a one-time relocation merely because both paths exist briefly.
+		if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(termPath), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(termPath, migrated, 0o644); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	if err := os.Remove(legacyPath); err != nil {
+		return err
+	}
+	if _, err := s.readActiveTerm(userID); errors.Is(err, os.ErrNotExist) {
+		if err := s.writeActiveTerm(ctx, &schedule); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) userDir(userID string) (string, error) {

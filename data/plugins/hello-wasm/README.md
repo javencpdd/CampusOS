@@ -2,6 +2,8 @@
 
 `hello-wasm` 是 CampusOS v0.3-dev 的最小 Wasm 插件示例。
 
+它声明为 `scope: user`。在 Admin 的“插件管理”页面可手动加载或重载，无需重启 CampusOS API 服务。
+
 当前 Wasm Runtime 支持两种事件 ABI：
 
 - `handle_event()`：无参数兼容 ABI，返回非 0 表示允许事件继续。
