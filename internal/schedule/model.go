@@ -2,7 +2,11 @@ package schedule
 
 import "time"
 
-const PluginName = "personal-schedule"
+const (
+	PluginName     = "personal-schedule"
+	SemesterSpring = "spring"
+	SemesterFall   = "fall"
+)
 
 type Course struct {
 	ID          string            `json:"id"`
@@ -28,6 +32,8 @@ type Settings struct {
 
 type Schedule struct {
 	UserID         string                 `json:"user_id"`
+	TermYear       int                    `json:"term_year"`
+	Semester       string                 `json:"semester"`
 	FirstWeekStart string                 `json:"first_week_start"`
 	Settings       Settings               `json:"settings"`
 	Courses        []Course               `json:"courses"`
@@ -36,6 +42,8 @@ type Schedule struct {
 }
 
 type UpsertRequest struct {
+	TermYear       int                    `json:"term_year"`
+	Semester       string                 `json:"semester"`
 	FirstWeekStart string                 `json:"first_week_start"`
 	Settings       Settings               `json:"settings"`
 	Courses        []Course               `json:"courses"`

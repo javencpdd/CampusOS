@@ -158,6 +158,8 @@ func (s *Service) Save(ctx context.Context, userID string, req UpsertRequest) (*
 	}
 	schedule := &Schedule{
 		UserID:         userID,
+		TermYear:       req.TermYear,
+		Semester:       req.Semester,
 		FirstWeekStart: strings.TrimSpace(req.FirstWeekStart),
 		Settings:       req.Settings,
 		Courses:        req.Courses,
@@ -271,6 +273,21 @@ func (s *Service) normalize(schedule *Schedule) error {
 	if err := validateUserID(schedule.UserID); err != nil {
 		return err
 	}
+	if schedule.TermYear == 0 {
+		schedule.TermYear = defaultTermYear(s.now())
+	}
+	if schedule.TermYear < 2000 || schedule.TermYear > 2200 {
+		return fmt.Errorf("%w: term_year must be between 2000 and 2200", ErrInvalidInput)
+	}
+	if strings.TrimSpace(schedule.Semester) == "" {
+		schedule.Semester = defaultTermSemester(s.now())
+	} else {
+		semester, err := normalizeSemester(schedule.Semester)
+		if err != nil {
+			return err
+		}
+		schedule.Semester = semester
+	}
 	if strings.TrimSpace(schedule.FirstWeekStart) == "" {
 		schedule.FirstWeekStart = mondayOf(s.now()).Format(dateLayout)
 	}
@@ -330,6 +347,8 @@ func (s *Service) normalize(schedule *Schedule) error {
 func (s *Service) defaultSchedule(userID string) *Schedule {
 	return &Schedule{
 		UserID:         userID,
+		TermYear:       defaultTermYear(s.now()),
+		Semester:       defaultTermSemester(s.now()),
 		FirstWeekStart: mondayOf(s.now()).Format(dateLayout),
 		Settings: Settings{
 			PeriodsPerDay: 12,
@@ -337,6 +356,28 @@ func (s *Service) defaultSchedule(userID string) *Schedule {
 		},
 		Courses:   []Course{},
 		UpdatedAt: s.now().UTC(),
+	}
+}
+
+func defaultTermYear(now time.Time) int {
+	return now.In(time.Local).Year()
+}
+
+func defaultTermSemester(now time.Time) string {
+	if now.In(time.Local).Month() >= time.August {
+		return SemesterFall
+	}
+	return SemesterSpring
+}
+
+func normalizeSemester(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case SemesterSpring, "春", "春季", "春季学期":
+		return SemesterSpring, nil
+	case SemesterFall, "autumn", "秋", "秋季", "秋季学期":
+		return SemesterFall, nil
+	default:
+		return "", fmt.Errorf("%w: semester must be spring or fall", ErrInvalidInput)
 	}
 }
 

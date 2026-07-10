@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,8 @@ func TestSaveAndGetSchedule(t *testing.T) {
 	}
 
 	saved, err := svc.Save(context.Background(), "1001", UpsertRequest{
+		TermYear:       2026,
+		Semester:       SemesterSpring,
 		FirstWeekStart: "2026-07-06",
 		Settings:       Settings{PeriodsPerDay: 12, ShowWeekend: true},
 		Courses: []Course{{
@@ -47,12 +50,43 @@ func TestSaveAndGetSchedule(t *testing.T) {
 	if len(got.Schedule.Courses) != 1 || got.Schedule.Courses[0].Name != "机器学习" {
 		t.Fatalf("unexpected courses: %#v", got.Schedule.Courses)
 	}
+	if got.Schedule.TermYear != 2026 || got.Schedule.Semester != SemesterSpring {
+		t.Fatalf("unexpected term: %#v", got.Schedule)
+	}
 	path, err := svc.schedulePath("1001")
 	if err != nil {
 		t.Fatalf("schedule path: %v", err)
 	}
 	if want := filepath.Join("1001", space.PersonalSpaceFileDir, "schedule", "schedule.json"); !strings.HasSuffix(path, want) {
 		t.Fatalf("unexpected schedule path: %q", path)
+	}
+}
+
+func TestScheduleDefaultsAndValidatesTerm(t *testing.T) {
+	svc, err := NewService(Config{RootDir: t.TempDir(), QuotaBytes: 1024 * 1024})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	svc.now = func() time.Time {
+		return time.Date(2027, time.November, 10, 12, 0, 0, 0, time.Local)
+	}
+	result, err := svc.Save(context.Background(), "1001", UpsertRequest{
+		FirstWeekStart: "2027-09-06",
+		Settings:       Settings{PeriodsPerDay: 12},
+	})
+	if err != nil {
+		t.Fatalf("save default term: %v", err)
+	}
+	if result.Schedule.TermYear != 2027 || result.Schedule.Semester != SemesterFall {
+		t.Fatalf("unexpected default term: %#v", result.Schedule)
+	}
+	_, err = svc.Save(context.Background(), "1001", UpsertRequest{
+		Semester:       "winter",
+		FirstWeekStart: "2027-09-06",
+		Settings:       Settings{PeriodsPerDay: 12},
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected invalid semester error, got %v", err)
 	}
 }
 
