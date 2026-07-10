@@ -1,63 +1,69 @@
 # README Update Checklist
 
-Use this checklist before editing `README.md`.
+## 1. Source Priority
 
-## Source Priority
+Use current executable state before narrative history:
 
-Prefer current executable/configured state over older narrative docs:
+1. `Makefile`, `docker-compose.yml`, `.env.example`, `scripts/`, package manifests, CI workflows.
+2. Current code, migration, SDK, example, plugin, and Skill directories.
+3. Latest `docs/进度/` record for completed scope.
+4. Current architecture, API, help, and Skill documents.
+5. Version plans for planned, deferred, and acceptance scope.
 
-1. `docker-compose.yml`, `.env.example`, `Makefile`, `scripts/`
-2. `go.mod`, `package.json` files, `.github/workflows/`
-3. `migrations/`
-4. Current code directories: `internal/`, `cmd/`, `web/`, `admin/`, `sdk/`, `examples/`, `skills/`
-5. Latest progress docs under `docs/进度/`
-6. Project plans under `docs/项目计划v*/`
-7. Help docs under `docs/help/`
+When sources conflict, document verified behavior and mark uncertainty instead of choosing the most optimistic source.
 
-If sources conflict, state the current verified behavior and avoid claiming uncertain features.
+## 2. README Core Check
 
-## README Sections To Check
-
-| Section | Update Rules |
+| Item | Rule |
 | --- | --- |
-| Project summary | State current implemented capability and current active stage. Do not overstate planned v5 work. |
-| Current status | Reflect backend, web, admin, plugins, AI Gateway, personal space/style, MCP/Webhook/IM status accurately. |
-| Version recap | Include v0.3/v0.4 outcomes and note incomplete items when relevant. |
-| Architecture | Keep ports and service names aligned with Docker Compose and `.env.example`. |
-| Environment | Include Go/Node/pnpm/Docker/PostgreSQL client requirements. |
-| Quick start | Keep commands copy-pasteable. Mention `POSTGRES_PORT=5433` if host `5432` is occupied. |
-| Database | List current migrations and link database docs. Make clear Docker PostgreSQL is the recommended dev DB. |
-| Services | Verify `web:3000`, `admin:3001`, API, Host API, pgAdmin, PostgreSQL, Redis, NATS ports. |
-| Common commands | Match Makefile targets. |
-| Plugins/skills | Include current project skills and plugin examples only if they exist. |
-| Known limitations | Keep Windows/native deployment, MCP/Webhook/IM, plugin marketplace, and AI risks honest. |
-| Docs index | Link active plan/progress/help docs that exist. |
+| Summary | One short project description. |
+| Current status | Current stage plus a compact implemented/limited summary. |
+| Quick start | Minimal prerequisites and shortest working command sequence. |
+| Addresses | Primary Web/Admin/API addresses only; operational tools belong in help docs. |
+| Repository map | Only top-level ownership boundaries needed for orientation. |
+| Commands | Keep the first-run or primary validation command; route the full catalog to help docs. |
+| Documentation | Link `docs/README.md` prominently and keep only a small set of role/topic shortcuts. |
+| License | Link the repository license. |
 
-## Wording Rules
+Default policy targets enforced by `audit_readme_structure.py`:
 
-- Use "已完成", "部分完成", "未完成", "计划中" precisely.
-- Avoid phrases like "已支持" unless code or docs prove it.
-- Prefer "当前推荐" for environment choices that may change.
-- Mention local-only state explicitly when relevant, for example `.env` is ignored by git.
-- Do not include secrets beyond documented dev defaults.
+- No more than 180 lines.
+- No more than 8 level-two sections.
+- Must include current status, quick start, and documentation sections.
+- Must link `docs/README.md`.
+- Must not add detailed-reference headings such as full API lists, migration history, troubleshooting, plugin development tutorials, or configuration reference.
 
-## Validation Checklist
+These are guardrails, not a target size. Prefer a shorter README when navigation remains clear.
 
-Run at minimum:
+## 3. Move-or-Link Check
+
+Before removing a detail from README:
+
+1. Identify its canonical owner using `documentation-routing.md`.
+2. Search for an existing document with `rg` before creating a file.
+3. Update or create the canonical document.
+4. Ensure it is reachable from `docs/README.md` directly or through a category index.
+5. Replace README detail with a concise link only when it is still first-visit information.
+6. Preserve an old path with a relocation stub when progress/history documents link to it.
+
+## 4. Wording Check
+
+- Use “已完成”“基础闭环”“部分完成”“计划中”“未完成” precisely.
+- Do not use “已支持” without code, migration, documentation, or a validation result.
+- Keep local-only defaults explicit and separate from production recommendations.
+- Never copy tokens, private keys, real credentials, or unredacted logs into README.
+- Use current paths and `pnpm`, not stale flat `docs/help/` paths or `npm` commands.
+
+## 5. Validation
+
+Always run:
 
 ```bash
-git diff --check -- README.md
-python3 skills/campusos-readme-update/scripts/check_readme_links.py README.md
+python3 skills/campusos-readme-update/scripts/audit_readme_structure.py --root .
+python3 skills/campusos-readme-update/scripts/check_readme_links.py --root . README.md docs/README.md
+git diff --check
 ```
 
-Run when relevant:
+For each moved/created document, add `--require-doc <path>` to the structure audit.
 
-```bash
-GOCACHE=/tmp/campusos-go-cache go test ./... -count=1
-docker compose config -q
-make migrate-status
-cd web && npm run build
-cd admin && npm run build
-```
-
-If a command is not run, state why in the final answer.
+Run Go, Compose, migration, or frontend checks only when the changed claims depend on them. Record commands not run and the reason.

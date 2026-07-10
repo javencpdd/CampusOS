@@ -4,7 +4,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 
 ## 当前状态
 
-当前开发基线为 `v0.5.34-dev`。
+当前开发基线为 `v0.5.35-dev`。
 
 - 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
 - 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
@@ -29,11 +29,8 @@ STOP_EXISTING=true make dev-all
 | 用户前台 | `http://localhost:3000` |
 | 管理后台 | `http://localhost:3001` |
 | API | `http://localhost:8080/api/v1` |
-| pgAdmin | 默认 `http://localhost:5050` |
 
-默认管理员为 `admin@campusos.local` / `Admin@123456`，仅限本地开发，部署前必须修改。
-
-环境变量、手动启动、数据库迁移、验证命令和贡献脚本见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
+环境变量、开发账号、pgAdmin、手动启动、数据库迁移和故障排查见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 仓库结构
 
@@ -48,31 +45,25 @@ STOP_EXISTING=true make dev-all
 | `data/personal-space/<user_id>/` | 用户文件、图片、课表和文档 |
 | `docs/` | 计划、帮助、架构、API 和进度记录 |
 
-## 关键命令
+## 验证
 
 ```bash
-make docker-up
-make migrate-up
 GOCACHE=/tmp/campusos-go-cache go test ./... -count=1
-(cd web && pnpm build)
-(cd admin && pnpm build)
 ```
 
-`STOP_EXISTING=true make dev-all` 会先清理占用开发端口的旧进程，再启动当前工作区服务。贡献者可使用 `./sh/git_commit.sh "提交说明"` 和 `./sh/git_pr.sh -t "PR 标题"`；参数和检查要求见上方开发指南。
+完整的前端构建、migration、smoke、贡献和 PR 命令见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 文档
 
 从 [文档门户](docs/README.md) 开始。
 
-| 需求 | 文档 |
+| 入口 | 文档 |
 | --- | --- |
 | 架构和数据边界 | [当前架构概览](docs/architecture/当前架构概览.md) |
 | 当前 API 分组和契约状态 | [API 索引](docs/api/API索引.md) |
 | 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
-| 风格包操作 | [风格包切换方式说明](docs/help/系统设计相关/风格包切换方式说明.md) |
-| 外部协议适配 | [接口协议适配器标准说明](docs/help/系统设计相关/接口协议适配器标准说明.md) |
-| v0.5 实现记录 | [v0.5 第二版计划书](docs/项目计划v5/01-v5版本计划书第二版.md)、[最新 v0.5 进度](docs/进度/v0.5-dev/v0.5.34-dev.md) |
-| 历史审查和下一阶段 | [v1-v5 计划审查](docs/项目计划v6/00-v1-v5计划审查.md)、[v6 计划书](docs/项目计划v6/01-v6版本计划书.md) |
+| 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
+| 当前计划与进度 | [v6 计划书](docs/项目计划v6/01-v6版本计划书.md)、[最新 v0.5 进度](docs/进度/v0.5-dev/v0.5.35-dev.md) |
 
 ## License
 

@@ -1,7 +1,7 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.5.34-dev`
+> 当前实现基线：`v0.5.35-dev`
 
 ## 1. 契约状态
 

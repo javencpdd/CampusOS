@@ -28,6 +28,9 @@ find migrations -maxdepth 1 -type f -name '*.up.sql' | sort
 section "Help docs"
 find docs/help -type f | sort
 
+section "Skill docs"
+find docs/skills -type f 2>/dev/null | sort
+
 section "Project skills"
 find skills -maxdepth 2 -type f -name SKILL.md | sort
 
