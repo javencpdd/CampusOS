@@ -116,6 +116,8 @@ export const scheduleApi = {
   status: () => api.get('/schedule/status'),
   me: () => api.get('/schedule/me'),
   save: (data: {
+    term_year: number
+    semester: 'spring' | 'fall'
     first_week_start: string
     settings: Record<string, any>
     courses: any[]

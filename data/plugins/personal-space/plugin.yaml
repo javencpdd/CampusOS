@@ -24,7 +24,7 @@ storage:
 
 config:
   styles_dir: "styles"
-  file_root: "data/images/personal-space"
+  file_root: "data/personal-space"
   file_url_prefix: "/api/v1/spaces/files"
   default_quota_mb: 10
   avatar_keep_limit: 3
@@ -44,7 +44,7 @@ config_schema:
       type: "string"
       description: "Local root directory for personal space files."
       required: true
-      default: "data/images/personal-space"
+      default: "data/personal-space"
     - key: "file_url_prefix"
       label: "File URL prefix"
       type: "string"

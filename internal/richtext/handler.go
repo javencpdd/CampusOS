@@ -234,7 +234,7 @@ func writeRichTextError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusForbidden, 73001, err.Error())
-	case errors.Is(err, ErrInvalidArticle), errors.Is(err, ErrAssetInvalid), errors.Is(err, ErrAssetTooLarge), errors.Is(err, ErrAssetUnsupported):
+	case errors.Is(err, ErrInvalidArticle), errors.Is(err, ErrAssetInvalid), errors.Is(err, ErrAssetTooLarge), errors.Is(err, ErrAssetQuotaExceeded), errors.Is(err, ErrAssetUnsupported):
 		response.Error(c, http.StatusBadRequest, 73002, err.Error())
 	case errors.Is(err, ErrPermissionDenied):
 		response.Error(c, http.StatusForbidden, 73003, err.Error())

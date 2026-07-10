@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -23,7 +24,7 @@ var tinyPNG = []byte{
 
 func TestFileStorageConfigFromPluginConfig(t *testing.T) {
 	cfg := FileStorageConfigFromPluginConfig(map[string]interface{}{
-		"file_root":           "data/images/custom-space",
+		"file_root":           "data/custom-space",
 		"file_url_prefix":     "api/v1/custom-space/files",
 		"default_quota_mb":    12,
 		"avatar_keep_limit":   5,
@@ -31,7 +32,7 @@ func TestFileStorageConfigFromPluginConfig(t *testing.T) {
 		"unused_future_field": "ignored",
 	})
 
-	if cfg.RootDir != "data/images/custom-space" {
+	if cfg.RootDir != "data/custom-space" {
 		t.Fatalf("unexpected root: %q", cfg.RootDir)
 	}
 	if cfg.URLPrefix != "/api/v1/custom-space/files" {
@@ -45,6 +46,15 @@ func TestFileStorageConfigFromPluginConfig(t *testing.T) {
 	}
 	if cfg.MaxAvatarBytes != 3*1024*1024 {
 		t.Fatalf("unexpected max avatar bytes: %d", cfg.MaxAvatarBytes)
+	}
+}
+
+func TestFileStorageConfigMigratesLegacyDefaultRoot(t *testing.T) {
+	cfg := FileStorageConfigFromPluginConfig(map[string]interface{}{
+		"file_root": "data/images/personal-space",
+	})
+	if cfg.RootDir != "data/personal-space" {
+		t.Fatalf("legacy root was not normalized: %q", cfg.RootDir)
 	}
 }
 
@@ -77,6 +87,18 @@ func TestLocalFileStoreSaveAvatarKeepsLatestFiles(t *testing.T) {
 	if len(entries) != 3 {
 		t.Fatalf("expected 3 avatar source files, got %d", len(entries))
 	}
+	if want := filepath.Join("space-files", "1001", PersonalSpaceImageDir, "avatars"); !strings.HasSuffix(avatarDir, want) {
+		t.Fatalf("unexpected avatar directory: %q", avatarDir)
+	}
+	userDir, err := store.userDir("1001")
+	if err != nil {
+		t.Fatalf("user dir: %v", err)
+	}
+	for _, category := range []string{PersonalSpaceFileDir, PersonalSpaceImageDir, PersonalSpaceExcelDir, PersonalSpaceWordDir, PersonalSpacePDFDir} {
+		if _, err := os.Stat(filepath.Join(userDir, category)); err != nil {
+			t.Fatalf("expected %s directory: %v", category, err)
+		}
+	}
 	status, err := store.Status("1001")
 	if err != nil {
 		t.Fatalf("storage status: %v", err)
@@ -86,6 +108,51 @@ func TestLocalFileStoreSaveAvatarKeepsLatestFiles(t *testing.T) {
 	}
 	if status.UsedBytes != int64(len(tinyPNG))*3 {
 		t.Fatalf("unexpected used bytes: %d", status.UsedBytes)
+	}
+}
+
+func TestFileCategoryForName(t *testing.T) {
+	cases := map[string]string{
+		"avatar.webp": PersonalSpaceImageDir,
+		"table.xls":   PersonalSpaceExcelDir,
+		"table.xlsx":  PersonalSpaceExcelDir,
+		"report.docx": PersonalSpaceWordDir,
+		"paper.pdf":   PersonalSpacePDFDir,
+		"notes.txt":   PersonalSpaceFileDir,
+	}
+	for fileName, want := range cases {
+		if got := FileCategoryForName(fileName); got != want {
+			t.Fatalf("category for %q = %q, want %q", fileName, got, want)
+		}
+	}
+}
+
+func TestMigrateLegacyUserDir(t *testing.T) {
+	legacyUserDir := filepath.Join(t.TempDir(), "users", "1001")
+	newUserDir := filepath.Join(t.TempDir(), "1001")
+	avatarPath := filepath.Join(legacyUserDir, "avatars", "old.png")
+	schedulePath := filepath.Join(legacyUserDir, "schedule", "schedule.json")
+	if err := os.MkdirAll(filepath.Dir(avatarPath), 0o755); err != nil {
+		t.Fatalf("create legacy avatar dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(schedulePath), 0o755); err != nil {
+		t.Fatalf("create legacy schedule dir: %v", err)
+	}
+	if err := os.WriteFile(avatarPath, tinyPNG, 0o644); err != nil {
+		t.Fatalf("write legacy avatar: %v", err)
+	}
+	if err := os.WriteFile(schedulePath, []byte(`{"courses":[]}`), 0o644); err != nil {
+		t.Fatalf("write legacy schedule: %v", err)
+	}
+
+	if err := migrateLegacyUserDir(legacyUserDir, newUserDir); err != nil {
+		t.Fatalf("migrate legacy user dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(newUserDir, PersonalSpaceImageDir, "avatars", "old.png")); err != nil {
+		t.Fatalf("migrated avatar not found: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(newUserDir, PersonalSpaceFileDir, "schedule", "schedule.json")); err != nil {
+		t.Fatalf("migrated schedule not found: %v", err)
 	}
 }
 

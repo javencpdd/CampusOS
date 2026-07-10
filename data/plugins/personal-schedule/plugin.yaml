@@ -19,7 +19,6 @@ storage:
   type: none
 
 config:
-  data_root: "data/images/personal-space"
   quota_mb: 10
   max_courses: 200
   max_import_mb: 2
@@ -27,12 +26,6 @@ config:
 
 config_schema:
   fields:
-    - key: "data_root"
-      label: "Data root"
-      type: "string"
-      description: "Local root for schedule JSON files. Defaults to the personal-space file root."
-      required: true
-      default: "data/images/personal-space"
     - key: "quota_mb"
       label: "Quota MB"
       type: "number"

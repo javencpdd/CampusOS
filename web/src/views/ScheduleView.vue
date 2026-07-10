@@ -6,6 +6,7 @@
           <div>
             <h2>个人课表</h2>
             <div class="schedule-meta">
+              <span>{{ termLabel }}</span>
               <span>第 {{ selectedWeek }} 周</span>
               <span>{{ weekRangeText }}</span>
             </div>
@@ -28,12 +29,25 @@
       />
 
       <div class="toolbar">
+        <el-input-number
+          v-model="schedule.term_year"
+          :min="2000"
+          :max="2200"
+          controls-position="right"
+          aria-label="学期年份"
+          @change="markDirty"
+        />
+        <el-radio-group v-model="schedule.semester" @change="markDirty">
+          <el-radio-button label="spring">春季学期</el-radio-button>
+          <el-radio-button label="fall">秋季学期</el-radio-button>
+        </el-radio-group>
         <el-date-picker
           v-model="schedule.first_week_start"
           type="date"
           value-format="YYYY-MM-DD"
           placeholder="第一周开始日期"
-          @change="markDirty"
+          aria-label="第一周开始日期"
+          @change="onFirstWeekStartChange"
         />
         <el-input-number
           v-model="schedule.settings.periods_per_day"
@@ -55,29 +69,57 @@
         <el-button @click="openJsonEditor">JSON</el-button>
       </div>
 
-      <div class="schedule-grid" :style="{ '--day-count': String(weekdays.length) }">
-        <div class="grid-corner">节次</div>
-        <div v-for="day in weekdays" :key="day.value" class="grid-day">
-          {{ day.label }}
-        </div>
-        <template v-for="period in periods" :key="period">
-          <div class="grid-period">{{ periodLabel(period) }}</div>
-          <div v-for="day in weekdays" :key="`${day.value}-${period}`" class="grid-cell">
-            <button
-              v-for="course in coursesAt(day.value, period)"
-              :key="course.id"
-              class="course-chip"
-              :style="{ borderColor: course.color, backgroundColor: softColor(course.color) }"
-              @click="openCourseDialog(course)"
-            >
-              <strong>{{ course.name }}</strong>
-              <span>{{ course.start_period }}-{{ course.end_period }} 节</span>
-              <span v-if="course.location">{{ course.location }}</span>
-              <span v-if="course.teacher">{{ course.teacher }}</span>
-            </button>
+      <el-tabs v-model="viewMode" class="schedule-tabs">
+        <el-tab-pane label="周课表" name="week">
+          <div class="schedule-grid" :style="{ '--day-count': String(weekdays.length) }">
+            <div class="grid-corner">节次</div>
+            <div v-for="day in weekdays" :key="day.value" class="grid-day">
+              {{ day.label }}
+            </div>
+            <template v-for="period in periods" :key="period">
+              <div class="grid-period">{{ periodLabel(period) }}</div>
+              <div v-for="day in weekdays" :key="`${day.value}-${period}`" class="grid-cell">
+                <button
+                  v-for="course in coursesAt(day.value, period)"
+                  :key="course.id"
+                  class="course-chip"
+                  :style="{ borderColor: course.color, backgroundColor: softColor(course.color) }"
+                  @click="openCourseDialog(course)"
+                >
+                  <strong>{{ course.name }}</strong>
+                  <span>{{ course.start_period }}-{{ course.end_period }} 节</span>
+                  <span v-if="course.location">{{ course.location }}</span>
+                  <span v-if="course.teacher">{{ course.teacher }}</span>
+                </button>
+              </div>
+            </template>
           </div>
-        </template>
-      </div>
+        </el-tab-pane>
+        <el-tab-pane label="日历" name="calendar">
+          <div class="calendar-scroll">
+            <el-calendar v-model="calendarDate" class="schedule-calendar">
+              <template #date-cell="{ data }">
+                <div class="calendar-cell" :class="{ 'calendar-cell-selected': data.isSelected }">
+                  <span class="calendar-day-number">{{ calendarDay(data.day) }}</span>
+                  <div class="calendar-courses">
+                    <span
+                      v-for="course in calendarCourses(data.day).slice(0, 3)"
+                      :key="`${data.day}-${course.id}`"
+                      class="calendar-course"
+                      :style="{ borderLeftColor: course.color, backgroundColor: softColor(course.color) }"
+                    >
+                      {{ course.name }}
+                    </span>
+                    <span v-if="calendarCourses(data.day).length > 3" class="calendar-overflow">
+                      +{{ calendarCourses(data.day).length - 3 }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </el-calendar>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <el-drawer v-model="courseDrawer" title="课程" size="420px">
@@ -144,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { scheduleApi } from '@/api'
@@ -165,12 +207,16 @@ interface Course {
   extra?: Record<string, string>
 }
 
+type Semester = 'spring' | 'fall'
+
 const loading = ref(false)
 const saving = ref(false)
 const importing = ref(false)
 const disabled = ref(false)
 const dirty = ref(false)
 const selectedWeek = ref(1)
+const viewMode = ref<'week' | 'calendar'>('week')
+const calendarDate = ref(new Date())
 const replaceImport = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
 const courseDrawer = ref(false)
@@ -179,6 +225,8 @@ const editingCourseId = ref('')
 const rawJson = ref('')
 const week = reactive({ current_week: 1, week_start: '', week_end: '', today: '' })
 const schedule = reactive({
+  term_year: new Date().getFullYear(),
+  semester: 'spring' as Semester,
   first_week_start: '',
   settings: {
     periods_per_day: 12,
@@ -212,6 +260,7 @@ const allWeekdays = [
 
 const weekdays = computed(() => schedule.settings.show_weekend ? allWeekdays : allWeekdays.slice(0, 5))
 const periods = computed(() => Array.from({ length: Number(schedule.settings.periods_per_day || 12) }, (_, index) => index + 1))
+const termLabel = computed(() => `${schedule.term_year} 年${schedule.semester === 'fall' ? '秋季' : '春季'}学期`)
 const weekRangeText = computed(() => {
   const start = weekDate(selectedWeek.value, 0)
   const end = weekDate(selectedWeek.value, 6)
@@ -241,6 +290,9 @@ const loadSchedule = async () => {
 const applyPayload = (payload: any) => {
   disabled.value = payload?.enabled === false
   const value = payload?.schedule || payload
+  const fallbackDate = new Date()
+  schedule.term_year = Number(value?.term_year || fallbackDate.getFullYear())
+  schedule.semester = value?.semester === 'fall' ? 'fall' : 'spring'
   schedule.first_week_start = value?.first_week_start || ''
   schedule.settings.periods_per_day = Number(value?.settings?.periods_per_day || 12)
   schedule.settings.show_weekend = value?.settings?.show_weekend !== false
@@ -252,12 +304,16 @@ const applyPayload = (payload: any) => {
   week.week_end = payload?.week?.week_end || ''
   week.today = payload?.week?.today || ''
   selectedWeek.value = week.current_week
+  const calendarStart = parseScheduleDate(week.week_start || schedule.first_week_start)
+  if (calendarStart) calendarDate.value = calendarStart
 }
 
 const saveSchedule = async () => {
   saving.value = true
   try {
     const payload = {
+      term_year: schedule.term_year,
+      semester: schedule.semester,
       first_week_start: schedule.first_week_start,
       settings: schedule.settings,
       courses: schedule.courses,
@@ -365,6 +421,8 @@ const deleteCourse = async () => {
 
 const openJsonEditor = () => {
   rawJson.value = JSON.stringify({
+    term_year: schedule.term_year,
+    semester: schedule.semester,
     first_week_start: schedule.first_week_start,
     settings: schedule.settings,
     courses: schedule.courses,
@@ -376,6 +434,8 @@ const openJsonEditor = () => {
 const applyJson = async () => {
   try {
     const parsed = JSON.parse(rawJson.value)
+    schedule.term_year = Number(parsed.term_year || schedule.term_year)
+    schedule.semester = parsed.semester === 'fall' ? 'fall' : 'spring'
     schedule.first_week_start = parsed.first_week_start || schedule.first_week_start
     schedule.settings = {
       periods_per_day: Number(parsed.settings?.periods_per_day || 12),
@@ -393,25 +453,73 @@ const applyJson = async () => {
 }
 
 const prevWeek = () => {
-  if (selectedWeek.value > 1) selectedWeek.value -= 1
+  if (selectedWeek.value > 1) {
+    selectedWeek.value -= 1
+    syncCalendarToSelectedWeek()
+  }
 }
 const nextWeek = () => {
   selectedWeek.value += 1
+  syncCalendarToSelectedWeek()
 }
 const goCurrentWeek = () => {
   selectedWeek.value = week.current_week || 1
+  syncCalendarToSelectedWeek()
 }
 
 const markDirty = () => {
   dirty.value = true
 }
 
+const onFirstWeekStartChange = () => {
+  selectedWeek.value = 1
+  syncCalendarToSelectedWeek()
+  markDirty()
+}
+
 const weekDate = (weekNumber: number, offset: number) => {
-  if (!schedule.first_week_start) return ''
-  const first = new Date(`${schedule.first_week_start}T00:00:00`)
-  if (Number.isNaN(first.getTime())) return ''
+  const first = parseScheduleDate(schedule.first_week_start)
+  if (!first) return ''
   first.setDate(first.getDate() + (weekNumber - 1) * 7 + offset)
   return formatDate(first)
+}
+
+const syncCalendarToSelectedWeek = () => {
+  const date = parseScheduleDate(weekDate(selectedWeek.value, 0))
+  if (date) calendarDate.value = date
+}
+
+const calendarDay = (value: string) => value.slice(-2).replace(/^0/, '')
+
+const calendarCourses = (value: string) => {
+  const date = parseScheduleDate(value)
+  const first = parseScheduleDate(schedule.first_week_start)
+  if (!date || !first) return [] as Course[]
+  const diff = Math.round((date.getTime() - first.getTime()) / 86400000)
+  if (diff < 0) return [] as Course[]
+  const weekNumber = Math.floor(diff / 7) + 1
+  const weekday = date.getDay() === 0 ? 7 : date.getDay()
+  return schedule.courses.filter((course) => {
+    const weeks = course.weeks || []
+    return course.weekday === weekday && (weeks.length === 0 || weeks.includes(weekNumber))
+  })
+}
+
+const parseScheduleDate = (value?: string) => {
+  if (!value) return null
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return null
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const weekNumberForDate = (date: Date) => {
+  const first = parseScheduleDate(schedule.first_week_start)
+  if (!first) return 0
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diff = Math.round((target.getTime() - first.getTime()) / 86400000)
+  if (diff < 0) return 0
+  return Math.floor(diff / 7) + 1
 }
 
 const parseWeeksText = (value: string) => {
@@ -475,6 +583,11 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
   event.returnValue = ''
 }
 
+watch(calendarDate, (value) => {
+  const weekNumber = weekNumberForDate(value)
+  if (weekNumber > 0) selectedWeek.value = weekNumber
+})
+
 onBeforeRouteLeave(() => {
   if (!dirty.value) return true
   return window.confirm('课表还有未保存的修改，确定要离开吗？')
@@ -520,6 +633,9 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 .toolbar {
+  margin-bottom: 14px;
+}
+.schedule-tabs :deep(.el-tabs__header) {
   margin-bottom: 14px;
 }
 .hidden-input {
@@ -574,6 +690,53 @@ onBeforeUnmount(() => {
 }
 .course-chip span {
   font-size: 12px;
+  color: #606266;
+}
+.calendar-scroll {
+  overflow-x: auto;
+}
+.schedule-calendar {
+  min-width: 680px;
+}
+.schedule-calendar :deep(.el-calendar-day) {
+  height: 118px;
+  padding: 5px;
+}
+.calendar-cell {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-height: 100%;
+}
+.calendar-cell-selected .calendar-day-number {
+  color: #2563eb;
+}
+.calendar-day-number {
+  color: #303133;
+  font-size: 13px;
+  font-weight: 600;
+}
+.calendar-courses {
+  display: grid;
+  gap: 3px;
+}
+.calendar-course,
+.calendar-overflow {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-left: 3px solid;
+  border-radius: 3px;
+  color: #303133;
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-overflow {
+  border-left-color: #909399;
+  background: #f4f4f5;
   color: #606266;
 }
 .field-full {

@@ -221,9 +221,11 @@ POST /api/v1/spaces/me/avatar
 | 单文件上限 | 2MB |
 | 用户默认配额 | 10MB |
 | 源文件保留 | 最近 3 个 |
-| 存储目录 | `data/images/personal-space/users/<user_id>/avatars/` |
+| 存储目录 | `data/personal-space/<user_id>/img/avatars/` |
 
 上传成功后，`user_spaces.avatar` 会更新为公开头像 URL，公开主页和顶部头像会优先使用该 URL。
+
+受控富文本图文文章的上传图片保存在同一用户目录的 `img/richtext/`，同样计入默认 10MB 的个人空间配额。
 
 ### 2.9 访问头像文件
 
@@ -349,7 +351,7 @@ data/plugins/personal-space/plugin.yaml
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
 | `styles_dir` | `styles` | 默认 JSON 风格包目录 |
-| `file_root` | `data/images/personal-space` | 个人空间本地文件根目录 |
+| `file_root` | `data/personal-space` | 个人空间本地文件根目录 |
 | `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
 | `default_quota_mb` | `10` | 每个用户初始本地空间 |
 | `avatar_keep_limit` | `3` | 头像源文件保留数量 |

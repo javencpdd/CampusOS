@@ -7,8 +7,10 @@ It keeps `threads` as the top-level community record and stores rich content in:
 ```text
 richtext_article_contents
 richtext_article_assets
-data/images/richtext/
+data/personal-space/<user_id>/img/richtext/
 ```
+
+Richtext images share the `personal-space` plugin's file root and per-user quota. The public asset URL remains `/api/v1/richtext/assets/<user_id>/<filename>`. Existing files under the former `data/images/richtext/users/` default layout are moved automatically when the server starts.
 
 The MVP editor uses a controlled HTML textarea instead of bundling a heavy WYSIWYG editor. This keeps the first version easy to audit. Later versions can swap the editor surface to Tiptap, wangEditor, BlockNote, or Quill while preserving the backend API and sanitizer.
 

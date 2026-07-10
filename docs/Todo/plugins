@@ -1,14 +1,10 @@
-，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
-更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.5-dev中
+
 
 如何把接口协议标准转成像 discord或者onebot v11那样提供
 
-不光富文本的可以编辑和删除，普通文本的应该也可以，同时还可以设置私密（仅自己可见）
-编辑文章后离开后应该提醒保存草稿，或发布
-
 能不能将微信公众号的文章同步到个人主页，同时标注出该帖子来自什么什么公众号
 
-可以再弄一个课表的插件，实现 每个用户点击个人头像后 可有一个 “个人课表” 的选项，进入后可以查看当周的课表
-先自定义一个第一周的时间，然后将课程的时间输入（也可以通过解析导入的execl表格），来实现课表信息的输入
-execl表格的案例可参考：/home/jack/bbs/bbs01/CampusOS/docs/Todo/tmp/class.xls
-课表整体的自定义开放程度要高一点，后续可以自主修改，整体数据还是保存在个人空间中
+，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
+更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.5-dev中
+
+

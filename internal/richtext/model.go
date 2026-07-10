@@ -17,15 +17,16 @@ const (
 )
 
 var (
-	ErrPluginDisabled   = errors.New("controlled-richtext-article plugin is disabled")
-	ErrArticleNotFound  = errors.New("richtext article not found")
-	ErrPermissionDenied = errors.New("permission denied")
-	ErrInvalidArticle   = errors.New("invalid richtext article")
-	ErrAssetUnavailable = errors.New("richtext asset store is unavailable")
-	ErrAssetInvalid     = errors.New("invalid richtext asset")
-	ErrAssetTooLarge    = errors.New("richtext asset exceeds allowed size")
-	ErrAssetUnsupported = errors.New("unsupported richtext asset type")
-	ErrAssetNotFound    = errors.New("richtext asset not found")
+	ErrPluginDisabled     = errors.New("controlled-richtext-article plugin is disabled")
+	ErrArticleNotFound    = errors.New("richtext article not found")
+	ErrPermissionDenied   = errors.New("permission denied")
+	ErrInvalidArticle     = errors.New("invalid richtext article")
+	ErrAssetUnavailable   = errors.New("richtext asset store is unavailable")
+	ErrAssetInvalid       = errors.New("invalid richtext asset")
+	ErrAssetTooLarge      = errors.New("richtext asset exceeds allowed size")
+	ErrAssetQuotaExceeded = errors.New("richtext asset exceeds personal space quota")
+	ErrAssetUnsupported   = errors.New("unsupported richtext asset type")
+	ErrAssetNotFound      = errors.New("richtext asset not found")
 )
 
 type Article struct {
