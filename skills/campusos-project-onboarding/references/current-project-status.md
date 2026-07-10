@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.33-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.34-dev.md`.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -156,10 +156,10 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | `README.md` | Concise current repository baseline, quick start, and documentation entry |
 | `docs/README.md` | Documentation portal for operations, architecture, API, plugins, plans, and progress |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.33-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.34-dev |
 | `docs/help/skills相关/CampusOS-数据架构同步Skill使用说明.md` | When and how to synchronize the Admin schema visualization |
 | `docs/项目计划v6/00-v1-v5计划审查.md` | Strict historical-plan audit: completed, partial, and deferred work |
-| `docs/项目计划v6/01-v6版本计划书.md` | Planned v0.6-dev contract, recovery, plugin trust, and external-boundary work |
+| `docs/项目计划v6/01-v6版本计划书.md` | Planned v0.6-dev API/authorization, database integrity, plugin SDK/tooling, recovery, and acceptance work |
 | `docs/help/系统设计相关/开发运行与验证指南.md` | Local startup, test/build commands, and contribution helper scripts |
 | `docs/api/API索引.md` | Current API groups, schedule API, and contract-documentation boundary |
 | `docs/help/插件相关/插件分级与生命周期说明.md` | System/user plugin scope, lifecycle, and admin operation guide |
