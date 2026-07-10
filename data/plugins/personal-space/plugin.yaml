@@ -4,6 +4,7 @@ version: "0.1.0"
 description: "CampusOS built-in personal homepage, style packages, and personal file storage"
 author: "CampusOS Team"
 runtime: builtin
+scope: system
 
 events:
   subscribe:

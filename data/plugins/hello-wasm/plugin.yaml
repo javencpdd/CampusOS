@@ -4,6 +4,7 @@ version: "0.1.0"
 description: "CampusOS v0.3-dev minimal Wasm plugin example"
 author: "CampusOS Team"
 runtime: wasm
+scope: user
 
 events:
   subscribe:

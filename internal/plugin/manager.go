@@ -81,10 +81,11 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	}
 
 	plugin := &Plugin{
-		ID:        manifest.Name,
-		Manifest:  manifest,
-		Status:    StatusInstalled,
-		Directory: dir,
+		ID:             manifest.Name,
+		Manifest:       manifest,
+		Status:         StatusInstalled,
+		DesiredEnabled: manifest.IsSystemLevel(),
+		Directory:      dir,
 	}
 	m.plugins[manifest.Name] = plugin
 
@@ -129,6 +130,7 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 		if record.Status != "" {
 			m.mu.Lock()
 			p.Status = restoredRuntimeStatus(record.Status)
+			p.DesiredEnabled = desiredEnabledFromRecord(record.Status, p.Manifest)
 			p.ErrorMsg = record.ErrorMsg
 			p.Checksum = record.Checksum
 			p.PackageSize = record.PackageSize
@@ -152,7 +154,7 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 	record.Description = p.Manifest.Description
 	record.Author = p.Manifest.Author
 	record.Runtime = p.Manifest.Runtime
-	record.Status = string(p.Status)
+	record.Status = string(persistedPluginStatus(p))
 	record.Config = string(configJSON)
 	record.ErrorMsg = p.ErrorMsg
 	record.Checksum = p.Checksum
@@ -190,9 +192,150 @@ func (m *Manager) Enable(name string) error {
 		return fmt.Errorf("plugin '%s' cannot be enabled (status: %s)", name, p.Status)
 	}
 	p.Status = StatusEnabled
+	p.DesiredEnabled = true
 	m.mu.Unlock()
 
 	return m.Start(name)
+}
+
+// RequestEnable applies a lifecycle request from the management API. System
+// plugins only persist the target state, while user plugins start immediately.
+func (m *Manager) RequestEnable(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	isSystem := p.Manifest.IsSystemLevel()
+	status := p.Status
+	m.mu.RUnlock()
+
+	if isSystem {
+		m.mu.Lock()
+		p.DesiredEnabled = true
+		m.mu.Unlock()
+		m.persistPluginStatus(context.Background(), name, StatusRunning, "")
+		m.logPlugin(context.Background(), &PluginLogRecord{
+			PluginName: name,
+			Level:      "info",
+			Message:    "system plugin enable staged for restart",
+			Metadata: map[string]interface{}{
+				"scope":           ScopeSystem,
+				"desired_enabled": true,
+			},
+		})
+		return nil
+	}
+	if status == StatusRunning {
+		return nil
+	}
+	if status == StatusError {
+		m.mu.Lock()
+		p.Status = StatusInstalled
+		p.ErrorMsg = ""
+		m.mu.Unlock()
+	}
+	return m.Enable(name)
+}
+
+// RequestDisable applies a lifecycle request from the management API. System
+// plugins remain in their current process state until the next server restart.
+func (m *Manager) RequestDisable(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	isSystem := p.Manifest.IsSystemLevel()
+	m.mu.RUnlock()
+
+	if !isSystem {
+		return m.Stop(name)
+	}
+	m.mu.Lock()
+	p.DesiredEnabled = false
+	m.mu.Unlock()
+	m.persistPluginStatus(context.Background(), name, StatusStopped, "")
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "info",
+		Message:    "system plugin disable staged for restart",
+		Metadata: map[string]interface{}{
+			"scope":           ScopeSystem,
+			"desired_enabled": false,
+		},
+	})
+	return nil
+}
+
+// ReloadUserPlugin stops and starts a user-level plugin so changed runtime
+// files or a saved user-level configuration can take effect without restart.
+func (m *Manager) ReloadUserPlugin(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	if p.Manifest.IsSystemLevel() {
+		m.mu.RUnlock()
+		return fmt.Errorf("system-level plugin '%s' can only take effect after server restart", name)
+	}
+	status := p.Status
+	m.mu.RUnlock()
+
+	if status == StatusRunning {
+		if err := m.stop(name, false); err != nil {
+			return err
+		}
+	}
+	return m.RequestEnable(name)
+}
+
+// LifecycleState returns the current and requested lifecycle behavior for UI
+// consumers without exposing mutable Plugin internals.
+func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[name]
+	if !ok || p.Manifest == nil {
+		return LifecycleState{}, false
+	}
+	isSystem := p.Manifest.IsSystemLevel()
+	running := p.Status == StatusRunning
+	state := LifecycleState{
+		Scope:          p.Manifest.Scope,
+		DesiredEnabled: p.DesiredEnabled,
+		PendingRestart: isSystem && p.DesiredEnabled != running,
+	}
+	if isSystem {
+		state.ActivationMode = "restart"
+	} else {
+		state.ActivationMode = "hot"
+	}
+	return state, true
+}
+
+// StartDesiredPlugins starts plugins that were explicitly enabled before the
+// current process started. Call this only during server bootstrap.
+func (m *Manager) StartDesiredPlugins(scope string) {
+	m.mu.RLock()
+	names := make([]string, 0, len(m.plugins))
+	for name, p := range m.plugins {
+		if p.Manifest == nil || p.Manifest.Scope != scope || !p.DesiredEnabled || p.Status == StatusRunning {
+			continue
+		}
+		names = append(names, name)
+	}
+	m.mu.RUnlock()
+
+	for _, name := range names {
+		if err := m.Start(name); err != nil {
+			log.Printf("⚠️  插件启动失败: %s (%v)", name, err)
+		}
+	}
 }
 
 // Start 启动插件
@@ -247,6 +390,7 @@ func (m *Manager) Start(name string) error {
 
 	m.mu.Lock()
 	p.Status = StatusRunning
+	p.DesiredEnabled = true
 	p.ErrorMsg = ""
 	m.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusRunning, "")
@@ -310,6 +454,9 @@ func (m *Manager) stop(name string, persist bool) error {
 
 	m.mu.Lock()
 	p.Status = StatusStopped
+	if persist {
+		p.DesiredEnabled = false
+	}
 	m.mu.Unlock()
 	if persist {
 		m.persistPluginStatus(context.Background(), name, StatusStopped, "")
@@ -526,6 +673,33 @@ func restoredRuntimeStatus(status string) PluginStatus {
 	}
 }
 
+func desiredEnabledFromRecord(status string, manifest *Manifest) bool {
+	switch PluginStatus(status) {
+	case StatusStopped:
+		return false
+	case StatusInstalled:
+		return manifest != nil && manifest.IsSystemLevel()
+	default:
+		return true
+	}
+}
+
+func persistedPluginStatus(p *Plugin) PluginStatus {
+	if p == nil {
+		return StatusInstalled
+	}
+	if p.Manifest != nil && p.Manifest.IsSystemLevel() {
+		if p.DesiredEnabled {
+			return StatusRunning
+		}
+		return StatusStopped
+	}
+	if p.Status == StatusInstalled && p.DesiredEnabled {
+		return StatusRunning
+	}
+	return p.Status
+}
+
 func (m *Manager) persistPluginStatus(ctx context.Context, name string, status PluginStatus, errorMsg string) {
 	m.mu.RLock()
 	repo := m.repo
@@ -622,6 +796,10 @@ func (m *Manager) Uninstall(name string) error {
 		m.mu.Unlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
+	if p.Manifest != nil && p.Manifest.IsSystemLevel() {
+		m.mu.Unlock()
+		return fmt.Errorf("system-level plugin '%s' cannot be uninstalled at runtime", name)
+	}
 
 	// 停止运行中的插件
 	if p.Status == StatusRunning {
@@ -710,14 +888,22 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 		return nil, fmt.Errorf("plugin package precheck failed: %s", strings.Join(precheck.Errors, "; "))
 	}
 	manifest := precheck.Manifest
+	if manifest.IsSystemLevel() {
+		return nil, fmt.Errorf("system-level plugins must be deployed with server code and take effect after restart")
+	}
 
 	m.mu.RLock()
-	_, loaded := m.plugins[manifest.Name]
+	existing, loaded := m.plugins[manifest.Name]
 	m.mu.RUnlock()
+	wasEnabled := false
 	if loaded {
+		if existing.Manifest != nil && existing.Manifest.IsSystemLevel() {
+			return nil, fmt.Errorf("system-level plugin '%s' cannot be updated at runtime", manifest.Name)
+		}
 		if !replace {
 			return nil, fmt.Errorf("plugin '%s' already installed; use replace to overwrite", manifest.Name)
 		}
+		wasEnabled = existing.DesiredEnabled
 		if err := m.Uninstall(manifest.Name); err != nil {
 			return nil, err
 		}
@@ -737,6 +923,11 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 	m.mu.Unlock()
 	if err := m.syncPluginRecord(context.Background(), installed); err != nil {
 		return nil, err
+	}
+	if wasEnabled {
+		if err := m.RequestEnable(installed.Manifest.Name); err != nil {
+			return nil, err
+		}
 	}
 	return installed, nil
 }

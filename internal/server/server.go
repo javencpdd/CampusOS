@@ -127,7 +127,7 @@ func (s *Server) Run() error {
 	pluginRepo = plugin.NewPgPluginRepository(pool)
 	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
+	s.startConfiguredPlugins()
 	s.normalizePersonalStoragePluginConfigs()
 	aiService.SetCallLogStore(ai.NewPgCallLogger(pool))
 
@@ -244,7 +244,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	roleRepo := identityrepo.NewMemoryRoleRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
-	s.startDefaultBuiltinPlugins("personal-space", "homepage-customizer", "controlled-richtext-article", "personal-schedule")
+	s.startConfiguredPlugins()
 	s.normalizePersonalStoragePluginConfigs()
 	permSvc := identitysvc.NewPermissionService(roleRepo)
 
@@ -467,23 +467,12 @@ func pluginConfig(manager *plugin.Manager, name string) map[string]interface{} {
 	return p.Manifest.Config
 }
 
-func (s *Server) startDefaultBuiltinPlugins(names ...string) {
+func (s *Server) startConfiguredPlugins() {
 	if s.manager == nil {
 		return
 	}
-	for _, name := range names {
-		p, ok := s.manager.GetPlugin(name)
-		if !ok || p == nil || p.Manifest == nil || p.Manifest.Runtime != "builtin" {
-			continue
-		}
-		if p.Status == plugin.StatusStopped {
-			log.Printf("🔌 内置插件保持禁用: %s", name)
-			continue
-		}
-		if err := s.manager.Start(name); err != nil {
-			log.Printf("⚠️  内置插件启动失败: %s (%v)", name, err)
-		}
-	}
+	s.manager.StartDesiredPlugins(plugin.ScopeSystem)
+	s.manager.StartDesiredPlugins(plugin.ScopeUser)
 }
 
 func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
@@ -594,6 +583,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/spaces/me/styles/default", spaceHandler.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", spaceHandler.GetSyncStatus)
 		authenticated.GET("/schedule/me", scheduleHandler.GetMe)
+		authenticated.GET("/schedule/me/terms", scheduleHandler.ListTerms)
+		authenticated.POST("/schedule/me/terms/activate", scheduleHandler.ActivateTerm)
 		authenticated.PUT("/schedule/me", scheduleHandler.SaveMe)
 		authenticated.POST("/schedule/me/import", scheduleHandler.ImportMe)
 		authenticated.POST("/richtext/articles", richTextHandler.CreateDraft)
@@ -646,6 +637,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.PUT("/plugins/:name/config", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UpdatePluginConfig)
 		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
 		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
+		admin.POST("/plugins/:name/reload", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ReloadUserPlugin)
 		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
 		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ImportPluginPackage)
 		admin.POST("/plugin-packages/precheck", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.PrecheckPluginPackage)

@@ -63,6 +63,31 @@ type ScheduleResponse struct {
 	Enabled  bool      `json:"enabled"`
 }
 
+type TermSummary struct {
+	TermYear       int       `json:"term_year"`
+	Semester       string    `json:"semester"`
+	FirstWeekStart string    `json:"first_week_start"`
+	CourseCount    int       `json:"course_count"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	Active         bool      `json:"active"`
+}
+
+type TermsResponse struct {
+	Items []TermSummary `json:"items"`
+}
+
+type ActivateTermRequest struct {
+	TermYear int    `json:"term_year"`
+	Semester string `json:"semester"`
+}
+
+type scheduleIndex struct {
+	UserID    string    `json:"user_id"`
+	TermYear  int       `json:"term_year"`
+	Semester  string    `json:"semester"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type StatusResult struct {
 	Enabled    bool   `json:"enabled"`
 	PluginName string `json:"plugin_name"`

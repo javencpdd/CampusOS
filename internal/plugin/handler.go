@@ -43,22 +43,9 @@ func NewHandler(manager *Manager, options ...HandlerOption) *Handler {
 // GET /api/v1/plugins
 func (h *Handler) ListPlugins(c *gin.Context) {
 	plugins := h.manager.ListPlugins()
-	items := make([]map[string]interface{}, 0, len(plugins))
+	items := make([]gin.H, 0, len(plugins))
 	for _, p := range plugins {
-		items = append(items, map[string]interface{}{
-			"id":           p.ID,
-			"name":         p.Manifest.Name,
-			"display_name": p.Manifest.DisplayName,
-			"version":      p.Manifest.Version,
-			"description":  p.Manifest.Description,
-			"author":       p.Manifest.Author,
-			"runtime":      p.Manifest.Runtime,
-			"status":       p.Status,
-			"error":        p.ErrorMsg,
-			"events":       p.Manifest.Events.Subscribe,
-			"checksum":     p.Checksum,
-			"package_size": p.PackageSize,
-		})
+		items = append(items, h.pluginPayload(p))
 	}
 	response.Success(c, gin.H{"items": items, "total": len(items)})
 }
@@ -72,24 +59,12 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 		response.Error(c, http.StatusNotFound, 60003, "plugin not found")
 		return
 	}
-	response.Success(c, gin.H{
-		"id":            p.ID,
-		"name":          p.Manifest.Name,
-		"display_name":  p.Manifest.DisplayName,
-		"version":       p.Manifest.Version,
-		"description":   p.Manifest.Description,
-		"author":        p.Manifest.Author,
-		"runtime":       p.Manifest.Runtime,
-		"status":        p.Status,
-		"error":         p.ErrorMsg,
-		"events":        p.Manifest.Events.Subscribe,
-		"permissions":   p.Manifest.Permissions,
-		"storage":       p.Manifest.Storage,
-		"config":        p.Manifest.Config,
-		"config_schema": p.Manifest.ConfigSchema,
-		"checksum":      p.Checksum,
-		"package_size":  p.PackageSize,
-	})
+	payload := h.pluginPayload(p)
+	payload["permissions"] = p.Manifest.Permissions
+	payload["storage"] = p.Manifest.Storage
+	payload["config"] = p.Manifest.Config
+	payload["config_schema"] = p.Manifest.ConfigSchema
+	response.Success(c, payload)
 }
 
 // UpdatePluginConfig 更新插件配置
@@ -143,22 +118,43 @@ func (h *Handler) ListPluginLogs(c *gin.Context) {
 // POST /api/v1/plugins/:name/enable
 func (h *Handler) EnablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if err := h.manager.Enable(name); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+	if err := h.manager.RequestEnable(name); err != nil {
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
-	response.Success(c, gin.H{"message": "plugin enabled", "name": name})
+	p, _ := h.manager.GetPlugin(name)
+	payload := h.pluginPayload(p)
+	payload["message"] = lifecycleMessage(payload, true)
+	response.Success(c, payload)
 }
 
 // DisablePlugin 禁用插件
 // POST /api/v1/plugins/:name/disable
 func (h *Handler) DisablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if err := h.manager.Stop(name); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+	if err := h.manager.RequestDisable(name); err != nil {
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
-	response.Success(c, gin.H{"message": "plugin disabled", "name": name})
+	p, _ := h.manager.GetPlugin(name)
+	payload := h.pluginPayload(p)
+	payload["message"] = lifecycleMessage(payload, false)
+	response.Success(c, payload)
+}
+
+// ReloadUserPlugin reloads changed user-level plugin code without restarting
+// the CampusOS API process.
+// POST /api/v1/plugins/:name/reload
+func (h *Handler) ReloadUserPlugin(c *gin.Context) {
+	name := c.Param("name")
+	if err := h.manager.ReloadUserPlugin(name); err != nil {
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
+		return
+	}
+	p, _ := h.manager.GetPlugin(name)
+	payload := h.pluginPayload(p)
+	payload["message"] = "user-level plugin loaded or reloaded"
+	response.Success(c, payload)
 }
 
 // UninstallPlugin 卸载插件
@@ -166,7 +162,7 @@ func (h *Handler) DisablePlugin(c *gin.Context) {
 func (h *Handler) UninstallPlugin(c *gin.Context) {
 	name := c.Param("name")
 	if err := h.manager.Uninstall(name); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
 	response.NoContent(c)
@@ -254,6 +250,9 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		"signature_status":  precheck.SignatureStatus,
 		"precheck_warnings": precheck.Warnings,
 	}
+	if precheck.Manifest != nil {
+		auditMetadata["scope"] = precheck.Manifest.Scope
+	}
 	if !precheck.Allowed {
 		auditMetadata["outcome"] = "precheck_failed"
 		auditMetadata["errors"] = precheck.Errors
@@ -280,17 +279,13 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		return
 	}
 	auditMetadata["outcome"] = "imported"
+	hotReloaded := replace && installed.Manifest.IsUserLevel() && installed.Status == StatusRunning
+	auditMetadata["hot_reloaded"] = hotReloaded
 	h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "info", "plugin package imported by admin", auditMetadata)
 
-	response.Success(c, gin.H{
-		"name":         installed.Manifest.Name,
-		"display_name": installed.Manifest.DisplayName,
-		"version":      installed.Manifest.Version,
-		"runtime":      installed.Manifest.Runtime,
-		"status":       installed.Status,
-		"checksum":     installed.Checksum,
-		"package_size": installed.PackageSize,
-	})
+	payload := h.pluginPayload(installed)
+	payload["hot_reloaded"] = hotReloaded
+	response.Success(c, payload)
 }
 
 // PrecheckPluginPackage 校验插件包并预览权限、文件和冲突
@@ -342,4 +337,52 @@ func currentActor(c *gin.Context) (string, string) {
 		}
 	}
 	return id, name
+}
+
+func (h *Handler) pluginPayload(p *Plugin) gin.H {
+	if p == nil || p.Manifest == nil {
+		return gin.H{}
+	}
+	state, _ := h.manager.LifecycleState(p.ID)
+	return gin.H{
+		"id":              p.ID,
+		"name":            p.Manifest.Name,
+		"display_name":    p.Manifest.DisplayName,
+		"version":         p.Manifest.Version,
+		"description":     p.Manifest.Description,
+		"author":          p.Manifest.Author,
+		"runtime":         p.Manifest.Runtime,
+		"scope":           state.Scope,
+		"activation_mode": state.ActivationMode,
+		"desired_enabled": state.DesiredEnabled,
+		"pending_restart": state.PendingRestart,
+		"status":          p.Status,
+		"error":           p.ErrorMsg,
+		"events":          p.Manifest.Events.Subscribe,
+		"checksum":        p.Checksum,
+		"package_size":    p.PackageSize,
+	}
+}
+
+func lifecycleMessage(payload gin.H, enabled bool) string {
+	if payload["activation_mode"] == "restart" {
+		if enabled {
+			return "system plugin enable staged; restart the API server to apply"
+		}
+		return "system plugin disable staged; restart the API server to apply"
+	}
+	if enabled {
+		return "user-level plugin loaded"
+	}
+	return "user-level plugin stopped"
+}
+
+func lifecycleErrorStatus(err error) int {
+	if strings.Contains(err.Error(), "not found") {
+		return http.StatusNotFound
+	}
+	if strings.Contains(err.Error(), "system-level") {
+		return http.StatusBadRequest
+	}
+	return http.StatusInternalServerError
 }

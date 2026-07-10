@@ -13,6 +13,7 @@ const router = createRouter({
     { path: '/admin/threads', redirect: '/threads' },
     { path: '/admin/categories', redirect: '/categories' },
     { path: '/admin/docs', redirect: '/docs' },
+    { path: '/admin/architecture', redirect: '/architecture' },
     { path: '/admin/plugins', redirect: '/plugins' },
     { path: '/admin/integrations', redirect: '/integrations' },
     { path: '/admin/reviews', redirect: '/reviews' },
@@ -52,6 +53,12 @@ const router = createRouter({
           name: 'DeveloperDocs',
           component: () => import('@/views/DeveloperDocsView.vue'),
           meta: { title: '说明文档' },
+        },
+        {
+          path: 'architecture',
+          name: 'SystemArchitecture',
+          component: () => import('@/views/SystemArchitectureView.vue'),
+          meta: { title: '数据架构' },
         },
         {
           path: 'plugins',

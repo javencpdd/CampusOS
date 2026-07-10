@@ -63,6 +63,35 @@ storage:
 	if manifest.Runtime != "builtin" {
 		t.Fatalf("expected builtin runtime, got %q", manifest.Runtime)
 	}
+	if manifest.Scope != ScopeSystem {
+		t.Fatalf("builtin plugin should default to system scope, got %q", manifest.Scope)
+	}
+}
+
+func TestParseManifestDefaultsExternalPluginsToUserScope(t *testing.T) {
+	manifest, err := ParseManifest([]byte(`
+name: user-extension
+version: "0.1.0"
+runtime: wasm
+`))
+	if err != nil {
+		t.Fatalf("parse user manifest: %v", err)
+	}
+	if manifest.Scope != ScopeUser {
+		t.Fatalf("external plugin should default to user scope, got %q", manifest.Scope)
+	}
+}
+
+func TestParseManifestRejectsInvalidScope(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+name: invalid-scope
+version: "0.1.0"
+runtime: wasm
+scope: tenant
+`))
+	if err == nil {
+		t.Fatal("expected invalid scope to be rejected")
+	}
 }
 
 func TestParseManifestRejectsDuplicateConfigSchemaKeys(t *testing.T) {

@@ -7,6 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	ScopeSystem = "system"
+	ScopeUser   = "user"
+)
+
 // Manifest 插件清单（plugin.yaml 的结构定义）
 type Manifest struct {
 	Name        string `yaml:"name" json:"name"`
@@ -15,6 +20,7 @@ type Manifest struct {
 	Description string `yaml:"description" json:"description"`
 	Author      string `yaml:"author" json:"author"`
 	Runtime     string `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
+	Scope       string `yaml:"scope" json:"scope"`     // system / user
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -108,10 +114,30 @@ func (m *Manifest) Validate() error {
 	if m.Runtime != "grpc" && m.Runtime != "wasm" && m.Runtime != "builtin" {
 		return fmt.Errorf("manifest: runtime must be 'grpc', 'wasm' or 'builtin', got '%s'", m.Runtime)
 	}
+	if m.Scope == "" {
+		if m.Runtime == "builtin" {
+			m.Scope = ScopeSystem
+		} else {
+			m.Scope = ScopeUser
+		}
+	}
+	if m.Scope != ScopeSystem && m.Scope != ScopeUser {
+		return fmt.Errorf("manifest: scope must be 'system' or 'user', got '%s'", m.Scope)
+	}
 	if err := m.validateConfigSchema(); err != nil {
 		return err
 	}
 	return nil
+}
+
+// IsSystemLevel reports whether lifecycle changes require a server restart.
+func (m *Manifest) IsSystemLevel() bool {
+	return m != nil && m.Scope == ScopeSystem
+}
+
+// IsUserLevel reports whether lifecycle changes can be applied at runtime.
+func (m *Manifest) IsUserLevel() bool {
+	return m != nil && m.Scope == ScopeUser
 }
 
 func (m *Manifest) validateConfigSchema() error {

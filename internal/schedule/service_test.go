@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -87,6 +88,142 @@ func TestScheduleDefaultsAndValidatesTerm(t *testing.T) {
 	})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected invalid semester error, got %v", err)
+	}
+}
+
+func TestTermsUseIndependentSemesterJSONFiles(t *testing.T) {
+	svc, err := NewService(Config{RootDir: t.TempDir(), QuotaBytes: 1024 * 1024})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	ctx := context.Background()
+	_, err = svc.Save(ctx, "1001", UpsertRequest{
+		TermYear:       2026,
+		Semester:       SemesterSpring,
+		FirstWeekStart: "2026-02-23",
+		Settings:       Settings{PeriodsPerDay: 12},
+		Courses: []Course{{
+			Name: "春季课程", Weekday: 1, StartPeriod: 1, EndPeriod: 2, Weeks: []int{1},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("save spring term: %v", err)
+	}
+	_, err = svc.Save(ctx, "1001", UpsertRequest{
+		TermYear:       2026,
+		Semester:       SemesterFall,
+		FirstWeekStart: "2026-09-07",
+		Settings:       Settings{PeriodsPerDay: 12},
+		Courses: []Course{{
+			Name: "秋季课程", Weekday: 2, StartPeriod: 3, EndPeriod: 4, Weeks: []int{1},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("save fall term: %v", err)
+	}
+
+	spring, err := svc.GetTerm(ctx, "1001", 2026, SemesterSpring)
+	if err != nil {
+		t.Fatalf("get spring term: %v", err)
+	}
+	if len(spring.Schedule.Courses) != 1 || spring.Schedule.Courses[0].Name != "春季课程" {
+		t.Fatalf("spring JSON was overwritten: %#v", spring.Schedule.Courses)
+	}
+	active, err := svc.Get(ctx, "1001")
+	if err != nil {
+		t.Fatalf("get active term: %v", err)
+	}
+	if active.Schedule.Semester != SemesterFall || active.Schedule.Courses[0].Name != "秋季课程" {
+		t.Fatalf("expected fall term to become active: %#v", active.Schedule)
+	}
+	terms, err := svc.ListTerms(ctx, "1001")
+	if err != nil {
+		t.Fatalf("list terms: %v", err)
+	}
+	if len(terms.Items) != 2 || !terms.Items[0].Active || terms.Items[0].Semester != SemesterFall {
+		t.Fatalf("unexpected term index: %#v", terms.Items)
+	}
+	for _, semester := range []string{SemesterSpring, SemesterFall} {
+		path, err := svc.termSchedulePath("1001", 2026, semester)
+		if err != nil {
+			t.Fatalf("term path: %v", err)
+		}
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("semester JSON missing at %s: %v", path, err)
+		}
+	}
+}
+
+func TestImportWritesIntoSelectedTermJSON(t *testing.T) {
+	svc, err := NewService(Config{RootDir: t.TempDir(), QuotaBytes: 1024 * 1024})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	csvData := []byte("课程名称,时间,开始周,结束周\n离散数学,星期三 上午3-上午4,1,16\n")
+	result, err := svc.Import(context.Background(), "1001", "spring.csv", int64(len(csvData)), csvData, true, 2028, SemesterSpring)
+	if err != nil {
+		t.Fatalf("import selected term: %v", err)
+	}
+	if result.Schedule.Schedule.TermYear != 2028 || result.Schedule.Schedule.Semester != SemesterSpring {
+		t.Fatalf("unexpected imported term: %#v", result.Schedule.Schedule)
+	}
+	if len(result.Schedule.Schedule.Courses) != 1 || result.Schedule.Schedule.Courses[0].Name != "离散数学" {
+		t.Fatalf("unexpected imported courses: %#v", result.Schedule.Schedule.Courses)
+	}
+	path, err := svc.termSchedulePath("1001", 2028, SemesterSpring)
+	if err != nil {
+		t.Fatalf("term path: %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("selected term JSON missing: %v", err)
+	}
+}
+
+func TestLegacyScheduleMigratesToTermJSON(t *testing.T) {
+	svc, err := NewService(Config{RootDir: t.TempDir(), QuotaBytes: 1024 * 1024})
+	if err != nil {
+		t.Fatalf("new service: %v", err)
+	}
+	legacy := &Schedule{
+		UserID:         "1001",
+		TermYear:       2025,
+		Semester:       SemesterFall,
+		FirstWeekStart: "2025-09-01",
+		Settings:       Settings{PeriodsPerDay: 12},
+		Courses:        []Course{},
+		UpdatedAt:      time.Now().UTC(),
+	}
+	raw, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatalf("marshal legacy schedule: %v", err)
+	}
+	legacyPath, err := svc.legacySchedulePath("1001")
+	if err != nil {
+		t.Fatalf("legacy path: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("create legacy directory: %v", err)
+	}
+	if err := os.WriteFile(legacyPath, raw, 0o644); err != nil {
+		t.Fatalf("write legacy schedule: %v", err)
+	}
+
+	got, err := svc.Get(context.Background(), "1001")
+	if err != nil {
+		t.Fatalf("get migrated schedule: %v", err)
+	}
+	if got.Schedule.TermYear != 2025 || got.Schedule.Semester != SemesterFall {
+		t.Fatalf("unexpected migrated term: %#v", got.Schedule)
+	}
+	termPath, err := svc.termSchedulePath("1001", 2025, SemesterFall)
+	if err != nil {
+		t.Fatalf("term path: %v", err)
+	}
+	if _, err := os.Stat(termPath); err != nil {
+		t.Fatalf("migrated term JSON missing: %v", err)
+	}
+	if _, err := os.Stat(legacyPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("legacy JSON should be removed after migration, got %v", err)
 	}
 }
 

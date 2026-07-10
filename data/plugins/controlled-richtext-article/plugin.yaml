@@ -4,6 +4,7 @@ version: "0.1.0"
 description: "CampusOS built-in controlled richtext article plugin for image-text threads, drafts, previews, publishing, and safe rendering"
 author: "CampusOS Team"
 runtime: builtin
+scope: system
 
 events:
   subscribe:

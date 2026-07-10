@@ -32,6 +32,10 @@
             <el-icon><Reading /></el-icon>
             <span>说明文档</span>
           </el-menu-item>
+          <el-menu-item index="/architecture">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>数据架构</span>
+          </el-menu-item>
           <el-menu-item index="/plugins">
             <el-icon><Connection /></el-icon>
             <span>插件管理</span>
@@ -114,6 +118,7 @@ const currentPageTitle = computed(() => {
     '/threads': '帖子管理',
     '/categories': '版块管理',
     '/docs': '说明文档',
+    '/architecture': '数据架构',
     '/plugins': '插件管理',
     '/integrations': '集成中心',
     '/reviews': '帖子审核',

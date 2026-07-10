@@ -164,6 +164,109 @@ runtime: wasm
 	}
 }
 
+func TestSystemPluginLifecycleStagesChangesUntilRestart(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: system-contract
+version: "0.1.0"
+runtime: wasm
+scope: system
+`)
+
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install system plugin: %v", err)
+	}
+	manager.StartDesiredPlugins(ScopeSystem)
+	if len(runtime.started) != 1 {
+		t.Fatalf("expected startup to start system plugin, got %#v", runtime.started)
+	}
+
+	if err := manager.RequestDisable("system-contract"); err != nil {
+		t.Fatalf("stage system plugin disable: %v", err)
+	}
+	if len(runtime.stopped) != 0 {
+		t.Fatalf("system plugin should keep running until restart, got stops %#v", runtime.stopped)
+	}
+	state, ok := manager.LifecycleState("system-contract")
+	if !ok || state.DesiredEnabled || !state.PendingRestart || state.ActivationMode != "restart" {
+		t.Fatalf("unexpected staged disable state: %#v", state)
+	}
+	record, err := repo.GetByName(context.Background(), "system-contract")
+	if err != nil {
+		t.Fatalf("get staged system record: %v", err)
+	}
+	if record.Status != string(StatusStopped) {
+		t.Fatalf("expected disabled target state to persist, got %q", record.Status)
+	}
+
+	nextManager := NewManager()
+	nextRuntime := newFakeRuntime()
+	nextManager.SetPluginRepository(repo)
+	nextManager.RegisterRuntime("wasm", nextRuntime)
+	if _, err := nextManager.Install(dir); err != nil {
+		t.Fatalf("install after staged disable: %v", err)
+	}
+	nextManager.StartDesiredPlugins(ScopeSystem)
+	if len(nextRuntime.started) != 0 {
+		t.Fatalf("disabled system plugin should stay stopped after restart, got %#v", nextRuntime.started)
+	}
+	if err := nextManager.RequestEnable("system-contract"); err != nil {
+		t.Fatalf("stage system plugin enable: %v", err)
+	}
+	state, ok = nextManager.LifecycleState("system-contract")
+	if !ok || !state.DesiredEnabled || !state.PendingRestart {
+		t.Fatalf("unexpected staged enable state: %#v", state)
+	}
+
+	finalManager := NewManager()
+	finalRuntime := newFakeRuntime()
+	finalManager.SetPluginRepository(repo)
+	finalManager.RegisterRuntime("wasm", finalRuntime)
+	if _, err := finalManager.Install(dir); err != nil {
+		t.Fatalf("install after staged enable: %v", err)
+	}
+	finalManager.StartDesiredPlugins(ScopeSystem)
+	if len(finalRuntime.started) != 1 {
+		t.Fatalf("enabled system plugin should start after restart, got %#v", finalRuntime.started)
+	}
+}
+
+func TestUserPluginReloadsWithoutRestart(t *testing.T) {
+	dir := writePluginManifest(t, `
+name: user-contract
+version: "0.1.0"
+runtime: wasm
+scope: user
+`)
+
+	manager := NewManager()
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatalf("install user plugin: %v", err)
+	}
+	if err := manager.ReloadUserPlugin("user-contract"); err != nil {
+		t.Fatalf("load user plugin: %v", err)
+	}
+	if len(runtime.started) != 1 || len(runtime.stopped) != 0 {
+		t.Fatalf("unexpected first user load: starts=%#v stops=%#v", runtime.started, runtime.stopped)
+	}
+	if err := manager.ReloadUserPlugin("user-contract"); err != nil {
+		t.Fatalf("reload user plugin: %v", err)
+	}
+	if len(runtime.started) != 2 || len(runtime.stopped) != 1 {
+		t.Fatalf("expected runtime restart for user reload: starts=%#v stops=%#v", runtime.started, runtime.stopped)
+	}
+	state, ok := manager.LifecycleState("user-contract")
+	if !ok || !state.DesiredEnabled || state.PendingRestart || state.ActivationMode != "hot" {
+		t.Fatalf("unexpected user lifecycle state: %#v", state)
+	}
+}
+
 func TestManagerUpdateConfigUsesSchemaAndPersists(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: configurable-plugin

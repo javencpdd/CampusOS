@@ -103,6 +103,40 @@ func TestManagerImportPackageReplaceAndExport(t *testing.T) {
 	}
 }
 
+func TestManagerImportPackageHotUpdatesLoadedUserPlugin(t *testing.T) {
+	sourceV1 := writePackablePlugin(t, t.TempDir(), "hot-update", "0.1.0")
+	sourceV2 := writePackablePlugin(t, t.TempDir(), "hot-update", "0.2.0")
+	packageV1 := filepath.Join(t.TempDir(), "hot-update-v1.campusos-plugin.tar.gz")
+	packageV2 := filepath.Join(t.TempDir(), "hot-update-v2.campusos-plugin.tar.gz")
+	if _, err := PackagePlugin(sourceV1, packageV1); err != nil {
+		t.Fatalf("package v1: %v", err)
+	}
+	if _, err := PackagePlugin(sourceV2, packageV2); err != nil {
+		t.Fatalf("package v2: %v", err)
+	}
+
+	manager := NewManager()
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+	installDir := t.TempDir()
+	if _, err := manager.ImportPackage(packageV1, installDir, false); err != nil {
+		t.Fatalf("import v1: %v", err)
+	}
+	if err := manager.ReloadUserPlugin("hot-update"); err != nil {
+		t.Fatalf("load v1: %v", err)
+	}
+	installed, err := manager.ImportPackage(packageV2, installDir, true)
+	if err != nil {
+		t.Fatalf("hot update v2: %v", err)
+	}
+	if installed.Manifest.Version != "0.2.0" || installed.Status != StatusRunning {
+		t.Fatalf("expected running v2 plugin, got %#v", installed)
+	}
+	if len(runtime.started) != 2 || len(runtime.stopped) != 1 {
+		t.Fatalf("expected one runtime restart during update: starts=%#v stops=%#v", runtime.started, runtime.stopped)
+	}
+}
+
 func TestPrecheckPluginPackageReportsRiskAndVersionChange(t *testing.T) {
 	installDir := t.TempDir()
 	installed := writePackablePlugin(t, installDir, "governed", "0.2.0")
@@ -130,6 +164,30 @@ func TestPrecheckPluginPackageReportsRiskAndVersionChange(t *testing.T) {
 	}
 	if precheck.SignatureStatus != "unsigned" {
 		t.Fatalf("expected unsigned package, got %q", precheck.SignatureStatus)
+	}
+}
+
+func TestPrecheckPluginPackageRejectsSystemScope(t *testing.T) {
+	sourceDir := writePackablePlugin(t, t.TempDir(), "system-package", "0.1.0")
+	manifestPath := filepath.Join(sourceDir, "plugin.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	if err := os.WriteFile(manifestPath, append(manifest, []byte("\nscope: system\n")...), 0o644); err != nil {
+		t.Fatalf("write system manifest: %v", err)
+	}
+	packagePath := filepath.Join(t.TempDir(), "system-package.campusos-plugin.tar.gz")
+	if _, err := PackagePlugin(sourceDir, packagePath); err != nil {
+		t.Fatalf("package system plugin: %v", err)
+	}
+
+	precheck, err := PrecheckPluginPackage(packagePath, t.TempDir())
+	if err != nil {
+		t.Fatalf("precheck system plugin: %v", err)
+	}
+	if precheck.Allowed || precheck.Manifest == nil || precheck.Manifest.Scope != ScopeSystem {
+		t.Fatalf("expected system plugin package to be rejected, got %#v", precheck)
 	}
 }
 

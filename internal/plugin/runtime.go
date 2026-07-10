@@ -15,14 +15,23 @@ const (
 
 // Plugin 插件实例
 type Plugin struct {
-	ID          string       `json:"id"`
-	Manifest    *Manifest    `json:"manifest"`
-	Status      PluginStatus `json:"status"`
-	ErrorMsg    string       `json:"error_message,omitempty"`
-	Directory   string       `json:"directory"`
-	InstalledBy string       `json:"installed_by"`
-	Checksum    string       `json:"checksum,omitempty"`
-	PackageSize int64        `json:"package_size,omitempty"`
+	ID             string       `json:"id"`
+	Manifest       *Manifest    `json:"manifest"`
+	Status         PluginStatus `json:"status"`
+	DesiredEnabled bool         `json:"desired_enabled"`
+	ErrorMsg       string       `json:"error_message,omitempty"`
+	Directory      string       `json:"directory"`
+	InstalledBy    string       `json:"installed_by"`
+	Checksum       string       `json:"checksum,omitempty"`
+	PackageSize    int64        `json:"package_size,omitempty"`
+}
+
+// LifecycleState is the frontend-safe lifecycle view for one plugin.
+type LifecycleState struct {
+	Scope          string `json:"scope"`
+	ActivationMode string `json:"activation_mode"`
+	DesiredEnabled bool   `json:"desired_enabled"`
+	PendingRestart bool   `json:"pending_restart"`
 }
 
 // EventMessage 传递给插件的事件消息

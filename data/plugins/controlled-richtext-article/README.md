@@ -2,6 +2,10 @@
 
 `controlled-richtext-article` is a built-in CampusOS plugin that turns new user threads into controlled image-text articles when enabled.
 
+## Lifecycle
+
+This is a `scope: system` plugin. Its enabled state is applied when the CampusOS API service restarts; Admin shows a pending-restart state after changing the switch.
+
 It keeps `threads` as the top-level community record and stores rich content in:
 
 ```text

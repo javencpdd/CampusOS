@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.28-dev.md`.
+Current README and progress docs state that `v0.5-dev` has completed through `docs/进度/v0.5-dev/v0.5.33-dev.md`.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and careful planning for the next version stage. Do not present v0.6 or later ideas as already implemented.
 
@@ -25,16 +25,16 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | Area | Current state |
 | --- | --- |
 | User frontend `web/` | Registration, login, configurable homepage with safe custom HTML, thread list/detail, plain-thread create/edit/delete/private visibility, unsaved edit prompts, richtext article editor/drafts/preview/publish, replies, personal space, personal schedule, style packages |
-| Admin frontend `admin/` | Users, threads/private status filters, richtext article governance, categories/default tags, plugin config/import/export/lifecycle/logs/risk precheck, developer docs, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
+| Admin frontend `admin/` | Users, threads/private status filters, richtext article governance, categories/default tags, system/user plugin lifecycle, config/import/export/logs/risk precheck, developer docs, migration-synchronized data architecture visualization, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
 | Backend API | Go + Gin + pgx APIs for auth, RBAC, community, private-thread visibility, controlled richtext articles, spaces, personal schedule, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
 | Database | PostgreSQL migrations `000001` through `000013`; migration state recorded in `schema_migrations` |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
 | One-click dev startup | `make dev-all` -> `scripts/start-dev.sh` |
-| Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV |
+| Plugin runtime | gRPC runtime framework, Wasm runtime through wazero, built-in runtime, Host API, plugin logs, plugin KV, system-level restart lifecycle, and user-level hot loading/reloading |
 | Plugin package governance | `campusosctl plugin init/inspect/pack/install`, admin import/export/config, precheck, checksum, package size, risk grading, version comparison, import audit, and manual rollback docs |
 | Controlled richtext articles | Built-in `controlled-richtext-article` plugin for image-text drafts, edit, image upload, HTML sanitization, preview, publish, details, author operations, and admin governance; images live at `data/personal-space/<user_id>/img/richtext/` and share the personal-space quota |
 | Personal spaces | Public user pages, thread/content sync, JSON style import/export/preview/apply, standard folder/zip page style packs, source-folder style-pack list/apply, safe custom HTML/CSS snippets, rollback, restore default, and per-user local storage at `data/personal-space/<user_id>/`; gated by `personal-space` plugin status |
-| Personal schedule | Built-in `personal-schedule` plugin for year and spring/fall term selection, first-week setup, week timetable and past/future calendar browsing, manual course editing, raw JSON editing, `.xls`/`.csv`/`.json` import, and JSON storage at `file/schedule/schedule.json` in the personal-space directory |
+| Personal schedule | Built-in `personal-schedule` plugin for independent year+spring/fall semester JSON schedules, saved-term selection/new term creation, first-week setup, week timetable and past/future calendar browsing, manual course editing, raw JSON editing, and targeted `.xls`/`.csv`/`.json` import; data is stored below `file/schedule/terms/<year>-<semester>.json` with `file/schedule/index.json` for the active term |
 | Homepage customizer | Built-in `homepage-customizer` plugin controls the user homepage hero, category quick filter tags, safe custom HTML/CSS snippets, standard folder/zip homepage style packs, admin source-folder style-pack selection, and one-step rollback through plugin config |
 | Platform logs | Admin-only fixed-source SSE log reader for `.campusos/logs/api.log`, `web.log`, and `admin.log` |
 | AI Gateway | OpenAI-compatible provider, config, rate limiting, call logs; AI content moderation plugin is deferred |
@@ -52,7 +52,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | v0.2 | User/admin frontend split, RBAC tables, plugin tables, API key, cache layer, admin UI, CI/CD, PR template |
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
-| v0.5-dev | Integration center, personal space operations, per-user personal-space file storage/plugin gate, personal schedule plugin with term/calendar browsing, richtext images in personal space, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, ordinary plain-thread edit/delete/private visibility, category default tags, platform logs, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
+| v0.5-dev | Integration center, personal space operations, per-user personal-space file storage/plugin gate, personal schedule plugin with term/calendar browsing, richtext images in personal space, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, ordinary plain-thread edit/delete/private visibility, category default tags, platform logs, system/user plugin lifecycle, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
 
 ## 4. Current Migrations
 
@@ -109,6 +109,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 | `data/plugins/personal-schedule/` | Built-in personal schedule plugin manifest and README |
 | `sdk/go/` | Go plugin SDK |
 | `skills/` | Project-local Codex skills |
+| `skills/campusos-data-architecture-sync/` | Sync workflow and checker for migrations, system schema table, storage boundaries, and Admin `/architecture` view |
 
 ## 6. Run Commands
 
@@ -152,9 +153,16 @@ The next recommended work mode is defect fixing, smoke-driven regression, and ca
 
 | Document | Use |
 | --- | --- |
-| `README.md` | Current repository overview and commands |
+| `README.md` | Concise current repository baseline, quick start, and documentation entry |
+| `docs/README.md` | Documentation portal for operations, architecture, API, plugins, plans, and progress |
 | `docs/项目计划v5/00-v5版本计划书.md` | v0.5 original plan and boundaries |
-| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.28-dev |
+| `docs/项目计划v5/01-v5版本计划书第二版.md` | v0.5 current baseline and follow-up plan after v0.5.33-dev |
+| `docs/help/skills相关/CampusOS-数据架构同步Skill使用说明.md` | When and how to synchronize the Admin schema visualization |
+| `docs/项目计划v6/00-v1-v5计划审查.md` | Strict historical-plan audit: completed, partial, and deferred work |
+| `docs/项目计划v6/01-v6版本计划书.md` | Planned v0.6-dev contract, recovery, plugin trust, and external-boundary work |
+| `docs/help/系统设计相关/开发运行与验证指南.md` | Local startup, test/build commands, and contribution helper scripts |
+| `docs/api/API索引.md` | Current API groups, schedule API, and contract-documentation boundary |
+| `docs/help/插件相关/插件分级与生命周期说明.md` | System/user plugin scope, lifecycle, and admin operation guide |
 | `docs/help/系统设计相关/接口协议适配器标准说明.md` | Discord/OneBot-style protocol adapter design |
 | `docs/help/系统设计相关/v0.5回归Smoke测试说明.md` | v0.5 read-only/write smoke usage |
 | `docs/help/系统设计相关/插件包治理与回滚说明.md` | Plugin package risk precheck, audit, rollback, and signature pre-research |
