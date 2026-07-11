@@ -52,6 +52,14 @@ export const roleApi = {
     api.delete(`/users/${userId}/roles`, { data: { role_id: roleId } }),
 }
 
+export const moderationApi = {
+  list: () => api.get('/moderation/admin/moderators'),
+  get: (userId: string) => api.get(`/moderation/admin/moderators/${userId}`),
+  update: (userId: string, categoryIds: string[]) =>
+    api.put(`/moderation/admin/moderators/${userId}`, { category_ids: categoryIds }),
+  status: () => api.get('/moderation/status'),
+}
+
 // 帖子管理 API
 export const threadApi = {
   list: (params?: {
@@ -135,6 +143,8 @@ export const pluginApi = {
   enable: (name: string) => api.post(`/plugins/${name}/enable`),
   disable: (name: string) => api.post(`/plugins/${name}/disable`),
   reload: (name: string) => api.post(`/plugins/${name}/reload`),
+  snapshots: (name: string) => api.get(`/plugins/${name}/snapshots`),
+  rollback: (name: string, snapshotId: string) => api.post(`/plugins/${name}/rollback`, { snapshot_id: snapshotId }),
   updateConfig: (name: string, config: Record<string, any>) => api.put(`/plugins/${name}/config`, config),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
 }

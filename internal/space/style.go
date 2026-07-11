@@ -66,7 +66,9 @@ type StyleManifest struct {
 	CustomHTMLEnabled  bool              `json:"custom_html_enabled,omitempty"`
 	CustomHTML         string            `json:"custom_html,omitempty"`
 	CustomCSS          string            `json:"custom_css,omitempty"`
+	CustomEffectJS     string            `json:"custom_effect_js,omitempty"`
 	SourceStylePack    *StylePackRef     `json:"source_style_pack,omitempty"`
+	Capabilities       []string          `json:"capabilities,omitempty"`
 }
 
 type StylePackRef struct {
@@ -132,6 +134,8 @@ func NormalizeStyleManifest(manifest StyleManifest) StyleManifest {
 	normalized.Assets = normalizeAssets(normalized.Assets)
 	normalized.CustomHTML = strings.TrimSpace(normalized.CustomHTML)
 	normalized.CustomCSS = strings.TrimSpace(normalized.CustomCSS)
+	normalized.CustomEffectJS = strings.TrimSpace(normalized.CustomEffectJS)
+	normalized.Capabilities = normalizeList(normalized.Capabilities, 12)
 	if normalized.SourceStylePack != nil {
 		normalized.SourceStylePack.Name = strings.TrimSpace(normalized.SourceStylePack.Name)
 		normalized.SourceStylePack.Version = strings.TrimSpace(normalized.SourceStylePack.Version)
@@ -321,7 +325,9 @@ func (v *styleValidator) validateManifest(manifest StyleManifest) {
 	for i, asset := range manifest.Assets {
 		v.validateAsset(i, asset)
 	}
+	v.validateCapabilities(manifest.Capabilities)
 	v.validateCustomHTML(manifest)
+	v.validateCustomEffect(manifest)
 	if len(manifest.CompatibleCampusOS) == 0 {
 		v.addWarning("manifest.compatible_campusos is empty; imports will assume current v0.4 compatibility")
 	}
@@ -407,6 +413,9 @@ func (v *styleValidator) validateAsset(index int, asset StyleAsset) {
 func (v *styleValidator) validateCustomHTML(manifest StyleManifest) {
 	if strings.TrimSpace(manifest.CustomCSS) != "" {
 		cssResult := stylepack.ValidateCSS(manifest.CustomCSS)
+		if cssResult.Valid {
+			cssResult = stylepack.ValidateCSSScope(stylepack.TargetPersonalSpace, manifest.CustomCSS)
+		}
 		for _, message := range cssResult.Errors {
 			v.addError("manifest.custom_css: " + message)
 		}
@@ -432,6 +441,32 @@ func (v *styleValidator) validateCustomHTML(manifest StyleManifest) {
 	}
 	if !manifest.CustomHTMLEnabled {
 		v.addWarning("manifest.custom_html is present but custom_html_enabled is false; it will not be rendered")
+	}
+}
+
+func (v *styleValidator) validateCapabilities(capabilities []string) {
+	allowed := map[string]struct{}{
+		"space.profile.read": {},
+		"space.posts.read":   {},
+		"schedule.me.read":   {},
+	}
+	for _, capability := range capabilities {
+		if _, ok := allowed[capability]; !ok {
+			v.addError(fmt.Sprintf("manifest.capabilities contains unsupported personal-space capability %q", capability))
+		}
+	}
+}
+
+func (v *styleValidator) validateCustomEffect(manifest StyleManifest) {
+	if strings.TrimSpace(manifest.CustomEffectJS) == "" {
+		return
+	}
+	result := stylepack.ValidateEffectScript(manifest.CustomEffectJS)
+	for _, message := range result.Errors {
+		v.addError("manifest.custom_effect_js: " + message)
+	}
+	for _, message := range result.Warnings {
+		v.addWarning("manifest.custom_effect_js: " + message)
 	}
 }
 

@@ -30,10 +30,10 @@ type CreateCategoryRequest struct {
 }
 
 type UpdateCategoryRequest struct {
-	Name        *string  `json:"name,omitempty"`
-	Slug        *string  `json:"slug,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Icon        *string  `json:"icon,omitempty"`
+	Name        *string  `json:"name,omitempty" binding:"omitempty,min=1,max=64"`
+	Slug        *string  `json:"slug,omitempty" binding:"omitempty,min=1,max=64"`
+	Description *string  `json:"description,omitempty" binding:"omitempty,max=500"`
+	Icon        *string  `json:"icon,omitempty" binding:"omitempty,max=512"`
 	DefaultTags []string `json:"default_tags,omitempty"`
 	ParentID    *string  `json:"parent_id,omitempty"`
 	IsClosed    *bool    `json:"is_closed,omitempty"`

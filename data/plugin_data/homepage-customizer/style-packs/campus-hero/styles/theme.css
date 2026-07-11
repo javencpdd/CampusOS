@@ -1,37 +1,37 @@
-.cstyle-page {
+.home[data-campusos-home] .cstyle-page {
   padding: 24px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
 }
-.cstyle-hero {
+.home[data-campusos-home] .cstyle-hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
-.cstyle-hero h2 {
+.home[data-campusos-home] .cstyle-hero h2 {
   margin: 0;
   color: #2563eb;
 }
-.cstyle-hero p {
+.home[data-campusos-home] .cstyle-hero p {
   margin: 8px 0 0;
   color: #475569;
   line-height: 1.7;
 }
-.cstyle-badge {
+.home[data-campusos-home] .cstyle-badge {
   padding: 6px 10px;
   border-radius: 999px;
   background: #f8fafc;
   color: #2563eb;
 }
-.cstyle-grid {
+.home[data-campusos-home] .cstyle-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-top: 18px;
 }
-.cstyle-grid article {
+.home[data-campusos-home] .cstyle-grid article {
   padding: 16px;
   border-radius: 8px;
   background: #f8fafc;

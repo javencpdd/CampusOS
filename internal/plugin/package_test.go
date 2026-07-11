@@ -221,6 +221,31 @@ func TestExtractPluginPackageRejectsUnsafeArchivePath(t *testing.T) {
 	}
 }
 
+func TestPluginVersionSnapshotIsPortableAndTamperChecked(t *testing.T) {
+	source := writePackablePlugin(t, t.TempDir(), "snapshot-plugin", "0.2.0")
+	dataDir := t.TempDir()
+	snapshot, err := CreatePluginSnapshot(source, dataDir, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.IsAbs(snapshot.PackagePath) {
+		t.Fatalf("metadata package path must be portable, got %q", snapshot.PackagePath)
+	}
+	items, err := ListPluginSnapshots("snapshot-plugin", dataDir)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("expected one verified snapshot, items=%#v err=%v", items, err)
+	}
+	if !filepath.IsAbs(items[0].PackagePath) {
+		t.Fatalf("runtime snapshot path should be resolved, got %q", items[0].PackagePath)
+	}
+	if err := os.WriteFile(items[0].PackagePath, []byte("tampered"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ListPluginSnapshots("snapshot-plugin", dataDir); err == nil || !strings.Contains(err.Error(), "checksum") {
+		t.Fatalf("expected tampered snapshot rejection, got %v", err)
+	}
+}
+
 func writePackablePlugin(t *testing.T, root, name, version string) string {
 	t.Helper()
 	sourceDir := filepath.Join(root, name+"-"+version)

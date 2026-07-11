@@ -19,6 +19,7 @@ fi
 SERVER_PORT="${SERVER_PORT:-8080}"
 WEB_PORT="${WEB_PORT:-3000}"
 ADMIN_PORT="${ADMIN_PORT:-3001}"
+DOCS_PORT="${DOCS_PORT:-3002}"
 
 mkdir -p "$LOG_DIR"
 
@@ -108,6 +109,7 @@ require_cmd curl
 ensure_port_free "$SERVER_PORT" "api"
 ensure_port_free "$WEB_PORT" "web"
 ensure_port_free "$ADMIN_PORT" "admin"
+ensure_port_free "$DOCS_PORT" "docs"
 
 if [[ "$SKIP_INFRA" != "true" ]]; then
   echo "==> starting Docker infrastructure"
@@ -122,22 +124,26 @@ fi
 start_service api "$ROOT_DIR" go run ./cmd/server/main.go
 start_service web "$ROOT_DIR/web" pnpm dev --host 0.0.0.0 --port "$WEB_PORT"
 start_service admin "$ROOT_DIR/admin" pnpm dev --host 0.0.0.0 --port "$ADMIN_PORT"
+start_service docs "$ROOT_DIR/docs-site" pnpm exec vitepress dev --host 0.0.0.0 --port "$DOCS_PORT"
 
 wait_for_url "api" "http://localhost:$SERVER_PORT/api/v1/health" 40
 wait_for_url "web" "http://localhost:$WEB_PORT/" 30
 wait_for_url "admin" "http://localhost:$ADMIN_PORT/" 30
+wait_for_url "docs" "http://localhost:$DOCS_PORT/" 30
 
 cat <<EOF
 
 CampusOS dev services are running:
   web:   http://localhost:$WEB_PORT
   admin: http://localhost:$ADMIN_PORT
+  docs:  http://localhost:$DOCS_PORT
   api:   http://localhost:$SERVER_PORT/api/v1
 
 Logs:
   api:   $LOG_DIR/api.log
   web:   $LOG_DIR/web.log
   admin: $LOG_DIR/admin.log
+  docs:  $LOG_DIR/docs.log
 
 Press Ctrl+C to stop all services.
 EOF

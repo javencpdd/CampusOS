@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,12 +14,25 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 const (
 	DefaultPluginsDir      = "data/plugins"
+	DefaultPluginDataDir   = "data/plugin_data"
 	PluginPackageExtension = ".campusos-plugin.tar.gz"
 )
+
+type VersionSnapshot struct {
+	ID          string    `json:"id"`
+	PluginName  string    `json:"plugin_name"`
+	Version     string    `json:"version"`
+	Checksum    string    `json:"checksum"`
+	PackageSize int64     `json:"package_size"`
+	Source      string    `json:"source"`
+	CreatedAt   time.Time `json:"created_at"`
+	PackagePath string    `json:"package_path,omitempty"`
+}
 
 type PackageInfo struct {
 	Manifest    *Manifest `json:"manifest"`
@@ -55,6 +69,117 @@ func PluginsDirFromEnv() string {
 		return dir
 	}
 	return DefaultPluginsDir
+}
+
+func PluginDataDirFromEnv() string {
+	if dir := os.Getenv("PLUGIN_DATA_DIR"); dir != "" {
+		return dir
+	}
+	return DefaultPluginDataDir
+}
+
+func CreatePluginSnapshot(pluginDir, pluginDataDir, source string) (*VersionSnapshot, error) {
+	manifest, err := ValidatePluginPackageDir(pluginDir)
+	if err != nil {
+		return nil, err
+	}
+	if pluginDataDir == "" {
+		pluginDataDir = PluginDataDirFromEnv()
+	}
+	id := time.Now().UTC().Format("20060102T150405.000000000Z")
+	snapshotDir := filepath.Join(pluginDataDir, manifest.Name, "version-snapshots", id)
+	if err := os.MkdirAll(snapshotDir, 0o750); err != nil {
+		return nil, err
+	}
+	packagePath := filepath.Join(snapshotDir, manifest.Name+"-"+manifest.Version+PluginPackageExtension)
+	info, err := PackagePlugin(pluginDir, packagePath)
+	if err != nil {
+		_ = os.RemoveAll(snapshotDir)
+		return nil, err
+	}
+	metadata := &VersionSnapshot{
+		ID: id, PluginName: manifest.Name, Version: manifest.Version,
+		Checksum: info.Checksum, PackageSize: info.PackageSize, Source: source,
+		CreatedAt: time.Now().UTC(), PackagePath: filepath.Base(packagePath),
+	}
+	data, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(snapshotDir, "metadata.json"), append(data, '\n'), 0o640); err != nil {
+		return nil, err
+	}
+	return metadata, nil
+}
+
+func ListPluginSnapshots(pluginName, pluginDataDir string) ([]VersionSnapshot, error) {
+	if err := ValidatePluginName(pluginName); err != nil {
+		return nil, err
+	}
+	if pluginDataDir == "" {
+		pluginDataDir = PluginDataDirFromEnv()
+	}
+	root := filepath.Join(pluginDataDir, pluginName, "version-snapshots")
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return []VersionSnapshot{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	result := make([]VersionSnapshot, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, entry.Name(), "metadata.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read snapshot %s metadata: %w", entry.Name(), err)
+		}
+		var snapshot VersionSnapshot
+		if err := json.Unmarshal(data, &snapshot); err != nil {
+			return nil, fmt.Errorf("decode snapshot %s metadata: %w", entry.Name(), err)
+		}
+		if snapshot.PluginName != pluginName || snapshot.ID != entry.Name() {
+			return nil, fmt.Errorf("snapshot %s metadata identity mismatch", entry.Name())
+		}
+		if snapshot.PackagePath == "" {
+			return nil, fmt.Errorf("snapshot %s has no package path", entry.Name())
+		}
+		snapshotRoot := filepath.Join(root, entry.Name())
+		packagePath := snapshot.PackagePath
+		if !filepath.IsAbs(packagePath) {
+			packagePath = filepath.Join(snapshotRoot, packagePath)
+		}
+		relPackage, err := filepath.Rel(snapshotRoot, packagePath)
+		if err != nil || relPackage == ".." || strings.HasPrefix(relPackage, ".."+string(filepath.Separator)) {
+			return nil, fmt.Errorf("snapshot %s package path escapes its snapshot directory", entry.Name())
+		}
+		checksum, size, err := FileSHA256(packagePath)
+		if err != nil {
+			return nil, fmt.Errorf("verify snapshot %s: %w", entry.Name(), err)
+		}
+		if checksum != snapshot.Checksum || size != snapshot.PackageSize {
+			return nil, fmt.Errorf("snapshot %s checksum or size mismatch", entry.Name())
+		}
+		snapshot.PackagePath = packagePath
+		result = append(result, snapshot)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].CreatedAt.After(result[j].CreatedAt) })
+	return result, nil
+}
+
+func FindPluginSnapshot(pluginName, snapshotID, pluginDataDir string) (*VersionSnapshot, error) {
+	snapshots, err := ListPluginSnapshots(pluginName, pluginDataDir)
+	if err != nil {
+		return nil, err
+	}
+	for i := range snapshots {
+		if snapshots[i].ID == snapshotID {
+			return &snapshots[i], nil
+		}
+	}
+	return nil, fmt.Errorf("snapshot %q not found for plugin %q", snapshotID, pluginName)
 }
 
 func PackagePlugin(pluginDir, outputPath string) (*PackageInfo, error) {
@@ -200,6 +325,14 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 	if manifest.IsSystemLevel() {
 		result.Allowed = false
 		result.Errors = append(result.Errors, "system-level plugins must be deployed with server code and take effect after restart")
+	}
+	for _, permission := range manifest.Permissions.API {
+		for _, action := range permission.Actions {
+			if !IsKnownPermission(permission.Resource, action) {
+				result.Allowed = false
+				result.Errors = append(result.Errors, fmt.Sprintf("permission %s/%s is not in the Host API v1 catalog", permission.Resource, action))
+			}
+		}
 	}
 
 	targetDir, err := pluginTargetDir(pluginsDir, manifest.Name)

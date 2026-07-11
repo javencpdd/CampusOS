@@ -1,4 +1,4 @@
 interface:
   display_name: "CampusOS README Update"
-  short_description: "Update CampusOS README from plans, progress, code, and docs"
-  default_prompt: "Use $campusos-readme-update to refresh CampusOS README based on current project state, docs, and validation results."
+  short_description: "Keep README concise and route details into CampusOS docs"
+  default_prompt: "Use $campusos-readme-update to audit CampusOS README, move secondary details into the right docs category, and verify portal links."

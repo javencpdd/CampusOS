@@ -53,6 +53,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/appearance',
+      name: 'AppearanceSettings',
+      component: () => import('@/views/AppearanceSettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/u/:username',
       name: 'PublicSpace',
       component: () => import('@/views/PublicSpaceView.vue'),

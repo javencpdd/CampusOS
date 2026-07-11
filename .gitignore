@@ -39,6 +39,8 @@ go.work.sum
 node_modules/
 web/dist/
 web/.vite/
+docs-site/.vitepress/cache/
+docs-site/.vitepress/dist/
 *.local
 .env.local
 .env.*.local
@@ -87,3 +89,4 @@ nats-data/
 *.swp
 coverage.out
 coverage.html
+/backups/

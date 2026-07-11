@@ -1,0 +1,248 @@
+.public-space[data-campusos-space] {
+  --kinetic-ink: #14211c;
+  --kinetic-muted: #64736d;
+  --kinetic-lime: #d7f864;
+  --kinetic-coral: #ff8a65;
+  --kinetic-blue: #4a90e2;
+  min-height: 78vh;
+  padding: 30px;
+  color: var(--kinetic-ink);
+  background: #edf2ee;
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.public-space[data-campusos-space] .space-hero {
+  min-height: 260px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  padding: 34px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  background: #14211c;
+  box-shadow: 0 22px 50px rgba(20, 33, 28, 0.16);
+  animation: kinetic-enter 480ms ease-out both;
+}
+
+.public-space[data-campusos-space] .space-hero div {
+  max-width: 720px;
+}
+
+.public-space[data-campusos-space] .space-hero h1 {
+  max-width: 680px;
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: clamp(32px, 6vw, 66px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.public-space[data-campusos-space] .space-hero p {
+  max-width: 620px;
+  margin: 0;
+  color: #c9d6d0;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.public-space[data-campusos-space] .space-hero .el-avatar {
+  width: 88px;
+  height: 88px;
+  border: 5px solid var(--kinetic-lime);
+  background: #ffffff;
+  color: var(--kinetic-ink);
+  font-size: 28px;
+  box-shadow: 0 0 0 8px rgba(215, 248, 100, 0.12);
+  animation: kinetic-avatar 3.8s ease-in-out infinite;
+}
+
+.public-space[data-campusos-space] .space-meta {
+  margin: 0 0 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid #cad5cf;
+}
+
+.public-space[data-campusos-space] .space-meta .el-tag {
+  border-color: #b9c8c0;
+  border-radius: 4px;
+  color: #365046;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.public-space[data-campusos-space] .custom-space-html {
+  margin-bottom: 18px;
+}
+
+.public-space[data-campusos-space] .kinetic-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  align-items: end;
+  gap: 24px;
+  padding: 26px;
+  border: 1px solid #c8d4ce;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  animation: kinetic-enter 520ms 80ms ease-out both;
+}
+
+.public-space[data-campusos-space] .kinetic-kicker {
+  margin: 0 0 10px;
+  color: #467062;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.public-space[data-campusos-space] .kinetic-intro h2 {
+  max-width: 720px;
+  margin: 0;
+  color: var(--kinetic-ink);
+  font-size: clamp(22px, 4vw, 38px);
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.public-space[data-campusos-space] .kinetic-status {
+  padding-left: 18px;
+  border-left: 4px solid var(--kinetic-coral);
+}
+
+.public-space[data-campusos-space] .kinetic-status span,
+.public-space[data-campusos-space] .kinetic-status strong {
+  display: block;
+}
+
+.public-space[data-campusos-space] .kinetic-status span {
+  margin-bottom: 6px;
+  color: #7b8983;
+  font-size: 11px;
+}
+
+.public-space[data-campusos-space] .kinetic-status strong {
+  color: var(--kinetic-ink);
+  line-height: 1.5;
+}
+
+.public-space[data-campusos-space] .content-section {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.public-space[data-campusos-space] .content-item {
+  min-height: 190px;
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid #cbd6d0;
+  border-top: 1px solid #cbd6d0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(20, 33, 28, 0.06);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  animation: kinetic-card 460ms ease-out both;
+}
+
+.public-space[data-campusos-space] .content-item:nth-child(3n + 1) {
+  border-top: 5px solid var(--kinetic-lime);
+}
+
+.public-space[data-campusos-space] .content-item:nth-child(3n + 2) {
+  border-top: 5px solid var(--kinetic-coral);
+}
+
+.public-space[data-campusos-space] .content-item:nth-child(3n) {
+  border-top: 5px solid var(--kinetic-blue);
+}
+
+.public-space[data-campusos-space] .content-item:hover {
+  transform: translateY(-5px);
+  border-color: #9eafa6;
+  box-shadow: 0 18px 34px rgba(20, 33, 28, 0.12);
+}
+
+.public-space[data-campusos-space] .content-title {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--kinetic-ink);
+  font-size: 20px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.public-space[data-campusos-space] .content-title:hover {
+  color: #1b6f55;
+}
+
+.public-space[data-campusos-space] .content-item p {
+  display: -webkit-box;
+  margin: 0 0 20px;
+  overflow: hidden;
+  color: var(--kinetic-muted);
+  line-height: 1.75;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.public-space[data-campusos-space] .content-meta {
+  margin-top: auto;
+  color: #77867f;
+}
+
+.public-space[data-campusos-space] .content-meta .el-tag {
+  border: 0;
+  border-radius: 4px;
+  color: #314b41;
+  background: #e3ebe7;
+}
+
+.public-space[data-campusos-space] .el-empty {
+  min-height: 260px;
+  border: 1px dashed #b7c6be;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+@keyframes kinetic-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kinetic-card {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes kinetic-avatar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (max-width: 760px) {
+  .public-space[data-campusos-space] {
+    padding: 14px;
+  }
+
+  .public-space[data-campusos-space] .space-hero {
+    min-height: 300px;
+    padding: 24px;
+  }
+
+  .public-space[data-campusos-space] .kinetic-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .public-space[data-campusos-space] .content-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-space[data-campusos-space] .space-hero,
+  .public-space[data-campusos-space] .space-hero .el-avatar,
+  .public-space[data-campusos-space] .kinetic-intro,
+  .public-space[data-campusos-space] .content-item {
+    animation: none;
+    transition: none;
+  }
+}

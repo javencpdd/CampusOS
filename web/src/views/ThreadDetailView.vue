@@ -29,6 +29,27 @@
               <el-button size="small" type="danger" plain @click="deletePlainThread" :loading="articleOperating">删除</el-button>
             </template>
           </div>
+          <div v-if="moderationAccess.can_moderate" class="moderator-actions">
+            <el-tag type="warning" effect="plain">{{ moderationAccess.category?.name }}版主</el-tag>
+            <el-tooltip v-if="moderationAccess.actions?.pin" :content="thread.is_pinned ? '取消置顶' : '置顶主题'">
+              <el-button
+                :icon="thread.is_pinned ? Bottom : Top"
+                :type="thread.is_pinned ? 'warning' : 'default'"
+                circle
+                :loading="moderationOperating"
+                @click="toggleModeratorPin"
+              />
+            </el-tooltip>
+            <el-tooltip v-if="moderationAccess.actions?.lock" :content="thread.is_locked ? '解锁主题' : '锁定主题'">
+              <el-button
+                :icon="thread.is_locked ? Unlock : Lock"
+                :type="thread.is_locked ? 'warning' : 'default'"
+                circle
+                :loading="moderationOperating"
+                @click="toggleModeratorLock"
+              />
+            </el-tooltip>
+          </div>
         </div>
       </template>
       <template v-if="article">
@@ -54,6 +75,17 @@
             <span class="reply-author">{{ post.author_name }}</span>
             <span>{{ new Date(post.created_at).toLocaleString() }}</span>
             <el-button text type="primary" size="small" @click="setReplyTarget(post)">回复</el-button>
+            <el-popconfirm
+              v-if="moderationAccess.actions?.delete_post"
+              title="确定以版主身份删除这条回复吗？"
+              confirm-button-text="删除"
+              cancel-button-text="取消"
+              @confirm="deleteModeratedPost(post)"
+            >
+              <template #reference>
+                <el-button text type="danger" size="small" :icon="Delete">删除</el-button>
+              </template>
+            </el-popconfirm>
           </div>
           <div v-if="post.parent_id" class="reply-parent">
             回复：第 {{ parentFloor(post.parent_id) || post.parent_id }} 楼
@@ -111,7 +143,8 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { postApi, richTextApi, threadApi } from '@/api'
+import { Bottom, Delete, Lock, Top, Unlock } from '@element-plus/icons-vue'
+import { moderationApi, postApi, richTextApi, threadApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
@@ -124,6 +157,8 @@ const loading = ref(false)
 const postsLoading = ref(false)
 const submitting = ref(false)
 const articleOperating = ref(false)
+const moderationOperating = ref(false)
+const moderationAccess = ref<any>({ plugin_enabled: false, can_moderate: false, actions: {} })
 const replyContent = ref('')
 const replyTarget = ref<any>(null)
 const postsPage = ref(1)
@@ -148,11 +183,66 @@ const loadThread = async () => {
     if (res.code === 0) {
       thread.value = res.data
       await loadArticle()
+      await loadModerationAccess()
     }
   } catch (e: any) {
     ElMessage.error(e?.msg || '加载帖子失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadModerationAccess = async () => {
+  moderationAccess.value = { plugin_enabled: false, can_moderate: false, actions: {} }
+  if (!userStore.isLoggedIn || !threadID()) return
+  try {
+    const result: any = await moderationApi.access(threadID())
+    if (result.code === 0) moderationAccess.value = result.data
+  } catch {
+    moderationAccess.value = { plugin_enabled: false, can_moderate: false, actions: {} }
+  }
+}
+
+const toggleModeratorPin = async () => {
+  if (!thread.value) return
+  moderationOperating.value = true
+  try {
+    const result: any = thread.value.is_pinned
+      ? await moderationApi.unpin(threadID())
+      : await moderationApi.pin(threadID())
+    thread.value = result.data
+    ElMessage.success(thread.value.is_pinned ? '主题已置顶' : '已取消置顶')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '版主置顶操作失败')
+  } finally {
+    moderationOperating.value = false
+  }
+}
+
+const toggleModeratorLock = async () => {
+  if (!thread.value) return
+  moderationOperating.value = true
+  try {
+    const result: any = thread.value.is_locked
+      ? await moderationApi.unlock(threadID())
+      : await moderationApi.lock(threadID())
+    thread.value = result.data
+    ElMessage.success(thread.value.is_locked ? '主题已锁定' : '主题已解锁')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '版主锁定操作失败')
+  } finally {
+    moderationOperating.value = false
+  }
+}
+
+const deleteModeratedPost = async (post: any) => {
+  try {
+    await moderationApi.deletePost(threadID(), post.id)
+    if (thread.value) thread.value.reply_count = Math.max(0, Number(thread.value.reply_count || 0) - 1)
+    await loadPosts()
+    ElMessage.success('回复已由版主删除')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '删除回复失败')
   }
 }
 
@@ -308,6 +398,14 @@ onMounted(async () => {
 }
 .article-actions {
   display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-end;
+}
+.moderator-actions {
+  display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   align-content: flex-start;

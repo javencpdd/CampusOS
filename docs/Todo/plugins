@@ -1,12 +1,7 @@
 ，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
-更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.5-dev中
+更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.6-dev中
 
 如何把接口协议标准转成像 discord或者onebot v11那样提供
 
 能不能将微信公众号的文章同步到个人主页，同时标注出该帖子来自什么什么公众号
-
-<!-- 关于课表插件，每年的春秋季课表能不能和json数据对应，一个json（通过execl解析得到的）只会对应一个学期的课表，
-对于每个用户，可以先选择好自己的某一个课表，然后点击按钮来自定义第一周的时间，当鼠标悬停的时候，可以显示该部分按钮或输入框的作用
- -->
-
 

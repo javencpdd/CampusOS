@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -321,6 +322,39 @@ func (h *Handler) PrecheckPluginPackage(c *gin.Context) {
 		return
 	}
 	response.Success(c, precheck)
+}
+
+// ListVersionSnapshots returns verified pre-update snapshots.
+func (h *Handler) ListVersionSnapshots(c *gin.Context) {
+	name := c.Param("name")
+	snapshots, err := h.manager.ListVersionSnapshots(name)
+	if err != nil {
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"items": snapshots, "total": len(snapshots)})
+}
+
+// RollbackVersionSnapshot restores one verified user-plugin package and hot reloads it when needed.
+func (h *Handler) RollbackVersionSnapshot(c *gin.Context) {
+	name := c.Param("name")
+	var req struct {
+		SnapshotID string `json:"snapshot_id"`
+	}
+	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil || req.SnapshotID == "" {
+		response.Error(c, http.StatusBadRequest, 60005, "snapshot_id is required")
+		return
+	}
+	installed, err := h.manager.RollbackVersionSnapshot(name, req.SnapshotID, h.pluginsDir)
+	if err != nil {
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
+		return
+	}
+	actorID, actorName := currentActor(c)
+	h.manager.RecordPluginAudit(c.Request.Context(), name, "warn", "plugin rollback requested by admin", map[string]interface{}{
+		"actor_id": actorID, "actor_name": actorName, "snapshot_id": req.SnapshotID,
+	})
+	response.Success(c, h.pluginPayload(installed))
 }
 
 func currentActor(c *gin.Context) (string, string) {

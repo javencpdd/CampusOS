@@ -20,6 +20,10 @@
             <el-icon><User /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
+          <el-menu-item v-if="adminStore.isAdmin" index="/moderators">
+            <el-icon><Lock /></el-icon>
+            <span>版主管理</span>
+          </el-menu-item>
           <el-menu-item index="/threads">
             <el-icon><Document /></el-icon>
             <span>帖子管理</span>
@@ -30,7 +34,7 @@
           </el-menu-item>
           <el-menu-item index="/docs">
             <el-icon><Reading /></el-icon>
-            <span>说明文档</span>
+            <span>相关资料</span>
           </el-menu-item>
           <el-menu-item index="/architecture">
             <el-icon><DataAnalysis /></el-icon>
@@ -101,6 +105,7 @@ import {
   Monitor,
   Reading,
   Stamp,
+  Lock,
   SwitchButton,
 } from '@element-plus/icons-vue'
 
@@ -115,9 +120,10 @@ const currentPageTitle = computed(() => {
   const titles: Record<string, string> = {
     '/': '仪表盘',
     '/users': '用户管理',
+    '/moderators': '版主管理',
     '/threads': '帖子管理',
     '/categories': '版块管理',
-    '/docs': '说明文档',
+    '/docs': '相关资料',
     '/architecture': '数据架构',
     '/plugins': '插件管理',
     '/integrations': '集成中心',

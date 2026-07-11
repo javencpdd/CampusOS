@@ -1,0 +1,39 @@
+schema_version: page-style-pack.v1
+target: personal-space
+name: kinetic-journal
+version: 0.1.0
+display_name: "Kinetic Journal"
+author: "CampusOS Team"
+description: "A polished motion-first personal homepage and post journal example."
+compatible_campusos:
+  - ">=0.6.4"
+entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
+styles:
+  - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
+tokens:
+  color.primary: "#d7f864"
+  color.background: "#edf2ee"
+  color.surface: "#ffffff"
+  radius.card: "6px"
+  font.body: "Inter, Noto Sans SC, system-ui, sans-serif"
+capabilities:
+  - space.profile.read
+  - space.posts.read
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+  source: effects/source.ts
+assets:
+  - name: cover
+    path: assets/cover.webp
+    type: image/webp
+  - name: avatar-frame
+    path: assets/avatar-frame.png
+    type: image/png

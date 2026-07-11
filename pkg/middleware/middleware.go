@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -17,6 +18,7 @@ func TraceID() gin.HandlerFunc {
 		}
 		c.Set("trace_id", traceID)
 		c.Header("X-Trace-ID", traceID)
+		c.Header("X-Request-ID", traceID)
 		c.Next()
 	}
 }
@@ -65,10 +67,7 @@ func Recovery() gin.HandlerFunc {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("[PANIC] %v", err)
-				c.JSON(500, gin.H{
-					"code": 10006,
-					"msg":  "internal server error",
-				})
+				response.Error(c, 500, 10006, "internal server error")
 				c.Abort()
 			}
 		}()

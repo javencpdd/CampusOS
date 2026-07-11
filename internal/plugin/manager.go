@@ -368,12 +368,16 @@ func (m *Manager) Start(name string) error {
 		})
 		return err
 	}
+	p.HostToken = GenerateAPIKey("cos_plugin")
+	p.HostTokenExpiresAt = time.Now().Add(30 * 24 * time.Hour)
 	m.mu.Unlock()
 
 	if err := runtime.Start(context.Background(), p); err != nil {
 		m.mu.Lock()
 		p.Status = StatusError
 		p.ErrorMsg = err.Error()
+		p.HostToken = ""
+		p.HostTokenExpiresAt = time.Time{}
 		m.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
@@ -454,6 +458,8 @@ func (m *Manager) stop(name string, persist bool) error {
 
 	m.mu.Lock()
 	p.Status = StatusStopped
+	p.HostToken = ""
+	p.HostTokenExpiresAt = time.Time{}
 	if persist {
 		p.DesiredEnabled = false
 	}
@@ -472,6 +478,21 @@ func (m *Manager) stop(name string, persist bool) error {
 		},
 	})
 	return nil
+}
+
+// AuthorizeHostAPI authenticates a running plugin without exposing its token.
+// Tokens rotate on every start/reload and are revoked on stop.
+func (m *Manager) AuthorizeHostAPI(name, token string) (*Plugin, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[name]
+	if !ok || p == nil || p.Manifest == nil || p.Status != StatusRunning {
+		return nil, false
+	}
+	if token == "" || p.HostToken == "" || token != p.HostToken || time.Now().After(p.HostTokenExpiresAt) {
+		return nil, false
+	}
+	return p, true
 }
 
 // DispatchBeforeEvent 分发 .before 事件（同步，可被插件拦截）
@@ -608,6 +629,18 @@ func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 	return p, ok
 }
 
+// GetPluginConfig returns a detached config snapshot so built-in services can
+// read hot-updated settings without racing Manager.UpdateConfig.
+func (m *Manager) GetPluginConfig(name string) (map[string]interface{}, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p, ok := m.plugins[name]
+	if !ok || p == nil || p.Manifest == nil {
+		return nil, false
+	}
+	return copyConfigMap(p.Manifest.Config), true
+}
+
 func (m *Manager) IsPluginRunning(name string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -632,15 +665,16 @@ func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[
 		m.mu.Unlock()
 		return nil, err
 	}
-	p.Manifest.Config = normalized
 	repo := m.repo
-	m.mu.Unlock()
-
 	if repo != nil {
 		if err := repo.UpdateConfig(context.Background(), name, normalized); err != nil {
+			m.mu.Unlock()
 			return nil, err
 		}
 	}
+	p.Manifest.Config = normalized
+	m.mu.Unlock()
+
 	m.logPlugin(context.Background(), &PluginLogRecord{
 		PluginName: name,
 		Level:      "info",
@@ -904,6 +938,9 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 			return nil, fmt.Errorf("plugin '%s' already installed; use replace to overwrite", manifest.Name)
 		}
 		wasEnabled = existing.DesiredEnabled
+		if _, err := CreatePluginSnapshot(existing.Directory, snapshotDataDir(pluginsDir), "pre-update"); err != nil {
+			return nil, fmt.Errorf("create pre-update snapshot: %w", err)
+		}
 		if err := m.Uninstall(manifest.Name); err != nil {
 			return nil, err
 		}
@@ -928,7 +965,71 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 		if err := m.RequestEnable(installed.Manifest.Name); err != nil {
 			return nil, err
 		}
+		if err := m.HealthCheck(installed.Manifest.Name); err != nil {
+			m.markPluginError(installed.Manifest.Name, fmt.Errorf("post-install health check failed: %w", err))
+			return nil, fmt.Errorf("post-install health check failed for %s: %w; use a version snapshot to roll back", installed.Manifest.Name, err)
+		}
 	}
+	return installed, nil
+}
+
+func snapshotDataDir(pluginsDir string) string {
+	if configured := os.Getenv("PLUGIN_DATA_DIR"); configured != "" {
+		return configured
+	}
+	if filepath.Clean(pluginsDir) == filepath.Clean(DefaultPluginsDir) {
+		return DefaultPluginDataDir
+	}
+	return filepath.Join(pluginsDir, ".plugin-data")
+}
+
+func (m *Manager) HealthCheck(name string) error {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok || p == nil || p.Manifest == nil {
+		m.mu.RUnlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	runtime := m.runtimes[p.Manifest.Runtime]
+	status := p.Status
+	m.mu.RUnlock()
+	if status != StatusRunning {
+		return fmt.Errorf("plugin '%s' is not running (status=%s)", name, status)
+	}
+	if runtime == nil {
+		return fmt.Errorf("runtime '%s' is not registered", p.Manifest.Runtime)
+	}
+	return runtime.HealthCheck(context.Background(), name)
+}
+
+func (m *Manager) ListVersionSnapshots(name string) ([]VersionSnapshot, error) {
+	if _, ok := m.GetPlugin(name); !ok {
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	return ListPluginSnapshots(name, PluginDataDirFromEnv())
+}
+
+func (m *Manager) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (*Plugin, error) {
+	current, ok := m.GetPlugin(name)
+	if !ok || current.Manifest == nil {
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	if current.Manifest.IsSystemLevel() {
+		return nil, fmt.Errorf("system-level plugin rollback requires source deployment and server restart")
+	}
+	snapshot, err := FindPluginSnapshot(name, snapshotID, PluginDataDirFromEnv())
+	if err != nil {
+		return nil, err
+	}
+	installed, err := m.ImportPackage(snapshot.PackagePath, pluginsDir, true)
+	if err != nil {
+		return nil, err
+	}
+	m.RecordPluginAudit(context.Background(), name, "warn", "plugin version snapshot restored", map[string]interface{}{
+		"snapshot_id":      snapshot.ID,
+		"restored_version": snapshot.Version,
+		"checksum":         snapshot.Checksum,
+	})
 	return installed, nil
 }
 

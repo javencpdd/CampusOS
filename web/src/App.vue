@@ -1,5 +1,14 @@
 <template>
-  <el-container class="app-container">
+  <el-container
+    class="app-container"
+    data-campusos-web
+    :data-web-theme="themeStore.activeName || 'default'"
+  >
+    <StyleEffectLayer
+      :script="themeStore.activePackage?.effect_js"
+      :capabilities="themeStore.effectiveCapabilities"
+      :resolve-query="resolveThemeQuery"
+    />
     <el-header class="app-header">
       <div class="header-content">
         <router-link to="/" class="logo">
@@ -30,6 +39,7 @@
                 <el-dropdown-menu>
                   <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
                   <el-dropdown-item @click="goSchedule">个人课表</el-dropdown-item>
+                  <el-dropdown-item @click="goAppearance">界面风格</el-dropdown-item>
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -43,6 +53,7 @@
                 <el-dropdown-menu>
                   <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
                   <el-dropdown-item @click="goSchedule">个人课表</el-dropdown-item>
+                  <el-dropdown-item @click="goAppearance">界面风格</el-dropdown-item>
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
                   <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -73,11 +84,14 @@
 import { computed, onMounted, watch } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import { spaceApi } from '@/api'
+import { categoryApi, scheduleApi, spaceApi, threadApi } from '@/api'
+import StyleEffectLayer from '@/components/StyleEffectLayer.vue'
 import { useUserStore } from '@/stores/user'
+import { useWebThemeStore } from '@/stores/webTheme'
 
 const router = useRouter()
 const userStore = useUserStore()
+const themeStore = useWebThemeStore()
 
 const publicSpacePath = computed(() => {
   const username = userStore.user?.username
@@ -115,12 +129,41 @@ const goSchedule = () => {
   router.push('/schedule')
 }
 
+const goAppearance = () => {
+  router.push('/appearance')
+}
+
+const resolveThemeQuery = async (method: string, params: Record<string, unknown>) => {
+  if (method === 'community.threads.read') {
+    const requested = Number(params.limit || 10)
+    const limit = Math.max(1, Math.min(20, Number.isFinite(requested) ? requested : 10))
+    const response: any = await threadApi.list({ page: 1, page_size: limit })
+    return {
+      items: response?.data?.items || [],
+      total: response?.data?.pagination?.total || 0,
+    }
+  }
+  if (method === 'categories.read') {
+    const response: any = await categoryApi.list()
+    return { items: response?.data?.items || response?.data || [] }
+  }
+  if (method === 'schedule.me.read') {
+    if (!userStore.isLoggedIn) throw new Error('需要登录后才能读取个人课表')
+    const response: any = await scheduleApi.me()
+    return response?.data
+  }
+  throw new Error('不支持的系统风格包数据能力')
+}
+
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
 
 onMounted(syncSpaceAvatar)
+watch(() => userStore.user?.id, (userID) => {
+  void themeStore.initialize(userID)
+}, { immediate: true })
 watch(() => userStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     void syncSpaceAvatar()
@@ -130,7 +173,13 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
 
 <style scoped>
 .app-container {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
+}
+.app-container > :not(.style-effect-layer) {
+  position: relative;
+  z-index: 1;
 }
 .app-header {
   background: #fff;
@@ -151,6 +200,9 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
   color: #303133;
 }
 .logo h2 {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
   margin: 0;
 }
 .nav-links {
@@ -181,5 +233,19 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
   text-align: center;
   color: #909399;
   font-size: 14px;
+}
+@media (max-width: 720px) {
+  .app-header {
+    padding: 0 12px;
+  }
+  .header-content {
+    gap: 10px;
+  }
+  .logo h2 {
+    font-size: 18px;
+  }
+  .nav-links {
+    gap: 6px;
+  }
 }
 </style>

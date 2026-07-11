@@ -31,12 +31,12 @@ Older `file/schedule/schedule.json` data is migrated automatically on first read
 | Capability | Status |
 | --- | --- |
 | Independent semester JSON | Supported; one `terms/<year>-<semester>.json` file for each saved timetable |
-| Term selection | Supported; choose a saved semester or enter a year and season, then use **Open timetable** to select or create it |
+| Term selection | Supported; choose a saved semester or enter a year and season, then use **Open/New timetable** to switch or create it |
 | First week start date | Supported through the **Set first week** button for the current semester |
-| Week timetable view | Supported; switch to previous, current, or later weeks |
+| Week timetable view | Supported; switch to previous, current, or later weeks; **Current week** always returns the calendar to today's date |
 | Calendar view | Supported; browse past or future months and display courses by first-week date, weekday, and course weeks |
 | Manual course editing | Supported |
-| Raw JSON editing | Supported |
+| Raw JSON editing | Supported for the currently opened semester; it does not switch or create a timetable |
 | `.xls` spreadsheet import | Supported for the current CampusOS course-table template; imports into the current semester JSON only |
 | `.csv` / `.json` import | Supported |
 | Cloud drive sync | Reserved for later |

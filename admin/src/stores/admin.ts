@@ -27,8 +27,13 @@ export const useAdminStore = defineStore('admin', () => {
   async function login(email: string, password: string) {
     const res: any = await authApi.login({ email, password })
     if (res.code === 0) {
-      // 将角色信息注入到用户对象中
-      const userData = { ...res.data.user, roles: res.data.roles || [] }
+      const roles = res.data.roles || []
+      const hasAdminRole = roles.some((role: AdminRole) => role.name === 'admin' || role.name === 'super_admin')
+      if (!hasAdminRole) {
+        logout()
+        return { code: 20004, msg: '管理后台仅允许管理员登录；版主请在用户端管理已分配板块' }
+      }
+      const userData = { ...res.data.user, roles }
       user.value = userData
       token.value = res.data.access_token
       localStorage.setItem('admin_user', JSON.stringify(userData))
@@ -49,17 +54,10 @@ export const useAdminStore = defineStore('admin', () => {
     return user.value?.roles?.[0]?.name || 'member'
   })
 
-  // 判断是否为管理员
-  const isAdmin = computed(() => {
-    const role = primaryRole.value
-    return role === 'admin' || role === 'super_admin'
-  })
+  const roleNames = computed(() => user.value?.roles?.map((role) => role.name) || [])
 
-  // 判断是否为版主或管理员
-  const isModerator = computed(() => {
-    const role = primaryRole.value
-    return role === 'admin' || role === 'super_admin' || role === 'moderator'
-  })
+  // 一个用户可有多个角色，不能只依赖角色列表的第一项。
+  const isAdmin = computed(() => roleNames.value.some((role) => role === 'admin' || role === 'super_admin'))
 
-  return { user, token, isLoggedIn, primaryRole, isAdmin, isModerator, login, logout }
+  return { user, token, isLoggedIn, primaryRole, isAdmin, login, logout }
 })

@@ -8,17 +8,28 @@ type Event struct {
 }
 
 type Manifest struct {
-	Name         string                 `json:"name" yaml:"name"`
-	DisplayName  string                 `json:"display_name" yaml:"display_name"`
-	Version      string                 `json:"version" yaml:"version"`
-	Description  string                 `json:"description" yaml:"description"`
-	Author       string                 `json:"author" yaml:"author"`
-	Runtime      string                 `json:"runtime" yaml:"runtime"`
-	Events       EventsConfig           `json:"events" yaml:"events"`
-	Permissions  PermissionsConfig      `json:"permissions" yaml:"permissions"`
-	Storage      StorageConfig          `json:"storage" yaml:"storage"`
-	Config       map[string]interface{} `json:"config,omitempty" yaml:"config,omitempty"`
-	ConfigSchema *ConfigSchema          `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
+	APIVersion     string                 `json:"api_version" yaml:"api_version"`
+	HostAPIVersion string                 `json:"host_api_version" yaml:"host_api_version"`
+	Name           string                 `json:"name" yaml:"name"`
+	DisplayName    string                 `json:"display_name" yaml:"display_name"`
+	Version        string                 `json:"version" yaml:"version"`
+	Description    string                 `json:"description" yaml:"description"`
+	Author         string                 `json:"author" yaml:"author"`
+	Runtime        string                 `json:"runtime" yaml:"runtime"`
+	Scope          string                 `json:"scope" yaml:"scope"`
+	Capabilities   []string               `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	Compatibility  CompatibilityConfig    `json:"compatibility,omitempty" yaml:"compatibility,omitempty"`
+	Events         EventsConfig           `json:"events" yaml:"events"`
+	Permissions    PermissionsConfig      `json:"permissions" yaml:"permissions"`
+	Storage        StorageConfig          `json:"storage" yaml:"storage"`
+	Config         map[string]interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+	ConfigSchema   *ConfigSchema          `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
+}
+
+type CompatibilityConfig struct {
+	CampusOS string `json:"campusos,omitempty" yaml:"campusos,omitempty"`
+	HostAPI  string `json:"host_api,omitempty" yaml:"host_api,omitempty"`
+	SDKGo    string `json:"sdk_go,omitempty" yaml:"sdk_go,omitempty"`
 }
 
 type EventsConfig struct {

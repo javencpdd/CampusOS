@@ -85,7 +85,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="520" align="center" fixed="right">
+        <el-table-column label="操作" width="590" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" plain @click="showLogs(row.name)">
               <el-icon><Document /></el-icon>
@@ -108,6 +108,10 @@
             >
               <el-icon><Refresh /></el-icon>
               {{ isPluginEnabled(row) ? '重载' : '加载' }}
+            </el-button>
+            <el-button v-if="!isSystemPlugin(row)" size="small" plain @click="openSnapshots(row.name)">
+              <el-icon><Clock /></el-icon>
+              版本
             </el-button>
             <el-switch
               :model-value="isPluginEnabled(row)"
@@ -168,6 +172,39 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
+    </el-dialog>
+
+    <el-dialog v-model="snapshotDialogVisible" :title="`${selectedPluginName} 版本快照`" width="820px">
+      <el-alert
+        title="快照在覆盖更新前自动创建；回滚会先保存当前版本，再恢复所选包并按原启用状态热加载。"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="lifecycle-alert"
+      />
+      <el-table :data="pluginSnapshots" v-loading="snapshotsLoading" stripe border>
+        <el-table-column prop="version" label="版本" width="100" />
+        <el-table-column prop="created_at" label="创建时间" width="180">
+          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column prop="source" label="来源" width="130" />
+        <el-table-column prop="checksum" label="Checksum" min-width="220" show-overflow-tooltip />
+        <el-table-column label="操作" width="100" align="center">
+          <template #default="{ row }">
+            <el-popconfirm
+              title="恢复此版本？当前版本会先自动保存为新快照。"
+              confirm-button-text="恢复"
+              cancel-button-text="取消"
+              @confirm="rollbackSnapshot(row.id)"
+            >
+              <template #reference>
+                <el-button type="warning" size="small" :loading="rollbackSnapshotID === row.id">恢复</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!snapshotsLoading && pluginSnapshots.length === 0" description="暂无更新前快照" />
     </el-dialog>
 
     <el-dialog v-model="precheckDialogVisible" title="插件包导入预检" width="820px">
@@ -397,7 +434,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import { Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
+import { Clock, Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
 import { homeStylePackApi, pluginApi } from '@/api'
 
 interface SourceStylePack {
@@ -423,6 +460,10 @@ const logDialogVisible = ref(false)
 const logsLoading = ref(false)
 const selectedPluginName = ref('')
 const pluginLogs = ref<any[]>([])
+const snapshotDialogVisible = ref(false)
+const snapshotsLoading = ref(false)
+const pluginSnapshots = ref<any[]>([])
+const rollbackSnapshotID = ref('')
 const configDialogVisible = ref(false)
 const configLoading = ref(false)
 const configSaving = ref(false)
@@ -532,6 +573,34 @@ const doExport = async (row: any) => {
     ElMessage.success('插件包已导出')
   } catch {
     ElMessage.error('导出插件包失败')
+  }
+}
+
+const openSnapshots = async (name: string) => {
+  selectedPluginName.value = name
+  snapshotDialogVisible.value = true
+  snapshotsLoading.value = true
+  try {
+    pluginSnapshots.value = responseItems(await pluginApi.snapshots(name))
+  } catch (error: any) {
+    pluginSnapshots.value = []
+    ElMessage.error(error?.msg || error?.message || '加载版本快照失败')
+  } finally {
+    snapshotsLoading.value = false
+  }
+}
+
+const rollbackSnapshot = async (snapshotID: string) => {
+  rollbackSnapshotID.value = snapshotID
+  try {
+    await pluginApi.rollback(selectedPluginName.value, snapshotID)
+    ElMessage.success('插件版本已恢复')
+    await openSnapshots(selectedPluginName.value)
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || error?.message || '插件版本恢复失败')
+  } finally {
+    rollbackSnapshotID.value = ''
   }
 }
 

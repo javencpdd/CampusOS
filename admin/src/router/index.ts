@@ -10,6 +10,7 @@ const router = createRouter({
     },
     { path: '/admin', redirect: '/' },
     { path: '/admin/users', redirect: '/users' },
+    { path: '/admin/moderators', redirect: '/moderators' },
     { path: '/admin/threads', redirect: '/threads' },
     { path: '/admin/categories', redirect: '/categories' },
     { path: '/admin/docs', redirect: '/docs' },
@@ -22,7 +23,7 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/components/AdminLayout.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, adminOnly: true },
       children: [
         {
           path: '',
@@ -35,6 +36,12 @@ const router = createRouter({
           name: 'Users',
           component: () => import('@/views/UserManageView.vue'),
           meta: { title: '用户管理' },
+        },
+        {
+          path: 'moderators',
+          name: 'Moderators',
+          component: () => import('@/views/ModeratorManageView.vue'),
+          meta: { title: '版主管理', adminOnly: true },
         },
         {
           path: 'threads',
@@ -52,7 +59,7 @@ const router = createRouter({
           path: 'docs',
           name: 'DeveloperDocs',
           component: () => import('@/views/DeveloperDocsView.vue'),
-          meta: { title: '说明文档' },
+          meta: { title: '相关资料' },
         },
         {
           path: 'architecture',
@@ -110,13 +117,13 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  // 角色验证：已登录但非 admin/moderator 时显示警告
-  if (to.meta.requiresAuth && user) {
-    const role = user.roles?.[0]?.name || user.role || 'member'
-    const allowed = ['admin', 'super_admin', 'moderator']
-    if (!allowed.includes(role)) {
-      // 前端提示权限不足，后端 API 会做真正的权限校验
-      console.warn(`用户 ${user.username} 角色 ${role} 无权访问管理后台`)
+  if (to.meta.adminOnly && user) {
+    const roles = user.roles?.map((item: { name?: string }) => item.name).filter(Boolean) || []
+    if (!roles.some((role: string) => role === 'admin' || role === 'super_admin')) {
+      localStorage.removeItem('admin_user')
+      localStorage.removeItem('admin_token')
+      next({ path: '/login', query: { redirect: to.fullPath } })
+      return
     }
   }
 

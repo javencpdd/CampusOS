@@ -251,6 +251,7 @@ func (s *ThreadService) PinThread(ctx context.Context, id string) (*domain.Threa
 	if err := s.repo.Update(ctx, thread); err != nil {
 		return nil, fmt.Errorf("pin thread: %w", err)
 	}
+	s.invalidateListCache(ctx)
 	return thread, nil
 }
 
@@ -265,6 +266,7 @@ func (s *ThreadService) UnpinThread(ctx context.Context, id string) (*domain.Thr
 	if err := s.repo.Update(ctx, thread); err != nil {
 		return nil, fmt.Errorf("unpin thread: %w", err)
 	}
+	s.invalidateListCache(ctx)
 	return thread, nil
 }
 
@@ -279,6 +281,7 @@ func (s *ThreadService) LockThread(ctx context.Context, id string) (*domain.Thre
 	if err := s.repo.Update(ctx, thread); err != nil {
 		return nil, fmt.Errorf("lock thread: %w", err)
 	}
+	s.invalidateListCache(ctx)
 	return thread, nil
 }
 
@@ -293,6 +296,7 @@ func (s *ThreadService) UnlockThread(ctx context.Context, id string) (*domain.Th
 	if err := s.repo.Update(ctx, thread); err != nil {
 		return nil, fmt.Errorf("unlock thread: %w", err)
 	}
+	s.invalidateListCache(ctx)
 	return thread, nil
 }
 

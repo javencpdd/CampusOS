@@ -13,12 +13,17 @@ AUTH_PASSWORD_HASH_ENABLED=true
 | 配置 | 没写 `.env` 时默认值 | 影响 |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | 后端主 API 默认跑 8080，正常 |
+| `WEB_PORT` | `3000` | 用户端开发服务端口 |
+| `ADMIN_PORT` | `3001` | 管理端开发服务端口 |
+| `DOCS_PORT` | `3002` | 独立官方文档站开发服务端口 |
 | `HOST_API_ADDR` | `127.0.0.1:18080` | 插件 Host API 默认跑 18080，正常 |
 | `REDIS_ADDR` | `localhost:6379` | Docker Redis 默认映射 6379，正常 |
 | `NATS_URL` | `nats://localhost:4222` | Docker NATS 默认映射 4222，正常 |
 | `PGADMIN_PORT` | `5050` | pgAdmin 默认 5050，正常 |
 | `AI_ENABLED` | `false` | AI 默认关闭，正常 |
 | `JWT_SECRET` | 开发默认值 | 本地开发可以，生产不行 |
+| `VITE_DOCS_URL` | `http://localhost:3002` | 管理端“相关资料”中的官方文档链接 |
+| `VITE_GITHUB_URL` | CampusOS GitHub 仓库 | 管理端“相关资料”中的源码链接 |
 
 真正关键的是数据库：
 

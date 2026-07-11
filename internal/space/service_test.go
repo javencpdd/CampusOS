@@ -70,6 +70,46 @@ func TestGetPublicByUsernameReturnsDefaultSpace(t *testing.T) {
 	}
 }
 
+func TestPublicHomepageAlwaysUsesRouteOwnersStyle(t *testing.T) {
+	repo := NewMemoryRepository()
+	users := newFakeUserLookup(
+		&identitydomain.User{ID: "1001", Username: "alice", Nickname: "Alice"},
+		&identitydomain.User{ID: "1002", Username: "bob", Nickname: "Bob"},
+	)
+	svc := NewService(repo, users)
+	aliceStyle := StylePackage{Manifest: StyleManifest{
+		SchemaVersion: StyleSchemaVersion,
+		Name:          "alice-motion",
+		Version:       "0.1.0",
+		Layout:        "grid",
+		Components: []StyleComponent{
+			{Slot: "header", Type: "profile-header"},
+			{Slot: "main", Type: "content-list"},
+		},
+		CustomHTMLEnabled: true,
+		CustomHTML:        `<section class="alice-intro">Alice</section>`,
+		CustomCSS:         `.public-space[data-campusos-space] .alice-intro { color: #157f5b; }`,
+	}}
+	if _, err := svc.ApplyStylePackage(context.Background(), "1001", aliceStyle); err != nil {
+		t.Fatalf("apply alice style: %v", err)
+	}
+
+	alice, err := svc.GetPublicByUsername(context.Background(), "alice")
+	if err != nil {
+		t.Fatalf("get alice: %v", err)
+	}
+	bob, err := svc.GetPublicByUsername(context.Background(), "bob")
+	if err != nil {
+		t.Fatalf("get bob: %v", err)
+	}
+	if alice.Owner.ID != "1001" || alice.Space.StyleName != "alice-motion" || alice.Space.StyleManifest == nil {
+		t.Fatalf("expected Alice's saved style, got %#v", alice)
+	}
+	if bob.Owner.ID != "1002" || bob.Space.StyleName == "alice-motion" || bob.Space.StyleManifest != nil {
+		t.Fatalf("Bob must not inherit Alice's style, got %#v", bob)
+	}
+}
+
 func TestUpsertOwnSpacePersistsConfig(t *testing.T) {
 	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
 		ID:       "1001",

@@ -117,6 +117,25 @@ func (s *PostService) DeletePost(ctx context.Context, id, authorID string) error
 	return nil
 }
 
+// AdminDeletePost removes a reply after an external authorization layer has
+// already checked the actor's governance scope.
+func (s *PostService) AdminDeletePost(ctx context.Context, id string) error {
+	post, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get post: %w", err)
+	}
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if s.threadRepo != nil {
+		if err := s.threadRepo.IncrementReplyCount(ctx, post.ThreadID, -1); err != nil {
+			return fmt.Errorf("update reply count: %w", err)
+		}
+		s.invalidateThreadListCache(ctx)
+	}
+	return nil
+}
+
 func (s *PostService) ListByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {
 	if err := s.ensureThreadVisible(ctx, threadID, ""); err != nil {
 		return nil, 0, err

@@ -9,6 +9,7 @@ import (
 
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/stylepack"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -58,7 +59,10 @@ func (h *Handler) ListContentsByUserID(c *gin.Context) {
 		return
 	}
 
-	page, pageSize := pagination(c)
+	page, pageSize, ok := pagination(c)
+	if !ok {
+		return
+	}
 	contents, total, err := h.svc.ListPublicContentsByUserID(c.Request.Context(), userID, page, pageSize)
 	if err != nil {
 		writeSpaceError(c, err)
@@ -74,7 +78,10 @@ func (h *Handler) ListContentsByUsername(c *gin.Context) {
 		return
 	}
 
-	page, pageSize := pagination(c)
+	page, pageSize, ok := pagination(c)
+	if !ok {
+		return
+	}
 	contents, total, err := h.svc.ListPublicContentsByUsername(c.Request.Context(), username, page, pageSize)
 	if err != nil {
 		writeSpaceError(c, err)
@@ -106,7 +113,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	}
 
 	var req UpsertSpaceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -167,7 +174,7 @@ func (h *Handler) ExportStylePackage(c *gin.Context) {
 	}
 
 	var req StyleExportRequest
-	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+	if err := requestutil.BindJSONStrictOptional(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -353,7 +360,7 @@ func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 		return
 	}
 	var req StylePackApplySourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -481,7 +488,10 @@ func (h *Handler) DisableSpace(c *gin.Context) {
 	var req struct {
 		Reason string `json:"reason"`
 	}
-	_ = c.ShouldBindJSON(&req)
+	if err := requestutil.BindJSONStrictOptional(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
 	space, err := h.svc.DisableSpace(c.Request.Context(), targetUserID, actorUserID, strings.TrimSpace(req.Reason))
 	if err != nil {
 		writeSpaceError(c, err)
@@ -538,12 +548,8 @@ func currentUserID(c *gin.Context) (string, bool) {
 	return userID, ok && userID != ""
 }
 
-func pagination(c *gin.Context) (int, int) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	page = normalizePage(page)
-	pageSize = normalizePageSize(pageSize)
-	return page, pageSize
+func pagination(c *gin.Context) (int, int, bool) {
+	return response.ParsePagination(c, 20, 100)
 }
 
 func paginationMeta(page, pageSize int, total int64) *response.Pagination {

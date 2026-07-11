@@ -1,5 +1,5 @@
 <template>
-  <div class="home">
+  <div class="home" data-campusos-home>
     <section class="welcome-hero" :class="{ 'has-background': Boolean(homeConfig.background_image) }" :style="heroStyle">
       <div class="hero-content">
         <h1>{{ homeConfig.hero_title }}</h1>
@@ -143,7 +143,7 @@ watch(() => [homeConfig.custom_html_enabled, homeConfig.custom_css] as const, ([
   }
   if (!enabled || !css) return
   injectedStyle = document.createElement('style')
-  injectedStyle.setAttribute('data-campos-style-pack', 'homepage')
+  injectedStyle.setAttribute('data-campusos-style-pack', 'homepage')
   injectedStyle.textContent = css
   document.head.appendChild(injectedStyle)
 })

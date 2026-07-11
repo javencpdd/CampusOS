@@ -6,11 +6,11 @@
         <h2>系统数据架构</h2>
         <p>从当前迁移文件和数据目录整理的结构图，用于了解表的逻辑关联、职责和不在 PostgreSQL 中保存的文件数据。</p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000013</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000017</el-tag>
     </section>
 
     <el-alert class="architecture-alert" type="info" :closable="false" show-icon>
-      PostgreSQL 当前以业务字段、索引和服务层约束表达关联，迁移中没有声明外键。本页的连线表示代码和字段命名可追踪的逻辑关系，不会读取或展示真实业务记录。
+      PostgreSQL 已对核心身份、社区、个人空间、富文本和 Webhook 关系启用外键；其余连线表示代码与字段可追踪的逻辑关系。本页不会读取或展示真实业务记录。
     </el-alert>
 
     <el-tabs v-model="activeTab" class="architecture-tabs">
@@ -257,15 +257,15 @@ const selectedTable = ref('users')
 
 const databaseTables: DbTable[] = [
   { name: 'schema_migrations', title: '迁移执行记录', domain: 'system', purpose: '迁移脚本创建的系统表，记录每个 migration 是否已执行。', fields: ['version', 'name', 'applied_at'], migration: 'scripts/migrate.sh / migrate.ps1', relationshipNote: '只用于 schema 版本管理，不与业务表建立关系。' },
-  { name: 'users', title: '用户', domain: 'identity', purpose: '系统中的用户主体，社区、个人空间、权限和上传资源的归属起点。', fields: ['id', 'username', 'email', 'status'], migration: '000001', relationshipNote: '通过 user_id、author_id、created_by、uploader_id 等字段被多个业务表引用。' },
-  { name: 'accounts', title: '登录凭据', domain: 'identity', purpose: '保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据。', fields: ['id', 'user_id', 'type', 'identifier'], migration: '000001', relationshipNote: '一个用户可有多个登录账号。' },
-  { name: 'sessions', title: '刷新会话', domain: 'identity', purpose: '保存 refresh token、设备和过期时间。', fields: ['id', 'user_id', 'refresh_token', 'expires_at'], migration: '000001', relationshipNote: '一个用户可在多个设备保持会话。' },
-  { name: 'roles', title: '角色', domain: 'identity', purpose: '定义 admin、moderator、member 等角色。', fields: ['id', 'name', 'is_system'], migration: '000002', relationshipNote: '通过 user_roles 赋予用户，通过 permissions 约束角色操作。' },
-  { name: 'user_roles', title: '用户角色', domain: 'identity', purpose: '用户与角色的关联，支持全局或指定范围。', fields: ['user_id', 'role_id', 'scope_type', 'scope_id'], migration: '000002', relationshipNote: '连接 users 与 roles 的多对多关系。' },
-  { name: 'permissions', title: '角色权限', domain: 'identity', purpose: '为角色声明资源和动作权限。', fields: ['role_id', 'resource', 'action'], migration: '000002', relationshipNote: '一个角色有多条权限记录。' },
-  { name: 'categories', title: '版块', domain: 'community', purpose: '社区内容分区，支持父子版块和默认标签。', fields: ['id', 'parent_id', 'name', 'default_tags'], migration: '000001 + 000012', relationshipNote: '自身通过 parent_id 形成树；threads 和 user_space_contents 按 category_id 归属。' },
-  { name: 'threads', title: '主题 / 文章入口', domain: 'community', purpose: '普通帖子和富文本文章共用的顶层内容实体。', fields: ['id', 'author_id', 'category_id', 'status'], migration: '000001', relationshipNote: '关联作者、版块、回复、个人空间同步内容和富文本正文。' },
-  { name: 'posts', title: '回复', domain: 'community', purpose: '主题下的回复，可通过 parent_id 形成引用/嵌套关系。', fields: ['id', 'thread_id', 'author_id', 'parent_id', 'floor_number'], migration: '000001', relationshipNote: '归属一个主题；parent_id 指向另一条回复。' },
+  { name: 'users', title: '用户', domain: 'identity', purpose: '系统中的用户主体，社区、个人空间、权限和上传资源的归属起点。', fields: ['id', 'username', 'email', 'status'], migration: '000001 + 000016', relationshipNote: '通过受外键约束的 user_id、author_id、created_by、uploader_id 等字段被多个业务表引用。' },
+  { name: 'accounts', title: '登录凭据', domain: 'identity', purpose: '保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据。', fields: ['id', 'user_id', 'type', 'identifier'], migration: '000001 + 000016', relationshipNote: '一个用户可有多个登录账号；user_id 由外键保护。' },
+  { name: 'sessions', title: '刷新会话', domain: 'identity', purpose: '保存 refresh token、设备和过期时间。', fields: ['id', 'user_id', 'refresh_token', 'expires_at'], migration: '000001 + 000016', relationshipNote: '一个用户可在多个设备保持会话；user_id 由外键保护。' },
+  { name: 'roles', title: '角色', domain: 'identity', purpose: '定义 admin、moderator、member、guest 等系统角色；member 是有效用户的隐式基础角色。', fields: ['id', 'name', 'is_system'], migration: '000002', relationshipNote: 'user_roles 只保存额外授权；permissions 约束角色可以执行的操作。' },
+  { name: 'user_roles', title: '用户角色', domain: 'identity', purpose: '用户与额外角色的关联；管理员使用 global 作用域，版主使用一个或多个 category 作用域。', fields: ['user_id', 'role_id', 'scope_type', 'scope_id'], migration: '000002 + 000014 - 000016', relationshipNote: 'user_id 和 role_id 由外键保护；版主 scope_id 逻辑指向 categories.id，跨版块请求由后端拒绝。' },
+  { name: 'permissions', title: '角色权限', domain: 'identity', purpose: '为角色声明资源和动作权限；角色管理与各管理域使用独立 action。', fields: ['role_id', 'resource', 'action'], migration: '000002 + 000014 - 000017', relationshipNote: 'role_id 由外键保护；版主权限还必须匹配 user_roles 中的 category scope。' },
+  { name: 'categories', title: '版块', domain: 'community', purpose: '社区内容分区，支持父子版块和默认标签。', fields: ['id', 'parent_id', 'name', 'default_tags'], migration: '000001 + 000012 + 000016', relationshipNote: 'parent_id、threads.category_id 和 user_space_contents.category_id 由外键保护。' },
+  { name: 'threads', title: '主题 / 文章入口', domain: 'community', purpose: '普通帖子和富文本文章共用的顶层内容实体。', fields: ['id', 'author_id', 'category_id', 'status'], migration: '000001 + 000016', relationshipNote: '作者和版块由外键保护，并关联回复、个人空间同步内容和富文本正文。' },
+  { name: 'posts', title: '回复', domain: 'community', purpose: '主题下的回复，可通过 parent_id 形成引用/嵌套关系。', fields: ['id', 'thread_id', 'author_id', 'parent_id', 'floor_number'], migration: '000001 + 000016', relationshipNote: 'thread_id、author_id 和 parent_id 由外键保护。' },
   { name: 'tags', title: '标签字典', domain: 'community', purpose: '保留可管理标签元数据；主题当前也以 tags 数组保存标签快照。', fields: ['id', 'name', 'slug', 'thread_count'], migration: '000001', relationshipNote: '当前没有 thread_tags 关联表，主题标签以数组字段为主。' },
   { name: 'likes', title: '点赞', domain: 'community', purpose: '记录用户对主题或回复的点赞。', fields: ['user_id', 'target_type', 'target_id'], migration: '000001', relationshipNote: 'target_type + target_id 是多态关联，可指向 threads 或 posts。' },
   { name: 'notifications', title: '站内通知', domain: 'community', purpose: '保存通知内容、已读状态和跳转地址。', fields: ['user_id', 'type', 'is_read'], migration: '000001', relationshipNote: '按 user_id 投递给一个用户。' },
@@ -276,13 +276,13 @@ const databaseTables: DbTable[] = [
   { name: 'plugin_permissions', title: '插件权限', domain: 'plugin', purpose: '保存插件声明或同步后的 Host API 权限。', fields: ['plugin_name', 'permission_type', 'permission_value'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
   { name: 'plugin_logs', title: '插件日志', domain: 'plugin', purpose: '保存插件运行、事件和 Host API 日志。', fields: ['plugin_name', 'level', 'event_type', 'trace_id'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
   { name: 'ai_call_logs', title: 'AI 调用日志', domain: 'integration', purpose: '记录模型提供方、用量、耗时和失败原因。', fields: ['provider', 'model', 'source', 'status'], migration: '000006', relationshipNote: '按调用来源记录，不强制绑定用户或帖子。' },
-  { name: 'user_spaces', title: '个人主页', domain: 'space', purpose: '保存用户公开主页、同步设置、样式和禁用状态。', fields: ['user_id', 'visibility', 'style_name', 'sync_enabled'], migration: '000007 + 000009 + 000011', relationshipNote: '一个用户最多一份个人主页配置。' },
-  { name: 'user_space_contents', title: '主页同步内容', domain: 'space', purpose: '缓存同步到个人主页的主题摘要和展示信息。', fields: ['user_id', 'thread_id', 'category_id', 'synced_at'], migration: '000008', relationshipNote: '连接用户、主题和版块；thread_id 在当前表中唯一。' },
+  { name: 'user_spaces', title: '个人主页', domain: 'space', purpose: '保存用户公开主页、同步设置、样式和禁用状态。', fields: ['user_id', 'visibility', 'style_name', 'sync_enabled'], migration: '000007 + 000009 + 000011 + 000016', relationshipNote: '一个用户最多一份个人主页配置；user_id 由外键保护。' },
+  { name: 'user_space_contents', title: '主页同步内容', domain: 'space', purpose: '缓存同步到个人主页的主题摘要和展示信息。', fields: ['user_id', 'thread_id', 'category_id', 'synced_at'], migration: '000008 + 000016', relationshipNote: '用户、主题和版块均由外键保护；thread_id 在当前表中唯一。' },
   { name: 'user_space_style_snapshots', title: '风格快照', domain: 'space', purpose: '在应用风格前保存可回滚的个人主页样式状态。', fields: ['user_id', 'snapshot_type', 'style_name', 'style_manifest'], migration: '000011', relationshipNote: '按 user_id 保存历史快照。' },
-  { name: 'richtext_article_contents', title: '富文本正文', domain: 'space', purpose: '保存受控富文本文章 HTML/JSON、封面和发布状态。', fields: ['thread_id', 'created_by', 'status', 'content_html'], migration: '000013', relationshipNote: '一个 thread_id 最多一份富文本正文，created_by 逻辑关联用户。' },
-  { name: 'richtext_article_assets', title: '富文本资源', domain: 'space', purpose: '保存图片文件元数据，实际文件位于用户个人空间。', fields: ['thread_id', 'article_content_id', 'uploader_id', 'file_url'], migration: '000013', relationshipNote: '可关联主题、富文本正文和上传用户。' },
+  { name: 'richtext_article_contents', title: '富文本正文', domain: 'space', purpose: '保存受控富文本文章 HTML/JSON、封面和发布状态。', fields: ['thread_id', 'created_by', 'status', 'content_html'], migration: '000013 + 000016', relationshipNote: 'thread_id、created_by 和 updated_by 由外键保护。' },
+  { name: 'richtext_article_assets', title: '富文本资源', domain: 'space', purpose: '保存图片文件元数据，实际文件位于用户个人空间。', fields: ['thread_id', 'article_content_id', 'uploader_id', 'file_url'], migration: '000013 + 000016', relationshipNote: '主题、富文本正文和上传用户均由外键保护。' },
   { name: 'webhook_endpoints', title: 'Webhook 端点', domain: 'integration', purpose: '保存外部订阅地址、签名密钥、事件和重试设置。', fields: ['name', 'url', 'events', 'enabled'], migration: '000011', relationshipNote: '一个端点可产生多条投递记录。' },
-  { name: 'webhook_deliveries', title: 'Webhook 投递', domain: 'integration', purpose: '记录投递状态、重试次数、响应状态和错误信息。', fields: ['endpoint_id', 'event_type', 'status', 'attempts'], migration: '000011', relationshipNote: 'endpoint_id 逻辑指向 webhook_endpoints.id。' },
+  { name: 'webhook_deliveries', title: 'Webhook 投递', domain: 'integration', purpose: '记录投递状态、重试次数、响应状态和错误信息。', fields: ['endpoint_id', 'event_type', 'status', 'attempts'], migration: '000011 + 000016', relationshipNote: 'endpoint_id 由指向 webhook_endpoints.id 的外键保护。' },
   { name: 'mcp_audit_logs', title: 'MCP 调用审计', domain: 'integration', purpose: '记录内部 MCP-like 工具调用、参数和结果。', fields: ['user_id', 'tool', 'arguments', 'success'], migration: '000011', relationshipNote: 'user_id 为调用主体标识，当前以字符串保存。' },
   { name: 'message_bindings', title: '消息账号绑定', domain: 'integration', purpose: '绑定 CampusOS 用户与外部平台账号。', fields: ['user_id', 'platform', 'external_user_id'], migration: '000011', relationshipNote: 'user_id 为 CampusOS 用户标识，当前以字符串保存。' },
   { name: 'message_logs', title: '消息日志', domain: 'integration', purpose: '记录 local adapter 或未来外部适配器的消息方向和原始负载。', fields: ['platform', 'conversation_id', 'sender_id', 'direction'], migration: '000011', relationshipNote: '按平台和会话索引，不直接强制关联用户。' },
@@ -293,6 +293,7 @@ const relations: Relation[] = [
   { id: 'users-sessions', source: 'users', target: 'sessions', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity'] },
   { id: 'users-user-roles', source: 'users', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity'] },
   { id: 'roles-user-roles', source: 'roles', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> role_id', domains: ['identity'] },
+  { id: 'categories-user-roles', source: 'categories', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> category scope_id', domains: ['identity', 'community'] },
   { id: 'roles-permissions', source: 'roles', target: 'permissions', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> role_id', domains: ['identity'] },
   { id: 'categories-parent', source: 'categories', target: 'categories', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> parent_id', domains: ['community'] },
   { id: 'categories-threads', source: 'categories', target: 'threads', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> category_id', domains: ['community'] },
@@ -341,6 +342,10 @@ const migrations = [
   { version: '000011', file: '000011_v05_operational_features.up.sql', title: '运营化与低风险集成', scope: 'v0.5', summary: '增加主页风格快照、Webhook、MCP 审计、消息绑定和消息日志。', tables: ['user_space_style_snapshots', 'webhook_endpoints', 'webhook_deliveries', 'mcp_audit_logs', 'message_bindings', 'message_logs'] },
   { version: '000012', file: '000012_category_default_tags.up.sql', title: '版块默认标签', scope: '社区', summary: '为 categories 增加 default_tags 数组字段和索引。', tables: ['categories'] },
   { version: '000013', file: '000013_controlled_richtext_article.up.sql', title: '受控富文本图文文章', scope: '内容', summary: '将富文本正文和图片元数据关联到既有 threads。', tables: ['richtext_article_contents', 'richtext_article_assets'] },
+  { version: '000014', file: '000014_role_assignment_permissions.up.sql', title: '角色分配修复与细粒度权限', scope: '身份', summary: '修复 user_roles 全局角色唯一性，分离角色读取、分配和撤销权限，不新增数据表。', tables: ['user_roles', 'permissions'] },
+  { version: '000015', file: '000015_category_moderation_scope.up.sql', title: '版块版主作用域', scope: '身份与治理', summary: '停用历史全局版主授权，约束 global/category 作用域形状，并补充主题锁定权限。', tables: ['user_roles', 'permissions'] },
+  { version: '000016', file: '000016_v06_core_integrity.up.sql', title: '核心数据完整性', scope: '数据库', summary: '在数据预检后增加核心状态与计数检查、稳定关系外键和关键查询索引。', tables: ['users', 'accounts', 'sessions', 'categories', 'threads', 'posts', 'user_roles', 'permissions', 'user_spaces', 'user_space_contents', 'richtext_article_contents', 'richtext_article_assets', 'webhook_deliveries'] },
+  { version: '000017', file: '000017_v06_admin_permission_split.up.sql', title: '管理权限细分', scope: '身份与治理', summary: '将插件、富文本、集成、空间、日志和首页管理从粗粒度角色权限拆分为资源动作权限。', tables: ['permissions'] },
 ]
 
 const tableByName = (name: string) => databaseTables.find((table) => table.name === name) || databaseTables[0]

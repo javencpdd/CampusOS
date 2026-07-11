@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -69,7 +70,7 @@ func (h *Handler) ActivateTerm(c *gin.Context) {
 		return
 	}
 	var req ActivateTermRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -88,7 +89,7 @@ func (h *Handler) SaveMe(c *gin.Context) {
 		return
 	}
 	var req UpsertRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}

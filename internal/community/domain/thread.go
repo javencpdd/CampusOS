@@ -47,8 +47,8 @@ type CreateThreadRequest struct {
 
 // UpdateThreadRequest 更新帖子请求
 type UpdateThreadRequest struct {
-	Title   *string       `json:"title,omitempty"`
-	Content *string       `json:"content,omitempty"`
+	Title   *string       `json:"title,omitempty" binding:"omitempty,min=1,max=255"`
+	Content *string       `json:"content,omitempty" binding:"omitempty,min=1"`
 	Tags    []string      `json:"tags,omitempty"`
 	Status  *ThreadStatus `json:"status,omitempty"`
 }

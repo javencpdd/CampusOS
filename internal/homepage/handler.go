@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/campusos/CampusOS/internal/stylepack"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -92,7 +93,7 @@ func (h *Handler) ApplyStylePack(c *gin.Context) {
 
 func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 	var req StylePackApplySourceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}

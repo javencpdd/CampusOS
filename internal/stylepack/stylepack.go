@@ -48,6 +48,14 @@ type Manifest struct {
 	ConfigSchema       string            `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
 	Tokens             map[string]string `json:"tokens,omitempty" yaml:"tokens,omitempty"`
 	Assets             []Asset           `json:"assets,omitempty" yaml:"assets,omitempty"`
+	Effect             *Effect           `json:"effect,omitempty" yaml:"effect,omitempty"`
+	Capabilities       []string          `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+}
+
+type Effect struct {
+	Runtime string `json:"runtime" yaml:"runtime"`
+	Entry   string `json:"entry" yaml:"entry"`
+	Source  string `json:"source,omitempty" yaml:"source,omitempty"`
 }
 
 type Template struct {
@@ -71,6 +79,7 @@ type Package struct {
 	Manifest Manifest          `json:"manifest"`
 	HTML     string            `json:"html"`
 	CSS      string            `json:"css,omitempty"`
+	EffectJS string            `json:"effect_js,omitempty"`
 	Files    []FileInfo        `json:"files,omitempty"`
 	RawFiles map[string]string `json:"-"`
 }
@@ -288,6 +297,47 @@ func BuildExample(target, name, displayName, title, subtitle, primary, backgroun
 	if surface == "" {
 		surface = "#f8fafc"
 	}
+	scope := ScopeRootSelector(target)
+	exampleCSS := fmt.Sprintf(`.cstyle-page {
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: %s;
+}
+.cstyle-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cstyle-hero h2 {
+  margin: 0;
+  color: %s;
+}
+.cstyle-hero p {
+  margin: 8px 0 0;
+  color: #475569;
+  line-height: 1.7;
+}
+.cstyle-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: %s;
+  color: %s;
+}
+.cstyle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.cstyle-grid article {
+  padding: 16px;
+  border-radius: 8px;
+  background: %s;
+}
+`, background, primary, surface, primary, surface)
+	exampleCSS = scope + " " + strings.ReplaceAll(exampleCSS, "\n.cstyle", "\n"+scope+" .cstyle")
 
 	files := map[string]string{
 		"README.md": fmt.Sprintf(`# %s
@@ -383,45 +433,7 @@ assets:
 		"preview.png":             "CampusOS style pack preview placeholder.\n",
 		"assets/cover.webp":       "CampusOS style pack cover placeholder.\n",
 		"assets/avatar-frame.png": "CampusOS avatar frame placeholder.\n",
-		"styles/theme.css": fmt.Sprintf(`.cstyle-page {
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: %s;
-}
-.cstyle-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.cstyle-hero h2 {
-  margin: 0;
-  color: %s;
-}
-.cstyle-hero p {
-  margin: 8px 0 0;
-  color: #475569;
-  line-height: 1.7;
-}
-.cstyle-badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: %s;
-  color: %s;
-}
-.cstyle-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-.cstyle-grid article {
-  padding: 16px;
-  border-radius: 8px;
-  background: %s;
-}
-`, background, primary, surface, primary, surface),
+		"styles/theme.css":        exampleCSS,
 	}
 	pkg, result := BuildFromFiles(files)
 	if !result.Valid || pkg == nil {
@@ -543,6 +555,9 @@ func buildPackage(files map[string][]byte) (*Package, ValidationResult) {
 		cssParts = append(cssParts, strings.TrimSpace(string(files[cssPath])))
 	}
 	pkg.CSS = strings.TrimSpace(strings.Join(cssParts, "\n\n"))
+	if manifest.Effect != nil {
+		pkg.EffectJS = strings.TrimSpace(string(files[manifest.Effect.Entry]))
+	}
 	return pkg, result.finish()
 }
 
@@ -561,6 +576,12 @@ func NormalizeManifest(manifest Manifest) Manifest {
 	manifest.Templates = normalizeTemplates(manifest.Templates, 20)
 	manifest.Styles = normalizePaths(manifest.Styles, 8)
 	manifest.Tokens = normalizeTokens(manifest.Tokens)
+	manifest.Capabilities = normalizeList(manifest.Capabilities, 12)
+	if manifest.Effect != nil {
+		manifest.Effect.Runtime = strings.TrimSpace(manifest.Effect.Runtime)
+		manifest.Effect.Entry = cleanPackPath(manifest.Effect.Entry)
+		manifest.Effect.Source = cleanPackPath(manifest.Effect.Source)
+	}
 	for i := range manifest.Assets {
 		manifest.Assets[i].Name = normalizePackName(manifest.Assets[i].Name)
 		manifest.Assets[i].Path = cleanPackPath(manifest.Assets[i].Path)
@@ -589,8 +610,8 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	if manifest.SchemaVersion != SchemaVersion {
 		result.addError(fmt.Sprintf("schema_version must be %q", SchemaVersion))
 	}
-	if manifest.Target != "personal-space" && manifest.Target != "homepage" {
-		result.addError("target must be personal-space or homepage")
+	if ScopeRootSelector(manifest.Target) == "" {
+		result.addError("target must be personal-space, homepage or web")
 	}
 	if !packNamePattern.MatchString(manifest.Name) {
 		result.addError("name must use lowercase letters, numbers and hyphens")
@@ -618,12 +639,12 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 
 	cssSeen := map[string]struct{}{}
 	for _, cssPath := range manifest.Styles {
-		validateCSSFile("style", cssPath, files, result, cssSeen)
+		validateCSSFile("style", cssPath, manifest.Target, files, result, cssSeen)
 	}
 	for filePath := range files {
 		if strings.ToLower(path.Ext(filePath)) == ".css" {
 			if _, ok := cssSeen[filePath]; !ok {
-				validateCSSFile("css "+filePath, filePath, files, result, cssSeen)
+				validateCSSFile("css "+filePath, filePath, manifest.Target, files, result, cssSeen)
 			}
 		}
 	}
@@ -643,6 +664,8 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 			result.addError(prefix + ".type is not supported")
 		}
 	}
+	validateEffect(manifest.Target, manifest.Effect, files, result)
+	validateCapabilities(manifest, result)
 	for name := range files {
 		if err := validateFilePath(name); err != nil {
 			result.addError("file path: " + err.Error())
@@ -676,7 +699,7 @@ func validateHTMLFile(field, value string, files map[string][]byte, result *Vali
 	result.addSafeHTMLPrefixed(field+": ", htmlResult)
 }
 
-func validateCSSFile(field, value string, files map[string][]byte, result *ValidationResult, seen map[string]struct{}) {
+func validateCSSFile(field, value, target string, files map[string][]byte, result *ValidationResult, seen map[string]struct{}) {
 	if err := validateFilePath(value); err != nil {
 		result.addError(field + ": " + err.Error())
 		return
@@ -693,6 +716,9 @@ func validateCSSFile(field, value string, files map[string][]byte, result *Valid
 	seen[value] = struct{}{}
 	cssResult := ValidateCSS(string(data))
 	result.addPrefixed("css "+value+": ", cssResult)
+	if cssResult.Valid {
+		result.addPrefixed("css "+value+": ", ValidateCSSScope(target, string(data)))
+	}
 }
 
 func validateImagePath(field, value string, files map[string][]byte, result *ValidationResult) {
@@ -730,6 +756,72 @@ func validateConfigSchemaPath(field, value string, files map[string][]byte, resu
 	}
 	if schemaType, ok := schema["type"].(string); ok && schemaType != "object" {
 		result.addError(field + ` type must be "object"`)
+	}
+}
+
+func validateEffect(target string, effect *Effect, files map[string][]byte, result *ValidationResult) {
+	declared := map[string]struct{}{}
+	if effect != nil {
+		if target == TargetHomepage {
+			result.addError("target homepage does not support scripts; use target web for administrator-provided sandbox effects")
+		}
+		if effect.Runtime != EffectRuntimeSandboxWorker {
+			result.addError(fmt.Sprintf("effect.runtime must be %q", EffectRuntimeSandboxWorker))
+		}
+		if err := validateFilePath(effect.Entry); err != nil {
+			result.addError("effect.entry: " + err.Error())
+		} else if strings.ToLower(path.Ext(effect.Entry)) != ".js" {
+			result.addError("effect.entry must point to a js file")
+		} else if script, ok := files[effect.Entry]; !ok {
+			result.addError("effect.entry file is missing: " + effect.Entry)
+		} else {
+			declared[effect.Entry] = struct{}{}
+			result.addPrefixed("effect "+effect.Entry+": ", ValidateEffectScript(string(script)))
+		}
+		if effect.Source != "" {
+			if err := validateFilePath(effect.Source); err != nil {
+				result.addError("effect.source: " + err.Error())
+			} else if strings.ToLower(path.Ext(effect.Source)) != ".ts" {
+				result.addError("effect.source must point to a ts file")
+			} else if _, ok := files[effect.Source]; !ok {
+				result.addError("effect.source file is missing: " + effect.Source)
+			} else {
+				declared[effect.Source] = struct{}{}
+			}
+		}
+	}
+	for name := range files {
+		ext := strings.ToLower(path.Ext(name))
+		if ext != ".js" && ext != ".ts" {
+			continue
+		}
+		if _, ok := declared[name]; !ok {
+			result.addError("effect script file is not declared in style.yaml: " + name)
+		}
+	}
+}
+
+func validateCapabilities(manifest Manifest, result *ValidationResult) {
+	allowed := map[string]map[string]struct{}{
+		TargetPersonalSpace: {
+			"space.profile.read": {},
+			"space.posts.read":   {},
+			"schedule.me.read":   {},
+		},
+		TargetHomepage: {},
+		TargetWeb: {
+			"community.threads.read": {},
+			"categories.read":        {},
+			"schedule.me.read":       {},
+		},
+	}
+	for _, capability := range manifest.Capabilities {
+		if _, ok := allowed[manifest.Target][capability]; !ok {
+			result.addError(fmt.Sprintf("capability %q is not allowed for target %q", capability, manifest.Target))
+		}
+	}
+	if len(manifest.Capabilities) > 0 && manifest.Effect == nil {
+		result.addWarning("capabilities are declared but no sandbox effect uses the CampusStyleSDK bridge")
 	}
 }
 
@@ -915,7 +1007,7 @@ func allowedFileExtension(name string) bool {
 		return true
 	}
 	switch strings.ToLower(path.Ext(name)) {
-	case ".yaml", ".yml", ".md", ".html", ".css", ".png", ".jpg", ".jpeg", ".webp":
+	case ".yaml", ".yml", ".md", ".html", ".css", ".js", ".ts", ".png", ".jpg", ".jpeg", ".webp":
 		return true
 	default:
 		return false
@@ -949,6 +1041,10 @@ func fileType(name string) string {
 		return "text/html"
 	case ".css":
 		return "text/css"
+	case ".js":
+		return "text/javascript"
+	case ".ts":
+		return "text/typescript"
 	case ".md":
 		return "text/markdown"
 	case ".yaml", ".yml":

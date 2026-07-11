@@ -3,11 +3,11 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/internal/community/service"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -29,7 +29,7 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	}
 
 	var req domain.CreatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 		return
 	}
@@ -53,7 +53,7 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	var req struct {
 		Content string `json:"content" binding:"required,min=1"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -83,13 +83,9 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 
 func (h *PostHandler) ListPosts(c *gin.Context) {
 	threadID := c.Param("id")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+	page, pageSize, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return
 	}
 
 	posts, total, err := h.svc.ListByThread(c.Request.Context(), threadID, page, pageSize)
@@ -119,13 +115,9 @@ func (h *PostHandler) ListPostsForCurrentUser(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+	page, pageSize, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return
 	}
 
 	posts, total, err := h.svc.ListByThreadForViewer(c.Request.Context(), threadID, userID, page, pageSize)

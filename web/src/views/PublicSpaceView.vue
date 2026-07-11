@@ -1,5 +1,17 @@
 <template>
-  <div class="public-space" v-loading="loading" :style="spaceStyleVars">
+  <div
+    class="public-space"
+    v-loading="loading"
+    data-campusos-space
+    :data-space-owner="payload?.owner.username || username"
+    :data-style-pack="payload?.space.style_name || 'default'"
+    :style="spaceStyleVars"
+  >
+    <StyleEffectLayer
+      :script="customEffectJS"
+      :capabilities="styleCapabilities"
+      :resolve-query="resolveStyleQuery"
+    />
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false" />
 
     <template v-else-if="payload">
@@ -44,7 +56,9 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { spaceApi } from '@/api'
+import { scheduleApi, spaceApi } from '@/api'
+import StyleEffectLayer from '@/components/StyleEffectLayer.vue'
+import { useUserStore } from '@/stores/user'
 
 interface ApiResponse<T> {
   code: number
@@ -53,6 +67,7 @@ interface ApiResponse<T> {
 }
 
 interface Owner {
+  id: string
   username: string
   nickname: string
   avatar?: string
@@ -67,6 +82,8 @@ interface StyleManifest {
   custom_html_enabled?: boolean
   custom_html?: string
   custom_css?: string
+  custom_effect_js?: string
+  capabilities?: string[]
 }
 
 interface Space {
@@ -99,6 +116,7 @@ interface ListPayload<T> {
 }
 
 const route = useRoute()
+const userStore = useUserStore()
 const payload = ref<PublicSpacePayload | null>(null)
 const contents = ref<SpaceContent[]>([])
 const loading = ref(false)
@@ -126,12 +144,32 @@ const customCSS = computed(() => {
   if (!manifest?.custom_html_enabled || !manifest.custom_css) return ''
   return manifest.custom_css
 })
+const customEffectJS = computed(() => payload.value?.space.style_manifest?.custom_effect_js || '')
+const styleCapabilities = computed(() => payload.value?.space.style_manifest?.capabilities || [])
 const avatarText = computed(() => {
   const name = payload.value?.owner.nickname || payload.value?.owner.username || 'U'
   return name.slice(0, 1).toUpperCase()
 })
 
 const unwrap = <T,>(res: unknown): T => (res as ApiResponse<T>).data
+
+const resolveStyleQuery = async (method: string, params: Record<string, unknown>) => {
+  if (method === 'space.profile.read') {
+    return payload.value
+  }
+  if (method === 'space.posts.read') {
+    const requested = Number(params.limit || 10)
+    const limit = Math.max(1, Math.min(20, Number.isFinite(requested) ? requested : 10))
+    return { owner: payload.value?.owner, items: contents.value.slice(0, limit) }
+  }
+  if (method === 'schedule.me.read') {
+    if (!userStore.isLoggedIn || payload.value?.owner.id !== userStore.user?.id) {
+      throw new Error('课表只允许主页所有者本人在自己的主页风格中读取')
+    }
+    return unwrap(await scheduleApi.me())
+  }
+  throw new Error('不支持的风格包数据能力')
+}
 
 const loadSpace = async () => {
   if (!username.value) return
@@ -169,7 +207,7 @@ watch(customCSS, (css) => {
   }
   if (!css) return
   injectedStyle = document.createElement('style')
-  injectedStyle.setAttribute('data-campos-style-pack', 'personal-space')
+  injectedStyle.setAttribute('data-campusos-style-pack', 'personal-space')
   injectedStyle.textContent = css
   document.head.appendChild(injectedStyle)
 }, { immediate: true })
@@ -182,9 +220,15 @@ onUnmounted(() => {
 
 <style scoped>
 .public-space {
+  position: relative;
+  isolation: isolate;
   min-height: 70vh;
   padding: 28px 0 40px;
   background: var(--space-bg);
+}
+.public-space > :not(.style-effect-layer) {
+  position: relative;
+  z-index: 1;
 }
 .space-hero {
   display: flex;

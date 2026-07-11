@@ -5,6 +5,9 @@
         <div class="card-header">
           <span>用户管理</span>
           <div class="header-actions">
+            <el-button v-if="canManageRoles" plain @click="$router.push('/moderators')">
+              版主管理
+            </el-button>
             <el-input
               v-model="searchKeyword"
               placeholder="搜索用户名/昵称"
@@ -26,7 +29,7 @@
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="nickname" label="昵称" width="120" />
         <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip />
-        <el-table-column label="角色" width="180" align="center">
+        <el-table-column v-if="canManageRoles" label="角色" width="180" align="center">
           <template #default="{ row }">
             <div v-if="userRoles[row.id] && userRoles[row.id].length > 0">
               <el-tag
@@ -51,7 +54,7 @@
         </el-table-column>
         <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" plain @click="openRoleDialog(row)">
+            <el-button v-if="canManageRoles" type="primary" size="small" plain @click="openRoleDialog(row)">
               角色
             </el-button>
             <el-popconfirm
@@ -102,7 +105,7 @@
             :key="role.id"
             :type="roleTagType(role.name)"
             size="default"
-            closable
+            :closable="canRevokeRole(role)"
             style="margin: 4px"
             @close="doRevokeRole(selectedUser.id, role.id)"
           >
@@ -112,22 +115,40 @@
         <el-empty v-else description="暂无角色" :image-size="60" />
 
         <h4 style="margin: 16px 0 8px">分配新角色：</h4>
-        <el-select v-model="newRoleId" placeholder="选择角色" style="width: 100%">
+        <el-select v-model="newRoleId" placeholder="选择角色" style="width: 100%" @change="handleRoleSelection">
           <el-option
             v-for="role in allRoles"
             :key="role.id"
             :label="roleNameMap[role.name] || role.name"
             :value="role.id"
-            :disabled="isRoleAssigned(role.id)"
+            :disabled="(isRoleAssigned(role.id) && role.name !== 'moderator') || isProtectedRole(role)"
           >
             <span>{{ roleNameMap[role.name] || role.name }}</span>
             <span style="float: right; color: #8492a6; font-size: 12px">{{ role.description }}</span>
           </el-option>
         </el-select>
+        <div v-if="selectedRole?.name === 'moderator'" class="moderator-scope-editor">
+          <h4>管理板块：</h4>
+          <el-select
+            v-model="moderatorCategoryIds"
+            multiple
+            filterable
+            placeholder="至少选择一个板块"
+            style="width: 100%"
+          >
+            <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
+          </el-select>
+          <el-alert
+            type="info"
+            :closable="false"
+            title="版主只能在选中板块内置顶、锁定主题或删除回复；具体操作还受 category-moderation 插件权限开关控制。"
+          />
+        </div>
         <el-button
           type="primary"
           style="width: 100%; margin-top: 12px"
-          :disabled="!newRoleId"
+          :disabled="!newRoleId || assigningRole"
+          :loading="assigningRole"
           @click="doAssignRole"
         >
           分配角色
@@ -138,16 +159,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { userApi, roleApi } from '@/api'
+import { categoryApi, moderationApi, userApi, roleApi } from '@/api'
+import { useAdminStore } from '@/stores/admin'
 
 const users = ref<any[]>([])
 const loading = ref(false)
 const page = ref(1)
 const total = ref(0)
 const searchKeyword = ref('')
+const adminStore = useAdminStore()
+const canManageRoles = computed(() => adminStore.isAdmin)
 
 // 角色相关状态
 const userRoles = ref<Record<string, any[]>>({})
@@ -156,6 +180,10 @@ const roleDialogVisible = ref(false)
 const selectedUser = ref<any>(null)
 const selectedUserRoles = ref<any[]>([])
 const newRoleId = ref<number | null>(null)
+const assigningRole = ref(false)
+const categories = ref<any[]>([])
+const moderatorCategoryIds = ref<string[]>([])
+const selectedRole = computed(() => allRoles.value.find((role) => role.id === newRoleId.value))
 
 const roleNameMap: Record<string, string> = {
   admin: '管理员',
@@ -178,15 +206,20 @@ const isRoleAssigned = (roleId: number) => {
   return selectedUserRoles.value.some((r) => r.id === roleId)
 }
 
+const isProtectedRole = (role: any) => role.name === 'member' || role.name === 'guest'
+
+const canRevokeRole = (role: any) => selectedUser.value?.id !== adminStore.user?.id && !isProtectedRole(role)
+
+const apiMessage = (error: any, fallback: string) => error?.msg || error?.message || fallback
+
 const load = async () => {
   loading.value = true
   try {
     const r = (await userApi.list({ page: page.value, page_size: 20 })) as any
     users.value = r?.data?.items || []
     total.value = r?.data?.pagination?.total || 0
-    // 加载每个用户的角色
-    for (const user of users.value) {
-      loadUserRoles(user.id)
+    if (canManageRoles.value) {
+      await Promise.all(users.value.map((user) => loadUserRoles(user.id)))
     }
   } catch {
     ElMessage.error('加载用户列表失败')
@@ -204,6 +237,10 @@ const loadUserRoles = async (userId: string) => {
 }
 
 const loadAllRoles = async () => {
+  if (!canManageRoles.value) {
+    allRoles.value = []
+    return
+  }
   try {
     const r = (await roleApi.list()) as any
     allRoles.value = r?.data || []
@@ -213,8 +250,13 @@ const loadAllRoles = async () => {
 }
 
 const openRoleDialog = async (user: any) => {
+  if (!canManageRoles.value) {
+    ElMessage.warning('当前账号没有角色管理权限')
+    return
+  }
   selectedUser.value = user
   newRoleId.value = null
+  moderatorCategoryIds.value = []
   await loadUserRoles(user.id)
   selectedUserRoles.value = userRoles.value[user.id] || []
   if (allRoles.value.length === 0) {
@@ -223,27 +265,57 @@ const openRoleDialog = async (user: any) => {
   roleDialogVisible.value = true
 }
 
+const handleRoleSelection = async () => {
+  if (selectedRole.value?.name !== 'moderator' || !selectedUser.value) {
+    moderatorCategoryIds.value = []
+    return
+  }
+  try {
+    const result = (await moderationApi.get(selectedUser.value.id)) as any
+    moderatorCategoryIds.value = result?.data?.category_ids || []
+  } catch {
+    moderatorCategoryIds.value = []
+  }
+}
+
 const doAssignRole = async () => {
   if (!selectedUser.value || !newRoleId.value) return
+  assigningRole.value = true
   try {
-    await roleApi.assign(selectedUser.value.id, newRoleId.value)
-    ElMessage.success('角色分配成功')
+    if (selectedRole.value?.name === 'moderator') {
+      if (moderatorCategoryIds.value.length === 0) {
+        ElMessage.warning('请至少选择一个版主负责的板块')
+        return
+      }
+      const result = (await moderationApi.update(selectedUser.value.id, moderatorCategoryIds.value)) as any
+      ElMessage.success(result?.data?.message || '版主管理范围已保存')
+    } else {
+      const result = (await roleApi.assign(selectedUser.value.id, newRoleId.value)) as any
+      ElMessage.success(result?.data?.message || '角色分配成功')
+    }
     await loadUserRoles(selectedUser.value.id)
     selectedUserRoles.value = userRoles.value[selectedUser.value.id] || []
     newRoleId.value = null
-  } catch {
-    ElMessage.error('角色分配失败')
+  } catch (error: any) {
+    ElMessage.error(apiMessage(error, '角色分配失败'))
+  } finally {
+    assigningRole.value = false
   }
 }
 
 const doRevokeRole = async (userId: string, roleId: number) => {
   try {
-    await roleApi.revoke(userId, roleId)
+    const role = selectedUserRoles.value.find((item) => item.id === roleId)
+    if (role?.name === 'moderator') {
+      await moderationApi.update(userId, [])
+    } else {
+      await roleApi.revoke(userId, roleId)
+    }
     ElMessage.success('角色已撤销')
     await loadUserRoles(userId)
     selectedUserRoles.value = userRoles.value[userId] || []
-  } catch {
-    ElMessage.error('角色撤销失败')
+  } catch (error: any) {
+    ElMessage.error(apiMessage(error, '角色撤销失败'))
   }
 }
 
@@ -269,7 +341,14 @@ const doActivate = async (id: string) => {
 
 onMounted(() => {
   load()
-  loadAllRoles()
+  categoryApi.list().then((result: any) => {
+    categories.value = Array.isArray(result?.data) ? result.data : []
+  }).catch(() => {
+    categories.value = []
+  })
+  if (canManageRoles.value) {
+    loadAllRoles()
+  }
 })
 </script>
 
@@ -292,5 +371,15 @@ onMounted(() => {
 
 .role-dialog-content h4 {
   color: #303133;
+}
+
+.moderator-scope-editor {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.moderator-scope-editor h4 {
+  margin: 0;
 }
 </style>
