@@ -13,7 +13,7 @@ type StylePackResult struct {
 }
 
 type StylePackApplySourceRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" binding:"required"`
 }
 
 func BuildStylePackPackage(owner Owner, space *Space, pack *stylepack.Package) StylePackage {

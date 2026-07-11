@@ -1,7 +1,7 @@
 import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"备份、恢复与版本验收","description":"","frontmatter":{},"headers":[],"relativePath":"operations/recovery.md","filePath":"operations/recovery.md","lastUpdated":null}');
+const __pageData = JSON.parse('{"title":"备份、恢复与版本验收","description":"","frontmatter":{},"headers":[],"relativePath":"operations/recovery.md","filePath":"operations/recovery.md","lastUpdated":1783761653000}');
 const _sfc_main = { name: "operations/recovery.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="备份、恢复与版本验收" tabindex="-1">备份、恢复与版本验收 <a class="header-anchor" href="#备份、恢复与版本验收" aria-label="Permalink to &quot;备份、恢复与版本验收&quot;">​</a></h1><h2 id="单节点备份" tabindex="-1">单节点备份 <a class="header-anchor" href="#单节点备份" aria-label="Permalink to &quot;单节点备份&quot;">​</a></h2><div class="language-bash vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">bash</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="${ssrRenderStyle({ "--shiki-light": "#6F42C1", "--shiki-dark": "#B392F0" })}">make</span><span style="${ssrRenderStyle({ "--shiki-light": "#032F62", "--shiki-dark": "#9ECBFF" })}"> backup</span></span>

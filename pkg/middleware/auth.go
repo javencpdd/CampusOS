@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,21 +14,21 @@ func JWTAuth(jwtMgr *auth.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 20001, "msg": "missing authorization header"})
+			response.Error(c, http.StatusUnauthorized, 20001, "missing authorization header")
 			c.Abort()
 			return
 		}
 
 		tokenString := strings.TrimPrefix(header, "Bearer ")
 		if tokenString == header {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 20001, "msg": "invalid authorization format"})
+			response.Error(c, http.StatusUnauthorized, 20001, "invalid authorization format")
 			c.Abort()
 			return
 		}
 
 		claims, err := jwtMgr.VerifyToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 20002, "msg": "invalid or expired token"})
+			response.Error(c, http.StatusUnauthorized, 20002, "invalid or expired token")
 			c.Abort()
 			return
 		}

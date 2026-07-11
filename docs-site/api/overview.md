@@ -30,7 +30,8 @@ Content-Type: application/json
 {
   "code": 0,
   "msg": "success",
-  "data": {}
+  "data": {},
+  "request_id": "8b73..."
 }
 ```
 
@@ -57,11 +58,21 @@ Content-Type: application/json
 ```json
 {
   "code": 20004,
-  "msg": "permission denied"
+  "msg": "permission denied",
+  "error": {
+    "code": "permission.denied",
+    "message": "permission denied",
+    "details": {},
+    "request_id": "8b73...",
+    "retryable": false
+  },
+  "request_id": "8b73..."
 }
 ```
 
-客户端应同时判断 HTTP status 和 `code`，不要依赖中文 `msg` 文本做程序分支。
+顶层 `code` 和 `msg` 为旧客户端保留。新客户端应同时判断 HTTP status 和 `error.code`，不要依赖 `msg` 文本做程序分支；`request_id` 用于关联服务端日志，`retryable` 表示同一请求是否适合稍后重试。
+
+`page` 从 1 开始，`page_size` 的允许范围为 1 到 100。无法解析、零、负数或超上限都返回 `400 request.invalid`，客户端应修正参数，不要依赖服务端静默归一化。
 
 ## 常见状态码
 
@@ -93,11 +104,11 @@ Content-Type: application/json
 
 ## 当前契约来源
 
-在 v6 OpenAPI 收口完成前，接口真相按以下顺序确认：
+当前 OpenAPI 已由实际路由生成。接口真相按以下顺序确认：
 
 1. `internal/server/server.go` 的实际路由。
-2. 对应 handler 和请求/响应结构。
-3. `web/src/api/index.ts` 与 `admin/src/api/index.ts`。
-4. 本文和仓库 `docs/api/`。
+2. `docs/api/openapi-v0.6-current.yaml` 的路由、认证、权限和字段级 schema。
+3. 对应 handler 和请求/响应结构；标记为 `generic-experimental` 的动态对象以这里为准。
+4. `web/src/api/index.ts`、`admin/src/api/index.ts` 和本文。
 
 新增或修改公开接口时，应同时更新代码、调用方、文档和负向权限测试。

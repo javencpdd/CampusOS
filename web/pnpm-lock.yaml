@@ -28,6 +28,9 @@ devDependencies:
   '@vitejs/plugin-vue':
     specifier: ^5.0.0
     version: 5.2.4(vite@5.4.21)(vue@3.5.38)
+  playwright-core:
+    specifier: ^1.61.1
+    version: 1.61.1
   typescript:
     specifier: ^5.3.0
     version: 5.9.3
@@ -1295,6 +1298,12 @@ packages:
       confbox: 0.2.4
       exsolve: 1.1.0
       pathe: 2.0.3
+    dev: true
+
+  /playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
     dev: true
 
   /postcss@8.5.15:

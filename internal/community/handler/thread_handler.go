@@ -2,10 +2,10 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/service"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +30,7 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 	}
 
 	var req domain.CreateThreadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -80,7 +80,10 @@ func (h *ThreadHandler) GetThreadForCurrentUser(c *gin.Context) {
 // ListThreads 获取帖子列表
 // GET /api/v1/threads
 func (h *ThreadHandler) ListThreads(c *gin.Context) {
-	filter, pageSize := h.threadListFilter(c)
+	filter, pageSize, ok := h.threadListFilter(c)
+	if !ok {
+		return
+	}
 	filter.Status = string(domain.ThreadStatusPublished)
 
 	h.respondThreadList(c, filter, pageSize)
@@ -89,18 +92,17 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 // AdminListThreads 获取管理端帖子列表，包含草稿、私密和归档状态。
 // GET /api/v1/admin/threads
 func (h *ThreadHandler) AdminListThreads(c *gin.Context) {
-	filter, pageSize := h.threadListFilter(c)
+	filter, pageSize, ok := h.threadListFilter(c)
+	if !ok {
+		return
+	}
 	h.respondThreadList(c, filter, pageSize)
 }
 
-func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilter, int) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilter, int, bool) {
+	page, pageSize, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return domain.ThreadListFilter{}, 0, false
 	}
 
 	filter := domain.ThreadListFilter{
@@ -112,7 +114,7 @@ func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilte
 		Page:          page,
 		PageSize:      pageSize,
 	}
-	return filter, pageSize
+	return filter, pageSize, true
 }
 
 func (h *ThreadHandler) respondThreadList(c *gin.Context, filter domain.ThreadListFilter, pageSize int) {
@@ -146,7 +148,7 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 	}
 
 	var req domain.UpdateThreadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}

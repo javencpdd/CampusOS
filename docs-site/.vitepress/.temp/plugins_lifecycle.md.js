@@ -1,7 +1,7 @@
 import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"生命周期与数据","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/lifecycle.md","filePath":"plugins/lifecycle.md","lastUpdated":null}');
+const __pageData = JSON.parse('{"title":"生命周期与数据","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/lifecycle.md","filePath":"plugins/lifecycle.md","lastUpdated":1783761653000}');
 const _sfc_main = { name: "plugins/lifecycle.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="生命周期与数据" tabindex="-1">生命周期与数据 <a class="header-anchor" href="#生命周期与数据" aria-label="Permalink to &quot;生命周期与数据&quot;">​</a></h1><h2 id="用户级插件" tabindex="-1">用户级插件 <a class="header-anchor" href="#用户级插件" aria-label="Permalink to &quot;用户级插件&quot;">​</a></h2><p><code>scope: user</code> 支持管理员执行：</p><ul><li>加载。</li><li>停止。</li><li>重载。</li><li>覆盖更新。</li><li>卸载。</li></ul><p>这些操作不要求重启 CampusOS API。覆盖更新时应先停止旧 Runtime，再加载新包。</p><h2 id="系统级插件" tabindex="-1">系统级插件 <a class="header-anchor" href="#系统级插件" aria-label="Permalink to &quot;系统级插件&quot;">​</a></h2><p><code>scope: system</code> 随 CampusOS 后端部署。管理端启用或停用只保存目标状态：</p><div class="language-text vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">text</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span>current status != desired status</span></span>

@@ -1,7 +1,7 @@
 import { ssrRenderAttrs } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"系统架构","description":"","frontmatter":{},"headers":[],"relativePath":"guide/architecture.md","filePath":"guide/architecture.md","lastUpdated":null}');
+const __pageData = JSON.parse('{"title":"系统架构","description":"","frontmatter":{},"headers":[],"relativePath":"guide/architecture.md","filePath":"guide/architecture.md","lastUpdated":1783761653000}');
 const _sfc_main = { name: "guide/architecture.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="系统架构" tabindex="-1">系统架构 <a class="header-anchor" href="#系统架构" aria-label="Permalink to &quot;系统架构&quot;">​</a></h1><h2 id="请求链路" tabindex="-1">请求链路 <a class="header-anchor" href="#请求链路" aria-label="Permalink to &quot;请求链路&quot;">​</a></h2><p>浏览器不直接访问数据库或插件数据。用户前台和管理后台统一调用 <code>/api/v1</code>，由后端完成认证、权限、对象归属和数据范围检查。</p><div class="language-text vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">text</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span>browser</span></span>

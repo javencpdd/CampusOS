@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: CampusOS Current HTTP API
-  version: 0.6.0-experimental
-  description: Generated route-level contract. Handler-specific schemas remain experimental.
+  version: 0.6.9-experimental
+  description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.
 servers:
   - url: http://localhost:8080
 paths:
@@ -17,13 +17,27 @@ paths:
       x-campusos-permission: thread:read
       security:
         - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ThreadListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -46,12 +60,10 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -74,6 +86,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -96,6 +110,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -108,13 +124,27 @@ paths:
       x-campusos-stability: experimental
       x-campusos-ownership: none
       x-campusos-scope: public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/auth/me:
     get:
       operationId: userHandler_GetMe
@@ -131,9 +161,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/auth/register:
     post:
       operationId: userHandler_Register
@@ -142,13 +181,27 @@ paths:
       x-campusos-stability: experimental
       x-campusos-ownership: none
       x-campusos-scope: public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '201':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/categories:
     get:
       operationId: categoryHandler_List
@@ -164,6 +217,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     post:
       operationId: categoryHandler_Create
       summary: POST /api/v1/categories
@@ -174,13 +229,27 @@ paths:
       x-campusos-permission: category:write
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '201':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -203,12 +272,10 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -232,7 +299,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     put:
       operationId: categoryHandler_Update
       summary: PUT /api/v1/categories/:id
@@ -249,13 +323,27 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -275,6 +363,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/health:
     get:
       operationId: userHandler_HealthCheck
@@ -290,6 +380,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/home/config:
     get:
       operationId: homepageHandler_GetConfig
@@ -305,6 +397,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/home/style-packs/apply:
     post:
       operationId: homepageHandler_ApplyStylePack
@@ -316,6 +410,13 @@ paths:
       x-campusos-permission: homepage:configure
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -323,6 +424,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -338,6 +441,13 @@ paths:
       x-campusos-permission: homepage:configure
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylePackSourceRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -345,6 +455,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -367,6 +479,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -389,6 +503,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -411,6 +527,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -433,6 +551,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -448,6 +568,13 @@ paths:
       x-campusos-permission: homepage:configure
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -455,6 +582,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -477,6 +606,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -499,6 +630,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -521,6 +654,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -535,6 +670,13 @@ paths:
       x-campusos-permission: mcp:configure
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -542,6 +684,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -564,6 +708,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -585,6 +731,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -592,6 +745,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -614,6 +769,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -629,6 +786,13 @@ paths:
       x-campusos-permission: message:write
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -636,6 +800,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -651,6 +817,13 @@ paths:
       x-campusos-permission: message:write
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -658,6 +831,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -680,6 +855,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -702,6 +879,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -724,6 +903,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -746,6 +927,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -774,6 +957,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -794,6 +979,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeratorAssignmentRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -801,6 +993,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -822,8 +1016,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/status:
     get:
       operationId: moderationHandler_Status
@@ -841,8 +1039,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/threads/{id}/lock:
     post:
       operationId: moderationHandler_Lock
@@ -866,8 +1068,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/threads/{id}/pin:
     post:
       operationId: moderationHandler_Pin
@@ -891,8 +1097,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/threads/{id}/posts/{post_id}:
     delete:
       operationId: moderationHandler_DeletePost
@@ -915,14 +1125,14 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/threads/{id}/unlock:
     post:
       operationId: moderationHandler_Unlock
@@ -946,8 +1156,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/moderation/threads/{id}/unpin:
     post:
       operationId: moderationHandler_Unpin
@@ -971,8 +1185,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/platform/logs/sources:
     get:
       operationId: platformLogHandler_Sources
@@ -991,6 +1209,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1013,6 +1233,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1028,6 +1250,13 @@ paths:
       x-campusos-permission: plugin:install
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1035,6 +1264,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1050,6 +1281,13 @@ paths:
       x-campusos-permission: plugin:install
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1057,6 +1295,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1079,6 +1319,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1101,12 +1343,10 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1134,6 +1374,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1155,6 +1397,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1162,6 +1411,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1190,6 +1441,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1218,6 +1471,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1246,6 +1501,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1274,6 +1531,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1302,6 +1561,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1323,6 +1584,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginRollbackRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -1330,6 +1598,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1358,6 +1628,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1372,15 +1644,31 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RichtextSaveRequest'
+      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '201':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RichtextArticle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/articles/{id}:
     delete:
       operationId: richTextHandler_Delete
@@ -1398,14 +1686,14 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     get:
       operationId: richTextHandler_GetPublished
       summary: GET /api/v1/richtext/articles/:id
@@ -1426,6 +1714,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     put:
       operationId: richTextHandler_UpdateDraft
       summary: PUT /api/v1/richtext/articles/:id
@@ -1441,15 +1731,31 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RichtextSaveRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RichtextArticle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/articles/{id}/admin:
     delete:
       operationId: richTextHandler_AdminDelete
@@ -1468,12 +1774,10 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1502,6 +1806,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1530,6 +1836,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1557,8 +1865,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/articles/{id}/offline:
     post:
       operationId: richTextHandler_Offline
@@ -1582,8 +1894,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/articles/{id}/publish:
     post:
       operationId: richTextHandler_Publish
@@ -1607,8 +1923,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/assets:
     post:
       operationId: richTextHandler_UploadAsset
@@ -1619,6 +1939,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1626,8 +1953,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/assets/{user_id}/{filename}:
     get:
       operationId: richTextHandler_ServeAsset
@@ -1654,6 +1985,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/richtext/preview:
     post:
       operationId: richTextHandler_Preview
@@ -1664,6 +1997,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RichtextSaveRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -1671,8 +2011,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/status:
     get:
       operationId: richTextHandler_Status
@@ -1688,6 +2032,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/roles:
     get:
       operationId: roleHandler_ListRoles
@@ -1706,6 +2052,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1727,8 +2075,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     put:
       operationId: scheduleHandler_SaveMe
       summary: PUT /api/v1/schedule/me
@@ -1738,6 +2090,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleUpsertRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -1745,8 +2104,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/schedule/me/import:
     post:
       operationId: scheduleHandler_ImportMe
@@ -1757,6 +2120,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1764,8 +2134,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/schedule/me/terms:
     get:
       operationId: scheduleHandler_ListTerms
@@ -1783,8 +2157,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/schedule/me/terms/activate:
     post:
       operationId: scheduleHandler_ActivateTerm
@@ -1795,6 +2173,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateTermRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -1802,8 +2187,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/schedule/status:
     get:
       operationId: scheduleHandler_Status
@@ -1819,6 +2208,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/space/{user_id}:
     get:
       operationId: spaceHandler_GetByUserID
@@ -1840,6 +2231,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/space/{user_id}/contents:
     get:
       operationId: spaceHandler_ListContentsByUserID
@@ -1854,6 +2247,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
@@ -1861,6 +2260,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/spaces/admin/summary:
     get:
       operationId: spaceHandler_AdminSummary
@@ -1879,6 +2280,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1909,6 +2312,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/spaces/me:
     get:
       operationId: spaceHandler_GetMe
@@ -1926,8 +2331,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     put:
       operationId: spaceHandler_UpdateMe
       summary: PUT /api/v1/spaces/me
@@ -1937,15 +2346,31 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSpaceRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Space'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/avatar:
     post:
       operationId: spaceHandler_UploadAvatar
@@ -1956,6 +2381,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -1963,8 +2395,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/storage:
     get:
       operationId: spaceHandler_GetStorageStatus
@@ -1982,8 +2418,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/apply:
     post:
       operationId: spaceHandler_ApplyStylePackage
@@ -1994,6 +2434,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2001,8 +2448,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/default:
     post:
       operationId: spaceHandler_RestoreDefaultStyle
@@ -2020,8 +2471,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/export:
     post:
       operationId: spaceHandler_ExportStylePackage
@@ -2032,6 +2487,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StyleExportRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -2039,8 +2501,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/html-example:
     get:
       operationId: spaceHandler_CustomHTMLExample
@@ -2058,8 +2524,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/html/apply:
     post:
       operationId: spaceHandler_ApplyCustomHTML
@@ -2070,6 +2540,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2077,8 +2554,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/html/validate:
     post:
       operationId: spaceHandler_ValidateCustomHTML
@@ -2089,6 +2570,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2096,8 +2584,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/apply:
     post:
       operationId: spaceHandler_ApplyStylePackZip
@@ -2108,6 +2600,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2115,8 +2614,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/apply-source:
     post:
       operationId: spaceHandler_ApplySourceStylePack
@@ -2127,6 +2630,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StylePackSourceRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -2134,8 +2644,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/example:
     get:
       operationId: spaceHandler_StylePackExample
@@ -2153,8 +2667,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/example.zip:
     get:
       operationId: spaceHandler_StylePackExampleZip
@@ -2172,8 +2690,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/sources:
     get:
       operationId: spaceHandler_ListSourceStylePacks
@@ -2191,8 +2713,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/packs/validate:
     post:
       operationId: spaceHandler_ValidateStylePackZip
@@ -2203,6 +2729,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2210,8 +2743,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/preview:
     post:
       operationId: spaceHandler_PreviewStylePackage
@@ -2222,6 +2759,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2229,8 +2773,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/rollback:
     post:
       operationId: spaceHandler_RollbackStyle
@@ -2248,8 +2796,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/styles/validate:
     post:
       operationId: spaceHandler_ValidateStylePackage
@@ -2260,6 +2812,13 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -2267,8 +2826,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/sync-status:
     get:
       operationId: spaceHandler_GetSyncStatus
@@ -2286,8 +2849,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/{user_id}/disable:
     post:
       operationId: spaceHandler_DisableSpace
@@ -2305,6 +2872,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisableSpaceRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -2312,6 +2886,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2340,6 +2916,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2352,13 +2930,27 @@ paths:
       x-campusos-stability: experimental
       x-campusos-ownership: none
       x-campusos-scope: public
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ThreadListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     post:
       operationId: threadHandler_CreateThread
       summary: POST /api/v1/threads
@@ -2368,15 +2960,31 @@ paths:
       x-campusos-scope: self-or-resource-owner
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThreadRequest'
+      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '201':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Thread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}:
     delete:
       operationId: threadHandler_DeleteThread
@@ -2394,14 +3002,14 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     get:
       operationId: threadHandler_GetThread
       summary: GET /api/v1/threads/:id
@@ -2421,7 +3029,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Thread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     put:
       operationId: threadHandler_UpdateThread
       summary: PUT /api/v1/threads/:id
@@ -2437,15 +3052,31 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateThreadRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Thread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/lock:
     post:
       operationId: threadHandler_LockThread
@@ -2470,6 +3101,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2496,9 +3129,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Thread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/pin:
     post:
       operationId: threadHandler_PinThread
@@ -2523,6 +3165,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2541,13 +3185,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PostListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     post:
       operationId: postHandler_CreatePost
       summary: POST /api/v1/threads/:id/posts
@@ -2563,15 +3220,31 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '201':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/posts/me:
     get:
       operationId: postHandler_ListPostsForCurrentUser
@@ -2588,15 +3261,30 @@ paths:
           required: true
           schema:
             type: string
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PostListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/posts/{post_id}:
     delete:
       operationId: postHandler_DeletePost
@@ -2619,14 +3307,14 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     put:
       operationId: postHandler_UpdatePost
       summary: PUT /api/v1/threads/:id/posts/:post_id
@@ -2647,15 +3335,31 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/unlock:
     post:
       operationId: threadHandler_UnlockThread
@@ -2680,6 +3384,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2708,6 +3414,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2733,6 +3441,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/u/{username}/contents:
     get:
       operationId: spaceHandler_ListContentsByUsername
@@ -2747,6 +3457,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
@@ -2754,6 +3470,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/users:
     get:
       operationId: userHandler_ListUsers
@@ -2762,13 +3480,27 @@ paths:
       x-campusos-stability: experimental
       x-campusos-ownership: none
       x-campusos-scope: public
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/users/{id}:
     get:
       operationId: userHandler_GetUser
@@ -2789,7 +3521,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PublicUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
     put:
       operationId: userHandler_UpdateUser
       summary: PUT /api/v1/users/:id
@@ -2805,15 +3544,31 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/users/{id}/activate:
     post:
       operationId: userHandler_ActivateUser
@@ -2838,6 +3593,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2859,6 +3616,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleRevokeRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -2866,6 +3630,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2893,6 +3659,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2913,6 +3681,13 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignmentRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
@@ -2920,6 +3695,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2948,6 +3725,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2967,6 +3746,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/web-themes/{name}:
     get:
       operationId: webThemeHandler_Package
@@ -2988,6 +3769,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/web-themes/{name}/assets/{path}:
     get:
       operationId: webThemeHandler_Asset
@@ -3014,6 +3797,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/webhooks:
     get:
       operationId: webhookHandler_ListEndpoints
@@ -3032,6 +3817,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3046,6 +3833,13 @@ paths:
       x-campusos-permission: webhook:write
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -3053,6 +3847,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3075,6 +3871,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3103,6 +3901,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3131,6 +3931,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3159,6 +3961,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3187,6 +3991,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -3202,29 +4008,321 @@ components:
       type: object
       required: [code, msg]
       properties:
-        code:
-          type: integer
-        msg:
-          type: string
+        code: { type: integer }
+        msg: { type: string }
         data: {}
-    Error:
+        request_id: { type: string }
+    StructuredError:
       type: object
-      required: [code, msg]
+      required: [code, message, retryable]
       properties:
-        code:
-          type: integer
-        msg:
-          type: string
+        code: { type: string, example: permission.denied }
+        message: { type: string }
+        details: {}
+        request_id: { type: string }
+        retryable: { type: boolean }
+    ErrorEnvelope:
+      type: object
+      required: [code, msg, error]
+      properties:
+        code: { type: integer }
+        msg: { type: string }
+        error: { $ref: '#/components/schemas/StructuredError' }
+        request_id: { type: string }
+    Pagination:
+      type: object
+      required: [page, page_size, total, total_pages]
+      properties:
+        page: { type: integer, minimum: 1 }
+        page_size: { type: integer, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+        total_pages: { type: integer, minimum: 0 }
+    GenericObject: { type: object, additionalProperties: true }
+    MultipartRequest: { type: object, additionalProperties: true }
+    User:
+      type: object
+      required: [id, username, nickname, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: string }
+        bio: { type: string }
+        status: { type: string, enum: [active, suspended, deactivated] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PublicUser:
+      type: object
+      required: [id, username, nickname, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        avatar: { type: string }
+        bio: { type: string }
+        status: { type: string, enum: [active, suspended, deactivated] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    RegisterRequest:
+      type: object
+      required: [username, nickname, email, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 32 }
+        nickname: { type: string, minLength: 1, maxLength: 64 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+      additionalProperties: false
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, writeOnly: true }
+      additionalProperties: false
+    UpdateUserRequest:
+      type: object
+      properties:
+        nickname: { type: string, maxLength: 64 }
+        bio: { type: string, maxLength: 500 }
+        avatar: { type: string, maxLength: 512 }
+      additionalProperties: false
+    LoginResponse:
+      type: object
+      required: [user, roles, access_token, refresh_token, token_type, expires_in]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer }
+    Role:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        description: { type: string }
+    Thread:
+      type: object
+      required: [id, title, content, author_id, category_id, status]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        content_format: { type: string }
+        author_id: { type: string }
+        author_name: { type: string }
+        category_id: { type: string }
+        status: { type: string, enum: [draft, pending_review, published, private, archived] }
+        is_pinned: { type: boolean }
+        is_locked: { type: boolean }
+        tags: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreateThreadRequest:
+      type: object
+      required: [title, content, category_id]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        content: { type: string, minLength: 1 }
+        category_id: { type: string }
+        tags: { type: array, items: { type: string } }
+        is_private: { type: boolean }
+      additionalProperties: false
+    UpdateThreadRequest:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        content: { type: string, minLength: 1 }
+        tags: { type: array, items: { type: string } }
+        status: { type: string, enum: [draft, pending_review, published, private, archived] }
+      additionalProperties: false
+    Post:
+      type: object
+      required: [id, thread_id, author_id, content, status, floor_number]
+      properties:
+        id: { type: string }
+        thread_id: { type: string }
+        author_id: { type: string }
+        author_name: { type: string }
+        parent_id: { type: string, nullable: true }
+        content: { type: string }
+        status: { type: string }
+        floor_number: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreatePostRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1 }
+        parent_id: { type: string, nullable: true }
+      additionalProperties: false
+    UpdatePostRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1 }
+      additionalProperties: false
+    Category:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        icon: { type: string }
+        default_tags: { type: array, items: { type: string } }
+        parent_id: { type: string, nullable: true }
+        sort_order: { type: integer }
+        is_closed: { type: boolean }
+    CreateCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, maxLength: 64 }
+        description: { type: string, maxLength: 500 }
+        icon: { type: string, maxLength: 512 }
+        default_tags: { type: array, items: { type: string } }
+        parent_id: { type: string, nullable: true }
+        sort_order: { type: integer }
+        is_closed: { type: boolean }
+      additionalProperties: false
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        slug: { type: string, minLength: 1, maxLength: 64 }
+        description: { type: string, maxLength: 500 }
+        icon: { type: string, maxLength: 512 }
+        default_tags: { type: array, items: { type: string } }
+        parent_id: { type: string, nullable: true }
+        sort_order: { type: integer }
+        is_closed: { type: boolean }
+      additionalProperties: false
+    UpsertSpaceRequest:
+      type: object
+      properties:
+        title: { type: string, maxLength: 120 }
+        bio: { type: string, maxLength: 500 }
+        avatar: { type: string, maxLength: 512 }
+        cover_image: { type: string, maxLength: 512 }
+        theme: { type: string, maxLength: 64 }
+        layout: { type: string, maxLength: 64 }
+        visibility: { type: string, enum: [public, unlisted, private] }
+        sync_enabled: { type: boolean }
+        sync_categories: { type: array, items: { type: string } }
+        sync_tags: { type: array, items: { type: string } }
+      additionalProperties: false
+    Space: { type: object, additionalProperties: true }
+    ActivateTermRequest:
+      type: object
+      required: [term_year, semester]
+      properties:
+        term_year: { type: integer, minimum: 2000, maximum: 2200 }
+        semester: { type: string, enum: [spring, fall] }
+      additionalProperties: false
+    ScheduleUpsertRequest:
+      type: object
+      required: [term_year, semester, first_week_start, settings, courses]
+      properties:
+        term_year: { type: integer }
+        semester: { type: string, enum: [spring, fall] }
+        first_week_start: { type: string, format: date }
+        settings: { type: object, additionalProperties: true }
+        courses: { type: array, items: { type: object, additionalProperties: true } }
+        metadata: { type: object, additionalProperties: true }
+      additionalProperties: false
+    RichtextSaveRequest:
+      type: object
+      required: [title, content_html]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        summary: { type: string }
+        cover_url: { type: string }
+        content_html: { type: string, minLength: 1 }
+        content_json: {}
+        category_id: { type: string }
+        tags: { type: array, items: { type: string } }
+      additionalProperties: false
+    RichtextArticle: { type: object, additionalProperties: true }
+    RoleAssignmentRequest:
+      type: object
+      required: [role_id]
+      properties:
+        role_id: { type: integer, format: int64 }
+      additionalProperties: false
+    RoleRevokeRequest:
+      type: object
+      required: [role_id]
+      properties:
+        role_id: { type: integer, format: int64 }
+      additionalProperties: false
+    ModeratorAssignmentRequest:
+      type: object
+      required: [category_ids]
+      properties:
+        category_ids: { type: array, items: { type: string }, uniqueItems: true }
+      additionalProperties: false
+    PluginRollbackRequest:
+      type: object
+      required: [snapshot_id]
+      properties:
+        snapshot_id: { type: string }
+      additionalProperties: false
+    StylePackSourceRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+      additionalProperties: false
+    StyleExportRequest:
+      type: object
+      properties:
+        name: { type: string }
+        version: { type: string }
+        description: { type: string }
+      additionalProperties: false
+    DisableSpaceRequest:
+      type: object
+      properties:
+        reason: { type: string }
+      additionalProperties: false
+    UserListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PublicUser' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    ThreadListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Thread' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    PostListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Post' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
   responses:
     Unauthorized:
       description: Missing or invalid authentication
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     Forbidden:
       description: Authenticated subject lacks the required permission or scope
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    BadRequest:
+      description: Invalid request parameters or body
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }

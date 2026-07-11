@@ -152,11 +152,12 @@ func OpenAPI(routes []RouteContract) []byte {
 	}
 	sort.Strings(paths)
 	var out strings.Builder
-	out.WriteString("openapi: 3.0.3\ninfo:\n  title: CampusOS Current HTTP API\n  version: 0.6.0-experimental\n  description: Generated route-level contract. Handler-specific schemas remain experimental.\nservers:\n  - url: http://localhost:8080\npaths:\n")
+	out.WriteString("openapi: 3.0.3\ninfo:\n  title: CampusOS Current HTTP API\n  version: 0.6.9-experimental\n  description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.\nservers:\n  - url: http://localhost:8080\npaths:\n")
 	for _, path := range paths {
 		fmt.Fprintf(&out, "  %s:\n", path)
 		sort.Slice(grouped[path], func(i, j int) bool { return grouped[path][i].Method < grouped[path][j].Method })
 		for _, route := range grouped[path] {
+			profile := profileFor(route)
 			fmt.Fprintf(&out, "    %s:\n", strings.ToLower(route.Method))
 			fmt.Fprintf(&out, "      operationId: %s\n", strings.ReplaceAll(route.Handler, ".", "_"))
 			fmt.Fprintf(&out, "      summary: %s %s\n", route.Method, route.Path)
@@ -171,22 +172,48 @@ func OpenAPI(routes []RouteContract) []byte {
 				out.WriteString("      security:\n        - bearerAuth: []\n")
 			}
 			parameters := openAPIPathParameters(path)
-			if len(parameters) > 0 {
+			if len(parameters) > 0 || profile.Paginated {
 				out.WriteString("      parameters:\n")
 				for _, parameter := range parameters {
 					fmt.Fprintf(&out, "        - name: %s\n          in: path\n          required: true\n          schema:\n            type: string\n", parameter)
 				}
+				if profile.Paginated {
+					out.WriteString("        - name: page\n          in: query\n          schema: { type: integer, minimum: 1, default: 1 }\n")
+					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
+				}
 			}
-			out.WriteString("      responses:\n        '200':\n          description: Success\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/Envelope'\n")
+			if profile.RequestSchema != "" && !profile.NoBody {
+				fmt.Fprintf(&out, "      requestBody:\n        required: %t\n        content:\n", !profile.RequestOptional)
+				fmt.Fprintf(&out, "          %s:\n            schema:\n              $ref: '#/components/schemas/%s'\n", profile.ContentType, profile.RequestSchema)
+				if profile.RequestSchema == "GenericObject" || profile.RequestSchema == "MultipartRequest" {
+					out.WriteString("      x-campusos-schema-level: generic-experimental\n")
+				} else {
+					out.WriteString("      x-campusos-schema-level: field-contract\n")
+				}
+			}
+			out.WriteString("      responses:\n")
+			fmt.Fprintf(&out, "        '%s':\n", profile.SuccessStatus)
+			if profile.SuccessStatus == "204" {
+				out.WriteString("          description: No Content\n")
+			} else {
+				out.WriteString("          description: Success\n          content:\n            application/json:\n              schema:\n")
+				if profile.ResponseSchema == "" {
+					out.WriteString("                $ref: '#/components/schemas/Envelope'\n")
+				} else {
+					out.WriteString("                allOf:\n                  - $ref: '#/components/schemas/Envelope'\n                  - type: object\n                    properties:\n                      data:\n")
+					fmt.Fprintf(&out, "                        $ref: '#/components/schemas/%s'\n", profile.ResponseSchema)
+				}
+			}
+			out.WriteString("        '400':\n          $ref: '#/components/responses/BadRequest'\n")
 			if route.Auth != "none" {
 				out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
 			}
-			if route.Permission != "" {
+			if route.Auth != "none" {
 				out.WriteString("        '403':\n          $ref: '#/components/responses/Forbidden'\n")
 			}
 		}
 	}
-	out.WriteString("components:\n  securitySchemes:\n    bearerAuth:\n      type: http\n      scheme: bearer\n      bearerFormat: JWT\n  schemas:\n    Envelope:\n      type: object\n      required: [code, msg]\n      properties:\n        code:\n          type: integer\n        msg:\n          type: string\n        data: {}\n    Error:\n      type: object\n      required: [code, msg]\n      properties:\n        code:\n          type: integer\n        msg:\n          type: string\n  responses:\n    Unauthorized:\n      description: Missing or invalid authentication\n      content:\n        application/json:\n          schema:\n            $ref: '#/components/schemas/Error'\n    Forbidden:\n      description: Authenticated subject lacks the required permission or scope\n      content:\n        application/json:\n          schema:\n            $ref: '#/components/schemas/Error'\n")
+	out.WriteString(openAPIComponents())
 	return []byte(out.String())
 }
 

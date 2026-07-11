@@ -1,13 +1,17 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.6.8-dev`
+> 当前实现基线：`v0.6.9-dev`
 
 ## 1. 契约状态
 
 CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些产物由真实路由代码生成并在 CI 检查漂移。
 
-当前 OpenAPI 已覆盖 method/path、认证、显式权限和通用响应包络。尚未补齐业务字段 schema 的接口仍标记 `experimental`，具体模型以各 `internal/<module>/` 请求/响应类型为准。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
+当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。注册登录、用户资料、帖子、回复、版块、个人空间、课表、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
+
+错误响应在保留旧 `{ code, msg, data }` 字段的同时增加 `error.code`、`error.message`、`error.details`、`error.request_id` 和 `error.retryable`。成功响应也可携带顶层 `request_id`。列表接口的 `page` 必须大于等于 1，`page_size` 必须在 1 到 100 之间，非法值返回 `400 request.invalid`，不会静默改成默认值。
+
+公开 `/users` 与 `/users/:id` 只返回公开资料，不返回邮箱；`/auth/me` 和登录响应仍向本人返回账号资料。`PUT /users/:id` 只允许本人修改 `nickname`、`bio`、`avatar`，未知字段和跨用户写入分别返回 400 与 403。
 
 ## 2. 路由分组
 

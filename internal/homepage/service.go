@@ -65,7 +65,7 @@ type StylePackResult struct {
 }
 
 type StylePackApplySourceRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" binding:"required"`
 }
 
 type ConfigSnapshot struct {

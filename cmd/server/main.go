@@ -10,7 +10,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	log.Printf("🚀 CampusOS v0.6.8-dev starting on %s", cfg.Server.Addr())
+	log.Printf("🚀 CampusOS v0.6.9-dev starting on %s", cfg.Server.Addr())
 	log.Printf("📖 API docs: http://%s/api/v1/health", cfg.Server.Addr())
 
 	srv := server.New(cfg)

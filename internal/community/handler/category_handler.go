@@ -5,6 +5,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/service"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,7 @@ func NewCategoryHandler(svc *service.CategoryService) *CategoryHandler {
 
 func (h *CategoryHandler) Create(c *gin.Context) {
 	var req domain.CreateCategoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 		return
 	}
@@ -59,7 +60,7 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 
 func (h *CategoryHandler) Update(c *gin.Context) {
 	var req domain.UpdateCategoryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 		return
 	}

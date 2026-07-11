@@ -26,6 +26,26 @@ type User struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
+// PublicUser is the public profile projection. Account email and other future
+// identity fields must not be exposed by public directory endpoints.
+type PublicUser struct {
+	ID        string     `json:"id"`
+	Username  string     `json:"username"`
+	Nickname  string     `json:"nickname"`
+	Avatar    string     `json:"avatar,omitempty"`
+	Bio       string     `json:"bio,omitempty"`
+	Status    UserStatus `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+func (u *User) Public() PublicUser {
+	return PublicUser{
+		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Avatar: u.Avatar,
+		Bio: u.Bio, Status: u.Status, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt,
+	}
+}
+
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=32"`
@@ -36,9 +56,9 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest 更新用户请求
 type UpdateUserRequest struct {
-	Nickname *string `json:"nickname,omitempty"`
-	Bio      *string `json:"bio,omitempty"`
-	Avatar   *string `json:"avatar,omitempty"`
+	Nickname *string `json:"nickname,omitempty" binding:"omitempty,max=64"`
+	Bio      *string `json:"bio,omitempty" binding:"omitempty,max=500"`
+	Avatar   *string `json:"avatar,omitempty" binding:"omitempty,max=512"`
 }
 
 // LoginRequest 登录请求

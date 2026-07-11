@@ -2,10 +2,10 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/service"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -24,7 +24,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 // POST /api/v1/auth/register
 func (h *UserHandler) Register(c *gin.Context) {
 	var req domain.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -42,7 +42,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 // POST /api/v1/auth/login
 func (h *UserHandler) Login(c *gin.Context) {
 	var req domain.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -96,14 +96,16 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, user)
+	response.Success(c, user.Public())
 }
 
 // ListUsers 获取用户列表
 // GET /api/v1/users
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, pageSize, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return
+	}
 
 	users, total, err := h.svc.ListUsers(c.Request.Context(), page, pageSize)
 	if err != nil {
@@ -116,7 +118,11 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		totalPages++
 	}
 
-	response.List(c, users, &response.Pagination{
+	publicUsers := make([]domain.PublicUser, 0, len(users))
+	for _, user := range users {
+		publicUsers = append(publicUsers, user.Public())
+	}
+	response.List(c, publicUsers, &response.Pagination{
 		Page:       page,
 		PageSize:   pageSize,
 		Total:      total,
@@ -128,9 +134,14 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 // PUT /api/v1/users/:id
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
+	actorID, exists := c.Get("user_id")
+	if !exists || actorID != id {
+		response.ErrorWithDetails(c, http.StatusForbidden, 20004, "users may only update their own profile", gin.H{"resource_user_id": id})
+		return
+	}
 
 	var req domain.UpdateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -180,6 +191,6 @@ func (h *UserHandler) HealthCheck(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":  "ok",
 		"service": "CampusOS",
-		"version": "0.1.0-dev",
+		"version": "0.6.9-dev",
 	})
 }

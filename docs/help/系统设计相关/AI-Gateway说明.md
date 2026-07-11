@@ -87,8 +87,8 @@ AI Gateway 已接入服务启动流程。管理员可通过 API 查看当前状�
 
 | 接口 | 权限 | 说明 |
 | --- | --- | --- |
-| `GET /api/v1/ai/status` | `role:manage` | 查看 AI Gateway 是否启用、是否就绪、provider 和脱敏配置 |
-| `GET /api/v1/ai/logs?limit=100` | `role:manage` | 查看最近内存调用日志 |
+| `GET /api/v1/ai/status` | `ai:read` | 查看 AI Gateway 是否启用、是否就绪、provider 和脱敏配置 |
+| `GET /api/v1/ai/logs?limit=100` | `ai:read` | 查看最近内存调用日志 |
 
 状态接口不会返回 `AI_API_KEY` 原文，只会返回：
 
@@ -123,7 +123,7 @@ PostgreSQL 可用时，调用日志会写入 `ai_call_logs`；服务回退到内
 | 调用来源可追踪 | `ChatRequest.Source` 会进入调用日志 |
 | 请求量可控 | `InMemoryLimiter` 支持并发和每分钟请求数限制 |
 | 默认不开启 | `AI_ENABLED=false` |
-| 管理接口权限 | `/api/v1/ai/status` 和 `/api/v1/ai/logs` 需要 `role:manage` |
+| 管理接口权限 | `/api/v1/ai/status` 和 `/api/v1/ai/logs` 需要 `ai:read` |
 
 ## 6. 后续任务
 

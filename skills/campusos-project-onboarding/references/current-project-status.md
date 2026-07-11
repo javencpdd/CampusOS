@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; the active baseline is now `v0.6.8-dev`. It includes category-scoped moderation, generated route/OpenAPI authorization contracts, database integrity checks, Host API v1 identity and permissions, Go SDK/CLI/templates, plugin snapshots/rollback, an independent docs frontend, and a repeatable single-node release/recovery gate.
+Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; the active baseline is now `v0.6.9-dev`. It includes category-scoped moderation, generated route/OpenAPI authorization and core field contracts, compatible structured errors, database integrity checks, Host API v1 identity and permissions, Go SDK/CLI/templates, plugin snapshots/rollback, an independent docs frontend, and a repeatable browser/release/recovery gate.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and the v6 plan. Do not present v0.6 work packages other than recorded completed work as already implemented.
 
@@ -57,7 +57,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
 | v0.5-dev | Integration center, personal space operations, per-user personal-space file storage/plugin gate, personal schedule plugin with term/calendar browsing, richtext images in personal space, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, ordinary plain-thread edit/delete/private visibility, category default tags, platform logs, system/user plugin lifecycle, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
-| v0.6-dev | In progress: role/permission repair, category-scoped moderation, independent official docs, and scoped personal/system style packages with sandbox effects and differentiated SDK permissions. |
+| v0.6-dev | P0/P1 development baseline complete through v0.6.9: permission repair, scoped moderation, HTTP/Host contracts, core database integrity, plugin SDK/CLI/templates, docs, supply-chain rollback, recovery and browser acceptance. Standard external MCP/Message adapters and production HA remain deferred. |
 
 ## 4. Current Migrations
 
@@ -105,7 +105,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | `internal/platformlog/` | Admin-only platform log sources and SSE streaming |
 | `internal/richtext/` | Controlled richtext article plugin service, sanitizer, asset store, handlers |
 | `internal/schedule/` | Personal schedule plugin service, file storage, `.xls`/`.csv`/`.json` import, handlers |
-| `scripts/smoke/` | v0.5 API smoke runner for read-only and write-path regression |
+| `scripts/smoke/` | v0.5 API smoke plus v0.6 authenticated Chrome workflow for user/admin/permission regression |
 | `pkg/observability/` | Minimal metrics |
 | `web/src/` | User frontend |
 | `admin/src/` | Admin frontend |

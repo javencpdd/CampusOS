@@ -7,6 +7,7 @@ import (
 	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -66,7 +67,7 @@ func (h *Handler) SetModerator(c *gin.Context) {
 		return
 	}
 	var req SetModeratorRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "请求参数错误")
 		return
 	}

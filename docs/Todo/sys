@@ -11,7 +11,6 @@
 
 <!-- 回顾过去v1到v5的计划书，对计划书的部分进行审查是否严格完成，如果有遗漏请进行完善，再对 /home/jack/bbs/bbs01/CampusOS/docs/项目计划v6/01-v6版本计划书.md 优化，整体规划至少满足以下要求一个是完善各个接口和权限控制部分，对数据库的设计进行完善与优化，一个是整理插件的生态（针对开放api和sdk的工具包，完善帮助文档），帮助插件开发者更好的开发插件 -->
 
-<!-- 关于readme的内容，感觉可以和 /docs 更深度的结合，把其中一些次要信息拆分进docs/help 、docs/skills 或 docs/api等等子目录中，readme中只保留核心信息,针对这一点，优化 /home/jack/bbs/bbs01/CampusOS/skills/campusos-readme-update 的skill，确保我在使用该skill的时候，可以正常工作 -->
 
 感觉需要一个动态更新api接口信息的skill
 

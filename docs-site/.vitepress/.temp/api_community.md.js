@@ -1,7 +1,7 @@
 import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"认证与社区 API","description":"","frontmatter":{},"headers":[],"relativePath":"api/community.md","filePath":"api/community.md","lastUpdated":null}');
+const __pageData = JSON.parse('{"title":"认证与社区 API","description":"","frontmatter":{},"headers":[],"relativePath":"api/community.md","filePath":"api/community.md","lastUpdated":1783761653000}');
 const _sfc_main = { name: "api/community.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="认证与社区-api" tabindex="-1">认证与社区 API <a class="header-anchor" href="#认证与社区-api" aria-label="Permalink to &quot;认证与社区 API&quot;">​</a></h1><h2 id="注册" tabindex="-1">注册 <a class="header-anchor" href="#注册" aria-label="Permalink to &quot;注册&quot;">​</a></h2><div class="language-http vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">http</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="${ssrRenderStyle({ "--shiki-light": "#D73A49", "--shiki-dark": "#F97583" })}">POST</span><span style="${ssrRenderStyle({ "--shiki-light": "#24292E", "--shiki-dark": "#E1E4E8" })}"> /api/v1/auth/register</span></span>

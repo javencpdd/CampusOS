@@ -55,7 +55,7 @@ def system_tables(root: Path) -> set[str]:
     return {"schema_migrations"} if "schema_migrations" in "\n".join(sources) else set()
 
 
-def architecture_view(root: Path) -> tuple[set[str], list[tuple[str, str, str]]]:
+def architecture_view(root: Path) -> tuple[str, set[str], list[tuple[str, str, str]]]:
     source = read(root / "admin/src/views/SystemArchitectureView.vue")
     tables_block = block(source, "const databaseTables", "const relations")
     relations_block = block(source, "const relations", "const storageRows")
@@ -67,19 +67,21 @@ def architecture_view(root: Path) -> tuple[set[str], list[tuple[str, str, str]]]
             relations_block,
         )
     ]
-    return tables, relations
+    return source, tables, relations
 
 
 def report(root: Path) -> dict[str, object]:
     migration_tables, foreign_keys, versions = migration_schema(root)
     expected_tables = migration_tables | system_tables(root)
-    view_tables, relations = architecture_view(root)
+    view_source, view_tables, relations = architecture_view(root)
     relation_errors = [
         {"id": identifier, "source": source, "target": target}
         for identifier, source, target in relations
         if source not in expected_tables or target not in expected_tables
     ]
     connected = {name for _, source, target in relations for name in (source, target)}
+    latest_version = versions[-1]
+    advertised = re.search(r"迁移\s+000001\s+-\s+(\d{6})", view_source)
     return {
         "migration_count": len(versions),
         "migration_versions": versions,
@@ -90,6 +92,11 @@ def report(root: Path) -> dict[str, object]:
         "unknown_relation_endpoints": relation_errors,
         "unconnected_tables": sorted(expected_tables - connected),
         "explicit_foreign_keys": foreign_keys,
+        "latest_migration": latest_version,
+        "advertised_latest_migration": advertised.group(1) if advertised else "",
+        "migration_header_current": bool(advertised and advertised.group(1) == latest_version),
+        "migration_timeline_current": f"version: '{latest_version}'" in view_source,
+        "foreign_key_wording_current": not foreign_keys or "迁移中没有声明外键" not in view_source,
     }
 
 
@@ -105,6 +112,10 @@ def print_text(result: dict[str, object]) -> None:
     line("missing from view", result["missing_from_view"])
     line("stale in view", result["stale_in_view"])
     line("unconnected tables (review only)", result["unconnected_tables"])
+    print(
+        "latest migration metadata: "
+        f"repository={result['latest_migration']} view={result['advertised_latest_migration'] or 'missing'}"
+    )
     if result["explicit_foreign_keys"]:
         print("explicit foreign keys: present; review the Admin page wording and relation labels")
     else:
@@ -131,7 +142,14 @@ def main() -> int:
     else:
         print_text(result)
 
-    if result["missing_from_view"] or result["stale_in_view"] or result["unknown_relation_endpoints"]:
+    if (
+        result["missing_from_view"]
+        or result["stale_in_view"]
+        or result["unknown_relation_endpoints"]
+        or not result["migration_header_current"]
+        or not result["migration_timeline_current"]
+        or not result["foreign_key_wording_current"]
+    ):
         return 1
     return 0
 

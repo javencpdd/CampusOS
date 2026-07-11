@@ -24,3 +24,16 @@ curl --fail --silent --show-error "${API_URL:-http://localhost:8080/api/v1/healt
 check_page web "${WEB_URL:-http://localhost:3000}" 'id="app"'
 check_page admin "${ADMIN_URL:-http://localhost:3001}" 'id="app"'
 check_page docs "${DOCS_URL:-http://localhost:3002}" 'CampusOS'
+
+if [[ "${RUN_BROWSER_WORKFLOW:-true}" == "true" ]]; then
+  echo "running authenticated browser workflow"
+  (
+    cd web
+    CHROME_BIN="$CHROME_BIN" \
+      WEB_URL="${WEB_URL:-http://localhost:3000}" \
+      ADMIN_URL="${ADMIN_URL:-http://localhost:3001}" \
+      DOCS_URL="${DOCS_URL:-http://localhost:3002}" \
+      API_BASE_URL="${API_BASE_URL:-http://localhost:8080/api/v1}" \
+      node tests/browser-workflow.mjs
+  )
+fi

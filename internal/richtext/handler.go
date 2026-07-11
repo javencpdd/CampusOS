@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +28,7 @@ func (h *Handler) CreateDraft(c *gin.Context) {
 		return
 	}
 	var req SaveArticleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -46,7 +47,7 @@ func (h *Handler) UpdateDraft(c *gin.Context) {
 		return
 	}
 	var req SaveArticleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
@@ -142,7 +143,7 @@ func (h *Handler) AdminDelete(c *gin.Context) {
 
 func (h *Handler) Preview(c *gin.Context) {
 	var req PreviewRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
