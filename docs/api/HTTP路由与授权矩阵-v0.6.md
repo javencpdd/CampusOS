@@ -11,6 +11,8 @@
 | `GET` | `/api/v1/web-themes` | `webThemeHandler.Catalog` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/web-themes/:name` | `webThemeHandler.Package` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/web-themes/:name/assets/*path` | `webThemeHandler.Asset` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/ui/runtime-manifest` | `runtimeHTTPHandler.RuntimeManifest` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/ui/events` | `runtimeHTTPHandler.Events` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/richtext/status` | `richTextHandler.Status` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/schedule/status` | `scheduleHandler.Status` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `POST` | `/api/v1/auth/register` | `userHandler.Register` | `none` | `-` | `none` | `public` | `request-log` |
@@ -80,6 +82,11 @@
 | `POST` | `/api/v1/moderation/threads/:id/lock` | `moderationHandler.Lock` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
 | `POST` | `/api/v1/moderation/threads/:id/unlock` | `moderationHandler.Unlock` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
 | `DELETE` | `/api/v1/moderation/threads/:id/posts/:post_id` | `moderationHandler.DeletePost` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `GET` | `/api/v1/extensions/:plugin/*path` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/extensions/:plugin/*path` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PUT` | `/api/v1/extensions/:plugin/*path` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PATCH` | `/api/v1/extensions/:plugin/*path` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/extensions/:plugin/*path` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/users/:id/suspend` | `userHandler.SuspendUser` | `jwt+permission` | `user:suspend` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/users/:id/activate` | `userHandler.ActivateUser` | `jwt+permission` | `user:suspend` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/admin/threads` | `threadHandler.AdminListThreads` | `jwt+permission` | `thread:read` | `none` | `global` | `request-log-read` |

@@ -379,22 +379,28 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 	}
 	state, _ := h.manager.LifecycleState(p.ID)
 	return gin.H{
-		"id":              p.ID,
-		"name":            p.Manifest.Name,
-		"display_name":    p.Manifest.DisplayName,
-		"version":         p.Manifest.Version,
-		"description":     p.Manifest.Description,
-		"author":          p.Manifest.Author,
-		"runtime":         p.Manifest.Runtime,
-		"scope":           state.Scope,
-		"activation_mode": state.ActivationMode,
-		"desired_enabled": state.DesiredEnabled,
-		"pending_restart": state.PendingRestart,
-		"status":          p.Status,
-		"error":           p.ErrorMsg,
-		"events":          p.Manifest.Events.Subscribe,
-		"checksum":        p.Checksum,
-		"package_size":    p.PackageSize,
+		"id":                       p.ID,
+		"name":                     p.Manifest.Name,
+		"display_name":             p.Manifest.DisplayName,
+		"version":                  p.Manifest.Version,
+		"description":              p.Manifest.Description,
+		"author":                   p.Manifest.Author,
+		"runtime":                  p.Manifest.Runtime,
+		"scope":                    state.Scope,
+		"activation_mode":          state.ActivationMode,
+		"backend_activation_mode":  state.BackendActivationMode,
+		"frontend_activation_mode": state.FrontendActivationMode,
+		"backend_state":            state.BackendState,
+		"frontend_state":           state.FrontendState,
+		"health":                   state.Health,
+		"ui_revision":              h.manager.UIRevision(),
+		"desired_enabled":          state.DesiredEnabled,
+		"pending_restart":          state.PendingRestart,
+		"status":                   p.Status,
+		"error":                    p.ErrorMsg,
+		"events":                   p.Manifest.Events.Subscribe,
+		"checksum":                 p.Checksum,
+		"package_size":             p.PackageSize,
 	}
 }
 
@@ -415,7 +421,7 @@ func lifecycleErrorStatus(err error) int {
 	if strings.Contains(err.Error(), "not found") {
 		return http.StatusNotFound
 	}
-	if strings.Contains(err.Error(), "system-level") {
+	if strings.Contains(err.Error(), "requires a server restart") {
 		return http.StatusBadRequest
 	}
 	return http.StatusInternalServerError

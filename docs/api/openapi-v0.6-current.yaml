@@ -365,6 +365,193 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/extensions/{plugin}/{path}:
+    delete:
+      operationId: runtimeHTTPHandler_Extension
+      summary: DELETE /api/v1/extensions/:plugin/*path
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-scope: self-or-resource-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: plugin
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      operationId: runtimeHTTPHandler_Extension
+      summary: GET /api/v1/extensions/:plugin/*path
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-scope: self-or-resource-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: plugin
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      operationId: runtimeHTTPHandler_Extension
+      summary: PATCH /api/v1/extensions/:plugin/*path
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-scope: self-or-resource-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: plugin
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: runtimeHTTPHandler_Extension
+      summary: POST /api/v1/extensions/:plugin/*path
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-scope: self-or-resource-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: plugin
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: runtimeHTTPHandler_Extension
+      summary: PUT /api/v1/extensions/:plugin/*path
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-scope: self-or-resource-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: plugin
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/health:
     get:
       operationId: userHandler_HealthCheck
@@ -3463,6 +3650,40 @@ paths:
         - name: page_size
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/ui/events:
+    get:
+      operationId: runtimeHTTPHandler_Events
+      summary: GET /api/v1/ui/events
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-scope: public
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/ui/runtime-manifest:
+    get:
+      operationId: runtimeHTTPHandler_RuntimeManifest
+      summary: GET /api/v1/ui/runtime-manifest
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-scope: public
       responses:
         '200':
           description: Success

@@ -6,7 +6,7 @@
         <h2>系统数据架构</h2>
         <p>从当前迁移文件和数据目录整理的结构图，用于了解表的逻辑关联、职责和不在 PostgreSQL 中保存的文件数据。</p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000017</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000018</el-tag>
     </section>
 
     <el-alert class="architecture-alert" type="info" :closable="false" show-icon>
@@ -272,7 +272,7 @@ const databaseTables: DbTable[] = [
   { name: 'audit_logs', title: '操作审计', domain: 'community', purpose: '记录操作人、资源、前后数据和 trace id。', fields: ['actor_id', 'action', 'resource', 'resource_id'], migration: '000001', relationshipNote: 'actor_id 逻辑指向用户；resource 为多态业务资源。' },
   { name: 'configurations', title: '系统配置', domain: 'community', purpose: '保存分组配置及其更新人。', fields: ['key', 'value', 'category', 'updated_by'], migration: '000001', relationshipNote: 'updated_by 记录逻辑上的用户归属。' },
   { name: 'api_keys', title: 'API Key', domain: 'plugin', purpose: '独立管理用户或插件使用的 API Key。', fields: ['key', 'user_id', 'plugin_name', 'permissions'], migration: '000003', relationshipNote: '可关联用户或插件名称，两者属于可选逻辑归属。' },
-  { name: 'plugins', title: '插件元数据', domain: 'plugin', purpose: '保存插件 manifest、状态、配置、checksum 和包信息。', fields: ['name', 'runtime', 'status', 'manifest', 'config'], migration: '000003 + 000011', relationshipNote: '通过 plugin_name 与插件权限、日志和 API Key 形成名称关联。' },
+  { name: 'plugins', title: '插件元数据', domain: 'plugin', purpose: '保存插件 manifest、三轴运行状态、配置、checksum 和 UI revision。', fields: ['name', 'runtime', 'status', 'backend_state', 'frontend_state', 'health_state', 'ui_revision', 'manifest', 'config'], migration: '000003 + 000011 + 000018', relationshipNote: '通过 plugin_name 与插件权限、日志和 API Key 形成名称关联。' },
   { name: 'plugin_permissions', title: '插件权限', domain: 'plugin', purpose: '保存插件声明或同步后的 Host API 权限。', fields: ['plugin_name', 'permission_type', 'permission_value'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
   { name: 'plugin_logs', title: '插件日志', domain: 'plugin', purpose: '保存插件运行、事件和 Host API 日志。', fields: ['plugin_name', 'level', 'event_type', 'trace_id'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
   { name: 'ai_call_logs', title: 'AI 调用日志', domain: 'integration', purpose: '记录模型提供方、用量、耗时和失败原因。', fields: ['provider', 'model', 'source', 'status'], migration: '000006', relationshipNote: '按调用来源记录，不强制绑定用户或帖子。' },
@@ -346,6 +346,7 @@ const migrations = [
   { version: '000015', file: '000015_category_moderation_scope.up.sql', title: '版块版主作用域', scope: '身份与治理', summary: '停用历史全局版主授权，约束 global/category 作用域形状，并补充主题锁定权限。', tables: ['user_roles', 'permissions'] },
   { version: '000016', file: '000016_v06_core_integrity.up.sql', title: '核心数据完整性', scope: '数据库', summary: '在数据预检后增加核心状态与计数检查、稳定关系外键和关键查询索引。', tables: ['users', 'accounts', 'sessions', 'categories', 'threads', 'posts', 'user_roles', 'permissions', 'user_spaces', 'user_space_contents', 'richtext_article_contents', 'richtext_article_assets', 'webhook_deliveries'] },
   { version: '000017', file: '000017_v06_admin_permission_split.up.sql', title: '管理权限细分', scope: '身份与治理', summary: '将插件、富文本、集成、空间、日志和首页管理从粗粒度角色权限拆分为资源动作权限。', tables: ['permissions'] },
+  { version: '000018', file: '000018_plugin_ui_runtime.up.sql', title: '插件 UI Runtime 状态', scope: '插件', summary: '持久化 BackendState、FrontendState、Health 和 UI revision，并用 CHECK 约束状态集合。', tables: ['plugins'] },
 ]
 
 const tableByName = (name: string) => databaseTables.find((table) => table.name === name) || databaseTables[0]

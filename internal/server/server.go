@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -73,7 +74,17 @@ func (s *Server) Run() error {
 	grpcRuntime := plugingrpc.NewGRPCRuntime()
 	s.manager.RegisterRuntime("grpc", grpcRuntime)
 	s.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
-	s.manager.RegisterRuntime("builtin", pluginbuiltin.NewRuntime())
+	builtinRuntime := pluginbuiltin.NewRuntime()
+	builtinRuntime.RegisterExtension("campus-welcome", func(_ context.Context, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
+		body, _ := json.Marshal(map[string]interface{}{
+			"message":  "CampusOS extension gateway is ready",
+			"path":     request.Path,
+			"caller":   map[string]string{"user_id": request.Caller.UserID, "username": request.Caller.Username},
+			"trace_id": request.Caller.TraceID,
+		})
+		return &plugin.ExtensionResponse{Status: 200, Headers: map[string]string{"Content-Type": "application/json"}, Body: body}, nil
+	})
+	s.manager.RegisterRuntime("builtin", builtinRuntime)
 
 	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
 	var pluginRepo plugin.PluginRepository
@@ -559,6 +570,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	r := gin.Default()
 	webThemeHandler := webtheme.NewHandler(webtheme.NewService(s.manager.GetPlugin))
+	runtimeHTTPHandler := plugin.NewRuntimeHTTPHandler(s.manager, func(ctx context.Context, userID, resource, action string) (bool, error) {
+		return permSvc.Check(ctx, userID, resource, action)
+	})
 
 	// 全局中间件
 	r.Use(middleware.Recovery())
@@ -577,6 +591,8 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		public.GET("/web-themes", webThemeHandler.Catalog)
 		public.GET("/web-themes/:name", webThemeHandler.Package)
 		public.GET("/web-themes/:name/assets/*path", webThemeHandler.Asset)
+		public.GET("/ui/runtime-manifest", middleware.OptionalJWT(jwtMgr), runtimeHTTPHandler.RuntimeManifest)
+		public.GET("/ui/events", runtimeHTTPHandler.Events)
 		public.GET("/richtext/status", richTextHandler.Status)
 		public.GET("/schedule/status", scheduleHandler.Status)
 		public.POST("/auth/register", userHandler.Register)
@@ -652,6 +668,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/moderation/threads/:id/lock", moderationHandler.Lock)
 		authenticated.POST("/moderation/threads/:id/unlock", moderationHandler.Unlock)
 		authenticated.DELETE("/moderation/threads/:id/posts/:post_id", moderationHandler.DeletePost)
+		authenticated.GET("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
+		authenticated.POST("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
+		authenticated.PUT("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
+		authenticated.PATCH("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
+		authenticated.DELETE("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
 	}
 
 	// ─── 管理员接口（需要权限）───
@@ -752,7 +773,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 141")
+	log.Printf("📋 API 端点总数: %d", len(r.Routes()))
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

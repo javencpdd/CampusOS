@@ -3,6 +3,7 @@ package stylepack
 import (
 	"archive/zip"
 	"bytes"
+	"path/filepath"
 	"testing"
 )
 
@@ -44,6 +45,52 @@ assets:
 	}
 	if pkg.Manifest.ConfigSchema != "config.schema.json" || len(pkg.Manifest.Templates) != 2 {
 		t.Fatalf("unexpected normalized manifest: %#v", pkg.Manifest)
+	}
+}
+
+func TestAuroraCampusReferencePackIsValid(t *testing.T) {
+	pack, result := LoadDir(filepath.Join("..", "..", "data", "plugin_data", "web-theme", "style-packs", "aurora-campus"))
+	if !result.Valid {
+		t.Fatalf("reference pack invalid: %#v", result.Errors)
+	}
+	if pack == nil || pack.Manifest.SchemaVersion != AppSchemaVersion || pack.Manifest.Layout == nil {
+		t.Fatalf("unexpected reference package: %#v", pack)
+	}
+}
+
+func TestLoadZipAcceptsFullViewportAppStylePackV2(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: campusos.app-style-pack.v2
+target: web
+name: full-campus
+version: 0.2.0
+entry: templates/page.html
+styles: [styles/theme.css]
+layout:
+  mode: full
+  header_mode: sticky
+  scroll_mode: page
+  background_asset: assets/campus.png
+  animation_preset: reveal
+assets:
+  - name: campus
+    path: assets/campus.png
+    type: image/png
+surface_overrides:
+  - surface_id: plugin.poll.page.list
+    variant: reading
+    region: hero
+`,
+		"templates/page.html": `<section class="cstyle-page">Full viewport</section>`,
+		"styles/theme.css":    `.app-container[data-campusos-web] .campus-shell-body { width: 100%; }`,
+		"assets/campus.png":   "image",
+	})
+	pkg, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if !result.Valid {
+		t.Fatalf("v2 pack rejected: %#v", result.Errors)
+	}
+	if pkg.Manifest.Layout == nil || pkg.Manifest.Layout.Mode != "full" {
+		t.Fatalf("layout missing: %#v", pkg.Manifest)
 	}
 }
 

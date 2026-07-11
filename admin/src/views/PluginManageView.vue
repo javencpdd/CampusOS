@@ -35,7 +35,7 @@
       </template>
 
       <el-alert
-        title="系统级插件的启用或停用会记录为待生效状态，重启 API 服务后才应用；用户级插件可直接加载、重载和覆盖更新。"
+        title="scope 只表示管理级别。后端按 restart、plugin-restart 或 hot 生效；所有插件前端均热加载，并独立显示状态和健康度。"
         type="info"
         show-icon
         :closable="false"
@@ -74,9 +74,16 @@
         </el-table-column>
         <el-table-column label="生效方式" width="110" align="center">
           <template #default="{ row }">
-            <span class="activation-mode">{{ isSystemPlugin(row) ? '重启后生效' : '热加载' }}</span>
+            <span class="activation-mode">{{ activationModeLabel(row.backend_activation_mode || row.activation_mode) }}</span>
           </template>
         </el-table-column>
+		<el-table-column label="后端 / 前端" width="170" align="center">
+		  <template #default="{ row }"><div class="state-pair"><el-tag size="small" :type="stateTag(row.backend_state)">{{ row.backend_state || 'unknown' }}</el-tag><el-tag size="small" effect="plain">{{ row.frontend_state || 'unloaded' }}</el-tag></div></template>
+		</el-table-column>
+		<el-table-column label="健康" width="100" align="center">
+		  <template #default="{ row }"><el-tag size="small" :type="healthTag(row.health)">{{ row.health || 'unknown' }}</el-tag></template>
+		</el-table-column>
+		<el-table-column prop="ui_revision" label="UI Revision" width="105" align="center" />
         <el-table-column prop="checksum" label="Checksum" width="180" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="130" align="center">
           <template #default="{ row }">
@@ -100,7 +107,7 @@
               导出
             </el-button>
             <el-button
-              v-if="!isSystemPlugin(row)"
+              v-if="canReload(row)"
               size="small"
               plain
               :loading="reloadingPluginName === row.name"
@@ -115,8 +122,8 @@
             </el-button>
             <el-switch
               :model-value="isPluginEnabled(row)"
-              :active-text="isSystemPlugin(row) ? '重启启用' : '已加载'"
-              :inactive-text="isSystemPlugin(row) ? '重启停用' : '未加载'"
+              :active-text="requiresRestart(row) ? '待重启' : '已加载'"
+              :inactive-text="requiresRestart(row) ? '待停用' : '未加载'"
               inline-prompt
               style="margin-right: 8px"
               @change="onTogglePlugin(row, $event)"
@@ -857,6 +864,11 @@ const loadLogs = async () => {
 }
 
 const isSystemPlugin = (row: any) => row?.scope === 'system'
+const requiresRestart = (row: any) => (row?.backend_activation_mode || row?.activation_mode) === 'restart'
+const canReload = (row: any) => !requiresRestart(row)
+const activationModeLabel = (mode?: string) => ({ restart: '整站重启', 'plugin-restart': '插件重启', hot: '热更新' } as Record<string, string>)[mode || ''] || '兼容默认'
+const stateTag = (state?: string) => state === 'running' ? 'success' : state === 'error' ? 'danger' : state === 'pending_restart' ? 'warning' : 'info'
+const healthTag = (health?: string) => health === 'healthy' ? 'success' : health === 'degraded' ? 'warning' : health === 'unavailable' ? 'danger' : 'info'
 
 const isPluginEnabled = (row: any) => {
   if (typeof row?.desired_enabled === 'boolean') return row.desired_enabled
@@ -968,6 +980,7 @@ onMounted(load)
   display: flex;
   align-items: center;
 }
+.state-pair { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
 
 .lifecycle-alert {
   margin-bottom: 14px;

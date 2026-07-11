@@ -15,7 +15,7 @@ let threadID = ''
 let accessToken = ''
 
 async function login(page, baseURL, emailPlaceholder, passwordPlaceholder) {
-  await page.goto(`${baseURL}/login`, { waitUntil: 'networkidle' })
+  await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(emailPlaceholder).fill(email)
   await page.getByPlaceholder(passwordPlaceholder).fill(password)
   await Promise.all([
@@ -26,6 +26,7 @@ async function login(page, baseURL, emailPlaceholder, passwordPlaceholder) {
 
 async function selectPlainText(page) {
   const option = page.getByText('普通文本', { exact: true })
+  await page.waitForFunction(() => document.body.innerText.includes('普通文本') || Boolean(document.querySelector('input[placeholder="请输入帖子标题"]')))
   if (await option.count()) await option.first().click()
   await page.getByPlaceholder('请输入帖子标题').waitFor()
 }
@@ -46,14 +47,14 @@ try {
   accessToken = await page.evaluate(() => localStorage.getItem('access_token') || '')
   if (!accessToken) throw new Error('Web login did not persist access_token')
 
-  await page.goto(`${webURL}/space/settings`, { waitUntil: 'networkidle' })
+  await page.goto(`${webURL}/space/settings`, { waitUntil: 'domcontentloaded' })
   await page.getByRole('heading', { name: '个人主页' }).waitFor()
   await page.getByText('主页配置', { exact: true }).waitFor()
 
   const stamp = Date.now()
   const originalTitle = `v0.6 browser smoke ${stamp}`
   const editedTitle = `${originalTitle} edited`
-  await page.goto(`${webURL}/threads/create`, { waitUntil: 'networkidle' })
+  await page.goto(`${webURL}/threads/create`, { waitUntil: 'domcontentloaded' })
   await selectPlainText(page)
   await ensureCategorySelected(page)
   await page.getByPlaceholder('请输入帖子标题').fill(originalTitle)
@@ -121,16 +122,16 @@ try {
   const adminPage = await adminContext.newPage()
   await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码')
   await adminPage.getByText('用户总数', { exact: true }).waitFor()
-  await adminPage.goto(`${adminURL}/plugins`, { waitUntil: 'networkidle' })
+  await adminPage.goto(`${adminURL}/plugins`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('main').getByText('插件管理', { exact: true }).waitFor()
   await adminPage.getByText(/已安装 \d+ 个插件/).waitFor()
-  await adminPage.goto(`${adminURL}/architecture`, { waitUntil: 'networkidle' })
+  await adminPage.goto(`${adminURL}/architecture`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '系统数据架构' }).waitFor()
   await adminContext.close()
 
   const docsContext = await browser.newContext()
   const docsPage = await docsContext.newPage()
-  await docsPage.goto(docsURL, { waitUntil: 'networkidle' })
+  await docsPage.goto(docsURL, { waitUntil: 'domcontentloaded' })
   await docsPage.getByText(/CampusOS/).first().waitFor()
   await docsContext.close()
   console.log('browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins, architecture, docs')

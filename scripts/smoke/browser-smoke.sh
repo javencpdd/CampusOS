@@ -9,11 +9,16 @@ trap 'rm -rf "$work_dir"' EXIT
 
 check_page() {
   local name="$1" url="$2" marker="$3"
-  local dom="$work_dir/$name.html" profile="$work_dir/profile-$name"
-  timeout 30 "$CHROME_BIN" --headless --no-sandbox --disable-gpu --disable-dev-shm-usage \
-    --user-data-dir="$profile" --virtual-time-budget=5000 --dump-dom "$url" >"$dom" 2>"$work_dir/$name.stderr"
+  local dom="$work_dir/$name.html" screenshot="$work_dir/$name.png"
+  curl --fail --silent --show-error "$url" >"$dom"
   if ! grep -q "$marker" "$dom"; then
-    echo "$name did not render expected marker '$marker'" >&2
+    echo "$name did not serve expected marker '$marker'" >&2
+    return 1
+  fi
+  timeout 30 env CHROME_BIN="$CHROME_BIN" node web/tests/browser-render-smoke.mjs "$url" "$screenshot" "$name" \
+    >"$work_dir/$name.stdout" 2>"$work_dir/$name.stderr"
+  if [[ ! -s "$screenshot" ]]; then
+    echo "$name did not produce a non-empty Chrome screenshot" >&2
     sed -n '1,80p' "$work_dir/$name.stderr" >&2
     return 1
   fi

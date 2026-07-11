@@ -57,6 +57,7 @@ export default defineConfig({
           { text: 'Manifest 与配置', link: '/plugins/manifest' },
           { text: '打包、导入与更新', link: '/plugins/package-import' },
           { text: '生命周期与数据', link: '/plugins/lifecycle' },
+          { text: '前端运行时与 Gateway', link: '/plugins/frontend-runtime' },
           { text: '风格包与沙箱 SDK', link: '/plugins/style-packs' },
           { text: 'Host API 与权限', link: '/plugins/host-api' },
           { text: 'SDK、CLI 与测试', link: '/plugins/sdk-cli' },

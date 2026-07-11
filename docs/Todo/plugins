@@ -5,3 +5,5 @@
 
 能不能将微信公众号的文章同步到个人主页，同时标注出该帖子来自什么什么公众号
 
+每个风格包都需要适配pc端和移动端，还要注意风格包的文字和背景图，如 /home/jack/bbs/bbs01/CampusOS/docs/Todo/tmp/image.png （这是我测试功能时截取的系统图片）中 背景图和部分文字的颜色太接近了 ，或者可以自主更换背景图或文字颜色（风格包也不是写死的），同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
+更改完项目后，记得生成对应的进度说明文档，保存在/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.6-dev中

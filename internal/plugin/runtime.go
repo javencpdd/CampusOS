@@ -8,6 +8,10 @@ import (
 // PluginStatus 插件状态
 type PluginStatus string
 
+type BackendState string
+type FrontendState string
+type HealthState string
+
 const (
 	StatusInstalled PluginStatus = "installed"
 	StatusEnabled   PluginStatus = "enabled"
@@ -16,27 +20,83 @@ const (
 	StatusError     PluginStatus = "error"
 )
 
+const (
+	BackendInstalled      BackendState = "installed"
+	BackendStarting       BackendState = "starting"
+	BackendRunning        BackendState = "running"
+	BackendRestarting     BackendState = "restarting"
+	BackendStopping       BackendState = "stopping"
+	BackendStopped        BackendState = "stopped"
+	BackendPendingRestart BackendState = "pending_restart"
+	BackendError          BackendState = "error"
+
+	FrontendUnloaded     FrontendState = "unloaded"
+	FrontendLoading      FrontendState = "loading"
+	FrontendLoaded       FrontendState = "loaded"
+	FrontendIncompatible FrontendState = "incompatible"
+	FrontendError        FrontendState = "error"
+
+	HealthHealthy     HealthState = "healthy"
+	HealthDegraded    HealthState = "degraded"
+	HealthUnavailable HealthState = "unavailable"
+	HealthUnknown     HealthState = "unknown"
+)
+
 // Plugin 插件实例
 type Plugin struct {
-	ID                 string       `json:"id"`
-	Manifest           *Manifest    `json:"manifest"`
-	Status             PluginStatus `json:"status"`
-	DesiredEnabled     bool         `json:"desired_enabled"`
-	ErrorMsg           string       `json:"error_message,omitempty"`
-	Directory          string       `json:"directory"`
-	InstalledBy        string       `json:"installed_by"`
-	Checksum           string       `json:"checksum,omitempty"`
-	PackageSize        int64        `json:"package_size,omitempty"`
-	HostToken          string       `json:"-"`
-	HostTokenExpiresAt time.Time    `json:"-"`
+	ID                 string        `json:"id"`
+	Manifest           *Manifest     `json:"manifest"`
+	Status             PluginStatus  `json:"status"`
+	BackendState       BackendState  `json:"backend_state"`
+	FrontendState      FrontendState `json:"frontend_state"`
+	Health             HealthState   `json:"health"`
+	DesiredEnabled     bool          `json:"desired_enabled"`
+	ErrorMsg           string        `json:"error_message,omitempty"`
+	Directory          string        `json:"directory"`
+	InstalledBy        string        `json:"installed_by"`
+	Checksum           string        `json:"checksum,omitempty"`
+	PackageSize        int64         `json:"package_size,omitempty"`
+	HostToken          string        `json:"-"`
+	HostTokenExpiresAt time.Time     `json:"-"`
 }
 
 // LifecycleState is the frontend-safe lifecycle view for one plugin.
 type LifecycleState struct {
-	Scope          string `json:"scope"`
-	ActivationMode string `json:"activation_mode"`
-	DesiredEnabled bool   `json:"desired_enabled"`
-	PendingRestart bool   `json:"pending_restart"`
+	Scope                  string        `json:"scope"`
+	ActivationMode         string        `json:"activation_mode"`
+	BackendActivationMode  string        `json:"backend_activation_mode"`
+	FrontendActivationMode string        `json:"frontend_activation_mode"`
+	BackendState           BackendState  `json:"backend_state"`
+	FrontendState          FrontendState `json:"frontend_state"`
+	Health                 HealthState   `json:"health"`
+	DesiredEnabled         bool          `json:"desired_enabled"`
+	PendingRestart         bool          `json:"pending_restart"`
+}
+
+type TrustedCallContext struct {
+	UserID      string   `json:"user_id"`
+	Username    string   `json:"username"`
+	Permissions []string `json:"permissions,omitempty"`
+	TraceID     string   `json:"trace_id"`
+}
+
+type ExtensionRequest struct {
+	Method  string              `json:"method"`
+	Path    string              `json:"path"`
+	Query   map[string][]string `json:"query,omitempty"`
+	Headers map[string]string   `json:"headers,omitempty"`
+	Body    []byte              `json:"body,omitempty"`
+	Caller  TrustedCallContext  `json:"caller"`
+}
+
+type ExtensionResponse struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    []byte            `json:"body,omitempty"`
+}
+
+type ExtensionRuntime interface {
+	DispatchExtension(ctx context.Context, pluginName string, request *ExtensionRequest) (*ExtensionResponse, error)
 }
 
 // EventMessage 传递给插件的事件消息

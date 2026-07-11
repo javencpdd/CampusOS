@@ -80,6 +80,32 @@ func TestRuntimeUsesConfiguredModulePath(t *testing.T) {
 	}
 }
 
+func TestRuntimeKeepsOldModuleWhenCandidateValidationFails(t *testing.T) {
+	dir := t.TempDir()
+	modulePath := filepath.Join(dir, "plugin.wasm")
+	if err := os.WriteFile(modulePath, wasmHandleEventReturning(1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runtime := NewRuntime()
+	p := &plugin.Plugin{Directory: dir, Manifest: &plugin.Manifest{Name: "atomic-wasm", Runtime: "wasm"}}
+	if err := runtime.Start(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(modulePath, []byte("invalid wasm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Start(context.Background(), p); err == nil {
+		t.Fatal("expected invalid candidate to fail")
+	}
+	if !runtime.IsRunning("atomic-wasm") {
+		t.Fatal("old module must remain active")
+	}
+	response, err := runtime.SendEvent(context.Background(), "atomic-wasm", &plugin.EventMessage{Type: "test"})
+	if err != nil || response == nil || !response.Allowed {
+		t.Fatalf("old module no longer serves: %#v %v", response, err)
+	}
+}
+
 func TestRuntimeReturnsMissingHandler(t *testing.T) {
 	dir := t.TempDir()
 	modulePath := filepath.Join(dir, "plugin.wasm")

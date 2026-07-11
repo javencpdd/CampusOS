@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	SchemaVersion = "page-style-pack.v1"
+	SchemaVersion    = "page-style-pack.v1"
+	AppSchemaVersion = "campusos.app-style-pack.v2"
 
 	MaxFiles        = 80
-	MaxPackageBytes = 1024 * 1024
-	MaxFileBytes    = 256 * 1024
+	MaxPackageBytes = 8 * 1024 * 1024
+	MaxFileBytes    = 4 * 1024 * 1024
 	MaxCSSBytes     = 20000
 )
 
@@ -50,6 +51,28 @@ type Manifest struct {
 	Assets             []Asset           `json:"assets,omitempty" yaml:"assets,omitempty"`
 	Effect             *Effect           `json:"effect,omitempty" yaml:"effect,omitempty"`
 	Capabilities       []string          `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	Layout             *AppLayout        `json:"layout,omitempty" yaml:"layout,omitempty"`
+	SurfaceOverrides   []SurfaceOverride `json:"surface_overrides,omitempty" yaml:"surface_overrides,omitempty"`
+}
+
+type AppLayout struct {
+	Mode              string `json:"mode,omitempty" yaml:"mode,omitempty"`
+	ContentWidth      string `json:"content_width,omitempty" yaml:"content_width,omitempty"`
+	PagePadding       string `json:"page_padding,omitempty" yaml:"page_padding,omitempty"`
+	HeaderMode        string `json:"header_mode,omitempty" yaml:"header_mode,omitempty"`
+	ScrollMode        string `json:"scroll_mode,omitempty" yaml:"scroll_mode,omitempty"`
+	BackgroundAsset   string `json:"background_asset,omitempty" yaml:"background_asset,omitempty"`
+	Overlay           string `json:"overlay,omitempty" yaml:"overlay,omitempty"`
+	AnimationPreset   string `json:"animation_preset,omitempty" yaml:"animation_preset,omitempty"`
+	LeftSidebarWidth  string `json:"left_sidebar_width,omitempty" yaml:"left_sidebar_width,omitempty"`
+	RightSidebarWidth string `json:"right_sidebar_width,omitempty" yaml:"right_sidebar_width,omitempty"`
+}
+
+type SurfaceOverride struct {
+	SurfaceID string `json:"surface_id" yaml:"surface_id"`
+	Variant   string `json:"variant,omitempty" yaml:"variant,omitempty"`
+	Region    string `json:"region,omitempty" yaml:"region,omitempty"`
+	Order     int    `json:"order,omitempty" yaml:"order,omitempty"`
 }
 
 type Effect struct {
@@ -607,12 +630,13 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	}
 	pkg.Manifest = manifest
 
-	if manifest.SchemaVersion != SchemaVersion {
-		result.addError(fmt.Sprintf("schema_version must be %q", SchemaVersion))
+	if manifest.SchemaVersion != SchemaVersion && manifest.SchemaVersion != AppSchemaVersion {
+		result.addError(fmt.Sprintf("schema_version must be %q or %q", SchemaVersion, AppSchemaVersion))
 	}
 	if ScopeRootSelector(manifest.Target) == "" {
 		result.addError("target must be personal-space, homepage or web")
 	}
+	validateAppLayout(manifest, files, result)
 	if !packNamePattern.MatchString(manifest.Name) {
 		result.addError("name must use lowercase letters, numbers and hyphens")
 	}
@@ -678,6 +702,58 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 		result.addWarning("compatible_campusos is empty")
 	}
 	addRecommendedStructureWarnings(manifest, files, result)
+}
+
+func validateAppLayout(manifest Manifest, files map[string][]byte, result *ValidationResult) {
+	if manifest.SchemaVersion != AppSchemaVersion {
+		if manifest.Layout != nil || len(manifest.SurfaceOverrides) > 0 {
+			result.addError("layout and surface_overrides require campusos.app-style-pack.v2")
+		}
+		return
+	}
+	if manifest.Target != TargetWeb {
+		result.addError("campusos.app-style-pack.v2 currently requires target web")
+	}
+	if manifest.Layout == nil {
+		result.addError("campusos.app-style-pack.v2 requires layout")
+		return
+	}
+	layout := manifest.Layout
+	if layout.Mode != "full" && layout.Mode != "contained" {
+		result.addError("layout.mode must be full or contained")
+	}
+	if layout.HeaderMode != "sticky" && layout.HeaderMode != "static" && layout.HeaderMode != "overlay" {
+		result.addError("layout.header_mode must be sticky, static or overlay")
+	}
+	if layout.ScrollMode != "page" && layout.ScrollMode != "content" {
+		result.addError("layout.scroll_mode must be page or content")
+	}
+	if layout.AnimationPreset != "" && layout.AnimationPreset != "none" && layout.AnimationPreset != "fade" && layout.AnimationPreset != "reveal" && layout.AnimationPreset != "parallax" {
+		result.addError("layout.animation_preset is not supported")
+	}
+	if layout.BackgroundAsset != "" {
+		validateImagePath("layout.background_asset", layout.BackgroundAsset, files, result)
+		declared := false
+		for _, asset := range manifest.Assets {
+			if asset.Path == layout.BackgroundAsset {
+				declared = true
+				break
+			}
+		}
+		if !declared {
+			result.addError("layout.background_asset must be declared in assets")
+		}
+	}
+	seen := map[string]bool{}
+	for _, override := range manifest.SurfaceOverrides {
+		if !strings.Contains(override.SurfaceID, ".") || seen[override.SurfaceID] {
+			result.addError("surface_overrides require unique namespaced surface_id")
+		}
+		seen[override.SurfaceID] = true
+		if override.Region == "page-outlet" || override.Region == "safety" {
+			result.addError("surface override cannot replace required host regions")
+		}
+	}
 }
 
 func validateHTMLFile(field, value string, files map[string][]byte, result *ValidationResult, seen map[string]struct{}) {
