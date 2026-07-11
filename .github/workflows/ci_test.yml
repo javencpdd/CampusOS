@@ -81,8 +81,14 @@ jobs:
       - name: Show migration status
         run: make migrate-status
 
+      - name: Audit data and validate schema contract
+        run: make database-check
+
       - name: Run Go tests
         run: go test ./... -v -count=1
+
+      - name: Check API and authorization contract drift
+        run: make contracts-check
 
       - name: Build Go server
         run: go build -o bin/campusos-server ./cmd/server/main.go

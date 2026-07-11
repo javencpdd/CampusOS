@@ -1,0 +1,121 @@
+:root {
+  --vp-c-brand-1: #166534;
+  --vp-c-brand-2: #15803d;
+  --vp-c-brand-3: #16a34a;
+  --vp-c-brand-soft: rgba(22, 163, 74, 0.12);
+  --vp-c-tip-1: #0f766e;
+  --vp-c-tip-2: #0d9488;
+  --vp-c-tip-soft: rgba(13, 148, 136, 0.12);
+  --vp-c-warning-1: #a16207;
+  --vp-c-warning-soft: rgba(202, 138, 4, 0.12);
+  --vp-layout-max-width: 1500px;
+  --vp-sidebar-width: 272px;
+}
+
+* {
+  letter-spacing: 0;
+}
+
+.dark {
+  --vp-c-bg: #171717;
+  --vp-c-bg-alt: #202020;
+  --vp-c-bg-soft: #262626;
+  --vp-c-divider: #3f3f46;
+  --vp-c-brand-1: #4ade80;
+  --vp-c-brand-2: #22c55e;
+  --vp-c-brand-3: #16a34a;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 750;
+}
+
+.vp-doc h1 {
+  font-size: 34px;
+  line-height: 1.25;
+}
+
+.vp-doc h2 {
+  border-top: 0;
+  margin-top: 36px;
+  padding-top: 0;
+}
+
+.vp-doc a {
+  text-underline-offset: 3px;
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc th {
+  background: var(--vp-c-bg-soft);
+}
+
+.product-shot {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: center;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  box-shadow: 0 16px 36px rgba(23, 23, 23, 0.12);
+}
+
+.doc-link-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.doc-link-grid > a {
+  display: block;
+  min-width: 0;
+  padding: 16px;
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+}
+
+.doc-link-grid > a:hover {
+  border-color: var(--vp-c-brand-2);
+  background: var(--vp-c-brand-soft);
+}
+
+.doc-link-grid strong,
+.doc-link-grid span {
+  display: block;
+}
+
+.doc-link-grid span {
+  margin-top: 6px;
+  color: var(--vp-c-text-2);
+  line-height: 1.65;
+}
+
+.status-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+
+.status-line code {
+  padding: 5px 9px;
+  border-radius: 4px;
+}
+
+@media (max-width: 720px) {
+  .vp-doc h1 {
+    font-size: 29px;
+  }
+
+  .doc-link-grid {
+    grid-template-columns: 1fr;
+  }
+}

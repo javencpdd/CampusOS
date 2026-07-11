@@ -8,19 +8,22 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/campusos/CampusOS/internal/plugin"
 )
 
 type PluginLookup func(name string) (*plugin.Plugin, bool)
+type PluginAuthenticator func(name, token string) (*plugin.Plugin, bool)
 
 // HostAPIServer Host API 服务端（HTTP JSON-RPC 风格，兼容未来 gRPC）
 type HostAPIServer struct {
-	hostAPI      *HostAPIv2
-	server       *http.Server
-	addr         string
-	pluginLookup PluginLookup
+	hostAPI             *HostAPIv2
+	server              *http.Server
+	addr                string
+	pluginLookup        PluginLookup
+	pluginAuthenticator PluginAuthenticator
 }
 
 // NewHostAPIServer 创建 Host API 服务端
@@ -37,6 +40,10 @@ func NewHostAPIServer(hostAPI *HostAPIv2, addr string, lookup ...PluginLookup) *
 
 func (s *HostAPIServer) SetPluginLookup(lookup PluginLookup) {
 	s.pluginLookup = lookup
+}
+
+func (s *HostAPIServer) SetPluginAuthenticator(authenticator PluginAuthenticator) {
+	s.pluginAuthenticator = authenticator
 }
 
 // Start 启动 HTTP 服务
@@ -108,7 +115,7 @@ func (s *HostAPIServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HostAPIServer) resolvePluginManifest(r *http.Request, reqBody map[string]interface{}) (*plugin.Manifest, error) {
-	if s.pluginLookup == nil {
+	if s.pluginLookup == nil && s.pluginAuthenticator == nil {
 		return nil, fmt.Errorf("%w: plugin lookup is not configured", ErrHostAPIPermissionDenied)
 	}
 
@@ -122,6 +129,20 @@ func (s *HostAPIServer) resolvePluginManifest(r *http.Request, reqBody map[strin
 	}
 	if pluginName == "" {
 		return nil, fmt.Errorf("%w: plugin identity is required", ErrHostAPIPermissionDenied)
+	}
+	token := strings.TrimSpace(r.Header.Get("X-CampusOS-Plugin-Token"))
+	if token == "" {
+		authorization := r.Header.Get("Authorization")
+		if strings.HasPrefix(authorization, "Bearer ") {
+			token = strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
+		}
+	}
+	if s.pluginAuthenticator != nil {
+		p, ok := s.pluginAuthenticator(pluginName, token)
+		if !ok || p == nil || p.Manifest == nil {
+			return nil, fmt.Errorf("%w: plugin token is missing, expired, revoked, or does not match %s", ErrHostAPIPermissionDenied, pluginName)
+		}
+		return p.Manifest, nil
 	}
 
 	p, ok := s.pluginLookup(pluginName)

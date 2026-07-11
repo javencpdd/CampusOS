@@ -308,6 +308,15 @@ config_schema:
 	if config["title"] != "Updated" || config["enabled"] != false || config["limit"] != float64(5) {
 		t.Fatalf("unexpected normalized config: %#v", config)
 	}
+	snapshot, ok := manager.GetPluginConfig("configurable-plugin")
+	if !ok || snapshot["title"] != "Updated" || snapshot["enabled"] != false {
+		t.Fatalf("unexpected config snapshot: %#v", snapshot)
+	}
+	snapshot["title"] = "mutated outside manager"
+	current, ok := manager.GetPluginConfig("configurable-plugin")
+	if !ok || current["title"] != "Updated" {
+		t.Fatalf("config snapshot must not expose manager state: %#v", current)
+	}
 	record, err := repo.GetByName(context.Background(), "configurable-plugin")
 	if err != nil {
 		t.Fatalf("get plugin record: %v", err)

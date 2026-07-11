@@ -1,0 +1,36 @@
+name: web-theme
+display_name: "Web Theme"
+version: "0.1.0"
+description: "CampusOS administrator-provided themes for the complete user web frontend"
+author: "CampusOS Team"
+runtime: builtin
+scope: system
+
+events:
+  subscribe: []
+
+permissions:
+  api:
+    - resource: "web_theme"
+      actions: ["read", "configure"]
+
+storage:
+  type: none
+
+config:
+  default_style_pack: "campus-canvas"
+  allow_user_switch: true
+
+config_schema:
+  fields:
+    - key: "default_style_pack"
+      label: "Default web theme"
+      type: "string"
+      description: "Default target:web source package under data/plugin_data/web-theme/style-packs."
+      required: true
+      default: "campus-canvas"
+    - key: "allow_user_switch"
+      label: "Allow user switching"
+      type: "boolean"
+      description: "Allow each user to keep a local theme selection from administrator-provided packages."
+      default: true

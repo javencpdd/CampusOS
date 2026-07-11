@@ -7,6 +7,7 @@ import (
 )
 
 func TestHostClientGetConfigSendsPluginIdentity(t *testing.T) {
+	t.Setenv("CAMPUSOS_PLUGIN_TOKEN", "test-token")
 	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST, got %s", r.Method)
@@ -16,6 +17,9 @@ func TestHostClientGetConfigSendsPluginIdentity(t *testing.T) {
 		}
 		if got := r.Header.Get("X-CampusOS-Plugin"); got != "sdk-plugin" {
 			t.Fatalf("expected plugin identity header, got %q", got)
+		}
+		if got := r.Header.Get("X-CampusOS-Plugin-Token"); got != "test-token" {
+			t.Fatalf("expected plugin token header, got %q", got)
 		}
 		var request GetConfigRequest
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

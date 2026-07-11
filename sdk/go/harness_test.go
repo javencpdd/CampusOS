@@ -1,6 +1,11 @@
 package campusos
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"net/http"
+	"testing"
+)
 
 func TestHarnessSupportsConfigStorageEventsAndLogs(t *testing.T) {
 	harness := NewHarness("sdk-plugin")
@@ -51,6 +56,32 @@ func TestHarnessSupportsConfigStorageEventsAndLogs(t *testing.T) {
 	}
 	if len(harness.Logs) != 1 || harness.Logs[0].Message != "handled" {
 		t.Fatalf("unexpected logs: %#v", harness.Logs)
+	}
+}
+
+func TestHarnessSupportsFailureInjectionAndTypedPermissionError(t *testing.T) {
+	harness := NewHarness("sdk-plugin")
+	harness.SetFailure("GetConfig", http.StatusForbidden, "permission denied")
+	_, _, err := harness.Client().GetConfig(t.Context(), "secret")
+	if !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("expected typed permission error, got %v", err)
+	}
+	harness.ClearFailure("GetConfig")
+	harness.Config["secret"] = "visible"
+	if _, found, err := harness.Client().GetConfig(t.Context(), "secret"); err != nil || !found {
+		t.Fatalf("expected cleared failure, found=%v err=%v", found, err)
+	}
+}
+
+func TestHarnessSimulatesIncomingEvent(t *testing.T) {
+	harness := NewHarness("sdk-plugin")
+	called := false
+	err := harness.SimulateEvent(t.Context(), Event{Type: "thread.created"}, func(_ context.Context, event Event) error {
+		called = event.Type == "thread.created"
+		return nil
+	})
+	if err != nil || !called {
+		t.Fatalf("expected event handler call, called=%v err=%v", called, err)
 	}
 }
 

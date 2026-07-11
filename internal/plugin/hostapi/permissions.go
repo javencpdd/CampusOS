@@ -3,6 +3,7 @@ package hostapi
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/campusos/CampusOS/internal/plugin"
 )
@@ -10,8 +11,9 @@ import (
 var ErrHostAPIPermissionDenied = errors.New("host api permission denied")
 
 type HostAPIPermission struct {
-	Resource string
-	Action   string
+	Method   string `json:"method"`
+	Resource string `json:"resource"`
+	Action   string `json:"action"`
 }
 
 var hostAPIMethodPermissions = map[string]HostAPIPermission{
@@ -32,7 +34,18 @@ var hostAPIMethodPermissions = map[string]HostAPIPermission{
 
 func PermissionForMethod(method string) (HostAPIPermission, bool) {
 	permission, ok := hostAPIMethodPermissions[method]
+	permission.Method = method
 	return permission, ok
+}
+
+func PermissionCatalog() []HostAPIPermission {
+	result := make([]HostAPIPermission, 0, len(hostAPIMethodPermissions))
+	for method, permission := range hostAPIMethodPermissions {
+		permission.Method = method
+		result = append(result, permission)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Method < result[j].Method })
+	return result
 }
 
 func CheckHostAPIPermission(manifest *plugin.Manifest, method string) error {

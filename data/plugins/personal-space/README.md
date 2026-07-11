@@ -63,6 +63,16 @@ assets:
 
 Safety screening is handled by `internal/stylepack`: safe relative paths only, limited file count and size, allowed extensions, restricted HTML for every template, restricted CSS for every stylesheet, image asset path checks, and `config.schema.json` JSON parsing. A pack must pass screening before it can be applied.
 
+Every personal-space CSS selector must start with `.public-space[data-campusos-space]`, so a user package can redesign the full public profile content without changing the application header or other pages. The public API always resolves the style from the route owner; every visitor to user A sees A's stored style.
+
+Optional `sandbox-worker.v1` effects use a compiled `.js` entry and may retain `.ts` authoring source. Effects run without same-origin, DOM, token, storage or arbitrary network access. Personal packages may declare `space.profile.read`, `space.posts.read`, and owner-only `schedule.me.read`; all calls go through the read-only CampusStyleSDK host bridge.
+
+Advanced example:
+
+```text
+data/plugin_data/personal-space/style-packs/kinetic-journal/
+```
+
 User-facing endpoints:
 
 ```text

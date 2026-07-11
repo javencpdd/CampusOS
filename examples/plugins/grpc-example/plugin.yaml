@@ -1,0 +1,33 @@
+api_version: campusos.plugin/v1
+host_api_version: v1
+name: grpc-example
+display_name: "gRPC Process Example"
+version: "0.1.0"
+description: "Minimal user-level process plugin template."
+author: "CampusOS"
+runtime: grpc
+scope: user
+capabilities: [host.logs, host.storage]
+compatibility:
+  campusos: ">=0.6.0 <0.7.0"
+  host_api: "v1"
+  sdk_go: "v0.6"
+events:
+  subscribe: ["thread.created"]
+permissions:
+  api:
+    - resource: log
+      actions: [write]
+    - resource: storage
+      actions: [read, write]
+storage:
+  type: none
+config:
+  command: "./plugin"
+config_schema:
+  fields:
+    - key: command
+      label: "Command"
+      type: string
+      required: true
+      default: "./plugin"

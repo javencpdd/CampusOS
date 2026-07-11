@@ -111,6 +111,16 @@ export const postApi = {
   delete: (threadId: string, postId: string) => api.delete(`/threads/${threadId}/posts/${postId}`),
 }
 
+export const moderationApi = {
+  status: () => api.get('/moderation/status'),
+  access: (threadId: string) => api.get('/moderation/me', { params: { thread_id: threadId } }),
+  pin: (threadId: string) => api.post(`/moderation/threads/${threadId}/pin`),
+  unpin: (threadId: string) => api.post(`/moderation/threads/${threadId}/unpin`),
+  lock: (threadId: string) => api.post(`/moderation/threads/${threadId}/lock`),
+  unlock: (threadId: string) => api.post(`/moderation/threads/${threadId}/unlock`),
+  deletePost: (threadId: string, postId: string) => api.delete(`/moderation/threads/${threadId}/posts/${postId}`),
+}
+
 // 个人课表 API
 export const scheduleApi = {
   status: () => api.get('/schedule/status'),
@@ -143,6 +153,11 @@ export const categoryApi = {
 // 首页配置 API
 export const homeApi = {
   config: () => api.get('/home/config'),
+}
+
+export const webThemeApi = {
+  catalog: () => api.get('/web-themes'),
+  package: (name: string) => api.get(`/web-themes/${encodeURIComponent(name)}`),
 }
 
 // 个人主页 Space API

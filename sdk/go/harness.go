@@ -1,6 +1,7 @@
 package campusos
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,18 +10,27 @@ import (
 )
 
 type Harness struct {
-	mu          sync.Mutex
-	handler     http.Handler
-	pluginName  string
-	Config      map[string]interface{}
-	Storage     map[string]string
-	Users       map[string]map[string]interface{}
-	Threads     map[string]map[string]interface{}
-	Replies     map[string]map[string]interface{}
-	Permissions map[string]bool
-	Events      []PublishEventRequest
-	Logs        []LogRequest
+	mu            sync.Mutex
+	handler       http.Handler
+	pluginName    string
+	Config        map[string]interface{}
+	Storage       map[string]string
+	Users         map[string]map[string]interface{}
+	Threads       map[string]map[string]interface{}
+	Replies       map[string]map[string]interface{}
+	Permissions   map[string]bool
+	Events        []PublishEventRequest
+	Logs          []LogRequest
+	Notifications []SendNotificationRequest
+	Failures      map[string]HarnessFailure
 }
+
+type HarnessFailure struct {
+	Status  int
+	Message string
+}
+
+type EventHandler func(context.Context, Event) error
 
 func NewHarness(pluginName string) *Harness {
 	h := &Harness{
@@ -31,6 +41,7 @@ func NewHarness(pluginName string) *Harness {
 		Threads:     map[string]map[string]interface{}{},
 		Replies:     map[string]map[string]interface{}{},
 		Permissions: map[string]bool{},
+		Failures:    map[string]HarnessFailure{},
 	}
 	h.handler = http.HandlerFunc(h.handle)
 	return h
@@ -70,6 +81,28 @@ func (h *Harness) SetPermission(userID, resource, action string, allowed bool) {
 	h.Permissions[permissionKey(userID, resource, action)] = allowed
 }
 
+func (h *Harness) SetFailure(method string, status int, message string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.Failures[method] = HarnessFailure{Status: status, Message: message}
+}
+
+func (h *Harness) ClearFailure(method string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.Failures, method)
+}
+
+func (h *Harness) SimulateEvent(ctx context.Context, event Event, handler EventHandler) error {
+	if handler == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return handler(ctx, event)
+}
+
 func (h *Harness) handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -80,6 +113,13 @@ func (h *Harness) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	method := strings.TrimPrefix(r.URL.Path, "/api/host/")
+	h.mu.Lock()
+	failure, shouldFail := h.Failures[method]
+	h.mu.Unlock()
+	if shouldFail {
+		writeHarnessError(w, failure.Status, failure.Message)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 
 	switch method {
@@ -126,6 +166,18 @@ func (h *Harness) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(reply)
+	case "QueryThreads":
+		var req QueryThreadsRequest
+		if !decodeHarnessRequest(w, r, &req) {
+			return
+		}
+		h.mu.Lock()
+		threads := make([]map[string]interface{}, 0, len(h.Threads))
+		for _, thread := range h.Threads {
+			threads = append(threads, thread)
+		}
+		h.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(QueryThreadsResponse{Threads: threads, Total: len(threads)})
 	case "GetConfig":
 		var req GetConfigRequest
 		if !decodeHarnessRequest(w, r, &req) {
@@ -182,6 +234,15 @@ func (h *Harness) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Lock()
 		h.Events = append(h.Events, req)
+		h.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	case "SendNotification":
+		var req SendNotificationRequest
+		if !decodeHarnessRequest(w, r, &req) {
+			return
+		}
+		h.mu.Lock()
+		h.Notifications = append(h.Notifications, req)
 		h.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	case "Log":

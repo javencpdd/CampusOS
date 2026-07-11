@@ -137,7 +137,7 @@ styles:
   - styles/theme.css
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Home Folder</h2></section>`,
-		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #2563eb; }`,
+		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; }`,
 	})
 
 	cfg, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data)))
@@ -184,7 +184,7 @@ styles:
   - styles/theme.css
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Changed</h2></section>`,
-		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #2563eb; }`,
+		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; }`,
 	})
 	if _, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data))); err != nil {
 		t.Fatalf("apply homepage style pack: %v", err)

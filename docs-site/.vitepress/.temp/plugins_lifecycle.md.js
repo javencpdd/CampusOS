@@ -1,0 +1,22 @@
+import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
+import { useSSRContext } from "vue";
+import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
+const __pageData = JSON.parse('{"title":"生命周期与数据","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/lifecycle.md","filePath":"plugins/lifecycle.md","lastUpdated":null}');
+const _sfc_main = { name: "plugins/lifecycle.md" };
+function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
+  _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="生命周期与数据" tabindex="-1">生命周期与数据 <a class="header-anchor" href="#生命周期与数据" aria-label="Permalink to &quot;生命周期与数据&quot;">​</a></h1><h2 id="用户级插件" tabindex="-1">用户级插件 <a class="header-anchor" href="#用户级插件" aria-label="Permalink to &quot;用户级插件&quot;">​</a></h2><p><code>scope: user</code> 支持管理员执行：</p><ul><li>加载。</li><li>停止。</li><li>重载。</li><li>覆盖更新。</li><li>卸载。</li></ul><p>这些操作不要求重启 CampusOS API。覆盖更新时应先停止旧 Runtime，再加载新包。</p><h2 id="系统级插件" tabindex="-1">系统级插件 <a class="header-anchor" href="#系统级插件" aria-label="Permalink to &quot;系统级插件&quot;">​</a></h2><p><code>scope: system</code> 随 CampusOS 后端部署。管理端启用或停用只保存目标状态：</p><div class="language-text vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">text</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span>current status != desired status</span></span>
+<span class="line"><span>  -&gt; pending restart</span></span>
+<span class="line"><span>  -&gt; restart API</span></span>
+<span class="line"><span>  -&gt; apply desired status</span></span></code></pre><div class="line-numbers-wrapper" aria-hidden="true"><span class="line-number">1</span><br><span class="line-number">2</span><br><span class="line-number">3</span><br><span class="line-number">4</span><br></div></div><p>系统级插件不能通过 Admin 卸载。更新实现通常需要部署新的 CampusOS 后端版本。</p><p>特定 Built-in 插件可以让业务配置热更新，例如 <code>category-moderation</code> 的动作开关；这不改变插件整体启停需要重启的规则。</p><h2 id="状态判断" tabindex="-1">状态判断 <a class="header-anchor" href="#状态判断" aria-label="Permalink to &quot;状态判断&quot;">​</a></h2><p>常见状态：</p><table tabindex="0"><thead><tr><th>状态</th><th>含义</th></tr></thead><tbody><tr><td><code>installed</code></td><td>已识别但未运行。</td></tr><tr><td><code>running</code></td><td>Runtime 当前运行。</td></tr><tr><td><code>stopped</code></td><td>当前已停止。</td></tr><tr><td><code>error</code></td><td>启动或运行发生错误。</td></tr></tbody></table><p>客户端应同时展示当前状态、目标状态和 <code>pending_restart</code>，避免把“已请求停用”误显示成“当前已经停用”。</p><h2 id="数据保留" tabindex="-1">数据保留 <a class="header-anchor" href="#数据保留" aria-label="Permalink to &quot;数据保留&quot;">​</a></h2><p>插件停止或禁用不应自动删除：</p><ul><li><code>data/plugin_data/&lt;plugin&gt;/</code>。</li><li>PostgreSQL 插件配置和日志。</li><li>用户业务数据。</li><li>审计记录。</li></ul><p>卸载前必须由插件 README 明确说明数据是否保留、如何清理以及能否重新安装恢复。</p><h2 id="日志" tabindex="-1">日志 <a class="header-anchor" href="#日志" aria-label="Permalink to &quot;日志&quot;">​</a></h2><p>插件日志记录启动、停止、事件处理、Host API 调用和错误。Admin 可通过：</p><div class="language-http vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">http</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="${ssrRenderStyle({ "--shiki-light": "#D73A49", "--shiki-dark": "#F97583" })}">GET</span><span style="${ssrRenderStyle({ "--shiki-light": "#24292E", "--shiki-dark": "#E1E4E8" })}"> /api/v1/plugins/:name/logs</span></span></code></pre><div class="line-numbers-wrapper" aria-hidden="true"><span class="line-number">1</span><br></div></div><p>排查顺序：</p><ol><li>检查当前状态和目标状态。</li><li>查看插件日志。</li><li>查看 <code>.campusos/logs/api.log</code>。</li><li>检查 manifest、模块文件和权限。</li><li>检查插件运行数据和外部依赖。</li></ol><h2 id="卸载检查" tabindex="-1">卸载检查 <a class="header-anchor" href="#卸载检查" aria-label="Permalink to &quot;卸载检查&quot;">​</a></h2><ol><li>确认没有用户功能依赖插件。</li><li>备份插件包、配置和运行数据。</li><li>停止插件。</li><li>执行卸载。</li><li>检查残留路由、事件订阅和数据。</li></ol><p>系统级插件不走此流程，应通过 CampusOS 版本升级或回退管理。</p></div>`);
+}
+const _sfc_setup = _sfc_main.setup;
+_sfc_main.setup = (props, ctx) => {
+  const ssrContext = useSSRContext();
+  (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("plugins/lifecycle.md");
+  return _sfc_setup ? _sfc_setup(props, ctx) : void 0;
+};
+const lifecycle = /* @__PURE__ */ _export_sfc(_sfc_main, [["ssrRender", _sfc_ssrRender]]);
+export {
+  __pageData,
+  lifecycle as default
+};

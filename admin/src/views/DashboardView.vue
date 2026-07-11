@@ -66,7 +66,7 @@
               <el-icon><FolderOpened /></el-icon>版块管理
             </el-button>
             <el-button @click="$router.push({ name: 'DeveloperDocs' })">
-              <el-icon><Reading /></el-icon>说明文档
+              <el-icon><Reading /></el-icon>相关资料
             </el-button>
             <el-button @click="$router.push({ name: 'SystemArchitecture' })">
               <el-icon><DataAnalysis /></el-icon>数据架构

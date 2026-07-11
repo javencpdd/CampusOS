@@ -17,6 +17,7 @@ import (
 	"github.com/campusos/CampusOS/internal/integration"
 	"github.com/campusos/CampusOS/internal/mcp"
 	"github.com/campusos/CampusOS/internal/message"
+	"github.com/campusos/CampusOS/internal/moderation"
 	"github.com/campusos/CampusOS/internal/platformlog"
 	"github.com/campusos/CampusOS/internal/plugin"
 	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
@@ -27,6 +28,7 @@ import (
 	"github.com/campusos/CampusOS/internal/schedule"
 	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/internal/webhook"
+	"github.com/campusos/CampusOS/internal/webtheme"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -146,7 +148,7 @@ func (s *Server) Run() error {
 	postRepo := repository.NewPgPostRepository(pool)
 	spaceRepo := space.NewPgRepository(pool)
 	roleRepo := identityrepo.NewPgRoleRepository(pool)
-	permSvc := identitysvc.NewPermissionService(roleRepo)
+	permSvc := identitysvc.NewPermissionService(roleRepo, userRepo)
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
@@ -176,6 +178,22 @@ func (s *Server) Run() error {
 	postSvc := service.NewPostService(postRepo, bus)
 	postSvc.SetThreadRepository(threadRepo)
 	postSvc.SetCache(appCache)
+	moderationSvc := moderation.NewService(
+		permSvc,
+		categoryRepo,
+		threadRepo,
+		postRepo,
+		threadSvc,
+		postSvc,
+		moderation.NewPgAuditStore(pool),
+		moderation.ConfigFromPluginConfig(pluginConfig(s.manager, moderation.PluginName)),
+	)
+	moderationSvc.SetEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning(moderation.PluginName)
+	})
+	moderationSvc.SetConfigProvider(func() moderation.Config {
+		return moderation.ConfigFromPluginConfig(pluginConfig(s.manager, moderation.PluginName))
+	})
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	spaceSvc.SetPluginEnabledChecker(func() bool {
@@ -218,6 +236,7 @@ func (s *Server) Run() error {
 	richTextHandler := richtext.NewHandler(richTextSvc)
 	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
+	moderationHandler := moderation.NewHandler(moderationSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithPool(pool),
 		integration.WithConfig(s.cfg),
@@ -230,7 +249,7 @@ func (s *Server) Run() error {
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
@@ -246,7 +265,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	s.manager.SetPluginRepository(pluginRepo)
 	s.startConfiguredPlugins()
 	s.normalizePersonalStoragePluginConfigs()
-	permSvc := identitysvc.NewPermissionService(roleRepo)
+	permSvc := identitysvc.NewPermissionService(roleRepo, userRepo)
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
@@ -273,6 +292,22 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	categorySvc := service.NewCategoryService(categoryRepo, bus)
 	postSvc := service.NewPostService(postRepo, bus)
 	postSvc.SetThreadRepository(threadRepo)
+	moderationSvc := moderation.NewService(
+		permSvc,
+		categoryRepo,
+		threadRepo,
+		postRepo,
+		threadSvc,
+		postSvc,
+		moderation.NewMemoryAuditStore(),
+		moderation.ConfigFromPluginConfig(pluginConfig(s.manager, moderation.PluginName)),
+	)
+	moderationSvc.SetEnabledChecker(func() bool {
+		return s.manager.IsPluginRunning(moderation.PluginName)
+	})
+	moderationSvc.SetConfigProvider(func() moderation.Config {
+		return moderation.ConfigFromPluginConfig(pluginConfig(s.manager, moderation.PluginName))
+	})
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	spaceSvc.SetPluginEnabledChecker(func() bool {
@@ -314,6 +349,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	richTextHandler := richtext.NewHandler(richTextSvc)
 	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
+	moderationHandler := moderation.NewHandler(moderationSvc)
 	integrationHandler := integration.NewHandler(
 		integration.WithConfig(s.cfg),
 		integration.WithPluginManager(s.manager),
@@ -325,7 +361,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -349,6 +385,7 @@ func (s *Server) startHostAPIServer(hostAPI *hostapi.HostAPIv2) (*hostapi.HostAP
 		return nil, nil
 	}
 	server := hostapi.NewHostAPIServer(hostAPI, s.cfg.HostAPI.Addr, s.manager.GetPlugin)
+	server.SetPluginAuthenticator(s.manager.AuthorizeHostAPI)
 	if err := server.Start(); err != nil {
 		return nil, err
 	}
@@ -460,11 +497,11 @@ func pluginConfig(manager *plugin.Manager, name string) map[string]interface{} {
 	if manager == nil {
 		return nil
 	}
-	p, ok := manager.GetPlugin(name)
-	if !ok || p == nil || p.Manifest == nil {
+	config, ok := manager.GetPluginConfig(name)
+	if !ok {
 		return nil
 	}
-	return p.Manifest.Config
+	return config
 }
 
 func (s *Server) startConfiguredPlugins() {
@@ -517,9 +554,11 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	richTextHandler *richtext.Handler,
 	scheduleHandler *schedule.Handler,
 	platformLogHandler *platformlog.Handler,
+	moderationHandler *moderation.Handler,
 	metricsCollector *observability.Collector) error {
 
 	r := gin.Default()
+	webThemeHandler := webtheme.NewHandler(webtheme.NewService(s.manager.GetPlugin))
 
 	// 全局中间件
 	r.Use(middleware.Recovery())
@@ -535,6 +574,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	{
 		public.GET("/health", userHandler.HealthCheck)
 		public.GET("/home/config", homepageHandler.GetConfig)
+		public.GET("/web-themes", webThemeHandler.Catalog)
+		public.GET("/web-themes/:name", webThemeHandler.Package)
+		public.GET("/web-themes/:name/assets/*path", webThemeHandler.Asset)
 		public.GET("/richtext/status", richTextHandler.Status)
 		public.GET("/schedule/status", scheduleHandler.Status)
 		public.POST("/auth/register", userHandler.Register)
@@ -603,8 +645,13 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
 		authenticated.PUT("/threads/:id/posts/:post_id", postHandler.UpdatePost)
 		authenticated.DELETE("/threads/:id/posts/:post_id", postHandler.DeletePost)
-		authenticated.POST("/categories", categoryHandler.Create)
-		authenticated.PUT("/categories/:id", categoryHandler.Update)
+		authenticated.GET("/moderation/status", moderationHandler.Status)
+		authenticated.GET("/moderation/me", moderationHandler.MyAccess)
+		authenticated.POST("/moderation/threads/:id/pin", moderationHandler.Pin)
+		authenticated.POST("/moderation/threads/:id/unpin", moderationHandler.Unpin)
+		authenticated.POST("/moderation/threads/:id/lock", moderationHandler.Lock)
+		authenticated.POST("/moderation/threads/:id/unlock", moderationHandler.Unlock)
+		authenticated.DELETE("/moderation/threads/:id/posts/:post_id", moderationHandler.DeletePost)
 	}
 
 	// ─── 管理员接口（需要权限）───
@@ -616,79 +663,88 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.POST("/users/:id/activate", middleware.RequirePermission(permSvc, "user", "suspend"), userHandler.ActivateUser)
 
 		// 帖子管理
-		admin.GET("/admin/threads", middleware.RequirePermission(permSvc, "role", "manage"), threadHandler.AdminListThreads)
+		admin.GET("/admin/threads", middleware.RequirePermission(permSvc, "thread", "read"), threadHandler.AdminListThreads)
 		admin.POST("/threads/:id/pin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.PinThread)
 		admin.POST("/threads/:id/unpin", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnpinThread)
-		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.LockThread)
-		admin.POST("/threads/:id/unlock", middleware.RequirePermission(permSvc, "thread", "pin"), threadHandler.UnlockThread)
+		admin.POST("/threads/:id/lock", middleware.RequirePermission(permSvc, "thread", "lock"), threadHandler.LockThread)
+		admin.POST("/threads/:id/unlock", middleware.RequirePermission(permSvc, "thread", "lock"), threadHandler.UnlockThread)
 		admin.DELETE("/admin/threads/:id", middleware.RequirePermission(permSvc, "thread", "delete"), threadHandler.AdminDeleteThread)
-		admin.POST("/richtext/articles/:id/admin/offline", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminOffline)
-		admin.POST("/richtext/articles/:id/admin/restore", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminRestore)
-		admin.DELETE("/richtext/articles/:id/admin", middleware.RequirePermission(permSvc, "role", "manage"), richTextHandler.AdminDelete)
+		admin.POST("/richtext/articles/:id/admin/offline", middleware.RequirePermission(permSvc, "richtext", "moderate"), richTextHandler.AdminOffline)
+		admin.POST("/richtext/articles/:id/admin/restore", middleware.RequirePermission(permSvc, "richtext", "moderate"), richTextHandler.AdminRestore)
+		admin.DELETE("/richtext/articles/:id/admin", middleware.RequirePermission(permSvc, "richtext", "moderate"), richTextHandler.AdminDelete)
 
 		// 版块管理
+		admin.POST("/categories", middleware.RequirePermission(permSvc, "category", "write"), categoryHandler.Create)
+		admin.PUT("/categories/:id", middleware.RequirePermission(permSvc, "category", "write"), categoryHandler.Update)
 		admin.DELETE("/categories/:id", middleware.RequirePermission(permSvc, "category", "delete"), categoryHandler.Delete)
 
 		// 插件管理
-		admin.GET("/plugins", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPlugins)
-		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.GetPlugin)
-		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ListPluginLogs)
-		admin.GET("/plugins/:name/export", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ExportPlugin)
-		admin.PUT("/plugins/:name/config", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UpdatePluginConfig)
-		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.EnablePlugin)
-		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.DisablePlugin)
-		admin.POST("/plugins/:name/reload", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ReloadUserPlugin)
-		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.UninstallPlugin)
-		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.ImportPluginPackage)
-		admin.POST("/plugin-packages/precheck", middleware.RequirePermission(permSvc, "role", "manage"), pluginHandler.PrecheckPluginPackage)
+		admin.GET("/plugins", middleware.RequirePermission(permSvc, "plugin", "read"), pluginHandler.ListPlugins)
+		admin.GET("/plugins/:name", middleware.RequirePermission(permSvc, "plugin", "read"), pluginHandler.GetPlugin)
+		admin.GET("/plugins/:name/logs", middleware.RequirePermission(permSvc, "plugin", "read"), pluginHandler.ListPluginLogs)
+		admin.GET("/plugins/:name/export", middleware.RequirePermission(permSvc, "plugin", "read"), pluginHandler.ExportPlugin)
+		admin.PUT("/plugins/:name/config", middleware.RequirePermission(permSvc, "plugin", "configure"), pluginHandler.UpdatePluginConfig)
+		admin.POST("/plugins/:name/enable", middleware.RequirePermission(permSvc, "plugin", "lifecycle"), pluginHandler.EnablePlugin)
+		admin.POST("/plugins/:name/disable", middleware.RequirePermission(permSvc, "plugin", "lifecycle"), pluginHandler.DisablePlugin)
+		admin.POST("/plugins/:name/reload", middleware.RequirePermission(permSvc, "plugin", "lifecycle"), pluginHandler.ReloadUserPlugin)
+		admin.DELETE("/plugins/:name", middleware.RequirePermission(permSvc, "plugin", "uninstall"), pluginHandler.UninstallPlugin)
+		admin.POST("/plugin-packages/import", middleware.RequirePermission(permSvc, "plugin", "install"), pluginHandler.ImportPluginPackage)
+		admin.POST("/plugin-packages/precheck", middleware.RequirePermission(permSvc, "plugin", "install"), pluginHandler.PrecheckPluginPackage)
+		admin.GET("/plugins/:name/snapshots", middleware.RequirePermission(permSvc, "plugin", "read"), pluginHandler.ListVersionSnapshots)
+		admin.POST("/plugins/:name/rollback", middleware.RequirePermission(permSvc, "plugin", "install"), pluginHandler.RollbackVersionSnapshot)
 
 		// AI Gateway 管理
-		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.GetStatus)
-		admin.GET("/ai/logs", middleware.RequirePermission(permSvc, "role", "manage"), aiHandler.ListLogs)
+		admin.GET("/ai/status", middleware.RequirePermission(permSvc, "ai", "read"), aiHandler.GetStatus)
+		admin.GET("/ai/logs", middleware.RequirePermission(permSvc, "ai", "read"), aiHandler.ListLogs)
 
 		// v0.5 集成中心与运营化能力
-		admin.GET("/integrations/overview", middleware.RequirePermission(permSvc, "role", "manage"), integrationHandler.Overview)
-		admin.GET("/metrics/summary", middleware.RequirePermission(permSvc, "role", "manage"), integrationHandler.Metrics)
-		admin.GET("/spaces/admin/summary", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.AdminSummary)
-		admin.POST("/spaces/:user_id/disable", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.DisableSpace)
-		admin.POST("/spaces/:user_id/enable", middleware.RequirePermission(permSvc, "role", "manage"), spaceHandler.EnableSpace)
+		admin.GET("/integrations/overview", middleware.RequirePermission(permSvc, "integration", "read"), integrationHandler.Overview)
+		admin.GET("/metrics/summary", middleware.RequirePermission(permSvc, "metrics", "read"), integrationHandler.Metrics)
+		admin.GET("/spaces/admin/summary", middleware.RequirePermission(permSvc, "space", "manage"), spaceHandler.AdminSummary)
+		admin.POST("/spaces/:user_id/disable", middleware.RequirePermission(permSvc, "space", "manage"), spaceHandler.DisableSpace)
+		admin.POST("/spaces/:user_id/enable", middleware.RequirePermission(permSvc, "space", "manage"), spaceHandler.EnableSpace)
 
-		admin.GET("/webhooks", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.ListEndpoints)
-		admin.POST("/webhooks", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.CreateEndpoint)
-		admin.GET("/webhooks/summary", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.Summary)
-		admin.POST("/webhooks/:id/test", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.TestEndpoint)
-		admin.POST("/webhooks/:id/enable", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.EnableEndpoint)
-		admin.POST("/webhooks/:id/disable", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.DisableEndpoint)
-		admin.GET("/webhooks/:id/deliveries", middleware.RequirePermission(permSvc, "role", "manage"), webhookHandler.ListDeliveries)
+		admin.GET("/webhooks", middleware.RequirePermission(permSvc, "webhook", "read"), webhookHandler.ListEndpoints)
+		admin.POST("/webhooks", middleware.RequirePermission(permSvc, "webhook", "write"), webhookHandler.CreateEndpoint)
+		admin.GET("/webhooks/summary", middleware.RequirePermission(permSvc, "webhook", "read"), webhookHandler.Summary)
+		admin.POST("/webhooks/:id/test", middleware.RequirePermission(permSvc, "webhook", "execute"), webhookHandler.TestEndpoint)
+		admin.POST("/webhooks/:id/enable", middleware.RequirePermission(permSvc, "webhook", "write"), webhookHandler.EnableEndpoint)
+		admin.POST("/webhooks/:id/disable", middleware.RequirePermission(permSvc, "webhook", "write"), webhookHandler.DisableEndpoint)
+		admin.GET("/webhooks/:id/deliveries", middleware.RequirePermission(permSvc, "webhook", "read"), webhookHandler.ListDeliveries)
 
-		admin.GET("/mcp/tools", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.ListTools)
-		admin.POST("/mcp/tools/:name/call", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.CallTool)
-		admin.GET("/mcp/audit", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.ListAudit)
-		admin.GET("/mcp/settings", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.GetSettings)
-		admin.PUT("/mcp/settings", middleware.RequirePermission(permSvc, "role", "manage"), mcpHandler.UpdateSettings)
+		admin.GET("/mcp/tools", middleware.RequirePermission(permSvc, "mcp", "read"), mcpHandler.ListTools)
+		admin.POST("/mcp/tools/:name/call", middleware.RequirePermission(permSvc, "mcp", "call"), mcpHandler.CallTool)
+		admin.GET("/mcp/audit", middleware.RequirePermission(permSvc, "mcp", "read"), mcpHandler.ListAudit)
+		admin.GET("/mcp/settings", middleware.RequirePermission(permSvc, "mcp", "read"), mcpHandler.GetSettings)
+		admin.PUT("/mcp/settings", middleware.RequirePermission(permSvc, "mcp", "configure"), mcpHandler.UpdateSettings)
 
-		admin.GET("/messages/adapters", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ListAdapters)
-		admin.POST("/messages/local/inbound", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ReceiveLocal)
-		admin.GET("/messages/logs", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.ListMessages)
-		admin.POST("/messages/bindings", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.CreateBinding)
-		admin.GET("/messages/summary", middleware.RequirePermission(permSvc, "role", "manage"), messageHandler.Summary)
+		admin.GET("/messages/adapters", middleware.RequirePermission(permSvc, "message", "read"), messageHandler.ListAdapters)
+		admin.POST("/messages/local/inbound", middleware.RequirePermission(permSvc, "message", "write"), messageHandler.ReceiveLocal)
+		admin.GET("/messages/logs", middleware.RequirePermission(permSvc, "message", "read"), messageHandler.ListMessages)
+		admin.POST("/messages/bindings", middleware.RequirePermission(permSvc, "message", "write"), messageHandler.CreateBinding)
+		admin.GET("/messages/summary", middleware.RequirePermission(permSvc, "message", "read"), messageHandler.Summary)
 
-		admin.GET("/platform/logs/sources", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Sources)
-		admin.GET("/platform/logs/stream", middleware.RequirePermission(permSvc, "role", "manage"), platformLogHandler.Stream)
+		admin.GET("/platform/logs/sources", middleware.RequirePermission(permSvc, "platform_log", "read"), platformLogHandler.Sources)
+		admin.GET("/platform/logs/stream", middleware.RequirePermission(permSvc, "platform_log", "read"), platformLogHandler.Stream)
 
-		admin.POST("/home/style-packs/validate", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ValidateStylePack)
-		admin.GET("/home/style-packs/example", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExample)
-		admin.GET("/home/style-packs/example.zip", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.StylePackExampleZip)
-		admin.GET("/home/style-packs/sources", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ListSourceStylePacks)
-		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplyStylePack)
-		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.ApplySourceStylePack)
-		admin.POST("/home/style-packs/rollback", middleware.RequirePermission(permSvc, "role", "manage"), homepageHandler.RollbackStylePack)
+		admin.POST("/home/style-packs/validate", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.ValidateStylePack)
+		admin.GET("/home/style-packs/example", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.StylePackExample)
+		admin.GET("/home/style-packs/example.zip", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.StylePackExampleZip)
+		admin.GET("/home/style-packs/sources", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.ListSourceStylePacks)
+		admin.POST("/home/style-packs/apply", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.ApplyStylePack)
+		admin.POST("/home/style-packs/apply-source", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.ApplySourceStylePack)
+		admin.POST("/home/style-packs/rollback", middleware.RequirePermission(permSvc, "homepage", "configure"), homepageHandler.RollbackStylePack)
 
 		// 角色管理
-		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.ListRoles)
-		admin.GET("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.GetUserRoles)
-		admin.POST("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.AssignRole)
-		admin.DELETE("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "manage"), roleHandler.RevokeRole)
+		admin.GET("/roles", middleware.RequirePermission(permSvc, "role", "read"), roleHandler.ListRoles)
+		admin.GET("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "read"), roleHandler.GetUserRoles)
+		admin.POST("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "assign"), roleHandler.AssignRole)
+		admin.DELETE("/users/:id/roles", middleware.RequirePermission(permSvc, "role", "revoke"), roleHandler.RevokeRole)
+
+		// 板块版主插件配置。角色范围保存在核心 RBAC，治理动作由插件运行状态控制。
+		admin.GET("/moderation/admin/moderators", middleware.RequirePermission(permSvc, "role", "read"), moderationHandler.ListModerators)
+		admin.GET("/moderation/admin/moderators/:id", middleware.RequirePermission(permSvc, "role", "read"), moderationHandler.GetModerator)
+		admin.PUT("/moderation/admin/moderators/:id", middleware.RequirePermission(permSvc, "role", "assign"), moderationHandler.SetModerator)
 	}
 
 	// 服务关闭时停止所有插件
@@ -696,7 +752,7 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
-	log.Printf("📋 API 端点总数: 75+")
+	log.Printf("📋 API 端点总数: 141")
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
 	return r.Run(addr)
 }

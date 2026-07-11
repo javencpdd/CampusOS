@@ -4,18 +4,45 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 )
 
-const DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
+const (
+	DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
+	SDKVersion            = "v0.6"
+	HostAPIVersion        = "v1"
+)
+
+var ErrPermissionDenied = errors.New("campusos host api permission denied")
+
+type HostAPIError struct {
+	Method     string
+	StatusCode int
+	Body       string
+}
+
+func (e *HostAPIError) Error() string {
+	return fmt.Sprintf("host api %s failed: status=%d body=%s", e.Method, e.StatusCode, e.Body)
+}
+
+func (e *HostAPIError) Unwrap() error {
+	if e.StatusCode == http.StatusForbidden {
+		return ErrPermissionDenied
+	}
+	return nil
+}
 
 type HostClient struct {
-	baseURL    string
-	pluginName string
-	httpClient *http.Client
+	baseURL     string
+	pluginName  string
+	pluginToken string
+	httpClient  *http.Client
 }
 
 type HostClientOption func(*HostClient)
@@ -28,15 +55,31 @@ func WithHTTPClient(client *http.Client) HostClientOption {
 	}
 }
 
+func WithTimeout(timeout time.Duration) HostClientOption {
+	return func(c *HostClient) {
+		if timeout <= 0 {
+			return
+		}
+		copy := *c.httpClient
+		copy.Timeout = timeout
+		c.httpClient = &copy
+	}
+}
+
+func WithPluginToken(token string) HostClientOption {
+	return func(c *HostClient) { c.pluginToken = strings.TrimSpace(token) }
+}
+
 func NewHostClient(pluginName string, opts ...HostClientOption) *HostClient {
 	return NewHostClientWithBaseURL(DefaultHostAPIBaseURL, pluginName, opts...)
 }
 
 func NewHostClientWithBaseURL(baseURL, pluginName string, opts ...HostClientOption) *HostClient {
 	client := &HostClient{
-		baseURL:    strings.TrimRight(baseURL, "/"),
-		pluginName: pluginName,
-		httpClient: http.DefaultClient,
+		baseURL:     strings.TrimRight(baseURL, "/"),
+		pluginName:  pluginName,
+		pluginToken: os.Getenv("CAMPUSOS_PLUGIN_TOKEN"),
+		httpClient:  http.DefaultClient,
 	}
 	if client.baseURL == "" {
 		client.baseURL = DefaultHostAPIBaseURL
@@ -64,6 +107,9 @@ func (c *HostClient) Call(ctx context.Context, method string, request interface{
 	if c.pluginName != "" {
 		req.Header.Set("X-CampusOS-Plugin", c.pluginName)
 	}
+	if c.pluginToken != "" {
+		req.Header.Set("X-CampusOS-Plugin-Token", c.pluginToken)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -76,7 +122,7 @@ func (c *HostClient) Call(ctx context.Context, method string, request interface{
 		return fmt.Errorf("read host api response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("host api %s failed: status=%d body=%s", method, resp.StatusCode, string(respBody))
+		return &HostAPIError{Method: method, StatusCode: resp.StatusCode, Body: string(respBody)}
 	}
 	if response == nil || len(respBody) == 0 {
 		return nil

@@ -273,3 +273,46 @@ config:
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
 }
+
+func TestPluginVerifyRejectsUnknownPermission(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`
+name: unknown-permission
+version: "0.1.0"
+runtime: builtin
+permissions:
+  api:
+    - resource: database
+      actions: [superuser]
+storage:
+  type: none
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"plugin", "verify", dir, "--json"}, &stdout, &stderr)
+	if code == 0 || !strings.Contains(stderr.String(), "not in the v1 catalog") {
+		t.Fatalf("expected unknown permission rejection, code=%d stderr=%s", code, stderr.String())
+	}
+}
+
+func TestPluginDevBuildsGRPCTemplate(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "examples", "plugins", "grpc-example")
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"plugin", "dev", dir, "--json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected dev command success, code=%d stderr=%s", code, stderr.String())
+	}
+	var result commandResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "pass" || result.Runtime != "grpc" {
+		t.Fatalf("unexpected dev result: %#v", result)
+	}
+	t.Cleanup(func() { _ = os.Remove(filepath.Join(dir, "plugin")) })
+}

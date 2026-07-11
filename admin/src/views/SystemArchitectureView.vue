@@ -6,7 +6,7 @@
         <h2>系统数据架构</h2>
         <p>从当前迁移文件和数据目录整理的结构图，用于了解表的逻辑关联、职责和不在 PostgreSQL 中保存的文件数据。</p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000013</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000015</el-tag>
     </section>
 
     <el-alert class="architecture-alert" type="info" :closable="false" show-icon>
@@ -260,9 +260,9 @@ const databaseTables: DbTable[] = [
   { name: 'users', title: '用户', domain: 'identity', purpose: '系统中的用户主体，社区、个人空间、权限和上传资源的归属起点。', fields: ['id', 'username', 'email', 'status'], migration: '000001', relationshipNote: '通过 user_id、author_id、created_by、uploader_id 等字段被多个业务表引用。' },
   { name: 'accounts', title: '登录凭据', domain: 'identity', purpose: '保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据。', fields: ['id', 'user_id', 'type', 'identifier'], migration: '000001', relationshipNote: '一个用户可有多个登录账号。' },
   { name: 'sessions', title: '刷新会话', domain: 'identity', purpose: '保存 refresh token、设备和过期时间。', fields: ['id', 'user_id', 'refresh_token', 'expires_at'], migration: '000001', relationshipNote: '一个用户可在多个设备保持会话。' },
-  { name: 'roles', title: '角色', domain: 'identity', purpose: '定义 admin、moderator、member 等角色。', fields: ['id', 'name', 'is_system'], migration: '000002', relationshipNote: '通过 user_roles 赋予用户，通过 permissions 约束角色操作。' },
-  { name: 'user_roles', title: '用户角色', domain: 'identity', purpose: '用户与角色的关联，支持全局或指定范围。', fields: ['user_id', 'role_id', 'scope_type', 'scope_id'], migration: '000002', relationshipNote: '连接 users 与 roles 的多对多关系。' },
-  { name: 'permissions', title: '角色权限', domain: 'identity', purpose: '为角色声明资源和动作权限。', fields: ['role_id', 'resource', 'action'], migration: '000002', relationshipNote: '一个角色有多条权限记录。' },
+  { name: 'roles', title: '角色', domain: 'identity', purpose: '定义 admin、moderator、member、guest 等系统角色；member 是有效用户的隐式基础角色。', fields: ['id', 'name', 'is_system'], migration: '000002', relationshipNote: 'user_roles 只保存额外授权；permissions 约束角色可以执行的操作。' },
+  { name: 'user_roles', title: '用户角色', domain: 'identity', purpose: '用户与额外角色的关联；管理员使用 global 作用域，版主使用一个或多个 category 作用域。', fields: ['user_id', 'role_id', 'scope_type', 'scope_id'], migration: '000002 + 000014 + 000015', relationshipNote: '连接 users 与 roles；版主 scope_id 逻辑指向 categories.id，跨版块请求由后端拒绝。' },
+  { name: 'permissions', title: '角色权限', domain: 'identity', purpose: '为角色声明资源和动作权限；角色管理与版主置顶、锁定、删除回复使用独立 action。', fields: ['role_id', 'resource', 'action'], migration: '000002 + 000014 + 000015', relationshipNote: 'role:read/assign/revoke 仅授予管理员；版主权限还必须匹配 user_roles 中的 category scope。' },
   { name: 'categories', title: '版块', domain: 'community', purpose: '社区内容分区，支持父子版块和默认标签。', fields: ['id', 'parent_id', 'name', 'default_tags'], migration: '000001 + 000012', relationshipNote: '自身通过 parent_id 形成树；threads 和 user_space_contents 按 category_id 归属。' },
   { name: 'threads', title: '主题 / 文章入口', domain: 'community', purpose: '普通帖子和富文本文章共用的顶层内容实体。', fields: ['id', 'author_id', 'category_id', 'status'], migration: '000001', relationshipNote: '关联作者、版块、回复、个人空间同步内容和富文本正文。' },
   { name: 'posts', title: '回复', domain: 'community', purpose: '主题下的回复，可通过 parent_id 形成引用/嵌套关系。', fields: ['id', 'thread_id', 'author_id', 'parent_id', 'floor_number'], migration: '000001', relationshipNote: '归属一个主题；parent_id 指向另一条回复。' },
@@ -293,6 +293,7 @@ const relations: Relation[] = [
   { id: 'users-sessions', source: 'users', target: 'sessions', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity'] },
   { id: 'users-user-roles', source: 'users', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity'] },
   { id: 'roles-user-roles', source: 'roles', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> role_id', domains: ['identity'] },
+  { id: 'categories-user-roles', source: 'categories', target: 'user_roles', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> category scope_id', domains: ['identity', 'community'] },
   { id: 'roles-permissions', source: 'roles', target: 'permissions', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> role_id', domains: ['identity'] },
   { id: 'categories-parent', source: 'categories', target: 'categories', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> parent_id', domains: ['community'] },
   { id: 'categories-threads', source: 'categories', target: 'threads', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> category_id', domains: ['community'] },
@@ -341,6 +342,8 @@ const migrations = [
   { version: '000011', file: '000011_v05_operational_features.up.sql', title: '运营化与低风险集成', scope: 'v0.5', summary: '增加主页风格快照、Webhook、MCP 审计、消息绑定和消息日志。', tables: ['user_space_style_snapshots', 'webhook_endpoints', 'webhook_deliveries', 'mcp_audit_logs', 'message_bindings', 'message_logs'] },
   { version: '000012', file: '000012_category_default_tags.up.sql', title: '版块默认标签', scope: '社区', summary: '为 categories 增加 default_tags 数组字段和索引。', tables: ['categories'] },
   { version: '000013', file: '000013_controlled_richtext_article.up.sql', title: '受控富文本图文文章', scope: '内容', summary: '将富文本正文和图片元数据关联到既有 threads。', tables: ['richtext_article_contents', 'richtext_article_assets'] },
+  { version: '000014', file: '000014_role_assignment_permissions.up.sql', title: '角色分配修复与细粒度权限', scope: '身份', summary: '修复 user_roles 全局角色唯一性，分离角色读取、分配和撤销权限，不新增数据表。', tables: ['user_roles', 'permissions'] },
+  { version: '000015', file: '000015_category_moderation_scope.up.sql', title: '版块版主作用域', scope: '身份与治理', summary: '停用历史全局版主授权，约束 global/category 作用域形状，并补充主题锁定权限。', tables: ['user_roles', 'permissions'] },
 ]
 
 const tableByName = (name: string) => databaseTables.find((table) => table.name === name) || databaseTables[0]

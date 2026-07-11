@@ -1,6 +1,9 @@
 package plugin
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // PluginStatus 插件状态
 type PluginStatus string
@@ -15,15 +18,17 @@ const (
 
 // Plugin 插件实例
 type Plugin struct {
-	ID             string       `json:"id"`
-	Manifest       *Manifest    `json:"manifest"`
-	Status         PluginStatus `json:"status"`
-	DesiredEnabled bool         `json:"desired_enabled"`
-	ErrorMsg       string       `json:"error_message,omitempty"`
-	Directory      string       `json:"directory"`
-	InstalledBy    string       `json:"installed_by"`
-	Checksum       string       `json:"checksum,omitempty"`
-	PackageSize    int64        `json:"package_size,omitempty"`
+	ID                 string       `json:"id"`
+	Manifest           *Manifest    `json:"manifest"`
+	Status             PluginStatus `json:"status"`
+	DesiredEnabled     bool         `json:"desired_enabled"`
+	ErrorMsg           string       `json:"error_message,omitempty"`
+	Directory          string       `json:"directory"`
+	InstalledBy        string       `json:"installed_by"`
+	Checksum           string       `json:"checksum,omitempty"`
+	PackageSize        int64        `json:"package_size,omitempty"`
+	HostToken          string       `json:"-"`
+	HostTokenExpiresAt time.Time    `json:"-"`
 }
 
 // LifecycleState is the frontend-safe lifecycle view for one plugin.

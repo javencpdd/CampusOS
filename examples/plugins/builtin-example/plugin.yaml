@@ -1,0 +1,31 @@
+api_version: campusos.plugin/v1
+host_api_version: v1
+name: builtin-example
+display_name: "Built-in Example"
+version: "0.1.0"
+description: "Minimal system-level built-in plugin template."
+author: "CampusOS"
+runtime: builtin
+scope: system
+capabilities: [host.logs]
+compatibility:
+  campusos: ">=0.6.0 <0.7.0"
+  host_api: "v1"
+  sdk_go: "v0.6"
+events:
+  subscribe: ["thread.created"]
+permissions:
+  api:
+    - resource: log
+      actions: [write]
+storage:
+  type: none
+config:
+  mode: metadata
+config_schema:
+  fields:
+    - key: mode
+      label: "Mode"
+      type: string
+      required: true
+      default: metadata

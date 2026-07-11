@@ -53,6 +53,18 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
+	case "build":
+		if err := runPluginBuild(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin build: %v\n", err)
+			return 1
+		}
+		return 0
+	case "test":
+		if err := runPluginTest(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin test: %v\n", err)
+			return 1
+		}
+		return 0
 	case "pack":
 		if err := runPluginPack(args[1:], stdout); err != nil {
 			fmt.Fprintf(stderr, "plugin pack: %v\n", err)
@@ -62,6 +74,18 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 	case "install":
 		if err := runPluginInstall(args[1:], stdout); err != nil {
 			fmt.Fprintf(stderr, "plugin install: %v\n", err)
+			return 1
+		}
+		return 0
+	case "verify":
+		if err := runPluginVerify(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin verify: %v\n", err)
+			return 1
+		}
+		return 0
+	case "dev":
+		if err := runPluginDev(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin dev: %v\n", err)
 			return 1
 		}
 		return 0
@@ -214,6 +238,7 @@ func runPluginInstall(args []string, stdout io.Writer) error {
 }
 
 func pluginManifestTemplate(name, runtime string) string {
+	scope := plugin.ScopeUser
 	config := ""
 	configSchema := ""
 	if runtime == "wasm" {
@@ -246,6 +271,7 @@ func pluginManifestTemplate(name, runtime string) string {
       required: true
       default: 1000`
 	} else {
+		scope = plugin.ScopeSystem
 		config = `  mode: "metadata"`
 		configSchema = `  fields:
     - key: "mode"
@@ -256,11 +282,19 @@ func pluginManifestTemplate(name, runtime string) string {
 	}
 	return strings.TrimSpace(fmt.Sprintf(`
 name: %s
+api_version: campusos.plugin/v1
+host_api_version: v1
 display_name: "%s"
 version: "0.1.0"
 description: "CampusOS plugin"
 author: "CampusOS Developer"
 runtime: %s
+scope: %s
+
+compatibility:
+  campusos: ">=0.6.0 <0.7.0"
+  host_api: "v1"
+  sdk_go: "v0.6"
 
 events:
   subscribe:
@@ -279,7 +313,7 @@ config:
 
 config_schema:
 %s
-`, name, name, runtime, config, configSchema)) + "\n"
+`, name, name, runtime, scope, config, configSchema)) + "\n"
 }
 
 func pluginReadmeTemplate(name string) string {
@@ -309,6 +343,10 @@ func printPluginUsage(w io.Writer) {
 	fmt.Fprintln(w, "commands:")
 	fmt.Fprintln(w, "  init      create a plugin scaffold")
 	fmt.Fprintln(w, "  inspect   inspect a plugin manifest")
+	fmt.Fprintln(w, "  build     build or validate runtime artifacts")
+	fmt.Fprintln(w, "  test      run runtime-appropriate local tests")
 	fmt.Fprintln(w, "  pack      package a plugin directory")
+	fmt.Fprintln(w, "  verify    verify a directory or package for CI/install")
 	fmt.Fprintln(w, "  install   install a packaged plugin")
+	fmt.Fprintln(w, "  dev       run test, build and verify as one local loop")
 }

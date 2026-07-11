@@ -164,6 +164,9 @@ func validateHomepageCustomCSS(config map[string]interface{}) error {
 	}
 	result := stylepack.ValidateCSS(cssValue)
 	if result.Valid {
+		result = stylepack.ValidateCSSScope(stylepack.TargetHomepage, cssValue)
+	}
+	if result.Valid {
 		return nil
 	}
 	return fmt.Errorf("config field %q failed safe CSS validation: %s", "custom_css", strings.Join(result.Errors, "; "))

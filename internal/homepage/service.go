@@ -411,6 +411,9 @@ func safeCustomCSS(raw map[string]interface{}, enabled bool) string {
 	if result := stylepack.ValidateCSS(text); !result.Valid {
 		return ""
 	}
+	if result := stylepack.ValidateCSSScope(stylepack.TargetHomepage, text); !result.Valid {
+		return ""
+	}
 	return text
 }
 

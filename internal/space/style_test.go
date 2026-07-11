@@ -226,7 +226,7 @@ tokens:
   color.primary: "#0f766e"
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Alice Folder</h2></section>`,
-		"styles/theme.css":    `.cstyle-page { padding: 16px; color: #0f766e; }`,
+		"styles/theme.css":    `.public-space[data-campusos-space] .cstyle-page { padding: 16px; color: #0f766e; }`,
 	})
 
 	applied, err := svc.ApplyStylePackZip(testContext(), "1001", bytes.NewReader(data), int64(len(data)))

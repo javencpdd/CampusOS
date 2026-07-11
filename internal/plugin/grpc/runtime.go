@@ -49,6 +49,11 @@ func (r *GRPCRuntime) Start(_ context.Context, p *plugin.Plugin) error {
 	binaryPath := p.Directory + "/plugin"
 	cmd := exec.Command(binaryPath)
 	cmd.Dir = p.Directory
+	cmd.Env = append(cmd.Environ(),
+		"CAMPUSOS_PLUGIN_NAME="+p.Manifest.Name,
+		"CAMPUSOS_PLUGIN_TOKEN="+p.HostToken,
+		"CAMPUSOS_HOST_API_URL=http://127.0.0.1:18080",
+	)
 	cmd.Stdout = &logWriter{pluginName: p.ID}
 	cmd.Stderr = &logWriter{pluginName: p.ID}
 

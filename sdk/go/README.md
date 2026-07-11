@@ -1,6 +1,6 @@
 # CampusOS Go SDK
 
-`sdk/go` 是 v0.3-dev 的最小 Go SDK 雏形，先固定插件常用的数据结构和 Host API HTTP 调用封装。
+`sdk/go` 是 v0.6 的 Go SDK 基线，面向 Host API v1，固定插件常用的数据结构、context/timeout 语义、类型化权限错误和本地测试工具。
 
 ## 当前能力
 
@@ -16,7 +16,8 @@
 | `SetConfig` / `CheckPermission` / `Log` | 已封装 |
 | `StorageGet` / `StorageSet` / `StorageDelete` | 已封装 |
 | 本地插件测试 Harness | 已提供 |
-| Wasm 编译模板 | 后续任务 |
+| Built-in/gRPC/Wasm 模板 | `examples/plugins/` 已提供 |
+| 失败注入和事件模拟 | 已提供 |
 
 ## 示例
 
@@ -43,6 +44,8 @@ http://127.0.0.1:18080
 ```go
 client := campusos.NewHostClientWithBaseURL("http://127.0.0.1:18080", "hello-wasm")
 ```
+
+客户端所有请求接收 `context.Context`。可以通过 `WithTimeout` 设置默认 HTTP 超时；HTTP 403 可用 `errors.Is(err, campusos.ErrPermissionDenied)` 判断。
 
 ## 本地测试 Harness
 

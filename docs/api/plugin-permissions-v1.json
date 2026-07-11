@@ -1,0 +1,265 @@
+{
+  "host_api_methods": [
+    {
+      "method": "CheckPermission",
+      "resource": "permission",
+      "action": "check"
+    },
+    {
+      "method": "GetConfig",
+      "resource": "config",
+      "action": "read"
+    },
+    {
+      "method": "GetReply",
+      "resource": "reply",
+      "action": "read"
+    },
+    {
+      "method": "GetThread",
+      "resource": "thread",
+      "action": "read"
+    },
+    {
+      "method": "GetUser",
+      "resource": "user",
+      "action": "read"
+    },
+    {
+      "method": "Log",
+      "resource": "log",
+      "action": "write"
+    },
+    {
+      "method": "PublishEvent",
+      "resource": "event",
+      "action": "publish"
+    },
+    {
+      "method": "QueryThreads",
+      "resource": "thread",
+      "action": "read"
+    },
+    {
+      "method": "SendNotification",
+      "resource": "notification",
+      "action": "send"
+    },
+    {
+      "method": "SetConfig",
+      "resource": "config",
+      "action": "write"
+    },
+    {
+      "method": "StorageDelete",
+      "resource": "storage",
+      "action": "delete"
+    },
+    {
+      "method": "StorageGet",
+      "resource": "storage",
+      "action": "read"
+    },
+    {
+      "method": "StorageSet",
+      "resource": "storage",
+      "action": "write"
+    }
+  ],
+  "host_api_version": "v1",
+  "manifest_api_version": "campusos.plugin/v1",
+  "permissions": [
+    {
+      "resource": "audit",
+      "action": "write",
+      "risk": "high",
+      "description": "Write security or governance audit records."
+    },
+    {
+      "resource": "config",
+      "action": "read",
+      "risk": "low",
+      "description": "Read the calling plugin's configuration."
+    },
+    {
+      "resource": "config",
+      "action": "write",
+      "risk": "medium",
+      "description": "Update the calling plugin's configuration."
+    },
+    {
+      "resource": "event",
+      "action": "publish",
+      "risk": "medium",
+      "description": "Publish an event through the CampusOS event bus."
+    },
+    {
+      "resource": "homepage",
+      "action": "read",
+      "risk": "low",
+      "description": "Read homepage presentation configuration."
+    },
+    {
+      "resource": "homepage",
+      "action": "write",
+      "risk": "high",
+      "description": "Change the system homepage presentation."
+    },
+    {
+      "resource": "log",
+      "action": "write",
+      "risk": "low",
+      "description": "Write namespaced plugin logs."
+    },
+    {
+      "resource": "notification",
+      "action": "send",
+      "risk": "high",
+      "description": "Send a user-facing notification."
+    },
+    {
+      "resource": "permission",
+      "action": "check",
+      "risk": "medium",
+      "description": "Evaluate a user's CampusOS permission."
+    },
+    {
+      "resource": "post",
+      "action": "delete",
+      "risk": "high",
+      "description": "Delete a reply within an authorized governance scope."
+    },
+    {
+      "resource": "reply",
+      "action": "read",
+      "risk": "low",
+      "description": "Read reply data exposed by Host API."
+    },
+    {
+      "resource": "richtext_article",
+      "action": "read",
+      "risk": "low",
+      "description": "Read rich-text article data."
+    },
+    {
+      "resource": "richtext_article",
+      "action": "write",
+      "risk": "high",
+      "description": "Create or change rich-text article data."
+    },
+    {
+      "resource": "richtext_asset",
+      "action": "read",
+      "risk": "low",
+      "description": "Read rich-text asset metadata."
+    },
+    {
+      "resource": "richtext_asset",
+      "action": "write",
+      "risk": "high",
+      "description": "Upload or change rich-text assets."
+    },
+    {
+      "resource": "schedule",
+      "action": "read",
+      "risk": "medium",
+      "description": "Read the authorized user's schedule."
+    },
+    {
+      "resource": "schedule",
+      "action": "write",
+      "risk": "high",
+      "description": "Change the authorized user's schedule."
+    },
+    {
+      "resource": "space",
+      "action": "read",
+      "risk": "medium",
+      "description": "Read a personal space allowed by its visibility policy."
+    },
+    {
+      "resource": "space",
+      "action": "write",
+      "risk": "high",
+      "description": "Change the authorized user's personal space."
+    },
+    {
+      "resource": "space_file",
+      "action": "read",
+      "risk": "medium",
+      "description": "Read files in the authorized personal-space namespace."
+    },
+    {
+      "resource": "space_file",
+      "action": "write",
+      "risk": "high",
+      "description": "Create or change files in the authorized personal-space namespace."
+    },
+    {
+      "resource": "storage",
+      "action": "delete",
+      "risk": "medium",
+      "description": "Delete a key in the calling plugin's isolated storage."
+    },
+    {
+      "resource": "storage",
+      "action": "read",
+      "risk": "low",
+      "description": "Read a key in the calling plugin's isolated storage."
+    },
+    {
+      "resource": "storage",
+      "action": "write",
+      "risk": "medium",
+      "description": "Write a key in the calling plugin's isolated storage."
+    },
+    {
+      "resource": "style",
+      "action": "read",
+      "risk": "low",
+      "description": "Read style-pack metadata allowed for the current target."
+    },
+    {
+      "resource": "thread",
+      "action": "lock",
+      "risk": "high",
+      "description": "Lock or unlock a thread within an authorized category."
+    },
+    {
+      "resource": "thread",
+      "action": "pin",
+      "risk": "high",
+      "description": "Pin or unpin a thread within an authorized category."
+    },
+    {
+      "resource": "thread",
+      "action": "read",
+      "risk": "low",
+      "description": "Read thread data exposed by Host API."
+    },
+    {
+      "resource": "thread",
+      "action": "write",
+      "risk": "high",
+      "description": "Create or change thread data for an authorized subject."
+    },
+    {
+      "resource": "user",
+      "action": "read",
+      "risk": "medium",
+      "description": "Read the public Host API user projection."
+    },
+    {
+      "resource": "web_theme",
+      "action": "configure",
+      "risk": "high",
+      "description": "Configure system-provided Web style packs."
+    },
+    {
+      "resource": "web_theme",
+      "action": "read",
+      "risk": "low",
+      "description": "Read available Web style packs and current selection."
+    }
+  ]
+}

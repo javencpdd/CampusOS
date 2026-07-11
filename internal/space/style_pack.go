@@ -37,6 +37,8 @@ func BuildStylePackPackage(owner Owner, space *Space, pack *stylepack.Package) S
 	manifest.CustomHTMLEnabled = true
 	manifest.CustomHTML = pack.HTML
 	manifest.CustomCSS = pack.CSS
+	manifest.CustomEffectJS = pack.EffectJS
+	manifest.Capabilities = append([]string(nil), pack.Manifest.Capabilities...)
 	manifest.SourceStylePack = &StylePackRef{
 		Name:    pack.Manifest.Name,
 		Version: pack.Manifest.Version,

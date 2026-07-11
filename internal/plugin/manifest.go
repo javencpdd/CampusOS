@@ -8,19 +8,25 @@ import (
 )
 
 const (
-	ScopeSystem = "system"
-	ScopeUser   = "user"
+	ScopeSystem               = "system"
+	ScopeUser                 = "user"
+	CurrentManifestAPIVersion = "campusos.plugin/v1"
+	CurrentHostAPIVersion     = "v1"
 )
 
 // Manifest 插件清单（plugin.yaml 的结构定义）
 type Manifest struct {
-	Name        string `yaml:"name" json:"name"`
-	DisplayName string `yaml:"display_name" json:"display_name"`
-	Version     string `yaml:"version" json:"version"`
-	Description string `yaml:"description" json:"description"`
-	Author      string `yaml:"author" json:"author"`
-	Runtime     string `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
-	Scope       string `yaml:"scope" json:"scope"`     // system / user
+	APIVersion     string              `yaml:"api_version,omitempty" json:"api_version"`
+	HostAPIVersion string              `yaml:"host_api_version,omitempty" json:"host_api_version"`
+	Name           string              `yaml:"name" json:"name"`
+	DisplayName    string              `yaml:"display_name" json:"display_name"`
+	Version        string              `yaml:"version" json:"version"`
+	Description    string              `yaml:"description" json:"description"`
+	Author         string              `yaml:"author" json:"author"`
+	Runtime        string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
+	Scope          string              `yaml:"scope" json:"scope"`     // system / user
+	Capabilities   []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+	Compatibility  CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -36,6 +42,12 @@ type Manifest struct {
 
 	// 配置表单 schema，用于后台或 CLI 渲染可编辑配置项
 	ConfigSchema *ConfigSchema `yaml:"config_schema,omitempty" json:"config_schema,omitempty"`
+}
+
+type CompatibilityConfig struct {
+	CampusOS string `yaml:"campusos,omitempty" json:"campusos,omitempty"`
+	HostAPI  string `yaml:"host_api,omitempty" json:"host_api,omitempty"`
+	SDKGo    string `yaml:"sdk_go,omitempty" json:"sdk_go,omitempty"`
 }
 
 type EventsConfig struct {
@@ -102,6 +114,18 @@ func ParseManifest(data []byte) (*Manifest, error) {
 
 // Validate 验证 Manifest 合法性
 func (m *Manifest) Validate() error {
+	if m.APIVersion == "" {
+		m.APIVersion = CurrentManifestAPIVersion
+	}
+	if m.APIVersion != CurrentManifestAPIVersion {
+		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s)", m.APIVersion, CurrentManifestAPIVersion)
+	}
+	if m.HostAPIVersion == "" {
+		m.HostAPIVersion = CurrentHostAPIVersion
+	}
+	if m.HostAPIVersion != CurrentHostAPIVersion {
+		return fmt.Errorf("manifest: unsupported host_api_version %q (supported: %s)", m.HostAPIVersion, CurrentHostAPIVersion)
+	}
 	if m.Name == "" {
 		return fmt.Errorf("manifest: name is required")
 	}
@@ -123,6 +147,16 @@ func (m *Manifest) Validate() error {
 	}
 	if m.Scope != ScopeSystem && m.Scope != ScopeUser {
 		return fmt.Errorf("manifest: scope must be 'system' or 'user', got '%s'", m.Scope)
+	}
+	seenCapabilities := make(map[string]bool)
+	for _, capability := range m.Capabilities {
+		if capability == "" {
+			return fmt.Errorf("manifest: capability cannot be empty")
+		}
+		if seenCapabilities[capability] {
+			return fmt.Errorf("manifest: capability %q is duplicated", capability)
+		}
+		seenCapabilities[capability] = true
 	}
 	if err := m.validateConfigSchema(); err != nil {
 		return err

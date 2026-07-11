@@ -29,7 +29,7 @@ assets:
 `,
 		"campus/templates/page.html":     `<section class="cstyle-page"><h2>Hello</h2><p>World</p></section>`,
 		"campus/templates/card.html":     `<article class="cstyle-card"><strong>Card</strong></article>`,
-		"campus/styles/theme.css":        `.cstyle-page { padding: 16px; color: #2563eb; }`,
+		"campus/styles/theme.css":        `.public-space[data-campusos-space] .cstyle-page { padding: 16px; color: #2563eb; }`,
 		"campus/preview.png":             `preview placeholder`,
 		"campus/assets/avatar-frame.png": `avatar placeholder`,
 		"campus/config.schema.json":      `{"type":"object","properties":{"title":{"type":"string"}}}`,
@@ -81,6 +81,78 @@ styles:
 	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
 	if result.Valid {
 		t.Fatalf("expected unsafe css to fail")
+	}
+}
+
+func TestLoadZipRejectsCSSOutsideTargetScope(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: personal-space
+name: escaped-css
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+`,
+		"templates/page.html": `<section class="cstyle-page"><h2>Hello</h2></section>`,
+		"styles/theme.css":    `.app-header { display: none; }`,
+	})
+
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected CSS outside the personal-space root to fail")
+	}
+}
+
+func TestLoadZipAcceptsScopedAnimationEffect(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: web
+name: motion-web
+version: 0.1.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+  source: effects/main.ts
+`,
+		"templates/page.html": `<section class="cstyle-page"><h2>Motion</h2></section>`,
+		"styles/theme.css": `.app-container[data-campusos-web] .app-main { animation: rise 300ms ease-out; }
+@keyframes rise { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 720px) { .app-container[data-campusos-web] .app-main { padding: 12px; } }`,
+		"effects/main.js": `CampusEffect.register({ frame(api) { api.clear(); } });`,
+		"effects/main.ts": `CampusEffect.register({ frame(api: EffectFrame) { api.clear(); } });`,
+	})
+
+	pkg, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if !result.Valid {
+		t.Fatalf("expected scoped animated pack to pass, got %#v", result.Errors)
+	}
+	if pkg.EffectJS == "" || pkg.Manifest.Effect == nil {
+		t.Fatalf("expected compiled effect, got %#v", pkg)
+	}
+}
+
+func TestLoadZipRejectsEffectWithNetworkCapability(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: web
+name: network-effect
+version: 0.1.0
+entry: templates/page.html
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+`,
+		"templates/page.html": `<section><h2>Motion</h2></section>`,
+		"effects/main.js":     `CampusEffect.register({ start() { fetch("https://example.com"); } });`,
+	})
+
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected network-capable effect to fail")
 	}
 }
 
@@ -164,7 +236,9 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 		target string
 	}{
 		{SourceDir("personal-space", "clean-blog"), "personal-space"},
+		{SourceDir("personal-space", "kinetic-journal"), "personal-space"},
 		{SourceDir("homepage-customizer", "campus-hero"), "homepage"},
+		{SourceDir("web-theme", "campus-canvas"), "web"},
 	}
 
 	for _, tc := range cases {

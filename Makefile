@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -27,6 +27,24 @@ test-coverage:
 # 代码检查
 lint:
 	golangci-lint run ./...
+
+contracts:
+	go run ./cmd/campusos-contracts --write
+
+contracts-check:
+	go run ./cmd/campusos-contracts --check
+
+database-check:
+	./scripts/database-check.sh all
+
+backup:
+	./scripts/backup.sh
+
+restore-drill:
+	./scripts/restore-drill.sh
+
+release-check:
+	./scripts/release-check.sh
 
 # 清理
 clean:
@@ -63,3 +81,15 @@ web-dev:
 
 web-build:
 	cd web && pnpm build
+
+admin-dev:
+	cd admin && pnpm dev
+
+admin-build:
+	cd admin && pnpm build
+
+docs-dev:
+	cd docs-site && pnpm dev
+
+docs-build:
+	cd docs-site && pnpm build
