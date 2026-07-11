@@ -20,6 +20,6 @@ make contracts-check
 
 v0.6 当前路由统一标记为 `experimental`。进入 stable 前，客户端应允许新增可选字段，并同时依据 HTTP 状态、兼容顶层 `{ code, msg, data }` 和结构化 `error.code` 处理失败。删除路径、修改字段类型或扩大写入语义必须经过弃用期或新 API 版本，不能静默变化。
 
-OpenAPI 当前保证 141 条路由的方法、认证、显式权限和请求体声明与代码一致。核心身份、社区、空间、课表、富文本、角色/版主和风格包选择请求已有字段级 schema；标记 `generic-experimental` 的动态配置和上传模型仍只提供通用对象，不能视为 stable。
+OpenAPI 当前保证 148 条路由的方法、认证、显式权限和请求体声明与代码一致。新增 UI Runtime Manifest、SSE 和五种 Method 的 Extension Gateway；核心身份、社区、空间、课表、富文本、角色/版主和风格包选择请求已有字段级 schema。标记 `generic-experimental` 的动态配置、声明式 UI 和上传模型仍只提供通用对象，不能视为 stable。
 
 生成器测试会解析 YAML、检查路径参数与分页参数只能出现一个 `parameters` 块，并要求核心 request schema、结构化错误和请求体数量达到门槛。`make contracts-check` 负责阻止生成产物漂移。

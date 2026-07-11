@@ -7,10 +7,10 @@
 | 角色 | 建议先读 |
 | --- | --- |
 | 新贡献者 | [开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md) |
-| 插件开发者或管理员 | [v0.6 插件开发与工具链](help/插件相关/插件开发与工具链v0.6.md)、[插件分级与生命周期说明](help/插件相关/插件分级与生命周期说明.md) |
+| 插件开发者或管理员 | [v0.6 插件开发与工具链](help/插件相关/插件开发与工具链v0.6.md)、[插件前端运行时与 Extension Gateway](help/插件相关/插件前端运行时与Extension%20Gateway.md)、[插件分级与生命周期说明](help/插件相关/插件分级与生命周期说明.md) |
 | API 调用方 | [API 索引](api/API索引.md)、[当前 OpenAPI](api/openapi-v0.6-current.yaml)、[授权矩阵](api/HTTP路由与授权矩阵-v0.6.md) |
 | 权限或版主管理者 | [RBAC 权限与版主管理说明](help/系统设计相关/RBAC权限与版主管理说明.md) |
-| 风格包开发者 | [风格包能力边界与 CampusStyleSDK 说明](help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md)、[风格包切换方式说明](help/系统设计相关/风格包切换方式说明.md) |
+| 风格包开发者 | [app-style-pack.v2 开发说明](help/系统设计相关/app-style-pack-v2开发说明.md)、[风格包能力边界与 CampusStyleSDK 说明](help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md)、[风格包切换方式说明](help/系统设计相关/风格包切换方式说明.md) |
 | Skill 使用者或维护者 | [CampusOS Skills 文档索引](skills/README.md) |
 | 系统维护者 | [当前架构概览](architecture/当前架构概览.md)、[数据库 v0.6 体检与模型决策](help/系统设计相关/数据库v0.6体检与模型决策.md)、[备份恢复说明](help/系统设计相关/备份恢复说明.md) |
 | 版本规划者 | [v1-v5 计划审查](项目计划v6/00-v1-v5计划审查.md)、[v6 第二版计划书](项目计划v6/01-v6版本计划书.md)、[v6 第三版计划书](项目计划v6/02-v6版本计划书第三版.md) |

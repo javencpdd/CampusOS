@@ -2,6 +2,25 @@
 
 CampusOS 风格包不仅可以换颜色。通过目标内 CSS，它可以调整字体栈、字号、行高、字距、页面背景、页边距、内容宽度、网格、卡片和响应式布局；通过沙箱入口还可以提供 Canvas 动态特效。
 
+## 两个系统主题版本
+
+- `page-style-pack.v1 + target: web` 继续兼容，适合受控 CSS 和 Canvas 特效。
+- `campusos.app-style-pack.v2 + target: web` 增加 ThemeRoot 和 App Shell Layout Recipe，可覆盖完整视口、背景、Header、导航、Hero、Footer、侧栏、主内容宽度、滚动和受控动画。
+
+```yaml
+schema_version: campusos.app-style-pack.v2
+target: web
+layout:
+  mode: full
+  content_width: 1240px
+  header_mode: sticky
+  scroll_mode: page
+  background_asset: assets/campus.png
+  animation_preset: reveal
+```
+
+背景资源必须在 `assets` 中声明。CSS 仍必须以 `.app-container[data-campusos-web]` 为根，不能使用任意全局 CSS 或同源 JavaScript。风格包可以排列插件 Surface，但不能修改 Action 的 API、权限、Method、参数、确认和审计。
+
 ## 作用范围
 
 | 目标 | 谁提供、谁选择 | 页面范围 | CSS 根节点 |
@@ -107,6 +126,12 @@ CampusEffect.register({
 
 ```text
 data/plugin_data/web-theme/style-packs/campus-canvas/
+```
+
+全视口 v2 参考包：
+
+```text
+data/plugin_data/web-theme/style-packs/aurora-campus/
 ```
 
 个人主页和同步帖子动态示例：

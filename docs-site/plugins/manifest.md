@@ -10,6 +10,8 @@
 | `version` | 是 | 建议使用语义化版本。 |
 | `runtime` | 是 | `builtin`、`wasm` 或 `grpc`。 |
 | `scope` | 建议 | `system` 或 `user`。第三方默认使用 `user`。 |
+| `lifecycle` | 否 | 后端 `restart/plugin-restart/hot` 与前端 `hot`；缺省值按 Runtime 推导。 |
+| `ui` | 否 | `campusos.ui/v1` Route、Navigation、Slot、Surface 和 Action。 |
 | `display_name` | 否 | 管理端显示名称。 |
 | `description` | 否 | 插件用途。 |
 | `events.subscribe` | 否 | 订阅事件列表。 |
@@ -50,7 +52,19 @@ config:
   enabled_feature: true
 ```
 
-Built-in 的配置是否热更新由具体内置服务决定；插件整体启停仍遵循系统级生命周期。
+Built-in 的配置是否热更新由具体内置服务决定；插件整体启停由 `lifecycle.backend.activation_mode` 决定，不由 scope 单独决定。
+
+## 生命周期与默认 UI
+
+```yaml
+lifecycle:
+  backend:
+    activation_mode: plugin-restart
+  frontend:
+    activation_mode: hot
+```
+
+新插件应提供默认可用 UI。第三方默认使用声明式 schema；复杂可信模块必须使用 Core 编译期白名单。完整格式见 [前端运行时与 Gateway](./frontend-runtime.md)。
 
 ## 权限
 

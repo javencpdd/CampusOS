@@ -28,7 +28,7 @@ type Manifest struct {
 	Capabilities   []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	Compatibility  CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
 	Lifecycle      LifecycleConfig     `yaml:"lifecycle,omitempty" json:"lifecycle"`
-	UI             UIContribution     `yaml:"ui,omitempty" json:"ui,omitempty"`
+	UI             UIContribution      `yaml:"ui,omitempty" json:"ui,omitempty"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`

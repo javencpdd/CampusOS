@@ -1,0 +1,76 @@
+api_version: campusos.plugin/v1
+host_api_version: v1
+name: campus-welcome
+display_name: "Campus Welcome"
+version: "0.1.0"
+description: "Reference plugin for the complete CampusOS UI runtime and Extension Gateway path."
+author: "CampusOS Team"
+runtime: builtin
+scope: system
+lifecycle:
+  backend:
+    activation_mode: restart
+  frontend:
+    activation_mode: hot
+events:
+  subscribe: []
+permissions:
+  api: []
+storage:
+  type: none
+ui:
+  contract_version: campusos.ui/v1
+  actions:
+    - id: plugin.campus-welcome.action.gateway-check
+      label: "检查插件链路"
+      method: GET
+      path: /welcome
+      confirm: false
+      audit: true
+  surfaces:
+    - id: plugin.campus-welcome.page
+      version: v1
+      type: page
+      layout_role: main
+      renderer: schema
+      action_ids:
+        - plugin.campus-welcome.action.gateway-check
+      public_tokens:
+        - brand_color
+        - surface_background
+      regions:
+        - title
+        - content
+        - actions
+      schema:
+        component: stack
+        children:
+          - component: heading
+            level: 1
+            text: "Campus Welcome"
+          - component: text
+            text: "该页面由插件 Manifest 动态注册，按钮通过 Core Extension Gateway 调用内置 Runtime。"
+          - component: card
+            children:
+              - component: heading
+                level: 3
+                text: "完整链路示例"
+              - component: text
+                text: "用户身份、Trace ID、超时、请求大小和审计由 Core 负责，插件不会信任客户端提交的用户字段。"
+              - component: button
+                text: "检查插件链路"
+                tone: primary
+                action_id: plugin.campus-welcome.action.gateway-check
+  routes:
+    - id: plugin.campus-welcome.route.main
+      path: /extensions/campus-welcome
+      surface_id: plugin.campus-welcome.page
+      title: "Campus Welcome"
+      requires_auth: true
+  navigation:
+    - id: plugin.campus-welcome.navigation.main
+      label: "插件示例"
+      route_id: plugin.campus-welcome.route.main
+      location: header
+      order: 90
+  slots: []

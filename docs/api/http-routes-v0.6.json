@@ -58,6 +58,28 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/ui/runtime-manifest",
+      "handler": "runtimeHTTPHandler.RuntimeManifest",
+      "audience": "public",
+      "auth": "none",
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ui/events",
+      "handler": "runtimeHTTPHandler.Events",
+      "audience": "public",
+      "auth": "none",
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/richtext/status",
       "handler": "richTextHandler.Status",
       "audience": "public",
@@ -813,6 +835,61 @@
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/extensions/:plugin/*path",
+      "handler": "runtimeHTTPHandler.Extension",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/extensions/:plugin/*path",
+      "handler": "runtimeHTTPHandler.Extension",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/extensions/:plugin/*path",
+      "handler": "runtimeHTTPHandler.Extension",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/extensions/:plugin/*path",
+      "handler": "runtimeHTTPHandler.Extension",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/extensions/:plugin/*path",
+      "handler": "runtimeHTTPHandler.Extension",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

@@ -17,6 +17,29 @@ permissions:
 storage:
   type: none
 
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: plugin.web-theme.page.appearance
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.appearance
+      regions: [catalog, preview, permissions]
+  routes:
+    - id: plugin.web-theme.route.appearance
+      path: /appearance
+      surface_id: plugin.web-theme.page.appearance
+      title: "界面风格"
+      requires_auth: true
+  navigation:
+    - id: plugin.web-theme.navigation.appearance
+      label: "风格"
+      route_id: plugin.web-theme.route.appearance
+      location: user-menu
+      order: 50
+
 config:
   default_style_pack: "campus-canvas"
   allow_user_switch: true

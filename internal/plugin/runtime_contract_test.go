@@ -170,6 +170,9 @@ name: system-contract
 version: "0.1.0"
 runtime: wasm
 scope: system
+lifecycle:
+  backend:
+    activation_mode: restart
 `)
 
 	manager := NewManager()

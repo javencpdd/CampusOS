@@ -18,11 +18,11 @@ type UIContribution struct {
 }
 
 type UIRoute struct {
-	ID          string `yaml:"id" json:"id"`
-	Path        string `yaml:"path" json:"path"`
-	SurfaceID   string `yaml:"surface_id" json:"surface_id"`
-	Title       string `yaml:"title,omitempty" json:"title,omitempty"`
-	RequiresAuth bool  `yaml:"requires_auth,omitempty" json:"requires_auth,omitempty"`
+	ID           string `yaml:"id" json:"id"`
+	Path         string `yaml:"path" json:"path"`
+	SurfaceID    string `yaml:"surface_id" json:"surface_id"`
+	Title        string `yaml:"title,omitempty" json:"title,omitempty"`
+	RequiresAuth bool   `yaml:"requires_auth,omitempty" json:"requires_auth,omitempty"`
 }
 
 type UINavigation struct {
@@ -55,14 +55,14 @@ type UISurface struct {
 }
 
 type UIAction struct {
-	ID             string                 `yaml:"id" json:"id"`
-	Label          string                 `yaml:"label" json:"label"`
-	Method         string                 `yaml:"method" json:"method"`
-	Path           string                 `yaml:"path" json:"path"`
-	Permission     string                 `yaml:"permission,omitempty" json:"permission,omitempty"`
-	Confirm        bool                   `yaml:"confirm,omitempty" json:"confirm,omitempty"`
-	Audit          bool                   `yaml:"audit,omitempty" json:"audit,omitempty"`
-	Body           map[string]interface{} `yaml:"body,omitempty" json:"body,omitempty"`
+	ID         string                 `yaml:"id" json:"id"`
+	Label      string                 `yaml:"label" json:"label"`
+	Method     string                 `yaml:"method" json:"method"`
+	Path       string                 `yaml:"path" json:"path"`
+	Permission string                 `yaml:"permission,omitempty" json:"permission,omitempty"`
+	Confirm    bool                   `yaml:"confirm,omitempty" json:"confirm,omitempty"`
+	Audit      bool                   `yaml:"audit,omitempty" json:"audit,omitempty"`
+	Body       map[string]interface{} `yaml:"body,omitempty" json:"body,omitempty"`
 }
 
 func (ui UIContribution) Empty() bool {
@@ -94,7 +94,9 @@ func (m *Manifest) validateUI() error {
 	actions := map[string]bool{}
 	routes := map[string]bool{}
 	for _, action := range m.UI.Actions {
-		if err := add("action", action.ID); err != nil { return err }
+		if err := add("action", action.ID); err != nil {
+			return err
+		}
 		method := strings.ToUpper(action.Method)
 		if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
 			return fmt.Errorf("manifest: ui action %q has unsupported method", action.ID)
@@ -105,7 +107,9 @@ func (m *Manifest) validateUI() error {
 		actions[action.ID] = true
 	}
 	for _, surface := range m.UI.Surfaces {
-		if err := add("surface", surface.ID); err != nil { return err }
+		if err := add("surface", surface.ID); err != nil {
+			return err
+		}
 		if surface.Version == "" || surface.Type == "" || surface.LayoutRole == "" {
 			return fmt.Errorf("manifest: ui surface %q requires version, type and layout_role", surface.ID)
 		}
@@ -116,24 +120,36 @@ func (m *Manifest) validateUI() error {
 			return fmt.Errorf("manifest: ui surface %q renderer must be schema or trusted-module", surface.ID)
 		}
 		for _, actionID := range surface.ActionIDs {
-			if !actions[actionID] { return fmt.Errorf("manifest: ui surface %q references unknown action %q", surface.ID, actionID) }
+			if !actions[actionID] {
+				return fmt.Errorf("manifest: ui surface %q references unknown action %q", surface.ID, actionID)
+			}
 		}
 		surfaces[surface.ID] = true
 	}
 	for _, route := range m.UI.Routes {
-		if err := add("route", route.ID); err != nil { return err }
+		if err := add("route", route.ID); err != nil {
+			return err
+		}
 		if !strings.HasPrefix(route.Path, "/") || strings.Contains(route.Path, "..") {
 			return fmt.Errorf("manifest: ui route %q has invalid path", route.ID)
 		}
-		if !surfaces[route.SurfaceID] { return fmt.Errorf("manifest: ui route %q references unknown surface %q", route.ID, route.SurfaceID) }
+		if !surfaces[route.SurfaceID] {
+			return fmt.Errorf("manifest: ui route %q references unknown surface %q", route.ID, route.SurfaceID)
+		}
 		routes[route.ID] = true
 	}
 	for _, nav := range m.UI.Navigation {
-		if err := add("navigation", nav.ID); err != nil { return err }
-		if !routes[nav.RouteID] { return fmt.Errorf("manifest: ui navigation %q references unknown route %q", nav.ID, nav.RouteID) }
+		if err := add("navigation", nav.ID); err != nil {
+			return err
+		}
+		if !routes[nav.RouteID] {
+			return fmt.Errorf("manifest: ui navigation %q references unknown route %q", nav.ID, nav.RouteID)
+		}
 	}
 	for _, slot := range m.UI.Slots {
-		if err := add("slot", slot.ID); err != nil { return err }
+		if err := add("slot", slot.ID); err != nil {
+			return err
+		}
 		if !allowedUISlot(slot.Slot) || !surfaces[slot.SurfaceID] {
 			return fmt.Errorf("manifest: ui slot %q has an invalid host slot or surface", slot.ID)
 		}

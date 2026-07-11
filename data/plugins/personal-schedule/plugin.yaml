@@ -19,6 +19,29 @@ permissions:
 storage:
   type: none
 
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: plugin.personal-schedule.page.main
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.schedule
+      regions: [toolbar, calendar, timetable]
+  routes:
+    - id: plugin.personal-schedule.route.main
+      path: /schedule
+      surface_id: plugin.personal-schedule.page.main
+      title: "个人课表"
+      requires_auth: true
+  navigation:
+    - id: plugin.personal-schedule.navigation.main
+      label: "课表"
+      route_id: plugin.personal-schedule.route.main
+      location: user-menu
+      order: 40
+
 config:
   quota_mb: 10
   max_courses: 200

@@ -28,8 +28,8 @@ type Manager struct {
 // NewManager 创建插件管理器
 func NewManager() *Manager {
 	return &Manager{
-		plugins:  make(map[string]*Plugin),
-		runtimes: make(map[string]Runtime),
+		plugins:     make(map[string]*Plugin),
+		runtimes:    make(map[string]Runtime),
 		registry:    make(map[string][]string),
 		uiRevision:  1,
 		uiListeners: make(map[chan uint64]struct{}),
@@ -215,11 +215,10 @@ func restoredBackendState(value string, status PluginStatus) BackendState {
 }
 
 func restoredFrontendState(value string, p *Plugin) FrontendState {
-	switch FrontendState(value) {
-	case FrontendUnloaded, FrontendLoading, FrontendLoaded, FrontendIncompatible, FrontendError:
-		return FrontendState(value)
-	}
 	if p != nil && p.Manifest != nil && p.DesiredEnabled && !p.Manifest.UI.Empty() {
+		if FrontendState(value) == FrontendIncompatible || FrontendState(value) == FrontendError {
+			return FrontendState(value)
+		}
 		return FrontendLoaded
 	}
 	return FrontendUnloaded
@@ -865,6 +864,12 @@ func persistedPluginStatus(p *Plugin) PluginStatus {
 func (m *Manager) persistPluginStatus(ctx context.Context, name string, status PluginStatus, errorMsg string) {
 	m.mu.RLock()
 	repo := m.repo
+	p := m.plugins[name]
+	revision := m.uiRevision
+	backendState, frontendState, healthState := "", "", ""
+	if p != nil {
+		backendState, frontendState, healthState = string(p.BackendState), string(p.FrontendState), string(p.Health)
+	}
 	m.mu.RUnlock()
 	if repo == nil {
 		return
@@ -874,6 +879,11 @@ func (m *Manager) persistPluginStatus(ctx context.Context, name string, status P
 	}
 	if err := repo.UpdateStatus(ctx, name, string(status), errorMsg); err != nil {
 		log.Printf("⚠️  插件状态持久化失败: %s -> %s (%v)", name, status, err)
+	}
+	if stateRepo, ok := repo.(PluginRuntimeStateRepository); ok && p != nil {
+		if err := stateRepo.UpdateRuntimeState(ctx, name, backendState, frontendState, healthState, int64(revision)); err != nil {
+			log.Printf("⚠️  插件运行时状态持久化失败: %s (%v)", name, err)
+		}
 	}
 }
 
@@ -1140,6 +1150,26 @@ func (m *Manager) HealthCheck(name string) error {
 	}
 	m.mu.Unlock()
 	return err
+}
+
+func (m *Manager) DispatchExtension(ctx context.Context, name string, request *ExtensionRequest) (*ExtensionResponse, error) {
+	m.mu.RLock()
+	p, ok := m.plugins[name]
+	if !ok || p == nil || p.Manifest == nil {
+		m.mu.RUnlock()
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	if p.BackendState != BackendRunning || p.Health == HealthUnavailable {
+		m.mu.RUnlock()
+		return nil, fmt.Errorf("plugin '%s' is unavailable", name)
+	}
+	runtime := m.runtimes[p.Manifest.Runtime]
+	m.mu.RUnlock()
+	dispatcher, ok := runtime.(ExtensionRuntime)
+	if !ok {
+		return nil, fmt.Errorf("runtime '%s' does not support extension dispatch", p.Manifest.Runtime)
+	}
+	return dispatcher.DispatchExtension(ctx, name, request)
 }
 
 func (m *Manager) ListVersionSnapshots(name string) ([]VersionSnapshot, error) {

@@ -92,6 +92,12 @@ func (r *PgPluginRepository) UpdateStatus(ctx context.Context, name, status, err
 	return err
 }
 
+func (r *PgPluginRepository) UpdateRuntimeState(ctx context.Context, name, backendState, frontendState, healthState string, revision int64) error {
+	query := `UPDATE plugins SET backend_state = $1, frontend_state = $2, health_state = $3, ui_revision = $4, updated_at = $5 WHERE name = $6 AND deleted_at IS NULL`
+	_, err := r.pool.Exec(ctx, query, backendState, frontendState, healthState, revision, time.Now(), name)
+	return err
+}
+
 func (r *PgPluginRepository) UpdateConfig(ctx context.Context, name string, config map[string]interface{}) error {
 	configJSON, err := json.Marshal(config)
 	if err != nil {

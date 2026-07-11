@@ -91,6 +91,10 @@ type PluginLogRepository interface {
 	ListLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error)
 }
 
+type PluginRuntimeStateRepository interface {
+	UpdateRuntimeState(ctx context.Context, name, backendState, frontendState, healthState string, revision int64) error
+}
+
 // MemoryPluginRepository 内存插件仓储
 type MemoryPluginRepository struct {
 	mu      sync.RWMutex
@@ -138,6 +142,18 @@ func (r *MemoryPluginRepository) UpdateStatus(_ context.Context, name, status, e
 	}
 	p.Status = status
 	p.ErrorMsg = errorMsg
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
+func (r *MemoryPluginRepository) UpdateRuntimeState(_ context.Context, name, backendState, frontendState, healthState string, revision int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.plugins[name]
+	if !ok {
+		return ErrAPIKeyNotFound
+	}
+	p.BackendState, p.FrontendState, p.HealthState, p.UIRevision = backendState, frontendState, healthState, revision
 	p.UpdatedAt = time.Now()
 	return nil
 }

@@ -110,3 +110,45 @@ config_schema:
 		t.Fatalf("expected duplicated config field key to fail")
 	}
 }
+
+func TestManifestLifecycleDefaultsDoNotDependOnScope(t *testing.T) {
+	cases := []struct{ runtime, scope, want string }{
+		{"builtin", "system", ActivationRestart},
+		{"grpc", "system", ActivationPluginRestart},
+		{"grpc", "user", ActivationPluginRestart},
+		{"wasm", "system", ActivationHot},
+		{"wasm", "user", ActivationHot},
+	}
+	for _, test := range cases {
+		manifest, err := ParseManifest([]byte("name: lifecycle-test\nversion: 0.1.0\nruntime: " + test.runtime + "\nscope: " + test.scope + "\n"))
+		if err != nil {
+			t.Fatalf("parse %s/%s: %v", test.runtime, test.scope, err)
+		}
+		if got := manifest.BackendActivationMode(); got != test.want {
+			t.Fatalf("%s/%s mode=%s want=%s", test.runtime, test.scope, got, test.want)
+		}
+		if manifest.FrontendActivationMode() != ActivationHot {
+			t.Fatal("frontend must default to hot")
+		}
+	}
+}
+
+func TestManifestUIContractRejectsUnknownAction(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+name: ui-test
+version: 0.1.0
+runtime: wasm
+ui:
+  surfaces:
+    - id: plugin.ui.page
+      version: v1
+      type: page
+      layout_role: main
+      renderer: schema
+      schema: { component: stack }
+      action_ids: [plugin.ui.missing]
+`))
+	if err == nil {
+		t.Fatal("expected unknown action reference to fail")
+	}
+}

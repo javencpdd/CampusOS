@@ -38,3 +38,23 @@ func JWTAuth(jwtMgr *auth.JWTManager) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// OptionalJWT enriches public runtime endpoints when a valid bearer token is
+// present. Missing or invalid credentials remain anonymous and never grant access.
+func OptionalJWT(jwtMgr *auth.JWTManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header == "" {
+			c.Next()
+			return
+		}
+		tokenString := strings.TrimPrefix(header, "Bearer ")
+		if tokenString != header {
+			if claims, err := jwtMgr.VerifyToken(tokenString); err == nil {
+				c.Set("user_id", claims.UserID)
+				c.Set("username", claims.Username)
+			}
+		}
+		c.Next()
+	}
+}

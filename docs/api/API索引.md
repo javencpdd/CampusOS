@@ -1,7 +1,7 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.6.9-dev`
+> 当前实现基线：`v0.6.21-dev`
 
 ## 1. 契约状态
 
@@ -24,6 +24,8 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 | 个人课表 | `/schedule/me/*` | 当前或指定学期课表、已保存课表列表、选择/新建、保存和导入。 |
 | 富文本文章 | `/richtext/articles/*` | 草稿、上传、预览、发布、详情、作者操作和管理端治理。 |
 | 插件 | `/plugins/*`、`/plugin-packages/*` | 列表、配置、生命周期、插件包预检/导入/导出和审计。 |
+| 插件前端运行时 | `/ui/runtime-manifest`、`/ui/events` | 当前主体可见 UI 合同、单调 Revision 与 SSE 变更通知。 |
+| 插件业务 Gateway | `/extensions/:plugin/*path` | JWT、权限、状态、健康、大小、超时、Trace、审计和 Runtime 分发。 |
 | 用户前台系统主题 | `/web-themes/*` | 公开列出管理员提供且筛查通过的 `target:web` 风格包、读取运行包和声明图片资源。 |
 | 集成 | `/webhooks/*`、`/mcp/*`、`/message/*`、`/ai/*` | Webhook、内部 MCP-like 工具、Message local adapter 和 AI Gateway。 |
 | 运维 | `/health`、`/metrics`、`/platform-logs/*` | 健康、最小指标和管理员日志流。 |
@@ -82,9 +84,20 @@ API 请求应使用 `spring` 或 `fall` 作为 `semester`。服务为兼容旧�
 4. 内部 `/mcp/*` 路由不等同于标准 MCP；标准服务需要独立传输、认证、能力协商和契约测试。
 5. `make contracts-check` 必须通过；新增管理路由没有显式 `RequirePermission` 时生成器直接失败。
 
-## 7. 关联文档
+## 7. 插件 UI Runtime 与 Gateway
+
+| 方法 | 路径 | 认证 | 说明 |
+| --- | --- | --- | --- |
+| `GET` | `/ui/runtime-manifest` | 可选 JWT | 返回 `campusos.ui/v1`、revision、可见插件、三轴状态和 UI 贡献；权限 Action 由后端过滤。 |
+| `GET` | `/ui/events` | 无敏感载荷 | SSE 只发送 revision 和 keepalive；客户端收到更高 revision 后重新获取完整 manifest。 |
+| `ANY` | `/extensions/:plugin/*path` | 必须 JWT | 仅允许调用插件已声明 Action；Core 注入可信 caller 并执行权限、大小、5 秒超时和审计。 |
+
+Runtime Manifest 不是授权替代。页面隐藏和 Action 过滤只是减少误操作，最终业务授权仍在 Gateway、插件服务和 Core 领域服务完成。详细合同见 [插件前端运行时与 Extension Gateway](../help/插件相关/插件前端运行时与Extension%20Gateway.md)。
+
+## 8. 关联文档
 
 - [接口协议适配器标准说明](../help/系统设计相关/接口协议适配器标准说明.md)
 - [RBAC 权限与版主管理说明](../help/系统设计相关/RBAC权限与版主管理说明.md)
 - [v6 API 契约计划](../项目计划v6/01-v6版本计划书.md)
+- [v6 第三版计划](../项目计划v6/02-v6版本计划书第三版.md)
 - [v0.5 第二版计划书](../项目计划v5/01-v5版本计划书第二版.md)

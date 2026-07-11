@@ -68,14 +68,15 @@ permissions:
 
 权限默认拒绝。只声明当前功能需要的最小集合，不要使用“以后可能会用”为理由申请高风险权限。
 
-## 系统级与用户级
+## 管理级别与生效方式
 
-| scope | 生效方式 | 说明 |
-| --- | --- | --- |
-| `system` | 启停目标状态在 API 重启后生效。 | 随 CampusOS 部署的核心能力。 |
-| `user` | 管理员可以加载、停止、重载和覆盖更新。 | 独立扩展，支持热加载。 |
+| 字段 | 说明 |
+| --- | --- |
+| `scope: system/user` | 管理级别、安装权限和系统重要性。 |
+| `lifecycle.backend.activation_mode` | `restart`、`plugin-restart` 或 `hot`。 |
+| `lifecycle.frontend.activation_mode` | 当前统一为 `hot`。 |
 
-这里的 `user` 是生命周期分类，不表示普通用户可以自行安装插件。安装、配置和更新仍属于管理员操作。
+这里的 `user` 不表示普通用户可以自行安装插件。安装、配置和更新仍属于管理员操作。系统级 gRPC 可以只重启插件，系统级 Wasm 可以热替换；具体行为不能再从 scope 推断。
 
 ## 示例插件
 
@@ -83,6 +84,7 @@ permissions:
 | --- | --- |
 | `hello-wasm` | 最小可运行 Wasm 事件插件。 |
 | `hello-plugin` | gRPC manifest 示例。 |
+| `campus-welcome` | UI Runtime、声明式 Surface、Action 和 Extension Gateway 完整示例。 |
 | `personal-space` | Built-in 个人主页和用户文件能力。 |
 | `homepage-customizer` | Built-in 首页配置与风格包。 |
 | `web-theme` | Built-in 完整用户前台系统主题目录、用户本地选择和沙箱特效能力。 |
