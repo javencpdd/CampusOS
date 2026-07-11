@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -143,6 +144,39 @@ func (r *GRPCRuntime) SendEvent(_ context.Context, pluginName string, event *plu
 		return &plugin.PluginResponse{Allowed: true, Message: "processed"}, nil
 	}
 	return &result, nil
+}
+
+func (r *GRPCRuntime) DispatchExtension(ctx context.Context, pluginName string, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
+	r.mu.RLock()
+	proc, ok := r.processes[pluginName]
+	r.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("plugin '%s' is not running", pluginName)
+	}
+	rawURL, _ := proc.plugin.Manifest.Config["extension_url"].(string)
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme != "http" || (parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost" && parsed.Hostname() != "::1") {
+		return nil, fmt.Errorf("plugin '%s' must configure a loopback extension_url", pluginName)
+	}
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, parsed.String(), bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	httpRequest.Header.Set("Content-Type", "application/json")
+	response, err := http.DefaultClient.Do(httpRequest)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, 2<<20))
+	if err != nil {
+		return nil, err
+	}
+	return &plugin.ExtensionResponse{Status: response.StatusCode, Headers: map[string]string{"Content-Type": response.Header.Get("Content-Type")}, Body: body}, nil
 }
 
 func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {

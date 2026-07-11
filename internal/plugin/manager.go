@@ -15,12 +15,14 @@ import (
 
 // Manager 插件管理器
 type Manager struct {
-	mu       sync.RWMutex
-	plugins  map[string]*Plugin  // name -> plugin
-	runtimes map[string]Runtime  // runtime type -> runtime impl
-	registry map[string][]string // event type -> plugin names
-	repo     PluginRepository    // 可选：插件持久化仓储
-	logRepo  PluginLogRepository // 可选：插件运行日志仓储
+	mu          sync.RWMutex
+	plugins     map[string]*Plugin  // name -> plugin
+	runtimes    map[string]Runtime  // runtime type -> runtime impl
+	registry    map[string][]string // event type -> plugin names
+	repo        PluginRepository    // 可选：插件持久化仓储
+	logRepo     PluginLogRepository // 可选：插件运行日志仓储
+	uiRevision  uint64
+	uiListeners map[chan uint64]struct{}
 }
 
 // NewManager 创建插件管理器
@@ -28,7 +30,9 @@ func NewManager() *Manager {
 	return &Manager{
 		plugins:  make(map[string]*Plugin),
 		runtimes: make(map[string]Runtime),
-		registry: make(map[string][]string),
+		registry:    make(map[string][]string),
+		uiRevision:  1,
+		uiListeners: make(map[chan uint64]struct{}),
 	}
 }
 
@@ -84,8 +88,14 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 		ID:             manifest.Name,
 		Manifest:       manifest,
 		Status:         StatusInstalled,
+		BackendState:   BackendInstalled,
+		FrontendState:  FrontendUnloaded,
+		Health:         HealthUnknown,
 		DesiredEnabled: manifest.IsSystemLevel(),
 		Directory:      dir,
+	}
+	if plugin.DesiredEnabled && !manifest.UI.Empty() {
+		plugin.FrontendState = FrontendLoaded
 	}
 	m.plugins[manifest.Name] = plugin
 
@@ -93,6 +103,7 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	for _, eventType := range manifest.Events.Subscribe {
 		m.registry[eventType] = append(m.registry[eventType], manifest.Name)
 	}
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 
 	if err := m.syncPluginRecord(context.Background(), plugin); err != nil {
@@ -131,6 +142,9 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 			m.mu.Lock()
 			p.Status = restoredRuntimeStatus(record.Status)
 			p.DesiredEnabled = desiredEnabledFromRecord(record.Status, p.Manifest)
+			p.BackendState = restoredBackendState(record.BackendState, p.Status)
+			p.FrontendState = restoredFrontendState(record.FrontendState, p)
+			p.Health = restoredHealthState(record.HealthState, p.Status)
 			p.ErrorMsg = record.ErrorMsg
 			p.Checksum = record.Checksum
 			p.PackageSize = record.PackageSize
@@ -155,6 +169,10 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 	record.Author = p.Manifest.Author
 	record.Runtime = p.Manifest.Runtime
 	record.Status = string(persistedPluginStatus(p))
+	record.BackendState = string(p.BackendState)
+	record.FrontendState = string(p.FrontendState)
+	record.HealthState = string(p.Health)
+	record.UIRevision = int64(m.UIRevision())
 	record.Config = string(configJSON)
 	record.ErrorMsg = p.ErrorMsg
 	record.Checksum = p.Checksum
@@ -177,6 +195,48 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 		record.InstalledBy = "system"
 	}
 	return repo.Save(ctx, record)
+}
+
+func restoredBackendState(value string, status PluginStatus) BackendState {
+	switch BackendState(value) {
+	case BackendInstalled, BackendStarting, BackendRunning, BackendRestarting, BackendStopping, BackendStopped, BackendPendingRestart, BackendError:
+		return BackendState(value)
+	}
+	switch status {
+	case StatusRunning:
+		return BackendRunning
+	case StatusStopped:
+		return BackendStopped
+	case StatusError:
+		return BackendError
+	default:
+		return BackendInstalled
+	}
+}
+
+func restoredFrontendState(value string, p *Plugin) FrontendState {
+	switch FrontendState(value) {
+	case FrontendUnloaded, FrontendLoading, FrontendLoaded, FrontendIncompatible, FrontendError:
+		return FrontendState(value)
+	}
+	if p != nil && p.Manifest != nil && p.DesiredEnabled && !p.Manifest.UI.Empty() {
+		return FrontendLoaded
+	}
+	return FrontendUnloaded
+}
+
+func restoredHealthState(value string, status PluginStatus) HealthState {
+	switch HealthState(value) {
+	case HealthHealthy, HealthDegraded, HealthUnavailable, HealthUnknown:
+		return HealthState(value)
+	}
+	if status == StatusRunning {
+		return HealthHealthy
+	}
+	if status == StatusError || status == StatusStopped {
+		return HealthUnavailable
+	}
+	return HealthUnknown
 }
 
 // Enable 启用插件
@@ -207,13 +267,18 @@ func (m *Manager) RequestEnable(name string) error {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
-	isSystem := p.Manifest.IsSystemLevel()
+	activationMode := p.Manifest.BackendActivationMode()
 	status := p.Status
 	m.mu.RUnlock()
 
-	if isSystem {
+	if activationMode == ActivationRestart {
 		m.mu.Lock()
 		p.DesiredEnabled = true
+		p.BackendState = BackendPendingRestart
+		if !p.Manifest.UI.Empty() {
+			p.FrontendState = FrontendLoaded
+		}
+		m.bumpUIRevisionLocked()
 		m.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusRunning, "")
 		m.logPlugin(context.Background(), &PluginLogRecord{
@@ -221,7 +286,7 @@ func (m *Manager) RequestEnable(name string) error {
 			Level:      "info",
 			Message:    "system plugin enable staged for restart",
 			Metadata: map[string]interface{}{
-				"scope":           ScopeSystem,
+				"activation_mode": activationMode,
 				"desired_enabled": true,
 			},
 		})
@@ -248,14 +313,17 @@ func (m *Manager) RequestDisable(name string) error {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
-	isSystem := p.Manifest.IsSystemLevel()
+	activationMode := p.Manifest.BackendActivationMode()
 	m.mu.RUnlock()
 
-	if !isSystem {
+	if activationMode != ActivationRestart {
 		return m.Stop(name)
 	}
 	m.mu.Lock()
 	p.DesiredEnabled = false
+	p.BackendState = BackendPendingRestart
+	p.FrontendState = FrontendUnloaded
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusStopped, "")
 	m.logPlugin(context.Background(), &PluginLogRecord{
@@ -263,15 +331,14 @@ func (m *Manager) RequestDisable(name string) error {
 		Level:      "info",
 		Message:    "system plugin disable staged for restart",
 		Metadata: map[string]interface{}{
-			"scope":           ScopeSystem,
+			"activation_mode": activationMode,
 			"desired_enabled": false,
 		},
 	})
 	return nil
 }
 
-// ReloadUserPlugin stops and starts a user-level plugin so changed runtime
-// files or a saved user-level configuration can take effect without restart.
+// ReloadUserPlugin preserves the legacy API name while using activation_mode.
 func (m *Manager) ReloadUserPlugin(name string) error {
 	m.mu.RLock()
 	p, ok := m.plugins[name]
@@ -279,9 +346,9 @@ func (m *Manager) ReloadUserPlugin(name string) error {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
-	if p.Manifest.IsSystemLevel() {
+	if p.Manifest.BackendActivationMode() == ActivationRestart {
 		m.mu.RUnlock()
-		return fmt.Errorf("system-level plugin '%s' can only take effect after server restart", name)
+		return fmt.Errorf("plugin '%s' requires a server restart", name)
 	}
 	status := p.Status
 	m.mu.RUnlock()
@@ -303,19 +370,52 @@ func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
 	if !ok || p.Manifest == nil {
 		return LifecycleState{}, false
 	}
-	isSystem := p.Manifest.IsSystemLevel()
 	running := p.Status == StatusRunning
 	state := LifecycleState{
-		Scope:          p.Manifest.Scope,
-		DesiredEnabled: p.DesiredEnabled,
-		PendingRestart: isSystem && p.DesiredEnabled != running,
-	}
-	if isSystem {
-		state.ActivationMode = "restart"
-	} else {
-		state.ActivationMode = "hot"
+		Scope:                  p.Manifest.Scope,
+		ActivationMode:         p.Manifest.BackendActivationMode(),
+		BackendActivationMode:  p.Manifest.BackendActivationMode(),
+		FrontendActivationMode: p.Manifest.FrontendActivationMode(),
+		BackendState:           p.BackendState,
+		FrontendState:          p.FrontendState,
+		Health:                 p.Health,
+		DesiredEnabled:         p.DesiredEnabled,
+		PendingRestart:         p.Manifest.BackendActivationMode() == ActivationRestart && p.DesiredEnabled != running,
 	}
 	return state, true
+}
+
+func (m *Manager) UIRevision() uint64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.uiRevision
+}
+
+func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
+	ch := make(chan uint64, 1)
+	m.mu.Lock()
+	m.uiListeners[ch] = struct{}{}
+	revision := m.uiRevision
+	m.mu.Unlock()
+	ch <- revision
+	return ch, func() {
+		m.mu.Lock()
+		if _, ok := m.uiListeners[ch]; ok {
+			delete(m.uiListeners, ch)
+			close(ch)
+		}
+		m.mu.Unlock()
+	}
+}
+
+func (m *Manager) bumpUIRevisionLocked() {
+	m.uiRevision++
+	for listener := range m.uiListeners {
+		select {
+		case listener <- m.uiRevision:
+		default:
+		}
+	}
 }
 
 // StartDesiredPlugins starts plugins that were explicitly enabled before the
@@ -350,10 +450,18 @@ func (m *Manager) Start(name string) error {
 	m.mu.RUnlock()
 
 	m.mu.Lock()
+	p.BackendState = BackendStarting
+	p.Health = HealthUnknown
+	if p.DesiredEnabled && !p.Manifest.UI.Empty() {
+		p.FrontendState = FrontendLoaded
+	}
+	m.bumpUIRevisionLocked()
 	runtime, ok := m.runtimes[runtimeType]
 	if !ok {
 		err := fmt.Errorf("runtime '%s' not registered", runtimeType)
 		p.Status = StatusError
+		p.BackendState = BackendError
+		p.Health = HealthUnavailable
 		p.ErrorMsg = err.Error()
 		m.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
@@ -375,9 +483,12 @@ func (m *Manager) Start(name string) error {
 	if err := runtime.Start(context.Background(), p); err != nil {
 		m.mu.Lock()
 		p.Status = StatusError
+		p.BackendState = BackendError
+		p.Health = HealthUnavailable
 		p.ErrorMsg = err.Error()
 		p.HostToken = ""
 		p.HostTokenExpiresAt = time.Time{}
+		m.bumpUIRevisionLocked()
 		m.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
@@ -394,8 +505,14 @@ func (m *Manager) Start(name string) error {
 
 	m.mu.Lock()
 	p.Status = StatusRunning
+	p.BackendState = BackendRunning
+	p.Health = HealthHealthy
+	if !p.Manifest.UI.Empty() {
+		p.FrontendState = FrontendLoaded
+	}
 	p.DesiredEnabled = true
 	p.ErrorMsg = ""
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusRunning, "")
 
@@ -427,6 +544,9 @@ func (m *Manager) stop(name string, persist bool) error {
 	m.mu.RUnlock()
 
 	m.mu.Lock()
+	p.BackendState = BackendStopping
+	p.Health = HealthDegraded
+	m.bumpUIRevisionLocked()
 	runtime, ok := m.runtimes[runtimeType]
 	if !ok {
 		m.mu.Unlock()
@@ -458,11 +578,15 @@ func (m *Manager) stop(name string, persist bool) error {
 
 	m.mu.Lock()
 	p.Status = StatusStopped
+	p.BackendState = BackendStopped
+	p.Health = HealthUnavailable
 	p.HostToken = ""
 	p.HostTokenExpiresAt = time.Time{}
 	if persist {
 		p.DesiredEnabled = false
+		p.FrontendState = FrontendUnloaded
 	}
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 	if persist {
 		m.persistPluginStatus(context.Background(), name, StatusStopped, "")
@@ -673,6 +797,7 @@ func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[
 		}
 	}
 	p.Manifest.Config = normalized
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 
 	m.logPlugin(context.Background(), &PluginLogRecord{
@@ -691,7 +816,10 @@ func (m *Manager) markPluginError(name string, err error) {
 		return
 	}
 	p.Status = StatusError
+	p.BackendState = BackendError
+	p.Health = HealthUnavailable
 	p.ErrorMsg = err.Error()
+	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 }
@@ -855,6 +983,7 @@ func (m *Manager) Uninstall(name string) error {
 	}
 
 	delete(m.plugins, name)
+	m.bumpUIRevisionLocked()
 	repo := m.repo
 	m.mu.Unlock()
 
@@ -999,7 +1128,18 @@ func (m *Manager) HealthCheck(name string) error {
 	if runtime == nil {
 		return fmt.Errorf("runtime '%s' is not registered", p.Manifest.Runtime)
 	}
-	return runtime.HealthCheck(context.Background(), name)
+	err := runtime.HealthCheck(context.Background(), name)
+	m.mu.Lock()
+	if current, ok := m.plugins[name]; ok {
+		if err != nil {
+			current.Health = HealthUnavailable
+		} else {
+			current.Health = HealthHealthy
+		}
+		m.bumpUIRevisionLocked()
+	}
+	m.mu.Unlock()
+	return err
 }
 
 func (m *Manager) ListVersionSnapshots(name string) ([]VersionSnapshot, error) {

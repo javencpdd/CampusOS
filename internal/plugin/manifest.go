@@ -27,6 +27,8 @@ type Manifest struct {
 	Scope          string              `yaml:"scope" json:"scope"`     // system / user
 	Capabilities   []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	Compatibility  CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
+	Lifecycle      LifecycleConfig     `yaml:"lifecycle,omitempty" json:"lifecycle"`
+	UI             UIContribution     `yaml:"ui,omitempty" json:"ui,omitempty"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -42,6 +44,26 @@ type Manifest struct {
 
 	// 配置表单 schema，用于后台或 CLI 渲染可编辑配置项
 	ConfigSchema *ConfigSchema `yaml:"config_schema,omitempty" json:"config_schema,omitempty"`
+}
+
+const (
+	ActivationRestart       = "restart"
+	ActivationPluginRestart = "plugin-restart"
+	ActivationHot           = "hot"
+	CurrentUIContract       = "campusos.ui/v1"
+)
+
+type LifecycleConfig struct {
+	Backend  BackendLifecycleConfig  `yaml:"backend,omitempty" json:"backend"`
+	Frontend FrontendLifecycleConfig `yaml:"frontend,omitempty" json:"frontend"`
+}
+
+type BackendLifecycleConfig struct {
+	ActivationMode string `yaml:"activation_mode,omitempty" json:"activation_mode"`
+}
+
+type FrontendLifecycleConfig struct {
+	ActivationMode string `yaml:"activation_mode,omitempty" json:"activation_mode"`
 }
 
 type CompatibilityConfig struct {
@@ -148,6 +170,13 @@ func (m *Manifest) Validate() error {
 	if m.Scope != ScopeSystem && m.Scope != ScopeUser {
 		return fmt.Errorf("manifest: scope must be 'system' or 'user', got '%s'", m.Scope)
 	}
+	m.applyLifecycleDefaults()
+	if !isBackendActivationMode(m.Lifecycle.Backend.ActivationMode) {
+		return fmt.Errorf("manifest: lifecycle.backend.activation_mode must be restart, plugin-restart or hot")
+	}
+	if m.Lifecycle.Frontend.ActivationMode != ActivationHot {
+		return fmt.Errorf("manifest: lifecycle.frontend.activation_mode must be hot")
+	}
 	seenCapabilities := make(map[string]bool)
 	for _, capability := range m.Capabilities {
 		if capability == "" {
@@ -161,10 +190,51 @@ func (m *Manifest) Validate() error {
 	if err := m.validateConfigSchema(); err != nil {
 		return err
 	}
+	if err := m.validateUI(); err != nil {
+		return err
+	}
 	return nil
 }
 
-// IsSystemLevel reports whether lifecycle changes require a server restart.
+func (m *Manifest) applyLifecycleDefaults() {
+	if m.Lifecycle.Backend.ActivationMode == "" {
+		switch {
+		case m.Runtime == "wasm":
+			m.Lifecycle.Backend.ActivationMode = ActivationHot
+		case m.Runtime == "grpc":
+			m.Lifecycle.Backend.ActivationMode = ActivationPluginRestart
+		case m.Runtime == "builtin" && m.Scope == ScopeSystem:
+			m.Lifecycle.Backend.ActivationMode = ActivationRestart
+		default:
+			m.Lifecycle.Backend.ActivationMode = ActivationHot
+		}
+	}
+	if m.Lifecycle.Frontend.ActivationMode == "" {
+		m.Lifecycle.Frontend.ActivationMode = ActivationHot
+	}
+}
+
+func isBackendActivationMode(value string) bool {
+	return value == ActivationRestart || value == ActivationPluginRestart || value == ActivationHot
+}
+
+func (m *Manifest) BackendActivationMode() string {
+	if m == nil {
+		return ActivationRestart
+	}
+	m.applyLifecycleDefaults()
+	return m.Lifecycle.Backend.ActivationMode
+}
+
+func (m *Manifest) FrontendActivationMode() string {
+	if m == nil {
+		return ActivationHot
+	}
+	m.applyLifecycleDefaults()
+	return m.Lifecycle.Frontend.ActivationMode
+}
+
+// IsSystemLevel reports the management scope. Lifecycle is controlled separately.
 func (m *Manifest) IsSystemLevel() bool {
 	return m != nil && m.Scope == ScopeSystem
 }

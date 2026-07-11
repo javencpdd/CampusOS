@@ -102,18 +102,11 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 	entrypoint := resolveEntrypoint(p)
 	timeout := resolveEventTimeout(p)
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if existing, ok := r.modules[p.Manifest.Name]; ok {
-		if err := existing.module.Close(ctx); err != nil {
-			return err
-		}
-		delete(r.modules, p.Manifest.Name)
-	}
-
+	// Instantiate and validate a candidate before touching the active module.
+	// The unique module name allows the old instance to keep serving requests.
+	candidateName := fmt.Sprintf("%s.candidate.%d", p.Manifest.Name, time.Now().UnixNano())
 	module, err := r.runtime.InstantiateWithConfig(ctx, moduleBytes, wazero.NewModuleConfig().
-		WithName(p.Manifest.Name).
+		WithName(candidateName).
 		WithStartFunctions(),
 	)
 	if err != nil {
@@ -142,7 +135,7 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 		}
 	}
 
-	r.modules[p.Manifest.Name] = moduleState{
+	candidate := moduleState{
 		name:          p.Manifest.Name,
 		modulePath:    modulePath,
 		entrypoint:    entrypoint,
@@ -151,6 +144,13 @@ func (r *Runtime) Start(ctx context.Context, p *plugin.Plugin) error {
 		timeout:       timeout,
 		module:        module,
 		startedAt:     time.Now(),
+	}
+	r.mu.Lock()
+	existing, hadExisting := r.modules[p.Manifest.Name]
+	r.modules[p.Manifest.Name] = candidate
+	r.mu.Unlock()
+	if hadExisting {
+		_ = existing.module.Close(context.Background())
 	}
 	return nil
 }
@@ -208,6 +208,33 @@ func (r *Runtime) SendEvent(ctx context.Context, pluginName string, event *plugi
 		resp.Message = "wasm event handler rejected event"
 	}
 	return resp, nil
+}
+
+func (r *Runtime) DispatchExtension(ctx context.Context, pluginName string, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
+	result, err := r.SendEvent(ctx, pluginName, &plugin.EventMessage{
+		Type:    "extension.request",
+		Source:  "core.gateway",
+		Subject: request.Path,
+		Data:    request,
+	})
+	if err != nil {
+		return nil, err
+	}
+	status := 200
+	allowed := true
+	message := ""
+	if result != nil && !result.Allowed {
+		status = 403
+	}
+	if result != nil {
+		allowed = result.Allowed
+		message = result.Message
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"accepted": allowed,
+		"message":  message,
+	})
+	return &plugin.ExtensionResponse{Status: status, Headers: map[string]string{"Content-Type": "application/json"}, Body: body}, nil
 }
 
 func (r *Runtime) eventHandlerParams(state moduleState, event *plugin.EventMessage) ([]uint64, error) {

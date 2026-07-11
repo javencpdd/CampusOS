@@ -11,14 +11,39 @@ import (
 // Runtime is a no-op runtime for CampusOS features that ship as built-in
 // plugin metadata and static assets instead of external plugin processes.
 type Runtime struct {
-	mu      sync.RWMutex
-	running map[string]struct{}
+	mu       sync.RWMutex
+	running  map[string]struct{}
+	handlers map[string]func(context.Context, *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error)
 }
 
 func NewRuntime() *Runtime {
 	return &Runtime{
-		running: make(map[string]struct{}),
+		running:  make(map[string]struct{}),
+		handlers: make(map[string]func(context.Context, *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error)),
 	}
+}
+
+func (r *Runtime) RegisterExtension(pluginName string, handler func(context.Context, *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if handler == nil {
+		delete(r.handlers, pluginName)
+		return
+	}
+	r.handlers[pluginName] = handler
+}
+
+func (r *Runtime) DispatchExtension(ctx context.Context, pluginName string, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
+	if err := r.HealthCheck(ctx, pluginName); err != nil {
+		return nil, err
+	}
+	r.mu.RLock()
+	handler := r.handlers[pluginName]
+	r.mu.RUnlock()
+	if handler == nil {
+		return nil, fmt.Errorf("builtin plugin '%s' does not expose an extension handler", pluginName)
+	}
+	return handler(ctx, request)
 }
 
 func (r *Runtime) Type() string {

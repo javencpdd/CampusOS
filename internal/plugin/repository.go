@@ -24,6 +24,10 @@ type PluginRecord struct {
 	Author          string     `json:"author"`
 	Runtime         string     `json:"runtime"`
 	Status          string     `json:"status"`
+	BackendState    string     `json:"backend_state"`
+	FrontendState   string     `json:"frontend_state"`
+	HealthState     string     `json:"health_state"`
+	UIRevision      int64      `json:"ui_revision"`
 	APIKey          string     `json:"api_key,omitempty"`
 	Config          string     `json:"config"`
 	ErrorMsg        string     `json:"error_message"`
