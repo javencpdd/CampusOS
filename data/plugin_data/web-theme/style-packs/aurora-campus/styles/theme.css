@@ -1,0 +1,92 @@
+.app-container[data-campusos-web] {
+  min-height: 100vh;
+  color: var(--campus-text-color, #17242a);
+}
+
+.app-container[data-campusos-web] .campus-app-shell {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 30, 38, 0.02) 0,
+    color-mix(in srgb, var(--campus-page-background, #e7eef0) 94%, transparent) 42vh,
+    var(--campus-page-background, #e7eef0) 100%
+  );
+}
+
+.app-container[data-campusos-web] .campus-shell-header {
+  color: #f7fbfb;
+  box-shadow: 0 10px 30px rgba(2, 17, 23, 0.15);
+}
+
+.app-container[data-campusos-web] .campus-shell-header .brand,
+.app-container[data-campusos-web] .campus-shell-header .el-button.is-text {
+  color: #f7fbfb;
+}
+
+.app-container[data-campusos-web] .campus-shell-primary-nav {
+  border-bottom: 1px solid rgba(225, 239, 239, 0.5);
+  backdrop-filter: blur(14px);
+}
+
+.app-container[data-campusos-web] .campus-shell-body {
+  margin-top: min(34vh, 360px);
+  border-radius: 6px 6px 0 0;
+  color: var(--campus-text-color, #17242a);
+  background: color-mix(in srgb, var(--campus-surface-background, #f8fbfb) 97%, transparent);
+  box-shadow: 0 -18px 50px rgba(4, 24, 31, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.app-container[data-campusos-web] .el-card,
+.app-container[data-campusos-web] .campus-card {
+  border-color: rgba(34, 71, 80, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(20, 48, 55, 0.08);
+  color: var(--campus-text-color, #17242a);
+  background: var(--campus-surface-background, rgba(248, 251, 251, 0.94));
+}
+
+.app-container[data-campusos-web] .el-button--primary {
+  --el-button-bg-color: var(--campus-brand-color, #d96247);
+  --el-button-border-color: var(--campus-brand-color, #d96247);
+  --el-button-hover-bg-color: #bd4e37;
+  --el-button-hover-border-color: #bd4e37;
+}
+
+.app-container[data-campusos-web] .cstyle-page,
+.app-container[data-campusos-web] .cstyle-card {
+  padding: 22px;
+  border: 1px solid rgba(34, 71, 80, 0.16);
+  border-radius: 6px;
+  background: var(--campus-surface-background, rgba(248, 251, 251, 0.94));
+}
+
+.app-container[data-campusos-web] .cstyle-kicker {
+  margin: 0 0 8px;
+  color: #c4523a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.app-container[data-campusos-web] .campus-shell-footer {
+  color: #f7fbfb;
+  text-shadow: 0 1px 3px rgba(2, 17, 23, 0.9);
+}
+
+@media (max-width: 720px) {
+  .app-container[data-campusos-web] .campus-shell-body {
+    margin-top: 16vh;
+    padding: 14px;
+    border-radius: 0;
+  }
+
+  .app-container[data-campusos-web] .campus-shell-header {
+    background: rgba(9, 34, 43, 0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-container[data-campusos-web] .campus-shell-main {
+    animation: none;
+  }
+}

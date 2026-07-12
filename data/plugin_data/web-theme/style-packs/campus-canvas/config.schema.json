@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "primary_color": {
+      "type": "string",
+      "title": "品牌颜色",
+      "format": "color",
+      "default": "#157f5b",
+      "x-campusos-binding": "token.color.primary"
+    },
+    "text_color": {
+      "type": "string",
+      "title": "主要文字颜色",
+      "description": "应用前会检查与页面和卡片背景的对比度。",
+      "format": "color",
+      "default": "#18231f",
+      "x-campusos-binding": "token.color.text"
+    },
+    "muted_color": {
+      "type": "string",
+      "title": "辅助文字颜色",
+      "format": "color",
+      "default": "#64736d",
+      "x-campusos-binding": "token.color.muted"
+    },
+    "page_background": {
+      "type": "string",
+      "title": "页面背景颜色",
+      "format": "color",
+      "default": "#f2f5f3",
+      "x-campusos-binding": "token.color.background"
+    },
+    "surface_background": {
+      "type": "string",
+      "title": "卡片背景颜色",
+      "format": "color",
+      "default": "#ffffff",
+      "x-campusos-binding": "token.color.surface"
+    }
+  }
+}

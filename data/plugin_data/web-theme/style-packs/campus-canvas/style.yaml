@@ -1,0 +1,44 @@
+schema_version: page-style-pack.v1
+target: web
+name: campus-canvas
+version: 0.1.0
+display_name: "Campus Canvas"
+author: "CampusOS Team"
+description: "A quiet, responsive full-web theme with an isolated community activity effect."
+compatible_campusos:
+  - ">=0.6.4"
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: "720px"
+entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
+styles:
+  - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
+tokens:
+  color.primary: "#157f5b"
+  color.text: "#18231f"
+  color.muted: "#64736d"
+  color.background: "#f2f5f3"
+  color.surface: "#ffffff"
+  font.body: "Inter, Noto Sans SC, system-ui, sans-serif"
+  space.page: "24px"
+capabilities:
+  - community.threads.read
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+  source: effects/source.ts
+assets:
+  - name: cover
+    path: assets/cover.webp
+    type: image/webp
+  - name: accent
+    path: assets/accent.png
+    type: image/png

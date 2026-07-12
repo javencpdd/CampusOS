@@ -1,0 +1,60 @@
+schema_version: campusos.app-style-pack.v2
+target: web
+name: aurora-campus
+version: 0.2.0
+display_name: "Aurora Campus"
+author: "CampusOS Team"
+description: "Immersive full-viewport campus reading theme and app-style-pack.v2 reference."
+compatible_campusos:
+  - ">=0.6.18"
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: "720px"
+entry: templates/page.html
+templates:
+  - name: page
+    path: templates/page.html
+  - name: card
+    path: templates/card.html
+styles:
+  - styles/theme.css
+preview_image: preview.png
+config_schema: config.schema.json
+tokens:
+  brand_color: "#e46f51"
+  text_color: "#17242a"
+  muted_color: "#52656d"
+  page_background: "#e7eef0"
+  surface_background: "rgba(248, 251, 251, 0.94)"
+  header_background: "rgba(9, 34, 43, 0.72)"
+  navigation_background: "rgba(237, 244, 244, 0.92)"
+  border_color: "rgba(34, 71, 80, 0.18)"
+  card_radius: "6px"
+  font_family: "Inter, Noto Sans SC, system-ui, sans-serif"
+  letter_spacing: "0"
+layout:
+  mode: full
+  content_width: "1240px"
+  page_padding: "28px"
+  header_mode: sticky
+  scroll_mode: page
+  background_asset: assets/campus-evening.png
+  overlay: "rgba(4, 22, 29, 0.30)"
+  animation_preset: reveal
+  left_sidebar_width: "0px"
+  right_sidebar_width: "0px"
+surface_overrides:
+  - surface_id: plugin.campus-welcome.page
+    variant: glass-reading
+    region: hero
+    order: 10
+capabilities:
+  - community.threads.read
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+assets:
+  - name: campus-evening
+    path: assets/campus-evening.png
+    type: image/png

@@ -1,0 +1,120 @@
+.app-container[data-campusos-web] {
+  --campus-web-primary: var(--campus-color-primary, #157f5b);
+  --campus-web-ink: var(--campus-color-text, #18231f);
+  --campus-web-muted: var(--campus-color-muted, #64736d);
+  --campus-web-line: #d8e0dc;
+  --campus-web-surface: var(--campus-color-surface, #ffffff);
+  min-height: 100vh;
+  color: var(--campus-web-ink);
+  background: var(--campus-color-background, #f2f5f3);
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.app-container[data-campusos-web] .app-header {
+  height: 64px;
+  border-bottom: 1px solid var(--campus-web-line);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.app-container[data-campusos-web] .logo h2 {
+  color: #123d30;
+  font-size: 20px;
+}
+
+.app-container[data-campusos-web] .app-main {
+  width: min(1180px, 100%);
+  padding: 28px 24px 48px;
+}
+
+.app-container[data-campusos-web] .app-footer {
+  border-top: 1px solid var(--campus-web-line);
+  background: #e9efec;
+}
+
+.app-container[data-campusos-web] .el-card {
+  border-color: var(--campus-web-line);
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(24, 35, 31, 0.05);
+}
+
+.app-container[data-campusos-web] .el-button--primary {
+  --el-button-bg-color: var(--campus-web-primary);
+  --el-button-border-color: var(--campus-web-primary);
+  --el-button-hover-bg-color: #106c4c;
+  --el-button-hover-border-color: #106c4c;
+}
+
+.app-container[data-campusos-web] .el-tabs__active-bar {
+  background: var(--campus-web-primary);
+}
+
+.app-container[data-campusos-web] .el-tabs__item.is-active,
+.app-container[data-campusos-web] .el-tabs__item:hover {
+  color: var(--campus-web-primary);
+}
+
+.app-container[data-campusos-web] .thread-list,
+.app-container[data-campusos-web] .thread-detail,
+.app-container[data-campusos-web] .create-thread,
+.app-container[data-campusos-web] .schedule-view,
+.app-container[data-campusos-web] .space-settings {
+  animation: campus-canvas-enter 360ms ease-out both;
+}
+
+.app-container[data-campusos-web] .list-header,
+.app-container[data-campusos-web] .page-header,
+.app-container[data-campusos-web] .schedule-header {
+  color: var(--campus-web-ink);
+}
+
+.app-container[data-campusos-web] .cstyle-page {
+  padding: 24px;
+  border: 1px solid var(--campus-web-line);
+  border-radius: 6px;
+  background: var(--campus-web-surface);
+}
+
+.app-container[data-campusos-web] .cstyle-kicker {
+  margin: 0 0 8px;
+  color: var(--campus-web-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.app-container[data-campusos-web] .cstyle-page h2 {
+  margin: 0;
+}
+
+.app-container[data-campusos-web] .cstyle-page p:last-child {
+  margin: 10px 0 0;
+  color: var(--campus-web-muted);
+  line-height: 1.7;
+}
+
+@keyframes campus-canvas-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 720px) {
+  .app-container[data-campusos-web] .app-header {
+    height: auto;
+    min-height: 60px;
+  }
+
+  .app-container[data-campusos-web] .app-main {
+    padding: 18px 14px 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-container[data-campusos-web] .thread-list,
+  .app-container[data-campusos-web] .thread-detail,
+  .app-container[data-campusos-web] .create-thread,
+  .app-container[data-campusos-web] .schedule-view,
+  .app-container[data-campusos-web] .space-settings {
+    animation: none;
+  }
+}
