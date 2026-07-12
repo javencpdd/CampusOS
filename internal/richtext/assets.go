@@ -9,7 +9,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"io/fs"
 	"mime"
 	"net/http"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/campusos/CampusOS/internal/space"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 )
 
 const (
@@ -36,7 +35,8 @@ type AssetStoreConfig struct {
 }
 
 type LocalAssetStore struct {
-	cfg AssetStoreConfig
+	cfg     AssetStoreConfig
+	storage corestorage.Port
 }
 
 func DefaultAssetStoreConfig() AssetStoreConfig {
@@ -51,7 +51,7 @@ func DefaultAssetStoreConfig() AssetStoreConfig {
 func AssetStoreConfigFromPluginConfig(raw, personalSpace map[string]interface{}) AssetStoreConfig {
 	cfg := DefaultAssetStoreConfig()
 	if value := stringConfig(personalSpace, "file_root"); value != "" {
-		cfg.RootDir = space.NormalizePersonalSpaceFileRoot(value)
+		cfg.RootDir = corestorage.NormalizeRoot(value)
 	}
 	if value := int64Config(personalSpace, "default_quota_bytes"); value > 0 {
 		cfg.QuotaBytes = value
@@ -84,7 +84,11 @@ func NewLocalAssetStore(cfg AssetStoreConfig) (*LocalAssetStore, error) {
 	if err := MigrateLegacyAssets(root); err != nil {
 		return nil, err
 	}
-	return &LocalAssetStore{cfg: cfg}, nil
+	storage, err := corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &LocalAssetStore{cfg: cfg, storage: storage}, nil
 }
 
 func (cfg AssetStoreConfig) withDefaults() AssetStoreConfig {
@@ -92,7 +96,7 @@ func (cfg AssetStoreConfig) withDefaults() AssetStoreConfig {
 	if strings.TrimSpace(cfg.RootDir) == "" {
 		cfg.RootDir = defaults.RootDir
 	}
-	cfg.RootDir = space.NormalizePersonalSpaceFileRoot(cfg.RootDir)
+	cfg.RootDir = corestorage.NormalizeRoot(cfg.RootDir)
 	if strings.TrimSpace(cfg.URLPrefix) == "" {
 		cfg.URLPrefix = defaults.URLPrefix
 	}
@@ -141,7 +145,7 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 	if err := s.checkQuota(userID, int64(len(data))); err != nil {
 		return nil, err
 	}
-	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
+	if _, err := s.storage.EnsureLayout(userID); err != nil {
 		return nil, err
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -202,33 +206,12 @@ func (s *LocalAssetStore) Path(userID, fileName string) (string, error) {
 }
 
 func (s *LocalAssetStore) assetDir(userID string) (string, error) {
-	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceImageDir, "richtext")
+	return s.storage.Path(userID, corestorage.ImageDir, "richtext")
 }
 
 func (s *LocalAssetStore) checkQuota(userID string, incomingBytes int64) error {
-	userDir, err := space.PersonalSpaceUserDir(s.cfg.RootDir, userID)
+	usage, err := s.storage.Usage(userID)
 	if err != nil {
-		return err
-	}
-	var usage int64
-	err = filepath.WalkDir(userDir, func(_ string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if errors.Is(walkErr, os.ErrNotExist) {
-				return nil
-			}
-			return walkErr
-		}
-		if entry == nil || entry.IsDir() {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		usage += info.Size()
-		return nil
-	})
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	if usage+incomingBytes > s.cfg.QuotaBytes {
@@ -263,7 +246,7 @@ func migrateLegacyAssetRoot(legacyRoot, targetRoot string) error {
 			continue
 		}
 		legacyUserDir := filepath.Join(legacyRoot, "users", user.Name())
-		targetDir, err := space.PersonalSpacePath(targetRoot, user.Name(), space.PersonalSpaceImageDir, "richtext")
+		targetDir, err := corestorage.UserPath(targetRoot, user.Name(), corestorage.ImageDir, "richtext")
 		if err != nil {
 			return err
 		}
@@ -282,7 +265,11 @@ func migrateLegacyAssetRoot(legacyRoot, targetRoot string) error {
 				return err
 			}
 		}
-		if _, err := space.EnsurePersonalSpaceLayout(targetRoot, user.Name()); err != nil {
+		storage, err := corestorage.NewLocalAdapter(targetRoot)
+		if err != nil {
+			return err
+		}
+		if _, err := storage.EnsureLayout(user.Name()); err != nil {
 			return err
 		}
 		_ = os.Remove(legacyUserDir)

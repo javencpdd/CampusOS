@@ -12,6 +12,9 @@ go run ./cmd/campusos-contracts --check
 echo "==> documentation links"
 python3 scripts/check-doc-links.py
 
+echo "==> architecture boundaries"
+python3 scripts/check-architecture-boundaries.py
+
 echo "==> Go tests"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
 
@@ -47,4 +50,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.6 release check passed"
+echo "CampusOS v0.7 release check passed"

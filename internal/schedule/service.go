@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/campusos/CampusOS/internal/space"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
@@ -42,6 +41,7 @@ type Config struct {
 
 type Service struct {
 	cfg     Config
+	storage corestorage.Port
 	enabled func() bool
 	now     func() time.Time
 }
@@ -56,11 +56,13 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, err
 	}
 	cfg.RootDir = root
-	if err := space.MigrateLegacyPersonalSpaceStorage(root); err != nil {
+	storage, err := corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
+	if err != nil {
 		return nil, err
 	}
 	return &Service{
 		cfg:     cfg,
+		storage: storage,
 		enabled: func() bool { return true },
 		now:     time.Now,
 	}, nil
@@ -82,7 +84,7 @@ func ConfigFromPluginConfig(raw, personalSpace map[string]interface{}) Config {
 		MaxImportBytes: defaultMaxImportBytes,
 	}
 	if value := stringConfig(personalSpace, "file_root"); value != "" {
-		cfg.RootDir = space.NormalizePersonalSpaceFileRoot(value)
+		cfg.RootDir = corestorage.NormalizeRoot(value)
 	}
 	if value := int64Config(personalSpace, "default_quota_bytes"); value > 0 {
 		cfg.QuotaBytes = value
@@ -112,7 +114,7 @@ func (cfg Config) withDefaults() Config {
 	if strings.TrimSpace(cfg.RootDir) == "" {
 		cfg.RootDir = defaultRootDir
 	}
-	cfg.RootDir = space.NormalizePersonalSpaceFileRoot(cfg.RootDir)
+	cfg.RootDir = corestorage.NormalizeRoot(cfg.RootDir)
 	if cfg.QuotaBytes <= 0 {
 		cfg.QuotaBytes = defaultQuotaBytes
 	}
@@ -344,7 +346,7 @@ func (s *Service) writeTerm(_ context.Context, schedule *Schedule) error {
 	if err := s.checkQuota(schedule.UserID, int64(len(raw)), path); err != nil {
 		return err
 	}
-	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, schedule.UserID); err != nil {
+	if _, err := s.storage.EnsureLayout(schedule.UserID); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -485,15 +487,15 @@ func (s *Service) schedulePath(userID string) (string, error) {
 }
 
 func (s *Service) legacySchedulePath(userID string) (string, error) {
-	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "schedule.json")
+	return s.storage.Path(userID, corestorage.FileDir, "schedule", "schedule.json")
 }
 
 func (s *Service) termsDir(userID string) (string, error) {
-	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "terms")
+	return s.storage.Path(userID, corestorage.FileDir, "schedule", "terms")
 }
 
 func (s *Service) indexPath(userID string) (string, error) {
-	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "index.json")
+	return s.storage.Path(userID, corestorage.FileDir, "schedule", "index.json")
 }
 
 func (s *Service) termSchedulePath(userID string, termYear int, semester string) (string, error) {
@@ -501,7 +503,7 @@ func (s *Service) termSchedulePath(userID string, termYear int, semester string)
 	if err != nil {
 		return "", err
 	}
-	return space.PersonalSpacePath(s.cfg.RootDir, userID, space.PersonalSpaceFileDir, "schedule", "terms", termKey(termYear, semester)+".json")
+	return s.storage.Path(userID, corestorage.FileDir, "schedule", "terms", termKey(termYear, semester)+".json")
 }
 
 func (s *Service) normalizeTerm(termYear int, semester string) (int, string, error) {
@@ -571,7 +573,7 @@ func (s *Service) writeActiveTerm(_ context.Context, schedule *Schedule) error {
 	if err := s.checkQuota(schedule.UserID, int64(len(raw)), path); err != nil {
 		return err
 	}
-	if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, schedule.UserID); err != nil {
+	if _, err := s.storage.EnsureLayout(schedule.UserID); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -676,7 +678,7 @@ func (s *Service) migrateLegacySchedule(ctx context.Context, userID string) erro
 		}
 		// The legacy file was already counted in this user's quota. Do not fail
 		// a one-time relocation merely because both paths exist briefly.
-		if _, err := space.EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
+		if _, err := s.storage.EnsureLayout(userID); err != nil {
 			return err
 		}
 		if err := os.MkdirAll(filepath.Dir(termPath), 0o755); err != nil {
@@ -705,7 +707,7 @@ func (s *Service) userDir(userID string) (string, error) {
 	if err := validateUserID(userID); err != nil {
 		return "", err
 	}
-	target, err := space.PersonalSpaceUserDir(s.cfg.RootDir, userID)
+	target, err := s.storage.Path(userID)
 	if err != nil {
 		return "", fmt.Errorf("%w: invalid storage path", ErrInvalidInput)
 	}
@@ -713,32 +715,14 @@ func (s *Service) userDir(userID string) (string, error) {
 }
 
 func (s *Service) checkQuota(userID string, newSize int64, schedulePath string) error {
-	userDir, err := s.userDir(userID)
+	usage, err := s.storage.Usage(userID)
 	if err != nil {
 		return err
 	}
-	var usage int64
-	if err := filepath.WalkDir(userDir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return nil
-			}
-			return err
-		}
-		if entry == nil || entry.IsDir() {
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if samePath(path, schedulePath) {
-			return nil
-		}
-		usage += info.Size()
-		return nil
-	}); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+	if info, statErr := os.Stat(schedulePath); statErr == nil {
+		usage -= info.Size()
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return statErr
 	}
 	if usage+newSize > s.cfg.QuotaBytes {
 		return ErrQuotaExceeded

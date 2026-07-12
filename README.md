@@ -4,7 +4,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 
 ## 当前状态
 
-当前开发基线为 `v0.7.2-dev`。v6 已封版；v7 已完成计划修订、系统基线冻结和可选生命周期 Module Kernel，下一阶段按计划继续拆分基础设施 Bootstrap。
+当前稳定开发基线为 `v0.7.0`。v7 模块化单体优化已经完成全链路验收，Core、Built-in Feature、External Plugin 和 Resource Package 边界已建立。
 
 - 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
 - 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
@@ -68,7 +68,7 @@ make release-check
 | 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
 | 风格包边界和 SDK 权限 | [风格包能力边界与 CampusStyleSDK 说明](docs/help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
 | 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
-| 当前计划与进度 | [v7 计划书](docs/项目计划v7/00-v7版本计划书.md)、[v0.7.2 Module Kernel](docs/进度/v0.7-dev/v0.7.2-dev.md) |
+| 当前计划与进度 | [v7 计划书](docs/项目计划v7/00-v7版本计划书.md)、[v7 回顾](docs/项目计划v7/01-v7版本回顾与后续规划.md)、[v0.7.18 完成度复核](docs/进度/v0.7-dev/v0.7.18-dev.md) |
 
 ## License
 
