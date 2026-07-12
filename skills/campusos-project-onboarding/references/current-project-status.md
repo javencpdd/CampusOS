@@ -16,9 +16,9 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; v6 is complete, and the active transition baseline is `v0.6.26-dev`. The v7 modular-monolith migration has completed architecture planning and the first Module Kernel slice, with EventBus and Plugin Platform initialization now using dependency-ordered lifecycle management while existing APIs and plugin contracts remain compatible.
+Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; v6 is complete, and the active development baseline is `v0.7.2-dev`. The v7 modular-monolith migration has completed the revised plan, frozen the `v0.6.26-dev` compatibility baseline, and accepted the Module Kernel with optional lifecycle interfaces. EventBus and Plugin Platform initialization use dependency-ordered lifecycle management while existing APIs and plugin contracts remain compatible.
 
-The next recommended work mode is defect fixing, smoke-driven regression, and the v6 plan. Do not present v0.6 work packages other than recorded completed work as already implemented.
+The next planned stage is A2a infrastructure Bootstrap extraction. Follow `docs/项目计划v7/00-v7版本计划书.md`; do not present partially implemented A2a or later stages as accepted without the required v0.7 progress evidence.
 
 ## 2. Implemented Areas
 

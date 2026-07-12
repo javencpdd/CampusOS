@@ -1,0 +1,235 @@
+请基于当前 CampusOS 项目上下文，对项目进行一次分阶段、可验证、保持兼容的架构优化。
+
+不要直接开始大规模修改。先分析当前代码、插件体系、模块依赖、数据库迁移、前后端运行时和现有文档，然后制定完整的 v7 实施计划。
+
+## 一、先编写 v7 计划书
+
+在以下目录创建计划书：
+
+`/home/jack/bbs/bbs01/CampusOS/docs/项目计划v7`
+
+主计划书建议命名为：
+
+`00-v7版本计划书.md`
+
+计划书至少包含：
+
+* 当前架构问题与优化目标
+* 最终架构分层
+* 需要迁移或合并的现有模块
+* 分阶段任务安排
+* P0、P1、P2 优先级
+* 每阶段涉及的目录、数据迁移和兼容策略
+* 测试、回归、回滚和验收标准
+* 文档更新范围
+* 风险点与禁止事项
+
+任务必须拆成可独立完成和验证的小阶段，禁止一次性重写整个系统。计划完成后，不需要等待确认，直接按照计划从最高优先级任务开始实施。
+
+## 二、目标架构
+
+将 CampusOS 优化为：
+
+```text
+模块化单体核心
+├── Core Modules
+├── Built-in Feature Modules
+├── Plugin Platform
+└── Resource Packages
+```
+
+明确区分以下四类能力：
+
+1. `Core Module`
+
+   * 平台完整性所必需
+   * 编译在主程序中
+   * 不允许卸载
+   * 可以配置，但不能作为普通插件删除
+
+2. `Built-in Feature Module`
+
+   * 编译在主程序中
+   * 可以启用或停用
+   * 不进入普通插件安装和卸载流程
+   * 停用时必须保留数据
+
+3. `External Plugin`
+
+   * 可独立安装、升级和卸载
+   * 使用 gRPC、Wasm、HTTP、MCP 等运行时
+   * 必须通过 Host API、Extension Gateway 或公开接口访问核心能力
+   * 不得直接访问核心数据库和内部 Service
+
+4. `Resource Package`
+
+   * 仅包含主题、样式、Skills、Prompt、Persona 等资源
+   * 不作为拥有完整生命周期的业务插件运行
+
+## 三、重点改造任务
+
+按依赖关系和风险安排优先级，至少完成以下改造。
+
+### P0：建立模块化单体基础设施
+
+* 将 `internal/server/server.go` 中过度集中的初始化、依赖装配和路由注册拆分到各模块。
+* 新增统一的 `Module Registry`、模块生命周期和依赖声明机制。
+* 支持模块依赖检查、启动顺序、健康状态和优雅停止。
+* 区分 Core Module、Built-in Feature Module 和 External Plugin。
+* 建立 Built-in Feature 的统一启停和配置机制。
+* 保留现有行为和 API 兼容性，避免破坏现有前端及插件。
+
+建议接口方向：
+
+```go
+type Module interface {
+    ID() string
+    Dependencies() []string
+    Register(*AppContext) error
+    Start(context.Context) error
+    Stop(context.Context) error
+    Health(context.Context) Health
+}
+```
+
+接口可根据现有项目结构调整，不要机械照搬。
+
+### P0：收紧模块边界
+
+* 为 Identity、Community、Plugin、Storage 等模块定义公开 Port 或 Facade。
+* 禁止其他模块直接依赖其具体 PostgreSQL Repository 或内部实现。
+* 将跨模块操作改为依赖接口、领域事件或只读查询接口。
+* 明确数据库表所有权，避免跨模块直接写入其他模块的数据表。
+* 不引入没有必要的复杂依赖注入框架或微服务拆分。
+
+### P0：调整现有内置插件归属
+
+1. `category-moderation`
+
+   * 融入 Core Module。
+   * 权限、作用域检查和审计能力不能随功能开关被卸载。
+   * 原有操作开关迁移到系统功能配置。
+
+2. `personal-space`
+
+   * 拆出 `User Storage` 核心模块，负责用户目录、文件所有权、配额、安全路径、资产存储和存储 Provider。
+   * 个人主页、内容同步和个人页面样式保留为 Built-in Feature Module。
+   * 富文本和课表等模块只能依赖 User Storage，不能依赖整个 Personal Space 功能是否开启。
+
+3. `controlled-richtext-article`
+
+   * 调整为 Built-in Feature Module。
+   * 保留草稿、发布、清洗、图片资产和管理能力。
+   * 为未来 Editor Provider、Renderer Provider 和 Template Provider 预留稳定扩展接口。
+
+4. `personal-schedule`
+
+   * 调整为 Built-in Feature Module。
+   * 显式依赖 Identity 和 User Storage。
+   * 停用时隐藏路由和 API，但不得删除用户数据。
+
+5. `homepage-customizer`、`web-theme`、`stylepack`
+
+   * 整理为统一的 `Appearance` Built-in Feature Module。
+   * 合并重复的主题、首页布局、安全 HTML/CSS、用户偏好和风格包逻辑。
+   * Theme Pack、Homepage Pack、Space Style Pack 作为 Resource Package 管理。
+   * 保持现有主题和风格包兼容，必要时提供迁移适配层。
+
+### P1：收窄 Plugin Platform
+
+Plugin Manager 最终只负责真正的外部扩展，包括：
+
+* gRPC
+* Wasm
+* Remote HTTP
+* MCP
+* Agent Runner
+* Knowledge Provider
+* 第三方 Adapter
+
+逐步拆分 Plugin Manager 中混合的职责，例如：
+
+* Plugin Catalog
+* Runtime Registry
+* Lifecycle Manager
+* Config Service
+* UI Registry
+* Event Registry
+* Audit/Log Service
+
+可以保留统一 Facade，但禁止继续让一个 Manager 无限膨胀。
+
+原有 `runtime: builtin` 应通过兼容层逐步迁移为系统模块或 Built-in Feature，不要立即删除兼容逻辑。
+
+### P1：为 v7 Agent 能力预留边界
+
+本次重点是架构优化，不要无边界扩展完整 Agent 产品，但必须为后续能力预留清晰接口：
+
+* Agent Core：系统核心能力
+* Agent Center：Built-in Feature
+* Agent Runner：External Plugin
+* Knowledge Provider：External Plugin
+* MCP：标准外部扩展
+* Skills、Prompt、Persona：Resource Package
+
+Agent、插件和第三方扩展不得直接获得数据库连接、JWT 私钥、宿主机完整文件系统权限或 CampusOS 用户 Token。
+
+## 四、实施要求
+
+* 先阅读当前实现和现有文档，不要根据目录名称臆测功能。
+* 尽量采用渐进迁移和兼容层，不进行一次性推倒重写。
+* 每完成一个阶段，立即运行对应测试和构建。
+* 后端至少执行：
+
+```bash
+GOCACHE=/tmp/campusos-go-cache go test ./... -count=1
+```
+
+* 根据改动执行 Web、Admin、docs-site 构建以及现有 smoke、database-check、architecture-check 等检查。
+* 如果现有测试不足，为关键生命周期、模块依赖、功能启停、数据保留、权限边界和兼容行为补充测试。
+* 禁止为了通过测试删除安全校验、权限检查、审计、数据约束或错误处理。
+* 禁止把当前模块化单体拆成大量微服务。
+* Agent Runner、代码执行器等高风险能力未来可以独立进程或容器运行，但核心业务继续保持模块化单体。
+* 修改迁移文件、持久化目录、API、Manifest 或 UI Contract 时，同步更新对应文档和检查器。
+* 保持 API、数据库数据和现有插件包尽可能向后兼容。
+* 对确实无法兼容的变化提供迁移脚本、适配层和明确说明。
+
+## 五、进度文档
+
+每完成一个可独立验收的阶段，在以下目录新增对应进度说明：
+
+`/home/jack/bbs/bbs01/CampusOS/docs/进度/v0.6-dev`
+
+文件编号按照该目录当前最新进度文档继续顺延，不要覆盖已有文档。
+
+每份进度文档必须包含：
+
+* 本阶段目标
+* 实际完成内容
+* 修改的主要目录和文件
+* 架构变化
+* 兼容和迁移处理
+* 测试与构建结果
+* 已知限制
+* 下一阶段任务
+
+同时持续更新 v7 计划书中的任务状态，确保计划、代码和进度文档一致。
+
+## 六、最终验收
+
+全部完成后，确认：
+
+* `server.go` 不再集中装配所有业务细节。
+* Core、Built-in Feature、External Plugin、Resource Package 边界清晰。
+* 关键模块具有明确依赖和生命周期。
+* Category Moderation 已成为核心能力。
+* User Storage 已从 Personal Space 中独立。
+* RichText 和 Schedule 已成为内置功能模块。
+* Homepage、Web Theme 和 Style Pack 已形成统一 Appearance 边界。
+* Plugin Manager 不再管理系统内置业务模块的全部生命周期。
+* 现有数据、API、前端功能和可用插件未出现无说明的破坏。
+* 所有测试、构建、检查和进度文档完整。
+
+在实际代码和现有设计发生冲突时，以系统安全、数据完整性、渐进兼容和模块边界为优先，并在计划书和进度文档中记录最终选择及原因。
+
+Spend time on thinking; you do not need to use the commentary channel to report progress to me.

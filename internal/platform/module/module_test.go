@@ -15,6 +15,18 @@ type testModule struct {
 	stopErr      error
 }
 
+type registerOnlyModule struct {
+	id     string
+	events *[]string
+}
+
+func (m *registerOnlyModule) ID() string             { return m.id }
+func (m *registerOnlyModule) Dependencies() []string { return nil }
+func (m *registerOnlyModule) Register(*AppContext) error {
+	*m.events = append(*m.events, "register:"+m.id)
+	return nil
+}
+
 func (m *testModule) ID() string                    { return m.id }
 func (m *testModule) Dependencies() []string        { return m.dependencies }
 func (m *testModule) Health(context.Context) Health { return Health{Status: HealthHealthy} }
@@ -134,6 +146,31 @@ func TestRegistryReportsRunningModuleHealth(t *testing.T) {
 	snapshots := registry.Snapshots(context.Background())
 	if len(snapshots) != 1 || snapshots[0].State != StateRunning || snapshots[0].Health.Status != HealthHealthy {
 		t.Fatalf("unexpected snapshots: %#v", snapshots)
+	}
+}
+
+func TestRegistrySupportsModuleWithoutOptionalLifecycle(t *testing.T) {
+	var events []string
+	registry := NewRegistry(nil)
+	if err := registry.Add(&registerOnlyModule{id: "contracts", events: &events}, KindCore, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.StartAll(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	snapshots := registry.Snapshots(context.Background())
+	if len(snapshots) != 1 || snapshots[0].State != StateRunning || snapshots[0].Health.Status != HealthUnknown {
+		t.Fatalf("unexpected running snapshot: %#v", snapshots)
+	}
+	if err := registry.StopAll(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	snapshots = registry.Snapshots(context.Background())
+	if snapshots[0].State != StateStopped {
+		t.Fatalf("unexpected stopped snapshot: %#v", snapshots)
+	}
+	if want := []string{"register:contracts"}; !reflect.DeepEqual(events, want) {
+		t.Fatalf("events = %#v, want %#v", events, want)
 	}
 }
 
