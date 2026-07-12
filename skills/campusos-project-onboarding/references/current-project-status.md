@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; the active baseline is now `v0.6.24-dev`, and the in-scope v6 plan is complete. It includes category-scoped moderation, generated route/OpenAPI authorization and core field contracts, three-axis plugin lifecycle, Extension Gateway dispatch, `campusos.ui/v1` dynamic frontend registration, full-screen and user-configurable `campusos.app-style-pack.v2`, Host API/SDK/CLI/templates, plugin snapshots/rollback, an independent docs frontend, and a repeatable browser/release/recovery gate.
+Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; v6 is complete, and the active transition baseline is `v0.6.26-dev`. The v7 modular-monolith migration has completed architecture planning and the first Module Kernel slice, with EventBus and Plugin Platform initialization now using dependency-ordered lifecycle management while existing APIs and plugin contracts remain compatible.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and the v6 plan. Do not present v0.6 work packages other than recorded completed work as already implemented.
 

@@ -1,6 +1,6 @@
 {
   "name": "campusos-official-docs",
-  "version": "0.6.24-dev",
+  "version": "0.6.26-dev",
   "private": true,
   "type": "module",
   "scripts": {

@@ -18,6 +18,7 @@ SCAN_ROOTS = (
     ROOT / "docs" / "help",
     ROOT / "docs" / "skills",
     ROOT / "docs" / "项目计划v6",
+    ROOT / "docs" / "项目计划v7",
     ROOT / "docs" / "进度" / "v0.6-dev",
     ROOT / "docs-site",
     ROOT / "data" / "plugins",
