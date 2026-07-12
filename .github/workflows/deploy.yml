@@ -71,6 +71,8 @@ jobs:
           cache-dependency-path: |
             web/pnpm-lock.yaml
             admin/pnpm-lock.yaml
+            docs-site/pnpm-lock.yaml
+            sdk/typescript/pnpm-lock.yaml
 
       - name: Install PostgreSQL client
         run: |
@@ -87,6 +89,11 @@ jobs:
       - name: Run Go tests
         run: go test ./... -v -count=1
 
+      - name: Check contracts and documentation links
+        run: |
+          make contracts-check
+          make docs-links
+
       - name: Build backend
         run: |
           mkdir -p release/package/bin
@@ -99,10 +106,24 @@ jobs:
         working-directory: web
         run: |
           pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm format:check
           pnpm build
 
       - name: Build admin frontend
         working-directory: admin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build official documentation
+        working-directory: docs-site
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build TypeScript plugin SDK
+        working-directory: sdk/typescript
         run: |
           pnpm install --frozen-lockfile
           pnpm build

@@ -1,6 +1,10 @@
 <template>
   <div class="home" data-campusos-home>
-    <section class="welcome-hero" :class="{ 'has-background': Boolean(homeConfig.background_image) }" :style="heroStyle">
+    <section
+      class="welcome-hero"
+      :class="{ 'has-background': Boolean(homeConfig.background_image) }"
+      :style="heroStyle"
+    >
       <div class="hero-content">
         <h1>{{ homeConfig.hero_title }}</h1>
         <p class="subtitle">{{ homeConfig.hero_subtitle }}</p>
@@ -136,17 +140,20 @@ onMounted(async () => {
 
 let injectedStyle: HTMLStyleElement | null = null
 
-watch(() => [homeConfig.custom_html_enabled, homeConfig.custom_css] as const, ([enabled, css]) => {
-  if (injectedStyle) {
-    injectedStyle.remove()
-    injectedStyle = null
-  }
-  if (!enabled || !css) return
-  injectedStyle = document.createElement('style')
-  injectedStyle.setAttribute('data-campusos-style-pack', 'homepage')
-  injectedStyle.textContent = css
-  document.head.appendChild(injectedStyle)
-})
+watch(
+  () => [homeConfig.custom_html_enabled, homeConfig.custom_css] as const,
+  ([enabled, css]) => {
+    if (injectedStyle) {
+      injectedStyle.remove()
+      injectedStyle = null
+    }
+    if (!enabled || !css) return
+    injectedStyle = document.createElement('style')
+    injectedStyle.setAttribute('data-campusos-style-pack', 'homepage')
+    injectedStyle.textContent = css
+    document.head.appendChild(injectedStyle)
+  },
+)
 
 onUnmounted(() => {
   injectedStyle?.remove()
@@ -155,7 +162,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.home { max-width: 980px; margin: 0 auto; }
+.home {
+  max-width: 980px;
+  margin: 0 auto;
+}
 .welcome-hero {
   min-height: 260px;
   margin-bottom: 24px;
@@ -179,7 +189,9 @@ onUnmounted(() => {
   font-size: 34px;
   line-height: 1.2;
 }
-.welcome-card { margin-bottom: 24px; }
+.welcome-card {
+  margin-bottom: 24px;
+}
 .custom-home-html {
   margin-bottom: 24px;
   overflow-wrap: anywhere;
@@ -190,11 +202,28 @@ onUnmounted(() => {
 .custom-home-html :deep(img) {
   height: auto;
 }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.card-header h1 { margin: 0; }
-.subtitle { color: inherit; font-size: 16px; margin-bottom: 20px; line-height: 1.7; }
-.overview-text { margin: 0; color: #606266; }
-.actions { display: flex; gap: 12px; }
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-header h1 {
+  margin: 0;
+}
+.subtitle {
+  color: inherit;
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+.overview-text {
+  margin: 0;
+  color: #606266;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+}
 .category-tags {
   display: flex;
   flex-wrap: wrap;
@@ -204,7 +233,9 @@ onUnmounted(() => {
 .category-tags a {
   text-decoration: none;
 }
-.stats-row { margin-bottom: 24px; }
+.stats-row {
+  margin-bottom: 24px;
+}
 @media (max-width: 720px) {
   .welcome-hero {
     padding: 24px;

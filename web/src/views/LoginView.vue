@@ -10,7 +10,7 @@
           <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleLogin" :loading="loading" style="width:100%">登录</el-button>
+          <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">登录</el-button>
         </el-form-item>
       </el-form>
       <p class="tip">还没有账号？<router-link to="/register">立即注册</router-link></p>
@@ -45,7 +45,16 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-page { display: flex; justify-content: center; padding-top: 80px; }
-.login-card { width: 400px; }
-.tip { text-align: center; color: #909399; }
+.login-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 80px;
+}
+.login-card {
+  width: 400px;
+}
+.tip {
+  text-align: center;
+  color: #909399;
+}
 </style>

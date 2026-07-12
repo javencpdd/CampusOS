@@ -63,9 +63,18 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 	response.Success(c, gin.H{
 		"contract_version": CurrentUIContract,
 		"revision":         h.manager.UIRevision(),
-		"current_theme":    "",
+		"current_theme":    h.currentTheme(),
 		"plugins":          items,
 	})
+}
+
+func (h *RuntimeHTTPHandler) currentTheme() string {
+	config, ok := h.manager.GetPluginConfig("web-theme")
+	if !ok {
+		return ""
+	}
+	value, _ := config["default_style_pack"].(string)
+	return strings.TrimSpace(value)
 }
 
 func filterSchemaActions(node map[string]interface{}, allowed map[string]bool) map[string]interface{} {
@@ -172,6 +181,12 @@ func (h *RuntimeHTTPHandler) Extension(c *gin.Context) {
 			status = http.StatusGatewayTimeout
 		}
 		response.Error(c, status, 60004, err.Error())
+		return
+	}
+	if result == nil {
+		metadata["error"] = "runtime returned an empty response"
+		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "error", "extension request failed", metadata)
+		response.Error(c, http.StatusBadGateway, 60004, "extension runtime returned an empty response")
 		return
 	}
 	metadata["status"] = result.Status

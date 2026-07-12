@@ -66,6 +66,10 @@ name: full-campus
 version: 0.2.0
 entry: templates/page.html
 styles: [styles/theme.css]
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 layout:
   mode: full
   header_mode: sticky
@@ -82,8 +86,9 @@ surface_overrides:
     region: hero
 `,
 		"templates/page.html": `<section class="cstyle-page">Full viewport</section>`,
-		"styles/theme.css":    `.app-container[data-campusos-web] .campus-shell-body { width: 100%; }`,
-		"assets/campus.png":   "image",
+		"styles/theme.css": `.app-container[data-campusos-web] .campus-shell-body { width: 100%; }
+@media (max-width: 720px) { .app-container[data-campusos-web] .campus-shell-body { padding: 12px; } }`,
+		"assets/campus.png": "image",
 	})
 	pkg, result := LoadZip(bytes.NewReader(data), int64(len(data)))
 	if !result.Valid {
@@ -91,6 +96,46 @@ surface_overrides:
 	}
 	if pkg.Manifest.Layout == nil || pkg.Manifest.Layout.Mode != "full" {
 		t.Fatalf("layout missing: %#v", pkg.Manifest)
+	}
+}
+
+func TestLoadZipRejectsUnreadableTokenContrast(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: web
+name: low-contrast
+version: 0.1.0
+entry: templates/page.html
+tokens:
+  color.text: "#777777"
+  color.background: "#888888"
+`,
+		"templates/page.html": `<section>Low contrast</section>`,
+	})
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected unreadable token contrast to fail")
+	}
+}
+
+func TestLoadZipRejectsUnreadableConfiguredTextDefault(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: web
+name: low-config-contrast
+version: 0.1.0
+entry: templates/page.html
+config_schema: config.schema.json
+tokens:
+  color.text: "#111827"
+  color.background: "#ffffff"
+`,
+		"templates/page.html": `<section>Low configured contrast</section>`,
+		"config.schema.json":  `{"type":"object","properties":{"text":{"type":"string","format":"color","default":"#eeeeee","x-campusos-binding":"token.color.text"}}}`,
+	})
+	_, result := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if result.Valid {
+		t.Fatalf("expected unreadable configured text default to fail")
 	}
 }
 
@@ -286,6 +331,7 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 		{SourceDir("personal-space", "kinetic-journal"), "personal-space"},
 		{SourceDir("homepage-customizer", "campus-hero"), "homepage"},
 		{SourceDir("web-theme", "campus-canvas"), "web"},
+		{SourceDir("web-theme", "aurora-campus"), "web"},
 	}
 
 	for _, tc := range cases {
@@ -295,6 +341,9 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 		}
 		if pkg.Manifest.Target != tc.target {
 			t.Fatalf("expected target %s, got %s", tc.target, pkg.Manifest.Target)
+		}
+		if pkg.Manifest.ViewportSupport == nil || !pkg.Manifest.ViewportSupport.Desktop || !pkg.Manifest.ViewportSupport.Mobile {
+			t.Fatalf("expected desktop and mobile support for %s", tc.root)
 		}
 	}
 }

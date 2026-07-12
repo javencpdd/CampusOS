@@ -93,6 +93,7 @@ export interface UIRuntimeManifest {
 export interface RuntimeNavigation extends UINavigation {
   plugin: string
   path: string
+  requiresAuth: boolean
 }
 export interface RuntimeSurface extends UISurface {
   plugin: string

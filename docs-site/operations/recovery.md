@@ -31,4 +31,4 @@ make database-check
 
 ## 版本门禁
 
-`make release-check` 运行路由合约、Go 测试、migration、数据库体检、schema contract、三类插件模板、三个前端构建、恢复演练和 Chrome 页面 smoke。开发服务未启动时可显式设置 `RUN_BROWSER_SMOKE=false`，但正式验收不能跳过浏览器 smoke。
+`make release-check` 运行路由合约、文档链接、Go 测试、migration、数据库体检、schema contract、三类插件模板、Web lint/format/build、Admin 与文档站构建、TypeScript SDK、恢复演练和 Chrome 页面 smoke。开发服务未启动时可显式设置 `RUN_BROWSER_SMOKE=false`，但正式验收不能跳过浏览器 smoke。

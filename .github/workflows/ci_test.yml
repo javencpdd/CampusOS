@@ -90,6 +90,9 @@ jobs:
       - name: Check API and authorization contract drift
         run: make contracts-check
 
+      - name: Check current documentation links
+        run: make docs-links
+
       - name: Build Go server
         run: go build -o bin/campusos-server ./cmd/server/main.go
 
@@ -105,6 +108,10 @@ jobs:
             working-directory: web
           - app: admin
             working-directory: admin
+          - app: docs
+            working-directory: docs-site
+          - app: plugin-sdk
+            working-directory: sdk/typescript
 
     steps:
       - name: Checkout repository
@@ -127,7 +134,14 @@ jobs:
         working-directory: ${{ matrix.working-directory }}
         run: pnpm install --frozen-lockfile
 
-      # 两个前端项目都会先做 vue-tsc 类型检查，再由 Vite 产出构建结果。
+      - name: Lint and format-check Web
+        if: matrix.app == 'web'
+        working-directory: web
+        run: |
+          pnpm lint
+          pnpm format:check
+
+      # Web/Admin 会先做类型检查，文档站和 TypeScript SDK 也必须在同一门禁中构建。
       - name: Build ${{ matrix.app }}
         working-directory: ${{ matrix.working-directory }}
         run: pnpm build

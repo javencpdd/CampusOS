@@ -69,7 +69,7 @@ export class RuntimeRegistry {
     const slots = plugin.ui.slots || []
     const surfaces = plugin.ui.surfaces || []
     const actions = plugin.ui.actions || []
-    const routePaths = new Map(routes.map((route) => [route.id, route.path]))
+    const routeContracts = new Map(routes.map((route) => [route.id, route]))
     for (const action of actions) target.actions.set(action.id, { ...action, plugin: plugin.name })
     for (const surface of surfaces)
       target.surfaces.set(surface.id, {
@@ -94,8 +94,15 @@ export class RuntimeRegistry {
       disposers.push(remove)
     }
     for (const nav of navigation) {
-      const path = routePaths.get(nav.route_id)
-      if (path) target.navigation.push({ ...nav, plugin: plugin.name, path })
+      const route = routeContracts.get(nav.route_id)
+      if (route) {
+        target.navigation.push({
+          ...nav,
+          plugin: plugin.name,
+          path: route.path,
+          requiresAuth: Boolean(route.requires_auth),
+        })
+      }
     }
     for (const slot of slots) {
       const surface = target.surfaces.get(slot.surface_id)

@@ -67,7 +67,7 @@ ui:
       schema: {component: text, text: Gateway}
   routes:
     - id: plugin.gateway-test.route.main
-      path: /gateway-test
+      path: /extensions/gateway-test
       surface_id: plugin.gateway-test.page.main
 `
 	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(manifest), 0o644); err != nil {

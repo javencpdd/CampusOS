@@ -350,7 +350,7 @@ data/plugins/personal-space/plugin.yaml
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `styles_dir` | `styles` | 默认 JSON 风格包目录 |
+| `styles_dir` | `data/plugin_data/personal-space/styles` | 默认 JSON 风格包数据目录 |
 | `file_root` | `data/personal-space` | 个人空间本地文件根目录 |
 | `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
 | `default_quota_mb` | `10` | 每个用户初始本地空间 |
@@ -407,7 +407,7 @@ web/src/data/spaceStyleExamples.ts
 后端同源 JSON 示例位于：
 
 ```text
-data/plugins/personal-space/styles/
+data/plugin_data/personal-space/styles/
 ```
 
 文件夹拓展风格包示例位于：

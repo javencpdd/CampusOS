@@ -4,10 +4,21 @@
       <template #header>
         <h2>注册</h2>
       </template>
-      <el-form ref="formRef" :model="form" :rules="rules" @submit.prevent="handleRegister" label-position="top"
-        status-icon>
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        @submit.prevent="handleRegister"
+        label-position="top"
+        status-icon
+      >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="3-32位，仅支持字母、数字、下划线" maxlength="32" show-word-limit />
+          <el-input
+            v-model="form.username"
+            placeholder="3-32位，仅支持字母、数字、下划线"
+            maxlength="32"
+            show-word-limit
+          />
           <div class="field-hint">用于登录，注册后不可修改</div>
         </el-form-item>
 
@@ -22,19 +33,28 @@
         </el-form-item>
 
         <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" placeholder="6-32位，建议包含字母和数字" maxlength="32"
-            show-password />
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="6-32位，建议包含字母和数字"
+            maxlength="32"
+            show-password
+          />
           <div class="field-hint">至少6个字符，建议使用字母+数字组合</div>
         </el-form-item>
 
         <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" maxlength="32" show-password />
+          <el-input
+            v-model="form.confirmPassword"
+            type="password"
+            placeholder="请再次输入密码"
+            maxlength="32"
+            show-password
+          />
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" style="width: 100%">
-            注册
-          </el-button>
+          <el-button type="primary" native-type="submit" :loading="loading" style="width: 100%"> 注册 </el-button>
         </el-form-item>
       </el-form>
       <p class="tip">已有账号？<router-link to="/login">立即登录</router-link></p>

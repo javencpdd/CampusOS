@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -53,6 +54,13 @@ type Manifest struct {
 	Capabilities       []string          `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 	Layout             *AppLayout        `json:"layout,omitempty" yaml:"layout,omitempty"`
 	SurfaceOverrides   []SurfaceOverride `json:"surface_overrides,omitempty" yaml:"surface_overrides,omitempty"`
+	ViewportSupport    *ViewportSupport  `json:"viewport_support,omitempty" yaml:"viewport_support,omitempty"`
+}
+
+type ViewportSupport struct {
+	Desktop          bool   `json:"desktop" yaml:"desktop"`
+	Mobile           bool   `json:"mobile" yaml:"mobile"`
+	MobileBreakpoint string `json:"mobile_breakpoint,omitempty" yaml:"mobile_breakpoint,omitempty"`
 }
 
 type AppLayout struct {
@@ -99,12 +107,13 @@ type FileInfo struct {
 }
 
 type Package struct {
-	Manifest Manifest          `json:"manifest"`
-	HTML     string            `json:"html"`
-	CSS      string            `json:"css,omitempty"`
-	EffectJS string            `json:"effect_js,omitempty"`
-	Files    []FileInfo        `json:"files,omitempty"`
-	RawFiles map[string]string `json:"-"`
+	Manifest     Manifest               `json:"manifest"`
+	HTML         string                 `json:"html"`
+	CSS          string                 `json:"css,omitempty"`
+	EffectJS     string                 `json:"effect_js,omitempty"`
+	ConfigSchema map[string]interface{} `json:"config_schema,omitempty"`
+	Files        []FileInfo             `json:"files,omitempty"`
+	RawFiles     map[string]string      `json:"-"`
 }
 
 type ValidationResult struct {
@@ -361,6 +370,13 @@ func BuildExample(target, name, displayName, title, subtitle, primary, backgroun
 }
 `, background, primary, surface, primary, surface)
 	exampleCSS = scope + " " + strings.ReplaceAll(exampleCSS, "\n.cstyle", "\n"+scope+" .cstyle")
+	exampleCSS += fmt.Sprintf(`
+@media (max-width: 720px) {
+  %s .cstyle-page { padding: 16px; }
+  %s .cstyle-hero { align-items: flex-start; flex-direction: column; }
+  %s .cstyle-grid { grid-template-columns: minmax(0, 1fr); }
+}
+`, scope, scope, scope)
 
 	files := map[string]string{
 		"README.md": fmt.Sprintf(`# %s
@@ -386,6 +402,10 @@ author: CampusOS
 description: Generated example style pack.
 compatible_campusos:
   - ">=0.5.0"
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: "720px"
 entry: templates/page.html
 templates:
   - name: page
@@ -398,6 +418,8 @@ preview_image: preview.png
 config_schema: config.schema.json
 tokens:
   color.primary: %q
+  color.text: "#1f2937"
+  color.muted: "#475569"
   color.background: %q
   color.surface: %q
 assets:
@@ -448,7 +470,10 @@ assets:
     },
     "primary_color": {
       "type": "string",
-      "default": %q
+      "title": "Primary color",
+      "format": "color",
+      "default": %q,
+      "x-campusos-binding": "token.color.primary"
     }
   }
 }
@@ -578,6 +603,9 @@ func buildPackage(files map[string][]byte) (*Package, ValidationResult) {
 		cssParts = append(cssParts, strings.TrimSpace(string(files[cssPath])))
 	}
 	pkg.CSS = strings.TrimSpace(strings.Join(cssParts, "\n\n"))
+	if manifest.ConfigSchema != "" {
+		_ = json.Unmarshal(files[manifest.ConfigSchema], &pkg.ConfigSchema)
+	}
 	if manifest.Effect != nil {
 		pkg.EffectJS = strings.TrimSpace(string(files[manifest.Effect.Entry]))
 	}
@@ -676,7 +704,7 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 		validateImagePath("preview_image", manifest.PreviewImage, files, result)
 	}
 	if manifest.ConfigSchema != "" {
-		validateConfigSchemaPath("config_schema", manifest.ConfigSchema, files, result)
+		validateConfigSchemaPath("config_schema", manifest.ConfigSchema, manifest, files, result)
 	}
 	for i, asset := range manifest.Assets {
 		prefix := fmt.Sprintf("assets[%d]", i)
@@ -690,6 +718,8 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	}
 	validateEffect(manifest.Target, manifest.Effect, files, result)
 	validateCapabilities(manifest, result)
+	validateViewportSupport(manifest, combinedStyles(manifest, files), result)
+	validateTokenContrast(manifest.Tokens, result)
 	for name := range files {
 		if err := validateFilePath(name); err != nil {
 			result.addError("file path: " + err.Error())
@@ -811,7 +841,7 @@ func validateImagePath(field, value string, files map[string][]byte, result *Val
 	}
 }
 
-func validateConfigSchemaPath(field, value string, files map[string][]byte, result *ValidationResult) {
+func validateConfigSchemaPath(field, value string, manifest Manifest, files map[string][]byte, result *ValidationResult) {
 	if err := validateFilePath(value); err != nil {
 		result.addError(field + ": " + err.Error())
 		return
@@ -833,6 +863,250 @@ func validateConfigSchemaPath(field, value string, files map[string][]byte, resu
 	if schemaType, ok := schema["type"].(string); ok && schemaType != "object" {
 		result.addError(field + ` type must be "object"`)
 	}
+	properties, ok := schema["properties"].(map[string]interface{})
+	if !ok {
+		result.addError(field + " properties must be an object")
+		return
+	}
+	if len(properties) > 32 {
+		result.addError(field + " must not contain more than 32 configurable properties")
+	}
+	for key, raw := range properties {
+		property, ok := raw.(map[string]interface{})
+		if !ok {
+			result.addError(field + ".properties." + key + " must be an object")
+			continue
+		}
+		validateConfigProperty(field+".properties."+key, property, manifest, result)
+	}
+	effectiveTokens := copyTokens(manifest.Tokens)
+	for _, raw := range properties {
+		property, _ := raw.(map[string]interface{})
+		binding, _ := property["x-campusos-binding"].(string)
+		defaultValue, ok := property["default"].(string)
+		if ok && strings.HasPrefix(binding, "token.") {
+			effectiveTokens[strings.TrimPrefix(binding, "token.")] = defaultValue
+		}
+	}
+	validateTokenContrast(effectiveTokens, result)
+}
+
+func validateConfigProperty(field string, property map[string]interface{}, manifest Manifest, result *ValidationResult) {
+	propertyType, _ := property["type"].(string)
+	switch propertyType {
+	case "string", "number", "integer", "boolean":
+	default:
+		result.addError(field + " type must be string, number, integer or boolean")
+	}
+	if defaultValue, ok := property["default"]; ok && !validConfigValue(propertyType, defaultValue, property) {
+		result.addError(field + " default does not match its type, range, enum or format")
+	}
+	binding, _ := property["x-campusos-binding"].(string)
+	binding = strings.TrimSpace(binding)
+	if binding == "" {
+		result.addWarning(field + " has no x-campusos-binding and is informational only")
+		return
+	}
+	if strings.HasPrefix(binding, "token.") {
+		key := strings.TrimPrefix(binding, "token.")
+		if _, ok := manifest.Tokens[key]; !ok {
+			result.addError(field + " binds an undeclared token: " + key)
+		}
+		return
+	}
+	if manifest.Layout == nil {
+		result.addError(field + " layout binding requires campusos.app-style-pack.v2")
+		return
+	}
+	switch binding {
+	case "layout.overlay", "layout.background_asset", "layout.page_padding", "layout.content_width":
+	default:
+		result.addError(field + " has unsupported x-campusos-binding: " + binding)
+		return
+	}
+	if binding == "layout.background_asset" {
+		values, ok := property["enum"].([]interface{})
+		if !ok || len(values) == 0 {
+			result.addError(field + " background asset binding requires a non-empty enum")
+			return
+		}
+		allowed := map[string]struct{}{"": {}}
+		if manifest.PreviewImage != "" {
+			allowed[manifest.PreviewImage] = struct{}{}
+		}
+		for _, asset := range manifest.Assets {
+			allowed[asset.Path] = struct{}{}
+		}
+		for _, value := range values {
+			candidate, ok := value.(string)
+			if !ok {
+				result.addError(field + " background asset enum must contain strings")
+				continue
+			}
+			if _, ok := allowed[candidate]; !ok {
+				result.addError(field + " references an undeclared background asset: " + candidate)
+			}
+		}
+	}
+}
+
+func validConfigValue(propertyType string, value interface{}, property map[string]interface{}) bool {
+	if values, ok := property["enum"].([]interface{}); ok && len(values) > 0 {
+		found := false
+		for _, candidate := range values {
+			if fmt.Sprint(candidate) == fmt.Sprint(value) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	switch propertyType {
+	case "string":
+		text, ok := value.(string)
+		if !ok || len(text) > 120 || strings.ContainsAny(text, "{};<>") || regexp.MustCompile(`(?i)url\s*\(|javascript:|data:`).MatchString(text) {
+			return false
+		}
+		if property["format"] == "color" {
+			return regexp.MustCompile(`(?i)^#[0-9a-f]{6}([0-9a-f]{2})?$|^rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+(?:\s*,\s*[\d.]+)?\s*\)$`).MatchString(text)
+		}
+		return true
+	case "number", "integer":
+		number, ok := value.(float64)
+		if !ok || (propertyType == "integer" && number != math.Trunc(number)) {
+			return false
+		}
+		if minimum, ok := property["minimum"].(float64); ok && number < minimum {
+			return false
+		}
+		if maximum, ok := property["maximum"].(float64); ok && number > maximum {
+			return false
+		}
+		return true
+	case "boolean":
+		_, ok := value.(bool)
+		return ok
+	default:
+		return false
+	}
+}
+
+func copyTokens(tokens map[string]string) map[string]string {
+	cloned := make(map[string]string, len(tokens))
+	for key, value := range tokens {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func combinedStyles(manifest Manifest, files map[string][]byte) string {
+	parts := make([]string, 0, len(manifest.Styles))
+	for _, name := range manifest.Styles {
+		parts = append(parts, string(files[name]))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func validateViewportSupport(manifest Manifest, css string, result *ValidationResult) {
+	support := manifest.ViewportSupport
+	if support == nil {
+		message := "viewport_support should declare desktop and mobile support"
+		if manifest.SchemaVersion == AppSchemaVersion {
+			result.addError(message)
+		} else {
+			result.addWarning(message)
+		}
+		return
+	}
+	if !support.Desktop || !support.Mobile {
+		result.addError("viewport_support.desktop and viewport_support.mobile must both be true")
+	}
+	if support.MobileBreakpoint == "" {
+		support.MobileBreakpoint = "720px"
+	}
+	if !regexp.MustCompile(`^[0-9]{2,4}px$`).MatchString(support.MobileBreakpoint) {
+		result.addError("viewport_support.mobile_breakpoint must be a pixel value such as 720px")
+	}
+	responsiveRule := regexp.MustCompile(`(?is)@media\s*\([^)]*(max-width|min-width)[^)]*\)`)
+	if support.Mobile && !responsiveRule.MatchString(css) {
+		result.addError("mobile viewport support requires a responsive @media width rule")
+	}
+}
+
+func validateTokenContrast(tokens map[string]string, result *ValidationResult) {
+	text := firstToken(tokens, "text_color", "color.text")
+	if text == "" {
+		return
+	}
+	for _, pair := range []struct {
+		name  string
+		color string
+	}{
+		{name: "page background", color: firstToken(tokens, "page_background", "color.background")},
+		{name: "surface background", color: firstToken(tokens, "surface_background", "color.surface")},
+	} {
+		if pair.color == "" {
+			continue
+		}
+		ratio, ok := contrastRatio(text, pair.color)
+		if ok && ratio < 4.5 {
+			result.addError(fmt.Sprintf("text color contrast against %s is %.2f:1; at least 4.5:1 is required", pair.name, ratio))
+		}
+	}
+}
+
+func firstToken(tokens map[string]string, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(tokens[key]); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func contrastRatio(foreground, background string) (float64, bool) {
+	fg, ok := parseHexColor(foreground)
+	if !ok {
+		return 0, false
+	}
+	bg, ok := parseHexColor(background)
+	if !ok {
+		return 0, false
+	}
+	l1, l2 := relativeLuminance(fg), relativeLuminance(bg)
+	if l1 < l2 {
+		l1, l2 = l2, l1
+	}
+	return (l1 + 0.05) / (l2 + 0.05), true
+}
+
+func parseHexColor(value string) ([3]float64, bool) {
+	var rgb [3]float64
+	value = strings.TrimPrefix(strings.TrimSpace(value), "#")
+	if len(value) != 6 {
+		return rgb, false
+	}
+	var raw [3]uint8
+	if _, err := fmt.Sscanf(value, "%02x%02x%02x", &raw[0], &raw[1], &raw[2]); err != nil {
+		return rgb, false
+	}
+	for i := range raw {
+		rgb[i] = float64(raw[i]) / 255
+	}
+	return rgb, true
+}
+
+func relativeLuminance(rgb [3]float64) float64 {
+	for i, channel := range rgb {
+		if channel <= 0.04045 {
+			rgb[i] = channel / 12.92
+		} else {
+			rgb[i] = math.Pow((channel+0.055)/1.055, 2.4)
+		}
+	}
+	return 0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2]
 }
 
 func validateEffect(target string, effect *Effect, files map[string][]byte, result *ValidationResult) {

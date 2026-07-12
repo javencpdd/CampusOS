@@ -1,6 +1,6 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-07-11
+> Snapshot date: 2026-07-12
 > Repository: `/home/jack/bbs/bbs01/CampusOS`
 > Primary branch in recent work: `djw-update`
 
@@ -16,7 +16,7 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; the active baseline is now `v0.6.9-dev`. It includes category-scoped moderation, generated route/OpenAPI authorization and core field contracts, compatible structured errors, database integrity checks, Host API v1 identity and permissions, Go SDK/CLI/templates, plugin snapshots/rollback, an independent docs frontend, and a repeatable browser/release/recovery gate.
+Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; the active baseline is now `v0.6.24-dev`, and the in-scope v6 plan is complete. It includes category-scoped moderation, generated route/OpenAPI authorization and core field contracts, three-axis plugin lifecycle, Extension Gateway dispatch, `campusos.ui/v1` dynamic frontend registration, full-screen and user-configurable `campusos.app-style-pack.v2`, Host API/SDK/CLI/templates, plugin snapshots/rollback, an independent docs frontend, and a repeatable browser/release/recovery gate.
 
 The next recommended work mode is defect fixing, smoke-driven regression, and the v6 plan. Do not present v0.6 work packages other than recorded completed work as already implemented.
 
@@ -28,7 +28,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | Admin frontend `admin/` | Users, threads/private status filters, richtext article governance, categories/default tags, system/user plugin lifecycle, config/import/export/logs/risk precheck, external official-docs/GitHub resource links, migration-synchronized data architecture visualization, events, platform logs, AI, integration center, Webhook, MCP tools, Message local test |
 | Official docs frontend `docs-site/` | Independent VitePress site for project introduction, development deployment, configuration, release boundaries, current HTTP API, plugin creation, manifest, package import, lifecycle, and data layout |
 | Backend API | Go + Gin + pgx APIs for auth, RBAC, category-scoped moderation, community, private-thread visibility, controlled richtext articles, spaces, personal schedule, plugins, AI, Webhook, MCP-like tools, Message, platform logs, metrics |
-| Database | PostgreSQL migrations `000001` through `000017`; migration state recorded in `schema_migrations`; `make database-check` validates data and the core schema contract |
+| Database | PostgreSQL migrations `000001` through `000018`; migration state recorded in `schema_migrations`; `make database-check` validates data and the core schema contract |
 | RBAC role management | `member` is implicit, `guest` is anonymous-only, global extra roles are idempotent, and moderator grants are category-only with server-side scope checks |
 | Category moderation | Built-in system plugin, admin assignment/config page, per-user multi-category scopes, user-side pin/lock/delete-reply controls, audit, cross-category denial, restart-based plugin lifecycle, and hot-updated action switches |
 | Docker services | PostgreSQL, Redis, NATS, pgAdmin through Docker Compose |
@@ -57,7 +57,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | v0.3-dev | Wasm runtime, Host API permission checks, plugin logs, SDK/CLI early version, plugin packaging rules, engineering stabilization |
 | v0.4-dev | AI Gateway, plugin import/export, personal spaces, style packages, and UI/database/login migration fixes |
 | v0.5-dev | Integration center, personal space operations, per-user personal-space file storage/plugin gate, personal schedule plugin with term/calendar browsing, richtext images in personal space, safe HTML/CSS snippets, page style-pack folder/zip standard, homepage customizer/rollback, controlled richtext article plugin/admin governance, ordinary plain-thread edit/delete/private visibility, category default tags, platform logs, system/user plugin lifecycle, plugin governance/config/risk precheck, Webhook, MCP-like read-only tools, Message local adapter, smoke scripts, metrics, backup docs |
-| v0.6-dev | P0/P1 development baseline complete through v0.6.9: permission repair, scoped moderation, HTTP/Host contracts, core database integrity, plugin SDK/CLI/templates, docs, supply-chain rollback, recovery and browser acceptance. Standard external MCP/Message adapters and production HA remain deferred. |
+| v0.6-dev | Complete through v0.6.24: P0/P1 contracts, permission/database integrity, SDK/tooling/recovery plus the P0-Highest lifecycle, Extension Gateway, dynamic UI runtime, v2 style packs and unified release gates. Standard external MCP/Message adapters and production HA were explicitly deferred. |
 
 ## 4. Current Migrations
 
@@ -80,6 +80,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | `000015` | `category_moderation_scope` | Remove legacy global moderator grants, enforce scope shape, and add thread lock permission |
 | `000016` | `v06_core_integrity` | Add first validated core foreign keys, status/counter checks, and lifecycle indexes |
 | `000017` | `v06_admin_permission_split` | Replace unrelated `role:manage` checks with explicit admin-domain permissions |
+| `000018` | `plugin_ui_runtime` | Persist plugin backend/frontend/health states and UI revision |
 
 ## 5. Important Directories
 
@@ -113,7 +114,7 @@ The next recommended work mode is defect fixing, smoke-driven regression, and th
 | `data/` | Default local data root for plugins, plugin data, images, dist, config, and local skills |
 | `data/personal-space/<user_id>/` | Local user data root; `file/`, `img/`, `excel/`, `word/`, and `pdf/` classify stored data by purpose or extension; richtext images use `img/richtext/` |
 | `data/plugins/` | Installed and built-in plugins |
-| `data/plugins/personal-space/styles/` | Built-in personal space style packages |
+| `data/plugin_data/personal-space/styles/` | Built-in personal space JSON style data |
 | `data/plugin_data/personal-space/style-packs/` | Personal-space source packages (`clean-blog`, advanced `kinetic-journal`) |
 | `data/plugin_data/homepage-customizer/style-packs/` | Built-in/source-folder homepage page style packs (`campus-hero`) |
 | `data/plugin_data/web-theme/style-packs/` | Administrator-provided full user-Web themes (`campus-canvas`) |

@@ -1,7 +1,7 @@
 # CampusOS 风格包能力边界与 CampusStyleSDK 说明
 
-> 适用基线：`v0.6.4-dev`
-> 更新时间：2026-07-11
+> 适用基线：`v0.6.23-dev`
+> 更新时间：2026-07-12
 
 ## 1. 为什么先定义边界
 
@@ -28,6 +28,8 @@ data/plugin_data/web-theme/style-packs/<theme>/
 ```
 
 用户只能选择目录中筛查通过的包，不能从用户端安装系统主题。选择按用户 ID 保存在浏览器本地，切换立即生效。`web-theme` 插件本身的启停属于系统插件生命周期，重启 API 后才生效。
+
+插件实现与风格数据必须分离：`data/plugins/<plugin>/` 只负责插件 manifest、切换、导入、导出和运行逻辑；风格包目录、JSON 风格、模板、图片、CSS、预览、特效和配置 schema 统一保存到 `data/plugin_data/<plugin>/`。例如旧个人主页 JSON 风格也位于 `data/plugin_data/personal-space/styles/`。
 
 管理员当前有两种供给方式：
 
@@ -160,3 +162,4 @@ data/plugin_data/personal-space/style-packs/kinetic-journal/
 5. SDK 能力属于目标允许列表。
 6. 私有能力得到当前用户授权且运行时对象归属检查通过。
 7. 桌面和移动端布局、减少动态效果模式、切换和回退均可用。
+8. `viewport_support` 声明、响应式 CSS 和文字/背景 token 对比度检查通过。

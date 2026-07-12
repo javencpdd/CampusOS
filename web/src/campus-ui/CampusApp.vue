@@ -11,7 +11,7 @@
           <router-link to="/" class="brand logo"><h2>CampusOS</h2></router-link>
           <div class="header-actions">
             <router-link to="/threads"><el-button text>帖子</el-button></router-link>
-            <router-link v-for="item in runtimeStore.navigation" :key="`${item.plugin}:${item.id}`" :to="item.path"
+            <router-link v-for="item in headerNavigation" :key="`${item.plugin}:${item.id}`" :to="item.path"
               ><el-button text>{{ item.label }}</el-button></router-link
             >
             <router-link v-if="userStore.isLoggedIn" to="/threads/create"
@@ -26,9 +26,12 @@
               }}</el-avatar>
               <template #dropdown
                 ><el-dropdown-menu>
-                  <el-dropdown-item @click="goSpaceSettings">主页设置</el-dropdown-item>
-                  <el-dropdown-item @click="goSchedule">个人课表</el-dropdown-item>
-                  <el-dropdown-item @click="goAppearance">界面风格</el-dropdown-item>
+                  <el-dropdown-item
+                    v-for="item in userNavigation"
+                    :key="`${item.plugin}:${item.id}`"
+                    @click="router.push(item.path)"
+                    >{{ item.label }}</el-dropdown-item
+                  >
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu></template
@@ -111,6 +114,13 @@ const displayAvatar = computed(() => userStore.user?.avatar || '')
 const avatarInitial = computed(() =>
   (userStore.user?.nickname || userStore.user?.username || 'U').slice(0, 1).toUpperCase(),
 )
+const visibleNavigation = computed(() =>
+  runtimeStore.navigation.filter((item) => !item.requiresAuth || userStore.isLoggedIn),
+)
+const headerNavigation = computed(() =>
+  visibleNavigation.value.filter((item) => !item.location || item.location === 'header'),
+)
+const userNavigation = computed(() => visibleNavigation.value.filter((item) => item.location === 'user-menu'))
 const slotSurfaces = (name: string) =>
   (runtimeStore.slots.get(name) || []).filter((surface) => surface.renderer === 'schema' && surface.schema)
 
@@ -124,10 +134,7 @@ const syncSpaceAvatar = async () => {
     /* non-critical header data */
   }
 }
-const goSpaceSettings = () => router.push('/space/settings')
 const goPublicSpace = () => router.push(publicSpacePath.value)
-const goSchedule = () => router.push('/schedule')
-const goAppearance = () => router.push('/appearance')
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')

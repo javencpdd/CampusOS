@@ -1,7 +1,7 @@
 import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"前端运行时与 Extension Gateway","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/frontend-runtime.md","filePath":"plugins/frontend-runtime.md","lastUpdated":null}');
+const __pageData = JSON.parse('{"title":"前端运行时与 Extension Gateway","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/frontend-runtime.md","filePath":"plugins/frontend-runtime.md","lastUpdated":1783793126000}');
 const _sfc_main = { name: "plugins/frontend-runtime.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="前端运行时与-extension-gateway" tabindex="-1">前端运行时与 Extension Gateway <a class="header-anchor" href="#前端运行时与-extension-gateway" aria-label="Permalink to &quot;前端运行时与 Extension Gateway&quot;">​</a></h1><p>插件在 <code>plugin.yaml</code> 的 <code>ui</code> 中声明 Route、Navigation、Slot、Surface 和 Action。Core 返回当前用户可见的 Runtime Manifest，Web 收到 SSE revision 后原子重建注册项。</p><div class="language-http vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">http</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="${ssrRenderStyle({ "--shiki-light": "#D73A49", "--shiki-dark": "#F97583" })}">GET</span><span style="${ssrRenderStyle({ "--shiki-light": "#24292E", "--shiki-dark": "#E1E4E8" })}"> /api/v1/ui/runtime-manifest</span></span>

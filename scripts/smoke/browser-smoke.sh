@@ -42,3 +42,14 @@ if [[ "${RUN_BROWSER_WORKFLOW:-true}" == "true" ]]; then
       node tests/browser-workflow.mjs
   )
 fi
+
+if [[ "${RUN_STYLE_PACK_SMOKE:-true}" == "true" ]]; then
+  echo "running style-pack desktop/mobile workflow"
+  (
+    cd web
+    CHROME_BIN="$CHROME_BIN" \
+      WEB_URL="${WEB_URL:-http://localhost:3000}" \
+      STYLE_PACK_SCREENSHOT_DIR="${STYLE_PACK_SCREENSHOT_DIR:-$work_dir/style-pack}" \
+      node tests/style-pack-responsive.mjs
+  )
+fi

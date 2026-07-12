@@ -18,10 +18,9 @@ import { computed } from 'vue'
 import { useWebThemeStore } from '@/stores/webTheme'
 
 const themeStore = useWebThemeStore()
-const manifest = computed(() => themeStore.activePackage?.manifest as any)
-const layout = computed(() => manifest.value?.layout || { mode: 'contained' })
+const layout = computed(() => themeStore.effectiveLayout || { mode: 'contained' })
 const rootStyle = computed(() => {
-  const tokens = manifest.value?.tokens || {}
+  const tokens = themeStore.effectiveTokens || {}
   const styles: Record<string, string> = Object.fromEntries(
     Object.entries(tokens).map(([key, value]) => [`--campus-${key.replace(/[._]/g, '-')}`, String(value)]),
   )

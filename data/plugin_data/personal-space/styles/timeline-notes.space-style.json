@@ -36,6 +36,8 @@
     ],
     "tokens": {
       "color.primary": "#4f46e5",
+      "color.text": "#29264d",
+      "color.muted": "#625f7d",
       "color.background": "#f5f3ff",
       "color.surface": "#ffffff",
       "font.body": "system-ui",

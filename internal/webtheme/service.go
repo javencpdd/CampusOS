@@ -43,10 +43,11 @@ type CatalogItem struct {
 }
 
 type RuntimePackage struct {
-	Manifest stylepack.Manifest `json:"manifest"`
-	HTML     string             `json:"html,omitempty"`
-	CSS      string             `json:"css,omitempty"`
-	EffectJS string             `json:"effect_js,omitempty"`
+	Manifest     stylepack.Manifest     `json:"manifest"`
+	HTML         string                 `json:"html,omitempty"`
+	CSS          string                 `json:"css,omitempty"`
+	EffectJS     string                 `json:"effect_js,omitempty"`
+	ConfigSchema map[string]interface{} `json:"config_schema,omitempty"`
 }
 
 func NewService(plugins PluginLookup) *Service {
@@ -101,10 +102,11 @@ func (s *Service) Package(name string) (*RuntimePackage, error) {
 		return nil, err
 	}
 	return &RuntimePackage{
-		Manifest: pack.Manifest,
-		HTML:     pack.HTML,
-		CSS:      pack.CSS,
-		EffectJS: pack.EffectJS,
+		Manifest:     pack.Manifest,
+		HTML:         pack.HTML,
+		CSS:          pack.CSS,
+		EffectJS:     pack.EffectJS,
+		ConfigSchema: pack.ConfigSchema,
 	}, nil
 }
 

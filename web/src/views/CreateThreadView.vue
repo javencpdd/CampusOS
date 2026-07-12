@@ -4,20 +4,28 @@
       <template #header>
         <div class="editor-header">
           <h2>{{ editorTitle }}</h2>
-          <el-segmented
-            v-if="richTextEnabled && !isEditMode"
-            v-model="templateMode"
-            :options="templateOptions"
-          />
+          <el-segmented v-if="richTextEnabled && !isEditMode" v-model="templateMode" :options="templateOptions" />
         </div>
       </template>
 
-      <el-form v-if="templateMode === 'plain_text'" :model="plainForm" @submit.prevent="submitPlain" label-position="top">
+      <el-form
+        v-if="templateMode === 'plain_text'"
+        :model="plainForm"
+        @submit.prevent="submitPlain"
+        label-position="top"
+      >
         <el-form-item label="标题" required>
           <el-input v-model="plainForm.title" placeholder="请输入帖子标题" maxlength="255" show-word-limit />
         </el-form-item>
         <el-form-item label="版块" required>
-          <el-select v-model="plainForm.category_id" :loading="categoryLoading" filterable :disabled="isEditMode" placeholder="请选择版块" class="field-full">
+          <el-select
+            v-model="plainForm.category_id"
+            :loading="categoryLoading"
+            filterable
+            :disabled="isEditMode"
+            placeholder="请选择版块"
+            class="field-full"
+          >
             <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
           </el-select>
         </el-form-item>
@@ -25,19 +33,24 @@
           <el-input v-model="plainForm.content" type="textarea" :rows="10" placeholder="请输入帖子内容" />
         </el-form-item>
         <el-form-item label="标签">
-          <el-select v-model="plainForm.tags" multiple filterable allow-create placeholder="输入标签后回车" class="field-full">
+          <el-select
+            v-model="plainForm.tags"
+            multiple
+            filterable
+            allow-create
+            placeholder="输入标签后回车"
+            class="field-full"
+          >
             <el-option v-for="tag in currentPlainCategory?.default_tags || []" :key="tag" :label="tag" :value="tag" />
           </el-select>
         </el-form-item>
         <el-form-item label="可见性">
-          <el-switch
-            v-model="plainForm.is_private"
-            active-text="私密，仅自己可见"
-            inactive-text="公开发布"
-          />
+          <el-switch v-model="plainForm.is_private" active-text="私密，仅自己可见" inactive-text="公开发布" />
         </el-form-item>
         <div class="editor-actions">
-          <el-button type="primary" @click="submitPlain" :loading="loading">{{ isEditMode ? '保存修改' : '发布帖子' }}</el-button>
+          <el-button type="primary" @click="submitPlain" :loading="loading">{{
+            isEditMode ? '保存修改' : '发布帖子'
+          }}</el-button>
           <el-button @click="$router.back()">取消</el-button>
         </div>
       </el-form>
@@ -49,26 +62,64 @@
         <el-row :gutter="14">
           <el-col :xs="24" :md="12">
             <el-form-item label="版块" required>
-              <el-select v-model="articleForm.category_id" :loading="categoryLoading" filterable :disabled="isEditMode" placeholder="请选择版块" class="field-full">
-                <el-option v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
+              <el-select
+                v-model="articleForm.category_id"
+                :loading="categoryLoading"
+                filterable
+                :disabled="isEditMode"
+                placeholder="请选择版块"
+                class="field-full"
+              >
+                <el-option
+                  v-for="category in categories"
+                  :key="category.id"
+                  :label="category.name"
+                  :value="category.id"
+                />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :xs="24" :md="12">
             <el-form-item label="标签">
-              <el-select v-model="articleForm.tags" multiple filterable allow-create :disabled="isEditMode" placeholder="输入标签后回车" class="field-full">
-                <el-option v-for="tag in currentArticleCategory?.default_tags || []" :key="tag" :label="tag" :value="tag" />
+              <el-select
+                v-model="articleForm.tags"
+                multiple
+                filterable
+                allow-create
+                :disabled="isEditMode"
+                placeholder="输入标签后回车"
+                class="field-full"
+              >
+                <el-option
+                  v-for="tag in currentArticleCategory?.default_tags || []"
+                  :key="tag"
+                  :label="tag"
+                  :value="tag"
+                />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="摘要">
-          <el-input v-model="articleForm.summary" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="用于列表和详情页的文章摘要" />
+          <el-input
+            v-model="articleForm.summary"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="用于列表和详情页的文章摘要"
+          />
         </el-form-item>
         <el-form-item label="封面图">
           <div class="cover-row">
             <el-input v-model="articleForm.cover_url" placeholder="https://example.com/cover.jpg 或上传站内图片" />
-            <input ref="coverInput" class="hidden-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" @change="uploadCover" />
+            <input
+              ref="coverInput"
+              class="hidden-input"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              @change="uploadCover"
+            />
             <el-button @click="chooseCover" :loading="assetUploading">上传封面</el-button>
           </div>
         </el-form-item>
@@ -77,7 +128,13 @@
             <el-button size="small" @click="insertSnippet('<h2>小标题</h2>')">H2</el-button>
             <el-button size="small" @click="insertSnippet('<p>段落内容</p>')">段落</el-button>
             <el-button size="small" @click="insertSnippet('<blockquote>引用内容</blockquote>')">引用</el-button>
-            <input ref="bodyImageInput" class="hidden-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" @change="uploadBodyImage" />
+            <input
+              ref="bodyImageInput"
+              class="hidden-input"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              @change="uploadBodyImage"
+            />
             <el-button size="small" @click="chooseBodyImage" :loading="assetUploading">插入图片</el-button>
           </div>
           <el-input
@@ -165,7 +222,9 @@ const articleForm = reactive({
 })
 
 const currentPlainCategory = computed(() => categories.value.find((category) => category.id === plainForm.category_id))
-const currentArticleCategory = computed(() => categories.value.find((category) => category.id === articleForm.category_id))
+const currentArticleCategory = computed(() =>
+  categories.value.find((category) => category.id === articleForm.category_id),
+)
 
 const unwrap = (res: any) => res?.data || res
 
@@ -246,11 +305,11 @@ const submitPlain = async () => {
     }
     const res: any = isEditMode.value
       ? await threadApi.update(String(route.params.id), {
-        title: payload.title,
-        content: payload.content,
-        tags: payload.tags,
-        status: plainForm.is_private ? 'private' : 'published',
-      })
+          title: payload.title,
+          content: payload.content,
+          tags: payload.tags,
+          status: plainForm.is_private ? 'private' : 'published',
+        })
       : await threadApi.create(payload)
     if (res.code === 0) {
       ElMessage.success(isEditMode.value ? '修改已保存' : '发布成功')
@@ -300,7 +359,7 @@ const saveDraft = async () => {
 }
 
 const publishArticle = async () => {
-  const threadId = draftThreadId.value || await saveDraft()
+  const threadId = draftThreadId.value || (await saveDraft())
   if (!threadId) return
   publishing.value = true
   try {
@@ -342,7 +401,10 @@ const uploadCover = async (event: Event) => {
 const uploadBodyImage = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const asset = await uploadSelectedAsset(input)
-  if (asset?.file_url) insertSnippet(`<figure><img src="${asset.file_url}" alt="${asset.file_name || 'image'}" loading="lazy"><figcaption>图片说明</figcaption></figure>`)
+  if (asset?.file_url)
+    insertSnippet(
+      `<figure><img src="${asset.file_url}" alt="${asset.file_name || 'image'}" loading="lazy"><figcaption>图片说明</figcaption></figure>`,
+    )
 }
 
 const uploadSelectedAsset = async (input: HTMLInputElement) => {
@@ -371,7 +433,9 @@ const insertSnippet = (snippet: string) => {
 
 const applyPlainDefaultTags = () => {
   if (isEditMode.value) return
-  const custom = plainForm.tags.filter((tag) => !plainDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()))
+  const custom = plainForm.tags.filter(
+    (tag) => !plainDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()),
+  )
   const defaults = currentPlainCategory.value?.default_tags || []
   plainForm.tags = mergeTags(defaults, custom)
   plainDefaults.value = [...defaults]
@@ -379,7 +443,9 @@ const applyPlainDefaultTags = () => {
 
 const applyArticleDefaultTags = () => {
   if (isEditMode.value) return
-  const custom = articleForm.tags.filter((tag) => !articleDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()))
+  const custom = articleForm.tags.filter(
+    (tag) => !articleDefaults.value.map((item) => item.toLowerCase()).includes(tag.toLowerCase()),
+  )
   const defaults = currentArticleCategory.value?.default_tags || []
   articleForm.tags = mergeTags(defaults, custom)
   articleDefaults.value = [...defaults]
@@ -403,16 +469,24 @@ const mergeTags = (...groups: string[][]) => {
 
 watch(() => plainForm.category_id, applyPlainDefaultTags)
 watch(() => articleForm.category_id, applyArticleDefaultTags)
-watch(plainForm, () => {
-  if (!initializingPlain.value && templateMode.value === 'plain_text') {
-    plainDirty.value = true
-  }
-}, { deep: true })
-watch(articleForm, () => {
-  if (!initializingArticle.value && templateMode.value === 'richtext') {
-    articleDirty.value = true
-  }
-}, { deep: true })
+watch(
+  plainForm,
+  () => {
+    if (!initializingPlain.value && templateMode.value === 'plain_text') {
+      plainDirty.value = true
+    }
+  },
+  { deep: true },
+)
+watch(
+  articleForm,
+  () => {
+    if (!initializingArticle.value && templateMode.value === 'richtext') {
+      articleDirty.value = true
+    }
+  },
+  { deep: true },
+)
 
 const hasUnsavedChanges = () => {
   if (allowLeave.value) return false

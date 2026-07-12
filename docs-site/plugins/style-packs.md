@@ -17,9 +17,13 @@ layout:
   scroll_mode: page
   background_asset: assets/campus.png
   animation_preset: reveal
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 ```
 
-背景资源必须在 `assets` 中声明。CSS 仍必须以 `.app-container[data-campusos-web]` 为根，不能使用任意全局 CSS 或同源 JavaScript。风格包可以排列插件 Surface，但不能修改 Action 的 API、权限、Method、参数、确认和审计。
+背景资源必须在 `assets` 中声明。CSS 仍必须以 `.app-container[data-campusos-web]` 为根，不能使用任意全局 CSS 或同源 JavaScript。v2 包必须同时声明 PC/移动端支持并提供响应式宽度媒体查询。风格包可以排列插件 Surface，但不能修改 Action 的 API、权限、Method、参数、确认和审计。
 
 ## 作用范围
 
@@ -37,7 +41,7 @@ layout:
 data/plugin_data/web-theme/style-packs/<theme>/
 ```
 
-用户只能从管理员提供且筛查通过的目录中选择，不能从用户端安装系统主题。
+用户只能从管理员提供且筛查通过的目录中选择，不能从用户端安装系统主题。`data/plugins/<plugin>/` 只保存插件 manifest 和切换、导入、导出实现；图片、模板、CSS、预览和 schema 等风格数据全部放在 `data/plugin_data/<plugin>/`。
 
 管理员可以直接维护该目录，也可以把下载的系统主题提供插件按部署包拆分到 `data/plugins/` 和对应 `data/plugin_data/` 后重启 API。当前在线插件导入只支持可热更新的用户级插件，不会绕过系统插件的重启和代码审查边界。
 
@@ -62,6 +66,12 @@ config.schema.json
 ```
 
 `effects/` 是可选目录。TypeScript 仅作为开发源码，运行前必须编译为 `main.js`。
+
+## 用户可配置参数
+
+`config.schema.json` 可通过 `x-campusos-binding` 将控件绑定到已声明 token，或绑定到 `layout.background_asset`、`layout.overlay`、`layout.page_padding`、`layout.content_width`。用户在 `/appearance` 打开当前主题的“个性设置”，可以调整文字色、背景图、遮罩和间距；参数按用户与主题保存在本机，不会修改源包。
+
+系统会拒绝 schema 引用未声明的 token 或图片资源。若 manifest 同时声明文字色和页面/卡片背景色，后端要求常规文字对比度至少为 4.5:1；用户端修改颜色时也会再次检查。图片背景应提供遮罩和高不透明内容表面，避免文字直接落在复杂图片上。
 
 ## 沙箱特效
 
