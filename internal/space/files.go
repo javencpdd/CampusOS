@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 )
 
 const (
@@ -24,11 +26,11 @@ const (
 )
 
 const (
-	PersonalSpaceFileDir  = "file"
-	PersonalSpaceImageDir = "img"
-	PersonalSpaceExcelDir = "excel"
-	PersonalSpaceWordDir  = "word"
-	PersonalSpacePDFDir   = "pdf"
+	PersonalSpaceFileDir  = corestorage.FileDir
+	PersonalSpaceImageDir = corestorage.ImageDir
+	PersonalSpaceExcelDir = corestorage.ExcelDir
+	PersonalSpaceWordDir  = corestorage.WordDir
+	PersonalSpacePDFDir   = corestorage.PDFDir
 )
 
 var (
@@ -149,76 +151,34 @@ func (cfg FileStorageConfig) withDefaults() FileStorageConfig {
 // NormalizePersonalSpaceFileRoot moves the former default root to the current
 // data/personal-space root while leaving an explicitly configured custom root intact.
 func NormalizePersonalSpaceFileRoot(root string) string {
-	if sameStoragePath(root, legacySpaceFileRoot) {
-		return defaultSpaceFileRoot
-	}
-	return root
+	return corestorage.NormalizeRoot(root)
 }
 
 // PersonalSpaceUserDir returns the root directory reserved for one user's data.
 func PersonalSpaceUserDir(rootDir, userID string) (string, error) {
-	if err := validateStorageSegment(userID); err != nil {
-		return "", err
-	}
-	root, err := filepath.Abs(filepath.Clean(NormalizePersonalSpaceFileRoot(rootDir)))
+	path, err := corestorage.UserDir(rootDir, userID)
 	if err != nil {
-		return "", err
+		return "", errors.Join(ErrSpaceFileInvalidName, err)
 	}
-	target := filepath.Join(root, userID)
-	targetAbs, err := filepath.Abs(filepath.Clean(target))
-	if err != nil {
-		return "", err
-	}
-	if targetAbs != root && !strings.HasPrefix(targetAbs, root+string(os.PathSeparator)) {
-		return "", ErrSpaceFileInvalidName
-	}
-	return targetAbs, nil
+	return path, nil
 }
 
 // PersonalSpacePath builds a checked path below one user's personal-space root.
 func PersonalSpacePath(rootDir, userID string, parts ...string) (string, error) {
-	userDir, err := PersonalSpaceUserDir(rootDir, userID)
+	path, err := corestorage.UserPath(rootDir, userID, parts...)
 	if err != nil {
-		return "", err
-	}
-	for _, part := range parts {
-		if err := validateStorageSegment(part); err != nil {
-			return "", err
-		}
-		userDir = filepath.Join(userDir, part)
-	}
-	path, err := filepath.Abs(filepath.Clean(userDir))
-	if err != nil {
-		return "", err
-	}
-	base, err := PersonalSpaceUserDir(rootDir, userID)
-	if err != nil {
-		return "", err
-	}
-	if path != base && !strings.HasPrefix(path, base+string(os.PathSeparator)) {
-		return "", ErrSpaceFileInvalidName
+		return "", errors.Join(ErrSpaceFileInvalidName, err)
 	}
 	return path, nil
 }
 
 // EnsurePersonalSpaceLayout creates the standard directories for one user.
 func EnsurePersonalSpaceLayout(rootDir, userID string) (string, error) {
-	userDir, err := PersonalSpaceUserDir(rootDir, userID)
+	storage, err := corestorage.NewLocalAdapter(rootDir)
 	if err != nil {
 		return "", err
 	}
-	for _, category := range []string{
-		PersonalSpaceFileDir,
-		PersonalSpaceImageDir,
-		PersonalSpaceExcelDir,
-		PersonalSpaceWordDir,
-		PersonalSpacePDFDir,
-	} {
-		if err := os.MkdirAll(filepath.Join(userDir, category), 0o755); err != nil {
-			return "", err
-		}
-	}
-	return userDir, nil
+	return storage.EnsureLayout(userID)
 }
 
 // FileCategoryForName assigns ordinary uploaded files to a stable user directory.

@@ -16,9 +16,9 @@ community core
   + low-risk integrations: Webhook, MCP-like read-only tools, Message local adapter
 ```
 
-Current README and progress docs state that v0.5 completed through `docs/进度/v0.5-dev/v0.5.36-dev.md`; v6 is complete, and the active development baseline is `v0.7.2-dev`. The v7 modular-monolith migration has completed the revised plan, frozen the `v0.6.26-dev` compatibility baseline, and accepted the Module Kernel with optional lifecycle interfaces. EventBus and Plugin Platform initialization use dependency-ordered lifecycle management while existing APIs and plugin contracts remain compatible.
+Current README and progress docs state that v0.5 and v6 are complete, and the active stable development baseline is `v0.7.0`. The v7 modular-monolith migration completed A0 through Final and a post-completion audit at `v0.7.18-dev`: optional Module lifecycle, Database-aware Bootstrap, wired module Ports, Moderation/User Storage Core, static Built-in Feature gates, hardened Resource Repository, Appearance Facade, state-owning Plugin Platform subservices, and Agent/Secret security contracts.
 
-The next planned stage is A2a infrastructure Bootstrap extraction. Follow `docs/项目计划v7/00-v7版本计划书.md`; do not present partially implemented A2a or later stages as accepted without the required v0.7 progress evidence.
+The next work should be defect-driven maintenance or a separately reviewed v8 plan. Do not expand Agent execution or remove v0.7 compatibility adapters without a threat model, migration evidence, and rollback plan.
 
 ## 2. Implemented Areas
 

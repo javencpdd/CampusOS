@@ -1,6 +1,6 @@
 # CampusOS HTTP 路由与授权矩阵 v0.6
 
-> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/server/server.go` 生成，请勿手工编辑。
+> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/server/application.go` 生成，请勿手工编辑。
 
 当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。
 

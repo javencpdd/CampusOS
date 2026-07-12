@@ -93,6 +93,9 @@ jobs:
       - name: Check current documentation links
         run: make docs-links
 
+      - name: Check modular architecture boundaries
+        run: make architecture-check
+
       - name: Build Go server
         run: go build -o bin/campusos-server ./cmd/server/main.go
 

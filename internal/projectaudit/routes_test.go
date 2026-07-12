@@ -13,7 +13,7 @@ func TestServerRoutesHaveAuthorizationContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/server.go"))
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/application.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestOpenAPIIsValidYAMLWithCoreFieldContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/server.go"))
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/application.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

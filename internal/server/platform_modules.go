@@ -7,6 +7,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/appearance"
+
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
 	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
@@ -21,6 +24,17 @@ const (
 	modulePluginPlatform = "core.plugin-platform"
 	portPluginManager    = "plugin.manager"
 )
+
+type coreBoundaryModule struct {
+	id           string
+	dependencies []string
+}
+
+func (m coreBoundaryModule) ID() string             { return m.id }
+func (m coreBoundaryModule) Dependencies() []string { return append([]string(nil), m.dependencies...) }
+func (m coreBoundaryModule) Register(app *platformmodule.AppContext) error {
+	return app.Provide("module.boundary."+m.id, m)
+}
 
 type eventBusModule struct {
 	cfg      *config.Config
@@ -105,6 +119,18 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	builtinRuntime.RegisterExtension("campus-welcome", campusWelcomeExtension)
 	m.manager.RegisterRuntime("builtin", builtinRuntime)
 	m.owner.manager = m.manager
+	m.owner.features = platformfeature.NewRegistry(m.manager.IsPluginRunning)
+	m.owner.appearance = appearance.NewCompatibilityFacade()
+	for _, def := range []platformfeature.Definition{
+		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
+		{ID: "controlled-richtext-article", Mode: platformfeature.Restart, Dependencies: []string{"core.community", "core.user-storage"}, LegacyPlugin: "controlled-richtext-article"},
+		{ID: "personal-schedule", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-schedule"},
+		{ID: "appearance", Mode: platformfeature.HotGated, LegacyPlugin: "web-theme"},
+	} {
+		if err := m.owner.features.Register(def); err != nil {
+			return err
+		}
+	}
 	return app.Provide(portPluginManager, m.manager)
 }
 

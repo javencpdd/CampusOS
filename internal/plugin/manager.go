@@ -16,36 +16,48 @@ import (
 
 // Manager 插件管理器
 type Manager struct {
-	mu          sync.RWMutex
-	plugins     map[string]*Plugin  // name -> plugin
-	runtimes    map[string]Runtime  // runtime type -> runtime impl
-	registry    map[string][]string // event type -> plugin names
-	repo        PluginRepository    // 可选：插件持久化仓储
-	logRepo     PluginLogRepository // 可选：插件运行日志仓储
-	uiRevision  uint64
-	uiListeners map[chan uint64]struct{}
+	mu        sync.RWMutex
+	runtimes  *RuntimeRegistry
+	repo      PluginRepository // 可选：插件持久化仓储
+	catalog   *PluginCatalog
+	lifecycle *LifecycleService
+	configs   *ConfigService
+	ui        *UIRegistry
+	events    *EventRegistry
+	audit     *AuditLogService
 }
 
 // NewManager 创建插件管理器
 func NewManager() *Manager {
-	return &Manager{
-		plugins:     make(map[string]*Plugin),
-		runtimes:    make(map[string]Runtime),
-		registry:    make(map[string][]string),
-		uiRevision:  1,
-		uiListeners: make(map[chan uint64]struct{}),
+	m := &Manager{
+		runtimes: NewRuntimeRegistry(),
 	}
+	m.catalog = &PluginCatalog{manager: m, plugins: make(map[string]*Plugin)}
+	m.lifecycle = &LifecycleService{manager: m}
+	m.configs = &ConfigService{manager: m}
+	m.ui = &UIRegistry{manager: m, revision: 1, listeners: make(map[chan uint64]struct{})}
+	m.events = &EventRegistry{manager: m, subscriptions: make(map[string][]string)}
+	m.audit = &AuditLogService{manager: m}
+	return m
 }
+
+func (m *Manager) Catalog() *PluginCatalog           { return m.catalog }
+func (m *Manager) RuntimeRegistry() *RuntimeRegistry { return m.runtimes }
+func (m *Manager) Lifecycle() *LifecycleService      { return m.lifecycle }
+func (m *Manager) Configs() *ConfigService           { return m.configs }
+func (m *Manager) UIRegistry() *UIRegistry           { return m.ui }
+func (m *Manager) EventRegistry() *EventRegistry     { return m.events }
+func (m *Manager) AuditLogs() *AuditLogService       { return m.audit }
 
 // SetPluginRepository 设置插件持久化仓储
 func (m *Manager) SetPluginRepository(repo PluginRepository) {
 	m.mu.Lock()
 	m.repo = repo
 	if logRepo, ok := repo.(PluginLogRepository); ok {
-		m.logRepo = logRepo
+		m.audit.repo = logRepo
 	}
-	plugins := make([]*Plugin, 0, len(m.plugins))
-	for _, p := range m.plugins {
+	plugins := make([]*Plugin, 0, len(m.catalog.plugins))
+	for _, p := range m.catalog.plugins {
 		plugins = append(plugins, p)
 	}
 	m.mu.Unlock()
@@ -59,14 +71,14 @@ func (m *Manager) SetPluginRepository(repo PluginRepository) {
 
 // SetPluginLogRepository 设置插件运行日志仓储
 func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
-	m.logRepo = repo
+	m.audit.repo = repo
 }
 
 // RegisterRuntime 注册运行时实现
 func (m *Manager) RegisterRuntime(runtimeType string, runtime Runtime) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.runtimes[runtimeType] = runtime
+	if err := m.runtimes.Register(runtimeType, runtime); err != nil {
+		panic(err)
+	}
 	log.Printf("🔌 已注册插件运行时: %s", runtimeType)
 }
 
@@ -80,7 +92,7 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 
 	m.mu.Lock()
 
-	if _, exists := m.plugins[manifest.Name]; exists {
+	if _, exists := m.catalog.plugins[manifest.Name]; exists {
 		m.mu.Unlock()
 		return nil, fmt.Errorf("plugin '%s' already installed", manifest.Name)
 	}
@@ -98,11 +110,11 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	if plugin.DesiredEnabled && !manifest.UI.Empty() {
 		plugin.FrontendState = FrontendLoaded
 	}
-	m.plugins[manifest.Name] = plugin
+	m.catalog.plugins[manifest.Name] = plugin
 
 	// 注册事件订阅
 	for _, eventType := range manifest.Events.Subscribe {
-		m.registry[eventType] = append(m.registry[eventType], manifest.Name)
+		m.events.subscriptions[eventType] = append(m.events.subscriptions[eventType], manifest.Name)
 	}
 	m.bumpUIRevisionLocked()
 	m.mu.Unlock()
@@ -242,7 +254,7 @@ func restoredHealthState(value string, status PluginStatus) HealthState {
 // Enable 启用插件
 func (m *Manager) Enable(name string) error {
 	m.mu.Lock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.Unlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -261,8 +273,12 @@ func (m *Manager) Enable(name string) error {
 // RequestEnable applies a lifecycle request from the management API. System
 // plugins only persist the target state, while user plugins start immediately.
 func (m *Manager) RequestEnable(name string) error {
+	return m.lifecycle.RequestEnable(name)
+}
+
+func (m *Manager) requestEnable(name string) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -310,8 +326,12 @@ func (m *Manager) RequestEnable(name string) error {
 // RequestDisable applies a lifecycle request from the management API. System
 // plugins remain in their current process state until the next server restart.
 func (m *Manager) RequestDisable(name string) error {
+	return m.lifecycle.RequestDisable(name)
+}
+
+func (m *Manager) requestDisable(name string) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -352,7 +372,7 @@ func (m *Manager) RequestDisable(name string) error {
 // ReloadUserPlugin preserves the legacy API name while using activation_mode.
 func (m *Manager) ReloadUserPlugin(name string) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -377,7 +397,7 @@ func (m *Manager) ReloadUserPlugin(name string) error {
 func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok || p.Manifest == nil {
 		return LifecycleState{}, false
 	}
@@ -399,20 +419,20 @@ func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
 func (m *Manager) UIRevision() uint64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.uiRevision
+	return m.ui.revision
 }
 
 func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
 	ch := make(chan uint64, 1)
 	m.mu.Lock()
-	m.uiListeners[ch] = struct{}{}
-	revision := m.uiRevision
+	m.ui.listeners[ch] = struct{}{}
+	revision := m.ui.revision
 	m.mu.Unlock()
 	ch <- revision
 	return ch, func() {
 		m.mu.Lock()
-		if _, ok := m.uiListeners[ch]; ok {
-			delete(m.uiListeners, ch)
+		if _, ok := m.ui.listeners[ch]; ok {
+			delete(m.ui.listeners, ch)
 			close(ch)
 		}
 		m.mu.Unlock()
@@ -420,10 +440,10 @@ func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
 }
 
 func (m *Manager) bumpUIRevisionLocked() {
-	m.uiRevision++
-	for listener := range m.uiListeners {
+	m.ui.revision++
+	for listener := range m.ui.listeners {
 		select {
-		case listener <- m.uiRevision:
+		case listener <- m.ui.revision:
 		default:
 		}
 	}
@@ -433,8 +453,8 @@ func (m *Manager) bumpUIRevisionLocked() {
 // current process started. Call this only during server bootstrap.
 func (m *Manager) StartDesiredPlugins(scope string) {
 	m.mu.RLock()
-	names := make([]string, 0, len(m.plugins))
-	for name, p := range m.plugins {
+	names := make([]string, 0, len(m.catalog.plugins))
+	for name, p := range m.catalog.plugins {
 		if p.Manifest == nil || p.Manifest.Scope != scope || !p.DesiredEnabled || p.Status == StatusRunning {
 			continue
 		}
@@ -451,8 +471,12 @@ func (m *Manager) StartDesiredPlugins(scope string) {
 
 // Start 启动插件
 func (m *Manager) Start(name string) error {
+	return m.lifecycle.Start(name)
+}
+
+func (m *Manager) start(name string) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -467,7 +491,7 @@ func (m *Manager) Start(name string) error {
 		p.FrontendState = FrontendLoaded
 	}
 	m.bumpUIRevisionLocked()
-	runtime, ok := m.runtimes[runtimeType]
+	runtime, ok := m.runtimes.Get(runtimeType)
 	if !ok {
 		err := fmt.Errorf("runtime '%s' not registered", runtimeType)
 		p.Status = StatusError
@@ -541,12 +565,12 @@ func (m *Manager) Start(name string) error {
 
 // Stop 停止插件
 func (m *Manager) Stop(name string) error {
-	return m.stop(name, true)
+	return m.lifecycle.Stop(name)
 }
 
 func (m *Manager) stop(name string, persist bool) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -558,7 +582,7 @@ func (m *Manager) stop(name string, persist bool) error {
 	p.BackendState = BackendStopping
 	p.Health = HealthDegraded
 	m.bumpUIRevisionLocked()
-	runtime, ok := m.runtimes[runtimeType]
+	runtime, ok := m.runtimes.Get(runtimeType)
 	if !ok {
 		m.mu.Unlock()
 		m.logPlugin(context.Background(), &PluginLogRecord{
@@ -620,7 +644,7 @@ func (m *Manager) stop(name string, persist bool) error {
 func (m *Manager) AuthorizeHostAPI(name, token string) (*Plugin, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil || p.Status != StatusRunning {
 		return nil, false
 	}
@@ -640,10 +664,10 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 	}
 
 	m.mu.RLock()
-	pluginNames := m.registry[event.Type]
+	pluginNames := m.events.subscriptions[event.Type]
 	plugins := make([]*Plugin, 0, len(pluginNames))
 	for _, name := range pluginNames {
-		if p, ok := m.plugins[name]; ok && p.Status == StatusRunning {
+		if p, ok := m.catalog.plugins[name]; ok && p.Status == StatusRunning {
 			plugins = append(plugins, p)
 		}
 	}
@@ -655,7 +679,7 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 		m.mu.RUnlock()
 
 		m.mu.Lock()
-		runtime, ok := m.runtimes[runtimeType]
+		runtime, ok := m.runtimes.Get(runtimeType)
 		m.mu.Unlock()
 		if !ok {
 			continue
@@ -699,10 +723,10 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 // DispatchEvent 分发 .after 事件到所有订阅的插件（异步）
 func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 	m.mu.RLock()
-	pluginNames := m.registry[event.Type]
+	pluginNames := m.events.subscriptions[event.Type]
 	plugins := make([]*Plugin, 0, len(pluginNames))
 	for _, name := range pluginNames {
-		if p, ok := m.plugins[name]; ok && p.Status == StatusRunning {
+		if p, ok := m.catalog.plugins[name]; ok && p.Status == StatusRunning {
 			plugins = append(plugins, p)
 		}
 	}
@@ -715,7 +739,7 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 			m.mu.RUnlock()
 
 			m.mu.Lock()
-			runtime, ok := m.runtimes[runtimeType]
+			runtime, ok := m.runtimes.Get(runtimeType)
 			m.mu.Unlock()
 			if !ok {
 				return
@@ -760,7 +784,7 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	return p, ok
 }
 
@@ -769,7 +793,7 @@ func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
 func (m *Manager) GetPluginConfig(name string) (map[string]interface{}, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil {
 		return nil, false
 	}
@@ -779,13 +803,17 @@ func (m *Manager) GetPluginConfig(name string) (map[string]interface{}, bool) {
 func (m *Manager) IsPluginRunning(name string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	return ok && p.Status == StatusRunning
 }
 
 func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
+	return m.configs.Update(name, config)
+}
+
+func (m *Manager) updateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
 	m.mu.Lock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.Unlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
@@ -821,7 +849,7 @@ func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[
 
 func (m *Manager) markPluginError(name string, err error) {
 	m.mu.Lock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.Unlock()
 		return
@@ -876,8 +904,8 @@ func persistedPluginStatus(p *Plugin) PluginStatus {
 func (m *Manager) persistPluginStatus(ctx context.Context, name string, status PluginStatus, errorMsg string) {
 	m.mu.RLock()
 	repo := m.repo
-	p := m.plugins[name]
-	revision := m.uiRevision
+	p := m.catalog.plugins[name]
+	revision := m.ui.revision
 	backendState, frontendState, healthState := "", "", ""
 	if p != nil {
 		backendState, frontendState, healthState = string(p.BackendState), string(p.FrontendState), string(p.Health)
@@ -901,7 +929,7 @@ func (m *Manager) persistPluginStatus(ctx context.Context, name string, status P
 
 func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
 	m.mu.RLock()
-	logRepo := m.logRepo
+	logRepo := m.audit.repo
 	m.mu.RUnlock()
 	if logRepo == nil {
 		return
@@ -919,7 +947,7 @@ func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
 
 func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
 	m.mu.RLock()
-	logRepo := m.logRepo
+	logRepo := m.audit.repo
 	m.mu.RUnlock()
 	if logRepo == nil {
 		return []*PluginLogRecord{}, nil
@@ -965,8 +993,8 @@ func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {
 func (m *Manager) ListPlugins() []*Plugin {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	plugins := make([]*Plugin, 0, len(m.plugins))
-	for _, p := range m.plugins {
+	plugins := make([]*Plugin, 0, len(m.catalog.plugins))
+	for _, p := range m.catalog.plugins {
 		copyPlugin := *p
 		if p.Manifest != nil {
 			copyManifest := *p.Manifest
@@ -981,7 +1009,7 @@ func (m *Manager) ListPlugins() []*Plugin {
 // Uninstall 卸载插件
 func (m *Manager) Uninstall(name string) error {
 	m.mu.Lock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.Unlock()
 		return fmt.Errorf("plugin '%s' not found", name)
@@ -1001,16 +1029,16 @@ func (m *Manager) Uninstall(name string) error {
 	}
 
 	// 从注册表移除
-	for eventType, names := range m.registry {
+	for eventType, names := range m.events.subscriptions {
 		for i, n := range names {
 			if n == name {
-				m.registry[eventType] = append(names[:i], names[i+1:]...)
+				m.events.subscriptions[eventType] = append(names[:i], names[i+1:]...)
 				break
 			}
 		}
 	}
 
-	delete(m.plugins, name)
+	delete(m.catalog.plugins, name)
 	m.bumpUIRevisionLocked()
 	repo := m.repo
 	m.mu.Unlock()
@@ -1028,8 +1056,8 @@ func (m *Manager) Uninstall(name string) error {
 // StopAll 停止所有插件（服务关闭时调用）
 func (m *Manager) StopAll() {
 	m.mu.RLock()
-	names := make([]string, 0, len(m.plugins))
-	for name, p := range m.plugins {
+	names := make([]string, 0, len(m.catalog.plugins))
+	for name, p := range m.catalog.plugins {
 		if p.Status == StatusRunning {
 			names = append(names, name)
 		}
@@ -1084,7 +1112,7 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 	}
 
 	m.mu.RLock()
-	existing, loaded := m.plugins[manifest.Name]
+	existing, loaded := m.catalog.plugins[manifest.Name]
 	m.mu.RUnlock()
 	wasEnabled := false
 	if loaded {
@@ -1142,12 +1170,12 @@ func snapshotDataDir(pluginsDir string) string {
 
 func (m *Manager) HealthCheck(name string) error {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil {
 		m.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
-	runtime := m.runtimes[p.Manifest.Runtime]
+	runtime, _ := m.runtimes.Get(p.Manifest.Runtime)
 	status := p.Status
 	m.mu.RUnlock()
 	if status != StatusRunning {
@@ -1161,7 +1189,7 @@ func (m *Manager) HealthCheck(name string) error {
 	changed := false
 	currentStatus := status
 	currentError := ""
-	if current, ok := m.plugins[name]; ok {
+	if current, ok := m.catalog.plugins[name]; ok {
 		previous := current.Health
 		if err != nil {
 			current.Health = HealthUnavailable
@@ -1184,7 +1212,7 @@ func (m *Manager) HealthCheck(name string) error {
 
 func (m *Manager) DispatchExtension(ctx context.Context, name string, request *ExtensionRequest) (*ExtensionResponse, error) {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil {
 		m.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
@@ -1193,7 +1221,7 @@ func (m *Manager) DispatchExtension(ctx context.Context, name string, request *E
 		m.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' is unavailable", name)
 	}
-	runtime := m.runtimes[p.Manifest.Runtime]
+	runtime, _ := m.runtimes.Get(p.Manifest.Runtime)
 	m.mu.RUnlock()
 	dispatcher, ok := runtime.(ExtensionRuntime)
 	if !ok {
@@ -1235,7 +1263,7 @@ func (m *Manager) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (
 
 func (m *Manager) ExportPackage(name, outputPath string) (*PackageInfo, error) {
 	m.mu.RLock()
-	p, ok := m.plugins[name]
+	p, ok := m.catalog.plugins[name]
 	if !ok {
 		m.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
