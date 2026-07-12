@@ -46,8 +46,17 @@ type Module interface {
 	ID() string
 	Dependencies() []string
 	Register(*AppContext) error
+}
+
+type Starter interface {
 	Start(context.Context) error
+}
+
+type Stopper interface {
 	Stop(context.Context) error
+}
+
+type HealthReporter interface {
 	Health(context.Context) Health
 }
 
@@ -189,11 +198,13 @@ func (r *Registry) StartAll(ctx context.Context) error {
 			continue
 		}
 		item.state = StateStarting
-		if err := item.module.Start(ctx); err != nil {
-			item.state = StateFailed
-			item.err = err
-			rollbackErr := r.stopLocked(ctx, started)
-			return errors.Join(fmt.Errorf("start module %q: %w", id, err), rollbackErr)
+		if starter, ok := item.module.(Starter); ok {
+			if err := starter.Start(ctx); err != nil {
+				item.state = StateFailed
+				item.err = err
+				rollbackErr := r.stopLocked(ctx, started)
+				return errors.Join(fmt.Errorf("start module %q: %w", id, err), rollbackErr)
+			}
 		}
 		item.state = StateRunning
 		item.err = nil
@@ -222,11 +233,13 @@ func (r *Registry) stopLocked(ctx context.Context, ids []string) error {
 			continue
 		}
 		item.state = StateStopping
-		if err := item.module.Stop(ctx); err != nil {
-			item.state = StateFailed
-			item.err = err
-			stopErrors = append(stopErrors, fmt.Errorf("stop module %q: %w", ids[i], err))
-			continue
+		if stopper, ok := item.module.(Stopper); ok {
+			if err := stopper.Stop(ctx); err != nil {
+				item.state = StateFailed
+				item.err = err
+				stopErrors = append(stopErrors, fmt.Errorf("stop module %q: %w", ids[i], err))
+				continue
+			}
 		}
 		item.state = StateStopped
 	}
@@ -246,7 +259,9 @@ func (r *Registry) Snapshots(ctx context.Context) []Snapshot {
 		item := r.entries[id]
 		health := Health{Status: HealthUnknown}
 		if item.enabled && item.state == StateRunning {
-			health = item.module.Health(ctx)
+			if reporter, ok := item.module.(HealthReporter); ok {
+				health = reporter.Health(ctx)
+			}
 		}
 		snapshot := Snapshot{
 			ID:           id,

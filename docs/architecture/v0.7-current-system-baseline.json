@@ -1,0 +1,59 @@
+{
+  "schema_version": "campusos.architecture-baseline/v1",
+  "captured_at": "2026-07-12",
+  "application_version": "v0.6.26-dev",
+  "git_ref": "djw-update",
+  "http_contract": {
+    "route_count": 148,
+    "route_snapshot": "docs/api/http-routes-v0.6.json",
+    "route_snapshot_sha256": "73e071c6807744ba4a81c3196bd69fdac9c655a7edc422d0518d738b206274f5",
+    "openapi_snapshot": "docs/api/openapi-v0.6-current.yaml",
+    "openapi_snapshot_sha256": "73e69430b8e33c51e42f5eca54be809f5e9b29b79634d8ec7166f00813819372",
+    "permission_contract": "docs/api/plugin-permissions-v1.json",
+    "permission_contract_sha256": "54ab39f9de0223ce6118270fbd7d2161e9335918e2e5d39cffa81d689a054c8e"
+  },
+  "database": {
+    "migration_count": 18,
+    "latest_migration": "000018_plugin_ui_runtime",
+    "schema_contract": "v0.6-core-v2",
+    "table_count": 30,
+    "audit_violation_count": 0
+  },
+  "plugins": {
+    "manifest_count": 9,
+    "manifest_set_sha256": "0bbedc3b041d6f308c5a6350ea024bb2ba5c5e2173d273f0bb1d32834335b1cc",
+    "runtime_counts": {
+      "builtin": 7,
+      "grpc": 1,
+      "wasm": 1
+    },
+    "manifests": [
+      "campus-welcome",
+      "category-moderation",
+      "controlled-richtext-article",
+      "hello-plugin",
+      "hello-wasm",
+      "homepage-customizer",
+      "personal-schedule",
+      "personal-space",
+      "web-theme"
+    ],
+    "active_ui_runtime_contract": "campusos.ui/v1",
+    "active_ui_plugin_count": 4
+  },
+  "persistent_roots": [
+    "data/config",
+    "data/dist",
+    "data/images",
+    "data/personal-space",
+    "data/plugin_data",
+    "data/plugins",
+    "data/skills"
+  ],
+  "validation": {
+    "release_check": "pass",
+    "restore_drill": "pass",
+    "browser_smoke": "pass",
+    "responsive_style_pack_smoke": "pass"
+  }
+}

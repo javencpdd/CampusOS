@@ -3,7 +3,7 @@
 CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，同时提供用户社区、管理后台、个人空间、受控富文本、个人课表和可扩展插件运行时。
 
 <div class="status-line">
-  <code>v0.6.26-dev</code>
+  <code>v0.7.2-dev</code>
   <code>Go + Gin</code>
   <code>Vue 3</code>
   <code>PostgreSQL</code>
