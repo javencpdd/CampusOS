@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "text_color": {
+      "type": "string",
+      "title": "主要文字颜色",
+      "description": "用于正文和页面标题，应用前会检查与页面背景的对比度。",
+      "format": "color",
+      "default": "#17242a",
+      "x-campusos-binding": "token.text_color"
+    },
+    "muted_color": {
+      "type": "string",
+      "title": "辅助文字颜色",
+      "description": "用于说明、元信息和次要导航。",
+      "format": "color",
+      "default": "#52656d",
+      "x-campusos-binding": "token.muted_color"
+    },
+    "background_asset": {
+      "type": "string",
+      "title": "页面背景图",
+      "description": "可选择风格包声明的背景资源，也可以关闭背景图。管理员可在风格包中继续声明其他图片。",
+      "enum": ["assets/campus-evening.png", ""],
+      "enum_names": ["校园夜景", "不使用背景图"],
+      "default": "assets/campus-evening.png",
+      "x-campusos-binding": "layout.background_asset"
+    },
+    "background_overlay": {
+      "type": "string",
+      "title": "背景遮罩颜色",
+      "description": "遮罩用于避免背景图干扰正文，支持透明度。",
+      "format": "color",
+      "default": "rgba(4, 22, 29, 0.30)",
+      "x-campusos-binding": "layout.overlay"
+    },
+    "page_padding": {
+      "type": "string",
+      "title": "页面边距",
+      "enum": ["16px", "24px", "28px", "36px"],
+      "enum_names": ["紧凑", "标准", "舒适", "宽松"],
+      "default": "28px",
+      "x-campusos-binding": "layout.page_padding"
+    }
+  }
+}
