@@ -8,6 +8,13 @@ import (
 
 var contributionIDPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$`)
 
+var trustedCoreModules = map[string]bool{
+	"core.schedule":        true,
+	"core.personal-space":  true,
+	"core.richtext-editor": true,
+	"core.appearance":      true,
+}
+
 type UIContribution struct {
 	ContractVersion string         `yaml:"contract_version,omitempty" json:"contract_version,omitempty"`
 	Routes          []UIRoute      `yaml:"routes,omitempty" json:"routes,omitempty"`
@@ -91,6 +98,7 @@ func (m *Manifest) validateUI() error {
 		return nil
 	}
 	surfaces := map[string]bool{}
+	surfaceRenderers := map[string]string{}
 	actions := map[string]bool{}
 	routes := map[string]bool{}
 	for _, action := range m.UI.Actions {
@@ -119,12 +127,16 @@ func (m *Manifest) validateUI() error {
 		if surface.Renderer != "schema" && surface.Renderer != "trusted-module" {
 			return fmt.Errorf("manifest: ui surface %q renderer must be schema or trusted-module", surface.ID)
 		}
+		if surface.Renderer == "trusted-module" && (m.Runtime != "builtin" || m.Scope != ScopeSystem || !trustedCoreModules[surface.ModuleID]) {
+			return fmt.Errorf("manifest: ui surface %q uses an untrusted core module", surface.ID)
+		}
 		for _, actionID := range surface.ActionIDs {
 			if !actions[actionID] {
 				return fmt.Errorf("manifest: ui surface %q references unknown action %q", surface.ID, actionID)
 			}
 		}
 		surfaces[surface.ID] = true
+		surfaceRenderers[surface.ID] = surface.Renderer
 	}
 	for _, route := range m.UI.Routes {
 		if err := add("route", route.ID); err != nil {
@@ -135,6 +147,12 @@ func (m *Manifest) validateUI() error {
 		}
 		if !surfaces[route.SurfaceID] {
 			return fmt.Errorf("manifest: ui route %q references unknown surface %q", route.ID, route.SurfaceID)
+		}
+		if surfaceRenderers[route.SurfaceID] == "schema" {
+			prefix := "/extensions/" + m.Name
+			if route.Path != prefix && !strings.HasPrefix(route.Path, prefix+"/") {
+				return fmt.Errorf("manifest: declarative ui route %q must stay under %s", route.ID, prefix)
+			}
 		}
 		routes[route.ID] = true
 	}

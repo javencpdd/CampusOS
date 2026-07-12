@@ -9,6 +9,9 @@ trap cleanup EXIT
 echo "==> contracts"
 go run ./cmd/campusos-contracts --check
 
+echo "==> documentation links"
+python3 scripts/check-doc-links.py
+
 echo "==> Go tests"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
 
@@ -23,9 +26,12 @@ go run ./cmd/campusosctl plugin dev examples/plugins/grpc-example --json
 go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
 
 echo "==> frontend builds"
-(cd web && pnpm build)
+(cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)
 (cd admin && pnpm build)
 (cd docs-site && pnpm build)
+
+echo "==> TypeScript SDK"
+(cd sdk/typescript && pnpm build)
 
 echo "==> scripts and worktree whitespace"
 bash -n scripts/*.sh scripts/smoke/*.sh

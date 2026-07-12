@@ -107,9 +107,11 @@ SKIP_INFRA=true SKIP_MIGRATE=true make dev-all
 
 ```bash
 GOCACHE=/tmp/campusos-go-cache go test ./... -count=1
-cd web && pnpm build
+make docs-links
+cd web && pnpm lint && pnpm format:check && pnpm build
 cd ../admin && pnpm build
 cd ../docs-site && pnpm build
+cd ../sdk/typescript && pnpm build
 ```
 
 修改 migration 后额外执行：

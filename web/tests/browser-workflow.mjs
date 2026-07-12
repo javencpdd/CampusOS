@@ -26,7 +26,11 @@ async function login(page, baseURL, emailPlaceholder, passwordPlaceholder) {
 
 async function selectPlainText(page) {
   const option = page.getByText('普通文本', { exact: true })
-  await page.waitForFunction(() => document.body.innerText.includes('普通文本') || Boolean(document.querySelector('input[placeholder="请输入帖子标题"]')))
+  await page.waitForFunction(
+    () =>
+      document.body.innerText.includes('普通文本') ||
+      Boolean(document.querySelector('input[placeholder="请输入帖子标题"]')),
+  )
   if (await option.count()) await option.first().click()
   await page.getByPlaceholder('请输入帖子标题').waitFor()
 }
@@ -35,7 +39,7 @@ async function ensureCategorySelected(page) {
   const category = page.locator('.el-form-item').filter({ hasText: '版块' }).locator('.el-select').first()
   await category.waitFor()
   const selected = category.locator('.el-select__selected-item')
-  if (await selected.count() && (await selected.first().innerText()).trim()) return
+  if ((await selected.count()) && (await selected.first().innerText()).trim()) return
   await category.click()
   await page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first().click()
 }
@@ -96,17 +100,21 @@ try {
   const users = (await usersResponse.json()).data?.items || []
   const otherUser = users.find((item) => item.id !== me.id)
   if (!otherUser) throw new Error('Cross-user authorization smoke needs at least two users')
-  const crossUpdate = await authenticatedAPI.put(`${apiURL}/users/${otherUser.id}`, { data: { nickname: 'forbidden update' } })
+  const crossUpdate = await authenticatedAPI.put(`${apiURL}/users/${otherUser.id}`, {
+    data: { nickname: 'forbidden update' },
+  })
   if (crossUpdate.status() !== 403) throw new Error(`Cross-user update returned ${crossUpdate.status()}, expected 403`)
   const illegalField = await authenticatedAPI.put(`${apiURL}/users/${me.id}`, { data: { status: 'suspended' } })
-  if (illegalField.status() !== 400) throw new Error(`Illegal user field returned ${illegalField.status()}, expected 400`)
+  if (illegalField.status() !== 400)
+    throw new Error(`Illegal user field returned ${illegalField.status()}, expected 400`)
   const invalidPage = await authenticatedAPI.get(`${apiURL}/threads?page=0`)
   if (invalidPage.status() !== 400) throw new Error(`Invalid pagination returned ${invalidPage.status()}, expected 400`)
   await authenticatedAPI.dispose()
 
   const anonymousAPI = await request.newContext({ baseURL: apiURL })
   const anonymousPlugins = await anonymousAPI.get(`${apiURL}/plugins`)
-  if (anonymousPlugins.status() !== 401) throw new Error(`Anonymous plugin access returned ${anonymousPlugins.status()}, expected 401`)
+  if (anonymousPlugins.status() !== 401)
+    throw new Error(`Anonymous plugin access returned ${anonymousPlugins.status()}, expected 401`)
   const errorPayload = await anonymousPlugins.json()
   if (!errorPayload.error?.code || !errorPayload.error?.request_id) {
     throw new Error('Anonymous plugin denial does not use the structured error contract')
@@ -132,12 +140,20 @@ try {
   const docsContext = await browser.newContext()
   const docsPage = await docsContext.newPage()
   await docsPage.goto(docsURL, { waitUntil: 'domcontentloaded' })
-  await docsPage.getByText(/CampusOS/).first().waitFor()
+  await docsPage
+    .getByText(/CampusOS/)
+    .first()
+    .waitFor()
   await docsContext.close()
-  console.log('browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins, architecture, docs')
+  console.log(
+    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins, architecture, docs',
+  )
 } finally {
   if (threadID && accessToken) {
-    const cleanup = await request.newContext({ baseURL: apiURL, extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` } })
+    const cleanup = await request.newContext({
+      baseURL: apiURL,
+      extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` },
+    })
     await cleanup.delete(`${apiURL}/threads/${threadID}`).catch(() => {})
     await cleanup.dispose()
   }

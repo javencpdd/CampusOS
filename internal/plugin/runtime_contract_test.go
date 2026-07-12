@@ -116,6 +116,54 @@ events:
 	}
 }
 
+func TestHealthCheckDoesNotChurnUIRevisionWhenHealthIsStable(t *testing.T) {
+	dir := writePluginManifest(t, `name: stable-health
+version: 0.1.0
+runtime: wasm
+`)
+	manager := NewManager()
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.RequestEnable("stable-health"); err != nil {
+		t.Fatal(err)
+	}
+	revision := manager.UIRevision()
+	if err := manager.HealthCheck("stable-health"); err != nil {
+		t.Fatal(err)
+	}
+	if manager.UIRevision() != revision {
+		t.Fatalf("stable health check changed revision: %d -> %d", revision, manager.UIRevision())
+	}
+}
+
+func TestHotDisableIsIdempotent(t *testing.T) {
+	dir := writePluginManifest(t, `name: idempotent-disable
+version: 0.1.0
+runtime: wasm
+`)
+	manager := NewManager()
+	runtime := newFakeRuntime()
+	manager.RegisterRuntime("wasm", runtime)
+	if _, err := manager.Install(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.RequestEnable("idempotent-disable"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.RequestDisable("idempotent-disable"); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.RequestDisable("idempotent-disable"); err != nil {
+		t.Fatal(err)
+	}
+	if len(runtime.stopped) != 1 {
+		t.Fatalf("disable called runtime stop %d times", len(runtime.stopped))
+	}
+}
+
 func TestManagerPersistsLifecycleStatus(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: persisted-lifecycle

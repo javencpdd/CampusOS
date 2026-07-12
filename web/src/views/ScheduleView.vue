@@ -22,17 +22,16 @@
         </div>
       </template>
 
-      <el-alert
-        v-if="disabled"
-        type="warning"
-        :closable="false"
-        show-icon
-        title="个人课表插件当前未启用"
-      />
+      <el-alert v-if="disabled" type="warning" :closable="false" show-icon title="个人课表插件当前未启用" />
 
       <div class="toolbar">
         <el-tooltip content="选择已保存的学期；选择后点击“打开/新建课表”确认切换" placement="top">
-          <el-select v-model="selectedTermKey" class="term-select" placeholder="选择已保存课表" @change="selectSavedTerm">
+          <el-select
+            v-model="selectedTermKey"
+            class="term-select"
+            placeholder="选择已保存课表"
+            @change="selectSavedTerm"
+          >
             <el-option
               v-for="term in terms"
               :key="termKey(term.term_year, term.semester)"
@@ -312,8 +311,10 @@ const allWeekdays = [
   { value: 7, label: '周日' },
 ]
 
-const weekdays = computed(() => schedule.settings.show_weekend ? allWeekdays : allWeekdays.slice(0, 5))
-const periods = computed(() => Array.from({ length: Number(schedule.settings.periods_per_day || 12) }, (_, index) => index + 1))
+const weekdays = computed(() => (schedule.settings.show_weekend ? allWeekdays : allWeekdays.slice(0, 5)))
+const periods = computed(() =>
+  Array.from({ length: Number(schedule.settings.periods_per_day || 12) }, (_, index) => index + 1),
+)
 const formatTermLabel = (termYear: number, semester: Semester) =>
   `${termYear} 年${semester === 'fall' ? '秋季' : '春季'}学期`
 const termLabel = computed(() => formatTermLabel(schedule.term_year, schedule.semester))
@@ -322,10 +323,12 @@ const weekRangeText = computed(() => {
   const end = weekDate(selectedWeek.value, 6)
   return start && end ? `${start} 至 ${end}` : ''
 })
-const coursesForSelectedWeek = computed(() => schedule.courses.filter((course) => {
-  const weeks = course.weeks || []
-  return weeks.length === 0 || weeks.includes(selectedWeek.value)
-}))
+const coursesForSelectedWeek = computed(() =>
+  schedule.courses.filter((course) => {
+    const weeks = course.weeks || []
+    return weeks.length === 0 || weeks.includes(selectedWeek.value)
+  }),
+)
 
 const unwrap = (res: any) => res?.data || res
 
@@ -414,10 +417,12 @@ const openTerm = async () => {
   }
   termSwitching.value = true
   try {
-    const payload = unwrap(await scheduleApi.activate({
-      term_year: termYear,
-      semester,
-    }))
+    const payload = unwrap(
+      await scheduleApi.activate({
+        term_year: termYear,
+        semester,
+      }),
+    )
     applyPayload(payload)
     await loadTerms()
     dirty.value = false
@@ -468,10 +473,16 @@ const handleImport = async (event: Event) => {
   if (!file) return
   importing.value = true
   try {
-    const res = unwrap(await scheduleApi.import(file, {
-      term_year: schedule.term_year,
-      semester: schedule.semester,
-    }, replaceImport.value))
+    const res = unwrap(
+      await scheduleApi.import(
+        file,
+        {
+          term_year: schedule.term_year,
+          semester: schedule.semester,
+        },
+        replaceImport.value,
+      ),
+    )
     applyPayload(res.schedule)
     await loadTerms()
     dirty.value = false
@@ -487,9 +498,8 @@ const handleImport = async (event: Event) => {
   }
 }
 
-const coursesAt = (weekday: number, period: number) => coursesForSelectedWeek.value.filter((course) =>
-  course.weekday === weekday && course.start_period === period,
-)
+const coursesAt = (weekday: number, period: number) =>
+  coursesForSelectedWeek.value.filter((course) => course.weekday === weekday && course.start_period === period)
 
 const periodLabel = (period: number) => schedule.settings.period_labels?.[period - 1] || `${period}`
 
@@ -554,14 +564,18 @@ const deleteCourse = async () => {
 }
 
 const openJsonEditor = () => {
-  rawJson.value = JSON.stringify({
-    term_year: schedule.term_year,
-    semester: schedule.semester,
-    first_week_start: schedule.first_week_start,
-    settings: schedule.settings,
-    courses: schedule.courses,
-    metadata: schedule.metadata,
-  }, null, 2)
+  rawJson.value = JSON.stringify(
+    {
+      term_year: schedule.term_year,
+      semester: schedule.semester,
+      first_week_start: schedule.first_week_start,
+      settings: schedule.settings,
+      courses: schedule.courses,
+      metadata: schedule.metadata,
+    },
+    null,
+    2,
+  )
   jsonDrawer.value = true
 }
 

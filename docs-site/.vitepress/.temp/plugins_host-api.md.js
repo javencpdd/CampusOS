@@ -1,7 +1,7 @@
 import { ssrRenderAttrs } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"Host API v1 与权限","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/host-api.md","filePath":"plugins/host-api.md","lastUpdated":1783761653000}');
+const __pageData = JSON.parse('{"title":"Host API v1 与权限","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/host-api.md","filePath":"plugins/host-api.md","lastUpdated":1783793126000}');
 const _sfc_main = { name: "plugins/host-api.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="host-api-v1-与权限" tabindex="-1">Host API v1 与权限 <a class="header-anchor" href="#host-api-v1-与权限" aria-label="Permalink to &quot;Host API v1 与权限&quot;">​</a></h1><p>Host API 只监听配置的内部地址，默认 <code>127.0.0.1:18080</code>。每个调用同时检查运行中插件身份、启动时签发的短期随机令牌和 Manifest 权限。令牌会在重载时轮换、停用时撤销，并通过进程环境变量交给受管插件；插件不应记录它。</p><h2 id="请求身份" tabindex="-1">请求身份 <a class="header-anchor" href="#请求身份" aria-label="Permalink to &quot;请求身份&quot;">​</a></h2><p>SDK 自动读取：</p><div class="language-text vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">text</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span>CAMPUSOS_PLUGIN_NAME</span></span>

@@ -1,13 +1,6 @@
 <template>
   <div v-if="enabled" ref="layer" class="style-effect-layer" aria-hidden="true">
-    <iframe
-      ref="frame"
-      class="style-effect-frame"
-      sandbox="allow-scripts"
-      tabindex="-1"
-      title=""
-      :srcdoc="srcdoc"
-    />
+    <iframe ref="frame" class="style-effect-frame" sandbox="allow-scripts" tabindex="-1" title="" :srcdoc="srcdoc" />
   </div>
 </template>
 
@@ -154,12 +147,19 @@ self.onmessage = event => {
 const sendPointer = (event: PointerEvent) => {
   const rect = layer.value?.getBoundingClientRect()
   if (!rect || rect.width <= 0 || rect.height <= 0) return
-  frame.value?.contentWindow?.postMessage({
-    type: 'pointer',
-    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
-    active: event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom,
-  }, '*')
+  frame.value?.contentWindow?.postMessage(
+    {
+      type: 'pointer',
+      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+      active:
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom,
+    },
+    '*',
+  )
 }
 
 const updateMotion = () => {
@@ -180,7 +180,13 @@ const handleQuery = async (event: MessageEvent) => {
       const payload = await props.resolveQuery(method, data.params || {})
       response = { channel: queryChannel, type: 'query-result', id: data.id, ok: true, data: payload }
     } catch (error: any) {
-      response = { channel: queryChannel, type: 'query-result', id: data.id, ok: false, error: error?.message || 'request failed' }
+      response = {
+        channel: queryChannel,
+        type: 'query-result',
+        id: data.id,
+        ok: false,
+        error: error?.message || 'request failed',
+      }
     }
   }
   frame.value?.contentWindow?.postMessage(response, '*')

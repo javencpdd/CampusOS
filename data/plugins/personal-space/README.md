@@ -1,8 +1,8 @@
 # personal-space
 
-`personal-space` is the built-in CampusOS plugin metadata directory for personal homepages, default JSON style packages, safe custom HTML/CSS style snippets, and local personal-space file storage.
+`personal-space` is the built-in CampusOS plugin implementation and metadata directory for personal homepages, safe style switching/import/export, and local personal-space file storage.
 
-The current implementation still lives in `internal/space/`. This plugin directory provides the default plugin manifest, keeps plugin-bundled JSON style packages with the feature they belong to, and owns the default storage configuration used by the server. Editable source-folder page style packs are plugin data and live under `data/plugin_data/personal-space/style-packs/`.
+The current implementation still lives in `internal/space/`. This plugin directory contains only the plugin manifest and implementation documentation. JSON styles and folder/zip page style packs are data under `data/plugin_data/personal-space/`.
 
 ## Lifecycle
 
@@ -13,7 +13,7 @@ This is a `scope: system` plugin. Changing its enabled state in Admin records th
 | File | Purpose |
 | --- | --- |
 | `plugin.yaml` | Built-in plugin manifest and config schema shown by the plugin manager. |
-| `styles/*.space-style.json` | Default personal homepage style packages. |
+Default JSON packages live in `data/plugin_data/personal-space/styles/*.space-style.json`.
 
 Personal homepage HTML/CSS snippets are stored in the applied `user_spaces.style_manifest` as `custom_html_enabled`, `custom_html`, and `custom_css`. They are validated by the backend before apply and rendered only after passing the restricted HTML and CSS safety rules.
 
@@ -87,7 +87,7 @@ POST /api/v1/spaces/me/styles/packs/apply-source
 
 | Key | Default | Purpose |
 | --- | --- | --- |
-| `styles_dir` | `styles` | Style package directory relative to this plugin. |
+| `styles_dir` | `data/plugin_data/personal-space/styles` | Repository-relative JSON style data directory. |
 | `file_root` | `data/personal-space` | Local root for user personal-space files. |
 | `file_url_prefix` | `/api/v1/spaces/files` | Public API prefix for stored files. |
 | `default_quota_mb` | `10` | Initial local storage quota per user. |

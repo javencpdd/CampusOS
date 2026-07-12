@@ -48,6 +48,8 @@ export const styleExamples: StylePackage[] = [
       ],
       tokens: {
         'color.primary': '#2563eb',
+        'color.text': '#1f2937',
+        'color.muted': '#606266',
         'color.background': '#ffffff',
         'color.surface': '#f8fafc',
         'font.body': 'system-ui',
@@ -84,6 +86,8 @@ export const styleExamples: StylePackage[] = [
       ],
       tokens: {
         'color.primary': '#0891b2',
+        'color.text': '#164e63',
+        'color.muted': '#52656d',
         'color.background': '#ecfeff',
         'color.surface': '#ffffff',
         'font.body': 'Inter',
@@ -120,6 +124,8 @@ export const styleExamples: StylePackage[] = [
       ],
       tokens: {
         'color.primary': '#4f46e5',
+        'color.text': '#29264d',
+        'color.muted': '#625f7d',
         'color.background': '#f5f3ff',
         'color.surface': '#ffffff',
         'font.body': 'system-ui',
@@ -156,6 +162,8 @@ export const styleExamples: StylePackage[] = [
       ],
       tokens: {
         'color.primary': '#be123c',
+        'color.text': '#3f1723',
+        'color.muted': '#6b4b55',
         'color.background': '#fff1f2',
         'color.surface': '#ffffff',
         'font.body': 'Georgia',

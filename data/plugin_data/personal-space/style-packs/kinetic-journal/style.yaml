@@ -7,6 +7,10 @@ author: "CampusOS Team"
 description: "A polished motion-first personal homepage and post journal example."
 compatible_campusos:
   - ">=0.6.4"
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: "720px"
 entry: templates/page.html
 templates:
   - name: page

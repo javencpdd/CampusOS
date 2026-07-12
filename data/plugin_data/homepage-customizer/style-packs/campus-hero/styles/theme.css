@@ -36,3 +36,16 @@
   border-radius: 8px;
   background: #f8fafc;
 }
+
+@media (max-width: 720px) {
+  .home[data-campusos-home] .cstyle-page {
+    padding: 16px;
+  }
+  .home[data-campusos-home] .cstyle-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .home[data-campusos-home] .cstyle-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

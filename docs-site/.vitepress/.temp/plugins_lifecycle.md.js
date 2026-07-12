@@ -1,7 +1,7 @@
 import { ssrRenderAttrs, ssrRenderStyle } from "vue/server-renderer";
 import { useSSRContext } from "vue";
 import { _ as _export_sfc } from "./plugin-vue_export-helper.1tPrXgE0.js";
-const __pageData = JSON.parse('{"title":"生命周期与数据","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/lifecycle.md","filePath":"plugins/lifecycle.md","lastUpdated":1783761653000}');
+const __pageData = JSON.parse('{"title":"生命周期与数据","description":"","frontmatter":{},"headers":[],"relativePath":"plugins/lifecycle.md","filePath":"plugins/lifecycle.md","lastUpdated":1783793126000}');
 const _sfc_main = { name: "plugins/lifecycle.md" };
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs, $props, $setup, $data, $options) {
   _push(`<div${ssrRenderAttrs(_attrs)}><h1 id="生命周期与数据" tabindex="-1">生命周期与数据 <a class="header-anchor" href="#生命周期与数据" aria-label="Permalink to &quot;生命周期与数据&quot;">​</a></h1><p>CampusOS 不再用 <code>scope</code> 直接决定启停方式。<code>scope: system | user</code> 只描述管理级别、安装权限和系统重要性；后端和前端生效方式由 <code>lifecycle</code> 声明。</p><div class="language-yaml vp-adaptive-theme line-numbers-mode"><button title="Copy Code" class="copy"></button><span class="lang">yaml</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="${ssrRenderStyle({ "--shiki-light": "#22863A", "--shiki-dark": "#85E89D" })}">lifecycle</span><span style="${ssrRenderStyle({ "--shiki-light": "#24292E", "--shiki-dark": "#E1E4E8" })}">:</span></span>

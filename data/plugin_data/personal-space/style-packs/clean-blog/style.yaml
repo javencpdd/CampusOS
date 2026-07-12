@@ -7,6 +7,10 @@ author: "CampusOS Team"
 description: "Folder-based personal space style pack example following the source package standard."
 compatible_campusos:
   - ">=0.5.0"
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: "720px"
 entry: templates/page.html
 templates:
   - name: page

@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -33,6 +33,9 @@ contracts:
 
 contracts-check:
 	go run ./cmd/campusos-contracts --check
+
+docs-links:
+	python3 scripts/check-doc-links.py
 
 database-check:
 	./scripts/database-check.sh all

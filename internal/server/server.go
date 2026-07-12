@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -19,12 +18,10 @@ import (
 	"github.com/campusos/CampusOS/internal/mcp"
 	"github.com/campusos/CampusOS/internal/message"
 	"github.com/campusos/CampusOS/internal/moderation"
+	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platformlog"
 	"github.com/campusos/CampusOS/internal/plugin"
-	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
-	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
-	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/internal/richtext"
 	"github.com/campusos/CampusOS/internal/schedule"
 	"github.com/campusos/CampusOS/internal/space"
@@ -44,6 +41,7 @@ type Server struct {
 	cfg     *config.Config
 	bus     eventbus.EventBus
 	manager *plugin.Manager
+	modules *platformmodule.Registry
 }
 
 func New(cfg *config.Config) *Server {
@@ -52,57 +50,30 @@ func New(cfg *config.Config) *Server {
 
 func (s *Server) Run() error {
 	metricsCollector := observability.NewCollector()
-
-	// ─── 初始化 EventBus ───
-	var bus eventbus.EventBus
-	var memBus *eventbus.MemoryEventBus
-	natsBus, err := eventbus.NewNATSEventBus(s.cfg.NATS.URL)
-	if err != nil {
-		log.Printf("⚠️  NATS 连接失败，回退到内存事件总线: %v", err)
-		mb := eventbus.NewMemoryEventBus()
-		bus = mb
-		memBus = mb
-	} else {
-		bus = natsBus
-		memBus = eventbus.NewMemoryEventBus()
+	appContext := platformmodule.NewAppContext()
+	registry := platformmodule.NewRegistry(appContext)
+	eventModule := newEventBusModule(s.cfg)
+	pluginModule := newPluginPlatformModule(s, eventModule)
+	if err := registry.Add(eventModule, platformmodule.KindCore, true); err != nil {
+		return err
 	}
-	s.bus = bus
-	defer bus.Close()
-
-	// ─── 初始化 Plugin Manager ───
-	s.manager = plugin.NewManager()
-	grpcRuntime := plugingrpc.NewGRPCRuntime()
-	s.manager.RegisterRuntime("grpc", grpcRuntime)
-	s.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
-	builtinRuntime := pluginbuiltin.NewRuntime()
-	builtinRuntime.RegisterExtension("campus-welcome", func(_ context.Context, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
-		body, _ := json.Marshal(map[string]interface{}{
-			"message":  "CampusOS extension gateway is ready",
-			"path":     request.Path,
-			"caller":   map[string]string{"user_id": request.Caller.UserID, "username": request.Caller.Username},
-			"trace_id": request.Caller.TraceID,
-		})
-		return &plugin.ExtensionResponse{Status: 200, Headers: map[string]string{"Content-Type": "application/json"}, Body: body}, nil
-	})
-	s.manager.RegisterRuntime("builtin", builtinRuntime)
-
-	// ─── 初始化插件仓储（PG 模式在 PostgreSQL 连接后设置）───
-	var pluginRepo plugin.PluginRepository
-	var apiKeyRepo plugin.APIKeyRepository
-	_ = pluginRepo // 延迟赋值
-	_ = apiKeyRepo // 延迟赋值
-
-	// ─── 注册默认事件订阅（事件日志 + 插件分发）───
-	s.registerDefaultSubscriptions(bus)
-
-	// ─── 加载插件 ───
-	pluginsDir := plugin.PluginsDirFromEnv()
-	if err := s.manager.InstallFromPluginsDir(pluginsDir); err != nil {
-		log.Printf("⚠️  加载插件失败: %v", err)
+	if err := registry.Add(pluginModule, platformmodule.KindCore, true); err != nil {
+		return err
 	}
-
-	// ─── 启动健康检查 ───
-	grpcRuntime.StartHealthChecker(context.Background(), 10*time.Second, s.manager)
+	if err := registry.StartAll(context.Background()); err != nil {
+		return err
+	}
+	s.modules = registry
+	s.bus = eventModule.EventBus()
+	bus := eventModule.EventBus()
+	memBus := eventModule.MemoryBus()
+	defer func() {
+		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := registry.StopAll(stopContext); err != nil {
+			log.Printf("⚠️  模块停止失败: %v", err)
+		}
+	}()
 
 	// ─── 初始化缓存 ───
 	redisAddr := s.cfg.Redis.Addr
@@ -137,8 +108,7 @@ func (s *Server) Run() error {
 	log.Printf("✅ PostgreSQL 连接成功")
 
 	// ─── 设置 PG 插件仓储 ───
-	pluginRepo = plugin.NewPgPluginRepository(pool)
-	apiKeyRepo = plugin.NewPgAPIKeyRepository(pool)
+	pluginRepo := plugin.NewPgPluginRepository(pool)
 	s.manager.SetPluginRepository(pluginRepo)
 	s.startConfiguredPlugins()
 	s.normalizePersonalStoragePluginConfigs()
@@ -768,12 +738,9 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 		admin.PUT("/moderation/admin/moderators/:id", middleware.RequirePermission(permSvc, "role", "assign"), moderationHandler.SetModerator)
 	}
 
-	// 服务关闭时停止所有插件
-	defer s.manager.StopAll()
-
 	addr := s.cfg.Server.Addr()
 	log.Printf("🚀 CampusOS API 监听 %s", addr)
 	log.Printf("📋 API 端点总数: %d", len(r.Routes()))
 	log.Printf("🔌 已加载 %d 个插件", len(s.manager.ListPlugins()))
-	return r.Run(addr)
+	return s.serveHTTP(r)
 }

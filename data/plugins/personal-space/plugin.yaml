@@ -47,7 +47,7 @@ ui:
       order: 30
 
 config:
-  styles_dir: "styles"
+  styles_dir: "data/plugin_data/personal-space/styles"
   file_root: "data/personal-space"
   file_url_prefix: "/api/v1/spaces/files"
   default_quota_mb: 10
@@ -60,9 +60,9 @@ config_schema:
     - key: "styles_dir"
       label: "Styles directory"
       type: "string"
-      description: "Built-in personal space style package directory relative to this plugin."
+      description: "Repository-relative personal space style data directory. Plugin code and style data remain separate."
       required: true
-      default: "styles"
+      default: "data/plugin_data/personal-space/styles"
     - key: "file_root"
       label: "File root"
       type: "string"

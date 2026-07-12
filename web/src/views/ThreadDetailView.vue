@@ -19,14 +19,18 @@
             <template v-if="canManageArticle">
               <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
               <el-button size="small" @click="offlineArticle" :loading="articleOperating">下架</el-button>
-              <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating">删除</el-button>
+              <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating"
+                >删除</el-button
+              >
             </template>
             <template v-else-if="canManagePlainThread">
               <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
               <el-button size="small" @click="togglePlainPrivacy" :loading="articleOperating">
                 {{ thread.status === 'private' ? '设为公开' : '设为私密' }}
               </el-button>
-              <el-button size="small" type="danger" plain @click="deletePlainThread" :loading="articleOperating">删除</el-button>
+              <el-button size="small" type="danger" plain @click="deletePlainThread" :loading="articleOperating"
+                >删除</el-button
+              >
             </template>
           </div>
           <div v-if="moderationAccess.can_moderate" class="moderator-actions">
@@ -166,11 +170,13 @@ const postsPageSize = 20
 const postsTotal = ref(0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const canManageArticle = computed(() => Boolean(article.value && userStore.user?.id === thread.value?.author_id))
-const canManagePlainThread = computed(() => Boolean(
-  !article.value &&
-  thread.value?.content_format !== 'richtext_article' &&
-  userStore.user?.id === thread.value?.author_id,
-))
+const canManagePlainThread = computed(() =>
+  Boolean(
+    !article.value &&
+    thread.value?.content_format !== 'richtext_article' &&
+    userStore.user?.id === thread.value?.author_id,
+  ),
+)
 
 const threadID = () => route.params.id as string
 
@@ -264,7 +270,9 @@ const loadPosts = async () => {
   postsLoading.value = true
   try {
     const res: any = userStore.isLoggedIn
-      ? await postApi.listMine(threadID(), { page: postsPage.value, page_size: postsPageSize }).catch(() => postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize }))
+      ? await postApi
+          .listMine(threadID(), { page: postsPage.value, page_size: postsPageSize })
+          .catch(() => postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize }))
       : await postApi.list(threadID(), { page: postsPage.value, page_size: postsPageSize })
     if (res.code === 0) {
       posts.value = res.data?.items || []
@@ -411,8 +419,18 @@ onMounted(async () => {
   align-content: flex-start;
   justify-content: flex-end;
 }
-.meta { display: flex; gap: 16px; color: #909399; font-size: 14px; flex-wrap: wrap; align-items: center; }
-.content { line-height: 1.8; white-space: pre-wrap; }
+.meta {
+  display: flex;
+  gap: 16px;
+  color: #909399;
+  font-size: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.content {
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
 .article-cover {
   width: 100%;
   max-height: 360px;

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -271,6 +272,9 @@ func (m *Manager) RequestEnable(name string) error {
 	m.mu.RUnlock()
 
 	if activationMode == ActivationRestart {
+		if p.DesiredEnabled && status == StatusRunning {
+			return nil
+		}
 		m.mu.Lock()
 		p.DesiredEnabled = true
 		p.BackendState = BackendPendingRestart
@@ -313,10 +317,18 @@ func (m *Manager) RequestDisable(name string) error {
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	activationMode := p.Manifest.BackendActivationMode()
+	status := p.Status
+	desiredEnabled := p.DesiredEnabled
 	m.mu.RUnlock()
 
 	if activationMode != ActivationRestart {
+		if !desiredEnabled && (status == StatusStopped || status == StatusInstalled) {
+			return nil
+		}
 		return m.Stop(name)
+	}
+	if !desiredEnabled && status != StatusRunning {
+		return nil
 	}
 	m.mu.Lock()
 	p.DesiredEnabled = false
@@ -955,8 +967,14 @@ func (m *Manager) ListPlugins() []*Plugin {
 	defer m.mu.RUnlock()
 	plugins := make([]*Plugin, 0, len(m.plugins))
 	for _, p := range m.plugins {
-		plugins = append(plugins, p)
+		copyPlugin := *p
+		if p.Manifest != nil {
+			copyManifest := *p.Manifest
+			copyPlugin.Manifest = &copyManifest
+		}
+		plugins = append(plugins, &copyPlugin)
 	}
+	sort.Slice(plugins, func(i, j int) bool { return plugins[i].ID < plugins[j].ID })
 	return plugins
 }
 
@@ -1140,15 +1158,27 @@ func (m *Manager) HealthCheck(name string) error {
 	}
 	err := runtime.HealthCheck(context.Background(), name)
 	m.mu.Lock()
+	changed := false
+	currentStatus := status
+	currentError := ""
 	if current, ok := m.plugins[name]; ok {
+		previous := current.Health
 		if err != nil {
 			current.Health = HealthUnavailable
 		} else {
 			current.Health = HealthHealthy
 		}
-		m.bumpUIRevisionLocked()
+		if current.Health != previous {
+			m.bumpUIRevisionLocked()
+			changed = true
+		}
+		currentStatus = current.Status
+		currentError = current.ErrorMsg
 	}
 	m.mu.Unlock()
+	if changed {
+		m.persistPluginStatus(context.Background(), name, currentStatus, currentError)
+	}
 	return err
 }
 

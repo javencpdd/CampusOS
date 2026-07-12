@@ -234,13 +234,10 @@ func (r *GRPCRuntime) StartHealthChecker(ctx context.Context, interval time.Dura
 				for _, name := range names {
 					if err := r.HealthCheck(ctx, name); err != nil {
 						log.Printf("⚠️  插件健康检查失败: %s (%v)，尝试重启...", name, err)
-						if p, ok := manager.GetPlugin(name); ok {
-							r.Stop(ctx, name)
-							if startErr := r.Start(ctx, p); startErr != nil {
-								log.Printf("❌ 插件重启失败: %s (%v)", name, startErr)
-							} else {
-								log.Printf("✅ 插件已重启: %s", name)
-							}
+						if restartErr := manager.ReloadUserPlugin(name); restartErr != nil {
+							log.Printf("❌ 插件重启失败: %s (%v)", name, restartErr)
+						} else {
+							log.Printf("✅ 插件已重启: %s", name)
 						}
 					}
 				}

@@ -7,11 +7,7 @@
     :data-style-pack="payload?.space.style_name || 'default'"
     :style="spaceStyleVars"
   >
-    <StyleEffectLayer
-      :script="customEffectJS"
-      :capabilities="styleCapabilities"
-      :resolve-query="resolveStyleQuery"
-    />
+    <StyleEffectLayer :script="customEffectJS" :capabilities="styleCapabilities" :resolve-query="resolveStyleQuery" />
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false" />
 
     <template v-else-if="payload">
@@ -127,9 +123,12 @@ const spaceStyleVars = computed<Record<string, string>>(() => {
   const tokens = payload.value?.space.style_manifest?.tokens || {}
   return {
     '--space-primary': tokens['color.primary'] || '#2563eb',
+    '--space-text': tokens['color.text'] || '#1f2937',
+    '--space-muted': tokens['color.muted'] || '#606266',
     '--space-bg': tokens['color.background'] || '#ffffff',
     '--space-surface': tokens['color.surface'] || '#f8fafc',
     '--space-radius': tokens['radius.card'] || '8px',
+    '--space-font': tokens['font.body'] || 'Inter, Noto Sans SC, system-ui, sans-serif',
   }
 })
 
@@ -200,17 +199,21 @@ watch(username, loadSpace, { immediate: true })
 
 let injectedStyle: HTMLStyleElement | null = null
 
-watch(customCSS, (css) => {
-  if (injectedStyle) {
-    injectedStyle.remove()
-    injectedStyle = null
-  }
-  if (!css) return
-  injectedStyle = document.createElement('style')
-  injectedStyle.setAttribute('data-campusos-style-pack', 'personal-space')
-  injectedStyle.textContent = css
-  document.head.appendChild(injectedStyle)
-}, { immediate: true })
+watch(
+  customCSS,
+  (css) => {
+    if (injectedStyle) {
+      injectedStyle.remove()
+      injectedStyle = null
+    }
+    if (!css) return
+    injectedStyle = document.createElement('style')
+    injectedStyle.setAttribute('data-campusos-style-pack', 'personal-space')
+    injectedStyle.textContent = css
+    document.head.appendChild(injectedStyle)
+  },
+  { immediate: true },
+)
 
 onUnmounted(() => {
   injectedStyle?.remove()
@@ -225,6 +228,8 @@ onUnmounted(() => {
   min-height: 70vh;
   padding: 28px 0 40px;
   background: var(--space-bg);
+  color: var(--space-text);
+  font-family: var(--space-font);
 }
 .public-space > :not(.style-effect-layer) {
   position: relative;
@@ -243,12 +248,12 @@ onUnmounted(() => {
 }
 .space-hero h1 {
   margin: 0 0 10px;
-  color: #1f2937;
+  color: var(--space-text);
 }
 .space-hero p {
   max-width: 720px;
   margin: 0;
-  color: #606266;
+  color: var(--space-muted);
   line-height: 1.7;
 }
 .space-meta {
@@ -284,7 +289,7 @@ onUnmounted(() => {
 .content-title {
   display: inline-block;
   margin-bottom: 8px;
-  color: #1f2937;
+  color: var(--space-text);
   font-weight: 700;
   text-decoration: none;
 }
@@ -293,7 +298,7 @@ onUnmounted(() => {
 }
 .content-item p {
   margin: 0 0 12px;
-  color: #606266;
+  color: var(--space-muted);
   line-height: 1.7;
 }
 .content-meta {

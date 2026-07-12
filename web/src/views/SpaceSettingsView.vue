@@ -43,9 +43,7 @@
                     accept="image/png,image/jpeg,image/gif,image/webp"
                     @change="uploadAvatar"
                   />
-                  <el-button @click="chooseAvatar" :loading="uploadingAvatar">
-                    上传头像
-                  </el-button>
+                  <el-button @click="chooseAvatar" :loading="uploadingAvatar"> 上传头像 </el-button>
                   <span v-if="storage" class="storage-hint">
                     {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}，保留最近
                     {{ storage.avatar_keep_limit }} 个源文件
@@ -133,7 +131,10 @@
               type="button"
               @click="selectExample(item)"
             >
-              <span class="style-swatch" :style="{ background: item.manifest.tokens?.['color.primary'] || '#409eff' }" />
+              <span
+                class="style-swatch"
+                :style="{ background: item.manifest.tokens?.['color.primary'] || '#409eff' }"
+              />
               <span class="style-title">{{ item.manifest.name }}</span>
               <span class="style-layout">{{ item.manifest.layout }}</span>
             </button>
@@ -181,7 +182,9 @@
                 <strong>{{ activeManifest?.name || currentSpace?.style_name || 'default' }}</strong>
                 <span>{{ activeManifest?.layout || currentSpace?.layout || 'blog' }}</span>
               </div>
-              <el-tag size="small" effect="plain">{{ activeManifest?.version || currentSpace?.style_version || '0.1.0' }}</el-tag>
+              <el-tag size="small" effect="plain">{{
+                activeManifest?.version || currentSpace?.style_version || '0.1.0'
+              }}</el-tag>
             </div>
             <div class="component-list">
               <el-tag v-for="component in activeComponents" :key="`${component.slot}-${component.type}`" effect="plain">
@@ -299,7 +302,13 @@
           <div class="source-pack-panel">
             <div class="source-pack-header">
               <strong>源码目录风格包</strong>
-              <el-button text type="primary" size="small" @click="loadSourceStylePacks" :loading="sourceStylePackLoading">
+              <el-button
+                text
+                type="primary"
+                size="small"
+                @click="loadSourceStylePacks"
+                :loading="sourceStylePackLoading"
+              >
                 刷新
               </el-button>
             </div>
@@ -538,7 +547,9 @@ const form = reactive<SpaceForm>({
 
 const activeManifest = computed(() => preview.value?.manifest || currentSpace.value?.style_manifest || null)
 const activeComponents = computed(() => activeManifest.value?.components || [])
-const selectedSourceStylePack = computed(() => sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value) || null)
+const selectedSourceStylePack = computed(
+  () => sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value) || null,
+)
 const avatarInitial = computed(() => {
   const name = owner.value?.nickname || owner.value?.username || 'U'
   return name.slice(0, 1).toUpperCase()
@@ -595,7 +606,9 @@ const loadSourceStylePacks = async (showError = true) => {
   try {
     const payload = unwrap<SourceStylePackList>(await spaceApi.sourceStylePacks())
     sourceStylePacks.value = payload.items || []
-    const current = sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value && pack.validation.valid)
+    const current = sourceStylePacks.value.find(
+      (pack) => pack.name === selectedSourceStylePackName.value && pack.validation.valid,
+    )
     if (!current) {
       selectedSourceStylePackName.value = sourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
     }
@@ -866,7 +879,11 @@ const applyStylePack = async () => {
   try {
     const payload = unwrap<StyleApplyResult>(await spaceApi.applyStylePack(stylePackFile.value))
     validation.value = payload.validation
-    stylePackValidation.value = { valid: payload.validation.valid, errors: payload.validation.errors, warnings: payload.validation.warnings }
+    stylePackValidation.value = {
+      valid: payload.validation.valid,
+      errors: payload.validation.errors,
+      warnings: payload.validation.warnings,
+    }
     currentSpace.value = payload.space
     preview.value = payload.applied
       ? {
@@ -897,7 +914,11 @@ const applySourceStylePack = async () => {
   try {
     const payload = unwrap<StyleApplyResult>(await spaceApi.applySourceStylePack(selectedSourceStylePackName.value))
     validation.value = payload.validation
-    stylePackValidation.value = { valid: payload.validation.valid, errors: payload.validation.errors, warnings: payload.validation.warnings }
+    stylePackValidation.value = {
+      valid: payload.validation.valid,
+      errors: payload.validation.errors,
+      warnings: payload.validation.warnings,
+    }
     currentSpace.value = payload.space
     preview.value = payload.applied
       ? {

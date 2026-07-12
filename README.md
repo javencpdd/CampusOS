@@ -4,7 +4,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 
 ## 当前状态
 
-当前开发基线为 `v0.6.9-dev`。
+当前开发基线为 `v0.6.26-dev`。v6 已封版，v7 模块化单体迁移已完成计划审查与 Module Kernel 首阶段。
 
 - 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
 - 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
@@ -13,7 +13,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 - 权限：角色操作和插件、集成、日志、富文本等管理权限已拆分；版主按指定版块治理；运行中插件使用可过期、可轮换和可撤销的 Host token。
 - 集成：AI Gateway、Webhook 投递、内部 MCP-like 只读工具和 Message local adapter。
 
-项目当前**尚未**提供标准 MCP Server、真实 Discord/OneBot 适配器、公开插件市场、任意 JavaScript 页面风格或生产级高可用部署。下一阶段边界见 [v6 计划书](docs/项目计划v6/01-v6版本计划书.md)。
+项目当前**尚未**提供标准 MCP Server、真实 Discord/OneBot 适配器、公开插件市场、任意同源 JavaScript 页面风格或生产级高可用部署。这些是 v6 明确后置项，不属于 v6 未完成工作；后续版本需要重新立项。
 
 ## 快速开始
 
@@ -68,7 +68,7 @@ make release-check
 | 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
 | 风格包边界和 SDK 权限 | [风格包能力边界与 CampusStyleSDK 说明](docs/help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
 | 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
-| 当前计划与进度 | [v6 计划书](docs/项目计划v6/01-v6版本计划书.md)、[v0.6.9 契约与浏览器验收进度](docs/进度/v0.6-dev/v0.6.9-dev.md) |
+| 当前计划与进度 | [v7 计划书](docs/项目计划v7/00-v7版本计划书.md)、[v0.6.26 Module Kernel](docs/进度/v0.6-dev/v0.6.26-dev.md) |
 
 ## License
 

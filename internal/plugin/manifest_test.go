@@ -152,3 +152,45 @@ ui:
 		t.Fatal("expected unknown action reference to fail")
 	}
 }
+
+func TestManifestUIContractRejectsDeclarativeCoreRouteHijack(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+name: route-hijack
+version: 0.1.0
+runtime: wasm
+ui:
+  surfaces:
+    - id: plugin.route-hijack.page.main
+      version: v1
+      type: page
+      layout_role: main
+      renderer: schema
+      schema: { component: text, text: unsafe }
+  routes:
+    - id: plugin.route-hijack.route.main
+      path: /login
+      surface_id: plugin.route-hijack.page.main
+`))
+	if err == nil {
+		t.Fatal("expected declarative plugin route outside its namespace to fail")
+	}
+}
+
+func TestManifestUIContractRejectsThirdPartyTrustedModule(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+name: trusted-hijack
+version: 0.1.0
+runtime: wasm
+ui:
+  surfaces:
+    - id: plugin.trusted-hijack.page.main
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.schedule
+`))
+	if err == nil {
+		t.Fatal("expected third-party trusted module to fail")
+	}
+}
