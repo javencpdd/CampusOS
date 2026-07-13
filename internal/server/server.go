@@ -2,6 +2,10 @@ package server
 
 import (
 	"github.com/campusos/CampusOS/internal/appearance"
+	communitycore "github.com/campusos/CampusOS/internal/community"
+	identitycore "github.com/campusos/CampusOS/internal/core/identity"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
+	"github.com/campusos/CampusOS/internal/moderation"
 	"github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -16,6 +20,10 @@ type Server struct {
 	modules    *platformmodule.Registry
 	features   *feature.Registry
 	appearance *appearance.Facade
+	community  *communitycore.Module
+	identity   *identitycore.Module
+	moderation *moderation.Module
+	storage    *corestorage.Module
 	appContext *platformmodule.AppContext
 }
 

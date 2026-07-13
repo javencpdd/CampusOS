@@ -1,6 +1,7 @@
 package feature
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -32,14 +33,23 @@ type State struct {
 type LegacySource func(pluginID string) bool
 
 type Registry struct {
-	mu     sync.RWMutex
-	defs   map[string]Definition
-	states map[string]State
-	legacy LegacySource
+	mu        sync.RWMutex
+	defs      map[string]Definition
+	states    map[string]State
+	persisted map[string]bool
+	legacy    LegacySource
+	store     Store
 }
 
 func NewRegistry(legacy LegacySource) *Registry {
-	return &Registry{defs: map[string]Definition{}, states: map[string]State{}, legacy: legacy}
+	return NewRegistryWithStore(legacy, NewMemoryStore())
+}
+
+func NewRegistryWithStore(legacy LegacySource, store Store) *Registry {
+	if store == nil {
+		store = NewMemoryStore()
+	}
+	return &Registry{defs: map[string]Definition{}, states: map[string]State{}, persisted: map[string]bool{}, legacy: legacy, store: store}
 }
 
 func (r *Registry) Register(def Definition) error {
@@ -55,11 +65,21 @@ func (r *Registry) Register(def Definition) error {
 		return fmt.Errorf("feature %q already registered", def.ID)
 	}
 	r.defs[def.ID] = def
+	stored, found, err := r.store.Get(context.Background(), def.ID)
+	if err != nil {
+		return fmt.Errorf("load feature state %q: %w", def.ID, err)
+	}
+	if found {
+		r.states[def.ID] = State{Definition: def, Enabled: stored.EffectiveEnabled, DesiredEnabled: stored.DesiredEnabled, PendingRestart: stored.PendingRestart}
+		r.persisted[def.ID] = true
+		return nil
+	}
 	enabled := def.Mode == AlwaysOn
 	if !enabled && def.LegacyPlugin != "" && r.legacy != nil {
 		enabled = r.legacy(def.LegacyPlugin)
 	}
 	r.states[def.ID] = State{Definition: def, Enabled: enabled, DesiredEnabled: enabled}
+	r.persisted[def.ID] = false
 	return nil
 }
 
@@ -82,12 +102,15 @@ func (r *Registry) SyncLegacy() {
 		return
 	}
 	for id, state := range r.states {
-		if state.Mode != AlwaysOn && state.LegacyPlugin != "" {
+		if state.Mode != AlwaysOn && state.LegacyPlugin != "" && !r.persisted[id] {
 			enabled := r.legacy(state.LegacyPlugin)
 			state.Enabled = enabled
 			state.DesiredEnabled = enabled
 			state.PendingRestart = false
 			r.states[id] = state
+			if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart}); err == nil {
+				r.persisted[id] = true
+			}
 		}
 	}
 }
@@ -110,6 +133,10 @@ func (r *Registry) Request(id string, enabled bool) (State, error) {
 		state.PendingRestart = state.Enabled != enabled
 	}
 	r.states[id] = state
+	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart}); err != nil {
+		return State{}, fmt.Errorf("save feature state %q: %w", id, err)
+	}
+	r.persisted[id] = true
 	return state, nil
 }
 

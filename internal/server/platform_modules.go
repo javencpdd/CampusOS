@@ -14,6 +14,7 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin"
 	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
+	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -38,6 +39,7 @@ func (m coreBoundaryModule) Register(app *platformmodule.AppContext) error {
 
 type eventBusModule struct {
 	cfg      *config.Config
+	app      *platformmodule.AppContext
 	bus      eventbus.EventBus
 	memory   *eventbus.MemoryEventBus
 	fallback bool
@@ -49,7 +51,8 @@ func newEventBusModule(cfg *config.Config) *eventBusModule {
 
 func (m *eventBusModule) ID() string             { return moduleEventBus }
 func (m *eventBusModule) Dependencies() []string { return nil }
-func (m *eventBusModule) Register(*platformmodule.AppContext) error {
+func (m *eventBusModule) Register(app *platformmodule.AppContext) error {
+	m.app = app
 	return nil
 }
 
@@ -60,14 +63,24 @@ func (m *eventBusModule) Start(context.Context) error {
 		m.memory = eventbus.NewMemoryEventBus()
 		m.bus = m.memory
 		m.fallback = true
-		return nil
+		return m.publishPort()
 	}
 	m.bus = natsBus
 	// EventLog keeps its existing process-local read model while domain events
 	// continue through NATS.
 	m.memory = eventbus.NewMemoryEventBus()
 	m.fallback = false
-	return nil
+	return m.publishPort()
+}
+
+func (m *eventBusModule) publishPort() error {
+	if m.app == nil {
+		return fmt.Errorf("event bus module app context is unavailable")
+	}
+	if err := m.app.Provide("platform.event-bus", m.bus); err != nil {
+		return err
+	}
+	return m.app.Provide("platform.memory-event-bus", m.memory)
 }
 
 func (m *eventBusModule) Stop(context.Context) error {
@@ -94,15 +107,16 @@ func (m *eventBusModule) EventBus() eventbus.EventBus         { return m.bus }
 func (m *eventBusModule) MemoryBus() *eventbus.MemoryEventBus { return m.memory }
 
 type pluginPlatformModule struct {
-	owner       *Server
-	events      *eventBusModule
-	manager     *plugin.Manager
-	grpcRuntime *plugingrpc.GRPCRuntime
-	cancel      context.CancelFunc
+	owner        *Server
+	events       *eventBusModule
+	featureStore platformfeature.Store
+	manager      *plugin.Manager
+	grpcRuntime  *plugingrpc.GRPCRuntime
+	cancel       context.CancelFunc
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, featureStore platformfeature.Store) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, featureStore: featureStore}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
@@ -119,7 +133,7 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	builtinRuntime.RegisterExtension("campus-welcome", campusWelcomeExtension)
 	m.manager.RegisterRuntime("builtin", builtinRuntime)
 	m.owner.manager = m.manager
-	m.owner.features = platformfeature.NewRegistry(m.manager.IsPluginRunning)
+	m.owner.features = platformfeature.NewRegistryWithStore(m.manager.IsPluginRunning, m.featureStore)
 	m.owner.appearance = appearance.NewCompatibilityFacade()
 	for _, def := range []platformfeature.Definition{
 		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
@@ -131,7 +145,10 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 			return err
 		}
 	}
-	return app.Provide(portPluginManager, m.manager)
+	if err := app.Provide(portPluginManager, m.manager); err != nil {
+		return err
+	}
+	return app.Provide("plugin.catalog", pluginport.NewCatalogAdapter(m.manager.Catalog()))
 }
 
 func (m *pluginPlatformModule) Start(ctx context.Context) error {

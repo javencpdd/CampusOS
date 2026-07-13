@@ -39,6 +39,8 @@ docs-links:
 
 architecture-check:
 	python3 scripts/check-architecture-boundaries.py
+	python3 scripts/check-frontend-boundaries.py
+	python3 scripts/test-architecture-checks.py
 
 database-check:
 	./scripts/database-check.sh all

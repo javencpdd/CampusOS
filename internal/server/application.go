@@ -2,15 +2,14 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/ai"
-	"github.com/campusos/CampusOS/internal/community/handler"
-	"github.com/campusos/CampusOS/internal/community/repository"
-	identityhandler "github.com/campusos/CampusOS/internal/core/identity/handler"
-	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
-	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	communitycore "github.com/campusos/CampusOS/internal/community"
+	identitycore "github.com/campusos/CampusOS/internal/core/identity"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 	"github.com/campusos/CampusOS/internal/homepage"
 	"github.com/campusos/CampusOS/internal/integration"
 	"github.com/campusos/CampusOS/internal/mcp"
@@ -36,7 +35,6 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	metricsCollector := infra.metrics
 	bus := infra.bus
 	memBus := infra.memoryBus
-	appCache := infra.cache
 
 	// ─── 初始化 AI Gateway ───
 	aiService := s.initAIService()
@@ -60,22 +58,23 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		log.Printf("⚠️  种子数据初始化失败: %v", err)
 	}
 
-	// ─── 初始化 JWT ───
-	jwtMgr := s.newJWTManager()
-
-	// ─── 初始化仓储层（PostgreSQL）───
-	userRepo := identityrepo.NewPgUserRepository(pool)
-	threadRepo := repository.NewPgThreadRepository(pool)
-	categoryRepo := repository.NewPgCategoryRepository(pool)
-	postRepo := repository.NewPgPostRepository(pool)
-	spaceRepo := space.NewPgRepository(pool)
-	roleRepo := identityrepo.NewPgRoleRepository(pool)
-	if err := s.registerBusinessPorts(userRepo, threadRepo, categoryRepo, postRepo); err != nil {
-		return err
+	identityModule := s.identity
+	if identityModule == nil || identityModule.Permissions() == nil {
+		return fmt.Errorf("identity core module is unavailable")
 	}
-	identityModule := assembleIdentity(userRepo, roleRepo, userRepo, jwtMgr, bus, s.cfg.Auth.PasswordHashEnabled)
-	communityModule := assembleCommunity(threadRepo, categoryRepo, postRepo, bus, appCache)
-	permSvc := identityModule.Permissions
+	jwtMgr := identityModule.JWTManager()
+	userRepo := identityModule.UserRepository()
+	communityModule := s.community
+	if communityModule == nil || communityModule.ThreadService() == nil {
+		return fmt.Errorf("community core module is unavailable")
+	}
+	threadRepo := communityModule.ThreadRepository()
+	categoryRepo := communityModule.CategoryRepository()
+	postRepo := communityModule.PostRepository()
+	spaceRepo := space.NewPgRepository(pool)
+	communityHandlers := communityModule.Handlers()
+	permSvc := identityModule.Permissions()
+	identityHandlers := identityModule.Handlers()
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
@@ -94,23 +93,11 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		defer hostAPIServer.Stop()
 	}
 
-	threadSvc := communityModule.Threads
-	postSvc := communityModule.Posts
-	moderationSettings := moderation.NewLegacySettings(func() map[string]interface{} { return pluginConfig(s.manager, moderation.PluginName) })
-	moderationSvc := moderation.NewService(
-		permSvc,
-		categoryRepo,
-		threadRepo,
-		postRepo,
-		threadSvc,
-		postSvc,
-		moderation.NewPgAuditStore(pool),
-		moderationSettings.Current(),
-	)
-	moderationSvc.SetEnabledChecker(func() bool { return true })
-	moderationSvc.SetConfigProvider(func() moderation.Config {
-		return moderationSettings.Current()
-	})
+	threadSvc := communityModule.ThreadService()
+	moderationModule := s.moderation
+	if moderationModule == nil || moderationModule.Handler() == nil {
+		return fmt.Errorf("moderation core module is unavailable")
+	}
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	spaceSvc.SetPluginEnabledChecker(func() bool {
@@ -137,14 +124,8 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
 	// ─── 初始化处理器层 ───
-	userHandler := identityModule.UserHandler
-	threadHandler := communityModule.ThreadHandler
-	categoryHandler := communityModule.CategoryHandler
-	postHandler := communityModule.PostHandler
 	spaceHandler := space.NewHandler(spaceSvc)
-	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
-	roleHandler := identityModule.RoleHandler
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(s.features))
 	aiHandler := ai.NewHandler(aiService)
 	webhookHandler := webhook.NewHandler(webhookSvc)
 	mcpHandler := mcp.NewHandler(mcpSvc)
@@ -153,7 +134,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	richTextHandler := richtext.NewHandler(richTextSvc)
 	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
-	moderationHandler := moderation.NewHandler(moderationSvc)
+	moderationHandler := moderationModule.Handler()
 	integrationHandler := integration.NewHandler(
 		integration.WithPool(pool),
 		integration.WithConfig(s.cfg),
@@ -166,29 +147,32 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, identityHandlers, communityHandlers, spaceHandler, pluginHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
 }
 
 func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEventBus, aiService *ai.Service, metricsCollector *observability.Collector) error {
-	jwtMgr := s.newJWTManager()
-
-	userRepo := identityrepo.NewMemoryUserRepository()
-	threadRepo := repository.NewMemoryThreadRepository()
-	categoryRepo := repository.NewMemoryCategoryRepository()
-	postRepo := repository.NewMemoryPostRepository()
-	spaceRepo := space.NewMemoryRepository()
-	roleRepo := identityrepo.NewMemoryRoleRepository()
-	if err := s.registerBusinessPorts(userRepo, threadRepo, categoryRepo, postRepo); err != nil {
-		return err
+	identityModule := s.identity
+	if identityModule == nil || identityModule.Permissions() == nil {
+		return fmt.Errorf("identity core module is unavailable")
 	}
+	jwtMgr := identityModule.JWTManager()
+	userRepo := identityModule.UserRepository()
+	communityModule := s.community
+	if communityModule == nil || communityModule.ThreadService() == nil {
+		return fmt.Errorf("community core module is unavailable")
+	}
+	threadRepo := communityModule.ThreadRepository()
+	categoryRepo := communityModule.CategoryRepository()
+	postRepo := communityModule.PostRepository()
+	spaceRepo := space.NewMemoryRepository()
 	pluginRepo := plugin.NewMemoryPluginRepository()
 	s.manager.SetPluginRepository(pluginRepo)
 	s.startConfiguredPlugins()
 	s.features.SyncLegacy()
 	s.normalizePersonalStoragePluginConfigs()
-	identityModule := assembleIdentity(userRepo, roleRepo, nil, jwtMgr, bus, s.cfg.Auth.PasswordHashEnabled)
-	communityModule := assembleCommunity(threadRepo, categoryRepo, postRepo, bus, nil)
-	permSvc := identityModule.Permissions
+	communityHandlers := communityModule.Handlers()
+	permSvc := identityModule.Permissions()
+	identityHandlers := identityModule.Handlers()
 
 	// ─── 初始化 Host API ───
 	hostAPI := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(userRepo, threadRepo, categoryRepo, postRepo, bus))
@@ -207,23 +191,11 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		defer hostAPIServer.Stop()
 	}
 
-	threadSvc := communityModule.Threads
-	postSvc := communityModule.Posts
-	moderationSettings := moderation.NewLegacySettings(func() map[string]interface{} { return pluginConfig(s.manager, moderation.PluginName) })
-	moderationSvc := moderation.NewService(
-		permSvc,
-		categoryRepo,
-		threadRepo,
-		postRepo,
-		threadSvc,
-		postSvc,
-		moderation.NewMemoryAuditStore(),
-		moderationSettings.Current(),
-	)
-	moderationSvc.SetEnabledChecker(func() bool { return true })
-	moderationSvc.SetConfigProvider(func() moderation.Config {
-		return moderationSettings.Current()
-	})
+	threadSvc := communityModule.ThreadService()
+	moderationModule := s.moderation
+	if moderationModule == nil || moderationModule.Handler() == nil {
+		return fmt.Errorf("moderation core module is unavailable")
+	}
 	spaceSvc := space.NewService(spaceRepo, userRepo)
 	spaceSvc.SetThreadRepository(threadRepo)
 	spaceSvc.SetPluginEnabledChecker(func() bool {
@@ -249,14 +221,8 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	scheduleSvc := s.initScheduleService()
 	platformLogSvc := platformlog.NewServiceFromEnv()
 
-	userHandler := identityModule.UserHandler
-	threadHandler := communityModule.ThreadHandler
-	categoryHandler := communityModule.CategoryHandler
-	postHandler := communityModule.PostHandler
 	spaceHandler := space.NewHandler(spaceSvc)
-	eventHandler := handler.NewEventHandler(memBus)
-	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()))
-	roleHandler := identityModule.RoleHandler
+	pluginHandler := plugin.NewHandler(s.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(s.features))
 	aiHandler := ai.NewHandler(aiService)
 	webhookHandler := webhook.NewHandler(webhookSvc)
 	mcpHandler := mcp.NewHandler(mcpSvc)
@@ -265,7 +231,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 	richTextHandler := richtext.NewHandler(richTextSvc)
 	scheduleHandler := schedule.NewHandler(scheduleSvc)
 	platformLogHandler := platformlog.NewHandler(platformLogSvc)
-	moderationHandler := moderation.NewHandler(moderationSvc)
+	moderationHandler := moderationModule.Handler()
 	integrationHandler := integration.NewHandler(
 		integration.WithConfig(s.cfg),
 		integration.WithPluginManager(s.manager),
@@ -277,7 +243,7 @@ func (s *Server) runMemoryMode(bus eventbus.EventBus, memBus *eventbus.MemoryEve
 		integration.WithMetrics(metricsCollector),
 	)
 
-	return s.setupRoutes(jwtMgr, permSvc, userHandler, threadHandler, categoryHandler, postHandler, spaceHandler, eventHandler, pluginHandler, roleHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
+	return s.setupRoutes(jwtMgr, permSvc, identityHandlers, communityHandlers, spaceHandler, pluginHandler, aiHandler, integrationHandler, webhookHandler, mcpHandler, messageHandler, homepageHandler, richTextHandler, scheduleHandler, platformLogHandler, moderationHandler, metricsCollector)
 }
 
 func (s *Server) initAIService() *ai.Service {
@@ -324,7 +290,13 @@ func (s *Server) configureSpaceFileStore(spaceSvc *space.Service) {
 		return
 	}
 	cfg := space.FileStorageConfigFromPluginConfig(personalSpacePluginConfig(s.manager))
-	store, err := space.NewLocalFileStore(cfg)
+	var store *space.LocalFileStore
+	var err error
+	if s.storage != nil && cfg.RootDir == corestorage.DefaultRoot {
+		store, err = space.NewLocalFileStoreWithStorage(cfg, s.storage.Adapter())
+	} else {
+		store, err = space.NewLocalFileStore(cfg)
+	}
 	if err != nil {
 		log.Printf("⚠️  个人空间文件存储初始化失败: %v", err)
 		return
@@ -337,7 +309,13 @@ func (s *Server) configureRichTextAssetStore(richTextSvc *richtext.Service) {
 		return
 	}
 	cfg := richtext.AssetStoreConfigFromPluginConfig(pluginConfig(s.manager, "controlled-richtext-article"), personalSpacePluginConfig(s.manager))
-	store, err := richtext.NewLocalAssetStore(cfg)
+	var store *richtext.LocalAssetStore
+	var err error
+	if s.storage != nil && cfg.RootDir == corestorage.DefaultRoot {
+		store, err = richtext.NewLocalAssetStoreWithStorage(cfg, s.storage.Adapter())
+	} else {
+		store, err = richtext.NewLocalAssetStore(cfg)
+	}
 	if err != nil {
 		log.Printf("⚠️  富文本图片存储初始化失败: %v", err)
 		return
@@ -347,7 +325,13 @@ func (s *Server) configureRichTextAssetStore(richTextSvc *richtext.Service) {
 
 func (s *Server) initScheduleService() *schedule.Service {
 	cfg := schedule.ConfigFromPluginConfig(pluginConfig(s.manager, "personal-schedule"), personalSpacePluginConfig(s.manager))
-	svc, err := schedule.NewService(cfg)
+	var svc *schedule.Service
+	var err error
+	if s.storage != nil && cfg.RootDir == corestorage.DefaultRoot {
+		svc, err = schedule.NewServiceWithStorage(cfg, s.storage.Adapter())
+	} else {
+		svc, err = schedule.NewService(cfg)
+	}
 	if err != nil {
 		log.Printf("⚠️  个人课表存储初始化失败，回退到默认 personal-space 目录: %v", err)
 		svc, err = schedule.NewService(schedule.Config{})
@@ -452,15 +436,11 @@ func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 }
 
 func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
-	permSvc *identitysvc.PermissionService,
-	userHandler *identityhandler.UserHandler,
-	threadHandler *handler.ThreadHandler,
-	categoryHandler *handler.CategoryHandler,
-	postHandler *handler.PostHandler,
+	permSvc middleware.PermissionChecker,
+	identityHandlers identitycore.HTTPHandlers,
+	communityHandlers communitycore.HTTPHandlers,
 	spaceHandler *space.Handler,
-	eventHandler *handler.EventHandler,
 	pluginHandler *plugin.Handler,
-	roleHandler *identityhandler.RoleHandler,
 	aiHandler *ai.Handler,
 	integrationHandler *integration.Handler,
 	webhookHandler *webhook.Handler,
@@ -474,6 +454,12 @@ func (s *Server) setupRoutes(jwtMgr *auth.JWTManager,
 	metricsCollector *observability.Collector) error {
 
 	r := gin.Default()
+	userHandler := identityHandlers.User
+	roleHandler := identityHandlers.Role
+	threadHandler := communityHandlers.Thread
+	categoryHandler := communityHandlers.Category
+	postHandler := communityHandlers.Post
+	eventHandler := communityHandlers.Event
 	webThemeHandler := webtheme.NewHandler(webtheme.NewService(s.manager.GetPlugin))
 	runtimeHTTPHandler := plugin.NewRuntimeHTTPHandler(s.manager, func(ctx context.Context, userID, resource, action string) (bool, error) {
 		return permSvc.Check(ctx, userID, resource, action)

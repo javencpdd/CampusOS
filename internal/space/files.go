@@ -111,6 +111,23 @@ func FileStorageConfigFromPluginConfig(raw map[string]interface{}) FileStorageCo
 }
 
 func NewLocalFileStore(cfg FileStorageConfig) (*LocalFileStore, error) {
+	return newLocalFileStore(cfg)
+}
+
+// NewLocalFileStoreWithStorage uses the User Storage Core default root and
+// quota while preserving the existing personal-space URL/layout contract.
+func NewLocalFileStoreWithStorage(cfg FileStorageConfig, storage corestorage.Port) (*LocalFileStore, error) {
+	if storage == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	cfg.RootDir = storage.Root()
+	if quota, ok := storage.(corestorage.Quota); ok {
+		cfg.DefaultQuotaBytes = quota.QuotaBytes("")
+	}
+	return newLocalFileStore(cfg)
+}
+
+func newLocalFileStore(cfg FileStorageConfig) (*LocalFileStore, error) {
 	cfg = cfg.withDefaults()
 	root, err := filepath.Abs(filepath.Clean(cfg.RootDir))
 	if err != nil {

@@ -41,3 +41,26 @@ func TestRestartFeatureUsesBootstrapSnapshot(t *testing.T) {
 		t.Fatal("restart feature changed without restart")
 	}
 }
+
+func TestRegistryPersistsRequestedStateAndDoesNotReseedFromLegacy(t *testing.T) {
+	store := NewMemoryStore()
+	running := true
+	registry := NewRegistryWithStore(func(string) bool { return running }, store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "space"}); err != nil {
+		t.Fatal(err)
+	}
+	registry.SyncLegacy()
+	state, err := registry.Request("space", false)
+	if err != nil || !state.PendingRestart {
+		t.Fatalf("unexpected request result: %#v %v", state, err)
+	}
+	running = true
+	reloaded := NewRegistryWithStore(func(string) bool { return running }, store)
+	if err := reloaded.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "space"}); err != nil {
+		t.Fatal(err)
+	}
+	state = reloaded.List()[0]
+	if state.DesiredEnabled || !state.PendingRestart || !state.Enabled {
+		t.Fatalf("persisted feature state was replaced by legacy plugin state: %#v", state)
+	}
+}

@@ -47,6 +47,22 @@ type Service struct {
 }
 
 func NewService(cfg Config) (*Service, error) {
+	return newService(cfg, nil)
+}
+
+// NewServiceWithStorage binds schedule JSON files to the User Storage Core.
+func NewServiceWithStorage(cfg Config, storage corestorage.Port) (*Service, error) {
+	if storage == nil {
+		return nil, errors.New("user storage port is required")
+	}
+	cfg.RootDir = storage.Root()
+	if quota, ok := storage.(corestorage.Quota); ok {
+		cfg.QuotaBytes = quota.QuotaBytes("")
+	}
+	return newService(cfg, storage)
+}
+
+func newService(cfg Config, storage corestorage.Port) (*Service, error) {
 	cfg = cfg.withDefaults()
 	root, err := filepath.Abs(filepath.Clean(cfg.RootDir))
 	if err != nil {
@@ -56,9 +72,11 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, err
 	}
 	cfg.RootDir = root
-	storage, err := corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
-	if err != nil {
-		return nil, err
+	if storage == nil {
+		storage, err = corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &Service{
 		cfg:     cfg,

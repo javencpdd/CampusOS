@@ -1,0 +1,93 @@
+{
+  "baseline_version": "v0.8.0-alpha-pre-a1",
+  "captured_at": "2026-07-13T10:06:00+08:00",
+  "git": {
+    "ref": "8c55782aa8716237e5c5845c4622e81cac7f2de5",
+    "branch": "djw-update"
+  },
+  "source_release": "v0.7.0",
+  "http_contract": {
+    "route_contract": {
+      "path": "docs/api/http-routes-v0.6.json",
+      "version": "v0.6",
+      "route_count": 148,
+      "sha256": "73e071c6807744ba4a81c3196bd69fdac9c655a7edc422d0518d738b206274f5"
+    },
+    "openapi": {
+      "path": "docs/api/openapi-v0.6-current.yaml",
+      "sha256": "73e69430b8e33c51e42f5eca54be809f5e9b29b79634d8ec7166f00813819372"
+    },
+    "plugin_permissions": {
+      "path": "docs/api/plugin-permissions-v1.json",
+      "sha256": "54ab39f9de0223ce6118270fbd7d2161e9335918e2e5d39cffa81d689a054c8e"
+    }
+  },
+  "database": {
+    "migration_count": 18,
+    "latest_migration": "000018_plugin_ui_runtime",
+    "schema_contract": "v0.6-core-v2",
+    "schema_table_count": 30,
+    "integrity_check_count": 14,
+    "integrity_violations": 0
+  },
+  "plugins": {
+    "manifest_count": 9,
+    "manifest_set_sha256": "1feacdf3ca0b32a3bfbb840641da9e4af12ef9f9bd3ea867a38d510f24146ec0",
+    "runtimes": {
+      "builtin": 7,
+      "grpc": 1,
+      "wasm": 1
+    }
+  },
+  "persistent_roots": [
+    "data/config",
+    "data/dist",
+    "data/images",
+    "data/personal-space",
+    "data/plugin_data",
+    "data/plugins",
+    "data/resources",
+    "data/skills"
+  ],
+  "frontend": {
+    "web_router": "web/src/router/index.ts",
+    "admin_router": "admin/src/router/index.ts",
+    "web_source_file_count_depth_2": 28,
+    "admin_source_file_count_depth_2": 19
+  },
+  "architecture_debt": {
+    "legacy_cross_repository_allowlist": 8,
+    "allowlist_path": "config/architecture-boundary-allowlist.json",
+    "composition_root": "internal/server/application.go",
+    "route_source": "internal/server/application.go"
+  },
+  "validation": {
+    "go_test_all": "pass",
+    "contracts_check": "pass",
+    "architecture_check": "pass-with-8-legacy-exceptions",
+    "docs_links": "pass",
+    "database_check": "pass",
+    "restore_drill": "pass",
+    "browser_smoke": "pass",
+    "web_build": "pass",
+    "admin_build": "pass",
+    "docs_site_build": "pass",
+    "plugin_templates": "pass",
+    "release_check": "pass"
+  },
+  "stable_fields": [
+    "HTTP method/path/auth/permission semantics",
+    "OpenAPI and plugin-permission contract content",
+    "historical migration sequence",
+    "plugin manifest compatibility",
+    "persistent root paths and user file URL semantics",
+    "web/admin page URLs and authorization results"
+  ],
+  "non_contractual_runtime_fields": [
+    "timestamps",
+    "request trace IDs",
+    "platform log lines",
+    "record counts in a developer database",
+    "runtime plugin health revisions"
+  ]
+}

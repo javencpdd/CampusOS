@@ -1,15 +1,22 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/campusos/CampusOS/internal/core/identity/service"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
+// PermissionChecker is the public authorization contract used by HTTP
+// middleware. It prevents transports from depending on Identity's concrete
+// application service.
+type PermissionChecker interface {
+	Check(context.Context, string, string, string) (bool, error)
+}
+
 // RequirePermission 权限检查中间件
-func RequirePermission(permSvc *service.PermissionService, resource, action string) gin.HandlerFunc {
+func RequirePermission(permSvc PermissionChecker, resource, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get("user_id")
 		if !exists {

@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	communitycore "github.com/campusos/CampusOS/internal/community"
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
 	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
 	communitysvc "github.com/campusos/CampusOS/internal/community/service"
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
 )
@@ -54,7 +56,7 @@ func TestCategoryModeratorCanOnlyGovernAssignedCategories(t *testing.T) {
 	postSvc.SetThreadRepository(threadRepo)
 	audit := NewMemoryAuditStore()
 	permissionSvc := identitysvc.NewPermissionService(identityrepo.NewMemoryRoleRepository(), userRepo)
-	service := NewService(permissionSvc, categoryRepo, threadRepo, postRepo, threadSvc, postSvc, audit, Config{
+	service := NewService(identityport.NewPermissionModerationPolicy(permissionSvc), communitycore.NewModerationGateway(categoryRepo, threadRepo, postRepo, threadSvc, postSvc), audit, Config{
 		AllowPin: true, AllowLock: true, AllowDeletePost: true,
 	})
 

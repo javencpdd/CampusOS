@@ -1,12 +1,34 @@
 {
-  "cross_repository": {
-    "internal/mcp/mcp.go": "legacy read-only Community query; replace with Community read port after v0.7",
-    "internal/moderation/handler.go": "Moderation Core compatibility handler types; remove after Moderation ports stabilize",
-    "internal/moderation/service.go": "Moderation Core compatibility repository adapters; remove after A4 follow-up",
-    "internal/plugin/hostapi/hostapi.go": "Host API v1 compatibility adapter; replace with public Identity/Community ports",
-    "internal/richtext/service.go": "RichText Community adapter predates v0.7 ports; isolate behind Article service constructor",
-    "internal/server/application.go": "composition root may construct concrete repositories; business modules may not import it",
-    "internal/server/module_assembly.go": "explicit Identity/Community composition adapters are the only permitted concrete repository wiring entry",
-    "internal/space/handler.go": "legacy HTTP type adapter for Identity user models"
-  }
+  "schema_version": 2,
+  "frozen_at": "2026-07-13",
+  "frozen_source_exception_count": 4,
+  "frozen_target_edge_count": 6,
+  "legacy_concrete_imports": {
+    "internal/mcp/mcp.go": {
+      "targets": ["internal/community/repository"],
+      "reason": "A10 legacy read-only Community query; replace with Community Reader Port."
+    },
+    "internal/plugin/hostapi/hostapi.go": {
+      "targets": ["internal/community/repository", "internal/core/identity/repository"],
+      "reason": "A9 Host API v1 compatibility adapter; replace with public Identity and Community Ports."
+    },
+    "internal/richtext/service.go": {
+      "targets": ["internal/community/repository", "internal/community/service"],
+      "reason": "A7 legacy article adapter; replace with Community Reader and Writer Ports."
+    },
+    "internal/space/handler.go": {
+      "targets": ["internal/core/identity/repository"],
+      "reason": "A7 legacy HTTP type adapter; replace with the public Identity DTO/Reader Port."
+    }
+  },
+  "legacy_server_business_composition": [
+    "internal/server/application.go",
+    "internal/server/module_assembly.go"
+  ],
+  "legacy_server_business_routes": [
+    "internal/server/application.go"
+  ],
+  "legacy_plugin_manager_backreferences": [
+    "internal/plugin/platform_services.go"
+  ]
 }

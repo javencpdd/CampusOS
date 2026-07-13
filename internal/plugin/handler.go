@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,7 @@ import (
 type Handler struct {
 	manager    *Manager
 	pluginsDir string
+	features   *platformfeature.Registry
 }
 
 type HandlerOption func(*Handler)
@@ -26,6 +28,10 @@ func WithPluginsDir(dir string) HandlerOption {
 			h.pluginsDir = dir
 		}
 	}
+}
+
+func WithFeatureRegistry(features *platformfeature.Registry) HandlerOption {
+	return func(h *Handler) { h.features = features }
 }
 
 // NewHandler 创建插件处理器
@@ -123,6 +129,10 @@ func (h *Handler) EnablePlugin(c *gin.Context) {
 		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
+	if err := h.requestFeatureState(name, true); err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
 	p, _ := h.manager.GetPlugin(name)
 	payload := h.pluginPayload(p)
 	payload["message"] = lifecycleMessage(payload, true)
@@ -137,10 +147,37 @@ func (h *Handler) DisablePlugin(c *gin.Context) {
 		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
+	if err := h.requestFeatureState(name, false); err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+		return
+	}
 	p, _ := h.manager.GetPlugin(name)
 	payload := h.pluginPayload(p)
 	payload["message"] = lifecycleMessage(payload, false)
 	response.Success(c, payload)
+}
+
+func (h *Handler) requestFeatureState(pluginID string, enabled bool) error {
+	if h.features == nil {
+		return nil
+	}
+	featureID, ok := legacyBuiltinFeatureID(pluginID)
+	if !ok {
+		return nil
+	}
+	_, err := h.features.Request(featureID, enabled)
+	return err
+}
+
+func legacyBuiltinFeatureID(pluginID string) (string, bool) {
+	switch pluginID {
+	case "personal-space", "controlled-richtext-article", "personal-schedule":
+		return pluginID, true
+	case "web-theme", "homepage-customizer":
+		return "appearance", true
+	default:
+		return "", false
+	}
 }
 
 // ReloadUserPlugin reloads changed user-level plugin code without restarting
