@@ -15,14 +15,16 @@ import (
 )
 
 const (
-	ModuleID           = "core.community"
-	portEventBus       = "platform.event-bus"
-	portMemoryEventBus = "platform.memory-event-bus"
-	portCache          = "platform.cache"
-	portCategoryReader = "community.category-reader"
-	portThreadPort     = "community.thread-port"
-	portPostPort       = "community.post-port"
-	portModeration     = "community.moderation-gateway"
+	ModuleID            = "core.community"
+	portEventBus        = "platform.event-bus"
+	portMemoryEventBus  = "platform.memory-event-bus"
+	portCache           = "platform.cache"
+	portCategoryReader  = "community.category-reader"
+	portCategoryCatalog = "community.category-catalog"
+	portThreadPort      = "community.thread-port"
+	portPostPort        = "community.post-port"
+	portModeration      = "community.moderation-gateway"
+	portContent         = "community.content-gateway"
 )
 
 type HTTPHandlers struct {
@@ -84,6 +86,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		value interface{}
 	}{
 		{portCategoryReader, communityport.NewRepositoryCategoryReader(m.categories)},
+		{portCategoryCatalog, &moduleCategoryCatalog{module: m}},
 		{portThreadPort, communityport.NewRepositoryThreadPort(m.threads)},
 		{portPostPort, communityport.NewRepositoryPostPort(m.posts)},
 	} {
@@ -91,7 +94,10 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 			return err
 		}
 	}
-	return app.Provide(portModeration, &moduleModerationGateway{module: m})
+	if err := app.Provide(portModeration, &moduleModerationGateway{module: m}); err != nil {
+		return err
+	}
+	return app.Provide(portContent, &moduleContentGateway{module: m})
 }
 
 func (m *Module) Start(context.Context) error {

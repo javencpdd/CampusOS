@@ -31,25 +31,31 @@ type State struct {
 }
 
 type LegacySource func(pluginID string) bool
+type LegacyConfigSource func(featureID string) map[string]interface{}
 
 type Registry struct {
-	mu        sync.RWMutex
-	defs      map[string]Definition
-	states    map[string]State
-	persisted map[string]bool
-	legacy    LegacySource
-	store     Store
+	mu           sync.RWMutex
+	defs         map[string]Definition
+	states       map[string]State
+	persisted    map[string]bool
+	legacy       LegacySource
+	legacyConfig LegacyConfigSource
+	store        Store
 }
 
 func NewRegistry(legacy LegacySource) *Registry {
-	return NewRegistryWithStore(legacy, NewMemoryStore())
+	return NewRegistryWithStoreAndConfig(legacy, nil, NewMemoryStore())
 }
 
 func NewRegistryWithStore(legacy LegacySource, store Store) *Registry {
+	return NewRegistryWithStoreAndConfig(legacy, nil, store)
+}
+
+func NewRegistryWithStoreAndConfig(legacy LegacySource, legacyConfig LegacyConfigSource, store Store) *Registry {
 	if store == nil {
 		store = NewMemoryStore()
 	}
-	return &Registry{defs: map[string]Definition{}, states: map[string]State{}, persisted: map[string]bool{}, legacy: legacy, store: store}
+	return &Registry{defs: map[string]Definition{}, states: map[string]State{}, persisted: map[string]bool{}, legacy: legacy, legacyConfig: legacyConfig, store: store}
 }
 
 func (r *Registry) Register(def Definition) error {
@@ -93,6 +99,13 @@ func (r *Registry) Enabled(id string) bool {
 	return state.Enabled
 }
 
+func (r *Registry) Get(id string) (State, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	state, ok := r.states[id]
+	return state, ok
+}
+
 // SyncLegacy captures the compatibility source at process bootstrap. Restart
 // features intentionally do not follow later runtime changes until restart.
 func (r *Registry) SyncLegacy() {
@@ -108,9 +121,22 @@ func (r *Registry) SyncLegacy() {
 			state.DesiredEnabled = enabled
 			state.PendingRestart = false
 			r.states[id] = state
-			if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart}); err == nil {
+			config := r.legacyFeatureConfig(id)
+			if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: config}); err == nil {
 				r.persisted[id] = true
 			}
+			continue
+		}
+		if state.LegacyPlugin != "" && r.persisted[id] {
+			stored, found, err := r.store.Get(context.Background(), id)
+			if err != nil || !found || len(stored.Config) != 0 {
+				continue
+			}
+			legacyConfig := r.legacyFeatureConfig(id)
+			if len(legacyConfig) == 0 {
+				continue
+			}
+			_ = r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: legacyConfig})
 		}
 	}
 }
@@ -133,11 +159,51 @@ func (r *Registry) Request(id string, enabled bool) (State, error) {
 		state.PendingRestart = state.Enabled != enabled
 	}
 	r.states[id] = state
-	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart}); err != nil {
+	stored, _, err := r.store.Get(context.Background(), id)
+	if err != nil {
+		return State{}, fmt.Errorf("load feature config %q: %w", id, err)
+	}
+	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: stored.Config}); err != nil {
 		return State{}, fmt.Errorf("save feature state %q: %w", id, err)
 	}
 	r.persisted[id] = true
 	return state, nil
+}
+
+// Config returns a copy of the authoritative Built-in Feature configuration.
+// Legacy plugin manifests are only used once while seeding an empty record.
+func (r *Registry) Config(id string) map[string]interface{} {
+	r.mu.RLock()
+	_, known := r.states[id]
+	r.mu.RUnlock()
+	if !known {
+		return map[string]interface{}{}
+	}
+	stored, found, err := r.store.Get(context.Background(), id)
+	if err != nil || !found {
+		return map[string]interface{}{}
+	}
+	return cloneConfig(stored.Config)
+}
+
+func (r *Registry) UpdateConfig(id string, config map[string]interface{}) error {
+	r.mu.RLock()
+	state, ok := r.states[id]
+	r.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("feature %q not found", id)
+	}
+	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: cloneConfig(config)}); err != nil {
+		return fmt.Errorf("save feature config %q: %w", id, err)
+	}
+	return nil
+}
+
+func (r *Registry) legacyFeatureConfig(id string) map[string]interface{} {
+	if r.legacyConfig == nil {
+		return map[string]interface{}{}
+	}
+	return cloneConfig(r.legacyConfig(id))
 }
 
 func (r *Registry) List() []State {

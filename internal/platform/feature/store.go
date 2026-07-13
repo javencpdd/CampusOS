@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ type StoredState struct {
 	EffectiveEnabled bool
 	PendingRestart   bool
 	UpdatedAt        time.Time
+	Config           map[string]interface{}
 }
 
 // Store persists Built-in Feature state independently from the external
@@ -43,6 +45,7 @@ func (s *MemoryStore) Save(_ context.Context, state StoredState) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	state.UpdatedAt = time.Now().UTC()
+	state.Config = cloneConfig(state.Config)
 	s.states[state.FeatureID] = state
 	return nil
 }
@@ -53,9 +56,10 @@ func NewPostgreSQLStore(pool *pgxpool.Pool) *PostgreSQLStore { return &PostgreSQ
 
 func (s *PostgreSQLStore) Get(ctx context.Context, id string) (StoredState, bool, error) {
 	var state StoredState
-	err := s.pool.QueryRow(ctx, `SELECT feature_id, desired_enabled, effective_enabled, pending_restart, updated_at
+	var rawConfig []byte
+	err := s.pool.QueryRow(ctx, `SELECT feature_id, desired_enabled, effective_enabled, pending_restart, updated_at, config
 		FROM builtin_feature_states WHERE feature_id = $1`, id).Scan(
-		&state.FeatureID, &state.DesiredEnabled, &state.EffectiveEnabled, &state.PendingRestart, &state.UpdatedAt,
+		&state.FeatureID, &state.DesiredEnabled, &state.EffectiveEnabled, &state.PendingRestart, &state.UpdatedAt, &rawConfig,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -63,17 +67,38 @@ func (s *PostgreSQLStore) Get(ctx context.Context, id string) (StoredState, bool
 		}
 		return StoredState{}, false, err
 	}
+	if len(rawConfig) > 0 && string(rawConfig) != "null" {
+		if err := json.Unmarshal(rawConfig, &state.Config); err != nil {
+			return StoredState{}, false, err
+		}
+	}
 	return state, true, nil
 }
 
 func (s *PostgreSQLStore) Save(ctx context.Context, state StoredState) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO builtin_feature_states
-		(feature_id, desired_enabled, effective_enabled, pending_restart, updated_at)
-		VALUES ($1, $2, $3, $4, NOW())
+	config, err := json.Marshal(state.Config)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO builtin_feature_states
+		(feature_id, desired_enabled, effective_enabled, pending_restart, updated_at, config)
+		VALUES ($1, $2, $3, $4, NOW(), $5::jsonb)
 		ON CONFLICT (feature_id) DO UPDATE SET
 		desired_enabled = EXCLUDED.desired_enabled,
 		effective_enabled = EXCLUDED.effective_enabled,
 		pending_restart = EXCLUDED.pending_restart,
-		updated_at = NOW()`, state.FeatureID, state.DesiredEnabled, state.EffectiveEnabled, state.PendingRestart)
+		config = EXCLUDED.config,
+		updated_at = NOW()`, state.FeatureID, state.DesiredEnabled, state.EffectiveEnabled, state.PendingRestart, string(config))
 	return err
+}
+
+func cloneConfig(config map[string]interface{}) map[string]interface{} {
+	if config == nil {
+		return map[string]interface{}{}
+	}
+	copy := make(map[string]interface{}, len(config))
+	for key, value := range config {
+		copy[key] = value
+	}
+	return copy
 }

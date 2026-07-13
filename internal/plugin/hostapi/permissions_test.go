@@ -15,6 +15,21 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin"
 )
 
+type testThreadReader struct{ repository.ThreadRepository }
+
+func (r testThreadReader) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
+	return r.GetByID(ctx, id)
+}
+func (r testThreadReader) ListThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	return r.List(ctx, filter)
+}
+
+type testPostReader struct{ repository.PostRepository }
+
+func (r testPostReader) GetPost(ctx context.Context, id string) (*domain.Post, error) {
+	return r.GetByID(ctx, id)
+}
+
 func TestHandleHostAPIRequestForPluginDeniesMissingPermission(t *testing.T) {
 	hostAPI := NewHostAPIv2(nil, nil, nil)
 	manifest := &plugin.Manifest{Name: "no-user-permission"}
@@ -126,7 +141,7 @@ func TestHandleHostAPIRequestForPluginReturnsThread(t *testing.T) {
 		t.Fatalf("create thread: %v", err)
 	}
 
-	hostAPI := NewHostAPIv2(nil, &DataAPI{threadRepo: threadRepo}, nil)
+	hostAPI := NewHostAPIv2(nil, &DataAPI{threads: testThreadReader{threadRepo}}, nil)
 	manifest := manifestWithPermissions("thread-reader", plugin.APIPermission{
 		Resource: "thread",
 		Actions:  []string{"read"},
@@ -161,7 +176,7 @@ func TestHandleHostAPIRequestForPluginReturnsReply(t *testing.T) {
 		t.Fatalf("create post: %v", err)
 	}
 
-	hostAPI := NewHostAPIv2(nil, &DataAPI{postRepo: postRepo}, nil)
+	hostAPI := NewHostAPIv2(nil, &DataAPI{posts: testPostReader{postRepo}}, nil)
 	manifest := manifestWithPermissions("reply-reader", plugin.APIPermission{
 		Resource: "reply",
 		Actions:  []string{"read"},

@@ -94,7 +94,26 @@ func (h *Handler) UpdatePluginConfig(c *gin.Context) {
 		response.Error(c, status, 60004, err.Error())
 		return
 	}
+	if featureID, ok := legacyBuiltinFeatureID(name); ok && h.features != nil {
+		if err := h.updateFeatureConfig(featureID, name, config); err != nil {
+			response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+			return
+		}
+	}
 	response.Success(c, gin.H{"name": name, "config": config})
+}
+
+func (h *Handler) updateFeatureConfig(featureID, pluginID string, config map[string]interface{}) error {
+	if featureID != "appearance" {
+		return h.features.UpdateConfig(featureID, config)
+	}
+	root := h.features.Config(featureID)
+	section := "web_theme"
+	if pluginID == "homepage-customizer" {
+		section = "homepage"
+	}
+	root[section] = config
+	return h.features.UpdateConfig(featureID, root)
 }
 
 // ListPluginLogs 获取插件运行日志
@@ -125,12 +144,14 @@ func (h *Handler) ListPluginLogs(c *gin.Context) {
 // POST /api/v1/plugins/:name/enable
 func (h *Handler) EnablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if err := h.manager.RequestEnable(name); err != nil {
-		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
+	rollback, err := h.requestFeatureState(name, true)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
 		return
 	}
-	if err := h.requestFeatureState(name, true); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+	if err := h.manager.RequestEnable(name); err != nil {
+		rollback()
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
 	p, _ := h.manager.GetPlugin(name)
@@ -143,12 +164,14 @@ func (h *Handler) EnablePlugin(c *gin.Context) {
 // POST /api/v1/plugins/:name/disable
 func (h *Handler) DisablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if err := h.manager.RequestDisable(name); err != nil {
-		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
+	rollback, err := h.requestFeatureState(name, false)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
 		return
 	}
-	if err := h.requestFeatureState(name, false); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
+	if err := h.manager.RequestDisable(name); err != nil {
+		rollback()
+		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 		return
 	}
 	p, _ := h.manager.GetPlugin(name)
@@ -157,16 +180,22 @@ func (h *Handler) DisablePlugin(c *gin.Context) {
 	response.Success(c, payload)
 }
 
-func (h *Handler) requestFeatureState(pluginID string, enabled bool) error {
+func (h *Handler) requestFeatureState(pluginID string, enabled bool) (func(), error) {
 	if h.features == nil {
-		return nil
+		return func() {}, nil
 	}
 	featureID, ok := legacyBuiltinFeatureID(pluginID)
 	if !ok {
-		return nil
+		return func() {}, nil
 	}
-	_, err := h.features.Request(featureID, enabled)
-	return err
+	previous, found := h.features.Get(featureID)
+	if !found {
+		return func() {}, nil
+	}
+	if _, err := h.features.Request(featureID, enabled); err != nil {
+		return nil, err
+	}
+	return func() { _, _ = h.features.Request(featureID, previous.DesiredEnabled) }, nil
 }
 
 func legacyBuiltinFeatureID(pluginID string) (string, bool) {
@@ -415,7 +444,8 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 		return gin.H{}
 	}
 	state, _ := h.manager.LifecycleState(p.ID)
-	return gin.H{
+	classification := h.manager.Catalog().Classify(p.Manifest)
+	payload := gin.H{
 		"id":                       p.ID,
 		"name":                     p.Manifest.Name,
 		"display_name":             p.Manifest.DisplayName,
@@ -439,6 +469,20 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 		"checksum":                 p.Checksum,
 		"package_size":             p.PackageSize,
 	}
+	if classification == LegacyBuiltin {
+		payload["lifecycle_owner"] = "builtin-feature-registry"
+		if h.features != nil {
+			if featureID, ok := legacyBuiltinFeatureID(p.Manifest.Name); ok {
+				if state, found := h.features.Get(featureID); found {
+					payload["feature_state"] = state
+				}
+			}
+		}
+	} else {
+		payload["lifecycle_owner"] = "plugin-platform"
+	}
+	payload["capability_class"] = classification
+	return payload
 }
 
 func lifecycleMessage(payload gin.H, enabled bool) string {

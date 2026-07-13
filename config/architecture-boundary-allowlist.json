@@ -1,26 +1,9 @@
 {
   "schema_version": 2,
   "frozen_at": "2026-07-13",
-  "frozen_source_exception_count": 4,
-  "frozen_target_edge_count": 6,
-  "legacy_concrete_imports": {
-    "internal/mcp/mcp.go": {
-      "targets": ["internal/community/repository"],
-      "reason": "A10 legacy read-only Community query; replace with Community Reader Port."
-    },
-    "internal/plugin/hostapi/hostapi.go": {
-      "targets": ["internal/community/repository", "internal/core/identity/repository"],
-      "reason": "A9 Host API v1 compatibility adapter; replace with public Identity and Community Ports."
-    },
-    "internal/richtext/service.go": {
-      "targets": ["internal/community/repository", "internal/community/service"],
-      "reason": "A7 legacy article adapter; replace with Community Reader and Writer Ports."
-    },
-    "internal/space/handler.go": {
-      "targets": ["internal/core/identity/repository"],
-      "reason": "A7 legacy HTTP type adapter; replace with the public Identity DTO/Reader Port."
-    }
-  },
+  "frozen_source_exception_count": 0,
+  "frozen_target_edge_count": 0,
+  "legacy_concrete_imports": {},
   "legacy_server_business_composition": [
     "internal/server/application.go",
     "internal/server/module_assembly.go"
@@ -28,7 +11,5 @@
   "legacy_server_business_routes": [
     "internal/server/application.go"
   ],
-  "legacy_plugin_manager_backreferences": [
-    "internal/plugin/platform_services.go"
-  ]
+  "legacy_plugin_manager_backreferences": []
 }

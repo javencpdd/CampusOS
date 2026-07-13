@@ -5,8 +5,7 @@ import (
 	"log"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
-	"github.com/campusos/CampusOS/internal/community/repository"
-	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
 
@@ -19,15 +18,14 @@ type HostAPI struct {
 
 // NewHostAPI 创建 Host API
 func NewHostAPI(
-	userRepo identityrepo.UserRepository,
-	threadRepo repository.ThreadRepository,
-	categoryRepo repository.CategoryRepository,
-	postRepo repository.PostRepository,
+	users identityport.UserReader,
+	threads ThreadReader,
+	posts PostReader,
 	bus eventbus.EventBus,
 ) *HostAPI {
 	return &HostAPI{
-		identity: &IdentityAPI{userRepo: userRepo},
-		data:     &DataAPI{threadRepo: threadRepo, categoryRepo: categoryRepo, postRepo: postRepo},
+		identity: &IdentityAPI{users: users},
+		data:     &DataAPI{threads: threads, posts: posts},
 		event:    &EventAPI{bus: bus},
 	}
 }
@@ -38,12 +36,12 @@ func (h *HostAPI) Event() *EventAPI       { return h.event }
 
 // IdentityAPI 身份查询接口
 type IdentityAPI struct {
-	userRepo identityrepo.UserRepository
+	users identityport.UserReader
 }
 
 // GetUser 查询用户信息
 func (api *IdentityAPI) GetUser(ctx context.Context, userID string) (map[string]interface{}, error) {
-	user, err := api.userRepo.GetByID(ctx, userID)
+	user, err := api.users.GetUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,14 +56,22 @@ func (api *IdentityAPI) GetUser(ctx context.Context, userID string) (map[string]
 
 // DataAPI 数据查询接口
 type DataAPI struct {
-	threadRepo   repository.ThreadRepository
-	categoryRepo repository.CategoryRepository
-	postRepo     repository.PostRepository
+	threads ThreadReader
+	posts   PostReader
+}
+
+type ThreadReader interface {
+	GetThread(context.Context, string) (*domain.Thread, error)
+	ListThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+}
+
+type PostReader interface {
+	GetPost(context.Context, string) (*domain.Post, error)
 }
 
 // GetThread 查询主题详情
 func (api *DataAPI) GetThread(ctx context.Context, threadID string) (map[string]interface{}, error) {
-	thread, err := api.threadRepo.GetByID(ctx, threadID)
+	thread, err := api.threads.GetThread(ctx, threadID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +97,7 @@ func (api *DataAPI) GetThread(ctx context.Context, threadID string) (map[string]
 
 // GetReply 查询回复详情
 func (api *DataAPI) GetReply(ctx context.Context, replyID string) (map[string]interface{}, error) {
-	post, err := api.postRepo.GetByID(ctx, replyID)
+	post, err := api.posts.GetPost(ctx, replyID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +137,7 @@ func (api *DataAPI) QueryThreads(ctx context.Context, filter map[string]interfac
 		f.PageSize = v
 	}
 
-	threads, _, err := api.threadRepo.List(ctx, f)
+	threads, _, err := api.threads.ListThreads(ctx, f)
 	if err != nil {
 		return nil, err
 	}

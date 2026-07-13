@@ -64,3 +64,26 @@ func TestRegistryPersistsRequestedStateAndDoesNotReseedFromLegacy(t *testing.T) 
 		t.Fatalf("persisted feature state was replaced by legacy plugin state: %#v", state)
 	}
 }
+
+func TestRegistrySeedsLegacyConfigOnceAndThenOwnsUpdates(t *testing.T) {
+	store := NewMemoryStore()
+	legacyConfig := map[string]interface{}{"quota_mb": float64(10)}
+	registry := NewRegistryWithStoreAndConfig(func(string) bool { return true }, func(string) map[string]interface{} {
+		return legacyConfig
+	}, store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "personal-space"}); err != nil {
+		t.Fatal(err)
+	}
+	registry.SyncLegacy()
+	if got := registry.Config("space")["quota_mb"]; got != float64(10) {
+		t.Fatalf("legacy config was not seeded: %#v", registry.Config("space"))
+	}
+	if err := registry.UpdateConfig("space", map[string]interface{}{"quota_mb": float64(20)}); err != nil {
+		t.Fatal(err)
+	}
+	legacyConfig["quota_mb"] = float64(30)
+	registry.SyncLegacy()
+	if got := registry.Config("space")["quota_mb"]; got != float64(20) {
+		t.Fatalf("feature config was overwritten by legacy source: %#v", registry.Config("space"))
+	}
+}

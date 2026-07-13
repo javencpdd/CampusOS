@@ -19,6 +19,12 @@ type Post struct{ ID, ThreadID, AuthorID, Status string }
 type CategoryReader interface {
 	GetCategory(context.Context, string) (Category, error)
 }
+
+// CategoryCatalog is the public read contract for appearance and other
+// presentation features that need category display metadata.
+type CategoryCatalog interface {
+	ListCategories(context.Context) ([]*domain.Category, error)
+}
 type ThreadReader interface {
 	GetThread(context.Context, string) (Thread, error)
 }
@@ -41,4 +47,21 @@ type ModerationGateway interface {
 	SetPinned(context.Context, string, bool) (*domain.Thread, error)
 	SetLocked(context.Context, string, bool) (*domain.Thread, error)
 	DeletePostForModeration(context.Context, string) error
+}
+
+// ContentGateway is the stable Community contract consumed by built-in
+// content features. It deliberately exposes application commands rather than
+// repositories or Community service implementations.
+type ContentGateway interface {
+	CreateThread(context.Context, string, string, domain.CreateThreadRequest, ThreadCreateOptions) (*domain.Thread, error)
+	GetThread(context.Context, string) (*domain.Thread, error)
+	UpdateThread(context.Context, *domain.Thread) error
+	DeleteThread(context.Context, string) error
+	ListThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+	InvalidateThreadList(context.Context)
+}
+
+type ThreadCreateOptions struct {
+	Status        domain.ThreadStatus
+	ContentFormat string
 }

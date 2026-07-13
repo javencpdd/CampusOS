@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	community "github.com/campusos/CampusOS/internal/community"
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
 	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
 	communitysvc "github.com/campusos/CampusOS/internal/community/service"
@@ -14,7 +15,7 @@ import (
 func newTestService(enabled bool) (*Service, *communityrepo.MemoryThreadRepository) {
 	threadRepo := communityrepo.NewMemoryThreadRepository()
 	threadSvc := communitysvc.NewThreadService(threadRepo, nil)
-	svc := NewService(NewMemoryStore(), threadRepo, threadSvc)
+	svc := NewService(NewMemoryStore(), community.NewContentGateway(threadRepo, threadSvc))
 	svc.SetEnabledChecker(func() bool { return enabled })
 	return svc, threadRepo
 }

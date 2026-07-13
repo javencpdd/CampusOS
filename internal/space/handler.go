@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	"github.com/campusos/CampusOS/internal/stylepack"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -587,7 +587,7 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusRequestEntityTooLarge, 10001, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):
 		response.Error(c, http.StatusForbidden, 20004, err.Error())
-	case errors.Is(err, identityrepo.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):
+	case errors.Is(err, identityport.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):
 		response.Error(c, http.StatusNotFound, 30004, err.Error())
 	default:
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())

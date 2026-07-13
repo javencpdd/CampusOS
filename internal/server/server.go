@@ -9,6 +9,9 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
+	"github.com/campusos/CampusOS/internal/richtext"
+	"github.com/campusos/CampusOS/internal/schedule"
+	"github.com/campusos/CampusOS/internal/space"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -19,11 +22,14 @@ type Server struct {
 	manager    *plugin.Manager
 	modules    *platformmodule.Registry
 	features   *feature.Registry
-	appearance *appearance.Facade
+	appearance *appearance.Module
 	community  *communitycore.Module
 	identity   *identitycore.Module
 	moderation *moderation.Module
 	storage    *corestorage.Module
+	space      *space.Module
+	richtext   *richtext.Module
+	schedule   *schedule.Module
 	appContext *platformmodule.AppContext
 }
 

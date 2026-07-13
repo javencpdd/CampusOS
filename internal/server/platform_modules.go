@@ -7,8 +7,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/campusos/CampusOS/internal/appearance"
-
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -110,13 +108,14 @@ type pluginPlatformModule struct {
 	owner        *Server
 	events       *eventBusModule
 	featureStore platformfeature.Store
+	repository   plugin.PluginRepository
 	manager      *plugin.Manager
 	grpcRuntime  *plugingrpc.GRPCRuntime
 	cancel       context.CancelFunc
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, featureStore platformfeature.Store) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, featureStore: featureStore}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, featureStore platformfeature.Store, repository plugin.PluginRepository) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, featureStore: featureStore, repository: repository}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
@@ -126,6 +125,9 @@ func (m *pluginPlatformModule) Dependencies() []string {
 
 func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	m.manager = plugin.NewManager()
+	if m.repository != nil {
+		m.manager.SetPluginRepository(m.repository)
+	}
 	m.grpcRuntime = plugingrpc.NewGRPCRuntime()
 	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
@@ -133,8 +135,19 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	builtinRuntime.RegisterExtension("campus-welcome", campusWelcomeExtension)
 	m.manager.RegisterRuntime("builtin", builtinRuntime)
 	m.owner.manager = m.manager
-	m.owner.features = platformfeature.NewRegistryWithStore(m.manager.IsPluginRunning, m.featureStore)
-	m.owner.appearance = appearance.NewCompatibilityFacade()
+	m.owner.features = platformfeature.NewRegistryWithStoreAndConfig(m.manager.IsPluginRunning, func(featureID string) map[string]interface{} {
+		if featureID == "appearance" {
+			webTheme, _ := m.manager.GetPluginConfig("web-theme")
+			homepage, _ := m.manager.GetPluginConfig("homepage-customizer")
+			return map[string]interface{}{"web_theme": webTheme, "homepage": homepage}
+		}
+		pluginID, ok := legacyPluginForFeature(featureID)
+		if !ok {
+			return nil
+		}
+		config, _ := m.manager.GetPluginConfig(pluginID)
+		return config
+	}, m.featureStore)
 	for _, def := range []platformfeature.Definition{
 		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
 		{ID: "controlled-richtext-article", Mode: platformfeature.Restart, Dependencies: []string{"core.community", "core.user-storage"}, LegacyPlugin: "controlled-richtext-article"},
@@ -159,10 +172,24 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
 	}
+	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
+	m.manager.StartDesiredPlugins(plugin.ScopeUser)
+	m.owner.features.SyncLegacy()
 	healthContext, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
 	return nil
+}
+
+func legacyPluginForFeature(featureID string) (string, bool) {
+	switch featureID {
+	case "personal-space", "controlled-richtext-article", "personal-schedule":
+		return featureID, true
+	case "appearance":
+		return "web-theme", true
+	default:
+		return "", false
+	}
 }
 
 func (m *pluginPlatformModule) Stop(context.Context) error {

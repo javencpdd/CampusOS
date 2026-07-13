@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
@@ -19,10 +18,15 @@ var (
 	themeNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,62}$`)
 )
 
-type PluginLookup func(name string) (*plugin.Plugin, bool)
+// ConfigSource is the Appearance-facing contract for web-theme preferences.
+// It intentionally contains no Plugin Manager lifecycle capability.
+type ConfigSource interface {
+	Enabled() bool
+	Config() map[string]interface{}
+}
 
 type Service struct {
-	plugins PluginLookup
+	config ConfigSource
 }
 
 type Catalog struct {
@@ -50,19 +54,22 @@ type RuntimePackage struct {
 	ConfigSchema map[string]interface{} `json:"config_schema,omitempty"`
 }
 
-func NewService(plugins PluginLookup) *Service {
-	return &Service{plugins: plugins}
+// NewService accepts ConfigSource. compatibility.go continues to accept the
+// historical PluginLookup function while callers migrate to Appearance.
+func NewService(source interface{}) *Service {
+	return &Service{config: configSourceFrom(source)}
 }
 
 func (s *Service) Catalog() (*Catalog, error) {
-	p, running := s.runningPlugin()
+	running := s.enabled()
 	catalog := &Catalog{Items: []CatalogItem{}}
 	if !running {
 		return catalog, nil
 	}
 	catalog.Enabled = true
-	catalog.AllowUserSwitch = boolConfig(p.Manifest.Config, "allow_user_switch", true)
-	catalog.DefaultStylePack = stringConfig(p.Manifest.Config, "default_style_pack", "")
+	config := s.config.Config()
+	catalog.AllowUserSwitch = boolConfig(config, "allow_user_switch", true)
+	catalog.DefaultStylePack = stringConfig(config, "default_style_pack", "")
 
 	items, err := stylepack.ListSourcePacks(PluginName)
 	if err != nil {
@@ -94,7 +101,7 @@ func (s *Service) Catalog() (*Catalog, error) {
 }
 
 func (s *Service) Package(name string) (*RuntimePackage, error) {
-	if _, running := s.runningPlugin(); !running {
+	if !s.enabled() {
 		return nil, ErrDisabled
 	}
 	pack, err := s.load(name)
@@ -111,7 +118,7 @@ func (s *Service) Package(name string) (*RuntimePackage, error) {
 }
 
 func (s *Service) Asset(name, assetPath string) ([]byte, string, error) {
-	if _, running := s.runningPlugin(); !running {
+	if !s.enabled() {
 		return nil, "", ErrDisabled
 	}
 	pack, err := s.load(name)
@@ -141,12 +148,8 @@ func (s *Service) load(name string) (*stylepack.Package, error) {
 	return pack, nil
 }
 
-func (s *Service) runningPlugin() (*plugin.Plugin, bool) {
-	if s.plugins == nil {
-		return nil, false
-	}
-	p, ok := s.plugins(PluginName)
-	return p, ok && p != nil && p.Manifest != nil && p.Status == plugin.StatusRunning
+func (s *Service) enabled() bool {
+	return s.config != nil && s.config.Enabled()
 }
 
 func displayName(manifest stylepack.Manifest) string {

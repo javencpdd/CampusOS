@@ -2,9 +2,21 @@ package port
 
 import "context"
 
-type User struct{ ID, Username, Status string }
+// User is Identity's public profile projection for other modules. It excludes
+// credentials and account internals while retaining the fields that profile
+// features are allowed to render.
+type User struct {
+	ID       string
+	Username string
+	Nickname string
+	Email    string
+	Avatar   string
+	Bio      string
+	Status   string
+}
 type UserReader interface {
 	GetUser(context.Context, string) (User, error)
+	GetUserByUsername(context.Context, string) (User, error)
 }
 type CurrentUser interface {
 	ResolveCurrentUser(context.Context) (User, error)

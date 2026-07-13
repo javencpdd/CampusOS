@@ -16,28 +16,33 @@ import (
 
 // Manager 插件管理器
 type Manager struct {
-	mu        sync.RWMutex
-	runtimes  *RuntimeRegistry
-	repo      PluginRepository // 可选：插件持久化仓储
-	catalog   *PluginCatalog
-	lifecycle *LifecycleService
-	configs   *ConfigService
-	ui        *UIRegistry
-	events    *EventRegistry
-	audit     *AuditLogService
+	mu          sync.RWMutex
+	runtimes    *RuntimeRegistry
+	repo        PluginRepository // 可选：插件持久化仓储
+	catalog     *PluginCatalog
+	lifecycle   *LifecycleService
+	configs     *ConfigService
+	ui          *UIRegistry
+	events      *EventRegistry
+	audit       *AuditLogService
+	auditRepo   PluginLogRepository
+	uiRevision  uint64
+	uiListeners map[chan uint64]struct{}
 }
 
 // NewManager 创建插件管理器
 func NewManager() *Manager {
 	m := &Manager{
-		runtimes: NewRuntimeRegistry(),
+		runtimes:    NewRuntimeRegistry(),
+		uiRevision:  1,
+		uiListeners: make(map[chan uint64]struct{}),
 	}
-	m.catalog = &PluginCatalog{manager: m, plugins: make(map[string]*Plugin)}
-	m.lifecycle = &LifecycleService{manager: m}
-	m.configs = &ConfigService{manager: m}
-	m.ui = &UIRegistry{manager: m, revision: 1, listeners: make(map[chan uint64]struct{})}
-	m.events = &EventRegistry{manager: m, subscriptions: make(map[string][]string)}
-	m.audit = &AuditLogService{manager: m}
+	m.catalog = &PluginCatalog{list: m.ListPlugins, get: m.GetPlugin, plugins: make(map[string]*Plugin)}
+	m.lifecycle = &LifecycleService{start: m.start, stop: func(name string) error { return m.stop(name, true) }, requestEnable: m.requestEnable, requestDisable: m.requestDisable}
+	m.configs = &ConfigService{get: m.GetPluginConfig, update: m.updateConfig}
+	m.ui = &UIRegistry{revision: m.UIRevision, subscribe: m.SubscribeUI}
+	m.events = &EventRegistry{dispatch: m.DispatchEvent, subscriptions: make(map[string][]string)}
+	m.audit = &AuditLogService{record: m.RecordPluginAudit, list: m.ListPluginLogs}
 	return m
 }
 
@@ -54,7 +59,7 @@ func (m *Manager) SetPluginRepository(repo PluginRepository) {
 	m.mu.Lock()
 	m.repo = repo
 	if logRepo, ok := repo.(PluginLogRepository); ok {
-		m.audit.repo = logRepo
+		m.auditRepo = logRepo
 	}
 	plugins := make([]*Plugin, 0, len(m.catalog.plugins))
 	for _, p := range m.catalog.plugins {
@@ -71,7 +76,7 @@ func (m *Manager) SetPluginRepository(repo PluginRepository) {
 
 // SetPluginLogRepository 设置插件运行日志仓储
 func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
-	m.audit.repo = repo
+	m.auditRepo = repo
 }
 
 // RegisterRuntime 注册运行时实现
@@ -419,20 +424,20 @@ func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
 func (m *Manager) UIRevision() uint64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.ui.revision
+	return m.uiRevision
 }
 
 func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
 	ch := make(chan uint64, 1)
 	m.mu.Lock()
-	m.ui.listeners[ch] = struct{}{}
-	revision := m.ui.revision
+	m.uiListeners[ch] = struct{}{}
+	revision := m.uiRevision
 	m.mu.Unlock()
 	ch <- revision
 	return ch, func() {
 		m.mu.Lock()
-		if _, ok := m.ui.listeners[ch]; ok {
-			delete(m.ui.listeners, ch)
+		if _, ok := m.uiListeners[ch]; ok {
+			delete(m.uiListeners, ch)
 			close(ch)
 		}
 		m.mu.Unlock()
@@ -440,10 +445,10 @@ func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
 }
 
 func (m *Manager) bumpUIRevisionLocked() {
-	m.ui.revision++
-	for listener := range m.ui.listeners {
+	m.uiRevision++
+	for listener := range m.uiListeners {
 		select {
-		case listener <- m.ui.revision:
+		case listener <- m.uiRevision:
 		default:
 		}
 	}
@@ -905,7 +910,7 @@ func (m *Manager) persistPluginStatus(ctx context.Context, name string, status P
 	m.mu.RLock()
 	repo := m.repo
 	p := m.catalog.plugins[name]
-	revision := m.ui.revision
+	revision := m.uiRevision
 	backendState, frontendState, healthState := "", "", ""
 	if p != nil {
 		backendState, frontendState, healthState = string(p.BackendState), string(p.FrontendState), string(p.Health)
@@ -929,7 +934,7 @@ func (m *Manager) persistPluginStatus(ctx context.Context, name string, status P
 
 func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
 	m.mu.RLock()
-	logRepo := m.audit.repo
+	logRepo := m.auditRepo
 	m.mu.RUnlock()
 	if logRepo == nil {
 		return
@@ -947,7 +952,7 @@ func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
 
 func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
 	m.mu.RLock()
-	logRepo := m.audit.repo
+	logRepo := m.auditRepo
 	m.mu.RUnlock()
 	if logRepo == nil {
 		return []*PluginLogRecord{}, nil
