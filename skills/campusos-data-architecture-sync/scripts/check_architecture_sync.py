@@ -56,7 +56,7 @@ def system_tables(root: Path) -> set[str]:
 
 
 def architecture_view(root: Path) -> tuple[str, set[str], list[tuple[str, str, str]]]:
-    source = read(root / "admin/src/views/SystemArchitectureView.vue")
+    source = read(root / "admin/src/modules/architecture/pages/SystemArchitectureView.vue")
     tables_block = block(source, "const databaseTables", "const relations")
     relations_block = block(source, "const relations", "const storageRows")
     tables = set(re.findall(r"\bname:\s*'([A-Za-z_][A-Za-z0-9_]*)'", tables_block))

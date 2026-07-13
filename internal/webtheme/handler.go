@@ -9,15 +9,21 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc Application
 }
 
-func NewHandler(svc *Service) *Handler {
+type Application interface {
+	ThemeCatalog() (*Catalog, error)
+	ThemePackage(string) (*RuntimePackage, error)
+	ThemeAsset(string, string) ([]byte, string, error)
+}
+
+func NewHandler(svc Application) *Handler {
 	return &Handler{svc: svc}
 }
 
 func (h *Handler) Catalog(c *gin.Context) {
-	catalog, err := h.svc.Catalog()
+	catalog, err := h.svc.ThemeCatalog()
 	if err != nil {
 		writeError(c, err)
 		return
@@ -26,7 +32,7 @@ func (h *Handler) Catalog(c *gin.Context) {
 }
 
 func (h *Handler) Package(c *gin.Context) {
-	pack, err := h.svc.Package(c.Param("name"))
+	pack, err := h.svc.ThemePackage(c.Param("name"))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -35,7 +41,7 @@ func (h *Handler) Package(c *gin.Context) {
 }
 
 func (h *Handler) Asset(c *gin.Context) {
-	data, contentType, err := h.svc.Asset(c.Param("name"), c.Param("path"))
+	data, contentType, err := h.svc.ThemeAsset(c.Param("name"), c.Param("path"))
 	if err != nil {
 		writeError(c, err)
 		return

@@ -1,12 +1,10 @@
 {
-  "cross_repository": {
-    "internal/mcp/mcp.go": "legacy read-only Community query; replace with Community read port after v0.7",
-    "internal/moderation/handler.go": "Moderation Core compatibility handler types; remove after Moderation ports stabilize",
-    "internal/moderation/service.go": "Moderation Core compatibility repository adapters; remove after A4 follow-up",
-    "internal/plugin/hostapi/hostapi.go": "Host API v1 compatibility adapter; replace with public Identity/Community ports",
-    "internal/richtext/service.go": "RichText Community adapter predates v0.7 ports; isolate behind Article service constructor",
-    "internal/server/application.go": "composition root may construct concrete repositories; business modules may not import it",
-    "internal/server/module_assembly.go": "explicit Identity/Community composition adapters are the only permitted concrete repository wiring entry",
-    "internal/space/handler.go": "legacy HTTP type adapter for Identity user models"
-  }
+  "schema_version": 2,
+  "frozen_at": "2026-07-13",
+  "frozen_source_exception_count": 0,
+  "frozen_target_edge_count": 0,
+  "legacy_concrete_imports": {},
+  "legacy_server_business_composition": [],
+  "legacy_server_business_routes": [],
+  "legacy_plugin_manager_backreferences": []
 }

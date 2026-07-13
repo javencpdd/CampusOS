@@ -136,6 +136,13 @@ func (s *Service) UpsertOwnSpace(ctx context.Context, userID string, req UpsertS
 	return buildPublicSpace(user, space), nil
 }
 
+func (s *Service) ValidateSpaceStylePackage(_ context.Context, _ string, pkg StylePackage) (StyleValidationResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return StyleValidationResult{}, err
+	}
+	return ValidateStylePackage(pkg), nil
+}
+
 func (s *Service) PreviewStylePackage(ctx context.Context, userID string, pkg StylePackage) (*StylePreview, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err

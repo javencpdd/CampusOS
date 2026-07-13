@@ -13,7 +13,7 @@ func TestServerRoutesHaveAuthorizationContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/application.go"))
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestOpenAPIIsValidYAMLWithCoreFieldContracts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	routes, err := ParseServerRoutes(filepath.Join(root, "internal/server/application.go"))
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,6 +78,32 @@ func TestOpenAPICombinesPathAndPaginationParameters(t *testing.T) {
 	for _, expected := range []string{"- name: id", "- name: page", "- name: page_size"} {
 		if !strings.Contains(operation, expected) {
 			t.Fatalf("OpenAPI is missing %q:\n%s", expected, operation)
+		}
+	}
+}
+
+func TestRouteDescriptorsRejectDuplicateTransportRoutes(t *testing.T) {
+	routes := []RouteContract{
+		{Method: "GET", Path: "/api/v1/health", Audience: "public", Auth: "none", Audit: "request-log"},
+		{Method: "GET", Path: "/api/v1/health", Audience: "public", Auth: "none", Audit: "request-log"},
+	}
+	if err := ValidateRouteDescriptors(routes); err == nil {
+		t.Fatal("expected duplicate transport route to fail")
+	}
+}
+
+func TestEveryFrozenRouteHasBusinessModuleOwner(t *testing.T) {
+	root, err := FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range routes {
+		if route.ModuleOwner == "" || strings.HasPrefix(route.ModuleOwner, "unowned:") || route.ModuleOwner == "transport.httpapi" {
+			t.Fatalf("route %s %s has invalid owner %q", route.Method, route.Path, route.ModuleOwner)
 		}
 	}
 }

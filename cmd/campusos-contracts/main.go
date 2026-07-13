@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	routes, err := projectaudit.ParseServerRoutes(filepath.Join(root, "internal/server/application.go"))
+	routes, err := projectaudit.ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
 	if err != nil {
 		fatal(err)
 	}

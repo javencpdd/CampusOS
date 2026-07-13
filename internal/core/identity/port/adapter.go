@@ -2,6 +2,8 @@ package port
 
 import (
 	"context"
+
+	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/repository"
 )
 
@@ -15,5 +17,28 @@ func (r *RepositoryUserReader) GetUser(ctx context.Context, id string) (User, er
 	if err != nil {
 		return User{}, err
 	}
-	return User{ID: value.ID, Username: value.Username, Status: string(value.Status)}, nil
+	return userProjection(value), nil
+}
+
+func (r *RepositoryUserReader) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	value, err := r.repository.GetByUsername(ctx, username)
+	if err != nil {
+		return User{}, err
+	}
+	return userProjection(value), nil
+}
+
+func userProjection(value *domain.User) User {
+	if value == nil {
+		return User{}
+	}
+	return User{
+		ID:       value.ID,
+		Username: value.Username,
+		Nickname: value.Nickname,
+		Email:    value.Email,
+		Avatar:   value.Avatar,
+		Bio:      value.Bio,
+		Status:   string(value.Status),
+	}
 }

@@ -1,6 +1,7 @@
 package homepage
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -12,10 +13,20 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc Application
 }
 
-func NewHandler(svc *Service) *Handler {
+type Application interface {
+	PublicConfig(context.Context) (*Config, error)
+	ValidateStylePackZip(io.ReaderAt, int64) (*StylePackResult, error)
+	StylePackExample(context.Context) (*stylepack.FileBundle, error)
+	ListSourceStylePacks(context.Context) (*stylepack.SourcePackList, error)
+	ApplyStylePackZip(context.Context, io.ReaderAt, int64) (*Config, error)
+	ApplySourceStylePack(context.Context, string) (*Config, error)
+	RollbackStylePack(context.Context) (*Config, error)
+}
+
+func NewHandler(svc Application) *Handler {
 	return &Handler{svc: svc}
 }
 

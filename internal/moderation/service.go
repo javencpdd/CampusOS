@@ -9,15 +9,14 @@ import (
 	"strconv"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
-	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
-	communitysvc "github.com/campusos/CampusOS/internal/community/service"
-	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 )
 
 const PluginName = "category-moderation"
 
 var (
-	ErrPluginDisabled = errors.New("category moderation plugin is disabled")
+	ErrPluginDisabled = errors.New("category moderation compatibility feature is disabled")
 	ErrActionDisabled = errors.New("moderation action is disabled")
 	ErrForbidden      = errors.New("moderation scope denied")
 	ErrInvalidScope   = errors.New("invalid moderation category scope")
@@ -70,12 +69,8 @@ type OperationContext struct {
 }
 
 type Service struct {
-	permissions *identitysvc.PermissionService
-	categories  communityrepo.CategoryRepository
-	threads     communityrepo.ThreadRepository
-	posts       communityrepo.PostRepository
-	threadSvc   *communitysvc.ThreadService
-	postSvc     *communitysvc.PostService
+	permissions identityport.ModerationPolicy
+	community   communityport.ModerationGateway
 	audit       AuditStore
 	config      Config
 	configFn    func() Config
@@ -83,12 +78,8 @@ type Service struct {
 }
 
 func NewService(
-	permissions *identitysvc.PermissionService,
-	categories communityrepo.CategoryRepository,
-	threads communityrepo.ThreadRepository,
-	posts communityrepo.PostRepository,
-	threadSvc *communitysvc.ThreadService,
-	postSvc *communitysvc.PostService,
+	permissions identityport.ModerationPolicy,
+	community communityport.ModerationGateway,
 	audit AuditStore,
 	config Config,
 ) *Service {
@@ -97,11 +88,7 @@ func NewService(
 	}
 	return &Service{
 		permissions: permissions,
-		categories:  categories,
-		threads:     threads,
-		posts:       posts,
-		threadSvc:   threadSvc,
-		postSvc:     postSvc,
+		community:   community,
 		audit:       audit,
 		config:      config,
 		enabled:     func() bool { return true },
@@ -131,6 +118,7 @@ func (s *Service) currentConfig() Config {
 
 func (s *Service) Status() map[string]interface{} {
 	return map[string]interface{}{
+		"module":     ModuleID,
 		"plugin":     PluginName,
 		"enabled":    s.enabled(),
 		"config":     s.currentConfig(),
@@ -139,7 +127,7 @@ func (s *Service) Status() map[string]interface{} {
 }
 
 func (s *Service) ListModerators(ctx context.Context) ([]ModeratorAssignment, error) {
-	assignments, err := s.permissions.GetRoleAssignments(ctx, "", "moderator")
+	assignments, err := s.permissions.ListRoleAssignments(ctx, "", "moderator")
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +151,7 @@ func (s *Service) ListModerators(ctx context.Context) ([]ModeratorAssignment, er
 }
 
 func (s *Service) GetModerator(ctx context.Context, userID string) (ModeratorAssignment, error) {
-	assignments, err := s.permissions.GetRoleAssignments(ctx, userID, "moderator")
+	assignments, err := s.permissions.ListRoleAssignments(ctx, userID, "moderator")
 	if err != nil {
 		return ModeratorAssignment{}, err
 	}
@@ -203,7 +191,7 @@ func (s *Service) SetModeratorCategories(ctx context.Context, actorID, userID st
 func (s *Service) AccessForThread(ctx context.Context, userID, threadID string) (Access, error) {
 	config := s.currentConfig()
 	access := Access{PluginEnabled: s.enabled(), Config: config, CategoryIDs: []string{}}
-	assignments, err := s.permissions.GetRoleAssignments(ctx, userID, "moderator")
+	assignments, err := s.permissions.ListRoleAssignments(ctx, userID, "moderator")
 	if err != nil {
 		return access, err
 	}
@@ -217,7 +205,7 @@ func (s *Service) AccessForThread(ctx context.Context, userID, threadID string) 
 	if !access.PluginEnabled {
 		return access, nil
 	}
-	thread, err := s.threads.GetByID(ctx, threadID)
+	thread, err := s.community.GetThread(ctx, threadID)
 	if err != nil {
 		return access, err
 	}
@@ -225,7 +213,7 @@ func (s *Service) AccessForThread(ctx context.Context, userID, threadID string) 
 	if err != nil || categoryID <= 0 {
 		return access, ErrInvalidScope
 	}
-	category, err := s.categories.GetByID(ctx, thread.CategoryID)
+	category, err := s.community.GetCategory(ctx, thread.CategoryID)
 	if err != nil {
 		return access, err
 	}
@@ -252,12 +240,7 @@ func (s *Service) SetPinned(ctx context.Context, actorID, threadID string, pinne
 		return nil, err
 	}
 	before := map[string]interface{}{"is_pinned": thread.IsPinned}
-	var updated *communitydomain.Thread
-	if pinned {
-		updated, err = s.threadSvc.PinThread(ctx, threadID)
-	} else {
-		updated, err = s.threadSvc.UnpinThread(ctx, threadID)
-	}
+	updated, err := s.community.SetPinned(ctx, threadID, pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -276,12 +259,7 @@ func (s *Service) SetLocked(ctx context.Context, actorID, threadID string, locke
 		return nil, err
 	}
 	before := map[string]interface{}{"is_locked": thread.IsLocked}
-	var updated *communitydomain.Thread
-	if locked {
-		updated, err = s.threadSvc.LockThread(ctx, threadID)
-	} else {
-		updated, err = s.threadSvc.UnlockThread(ctx, threadID)
-	}
+	updated, err := s.community.SetLocked(ctx, threadID, locked)
 	if err != nil {
 		return nil, err
 	}
@@ -299,14 +277,14 @@ func (s *Service) DeletePost(ctx context.Context, actorID, threadID, postID stri
 	if err != nil {
 		return err
 	}
-	post, err := s.posts.GetByID(ctx, postID)
+	post, err := s.community.GetPost(ctx, postID)
 	if err != nil {
 		return err
 	}
 	if post.ThreadID != threadID {
 		return ErrInvalidScope
 	}
-	if err := s.postSvc.AdminDeletePost(ctx, postID); err != nil {
+	if err := s.community.DeletePostForModeration(ctx, postID); err != nil {
 		return err
 	}
 	s.writeAudit(ctx, AuditRecord{
@@ -326,7 +304,7 @@ func (s *Service) authorizeThread(ctx context.Context, userID, threadID, resourc
 	if !configEnabled {
 		return nil, ErrActionDisabled
 	}
-	thread, err := s.threads.GetByID(ctx, threadID)
+	thread, err := s.community.GetThread(ctx, threadID)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +341,7 @@ func (s *Service) validateCategories(ctx context.Context, categoryIDs []string) 
 		if seen[categoryID] {
 			continue
 		}
-		category, err := s.categories.GetByID(ctx, value)
+		category, err := s.community.GetCategory(ctx, value)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get category %s: %w", value, err)
 		}
@@ -380,9 +358,9 @@ func (s *Service) assignmentFromIDs(ctx context.Context, userID string, category
 	ids := uniqueIDs(categoryIDs)
 	result := ModeratorAssignment{UserID: userID, CategoryIDs: normalizedCategoryStrings(ids), Categories: []CategoryRef{}}
 	for _, categoryID := range ids {
-		category, err := s.categories.GetByID(ctx, strconv.FormatInt(categoryID, 10))
+		category, err := s.community.GetCategory(ctx, strconv.FormatInt(categoryID, 10))
 		if err != nil {
-			if errors.Is(err, communityrepo.ErrCategoryNotFound) {
+			if errors.Is(err, communityport.ErrCategoryNotFound) {
 				continue
 			}
 			return ModeratorAssignment{}, err

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
-	"github.com/campusos/CampusOS/internal/community/repository"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -54,23 +54,23 @@ type AuditStore interface {
 }
 
 type Service struct {
-	mu           sync.RWMutex
-	enabled      bool
-	categoryRepo repository.CategoryRepository
-	threadRepo   repository.ThreadRepository
-	audit        AuditStore
-	metrics      *observability.Collector
-	tools        map[string]Tool
+	mu         sync.RWMutex
+	enabled    bool
+	categories communityport.CategoryCatalog
+	threads    communityport.ContentGateway
+	audit      AuditStore
+	metrics    *observability.Collector
+	tools      map[string]Tool
 }
 
-func NewService(categoryRepo repository.CategoryRepository, threadRepo repository.ThreadRepository, audit AuditStore, metrics *observability.Collector) *Service {
+func NewService(categories communityport.CategoryCatalog, threads communityport.ContentGateway, audit AuditStore, metrics *observability.Collector) *Service {
 	s := &Service{
-		enabled:      true,
-		categoryRepo: categoryRepo,
-		threadRepo:   threadRepo,
-		audit:        audit,
-		metrics:      metrics,
-		tools:        make(map[string]Tool),
+		enabled:    true,
+		categories: categories,
+		threads:    threads,
+		audit:      audit,
+		metrics:    metrics,
+		tools:      make(map[string]Tool),
 	}
 	s.registerTool(Tool{Name: "health.check", Description: "检查 CampusOS API 基础状态", ReadOnly: true, Enabled: true})
 	s.registerTool(Tool{Name: "categories.list", Description: "读取公开版块列表", ReadOnly: true, Enabled: true})
@@ -153,14 +153,14 @@ func (s *Service) call(ctx context.Context, name string, args map[string]interfa
 	case "health.check":
 		return gin.H{"status": "ok", "time": time.Now().UTC()}, nil
 	case "categories.list":
-		return s.categoryRepo.List(ctx)
+		return s.categories.ListCategories(ctx)
 	case "threads.list":
 		page := intArg(args, "page", 1)
 		pageSize := intArg(args, "page_size", 20)
 		if pageSize > 50 {
 			pageSize = 50
 		}
-		threads, total, err := s.threadRepo.List(ctx, domain.ThreadListFilter{
+		threads, total, err := s.threads.ListThreads(ctx, domain.ThreadListFilter{
 			Page:       page,
 			PageSize:   pageSize,
 			CategoryID: stringArg(args, "category_id"),
@@ -176,12 +176,12 @@ func (s *Service) call(ctx context.Context, name string, args map[string]interfa
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
-		thread, err := s.threadRepo.GetByID(ctx, id)
+		thread, err := s.threads.GetThread(ctx, id)
 		if err != nil {
 			return nil, err
 		}
 		if thread.Status != domain.ThreadStatusPublished {
-			return nil, repository.ErrThreadNotFound
+			return nil, communityport.ErrThreadNotFound
 		}
 		return thread, nil
 	default:

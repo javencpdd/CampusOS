@@ -4,12 +4,12 @@ package moderation
 // category scope and audit core remain always-on.
 type Settings interface{ Current() Config }
 
-type LegacySettings struct{ read func() map[string]interface{} }
+type FeatureSettings struct{ read func() map[string]interface{} }
 
-func NewLegacySettings(read func() map[string]interface{}) *LegacySettings {
-	return &LegacySettings{read: read}
+func NewFeatureSettings(read func() map[string]interface{}) *FeatureSettings {
+	return &FeatureSettings{read: read}
 }
-func (s *LegacySettings) Current() Config {
+func (s *FeatureSettings) Current() Config {
 	if s == nil || s.read == nil {
 		return ConfigFromPluginConfig(nil)
 	}

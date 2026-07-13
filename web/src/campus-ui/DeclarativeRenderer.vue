@@ -25,8 +25,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { uiRuntimeApi } from '@/api'
-import { useUIRuntimeStore } from '@/stores/uiRuntime'
+import { uiRuntimeApi } from '@/modules/plugin-runtime/api'
+import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import type { UISchemaNode } from './contracts'
 import CampusButton from './CampusButton.vue'
 import CampusCard from './CampusCard.vue'

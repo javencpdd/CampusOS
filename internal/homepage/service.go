@@ -10,16 +10,19 @@ import (
 	"time"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
-	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/internal/safehtml"
 	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
-const pluginName = "homepage-customizer"
 const configSnapshotKey = "last_config_snapshot"
 
-type PluginLookup func(name string) (*plugin.Plugin, bool)
-type PluginConfigUpdater func(name string, config map[string]interface{}) (map[string]interface{}, error)
+// ConfigSource is the Appearance-facing contract for homepage configuration.
+// It intentionally exposes no Plugin Manager or plugin lifecycle details.
+type ConfigSource interface {
+	Enabled() bool
+	Config() map[string]interface{}
+	Update(map[string]interface{}) (map[string]interface{}, error)
+}
 
 var ErrStylePackInvalid = errors.New("homepage style pack invalid")
 
@@ -28,9 +31,8 @@ type CategoryRepository interface {
 }
 
 type Service struct {
-	plugins    PluginLookup
+	config     ConfigSource
 	categories CategoryRepository
-	update     PluginConfigUpdater
 }
 
 type Config struct {
@@ -74,24 +76,22 @@ type ConfigSnapshot struct {
 	Config    map[string]interface{} `json:"config"`
 }
 
-func NewService(plugins PluginLookup, categories CategoryRepository) *Service {
-	return &Service{plugins: plugins, categories: categories}
-}
-
-func (s *Service) SetConfigUpdater(update PluginConfigUpdater) {
-	s.update = update
+// NewService accepts a ConfigSource. The interface parameter preserves the
+// historical PluginLookup constructor through compatibility.go while all new
+// composition uses the explicit Appearance ConfigSource contract.
+func NewService(source interface{}, categories CategoryRepository) *Service {
+	return &Service{config: configSourceFrom(source), categories: categories}
 }
 
 func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
 	cfg := defaultConfig()
-	p, ok := s.lookupPlugin()
-	if !ok || p.Status != plugin.StatusRunning {
+	if s.config == nil || !s.config.Enabled() {
 		cfg.Enabled = false
 		return cfg, nil
 	}
 
 	cfg.Enabled = true
-	raw := p.Manifest.Config
+	raw := s.config.Config()
 	cfg.HeroTitle = stringConfig(raw, "hero_title", cfg.HeroTitle)
 	cfg.HeroSubtitle = stringConfig(raw, "hero_subtitle", cfg.HeroSubtitle)
 	cfg.BackgroundImage = stringConfig(raw, "background_image", cfg.BackgroundImage)
@@ -179,55 +179,38 @@ func (s *Service) ApplySourceStylePack(ctx context.Context, name string) (*Confi
 }
 
 func (s *Service) applyStylePack(ctx context.Context, pack *stylepack.Package) (*Config, error) {
-	if s.update == nil {
+	if s.config == nil {
 		return nil, fmt.Errorf("homepage config updater is unavailable")
 	}
-	p, ok := s.lookupPlugin()
-	if !ok || p.Manifest == nil {
-		return nil, fmt.Errorf("homepage-customizer plugin is unavailable")
-	}
-	next := copyConfig(p.Manifest.Config)
-	next[configSnapshotKey] = snapshotConfig(p.Manifest.Config, "before_homepage_style_pack_apply")
+	current := s.config.Config()
+	next := copyConfig(current)
+	next[configSnapshotKey] = snapshotConfig(current, "before_homepage_style_pack_apply")
 	next["custom_html_enabled"] = true
 	next["custom_html"] = pack.HTML
 	next["custom_css"] = pack.CSS
 	next["active_style_pack"] = pack.Manifest.Name
 	next["style_pack_version"] = pack.Manifest.Version
-	if _, err := s.update(pluginName, next); err != nil {
+	if _, err := s.config.Update(next); err != nil {
 		return nil, err
 	}
 	return s.PublicConfig(ctx)
 }
 
 func (s *Service) RollbackStylePack(ctx context.Context) (*Config, error) {
-	if s.update == nil {
+	if s.config == nil {
 		return nil, fmt.Errorf("homepage config updater is unavailable")
 	}
-	p, ok := s.lookupPlugin()
-	if !ok || p.Manifest == nil {
-		return nil, fmt.Errorf("homepage-customizer plugin is unavailable")
-	}
-	previous, ok := snapshotConfigValue(p.Manifest.Config)
+	current := s.config.Config()
+	previous, ok := snapshotConfigValue(current)
 	if !ok {
 		return nil, fmt.Errorf("%w: homepage style snapshot not found", ErrStylePackInvalid)
 	}
 	next := copyConfig(previous)
-	next[configSnapshotKey] = snapshotConfig(p.Manifest.Config, "before_homepage_style_pack_rollback")
-	if _, err := s.update(pluginName, next); err != nil {
+	next[configSnapshotKey] = snapshotConfig(current, "before_homepage_style_pack_rollback")
+	if _, err := s.config.Update(next); err != nil {
 		return nil, err
 	}
 	return s.PublicConfig(ctx)
-}
-
-func (s *Service) lookupPlugin() (*plugin.Plugin, bool) {
-	if s.plugins == nil {
-		return nil, false
-	}
-	p, ok := s.plugins(pluginName)
-	if !ok || p == nil || p.Manifest == nil {
-		return nil, false
-	}
-	return p, true
 }
 
 func ensureHomepageStylePackTarget(pack *stylepack.Package) stylepack.ValidationResult {

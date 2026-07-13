@@ -9,7 +9,7 @@
 - 新增、删除或调整 `migrations/*.up.sql` 中的数据表和关键字段。
 - 修改 `scripts/migrate.sh`、`scripts/migrate.ps1` 中的系统表或迁移机制。
 - 修改 `data/`、`.campusos/logs/`、个人空间或插件数据目录的职责。
-- 修改 `admin/src/views/SystemArchitectureView.vue`，或审核数据架构图是否遗漏。
+- 修改 `admin/src/modules/architecture/pages/SystemArchitectureView.vue`，或审核数据架构图是否遗漏。
 
 ## 基本命令
 

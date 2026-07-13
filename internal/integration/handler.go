@@ -33,6 +33,17 @@ type Link struct {
 	Path  string `json:"path"`
 }
 
+// SummaryPort is the only dependency used by the Integration Overview at
+// runtime. Individual integration modules adapt their internal services to a
+// card without exposing repositories or service implementations to transport.
+type SummaryPort interface {
+	SummaryCard(context.Context) Card
+}
+
+type SummaryPortFunc func(context.Context) Card
+
+func (f SummaryPortFunc) SummaryCard(ctx context.Context) Card { return f(ctx) }
+
 type Handler struct {
 	pool       *pgxpool.Pool
 	cfg        *config.Config
@@ -43,6 +54,7 @@ type Handler struct {
 	mcpSvc     *mcp.Service
 	messageSvc *message.Service
 	metrics    *observability.Collector
+	summaries  []SummaryPort
 }
 
 type Option func(*Handler)
@@ -83,6 +95,10 @@ func WithMetrics(metrics *observability.Collector) Option {
 	return func(h *Handler) { h.metrics = metrics }
 }
 
+func WithSummaryPorts(ports ...SummaryPort) Option {
+	return func(h *Handler) { h.summaries = append(h.summaries, ports...) }
+}
+
 func NewHandler(options ...Option) *Handler {
 	h := &Handler{}
 	for _, option := range options {
@@ -94,15 +110,25 @@ func NewHandler(options ...Option) *Handler {
 func (h *Handler) Overview(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 	defer cancel()
-	cards := []Card{
-		h.databaseCard(ctx),
-		h.pluginCard(),
-		h.aiCard(),
-		h.spaceCard(ctx),
-		h.webhookCard(ctx),
-		h.mcpCard(ctx),
-		h.messageCard(ctx),
-		h.metricsCard(),
+	cards := make([]Card, 0, len(h.summaries))
+	for _, provider := range h.summaries {
+		if provider != nil {
+			cards = append(cards, provider.SummaryCard(ctx))
+		}
+	}
+	if len(cards) == 0 {
+		// Compatibility fallback for callers that still construct the legacy
+		// Handler directly during the A10 migration.
+		cards = []Card{
+			h.databaseCard(ctx),
+			h.pluginCard(),
+			h.aiCard(),
+			h.spaceCard(ctx),
+			h.webhookCard(ctx),
+			h.mcpCard(ctx),
+			h.messageCard(ctx),
+			h.metricsCard(),
+		}
 	}
 	response.Success(c, gin.H{"items": cards, "total": len(cards)})
 }

@@ -1,12 +1,29 @@
 package port
 
-import "context"
+import (
+	"context"
+	"errors"
+
+	"github.com/campusos/CampusOS/internal/community/domain"
+)
+
+var (
+	ErrCategoryNotFound = errors.New("community category not found")
+	ErrThreadNotFound   = errors.New("community thread not found")
+	ErrPostNotFound     = errors.New("community post not found")
+)
 
 type Category struct{ ID, Name string }
 type Thread struct{ ID, CategoryID, AuthorID, Status string }
 type Post struct{ ID, ThreadID, AuthorID, Status string }
 type CategoryReader interface {
 	GetCategory(context.Context, string) (Category, error)
+}
+
+// CategoryCatalog is the public read contract for appearance and other
+// presentation features that need category display metadata.
+type CategoryCatalog interface {
+	ListCategories(context.Context) ([]*domain.Category, error)
 }
 type ThreadReader interface {
 	GetThread(context.Context, string) (Thread, error)
@@ -19,4 +36,32 @@ type PostReader interface {
 }
 type PostWriter interface {
 	SetPostStatus(context.Context, string, string) error
+}
+
+// ModerationGateway is Community's public governance command contract.
+// Moderation receives domain values but cannot access repositories or services.
+type ModerationGateway interface {
+	GetCategory(context.Context, string) (*domain.Category, error)
+	GetThread(context.Context, string) (*domain.Thread, error)
+	GetPost(context.Context, string) (*domain.Post, error)
+	SetPinned(context.Context, string, bool) (*domain.Thread, error)
+	SetLocked(context.Context, string, bool) (*domain.Thread, error)
+	DeletePostForModeration(context.Context, string) error
+}
+
+// ContentGateway is the stable Community contract consumed by built-in
+// content features. It deliberately exposes application commands rather than
+// repositories or Community service implementations.
+type ContentGateway interface {
+	CreateThread(context.Context, string, string, domain.CreateThreadRequest, ThreadCreateOptions) (*domain.Thread, error)
+	GetThread(context.Context, string) (*domain.Thread, error)
+	UpdateThread(context.Context, *domain.Thread) error
+	DeleteThread(context.Context, string) error
+	ListThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+	InvalidateThreadList(context.Context)
+}
+
+type ThreadCreateOptions struct {
+	Status        domain.ThreadStatus
+	ContentFormat string
 }

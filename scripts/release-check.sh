@@ -13,7 +13,7 @@ echo "==> documentation links"
 python3 scripts/check-doc-links.py
 
 echo "==> architecture boundaries"
-python3 scripts/check-architecture-boundaries.py
+make architecture-check
 
 echo "==> Go tests"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
@@ -32,6 +32,7 @@ echo "==> frontend builds"
 (cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)
 (cd admin && pnpm build)
 (cd docs-site && pnpm build)
+python3 scripts/check-frontend-bundles.py
 
 echo "==> TypeScript SDK"
 (cd sdk/typescript && pnpm build)
@@ -50,4 +51,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.7 release check passed"
+echo "CampusOS v0.8 release check passed"

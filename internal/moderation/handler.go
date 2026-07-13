@@ -4,9 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
-	identityrepo "github.com/campusos/CampusOS/internal/core/identity/repository"
-	identitysvc "github.com/campusos/CampusOS/internal/core/identity/service"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -159,15 +158,15 @@ func writeError(c *gin.Context, err error) {
 		response.Error(c, http.StatusForbidden, 71002, "该版主操作已被管理员关闭")
 	case errors.Is(err, ErrForbidden):
 		response.Error(c, http.StatusForbidden, 20004, "你不是该板块的版主，不能执行此操作")
-	case errors.Is(err, ErrInvalidScope), errors.Is(err, identitysvc.ErrInvalidRoleAssignment):
+	case errors.Is(err, ErrInvalidScope), errors.Is(err, identityport.ErrInvalidScope):
 		response.Error(c, http.StatusBadRequest, 71003, "板块范围参数无效")
-	case errors.Is(err, identityrepo.ErrUserNotFound):
+	case errors.Is(err, identityport.ErrUserNotFound):
 		response.Error(c, http.StatusNotFound, 30004, "目标用户不存在")
-	case errors.Is(err, communityrepo.ErrCategoryNotFound):
+	case errors.Is(err, communityport.ErrCategoryNotFound):
 		response.Error(c, http.StatusNotFound, 50004, "目标板块不存在")
-	case errors.Is(err, communityrepo.ErrThreadNotFound):
+	case errors.Is(err, communityport.ErrThreadNotFound):
 		response.Error(c, http.StatusNotFound, 40003, "目标帖子不存在")
-	case errors.Is(err, communityrepo.ErrPostNotFound):
+	case errors.Is(err, communityport.ErrPostNotFound):
 		response.Error(c, http.StatusNotFound, 40004, "目标回复不存在")
 	default:
 		response.Error(c, http.StatusInternalServerError, 71000, "版主管理操作失败")

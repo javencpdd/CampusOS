@@ -34,6 +34,7 @@ go.work.sum
 *.swo
 *~
 .DS_Store
+__pycache__/
 
 # ─── Node.js / 前端 ───
 node_modules/

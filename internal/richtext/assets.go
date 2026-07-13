@@ -72,6 +72,23 @@ func AssetStoreConfigFromPluginConfig(raw, personalSpace map[string]interface{})
 }
 
 func NewLocalAssetStore(cfg AssetStoreConfig) (*LocalAssetStore, error) {
+	return newLocalAssetStore(cfg, nil)
+}
+
+// NewLocalAssetStoreWithStorage binds default richtext assets to the User
+// Storage Core instead of constructing a second LocalAdapter.
+func NewLocalAssetStoreWithStorage(cfg AssetStoreConfig, storage corestorage.Port) (*LocalAssetStore, error) {
+	if storage == nil {
+		return nil, ErrAssetUnavailable
+	}
+	cfg.RootDir = storage.Root()
+	if quota, ok := storage.(corestorage.Quota); ok {
+		cfg.QuotaBytes = quota.QuotaBytes("")
+	}
+	return newLocalAssetStore(cfg, storage)
+}
+
+func newLocalAssetStore(cfg AssetStoreConfig, storage corestorage.Port) (*LocalAssetStore, error) {
 	cfg = cfg.withDefaults()
 	root, err := filepath.Abs(filepath.Clean(cfg.RootDir))
 	if err != nil {
@@ -84,9 +101,11 @@ func NewLocalAssetStore(cfg AssetStoreConfig) (*LocalAssetStore, error) {
 	if err := MigrateLegacyAssets(root); err != nil {
 		return nil, err
 	}
-	storage, err := corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
-	if err != nil {
-		return nil, err
+	if storage == nil {
+		storage, err = corestorage.NewLocalAdapterWithQuota(root, cfg.QuotaBytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &LocalAssetStore{cfg: cfg, storage: storage}, nil
 }

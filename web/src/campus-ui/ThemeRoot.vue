@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useWebThemeStore } from '@/stores/webTheme'
+import { useWebThemeStore } from '@/modules/appearance/store'
 
 const themeStore = useWebThemeStore()
 const layout = computed(() => themeStore.effectiveLayout || { mode: 'contained' })

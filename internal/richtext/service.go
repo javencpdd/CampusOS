@@ -9,21 +9,19 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
-	"github.com/campusos/CampusOS/internal/community/repository"
-	communitysvc "github.com/campusos/CampusOS/internal/community/service"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 type Service struct {
 	store     Store
-	threads   repository.ThreadRepository
-	threadSvc *communitysvc.ThreadService
+	community communityport.ContentGateway
 	assets    *LocalAssetStore
 	enabled   func() bool
 }
 
-func NewService(store Store, threads repository.ThreadRepository, threadSvc *communitysvc.ThreadService) *Service {
-	return &Service{store: store, threads: threads, threadSvc: threadSvc, enabled: func() bool { return true }}
+func NewService(store Store, community communityport.ContentGateway) *Service {
+	return &Service{store: store, community: community, enabled: func() bool { return true }}
 }
 
 func (s *Service) SetEnabledChecker(checker func() bool) {
@@ -57,12 +55,12 @@ func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, 
 	if err != nil {
 		return nil, err
 	}
-	thread, err := s.threadSvc.CreateThreadWithOptions(ctx, authorID, authorName, domain.CreateThreadRequest{
+	thread, err := s.community.CreateThread(ctx, authorID, authorName, domain.CreateThreadRequest{
 		Title:      strings.TrimSpace(req.Title),
 		Content:    excerpt(sanitized.Text, 500),
 		CategoryID: strings.TrimSpace(req.CategoryID),
 		Tags:       req.Tags,
-	}, communitysvc.CreateThreadOptions{
+	}, communityport.ThreadCreateOptions{
 		Status:        domain.ThreadStatusDraft,
 		ContentFormat: ContentFormat,
 	})
@@ -87,7 +85,7 @@ func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, 
 		UpdatedAt:     now,
 	}
 	if err := s.store.CreateArticle(ctx, article); err != nil {
-		_ = s.threads.Delete(ctx, thread.ID)
+		_ = s.community.DeleteThread(ctx, thread.ID)
 		return nil, fmt.Errorf("create richtext article: %w", err)
 	}
 	return articleResult(article), nil
@@ -127,7 +125,7 @@ func (s *Service) UpdateDraft(ctx context.Context, threadID, userID string, req 
 	thread.ContentFormat = ContentFormat
 	thread.Status = domain.ThreadStatusDraft
 	thread.UpdatedAt = now
-	if err := s.threads.Update(ctx, thread); err != nil {
+	if err := s.community.UpdateThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	s.invalidateList(ctx)
@@ -164,7 +162,7 @@ func (s *Service) Publish(ctx context.Context, threadID, userID string) (*Articl
 	thread.ContentFormat = ContentFormat
 	thread.Status = domain.ThreadStatusPublished
 	thread.UpdatedAt = now
-	if err := s.threads.Update(ctx, thread); err != nil {
+	if err := s.community.UpdateThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	s.invalidateList(ctx)
@@ -188,7 +186,7 @@ func (s *Service) Offline(ctx context.Context, threadID, userID string) (*Articl
 	}
 	thread.Status = domain.ThreadStatusArchived
 	thread.UpdatedAt = now
-	if err := s.threads.Update(ctx, thread); err != nil {
+	if err := s.community.UpdateThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	s.invalidateList(ctx)
@@ -210,7 +208,7 @@ func (s *Service) Delete(ctx context.Context, threadID, userID string) error {
 	if err := s.store.UpdateArticle(ctx, article); err != nil {
 		return err
 	}
-	if err := s.threads.Delete(ctx, threadID); err != nil {
+	if err := s.community.DeleteThread(ctx, threadID); err != nil {
 		return err
 	}
 	s.invalidateList(ctx)
@@ -234,7 +232,7 @@ func (s *Service) AdminOffline(ctx context.Context, threadID, adminID string) (*
 	}
 	thread.Status = domain.ThreadStatusArchived
 	thread.UpdatedAt = now
-	if err := s.threads.Update(ctx, thread); err != nil {
+	if err := s.community.UpdateThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	s.invalidateList(ctx)
@@ -271,7 +269,7 @@ func (s *Service) AdminRestore(ctx context.Context, threadID, adminID string) (*
 	thread.ContentFormat = ContentFormat
 	thread.Status = domain.ThreadStatusPublished
 	thread.UpdatedAt = now
-	if err := s.threads.Update(ctx, thread); err != nil {
+	if err := s.community.UpdateThread(ctx, thread); err != nil {
 		return nil, err
 	}
 	s.invalidateList(ctx)
@@ -293,7 +291,7 @@ func (s *Service) AdminDelete(ctx context.Context, threadID, adminID string) err
 	if err := s.store.UpdateArticle(ctx, article); err != nil {
 		return err
 	}
-	if err := s.threads.Delete(ctx, threadID); err != nil {
+	if err := s.community.DeleteThread(ctx, threadID); err != nil {
 		return err
 	}
 	s.invalidateList(ctx)
@@ -370,7 +368,7 @@ func (s *Service) editableArticle(ctx context.Context, threadID, userID string) 
 	if article.Status == StatusDeleted {
 		return nil, nil, ErrArticleNotFound
 	}
-	thread, err := s.threads.GetByID(ctx, threadID)
+	thread, err := s.community.GetThread(ctx, threadID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,7 +383,7 @@ func (s *Service) managedArticle(ctx context.Context, threadID string) (*Article
 	if article.Status == StatusDeleted {
 		return nil, nil, ErrArticleNotFound
 	}
-	thread, err := s.threads.GetByID(ctx, threadID)
+	thread, err := s.community.GetThread(ctx, threadID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -400,8 +398,8 @@ func (s *Service) ensureEnabled() error {
 }
 
 func (s *Service) invalidateList(ctx context.Context) {
-	if s.threadSvc != nil {
-		s.threadSvc.InvalidateListCache(ctx)
+	if s.community != nil {
+		s.community.InvalidateThreadList(ctx)
 	}
 }
 

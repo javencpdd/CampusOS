@@ -9,29 +9,32 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 )
 
 const APIPrefix = "/api/v1"
 
 var (
-	routePattern      = regexp.MustCompile(`^\s*(public|authenticated|admin)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",(.*)$`)
-	permissionPattern = regexp.MustCompile(`RequirePermission\(permSvc,\s*"([^"]+)",\s*"([^"]+)"\)`)
+	routePattern      = regexp.MustCompile(`^\s*(public|authenticated|admin)(?:\.Permission\("([^"]+)",\s*"([^"]+)"\))?\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",(.*)$`)
+	permissionPattern = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
 	selectorPattern   = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
 )
 
 // RouteContract is the machine-readable authorization record for one Gin route.
 type RouteContract struct {
-	Method     string `json:"method"`
-	Path       string `json:"path"`
-	Handler    string `json:"handler"`
-	Audience   string `json:"audience"`
-	Auth       string `json:"auth"`
-	Permission string `json:"permission,omitempty"`
-	Ownership  string `json:"ownership"`
-	Scope      string `json:"scope"`
-	Audit      string `json:"audit"`
-	Stability  string `json:"stability"`
-	SourceLine int    `json:"-"`
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	Handler     string `json:"handler"`
+	ModuleOwner string `json:"module_owner"`
+	Audience    string `json:"audience"`
+	Auth        string `json:"auth"`
+	Permission  string `json:"permission,omitempty"`
+	Ownership   string `json:"ownership"`
+	Scope       string `json:"scope"`
+	Audit       string `json:"audit"`
+	Stability   string `json:"stability"`
+	SourceLine  int    `json:"-"`
 }
 
 func ParseServerRoutes(path string) ([]RouteContract, error) {
@@ -50,21 +53,26 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		if len(matches) == 0 {
 			continue
 		}
-		group, method, routePath, arguments := matches[1], matches[2], matches[3], matches[4]
+		group, permissionResource, permissionAction := matches[1], matches[2], matches[3]
+		method, routePath, arguments := matches[4], matches[5], matches[6]
 		selectors := selectorPattern.FindAllStringSubmatch(arguments, -1)
 		if len(selectors) == 0 {
 			return nil, fmt.Errorf("route at line %d has no handler selector", lineNumber)
 		}
 		handler := selectors[len(selectors)-1][1] + "." + selectors[len(selectors)-1][2]
 		route := RouteContract{
-			Method:     method,
-			Path:       APIPrefix + routePath,
-			Handler:    handler,
-			Audience:   group,
-			Stability:  "experimental",
-			SourceLine: lineNumber,
+			Method:      method,
+			Path:        APIPrefix + routePath,
+			Handler:     handler,
+			ModuleOwner: moduleOwnerFor(handler, APIPrefix+routePath),
+			Audience:    group,
+			Stability:   "experimental",
+			SourceLine:  lineNumber,
 		}
 		applyAuthorization(&route, group, method)
+		if permissionResource != "" && permissionAction != "" {
+			route.Permission = permissionResource + ":" + permissionAction
+		}
 		if permission := permissionPattern.FindStringSubmatch(arguments); len(permission) > 0 {
 			route.Permission = permission[1] + ":" + permission[2]
 		}
@@ -79,7 +87,94 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 	if len(routes) == 0 {
 		return nil, fmt.Errorf("no routes found in %s", path)
 	}
+	if err := ValidateRouteDescriptors(routes); err != nil {
+		return nil, err
+	}
 	return routes, nil
+}
+
+// ValidateRouteDescriptors registers the source-derived transport contract in
+// the platform Route Registry before generated API artifacts are accepted.
+func ValidateRouteDescriptors(routes []RouteContract) error {
+	registry := platformroute.NewRegistry()
+	for _, item := range routes {
+		if strings.HasPrefix(item.ModuleOwner, "unowned:") || item.ModuleOwner == "" || item.ModuleOwner == "transport.httpapi" {
+			return fmt.Errorf("route %s %s has no business module owner", item.Method, item.Path)
+		}
+		descriptor := platformroute.Descriptor{
+			ID:         "httpapi." + strings.ToLower(item.Method) + "." + routeID(item.Path),
+			Owner:      item.ModuleOwner,
+			Method:     item.Method,
+			Path:       item.Path,
+			Audience:   platformroute.Audience(item.Audience),
+			Auth:       item.Auth,
+			Permission: item.Permission,
+			FeatureID:  featureForRoute(item.Path),
+			Audit:      item.Audit,
+		}
+		if err := registry.Add(descriptor); err != nil {
+			return fmt.Errorf("register route descriptor %s %s: %w", item.Method, item.Path, err)
+		}
+	}
+	if len(registry.Descriptors()) != len(routes) {
+		return fmt.Errorf("route descriptor count mismatch: got %d, want %d", len(registry.Descriptors()), len(routes))
+	}
+	return nil
+}
+
+func moduleOwnerFor(handler, path string) string {
+	switch {
+	case strings.HasPrefix(path, APIPrefix+"/moderation"):
+		return "core.moderation"
+	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), path == APIPrefix+"/health":
+		return "core.identity"
+	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"):
+		return "core.community"
+	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
+		return "feature.personal-space"
+	case strings.HasPrefix(path, APIPrefix+"/richtext"):
+		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/schedule"):
+		return "feature.personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
+		return "feature.appearance"
+	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
+		return "core.plugin-platform"
+	case strings.HasPrefix(path, APIPrefix+"/ai"):
+		return "feature.ai-gateway"
+	case strings.HasPrefix(path, APIPrefix+"/webhooks"):
+		return "feature.webhook"
+	case strings.HasPrefix(path, APIPrefix+"/mcp"):
+		return "feature.mcp"
+	case strings.HasPrefix(path, APIPrefix+"/messages"):
+		return "feature.message"
+	case strings.HasPrefix(path, APIPrefix+"/platform/logs"):
+		return "feature.platform-log"
+	case strings.HasPrefix(path, APIPrefix+"/integrations"), strings.HasPrefix(path, APIPrefix+"/metrics"):
+		return "feature.integration-overview"
+	default:
+		return "unowned:" + handler
+	}
+}
+
+func routeID(path string) string {
+	replacer := strings.NewReplacer("/", ".", ":", "", "*", "wildcard", "-", "_")
+	return strings.Trim(replacer.Replace(path), ".")
+}
+
+func featureForRoute(path string) string {
+	switch {
+	case strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
+		return "personal-space"
+	case strings.HasPrefix(path, APIPrefix+"/richtext"):
+		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/schedule"):
+		return "personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
+		return "appearance"
+	default:
+		return ""
+	}
 }
 
 func applyAuthorization(route *RouteContract, group, method string) {
@@ -125,17 +220,17 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 func RoutesMarkdown(routes []RouteContract) []byte {
 	var out strings.Builder
 	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.6\n\n")
-	out.WriteString("> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/server/application.go` 生成，请勿手工编辑。\n\n")
+	out.WriteString("> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。\n\n")
 	out.WriteString("当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。\n\n")
-	out.WriteString("| Method | Path | Handler | Auth | Permission | Ownership | Scope | Audit |\n")
-	out.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	out.WriteString("| Method | Path | Module | Handler | Auth | Permission | Ownership | Scope | Audit |\n")
+	out.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, route := range routes {
 		permission := route.Permission
 		if permission == "" {
 			permission = "-"
 		}
-		fmt.Fprintf(&out, "| `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` |\n",
-			route.Method, route.Path, route.Handler, route.Auth, permission, route.Ownership, route.Scope, route.Audit)
+		fmt.Fprintf(&out, "| `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` |\n",
+			route.Method, route.Path, route.ModuleOwner, route.Handler, route.Auth, permission, route.Ownership, route.Scope, route.Audit)
 	}
 	return []byte(out.String())
 }
@@ -164,6 +259,7 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      tags: [%s]\n", route.Audience)
 			fmt.Fprintf(&out, "      x-campusos-stability: %s\n", route.Stability)
 			fmt.Fprintf(&out, "      x-campusos-ownership: %s\n", route.Ownership)
+			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			if route.Permission != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.Permission)

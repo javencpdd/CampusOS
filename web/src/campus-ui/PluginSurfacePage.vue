@@ -16,14 +16,14 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
-import { useUIRuntimeStore } from '@/stores/uiRuntime'
+import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 
 const trustedModules: Record<string, ReturnType<typeof defineAsyncComponent>> = {
-  'core.schedule': defineAsyncComponent(() => import('@/views/ScheduleView.vue')),
-  'core.personal-space': defineAsyncComponent(() => import('@/views/SpaceSettingsView.vue')),
-  'core.richtext-editor': defineAsyncComponent(() => import('@/views/CreateThreadView.vue')),
-  'core.appearance': defineAsyncComponent(() => import('@/views/AppearanceSettingsView.vue')),
+  'core.schedule': defineAsyncComponent(() => import('@/modules/schedule/pages/ScheduleView.vue')),
+  'core.personal-space': defineAsyncComponent(() => import('@/modules/space/pages/SpaceSettingsView.vue')),
+  'core.richtext-editor': defineAsyncComponent(() => import('@/modules/community/pages/CreateThreadView.vue')),
+  'core.appearance': defineAsyncComponent(() => import('@/modules/appearance/pages/AppearanceSettingsView.vue')),
 }
 const route = useRoute()
 const runtime = useUIRuntimeStore()

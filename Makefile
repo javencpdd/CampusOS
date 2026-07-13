@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links architecture-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links architecture-check frontend-budget database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -39,6 +39,11 @@ docs-links:
 
 architecture-check:
 	python3 scripts/check-architecture-boundaries.py
+	python3 scripts/check-frontend-boundaries.py
+	python3 scripts/test-architecture-checks.py
+
+frontend-budget:
+	python3 scripts/check-frontend-bundles.py
 
 database-check:
 	./scripts/database-check.sh all

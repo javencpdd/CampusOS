@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -21,12 +22,17 @@ const (
 type PermissionChecker func(context.Context, string, string, string) (bool, error)
 
 type RuntimeHTTPHandler struct {
-	manager *Manager
-	check   PermissionChecker
+	manager  *Manager
+	check    PermissionChecker
+	features *platformfeature.Registry
 }
 
-func NewRuntimeHTTPHandler(manager *Manager, check PermissionChecker) *RuntimeHTTPHandler {
-	return &RuntimeHTTPHandler{manager: manager, check: check}
+func NewRuntimeHTTPHandler(manager *Manager, check PermissionChecker, registries ...*platformfeature.Registry) *RuntimeHTTPHandler {
+	handler := &RuntimeHTTPHandler{manager: manager, check: check}
+	if len(registries) > 0 {
+		handler.features = registries[0]
+	}
+	return handler
 }
 
 func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
@@ -35,6 +41,10 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 	items := make([]gin.H, 0, len(plugins))
 	for _, p := range plugins {
 		if p == nil || p.Manifest == nil || p.Manifest.UI.Empty() || p.FrontendState == FrontendUnloaded {
+			continue
+		}
+		featureID, isBuiltinProjection := legacyBuiltinFeatureID(p.Manifest.Name)
+		if isBuiltinProjection && h.features != nil && !h.features.Enabled(featureID) {
 			continue
 		}
 		ui := cloneUI(p.Manifest.UI)
@@ -54,6 +64,14 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 			ui.Surfaces[index].Schema = filterSchemaActions(ui.Surfaces[index].Schema, allowedActions)
 		}
 		state, _ := h.manager.LifecycleState(p.ID)
+		if isBuiltinProjection && h.features != nil {
+			if featureState, found := h.features.Get(featureID); found {
+				state.ActivationMode = string(featureState.Mode)
+				state.BackendActivationMode = string(featureState.Mode)
+				state.DesiredEnabled = featureState.DesiredEnabled
+				state.PendingRestart = featureState.PendingRestart
+			}
+		}
 		items = append(items, gin.H{
 			"name": p.Manifest.Name, "version": p.Manifest.Version,
 			"runtime": p.Manifest.Runtime, "scope": p.Manifest.Scope,
@@ -69,6 +87,13 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 }
 
 func (h *RuntimeHTTPHandler) currentTheme() string {
+	if h.features != nil {
+		root := h.features.Config("appearance")
+		if config, ok := root["web_theme"].(map[string]interface{}); ok {
+			value, _ := config["default_style_pack"].(string)
+			return strings.TrimSpace(value)
+		}
+	}
 	config, ok := h.manager.GetPluginConfig("web-theme")
 	if !ok {
 		return ""

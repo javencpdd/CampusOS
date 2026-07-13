@@ -41,3 +41,73 @@ func TestRestartFeatureUsesBootstrapSnapshot(t *testing.T) {
 		t.Fatal("restart feature changed without restart")
 	}
 }
+
+func TestRegistryPersistsRequestedStateAndDoesNotReseedFromLegacy(t *testing.T) {
+	store := NewMemoryStore()
+	running := true
+	registry := NewRegistryWithStore(func(string) bool { return running }, store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "space"}); err != nil {
+		t.Fatal(err)
+	}
+	registry.SyncLegacy()
+	state, err := registry.Request("space", false)
+	if err != nil || !state.PendingRestart {
+		t.Fatalf("unexpected request result: %#v %v", state, err)
+	}
+	running = true
+	reloaded := NewRegistryWithStore(func(string) bool { return running }, store)
+	if err := reloaded.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "space"}); err != nil {
+		t.Fatal(err)
+	}
+	state = reloaded.List()[0]
+	if state.DesiredEnabled || state.PendingRestart || state.Enabled {
+		t.Fatalf("staged restart state was not activated from the Feature Store: %#v", state)
+	}
+}
+
+func TestAuthoritativeRegistrySeedsLegacyOnlyOnce(t *testing.T) {
+	store := NewMemoryStore()
+	registry := NewAuthoritativeRegistry(store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "personal-space"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.SeedLegacy("space", true, map[string]interface{}{"quota_mb": float64(10)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.UpdateConfig("space", map[string]interface{}{"quota_mb": float64(20)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.SeedLegacy("space", false, map[string]interface{}{"quota_mb": float64(30)}); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := registry.Get("space")
+	if !state.Enabled || !state.DesiredEnabled {
+		t.Fatalf("legacy state overwrote authoritative state: %#v", state)
+	}
+	if got := registry.Config("space")["quota_mb"]; got != float64(20) {
+		t.Fatalf("legacy config overwrote authoritative config: %#v", registry.Config("space"))
+	}
+}
+
+func TestRegistrySeedsLegacyConfigOnceAndThenOwnsUpdates(t *testing.T) {
+	store := NewMemoryStore()
+	legacyConfig := map[string]interface{}{"quota_mb": float64(10)}
+	registry := NewRegistryWithStoreAndConfig(func(string) bool { return true }, func(string) map[string]interface{} {
+		return legacyConfig
+	}, store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "personal-space"}); err != nil {
+		t.Fatal(err)
+	}
+	registry.SyncLegacy()
+	if got := registry.Config("space")["quota_mb"]; got != float64(10) {
+		t.Fatalf("legacy config was not seeded: %#v", registry.Config("space"))
+	}
+	if err := registry.UpdateConfig("space", map[string]interface{}{"quota_mb": float64(20)}); err != nil {
+		t.Fatal(err)
+	}
+	legacyConfig["quota_mb"] = float64(30)
+	registry.SyncLegacy()
+	if got := registry.Config("space")["quota_mb"]; got != float64(20) {
+		t.Fatalf("feature config was overwritten by legacy source: %#v", registry.Config("space"))
+	}
+}
