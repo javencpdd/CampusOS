@@ -6,7 +6,7 @@
         <h2>系统数据架构</h2>
         <p>从当前迁移文件和数据目录整理的结构图，用于了解表的逻辑关联、职责和不在 PostgreSQL 中保存的文件数据。</p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000020</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000022</el-tag>
     </section>
 
     <el-alert class="architecture-alert" type="info" :closable="false" show-icon>
@@ -276,6 +276,13 @@ const databaseTables: DbTable[] = [
   { name: 'builtin_feature_states', title: '内置功能状态', domain: 'system', purpose: '保存 Personal Space、RichText、Schedule 和 Appearance 的期望/生效启停状态和权威功能配置；不属于可卸载外部插件。', fields: ['feature_id', 'desired_enabled', 'effective_enabled', 'pending_restart', 'config', 'updated_at'], migration: '000019/000020', relationshipNote: 'feature_id 对应 Built-in Feature Registry 的稳定 ID；旧插件状态和配置仅在首次迁移时作为兼容来源。' },
   { name: 'plugin_permissions', title: '插件权限', domain: 'plugin', purpose: '保存插件声明或同步后的 Host API 权限。', fields: ['plugin_name', 'permission_type', 'permission_value'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
   { name: 'plugin_logs', title: '插件日志', domain: 'plugin', purpose: '保存插件运行、事件和 Host API 日志。', fields: ['plugin_name', 'level', 'event_type', 'trace_id'], migration: '000005', relationshipNote: 'plugin_name 逻辑指向 plugins.name。' },
+  { name: 'plugin_records', title: '受管插件记录', domain: 'plugin', purpose: 'Host 托管的 v2 插件结构化记录，按插件、所有者和 collection 隔离。', fields: ['plugin_name', 'owner_type', 'owner_id', 'collection', 'record_key', 'version'], migration: '000021', relationshipNote: 'plugin_name 逻辑指向 plugins.name；owner_id 由 Host 注入，system 或 user 所有者均不接受插件伪造。' },
+  { name: 'plugin_file_metadata', title: '插件用户文件元数据', domain: 'plugin', purpose: '记录用户插件附件的受控文件 ID、类型、配额计数和保留策略。', fields: ['plugin_name', 'owner_id', 'storage_key', 'size_bytes', 'retention'], migration: '000021', relationshipNote: 'plugin_name 和 owner_id 是逻辑归属；实际文件位于个人空间 plugins 子目录。' },
+  { name: 'plugin_user_grants', title: '插件用户授权', domain: 'plugin', purpose: '保存用户对 v2 插件个人数据能力的精确版本化授权或撤销状态。', fields: ['plugin_name', 'user_id', 'version', 'permissions', 'status'], migration: '000021', relationshipNote: 'plugin_name 和 user_id 是逻辑关系；每次 Gateway 调用均重新核验。' },
+  { name: 'plugin_catalog_entries', title: '本地插件目录', domain: 'plugin', purpose: '保存已安装 v2 外部插件在本地目录中的可见性、风险摘要和用户权限说明。', fields: ['plugin_name', 'version', 'visibility', 'package_checksum', 'user_permissions'], migration: '000021 + 000022', relationshipNote: 'plugin_name 逻辑指向 plugins.name；目录下架不卸载插件或删除用户数据。' },
+  { name: 'plugin_install_requests', title: '插件安装申请', domain: 'plugin', purpose: '记录用户请求管理员发布或审核本地目录插件的说明和结果。', fields: ['plugin_name', 'user_id', 'status', 'reviewed_by'], migration: '000021', relationshipNote: 'plugin_name、user_id 和 reviewed_by 为逻辑关系；批准不自动安装宿主代码。' },
+  { name: 'plugin_releases', title: '插件发布记录', domain: 'plugin', purpose: '保存本地包版本、摘要、签名状态、通道和发布状态的治理记录。', fields: ['plugin_name', 'version', 'checksum', 'signature_state', 'rollout_state'], migration: '000021', relationshipNote: 'plugin_name 逻辑指向 plugins.name；verified 状态只能来自实际包签名校验。' },
+  { name: 'plugin_market_audits', title: '插件市场审计', domain: 'plugin', purpose: '记录目录、授权、数据删除和发布治理动作的结果与最小元数据。', fields: ['plugin_name', 'actor_id', 'action', 'outcome', 'created_at'], migration: '000021', relationshipNote: 'plugin_name 和 actor_id 为逻辑关系；审计不会保存用户文件正文或 Secret。' },
   { name: 'ai_call_logs', title: 'AI 调用日志', domain: 'integration', purpose: '记录模型提供方、用量、耗时和失败原因。', fields: ['provider', 'model', 'source', 'status'], migration: '000006', relationshipNote: '按调用来源记录，不强制绑定用户或帖子。' },
   { name: 'user_spaces', title: '个人主页', domain: 'space', purpose: '保存用户公开主页、同步设置、样式和禁用状态。', fields: ['user_id', 'visibility', 'style_name', 'sync_enabled'], migration: '000007 + 000009 + 000011 + 000016', relationshipNote: '一个用户最多一份个人主页配置；user_id 由外键保护。' },
   { name: 'user_space_contents', title: '主页同步内容', domain: 'space', purpose: '缓存同步到个人主页的主题摘要和展示信息。', fields: ['user_id', 'thread_id', 'category_id', 'synced_at'], migration: '000008 + 000016', relationshipNote: '用户、主题和版块均由外键保护；thread_id 在当前表中唯一。' },
@@ -317,6 +324,13 @@ const relations: Relation[] = [
   { id: 'users-richtext-assets', source: 'users', target: 'richtext_article_assets', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> uploader_id', domains: ['identity', 'space'] },
   { id: 'plugins-permissions', source: 'plugins', target: 'plugin_permissions', sourceCardinality: '1', targetCardinality: 'N', label: 'name -> plugin_name', domains: ['plugin'] },
   { id: 'plugins-logs', source: 'plugins', target: 'plugin_logs', sourceCardinality: '1', targetCardinality: 'N', label: 'name -> plugin_name', domains: ['plugin'] },
+  { id: 'plugins-records', source: 'plugins', target: 'plugin_records', sourceCardinality: '1', targetCardinality: 'N', label: 'logical name -> plugin_name', domains: ['plugin'] },
+  { id: 'plugins-files', source: 'plugins', target: 'plugin_file_metadata', sourceCardinality: '1', targetCardinality: 'N', label: 'logical name -> plugin_name', domains: ['plugin'] },
+  { id: 'plugins-grants', source: 'plugins', target: 'plugin_user_grants', sourceCardinality: '1', targetCardinality: 'N', label: 'logical name -> plugin_name', domains: ['plugin'] },
+  { id: 'users-grants', source: 'users', target: 'plugin_user_grants', sourceCardinality: '1', targetCardinality: 'N', label: 'logical id -> user_id', domains: ['identity', 'plugin'] },
+  { id: 'plugins-catalog', source: 'plugins', target: 'plugin_catalog_entries', sourceCardinality: '1', targetCardinality: '1', label: 'logical name -> plugin_name', domains: ['plugin'] },
+  { id: 'plugins-releases', source: 'plugins', target: 'plugin_releases', sourceCardinality: '1', targetCardinality: 'N', label: 'logical name -> plugin_name', domains: ['plugin'] },
+  { id: 'plugins-market-audits', source: 'plugins', target: 'plugin_market_audits', sourceCardinality: '1', targetCardinality: 'N', label: 'logical name -> plugin_name', domains: ['plugin'] },
   { id: 'webhook-deliveries', source: 'webhook_endpoints', target: 'webhook_deliveries', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> endpoint_id', domains: ['integration'] },
   { id: 'users-bindings', source: 'users', target: 'message_bindings', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity', 'integration'] },
   { id: 'users-api-keys', source: 'users', target: 'api_keys', sourceCardinality: '1', targetCardinality: 'N', label: 'id -> user_id', domains: ['identity', 'plugin'] },
@@ -325,9 +339,9 @@ const relations: Relation[] = [
 
 const storageRows = [
   { path: 'PostgreSQL', category: '关系数据', type: 'primary', purpose: '系统主数据和需要查询、筛选、审计的元数据。', contents: ['用户、账号、会话、角色与权限', '版块、主题、回复、标签、通知和审计', '插件元数据、Webhook、Message、AI 调用与样式快照'], note: '由 migrations/ 和 schema_migrations 管理版本。' },
-  { path: 'data/personal-space/<user_id>/', category: '用户文件', type: 'success', purpose: '每个用户拥有的本地文件空间，默认受 personal-space 配额管理。', contents: ['img/avatars/：头像源文件，默认保留最近 3 个', 'img/richtext/：图文文章图片', 'file/schedule/terms/<year>-<semester>.json：每学期课表', 'file/、excel/、word/、pdf/：按用途/后缀分类的文件'], note: '数据库只保存 URL 或元数据；恢复时必须与数据库同时恢复。' },
+  { path: 'data/personal-space/<user_id>/', category: '用户文件', type: 'success', purpose: '每个用户拥有的本地文件空间，默认受 personal-space 配额管理。', contents: ['img/avatars/：头像源文件，默认保留最近 3 个', 'img/richtext/：图文文章图片', 'file/schedule/terms/<year>-<semester>.json：每学期课表', 'plugins/<plugin>/：v2 插件受控附件', 'file/、excel/、word/、pdf/：按用途/后缀分类的文件'], note: '数据库只保存 URL 或元数据；恢复时必须与数据库同时恢复。' },
   { path: 'data/plugins/<plugin>/', category: '插件实现', type: 'warning', purpose: '内置或已安装插件的 manifest、运行入口和实现代码。', contents: ['plugin.yaml', 'Wasm/gRPC runtime 文件', '插件 README 与内置静态示例'], note: '系统级插件随服务部署；不要把运行数据写入此目录。' },
-  { path: 'data/plugin_data/<plugin>/', category: '插件数据', type: 'warning', purpose: '插件运行产生的 KV、可编辑风格包源码和后续生成文件。', contents: ['SQLite-backed 插件 KV', 'personal-space 与 homepage 的 style-packs', '插件私有运行数据'], note: '应与 data/plugins 分开备份和权限管理。' },
+  { path: 'data/plugin_data/<plugin>/', category: '插件数据', type: 'warning', purpose: 'v1 插件 KV、可编辑风格包源码和后续生成文件。', contents: ['SQLite-backed v1 插件 KV', 'personal-space 与 homepage 的 style-packs', '插件私有运行数据'], note: 'v2 结构化记录进入 PostgreSQL，v2 用户附件进入个人空间；本目录仍应与 data/plugins 分开备份。' },
   { path: 'data/images/、data/config/、data/dist/、data/skills/', category: '系统本地数据', type: 'info', purpose: '全局非用户图片、本地配置、构建/发布产物和本地 runtime skills 的预留边界。', contents: ['images/：非个人空间全局图片', 'config/：本地配置，不提交密钥', 'dist/：本地发布或构建产物', 'skills/：本地 runtime/imported skills'], note: '实际启用路径可能受 .env 中的目录变量覆盖。' },
   { path: '.campusos/logs/', category: '开发期日志', type: 'info', purpose: '启动脚本写入 API、web 和 admin 的本地输出。', contents: ['api.log', 'web.log', 'admin.log'], note: '管理端平台日志页只读取固定来源；这不是集中日志系统。' },
 ]
@@ -350,6 +364,8 @@ const migrations = [
   { version: '000018', file: '000018_plugin_ui_runtime.up.sql', title: '插件 UI Runtime 状态', scope: '插件', summary: '持久化 BackendState、FrontendState、Health 和 UI revision，并用 CHECK 约束状态集合。', tables: ['plugins'] },
   { version: '000019', file: '000019_builtin_feature_state.up.sql', title: '内置功能状态', scope: '模块化单体', summary: '建立 Built-in Feature 独立状态表，并从历史 builtin plugin 状态一次性初始化。', tables: ['builtin_feature_states'] },
   { version: '000020', file: '000020_builtin_feature_config.up.sql', title: '内置功能配置', scope: '模块化单体', summary: '为 Built-in Feature 状态表增加权威 JSON 配置，旧插件配置只在首次缺失时导入。', tables: ['builtin_feature_states'] },
+  { version: '000021', file: '000021_v09_plugin_market.up.sql', title: 'v9 受管插件市场数据', scope: '插件平台', summary: '建立受管记录、文件元数据、用户 Grant、本地目录、申请、发布记录和市场审计。', tables: ['plugin_records', 'plugin_file_metadata', 'plugin_user_grants', 'plugin_catalog_entries', 'plugin_install_requests', 'plugin_releases', 'plugin_market_audits'] },
+  { version: '000022', file: '000022_v09_plugin_catalog_permissions.up.sql', title: '目录用户权限说明', scope: '插件平台', summary: '为本地目录增加用户权限的用途、风险和可撤销声明。', tables: ['plugin_catalog_entries'] },
 ]
 
 const tableByName = (name: string) => databaseTables.find((table) => table.name === name) || databaseTables[0]

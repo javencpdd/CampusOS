@@ -24,6 +24,7 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 | 个人课表 | `/schedule/me/*` | 当前或指定学期课表、已保存课表列表、选择/新建、保存和导入。 |
 | 富文本文章 | `/richtext/articles/*` | 草稿、上传、预览、发布、详情、作者操作和管理端治理。 |
 | 插件 | `/plugins/*`、`/plugin-packages/*` | 列表、配置、生命周期、插件包预检/导入/导出和审计。 |
+| 插件中心 | `/plugin-market/*` | 用户目录、明确授权、受管记录/文件、导出删除、管理员目录、请求和发布记录。 |
 | 插件前端运行时 | `/ui/runtime-manifest`、`/ui/events` | 当前主体可见 UI 合同、单调 Revision 与 SSE 变更通知。 |
 | 插件业务 Gateway | `/extensions/:plugin/*path` | JWT、权限、状态、健康、大小、超时、Trace、审计和 Runtime 分发。 |
 | 用户前台系统主题 | `/web-themes/*` | 公开列出管理员提供且筛查通过的 `target:web` 风格包、读取运行包和声明图片资源。 |
@@ -101,3 +102,6 @@ Runtime Manifest 不是授权替代。页面隐藏和 Action 过滤只是减少�
 - [v6 API 契约计划](../项目计划v6/01-v6版本计划书.md)
 - [v6 第三版计划](../项目计划v6/02-v6版本计划书第三版.md)
 - [v0.5 第二版计划书](../项目计划v5/01-v5版本计划书第二版.md)
+- [Host API v2 受管数据合同](Host-API-v2受管数据合同.md)
+- [Plugin Manifest v2 JSON Schema](plugin-manifest-v2.schema.json)
+- [插件市场与受管数据](../help/插件相关/插件市场与受管数据-v0.9.md)

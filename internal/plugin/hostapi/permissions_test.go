@@ -12,6 +12,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/community/domain"
 	"github.com/campusos/CampusOS/internal/community/repository"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 	"github.com/campusos/CampusOS/internal/plugin"
 )
 
@@ -302,6 +303,67 @@ func TestHandleHostAPIRequestRequiresManifestForProtectedMethods(t *testing.T) {
 	_, err := HandleHostAPIRequest(hostAPI, "StorageSet", []byte(`{"plugin_name":"plugin","key":"hello","value":"world"}`))
 	if !errors.Is(err, ErrHostAPIPermissionDenied) {
 		t.Fatalf("expected permission denied without manifest, got %v", err)
+	}
+}
+
+func TestHostAPIv2ManagedRecordsAreLimitedToDeclaredSystemCollections(t *testing.T) {
+	manifest, err := plugin.ParseManifest([]byte(`
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: system-records
+version: 1.0.0
+runtime: wasm
+scope: system
+type: external
+permissions:
+  api:
+    - resource: managed_data
+      actions: [read, write, delete]
+managed_data:
+  collections:
+    - name: notices
+      owner: system
+      fields: [{name: title, type: string, required: true}]
+    - name: private-notes
+      owner: user
+      fields: [{name: title, type: string, required: true}]
+`))
+	if err != nil {
+		t.Fatalf("parse manifest: %v", err)
+	}
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatalf("create storage: %v", err)
+	}
+	market := plugin.NewMarketService(plugin.NewMemoryMarketStore(), storage, func(name string) (*plugin.Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	hostAPI := NewHostAPIv2(nil, nil, nil)
+	hostAPI.SetMarketService(market)
+
+	result, err := HandleHostAPIRequestForPlugin(hostAPI, manifest, "RecordCreate", []byte(`{"collection":"notices","record_key":"welcome","data":{"title":"Welcome"}}`))
+	if err != nil {
+		t.Fatalf("create declared system record: %v", err)
+	}
+	var record plugin.ManagedRecord
+	if err := json.Unmarshal(result, &record); err != nil {
+		t.Fatalf("decode record: %v", err)
+	}
+	if record.OwnerType != plugin.OwnerSystem || record.OwnerID != "system" || record.RecordKey != "welcome" {
+		t.Fatalf("unexpected managed record: %#v", record)
+	}
+
+	_, err = HandleHostAPIRequestForPlugin(hostAPI, manifest, "RecordCreate", []byte(`{"collection":"private-notes","data":{"title":"must fail"}}`))
+	if !errors.Is(err, plugin.ErrMarketUnsupported) {
+		t.Fatalf("user-owned collection via Host API = %v, want unsupported", err)
+	}
+}
+
+func TestHostAPIv2ManagedRecordsRejectLegacyManifest(t *testing.T) {
+	legacy := manifestWithPermissions("legacy-records", plugin.APIPermission{Resource: "managed_data", Actions: []string{"write"}})
+	_, err := HandleHostAPIRequestForPlugin(NewHostAPIv2(nil, nil, nil), legacy, "RecordCreate", []byte(`{"collection":"anything","data":{}}`))
+	if !errors.Is(err, ErrHostAPIPermissionDenied) {
+		t.Fatalf("legacy manifest RecordCreate = %v, want permission denied", err)
 	}
 }
 

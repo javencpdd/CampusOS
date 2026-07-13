@@ -194,3 +194,98 @@ ui:
 		t.Fatal("expected third-party trusted module to fail")
 	}
 }
+
+func TestManifestV2AcceptsManagedDataAndResponsiveContract(t *testing.T) {
+	manifest, err := ParseManifest([]byte(`
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: notes-v2
+version: 1.0.0
+runtime: wasm
+scope: user
+type: external
+permissions:
+  user:
+    - resource: managed_data
+      actions: [read, write, delete]
+      purpose: "Save personal notes"
+      revocable: true
+    - resource: plugin_file
+      actions: [read, write, delete]
+      purpose: "Attach note files"
+      risk: low
+      revocable: true
+managed_data:
+  collections:
+    - name: notes
+      owner: user
+      fields:
+        - name: title
+          type: string
+          required: true
+      searchable: [title]
+      filterable: [title]
+files:
+  enabled: true
+  allowed_extensions: [.txt]
+  max_file_bytes: 1024
+ui:
+  responsive:
+    supported_viewports: [mobile, tablet, desktop]
+    minimum_width: 360
+    mobile_behavior: responsive
+    overflow_policy: internal-only
+`))
+	if err != nil {
+		t.Fatalf("parse v2 manifest: %v", err)
+	}
+	if !manifest.IsV2() || manifest.Type != PluginTypeExternal {
+		t.Fatalf("unexpected v2 manifest: %#v", manifest)
+	}
+	if _, ok := manifest.Collection("notes"); !ok {
+		t.Fatal("expected declared collection")
+	}
+}
+
+func TestManifestV2RejectsUndeclaredSearchField(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: bad-v2
+version: 1.0.0
+runtime: wasm
+type: external
+managed_data:
+  collections:
+    - name: notes
+      owner: user
+      fields: [{name: title, type: string}]
+      searchable: [missing]
+`))
+	if err == nil {
+		t.Fatal("expected undeclared search field to fail")
+	}
+}
+
+func TestManifestV2RejectsUnknownOrNonRevocableUserPermission(t *testing.T) {
+	for _, permission := range []string{
+		"resource: arbitrary\n      actions: [read]\n      purpose: no\n      revocable: true",
+		"resource: plugin_search\n      actions: [write]\n      purpose: no\n      revocable: true",
+		"resource: managed_data\n      actions: [read]\n      purpose: no\n      revocable: false",
+	} {
+		_, err := ParseManifest([]byte(`
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: invalid-consent
+version: 1.0.0
+runtime: wasm
+scope: user
+type: external
+permissions:
+  user:
+    - ` + permission + "\n"))
+		if err == nil {
+			t.Fatalf("expected user permission to fail: %s", permission)
+		}
+	}
+}

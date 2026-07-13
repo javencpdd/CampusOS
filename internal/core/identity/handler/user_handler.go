@@ -191,6 +191,6 @@ func (h *UserHandler) HealthCheck(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":  "ok",
 		"service": "CampusOS",
-		"version": "0.8.0",
+		"version": "0.9.0",
 	})
 }

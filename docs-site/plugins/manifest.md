@@ -20,6 +20,8 @@
 | `config` | 视 Runtime | 当前配置。 |
 | `config_schema` | 否 | 管理端配置表单和后端归一化规则。 |
 
+v2 外部插件还可声明 `api_version`、`host_api_version`、`type`、`managed_data`、`files`、`permissions.user` 和 `release`。受管数据示例和字段规则见 [插件中心、受管数据与签名](/plugins/market-managed-data)。工具可使用仓库中的 [`plugin-manifest-v2.schema.json`](../../docs/api/plugin-manifest-v2.schema.json) 进行结构预检；提交导入时仍必须通过 CampusOS 服务端的完整 Manifest 校验。
+
 ## Runtime 配置
 
 Wasm：

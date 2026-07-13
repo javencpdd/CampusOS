@@ -71,6 +71,12 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
+	case "sign":
+		if err := runPluginSign(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin sign: %v\n", err)
+			return 1
+		}
+		return 0
 	case "install":
 		if err := runPluginInstall(args[1:], stdout); err != nil {
 			fmt.Fprintf(stderr, "plugin install: %v\n", err)
@@ -205,6 +211,38 @@ func runPluginPack(args []string, stdout io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "packed plugin: %s\n", info.PackagePath)
+	return nil
+}
+
+func runPluginSign(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin sign", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	keyID := fs.String("key-id", "", "trusted signing key identifier")
+	keyFile := fs.String("key-file", "", "file containing a base64 Ed25519 private key")
+	pluginDir := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		pluginDir, args = args[0], args[1:]
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if pluginDir == "" && fs.NArg() == 1 {
+		pluginDir = fs.Arg(0)
+	} else if fs.NArg() != 0 {
+		return errors.New("usage: campusosctl plugin sign <plugin-dir> --key-id id --key-file private-key.txt")
+	}
+	if pluginDir == "" || *keyID == "" || *keyFile == "" {
+		return errors.New("usage: campusosctl plugin sign <plugin-dir> --key-id id --key-file private-key.txt")
+	}
+	key, err := os.ReadFile(*keyFile)
+	if err != nil {
+		return fmt.Errorf("read private key: %w", err)
+	}
+	envelope, err := plugin.SignPluginDirectory(pluginDir, *keyID, strings.TrimSpace(string(key)))
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "signed plugin: key=%s digest=%s\n", envelope.KeyID, envelope.ContentDigest)
 	return nil
 }
 
@@ -346,6 +384,7 @@ func printPluginUsage(w io.Writer) {
 	fmt.Fprintln(w, "  build     build or validate runtime artifacts")
 	fmt.Fprintln(w, "  test      run runtime-appropriate local tests")
 	fmt.Fprintln(w, "  pack      package a plugin directory")
+	fmt.Fprintln(w, "  sign      create an Ed25519 package signature envelope")
 	fmt.Fprintln(w, "  verify    verify a directory or package for CI/install")
 	fmt.Fprintln(w, "  install   install a packaged plugin")
 	fmt.Fprintln(w, "  dev       run test, build and verify as one local loop")

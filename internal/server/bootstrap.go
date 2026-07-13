@@ -44,6 +44,9 @@ type infrastructureBootstrap struct {
 }
 
 func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
+	if err := validateDeployment(s.cfg); err != nil {
+		return nil, err
+	}
 	pool, databaseErr := database.New(s.cfg.Database.DSN)
 	profileName := platformruntime.ProfileMemory
 	if databaseErr != nil {
@@ -66,12 +69,14 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		featureStore = platformfeature.NewPostgreSQLStore(pool)
 	}
 	pluginRepo := plugin.PluginRepository(plugin.NewMemoryPluginRepository())
+	marketStore := plugin.MarketStore(plugin.NewMemoryMarketStore())
 	if pool != nil {
 		pluginRepo = plugin.NewPgPluginRepository(pool)
+		marketStore = plugin.NewPgMarketStore(pool)
 	}
 	events := newEventBusModule(s.cfg)
 	features := newFeatureRegistryModule(s, featureStore)
-	plugins := newPluginPlatformModule(s, events, features, pluginRepo)
+	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore)
 	identityModule := identitycore.NewModule(identitycore.Config{JWT: s.newJWTManager(), PasswordHashEnabled: s.cfg.Auth.PasswordHashEnabled})
 	communityModule := communitycore.NewModule()
 	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: 10 * 1024 * 1024})

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import type { NavigationGuard } from 'vue-router'
 import { communityRoutes } from '../modules/community/routes'
 import { featureRoutes } from '../modules/features/routes'
 import { identityRoutes } from '../modules/identity/routes'
@@ -33,7 +34,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, _from, next) => {
+export const adminAuthGuard: NavigationGuard = (to, _from, next) => {
   const token = localStorage.getItem('admin_token')
   const user = JSON.parse(localStorage.getItem('admin_user') || 'null')
   if (to.meta.requiresAuth && !token) {
@@ -54,6 +55,8 @@ router.beforeEach((to, _from, next) => {
     }
   }
   next()
-})
+}
+
+router.beforeEach(adminAuthGuard)
 
 export default router

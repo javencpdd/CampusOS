@@ -1,0 +1,63 @@
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: v2-managed-example
+display_name: V2 受管数据示例
+version: 0.1.0
+description: Demonstrates declared system records, user records, consent and user files.
+author: CampusOS
+runtime: grpc
+scope: user
+type: external
+permissions:
+  api:
+    - resource: managed_data
+      actions: [read, write, delete]
+  user:
+    - resource: managed_data
+      actions: [read, write, delete]
+      purpose: Save and manage the user's private notes.
+      risk: low
+      revocable: true
+    - resource: plugin_file
+      actions: [read, write, delete]
+      purpose: Attach text files to the user's private notes.
+      risk: medium
+      revocable: true
+    - resource: plugin_search
+      actions: [read]
+      purpose: Include the user's declared note fields in CampusOS search.
+      risk: medium
+      revocable: true
+managed_data:
+  collections:
+    - name: announcements
+      owner: system
+      fields:
+        - name: title
+          type: string
+          required: true
+      searchable: [title]
+    - name: notes
+      owner: user
+      fields:
+        - name: title
+          type: string
+          required: true
+        - name: body
+          type: string
+      searchable: [title, body]
+      filterable: [title]
+      max_records: 200
+      max_record_bytes: 16384
+files:
+  enabled: true
+  allowed_mimes: [text/plain]
+  allowed_extensions: [.txt]
+  max_file_bytes: 1048576
+  quota_bytes: 5242880
+  retention: user-deletable
+release:
+  channel: beta
+  data_schema_version: "1"
+config:
+  command: ./plugin

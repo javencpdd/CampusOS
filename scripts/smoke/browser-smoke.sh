@@ -53,3 +53,14 @@ if [[ "${RUN_STYLE_PACK_SMOKE:-true}" == "true" ]]; then
       node tests/style-pack-responsive.mjs
   )
 fi
+
+if [[ "${RUN_RESPONSIVE_SMOKE:-true}" == "true" ]]; then
+  echo "running five-viewport responsive workflow"
+  (
+    cd web
+    CHROME_BIN="$CHROME_BIN" \
+      WEB_URL="${WEB_URL:-http://localhost:3000}" \
+      ADMIN_URL="${ADMIN_URL:-http://localhost:3001}" \
+      node tests/responsive-workflow.mjs
+  )
+fi

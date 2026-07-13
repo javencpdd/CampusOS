@@ -39,6 +39,24 @@ export interface RuntimeManifest {
         ui: Record<string, unknown>;
     }>;
 }
+export interface ResponsiveUI {
+    supported_viewports?: Array<'mobile' | 'tablet' | 'desktop'>;
+    minimum_width?: number;
+    mobile_behavior?: 'responsive' | 'unsupported';
+    overflow_policy?: 'internal-only' | 'none';
+}
+export interface ManagedRecord {
+    id: number;
+    plugin_name: string;
+    owner_type: 'system' | 'user';
+    owner_id: string;
+    collection: string;
+    record_key: string;
+    data: Record<string, unknown>;
+    version: number;
+    created_at: string;
+    updated_at: string;
+}
 export interface ClientOptions {
     baseURL?: string;
     token: () => string | undefined;
@@ -52,5 +70,18 @@ export declare class CampusExtensionClient {
     constructor(plugin: string, options: ClientOptions);
     runtimeManifest(): Promise<RuntimeManifest>;
     invoke<T>(action: ActionContract): Promise<T>;
+    listMyRecords(collection: string, page?: number, pageSize?: number): Promise<{
+        items: ManagedRecord[];
+        total: number;
+    }>;
+    createMyRecord(collection: string, input: {
+        record_key?: string;
+        data: Record<string, unknown>;
+    }): Promise<ManagedRecord>;
+    updateMyRecord(collection: string, recordKey: string, input: {
+        version: number;
+        data: Record<string, unknown>;
+    }): Promise<ManagedRecord>;
+    deleteMyRecord(collection: string, recordKey: string, version: number): Promise<void>;
     private headers;
 }

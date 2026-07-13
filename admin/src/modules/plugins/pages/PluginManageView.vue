@@ -234,8 +234,14 @@
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="签名">
-              <el-tag :type="pendingPrecheck.signature_status === 'unsigned' ? 'warning' : 'success'" effect="plain">
-                {{ pendingPrecheck.signature_status === 'unsigned' ? '未签名' : '存在签名文件，暂未验签' }}
+              <el-tag :type="signatureTag(pendingPrecheck.signature_status)" effect="plain">
+                {{ signatureLabel(pendingPrecheck.signature_status) }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="数据 Schema">{{ pendingPrecheck.data_schema_change || '新安装' }}</el-descriptions-item>
+            <el-descriptions-item label="用户重新授权">
+              <el-tag :type="pendingPrecheck.requires_reauthorization ? 'warning' : 'success'" effect="plain">
+                {{ pendingPrecheck.requires_reauthorization ? '需要' : '不需要' }}
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="Checksum" :span="2">{{ pendingPrecheck.checksum }}</el-descriptions-item>
@@ -270,6 +276,16 @@
             <ul class="risk-reasons">
               <li v-for="reason in pendingPrecheck.risk_reasons || []" :key="reason">{{ reason }}</li>
             </ul>
+            <h4>新增权限</h4>
+            <div class="tag-list">
+              <el-tag v-for="perm in pendingPrecheck.added_permissions || []" :key="`added-${perm}`" type="danger" effect="plain">{{ perm }}</el-tag>
+              <span v-if="!pendingPrecheck.added_permissions?.length" class="empty-text">无</span>
+            </div>
+            <h4>移除权限</h4>
+            <div class="tag-list">
+              <el-tag v-for="perm in pendingPrecheck.removed_permissions || []" :key="`removed-${perm}`" type="info" effect="plain">{{ perm }}</el-tag>
+              <span v-if="!pendingPrecheck.removed_permissions?.length" class="empty-text">无</span>
+            </div>
           </el-collapse-item>
           <el-collapse-item title="包内文件" name="files">
             <pre class="metadata-pre">{{ (pendingPrecheck.files || []).join('\n') }}</pre>
@@ -917,6 +933,9 @@ const riskLabel = (level: string) => {
   if (level === 'low') return '低风险'
   return '未知'
 }
+
+const signatureLabel = (status: string) => ({ verified: '已验证', unsigned: '未签名', untrusted: '签名者未受信', invalid: '签名无效' } as Record<string, string>)[status] || status || '未知'
+const signatureTag = (status: string) => status === 'verified' ? 'success' : status === 'invalid' ? 'danger' : 'warning'
 
 const versionChangeLabel = (change: string) => {
   if (change === 'new') return '新安装'

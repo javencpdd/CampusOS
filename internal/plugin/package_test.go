@@ -191,6 +191,29 @@ func TestPrecheckPluginPackageRejectsSystemScope(t *testing.T) {
 	}
 }
 
+func TestPrecheckPluginPackageReportsUserPermissionAndSchemaDiff(t *testing.T) {
+	pluginsDir := t.TempDir()
+	existing := writeV2ConsentPlugin(t, t.TempDir(), "consent-upgrade", "1.0.0", false, "1")
+	if err := os.Rename(existing, filepath.Join(pluginsDir, "consent-upgrade")); err != nil {
+		t.Fatal(err)
+	}
+	incoming := writeV2ConsentPlugin(t, t.TempDir(), "consent-upgrade", "1.1.0", true, "2")
+	packagePath := filepath.Join(t.TempDir(), "consent-upgrade.campusos-plugin.tar.gz")
+	if _, err := PackagePlugin(incoming, packagePath); err != nil {
+		t.Fatal(err)
+	}
+	precheck, err := PrecheckPluginPackage(packagePath, pluginsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !precheck.RequiresReauthorization || !containsString(precheck.AddedPermissions, "user:plugin_search:read") {
+		t.Fatalf("permission diff missing: %#v", precheck)
+	}
+	if precheck.DataSchemaChange != "1 -> 2" {
+		t.Fatalf("data schema change = %q", precheck.DataSchemaChange)
+	}
+}
+
 func TestExtractPluginPackageRejectsUnsafeArchivePath(t *testing.T) {
 	packagePath := filepath.Join(t.TempDir(), "unsafe.campusos-plugin.tar.gz")
 	file, err := os.Create(packagePath)
@@ -300,4 +323,46 @@ config:
 		t.Fatalf("write plugin executable: %v", err)
 	}
 	return sourceDir
+}
+
+func writeV2ConsentPlugin(t *testing.T, root, name, version string, withSearch bool, schemaVersion string) string {
+	t.Helper()
+	dir := filepath.Join(root, name+"-"+version)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	searchPermission := ""
+	if withSearch {
+		searchPermission = `
+    - resource: plugin_search
+      actions: [read]
+      purpose: Search personal notes
+      revocable: true`
+	}
+	manifest := fmt.Sprintf(`api_version: campusos.plugin/v2
+host_api_version: v2
+name: %s
+version: %s
+runtime: wasm
+scope: user
+type: external
+permissions:
+  user:
+    - resource: managed_data
+      actions: [read]
+      purpose: Read personal notes
+      revocable: true%s
+release:
+  data_schema_version: %q
+config:
+  module: plugin.wasm
+  entrypoint: handle_event
+`, name, version, searchPermission, schemaVersion)
+	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(manifest), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "plugin.wasm"), []byte("wasm"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	return dir
 }

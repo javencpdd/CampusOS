@@ -4,12 +4,13 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 
 ## 当前状态
 
-当前稳定开发基线为 `v0.8.0`。v8 已将既有功能收敛到模块化单体主路径：业务 Module、基础设施 Profile、HTTP Transport、Feature Store、Plugin Platform 和 Resource Package 均有明确边界。
+当前稳定开发基线为 `v0.9.0`。v9 在 v8 模块化单体边界上完成多端回归门禁、External Plugin Manifest v2、受管数据/文件、用户授权和本地插件目录治理。
 
 - 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
 - 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
 - 风格系统：个人主页风格归主页所有者；管理员可提供覆盖完整用户前台的系统主题，用户按本机账号选择；动态特效和只读数据调用运行在权限受控沙箱中。
-- 插件：支持 Built-in、gRPC process 和 Wasm Runtime，提供 Host API v1 权限目录、Go SDK、CLI、Mock Host、三类模板、更新前快照和管理端回滚；系统级插件重启生效，用户级插件可热加载。
+- 插件：支持 Built-in、gRPC process 和 Wasm Runtime，提供 Host API v1/v2、Go/TypeScript SDK、CLI、受管记录与文件、版本化用户授权、签名预检、更新前快照和管理端回滚；系统级插件重启生效，用户级插件可热加载。
+- 本地插件目录：管理员治理已安装 v2 外部插件的可见性、申请与发布记录；用户可授权、撤销、导出或删除自己的受管数据。插件代码仍只在 `data/plugins/`，资源包仍只在 `data/resources/` 或 Legacy `data/plugin_data/`。
 - 权限：角色操作和插件、集成、日志、富文本等管理权限已拆分；版主按指定版块治理；运行中插件使用可过期、可轮换和可撤销的 Host token。
 - 集成：AI Gateway、Webhook 投递、内部 MCP-like 只读工具和 Message local adapter。
 
@@ -68,7 +69,7 @@ make release-check
 | 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
 | 风格包边界和 SDK 权限 | [风格包能力边界与 CampusStyleSDK 说明](docs/help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
 | 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
-| 当前计划与进度 | [v8 计划书](docs/项目计划v8/00-v8版本计划书.md)、[v8 进度规则](docs/进度/v0.8-dev/README.md)、[v7 回顾](docs/项目计划v7/01-v7版本回顾与后续规划.md) |
+| 当前计划与进度 | [v9 计划书](docs/项目计划v9/00-v9版本计划书.md)、[v9 完成回顾](docs/项目计划v9/01-v9完成回顾.md)、[v9 进度记录](docs/进度/v0.9-dev/) |
 
 ## License
 

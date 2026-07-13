@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/campusos/CampusOS/internal/plugin"
 )
@@ -30,6 +31,11 @@ var hostAPIMethodPermissions = map[string]HostAPIPermission{
 	"StorageGet":       {Resource: "storage", Action: "read"},
 	"StorageSet":       {Resource: "storage", Action: "write"},
 	"StorageDelete":    {Resource: "storage", Action: "delete"},
+	"RecordCreate":     {Resource: "managed_data", Action: "write"},
+	"RecordGet":        {Resource: "managed_data", Action: "read"},
+	"RecordList":       {Resource: "managed_data", Action: "read"},
+	"RecordUpdate":     {Resource: "managed_data", Action: "write"},
+	"RecordDelete":     {Resource: "managed_data", Action: "delete"},
 }
 
 func PermissionForMethod(method string) (HostAPIPermission, bool) {
@@ -55,6 +61,9 @@ func CheckHostAPIPermission(manifest *plugin.Manifest, method string) error {
 	}
 	if manifest == nil {
 		return fmt.Errorf("%w: plugin manifest is required for %s", ErrHostAPIPermissionDenied, method)
+	}
+	if strings.HasPrefix(method, "Record") && (!manifest.IsV2() || manifest.HostAPIVersion != plugin.HostAPIVersionV2) {
+		return fmt.Errorf("%w: %s requires campusos.plugin/v2 and host_api_version %s", ErrHostAPIPermissionDenied, method, plugin.HostAPIVersionV2)
 	}
 	if !manifest.HasPermission(permission.Resource, permission.Action) {
 		return fmt.Errorf(

@@ -185,7 +185,7 @@ func verifyPlugin(target string) (*plugin.Manifest, error) {
 	for _, permission := range manifest.Permissions.API {
 		for _, action := range permission.Actions {
 			if !plugin.IsKnownPermission(permission.Resource, action) {
-				return nil, fmt.Errorf("manifest permission is not in the v1 catalog: %s/%s", permission.Resource, action)
+				return nil, fmt.Errorf("manifest permission is not in the Host API permission catalog: %s/%s", permission.Resource, action)
 			}
 		}
 	}

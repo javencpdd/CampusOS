@@ -15,8 +15,8 @@ import (
 
 const (
 	DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
-	SDKVersion            = "v0.6"
-	HostAPIVersion        = "v1"
+	SDKVersion            = "v0.9"
+	HostAPIVersion        = "v2"
 )
 
 var ErrPermissionDenied = errors.New("campusos host api permission denied")
@@ -296,6 +296,87 @@ type StorageSetRequest struct {
 type StorageDeleteRequest struct {
 	PluginName string `json:"plugin_name"`
 	Key        string `json:"key"`
+}
+
+// ManagedRecord and the Record* methods are Host API v2 primitives for
+// plugin-owned system collections. User-owned data must be mediated by the
+// authenticated CampusOS REST API so a plugin cannot forge a user identity.
+type ManagedRecord struct {
+	ID         int64                  `json:"id"`
+	PluginName string                 `json:"plugin_name"`
+	OwnerType  string                 `json:"owner_type"`
+	OwnerID    string                 `json:"owner_id"`
+	Collection string                 `json:"collection"`
+	RecordKey  string                 `json:"record_key"`
+	Data       map[string]interface{} `json:"data"`
+	Version    int64                  `json:"version"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+}
+
+type RecordCreateRequest struct {
+	Collection string                 `json:"collection"`
+	RecordKey  string                 `json:"record_key,omitempty"`
+	Data       map[string]interface{} `json:"data"`
+}
+
+type RecordGetRequest struct {
+	Collection string `json:"collection"`
+	RecordKey  string `json:"record_key"`
+}
+
+type RecordListRequest struct {
+	Collection string `json:"collection"`
+	Page       int    `json:"page,omitempty"`
+	PageSize   int    `json:"page_size,omitempty"`
+}
+
+type RecordPage struct {
+	Items []ManagedRecord `json:"items"`
+	Total int             `json:"total"`
+	Page  int             `json:"page"`
+	Size  int             `json:"page_size"`
+}
+
+type RecordUpdateRequest struct {
+	Collection string                 `json:"collection"`
+	RecordKey  string                 `json:"record_key"`
+	Data       map[string]interface{} `json:"data"`
+	Version    int64                  `json:"version"`
+}
+
+type RecordDeleteRequest struct {
+	Collection string `json:"collection"`
+	RecordKey  string `json:"record_key"`
+	Version    int64  `json:"version"`
+}
+
+func (c *HostClient) RecordCreate(ctx context.Context, request RecordCreateRequest) (*ManagedRecord, error) {
+	var response ManagedRecord
+	err := c.Call(ctx, "RecordCreate", request, &response)
+	return &response, err
+}
+
+func (c *HostClient) RecordGet(ctx context.Context, collection, recordKey string) (*ManagedRecord, error) {
+	var response ManagedRecord
+	err := c.Call(ctx, "RecordGet", RecordGetRequest{Collection: collection, RecordKey: recordKey}, &response)
+	return &response, err
+}
+
+func (c *HostClient) RecordList(ctx context.Context, request RecordListRequest) (*RecordPage, error) {
+	var response RecordPage
+	err := c.Call(ctx, "RecordList", request, &response)
+	return &response, err
+}
+
+func (c *HostClient) RecordUpdate(ctx context.Context, request RecordUpdateRequest) (*ManagedRecord, error) {
+	var response ManagedRecord
+	err := c.Call(ctx, "RecordUpdate", request, &response)
+	return &response, err
+}
+
+func (c *HostClient) RecordDelete(ctx context.Context, request RecordDeleteRequest) error {
+	return c.Call(ctx, "RecordDelete", request, nil)
 }
 
 func (c *HostClient) StorageGet(ctx context.Context, key string) (string, bool, error) {

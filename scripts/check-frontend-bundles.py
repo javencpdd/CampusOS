@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify CampusOS's intentionally conservative initial JavaScript/CSS budgets."""
+"""Verify v0.9 initial-entry JavaScript/CSS budgets after route/component splitting."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUDGETS = {
-    "web": {"js": 1_350_000, "css": 400_000},
-    "admin": {"js": 1_150_000, "css": 400_000},
+    "web": {"js": 500_000, "css": 400_000},
+    "admin": {"js": 250_000, "css": 400_000},
 }
 
 

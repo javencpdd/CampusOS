@@ -10,6 +10,7 @@ import (
 
 	communityport "github.com/campusos/CampusOS/internal/community/port"
 	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
+	corestorage "github.com/campusos/CampusOS/internal/core/storage"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -148,20 +149,22 @@ type pluginPlatformModule struct {
 	features    *featureRegistryModule
 	app         *platformmodule.AppContext
 	repository  plugin.PluginRepository
+	marketStore plugin.MarketStore
 	manager     *plugin.Manager
+	market      *plugin.MarketService
 	grpcRuntime *plugingrpc.GRPCRuntime
 	handler     *plugin.Handler
 	hostAPI     *hostapi.HostAPIServer
 	cancel      context.CancelFunc
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
 func (m *pluginPlatformModule) Dependencies() []string {
-	return []string{moduleEventBus, moduleFeatureConfig}
+	return []string{moduleEventBus, moduleFeatureConfig, corestorage.ModuleID}
 }
 
 func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
@@ -199,7 +202,29 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.seedLegacyFeatures(); err != nil {
 		return err
 	}
-	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(m.owner.features))
+	storageValue, ok := m.app.Lookup("storage.user")
+	if !ok {
+		return errors.New("user storage port is unavailable for plugin market")
+	}
+	userStorage, ok := storageValue.(corestorage.Port)
+	if !ok {
+		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
+	}
+	m.market = plugin.NewMarketService(m.marketStore, userStorage, func(name string) (*plugin.Manifest, bool) {
+		installed, found := m.manager.GetPlugin(name)
+		if !found || installed == nil || installed.Manifest == nil {
+			return nil, false
+		}
+		return installed.Manifest, true
+	})
+	m.market.SetPluginActiveResolver(func(name string) bool {
+		installed, found := m.manager.GetPlugin(name)
+		return found && installed != nil && installed.Status == plugin.StatusRunning
+	})
+	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
+		return fmt.Errorf("sync plugin market catalog: %w", err)
+	}
+	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(m.owner.features), plugin.WithMarketService(m.market))
 	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
 		return err
 	}
@@ -295,6 +320,7 @@ func (m *pluginPlatformModule) startHostAPI() error {
 		api.SetStorageStore(store)
 	}
 	api.SetPermissionChecker(permission)
+	api.SetMarketService(m.market)
 	server := hostapi.NewHostAPIServer(api, m.owner.cfg.HostAPI.Addr, m.manager.GetPlugin)
 	server.SetPluginAuthenticator(m.manager.AuthorizeHostAPI)
 	if err := server.Start(); err != nil {
