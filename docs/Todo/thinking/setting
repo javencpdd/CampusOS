@@ -8,12 +8,16 @@ rsync -a skills/campusos-dev-nocommit/ /home/jack/.codex/skills/campusos-dev-noc
 
 -- 有用
 ###############################################################
-使用 campusos-dev-nocommit 完成 v0.7-dev 的全部任务，并更新进度文档，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
+
+/home/jack/bbs/bbs01/CampusOS/docs/项目计划v8/功能域重构与兼容-v8计划.md  是我对v8计划梳理后的思路，
+请你参考该计划，撰写一份计划书v8（保存在 /home/jack/bbs/bbs01/CampusOS/docs/项目计划v8 中），
+每完成一个独立阶段，在 /home/jack/bbs/bbs01/CampusOS/docs/进度/v0.8-dev 目录生成对应进度说明文档，
+
+使用 campusos-dev-nocommit 完成 v0.8-dev 的全部任务，并更新进度文档
+
+v8计划中对项目架构重构的部分全部完成了吗，如果还有未完成的部分请完善，完全完成后，针对v8计划进行回顾并总结当前已完成的功能，
+接下来还需要完成哪些，整理文档后保存在/home/jack/bbs/bbs01/CampusOS/docs/项目计划v8
 
 
 Agent 能力内嵌于 CampusOS，作为平台级基础设施；Agent 的界面和管理功能以系统内置模块呈现；
-第三方执行器、知识库和工具通过插件扩展。  这部分放在计划书v8中
-
-
-v7计划中对项目架构重构的部分全部完成了吗，如果还有未完成的部分请完善，完全完成后，针对v7计划进行回顾并总结当前已完成的功能，接下来还需要完成哪些，整理文档后保存在/home/jack/bbs/bbs01/CampusOS/docs/项目计划v7
-，同时Spend time on thinking; you do not need to use the commentary channel to report progress to me.
+第三方执行器、知识库和工具通过插件扩展。  这部分放在计划书v9中
