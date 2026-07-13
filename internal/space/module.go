@@ -32,6 +32,8 @@ type Module struct {
 	users     identityport.UserReader
 	community communityport.ContentGateway
 	storage   corestorage.Port
+	styles    StyleApplication
+	attacher  interface{ AttachSpaceStyleTarget(StyleApplication) }
 	service   *Service
 	handler   *Handler
 }
@@ -41,7 +43,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.community", "core.user-storage", "core.plugin-platform"}
+	return []string{"core.identity", "core.community", "core.user-storage", "core.feature-registry", "feature.appearance"}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -80,7 +82,20 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
 	}
+	appearanceValue, ok := app.Lookup("appearance.application")
+	if !ok {
+		return errors.New("appearance application is unavailable")
+	}
+	styles, ok := appearanceValue.(StyleApplication)
+	if !ok {
+		return fmt.Errorf("appearance application has incompatible style contract %T", appearanceValue)
+	}
+	attacher, ok := appearanceValue.(interface{ AttachSpaceStyleTarget(StyleApplication) })
+	if !ok {
+		return fmt.Errorf("appearance application cannot attach personal-space styles: %T", appearanceValue)
+	}
 	m.app, m.repo, m.users, m.community, m.storage = app, repo, users, community, storage
+	m.styles, m.attacher = styles, attacher
 	return nil
 }
 
@@ -119,9 +134,10 @@ func (m *Module) Start(ctx context.Context) error {
 	if err := svc.RegisterEventHandlers(bus); err != nil {
 		return err
 	}
+	m.attacher.AttachSpaceStyleTarget(svc)
 	m.service = svc
-	m.handler = NewHandler(svc)
-	return nil
+	m.handler = NewHandlerWithStyleApplication(svc, m.styles)
+	return m.app.Provide("feature.personal-space.service", svc)
 }
 
 func (m *Module) Stop(context.Context) error { return nil }

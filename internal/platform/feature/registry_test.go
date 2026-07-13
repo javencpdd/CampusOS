@@ -60,8 +60,32 @@ func TestRegistryPersistsRequestedStateAndDoesNotReseedFromLegacy(t *testing.T) 
 		t.Fatal(err)
 	}
 	state = reloaded.List()[0]
-	if state.DesiredEnabled || !state.PendingRestart || !state.Enabled {
-		t.Fatalf("persisted feature state was replaced by legacy plugin state: %#v", state)
+	if state.DesiredEnabled || state.PendingRestart || state.Enabled {
+		t.Fatalf("staged restart state was not activated from the Feature Store: %#v", state)
+	}
+}
+
+func TestAuthoritativeRegistrySeedsLegacyOnlyOnce(t *testing.T) {
+	store := NewMemoryStore()
+	registry := NewAuthoritativeRegistry(store)
+	if err := registry.Register(Definition{ID: "space", Mode: Restart, LegacyPlugin: "personal-space"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.SeedLegacy("space", true, map[string]interface{}{"quota_mb": float64(10)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.UpdateConfig("space", map[string]interface{}{"quota_mb": float64(20)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.SeedLegacy("space", false, map[string]interface{}{"quota_mb": float64(30)}); err != nil {
+		t.Fatal(err)
+	}
+	state, _ := registry.Get("space")
+	if !state.Enabled || !state.DesiredEnabled {
+		t.Fatalf("legacy state overwrote authoritative state: %#v", state)
+	}
+	if got := registry.Config("space")["quota_mb"]; got != float64(20) {
+		t.Fatalf("legacy config overwrote authoritative config: %#v", registry.Config("space"))
 	}
 }
 

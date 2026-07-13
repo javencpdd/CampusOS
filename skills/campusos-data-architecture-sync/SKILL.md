@@ -46,5 +46,5 @@ When a request requires live row counts, index sizes, or migration status, desig
 
 ## Resources
 
-- `scripts/check_architecture_sync.py`: compares repository migrations and migration scripts with the tables and relation endpoints declared by the Admin view. It exits nonzero on drift.
+- `scripts/check_architecture_sync.py`: compares repository migrations and migration scripts with the tables and relation endpoints declared by `admin/src/modules/architecture/pages/SystemArchitectureView.vue`. It exits nonzero on drift.
 - `references/schema-visualization-contract.md`: explains the checker, source-of-truth ordering, and what requires a manual relationship review.

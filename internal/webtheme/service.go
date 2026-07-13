@@ -100,6 +100,16 @@ func (s *Service) Catalog() (*Catalog, error) {
 	return catalog, nil
 }
 
+// Theme* methods implement the Appearance application transport contract while
+// preserving the historical Service method names for compatibility callers.
+func (s *Service) ThemeCatalog() (*Catalog, error) { return s.Catalog() }
+func (s *Service) ThemePackage(name string) (*RuntimePackage, error) {
+	return s.Package(name)
+}
+func (s *Service) ThemeAsset(name, assetPath string) ([]byte, string, error) {
+	return s.Asset(name, assetPath)
+}
+
 func (s *Service) Package(name string) (*RuntimePackage, error) {
 	if !s.enabled() {
 		return nil, ErrDisabled

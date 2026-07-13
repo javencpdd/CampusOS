@@ -8,41 +8,38 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
 // Manager 插件管理器
 type Manager struct {
-	mu          sync.RWMutex
-	runtimes    *RuntimeRegistry
-	repo        PluginRepository // 可选：插件持久化仓储
-	catalog     *PluginCatalog
-	lifecycle   *LifecycleService
-	configs     *ConfigService
-	ui          *UIRegistry
-	events      *EventRegistry
-	audit       *AuditLogService
-	auditRepo   PluginLogRepository
-	uiRevision  uint64
-	uiListeners map[chan uint64]struct{}
+	runtimes  *RuntimeRegistry
+	catalog   *PluginCatalog
+	lifecycle *LifecycleService
+	configs   *ConfigService
+	ui        *UIRegistry
+	events    *EventRegistry
+	audit     *AuditLogService
+	packages  *PackageService
+	snapshots *SnapshotService
+	host      *HostAccessService
 }
 
 // NewManager 创建插件管理器
 func NewManager() *Manager {
 	m := &Manager{
-		runtimes:    NewRuntimeRegistry(),
-		uiRevision:  1,
-		uiListeners: make(map[chan uint64]struct{}),
+		runtimes: NewRuntimeRegistry(),
+		catalog:  NewPluginCatalog(),
+		ui:       NewUIRegistry(),
 	}
-	m.catalog = &PluginCatalog{list: m.ListPlugins, get: m.GetPlugin, plugins: make(map[string]*Plugin)}
-	m.lifecycle = &LifecycleService{start: m.start, stop: func(name string) error { return m.stop(name, true) }, requestEnable: m.requestEnable, requestDisable: m.requestDisable}
-	m.configs = &ConfigService{get: m.GetPluginConfig, update: m.updateConfig}
-	m.ui = &UIRegistry{revision: m.UIRevision, subscribe: m.SubscribeUI}
-	m.events = &EventRegistry{dispatch: m.DispatchEvent, subscriptions: make(map[string][]string)}
-	m.audit = &AuditLogService{record: m.RecordPluginAudit, list: m.ListPluginLogs}
+	m.audit = NewAuditLogService()
+	m.lifecycle = NewLifecycleService(m.catalog, m.runtimes, m.ui, m.audit)
+	m.configs = NewConfigService(m.catalog, m.ui, m.audit)
+	m.events = NewEventRegistry(m.catalog, m.runtimes, m.audit, m.lifecycle)
+	m.packages = NewPackageService(m.catalog, m.lifecycle, m.ui, m.events, m.audit)
+	m.snapshots = NewSnapshotService(m.catalog, m.packages, m.audit)
+	m.host = NewHostAccessService(m.catalog, m.runtimes)
 	return m
 }
 
@@ -53,19 +50,22 @@ func (m *Manager) Configs() *ConfigService           { return m.configs }
 func (m *Manager) UIRegistry() *UIRegistry           { return m.ui }
 func (m *Manager) EventRegistry() *EventRegistry     { return m.events }
 func (m *Manager) AuditLogs() *AuditLogService       { return m.audit }
+func (m *Manager) Packages() *PackageService         { return m.packages }
+func (m *Manager) Snapshots() *SnapshotService       { return m.snapshots }
+func (m *Manager) HostAccess() *HostAccessService    { return m.host }
 
 // SetPluginRepository 设置插件持久化仓储
-func (m *Manager) SetPluginRepository(repo PluginRepository) {
-	m.mu.Lock()
-	m.repo = repo
+func (m *PackageService) SetRepository(repo PluginRepository) {
+	m.catalog.mu.Lock()
+	m.catalog.repo = repo
 	if logRepo, ok := repo.(PluginLogRepository); ok {
-		m.auditRepo = logRepo
+		m.audit.SetRepository(logRepo)
 	}
 	plugins := make([]*Plugin, 0, len(m.catalog.plugins))
 	for _, p := range m.catalog.plugins {
 		plugins = append(plugins, p)
 	}
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 
 	for _, p := range plugins {
 		if err := m.syncPluginRecord(context.Background(), p); err != nil {
@@ -74,31 +74,18 @@ func (m *Manager) SetPluginRepository(repo PluginRepository) {
 	}
 }
 
-// SetPluginLogRepository 设置插件运行日志仓储
-func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
-	m.auditRepo = repo
-}
-
-// RegisterRuntime 注册运行时实现
-func (m *Manager) RegisterRuntime(runtimeType string, runtime Runtime) {
-	if err := m.runtimes.Register(runtimeType, runtime); err != nil {
-		panic(err)
-	}
-	log.Printf("🔌 已注册插件运行时: %s", runtimeType)
-}
-
 // Install 从目录安装插件
-func (m *Manager) Install(dir string) (*Plugin, error) {
+func (m *PackageService) Install(dir string) (*Plugin, error) {
 	manifestPath := filepath.Join(dir, "plugin.yaml")
 	manifest, err := LoadManifest(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("load manifest from %s: %w", dir, err)
 	}
 
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 
 	if _, exists := m.catalog.plugins[manifest.Name]; exists {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return nil, fmt.Errorf("plugin '%s' already installed", manifest.Name)
 	}
 
@@ -118,11 +105,9 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	m.catalog.plugins[manifest.Name] = plugin
 
 	// 注册事件订阅
-	for _, eventType := range manifest.Events.Subscribe {
-		m.events.subscriptions[eventType] = append(m.events.subscriptions[eventType], manifest.Name)
-	}
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.events.Add(manifest.Name, manifest.Events.Subscribe)
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 
 	if err := m.syncPluginRecord(context.Background(), plugin); err != nil {
 		return nil, err
@@ -132,10 +117,10 @@ func (m *Manager) Install(dir string) (*Plugin, error) {
 	return plugin, nil
 }
 
-func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
-	m.mu.RLock()
-	repo := m.repo
-	m.mu.RUnlock()
+func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error {
+	m.catalog.mu.RLock()
+	repo := m.catalog.repo
+	m.catalog.mu.RUnlock()
 	if repo == nil || p == nil || p.Manifest == nil {
 		return nil
 	}
@@ -152,12 +137,12 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 			}
 		}
 		if len(config) > 0 {
-			m.mu.Lock()
+			m.catalog.mu.Lock()
 			p.Manifest.Config = config
-			m.mu.Unlock()
+			m.catalog.mu.Unlock()
 		}
 		if record.Status != "" {
-			m.mu.Lock()
+			m.catalog.mu.Lock()
 			p.Status = restoredRuntimeStatus(record.Status)
 			p.DesiredEnabled = desiredEnabledFromRecord(record.Status, p.Manifest)
 			p.BackendState = restoredBackendState(record.BackendState, p.Status)
@@ -167,7 +152,7 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 			p.Checksum = record.Checksum
 			p.PackageSize = record.PackageSize
 			p.InstalledBy = record.InstalledBy
-			m.mu.Unlock()
+			m.catalog.mu.Unlock()
 		}
 	} else if !errors.Is(err, ErrAPIKeyNotFound) {
 		return err
@@ -190,7 +175,7 @@ func (m *Manager) syncPluginRecord(ctx context.Context, p *Plugin) error {
 	record.BackendState = string(p.BackendState)
 	record.FrontendState = string(p.FrontendState)
 	record.HealthState = string(p.Health)
-	record.UIRevision = int64(m.UIRevision())
+	record.UIRevision = int64(m.ui.Revision())
 	record.Config = string(configJSON)
 	record.ErrorMsg = p.ErrorMsg
 	record.Checksum = p.Checksum
@@ -257,22 +242,22 @@ func restoredHealthState(value string, status PluginStatus) HealthState {
 }
 
 // Enable 启用插件
-func (m *Manager) Enable(name string) error {
-	m.mu.Lock()
+func (m *LifecycleService) enable(name string) error {
+	m.catalog.mu.Lock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	if p.Status != StatusInstalled && p.Status != StatusStopped {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return fmt.Errorf("plugin '%s' cannot be enabled (status: %s)", name, p.Status)
 	}
 	p.Status = StatusEnabled
 	p.DesiredEnabled = true
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 
-	return m.Start(name)
+	return m.start(name)
 }
 
 // RequestEnable applies a lifecycle request from the management API. System
@@ -281,29 +266,29 @@ func (m *Manager) RequestEnable(name string) error {
 	return m.lifecycle.RequestEnable(name)
 }
 
-func (m *Manager) requestEnable(name string) error {
-	m.mu.RLock()
+func (m *LifecycleService) requestEnable(name string) error {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	activationMode := p.Manifest.BackendActivationMode()
 	status := p.Status
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	if activationMode == ActivationRestart {
 		if p.DesiredEnabled && status == StatusRunning {
 			return nil
 		}
-		m.mu.Lock()
+		m.catalog.mu.Lock()
 		p.DesiredEnabled = true
 		p.BackendState = BackendPendingRestart
 		if !p.Manifest.UI.Empty() {
 			p.FrontendState = FrontendLoaded
 		}
-		m.bumpUIRevisionLocked()
-		m.mu.Unlock()
+		m.ui.Bump()
+		m.catalog.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusRunning, "")
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
@@ -320,12 +305,12 @@ func (m *Manager) requestEnable(name string) error {
 		return nil
 	}
 	if status == StatusError {
-		m.mu.Lock()
+		m.catalog.mu.Lock()
 		p.Status = StatusInstalled
 		p.ErrorMsg = ""
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 	}
-	return m.Enable(name)
+	return m.enable(name)
 }
 
 // RequestDisable applies a lifecycle request from the management API. System
@@ -334,33 +319,33 @@ func (m *Manager) RequestDisable(name string) error {
 	return m.lifecycle.RequestDisable(name)
 }
 
-func (m *Manager) requestDisable(name string) error {
-	m.mu.RLock()
+func (m *LifecycleService) requestDisable(name string) error {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	activationMode := p.Manifest.BackendActivationMode()
 	status := p.Status
 	desiredEnabled := p.DesiredEnabled
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	if activationMode != ActivationRestart {
 		if !desiredEnabled && (status == StatusStopped || status == StatusInstalled) {
 			return nil
 		}
-		return m.Stop(name)
+		return m.stop(name, true)
 	}
 	if !desiredEnabled && status != StatusRunning {
 		return nil
 	}
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	p.DesiredEnabled = false
 	p.BackendState = BackendPendingRestart
 	p.FrontendState = FrontendUnloaded
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusStopped, "")
 	m.logPlugin(context.Background(), &PluginLogRecord{
 		PluginName: name,
@@ -375,33 +360,35 @@ func (m *Manager) requestDisable(name string) error {
 }
 
 // ReloadUserPlugin preserves the legacy API name while using activation_mode.
-func (m *Manager) ReloadUserPlugin(name string) error {
-	m.mu.RLock()
+func (m *LifecycleService) ReloadUserPlugin(name string) error {
+	m.operationMu.Lock()
+	defer m.operationMu.Unlock()
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	if p.Manifest.BackendActivationMode() == ActivationRestart {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' requires a server restart", name)
 	}
 	status := p.Status
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	if status == StatusRunning {
 		if err := m.stop(name, false); err != nil {
 			return err
 		}
 	}
-	return m.RequestEnable(name)
+	return m.requestEnable(name)
 }
 
 // LifecycleState returns the current and requested lifecycle behavior for UI
 // consumers without exposing mutable Plugin internals.
-func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *LifecycleService) LifecycleState(name string) (LifecycleState, bool) {
+	m.catalog.mu.RLock()
+	defer m.catalog.mu.RUnlock()
 	p, ok := m.catalog.plugins[name]
 	if !ok || p.Manifest == nil {
 		return LifecycleState{}, false
@@ -422,42 +409,17 @@ func (m *Manager) LifecycleState(name string) (LifecycleState, bool) {
 }
 
 func (m *Manager) UIRevision() uint64 {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.uiRevision
+	return m.ui.Revision()
 }
 
 func (m *Manager) SubscribeUI() (<-chan uint64, func()) {
-	ch := make(chan uint64, 1)
-	m.mu.Lock()
-	m.uiListeners[ch] = struct{}{}
-	revision := m.uiRevision
-	m.mu.Unlock()
-	ch <- revision
-	return ch, func() {
-		m.mu.Lock()
-		if _, ok := m.uiListeners[ch]; ok {
-			delete(m.uiListeners, ch)
-			close(ch)
-		}
-		m.mu.Unlock()
-	}
-}
-
-func (m *Manager) bumpUIRevisionLocked() {
-	m.uiRevision++
-	for listener := range m.uiListeners {
-		select {
-		case listener <- m.uiRevision:
-		default:
-		}
-	}
+	return m.ui.Subscribe()
 }
 
 // StartDesiredPlugins starts plugins that were explicitly enabled before the
 // current process started. Call this only during server bootstrap.
-func (m *Manager) StartDesiredPlugins(scope string) {
-	m.mu.RLock()
+func (m *LifecycleService) StartDesiredPlugins(scope string) {
+	m.catalog.mu.RLock()
 	names := make([]string, 0, len(m.catalog.plugins))
 	for name, p := range m.catalog.plugins {
 		if p.Manifest == nil || p.Manifest.Scope != scope || !p.DesiredEnabled || p.Status == StatusRunning {
@@ -465,7 +427,7 @@ func (m *Manager) StartDesiredPlugins(scope string) {
 		}
 		names = append(names, name)
 	}
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	for _, name := range names {
 		if err := m.Start(name); err != nil {
@@ -479,23 +441,23 @@ func (m *Manager) Start(name string) error {
 	return m.lifecycle.Start(name)
 }
 
-func (m *Manager) start(name string) error {
-	m.mu.RLock()
+func (m *LifecycleService) start(name string) error {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	runtimeType := p.Manifest.Runtime
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	p.BackendState = BackendStarting
 	p.Health = HealthUnknown
 	if p.DesiredEnabled && !p.Manifest.UI.Empty() {
 		p.FrontendState = FrontendLoaded
 	}
-	m.bumpUIRevisionLocked()
+	m.ui.Bump()
 	runtime, ok := m.runtimes.Get(runtimeType)
 	if !ok {
 		err := fmt.Errorf("runtime '%s' not registered", runtimeType)
@@ -503,7 +465,7 @@ func (m *Manager) start(name string) error {
 		p.BackendState = BackendError
 		p.Health = HealthUnavailable
 		p.ErrorMsg = err.Error()
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
@@ -518,18 +480,18 @@ func (m *Manager) start(name string) error {
 	}
 	p.HostToken = GenerateAPIKey("cos_plugin")
 	p.HostTokenExpiresAt = time.Now().Add(30 * 24 * time.Hour)
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 
 	if err := runtime.Start(context.Background(), p); err != nil {
-		m.mu.Lock()
+		m.catalog.mu.Lock()
 		p.Status = StatusError
 		p.BackendState = BackendError
 		p.Health = HealthUnavailable
 		p.ErrorMsg = err.Error()
 		p.HostToken = ""
 		p.HostTokenExpiresAt = time.Time{}
-		m.bumpUIRevisionLocked()
-		m.mu.Unlock()
+		m.ui.Bump()
+		m.catalog.mu.Unlock()
 		m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
@@ -543,7 +505,7 @@ func (m *Manager) start(name string) error {
 		return fmt.Errorf("start plugin '%s': %w", name, err)
 	}
 
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	p.Status = StatusRunning
 	p.BackendState = BackendRunning
 	p.Health = HealthHealthy
@@ -552,8 +514,8 @@ func (m *Manager) start(name string) error {
 	}
 	p.DesiredEnabled = true
 	p.ErrorMsg = ""
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusRunning, "")
 
 	log.Printf("🟢 插件已启动: %s", name)
@@ -573,23 +535,23 @@ func (m *Manager) Stop(name string) error {
 	return m.lifecycle.Stop(name)
 }
 
-func (m *Manager) stop(name string, persist bool) error {
-	m.mu.RLock()
+func (m *LifecycleService) stop(name string, persist bool) error {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	runtimeType := p.Manifest.Runtime
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	p.BackendState = BackendStopping
 	p.Health = HealthDegraded
-	m.bumpUIRevisionLocked()
+	m.ui.Bump()
 	runtime, ok := m.runtimes.Get(runtimeType)
 	if !ok {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		m.logPlugin(context.Background(), &PluginLogRecord{
 			PluginName: name,
 			Level:      "error",
@@ -601,7 +563,7 @@ func (m *Manager) stop(name string, persist bool) error {
 		})
 		return fmt.Errorf("runtime '%s' not registered", runtimeType)
 	}
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 
 	if err := runtime.Stop(context.Background(), name); err != nil {
 		m.logPlugin(context.Background(), &PluginLogRecord{
@@ -616,7 +578,7 @@ func (m *Manager) stop(name string, persist bool) error {
 		return fmt.Errorf("stop plugin '%s': %w", name, err)
 	}
 
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	p.Status = StatusStopped
 	p.BackendState = BackendStopped
 	p.Health = HealthUnavailable
@@ -626,8 +588,8 @@ func (m *Manager) stop(name string, persist bool) error {
 		p.DesiredEnabled = false
 		p.FrontendState = FrontendUnloaded
 	}
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 	if persist {
 		m.persistPluginStatus(context.Background(), name, StatusStopped, "")
 	}
@@ -646,9 +608,9 @@ func (m *Manager) stop(name string, persist bool) error {
 
 // AuthorizeHostAPI authenticates a running plugin without exposing its token.
 // Tokens rotate on every start/reload and are revoked on stop.
-func (m *Manager) AuthorizeHostAPI(name, token string) (*Plugin, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *HostAccessService) Authorize(name, token string) (*Plugin, bool) {
+	m.catalog.mu.RLock()
+	defer m.catalog.mu.RUnlock()
 	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil || p.Status != StatusRunning {
 		return nil, false
@@ -656,11 +618,11 @@ func (m *Manager) AuthorizeHostAPI(name, token string) (*Plugin, bool) {
 	if token == "" || p.HostToken == "" || token != p.HostToken || time.Now().After(p.HostTokenExpiresAt) {
 		return nil, false
 	}
-	return p, true
+	return clonePlugin(p), true
 }
 
 // DispatchBeforeEvent 分发 .before 事件（同步，可被插件拦截）
-func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) *PluginResponse {
+func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMessage) *PluginResponse {
 	beforeEvent := &EventMessage{
 		Type:    event.Type + ".before",
 		Source:  event.Source,
@@ -668,24 +630,19 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 		Data:    event.Data,
 	}
 
-	m.mu.RLock()
-	pluginNames := m.events.subscriptions[event.Type]
+	pluginNames := m.Subscribers(event.Type)
+	m.catalog.mu.RLock()
 	plugins := make([]*Plugin, 0, len(pluginNames))
 	for _, name := range pluginNames {
 		if p, ok := m.catalog.plugins[name]; ok && p.Status == StatusRunning {
-			plugins = append(plugins, p)
+			plugins = append(plugins, clonePlugin(p))
 		}
 	}
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	for _, p := range plugins {
-		m.mu.RLock()
 		runtimeType := p.Manifest.Runtime
-		m.mu.RUnlock()
-
-		m.mu.Lock()
 		runtime, ok := m.runtimes.Get(runtimeType)
-		m.mu.Unlock()
 		if !ok {
 			continue
 		}
@@ -726,26 +683,21 @@ func (m *Manager) DispatchBeforeEvent(ctx context.Context, event *EventMessage) 
 }
 
 // DispatchEvent 分发 .after 事件到所有订阅的插件（异步）
-func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
-	m.mu.RLock()
-	pluginNames := m.events.subscriptions[event.Type]
+func (m *EventRegistry) DispatchEvent(ctx context.Context, event *EventMessage) {
+	pluginNames := m.Subscribers(event.Type)
+	m.catalog.mu.RLock()
 	plugins := make([]*Plugin, 0, len(pluginNames))
 	for _, name := range pluginNames {
 		if p, ok := m.catalog.plugins[name]; ok && p.Status == StatusRunning {
-			plugins = append(plugins, p)
+			plugins = append(plugins, clonePlugin(p))
 		}
 	}
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	for _, p := range plugins {
 		go func(pl *Plugin) {
-			m.mu.RLock()
 			runtimeType := pl.Manifest.Runtime
-			m.mu.RUnlock()
-
-			m.mu.Lock()
 			runtime, ok := m.runtimes.Get(runtimeType)
-			m.mu.Unlock()
 			if !ok {
 				return
 			}
@@ -787,62 +739,50 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 
 // GetPlugin 获取插件信息
 func (m *Manager) GetPlugin(name string) (*Plugin, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	p, ok := m.catalog.plugins[name]
-	return p, ok
+	return m.catalog.Get(name)
 }
 
 // GetPluginConfig returns a detached config snapshot so built-in services can
 // read hot-updated settings without racing Manager.UpdateConfig.
 func (m *Manager) GetPluginConfig(name string) (map[string]interface{}, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	p, ok := m.catalog.plugins[name]
-	if !ok || p == nil || p.Manifest == nil {
-		return nil, false
-	}
-	return copyConfigMap(p.Manifest.Config), true
+	return m.configs.Get(name)
 }
 
 func (m *Manager) IsPluginRunning(name string) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	p, ok := m.catalog.plugins[name]
-	return ok && p.Status == StatusRunning
+	return m.catalog.IsRunning(name)
 }
 
 func (m *Manager) UpdateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
 	return m.configs.Update(name, config)
 }
 
-func (m *Manager) updateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
-	m.mu.Lock()
+func (m *ConfigService) updateConfig(name string, config map[string]interface{}) (map[string]interface{}, error) {
+	m.catalog.mu.Lock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
 	}
 	normalized, err := normalizePluginConfig(p.Manifest, config)
 	if err != nil {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return nil, err
 	}
 	preservePluginInternalConfig(name, normalized, config, p.Manifest.Config)
 	if err := validatePluginSpecificConfig(name, normalized); err != nil {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return nil, err
 	}
-	repo := m.repo
+	repo := m.catalog.repo
 	if repo != nil {
 		if err := repo.UpdateConfig(context.Background(), name, normalized); err != nil {
-			m.mu.Unlock()
+			m.catalog.mu.Unlock()
 			return nil, err
 		}
 	}
 	p.Manifest.Config = normalized
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 
 	m.logPlugin(context.Background(), &PluginLogRecord{
 		PluginName: name,
@@ -852,19 +792,19 @@ func (m *Manager) updateConfig(name string, config map[string]interface{}) (map[
 	return copyConfigMap(normalized), nil
 }
 
-func (m *Manager) markPluginError(name string, err error) {
-	m.mu.Lock()
+func (m *LifecycleService) markPluginError(name string, err error) {
+	m.catalog.mu.Lock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return
 	}
 	p.Status = StatusError
 	p.BackendState = BackendError
 	p.Health = HealthUnavailable
 	p.ErrorMsg = err.Error()
-	m.bumpUIRevisionLocked()
-	m.mu.Unlock()
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
 	m.persistPluginStatus(context.Background(), name, StatusError, err.Error())
 }
 
@@ -906,80 +846,12 @@ func persistedPluginStatus(p *Plugin) PluginStatus {
 	return p.Status
 }
 
-func (m *Manager) persistPluginStatus(ctx context.Context, name string, status PluginStatus, errorMsg string) {
-	m.mu.RLock()
-	repo := m.repo
-	p := m.catalog.plugins[name]
-	revision := m.uiRevision
-	backendState, frontendState, healthState := "", "", ""
-	if p != nil {
-		backendState, frontendState, healthState = string(p.BackendState), string(p.FrontendState), string(p.Health)
-	}
-	m.mu.RUnlock()
-	if repo == nil {
-		return
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if err := repo.UpdateStatus(ctx, name, string(status), errorMsg); err != nil {
-		log.Printf("⚠️  插件状态持久化失败: %s -> %s (%v)", name, status, err)
-	}
-	if stateRepo, ok := repo.(PluginRuntimeStateRepository); ok && p != nil {
-		if err := stateRepo.UpdateRuntimeState(ctx, name, backendState, frontendState, healthState, int64(revision)); err != nil {
-			log.Printf("⚠️  插件运行时状态持久化失败: %s (%v)", name, err)
-		}
-	}
-}
-
-func (m *Manager) logPlugin(ctx context.Context, record *PluginLogRecord) {
-	m.mu.RLock()
-	logRepo := m.auditRepo
-	m.mu.RUnlock()
-	if logRepo == nil {
-		return
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if record.Metadata == nil {
-		record.Metadata = map[string]interface{}{}
-	}
-	if err := logRepo.SaveLog(ctx, record); err != nil {
-		log.Printf("⚠️  插件日志写入失败: %s (%v)", record.PluginName, err)
-	}
-}
-
 func (m *Manager) ListPluginLogs(ctx context.Context, pluginName string, limit int) ([]*PluginLogRecord, error) {
-	m.mu.RLock()
-	logRepo := m.auditRepo
-	m.mu.RUnlock()
-	if logRepo == nil {
-		return []*PluginLogRecord{}, nil
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return logRepo.ListLogs(ctx, pluginName, limit)
+	return m.audit.List(ctx, pluginName, limit)
 }
 
 func (m *Manager) RecordPluginAudit(ctx context.Context, pluginName, level, message string, metadata map[string]interface{}) {
-	if strings.TrimSpace(pluginName) == "" {
-		pluginName = "unknown"
-	}
-	if strings.TrimSpace(level) == "" {
-		level = "info"
-	}
-	if strings.TrimSpace(message) == "" {
-		message = "plugin audit"
-	}
-	m.logPlugin(ctx, &PluginLogRecord{
-		PluginName: pluginName,
-		Level:      level,
-		Message:    message,
-		EventType:  "plugin.package",
-		Metadata:   metadata,
-	})
+	m.audit.Record(ctx, pluginName, level, message, metadata)
 }
 
 func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {
@@ -996,57 +868,38 @@ func eventLogMetadata(event *EventMessage, err error) map[string]interface{} {
 
 // ListPlugins 列出所有插件
 func (m *Manager) ListPlugins() []*Plugin {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	plugins := make([]*Plugin, 0, len(m.catalog.plugins))
-	for _, p := range m.catalog.plugins {
-		copyPlugin := *p
-		if p.Manifest != nil {
-			copyManifest := *p.Manifest
-			copyPlugin.Manifest = &copyManifest
-		}
-		plugins = append(plugins, &copyPlugin)
-	}
-	sort.Slice(plugins, func(i, j int) bool { return plugins[i].ID < plugins[j].ID })
-	return plugins
+	return m.catalog.List()
 }
 
 // Uninstall 卸载插件
-func (m *Manager) Uninstall(name string) error {
-	m.mu.Lock()
+func (m *PackageService) Uninstall(name string) error {
+	m.catalog.mu.Lock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	if p.Manifest != nil && p.Manifest.IsSystemLevel() {
-		m.mu.Unlock()
+		m.catalog.mu.Unlock()
 		return fmt.Errorf("system-level plugin '%s' cannot be uninstalled at runtime", name)
 	}
 
 	// 停止运行中的插件
 	if p.Status == StatusRunning {
-		m.mu.Unlock()
-		if err := m.Stop(name); err != nil {
+		m.catalog.mu.Unlock()
+		if err := m.lifecycle.Stop(name); err != nil {
 			log.Printf("⚠️  停止插件 %s 失败: %v", name, err)
 		}
-		m.mu.Lock()
+		m.catalog.mu.Lock()
 	}
 
 	// 从注册表移除
-	for eventType, names := range m.events.subscriptions {
-		for i, n := range names {
-			if n == name {
-				m.events.subscriptions[eventType] = append(names[:i], names[i+1:]...)
-				break
-			}
-		}
-	}
+	m.events.Remove(name)
 
 	delete(m.catalog.plugins, name)
-	m.bumpUIRevisionLocked()
-	repo := m.repo
-	m.mu.Unlock()
+	m.ui.Bump()
+	repo := m.catalog.repo
+	m.catalog.mu.Unlock()
 
 	if repo != nil {
 		if err := repo.Delete(context.Background(), name); err != nil {
@@ -1059,15 +912,15 @@ func (m *Manager) Uninstall(name string) error {
 }
 
 // StopAll 停止所有插件（服务关闭时调用）
-func (m *Manager) StopAll() {
-	m.mu.RLock()
+func (m *LifecycleService) StopAll() {
+	m.catalog.mu.RLock()
 	names := make([]string, 0, len(m.catalog.plugins))
 	for name, p := range m.catalog.plugins {
 		if p.Status == StatusRunning {
 			names = append(names, name)
 		}
 	}
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	for _, name := range names {
 		if err := m.stop(name, false); err != nil {
@@ -1077,7 +930,7 @@ func (m *Manager) StopAll() {
 }
 
 // InstallFromPluginsDir 从插件目录批量安装
-func (m *Manager) InstallFromPluginsDir(dir string) error {
+func (m *PackageService) InstallFromPluginsDir(dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -1103,7 +956,7 @@ func (m *Manager) InstallFromPluginsDir(dir string) error {
 	return nil
 }
 
-func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+func (m *PackageService) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
 	precheck, err := PrecheckPluginPackage(packagePath, pluginsDir)
 	if err != nil {
 		return nil, err
@@ -1116,9 +969,9 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 		return nil, fmt.Errorf("system-level plugins must be deployed with server code and take effect after restart")
 	}
 
-	m.mu.RLock()
+	m.catalog.mu.RLock()
 	existing, loaded := m.catalog.plugins[manifest.Name]
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 	wasEnabled := false
 	if loaded {
 		if existing.Manifest != nil && existing.Manifest.IsSystemLevel() {
@@ -1144,19 +997,19 @@ func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*
 	if err != nil {
 		return nil, err
 	}
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	installed.Checksum = info.Checksum
 	installed.PackageSize = info.PackageSize
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 	if err := m.syncPluginRecord(context.Background(), installed); err != nil {
 		return nil, err
 	}
 	if wasEnabled {
-		if err := m.RequestEnable(installed.Manifest.Name); err != nil {
+		if err := m.lifecycle.RequestEnable(installed.Manifest.Name); err != nil {
 			return nil, err
 		}
-		if err := m.HealthCheck(installed.Manifest.Name); err != nil {
-			m.markPluginError(installed.Manifest.Name, fmt.Errorf("post-install health check failed: %w", err))
+		if err := m.lifecycle.HealthCheck(installed.Manifest.Name); err != nil {
+			m.lifecycle.markPluginError(installed.Manifest.Name, fmt.Errorf("post-install health check failed: %w", err))
 			return nil, fmt.Errorf("post-install health check failed for %s: %w; use a version snapshot to roll back", installed.Manifest.Name, err)
 		}
 	}
@@ -1173,16 +1026,16 @@ func snapshotDataDir(pluginsDir string) string {
 	return filepath.Join(pluginsDir, ".plugin-data")
 }
 
-func (m *Manager) HealthCheck(name string) error {
-	m.mu.RLock()
+func (m *LifecycleService) HealthCheck(name string) error {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return fmt.Errorf("plugin '%s' not found", name)
 	}
 	runtime, _ := m.runtimes.Get(p.Manifest.Runtime)
 	status := p.Status
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 	if status != StatusRunning {
 		return fmt.Errorf("plugin '%s' is not running (status=%s)", name, status)
 	}
@@ -1190,7 +1043,7 @@ func (m *Manager) HealthCheck(name string) error {
 		return fmt.Errorf("runtime '%s' is not registered", p.Manifest.Runtime)
 	}
 	err := runtime.HealthCheck(context.Background(), name)
-	m.mu.Lock()
+	m.catalog.mu.Lock()
 	changed := false
 	currentStatus := status
 	currentError := ""
@@ -1202,32 +1055,32 @@ func (m *Manager) HealthCheck(name string) error {
 			current.Health = HealthHealthy
 		}
 		if current.Health != previous {
-			m.bumpUIRevisionLocked()
+			m.ui.Bump()
 			changed = true
 		}
 		currentStatus = current.Status
 		currentError = current.ErrorMsg
 	}
-	m.mu.Unlock()
+	m.catalog.mu.Unlock()
 	if changed {
 		m.persistPluginStatus(context.Background(), name, currentStatus, currentError)
 	}
 	return err
 }
 
-func (m *Manager) DispatchExtension(ctx context.Context, name string, request *ExtensionRequest) (*ExtensionResponse, error) {
-	m.mu.RLock()
+func (m *HostAccessService) DispatchExtension(ctx context.Context, name string, request *ExtensionRequest) (*ExtensionResponse, error) {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok || p == nil || p.Manifest == nil {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
 	}
 	if p.BackendState != BackendRunning || p.Health == HealthUnavailable {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' is unavailable", name)
 	}
 	runtime, _ := m.runtimes.Get(p.Manifest.Runtime)
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 	dispatcher, ok := runtime.(ExtensionRuntime)
 	if !ok {
 		return nil, fmt.Errorf("runtime '%s' does not support extension dispatch", p.Manifest.Runtime)
@@ -1235,15 +1088,15 @@ func (m *Manager) DispatchExtension(ctx context.Context, name string, request *E
 	return dispatcher.DispatchExtension(ctx, name, request)
 }
 
-func (m *Manager) ListVersionSnapshots(name string) ([]VersionSnapshot, error) {
-	if _, ok := m.GetPlugin(name); !ok {
+func (m *SnapshotService) ListVersionSnapshots(name string) ([]VersionSnapshot, error) {
+	if _, ok := m.catalog.Get(name); !ok {
 		return nil, fmt.Errorf("plugin '%s' not found", name)
 	}
 	return ListPluginSnapshots(name, PluginDataDirFromEnv())
 }
 
-func (m *Manager) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (*Plugin, error) {
-	current, ok := m.GetPlugin(name)
+func (m *SnapshotService) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (*Plugin, error) {
+	current, ok := m.catalog.Get(name)
 	if !ok || current.Manifest == nil {
 		return nil, fmt.Errorf("plugin '%s' not found", name)
 	}
@@ -1254,11 +1107,11 @@ func (m *Manager) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (
 	if err != nil {
 		return nil, err
 	}
-	installed, err := m.ImportPackage(snapshot.PackagePath, pluginsDir, true)
+	installed, err := m.packages.ImportPackage(snapshot.PackagePath, pluginsDir, true)
 	if err != nil {
 		return nil, err
 	}
-	m.RecordPluginAudit(context.Background(), name, "warn", "plugin version snapshot restored", map[string]interface{}{
+	m.audit.Record(context.Background(), name, "warn", "plugin version snapshot restored", map[string]interface{}{
 		"snapshot_id":      snapshot.ID,
 		"restored_version": snapshot.Version,
 		"checksum":         snapshot.Checksum,
@@ -1266,15 +1119,15 @@ func (m *Manager) RollbackVersionSnapshot(name, snapshotID, pluginsDir string) (
 	return installed, nil
 }
 
-func (m *Manager) ExportPackage(name, outputPath string) (*PackageInfo, error) {
-	m.mu.RLock()
+func (m *PackageService) ExportPackage(name, outputPath string) (*PackageInfo, error) {
+	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
-		m.mu.RUnlock()
+		m.catalog.mu.RUnlock()
 		return nil, fmt.Errorf("plugin '%s' not found", name)
 	}
 	pluginDir := p.Directory
-	m.mu.RUnlock()
+	m.catalog.mu.RUnlock()
 
 	if pluginDir == "" {
 		return nil, fmt.Errorf("plugin '%s' has no plugin directory", name)

@@ -16,7 +16,7 @@ import (
 const PluginName = "category-moderation"
 
 var (
-	ErrPluginDisabled = errors.New("category moderation plugin is disabled")
+	ErrPluginDisabled = errors.New("category moderation compatibility feature is disabled")
 	ErrActionDisabled = errors.New("moderation action is disabled")
 	ErrForbidden      = errors.New("moderation scope denied")
 	ErrInvalidScope   = errors.New("invalid moderation category scope")
@@ -118,6 +118,7 @@ func (s *Service) currentConfig() Config {
 
 func (s *Service) Status() map[string]interface{} {
 	return map[string]interface{}{
+		"module":     ModuleID,
 		"plugin":     PluginName,
 		"enabled":    s.enabled(),
 		"config":     s.currentConfig(),

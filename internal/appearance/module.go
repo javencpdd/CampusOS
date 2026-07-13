@@ -26,8 +26,7 @@ type Module struct {
 	features     *platformfeature.Registry
 	categories   communityport.CategoryCatalog
 	facade       *Facade
-	homepage     *homepage.Service
-	webTheme     *webtheme.Service
+	application  *Application
 	homeHandler  *homepage.Handler
 	themeHandler *webtheme.Handler
 }
@@ -35,7 +34,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.plugin-platform"}
+	return []string{"core.community", "core.feature-registry"}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -54,20 +53,29 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		return fmt.Errorf("community category catalog port has incompatible type %T", value)
 	}
 	m.features, m.categories = m.config.FeatureRegistry(), categories
-	return app.Provide("appearance.facade", NewCompatibilityFacade())
+	m.facade = NewCompatibilityFacade()
+	homepageConfig := featureConfigSection{registry: m.features, section: "homepage"}
+	webThemeConfig := featureConfigSection{registry: m.features, section: "web_theme"}
+	m.application = NewApplication(
+		m.facade,
+		homepage.NewService(homepageConfig, categoryCatalogAdapter{catalog: m.categories}),
+		webtheme.NewService(webThemeConfig),
+	)
+	m.homeHandler = homepage.NewHandler(m.application)
+	m.themeHandler = webtheme.NewHandler(m.application)
+	if err := app.Provide("appearance.application", m.application); err != nil {
+		return err
+	}
+	return app.Provide("appearance.facade", m.facade)
 }
 
 func (m *Module) Start(context.Context) error {
 	if m.features == nil || m.categories == nil {
 		return errors.New("appearance module is not registered")
 	}
-	m.facade = NewCompatibilityFacade()
-	homepageConfig := featureConfigSection{registry: m.features, section: "homepage"}
-	webThemeConfig := featureConfigSection{registry: m.features, section: "web_theme"}
-	m.homepage = homepage.NewService(homepageConfig, categoryCatalogAdapter{catalog: m.categories})
-	m.webTheme = webtheme.NewService(webThemeConfig)
-	m.homeHandler = homepage.NewHandler(m.homepage)
-	m.themeHandler = webtheme.NewHandler(m.webTheme)
+	if m.application == nil || m.homeHandler == nil || m.themeHandler == nil {
+		return errors.New("appearance application is not registered")
+	}
 	return nil
 }
 
@@ -81,6 +89,7 @@ func (m *Module) Health(context.Context) platformmodule.Health {
 }
 
 func (m *Module) Facade() *Facade                    { return m.facade }
+func (m *Module) Application() *Application          { return m.application }
 func (m *Module) HomepageHandler() *homepage.Handler { return m.homeHandler }
 func (m *Module) WebThemeHandler() *webtheme.Handler { return m.themeHandler }
 

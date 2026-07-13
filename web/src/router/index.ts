@@ -1,62 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { communityRoutes } from '../modules/community/routes'
+import { identityRoutes } from '../modules/identity/routes'
+import { spaceRoutes } from '../modules/space/routes'
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    {
-      path: '/',
-      name: 'Home',
-      component: () => import('@/views/HomeView.vue'),
-    },
-    {
-      path: '/login',
-      name: 'Login',
-      component: () => import('@/views/LoginView.vue'),
-    },
-    {
-      path: '/register',
-      name: 'Register',
-      component: () => import('@/views/RegisterView.vue'),
-    },
-    {
-      path: '/threads',
-      name: 'ThreadList',
-      component: () => import('@/views/ThreadListView.vue'),
-    },
-    {
-      path: '/threads/:id',
-      name: 'ThreadDetail',
-      component: () => import('@/views/ThreadDetailView.vue'),
-    },
-    {
-      path: '/threads/create',
-      name: 'CreateThread',
-      component: () => import('@/views/CreateThreadView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/threads/:id/edit',
-      name: 'EditThread',
-      component: () => import('@/views/CreateThreadView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/u/:username',
-      name: 'PublicSpace',
-      component: () => import('@/views/PublicSpaceView.vue'),
-    },
-  ],
+  routes: [...communityRoutes, ...identityRoutes, ...spaceRoutes],
 })
 
-// 路由守卫
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('access_token')
-
   if (to.meta.requiresAuth && !token) {
     next({ path: '/login', query: { redirect: to.fullPath } })
     return
   }
-
   next()
 })
 

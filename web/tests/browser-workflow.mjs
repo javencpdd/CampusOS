@@ -131,8 +131,11 @@ try {
   await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码')
   await adminPage.getByText('用户总数', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/plugins`, { waitUntil: 'domcontentloaded' })
-  await adminPage.getByRole('main').getByText('插件管理', { exact: true }).waitFor()
+  await adminPage.getByRole('main').getByText('外部插件', { exact: true }).first().waitFor()
   await adminPage.getByText(/已安装 \d+ 个插件/).waitFor()
+  await adminPage.goto(`${adminURL}/features`, { waitUntil: 'domcontentloaded' })
+  await adminPage.getByRole('heading', { name: '内置功能', exact: true }).waitFor()
+  await adminPage.getByText('core.moderation', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/architecture`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '系统数据架构' }).waitFor()
   await adminContext.close()
@@ -146,7 +149,7 @@ try {
     .waitFor()
   await docsContext.close()
   console.log(
-    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins, architecture, docs',
+    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin external plugins/features, architecture, docs',
   )
 } finally {
   if (threadID && accessToken) {

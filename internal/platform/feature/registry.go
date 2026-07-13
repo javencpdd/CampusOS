@@ -58,6 +58,14 @@ func NewRegistryWithStoreAndConfig(legacy LegacySource, legacyConfig LegacyConfi
 	return &Registry{defs: map[string]Definition{}, states: map[string]State{}, persisted: map[string]bool{}, legacy: legacy, legacyConfig: legacyConfig, store: store}
 }
 
+// NewAuthoritativeRegistry creates the runtime registry used by CampusOS.
+// Legacy plugin state is deliberately not wired into this constructor. A
+// compatibility bootstrap may call SeedLegacy once after manifests have been
+// discovered, but all later reads and writes go through Store.
+func NewAuthoritativeRegistry(store Store) *Registry {
+	return NewRegistryWithStoreAndConfig(nil, nil, store)
+}
+
 func (r *Registry) Register(def Definition) error {
 	if def.ID == "" {
 		return errors.New("feature ID is required")
@@ -76,8 +84,28 @@ func (r *Registry) Register(def Definition) error {
 		return fmt.Errorf("load feature state %q: %w", def.ID, err)
 	}
 	if found {
-		r.states[def.ID] = State{Definition: def, Enabled: stored.EffectiveEnabled, DesiredEnabled: stored.DesiredEnabled, PendingRestart: stored.PendingRestart}
+		state := State{Definition: def, Enabled: stored.EffectiveEnabled, DesiredEnabled: stored.DesiredEnabled, PendingRestart: stored.PendingRestart}
+		switch def.Mode {
+		case AlwaysOn:
+			state.Enabled = true
+			state.DesiredEnabled = true
+			state.PendingRestart = false
+		case Restart:
+			// Register runs once during process bootstrap, which is exactly when a
+			// staged restart feature becomes effective.
+			state.Enabled = state.DesiredEnabled
+			state.PendingRestart = false
+		case HotGated:
+			state.Enabled = state.DesiredEnabled
+			state.PendingRestart = false
+		}
+		r.states[def.ID] = state
 		r.persisted[def.ID] = true
+		if state.Enabled != stored.EffectiveEnabled || state.PendingRestart != stored.PendingRestart || state.DesiredEnabled != stored.DesiredEnabled {
+			if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: stored.Config}); err != nil {
+				return fmt.Errorf("activate feature state %q: %w", def.ID, err)
+			}
+		}
 		return nil
 	}
 	enabled := def.Mode == AlwaysOn
@@ -86,6 +114,12 @@ func (r *Registry) Register(def Definition) error {
 	}
 	r.states[def.ID] = State{Definition: def, Enabled: enabled, DesiredEnabled: enabled}
 	r.persisted[def.ID] = false
+	if def.Mode == AlwaysOn {
+		if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: true, EffectiveEnabled: true, Config: map[string]interface{}{}}); err != nil {
+			return fmt.Errorf("save always-on feature state %q: %w", def.ID, err)
+		}
+		r.persisted[def.ID] = true
+	}
 	return nil
 }
 
@@ -115,30 +149,53 @@ func (r *Registry) SyncLegacy() {
 		return
 	}
 	for id, state := range r.states {
-		if state.Mode != AlwaysOn && state.LegacyPlugin != "" && !r.persisted[id] {
-			enabled := r.legacy(state.LegacyPlugin)
-			state.Enabled = enabled
-			state.DesiredEnabled = enabled
-			state.PendingRestart = false
-			r.states[id] = state
-			config := r.legacyFeatureConfig(id)
-			if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: config}); err == nil {
-				r.persisted[id] = true
-			}
+		if state.LegacyPlugin == "" {
 			continue
 		}
-		if state.LegacyPlugin != "" && r.persisted[id] {
-			stored, found, err := r.store.Get(context.Background(), id)
-			if err != nil || !found || len(stored.Config) != 0 {
-				continue
-			}
-			legacyConfig := r.legacyFeatureConfig(id)
-			if len(legacyConfig) == 0 {
-				continue
-			}
-			_ = r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: legacyConfig})
-		}
+		_ = r.seedLegacyLocked(id, r.legacy(state.LegacyPlugin), r.legacyFeatureConfig(id))
 	}
+}
+
+// SeedLegacy imports one historical builtin plugin state into an empty Feature
+// Store record. Existing Feature state is never overwritten; an empty config
+// created by the state-only migration may be filled once.
+func (r *Registry) SeedLegacy(id string, enabled bool, config map[string]interface{}) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.seedLegacyLocked(id, enabled, config)
+}
+
+func (r *Registry) seedLegacyLocked(id string, enabled bool, config map[string]interface{}) error {
+	state, ok := r.states[id]
+	if !ok {
+		return fmt.Errorf("feature %q not found", id)
+	}
+	stored, found, err := r.store.Get(context.Background(), id)
+	if err != nil {
+		return fmt.Errorf("load feature state %q for legacy seed: %w", id, err)
+	}
+	if r.persisted[id] || found {
+		if !found || len(stored.Config) != 0 || len(config) == 0 {
+			return nil
+		}
+		stored.Config = cloneConfig(config)
+		if err := r.store.Save(context.Background(), stored); err != nil {
+			return fmt.Errorf("seed feature config %q: %w", id, err)
+		}
+		return nil
+	}
+	if state.Mode == AlwaysOn {
+		enabled = true
+	}
+	state.Enabled = enabled
+	state.DesiredEnabled = enabled
+	state.PendingRestart = false
+	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: enabled, EffectiveEnabled: enabled, PendingRestart: false, Config: cloneConfig(config)}); err != nil {
+		return fmt.Errorf("seed feature state %q: %w", id, err)
+	}
+	r.states[id] = state
+	r.persisted[id] = true
+	return nil
 }
 
 func (r *Registry) Request(id string, enabled bool) (State, error) {
@@ -187,15 +244,16 @@ func (r *Registry) Config(id string) map[string]interface{} {
 }
 
 func (r *Registry) UpdateConfig(id string, config map[string]interface{}) error {
-	r.mu.RLock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	state, ok := r.states[id]
-	r.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("feature %q not found", id)
 	}
 	if err := r.store.Save(context.Background(), StoredState{FeatureID: id, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: cloneConfig(config)}); err != nil {
 		return fmt.Errorf("save feature config %q: %w", id, err)
 	}
+	r.persisted[id] = true
 	return nil
 }
 

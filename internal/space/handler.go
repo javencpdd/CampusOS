@@ -1,6 +1,7 @@
 package space
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -15,11 +16,36 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc    *Service
+	styles StyleApplication
 }
 
 func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+	return &Handler{svc: svc, styles: svc}
+}
+
+func NewHandlerWithStyleApplication(svc *Service, styles StyleApplication) *Handler {
+	if styles == nil {
+		styles = svc
+	}
+	return &Handler{svc: svc, styles: styles}
+}
+
+type StyleApplication interface {
+	ValidateSpaceStylePackage(context.Context, string, StylePackage) (StyleValidationResult, error)
+	PreviewSpaceStylePackage(context.Context, string, StylePackage) (*StylePreview, error)
+	ExportSpaceStylePackage(context.Context, string, StyleExportRequest) (*StyleExportResult, error)
+	ApplySpaceStylePackage(context.Context, string, StylePackage) (*StyleApplyResult, error)
+	ValidateSpaceCustomHTML(context.Context, string, string) (*StyleValidationResult, error)
+	SpaceCustomHTMLExample(context.Context, string) (*StyleHTMLExampleResult, error)
+	ApplySpaceCustomHTML(context.Context, string, string) (*StyleApplyResult, error)
+	ValidateSpaceStylePackZip(context.Context, string, io.ReaderAt, int64) (*StylePackResult, error)
+	SpaceStylePackExample(context.Context, string) (*stylepack.FileBundle, error)
+	ListSpaceStylePacks(context.Context, string) (*stylepack.SourcePackList, error)
+	ApplySpaceStylePackZip(context.Context, string, io.ReaderAt, int64) (*StyleApplyResult, error)
+	ApplySpaceSourceStylePack(context.Context, string, string) (*StyleApplyResult, error)
+	RollbackSpaceStyle(context.Context, string) (*PublicSpace, error)
+	RestoreDefaultSpaceStyle(context.Context, string) (*PublicSpace, error)
 }
 
 func (h *Handler) GetByUserID(c *gin.Context) {
@@ -127,12 +153,9 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 }
 
 func (h *Handler) ValidateStylePackage(c *gin.Context) {
-	if _, ok := currentUserID(c); !ok {
+	userID, ok := currentUserID(c)
+	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
-	}
-	if err := h.svc.ensureEnabled(); err != nil {
-		writeSpaceError(c, err)
 		return
 	}
 
@@ -142,7 +165,12 @@ func (h *Handler) ValidateStylePackage(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, ValidateStylePackage(req))
+	validation, err := h.styles.ValidateSpaceStylePackage(c.Request.Context(), userID, req)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, validation)
 }
 
 func (h *Handler) PreviewStylePackage(c *gin.Context) {
@@ -158,7 +186,7 @@ func (h *Handler) PreviewStylePackage(c *gin.Context) {
 		return
 	}
 
-	preview, err := h.svc.PreviewStylePackage(c.Request.Context(), userID, req)
+	preview, err := h.styles.PreviewSpaceStylePackage(c.Request.Context(), userID, req)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -179,7 +207,7 @@ func (h *Handler) ExportStylePackage(c *gin.Context) {
 		return
 	}
 
-	exported, err := h.svc.ExportStylePackage(c.Request.Context(), userID, req)
+	exported, err := h.styles.ExportSpaceStylePackage(c.Request.Context(), userID, req)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -200,7 +228,7 @@ func (h *Handler) ApplyStylePackage(c *gin.Context) {
 		return
 	}
 
-	applied, err := h.svc.ApplyStylePackage(c.Request.Context(), userID, req)
+	applied, err := h.styles.ApplySpaceStylePackage(c.Request.Context(), userID, req)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -221,7 +249,7 @@ func (h *Handler) ValidateCustomHTML(c *gin.Context) {
 		return
 	}
 
-	validation, err := h.svc.ValidateCustomHTML(c.Request.Context(), userID, req.HTML)
+	validation, err := h.styles.ValidateSpaceCustomHTML(c.Request.Context(), userID, req.HTML)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -236,7 +264,7 @@ func (h *Handler) CustomHTMLExample(c *gin.Context) {
 		return
 	}
 
-	example, err := h.svc.CustomHTMLExample(c.Request.Context(), userID)
+	example, err := h.styles.SpaceCustomHTMLExample(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -257,7 +285,7 @@ func (h *Handler) ApplyCustomHTML(c *gin.Context) {
 		return
 	}
 
-	applied, err := h.svc.ApplyCustomHTML(c.Request.Context(), userID, req.HTML)
+	applied, err := h.styles.ApplySpaceCustomHTML(c.Request.Context(), userID, req.HTML)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -277,7 +305,7 @@ func (h *Handler) ValidateStylePackZip(c *gin.Context) {
 	}
 	defer file.Close()
 
-	result, err := h.svc.ValidateStylePackZip(c.Request.Context(), userID, file, size)
+	result, err := h.styles.ValidateSpaceStylePackZip(c.Request.Context(), userID, file, size)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -291,7 +319,7 @@ func (h *Handler) StylePackExample(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	example, err := h.svc.StylePackExample(c.Request.Context(), userID)
+	example, err := h.styles.SpaceStylePackExample(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -305,7 +333,7 @@ func (h *Handler) StylePackExampleZip(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	example, err := h.svc.StylePackExample(c.Request.Context(), userID)
+	example, err := h.styles.SpaceStylePackExample(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -325,7 +353,7 @@ func (h *Handler) ListSourceStylePacks(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.svc.ListSourceStylePacks(c.Request.Context(), userID)
+	result, err := h.styles.ListSpaceStylePacks(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -345,7 +373,7 @@ func (h *Handler) ApplyStylePackZip(c *gin.Context) {
 	}
 	defer file.Close()
 
-	applied, err := h.svc.ApplyStylePackZip(c.Request.Context(), userID, file, size)
+	applied, err := h.styles.ApplySpaceStylePackZip(c.Request.Context(), userID, file, size)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -364,7 +392,7 @@ func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	applied, err := h.svc.ApplySourceStylePack(c.Request.Context(), userID, req.Name)
+	applied, err := h.styles.ApplySpaceSourceStylePack(c.Request.Context(), userID, req.Name)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -378,7 +406,7 @@ func (h *Handler) RollbackStyle(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	space, err := h.svc.RollbackStyle(c.Request.Context(), userID)
+	space, err := h.styles.RollbackSpaceStyle(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -392,7 +420,7 @@ func (h *Handler) RestoreDefaultStyle(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	space, err := h.svc.RestoreDefaultStyle(c.Request.Context(), userID)
+	space, err := h.styles.RestoreDefaultSpaceStyle(c.Request.Context(), userID)
 	if err != nil {
 		writeSpaceError(c, err)
 		return

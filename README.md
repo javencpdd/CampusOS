@@ -4,7 +4,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 
 ## 当前状态
 
-当前稳定开发基线为 `v0.7.0`。v7 模块化单体优化已经完成全链路验收，Core、Built-in Feature、External Plugin 和 Resource Package 边界已建立。
+当前稳定开发基线为 `v0.8.0`。v8 已将既有功能收敛到模块化单体主路径：业务 Module、基础设施 Profile、HTTP Transport、Feature Store、Plugin Platform 和 Resource Package 均有明确边界。
 
 - 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
 - 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
@@ -13,7 +13,7 @@ CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区�
 - 权限：角色操作和插件、集成、日志、富文本等管理权限已拆分；版主按指定版块治理；运行中插件使用可过期、可轮换和可撤销的 Host token。
 - 集成：AI Gateway、Webhook 投递、内部 MCP-like 只读工具和 Message local adapter。
 
-项目当前**尚未**提供标准 MCP Server、真实 Discord/OneBot 适配器、公开插件市场、任意同源 JavaScript 页面风格或生产级高可用部署。这些是 v6 明确后置项，不属于 v6 未完成工作；后续版本需要重新立项。
+项目当前**尚未**提供标准 MCP Server、真实 Discord/OneBot 适配器、公开插件市场、任意同源 JavaScript 页面风格或生产级高可用部署。这些需要在后续版本独立立项。
 
 ## 快速开始
 

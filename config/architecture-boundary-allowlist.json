@@ -4,12 +4,7 @@
   "frozen_source_exception_count": 0,
   "frozen_target_edge_count": 0,
   "legacy_concrete_imports": {},
-  "legacy_server_business_composition": [
-    "internal/server/application.go",
-    "internal/server/module_assembly.go"
-  ],
-  "legacy_server_business_routes": [
-    "internal/server/application.go"
-  ],
+  "legacy_server_business_composition": [],
+  "legacy_server_business_routes": [],
   "legacy_plugin_manager_backreferences": []
 }

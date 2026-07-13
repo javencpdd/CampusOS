@@ -26,7 +26,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.user-storage", "core.plugin-platform"}
+	return []string{"core.identity", "core.user-storage", "core.feature-registry"}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {

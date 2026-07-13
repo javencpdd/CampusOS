@@ -9,11 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) serveHTTP(router *gin.Engine) error {
+func (s *Server) serveHTTP(router http.Handler) error {
 	addr := s.cfg.Server.Addr()
 	httpServer := &http.Server{
 		Addr:              addr,

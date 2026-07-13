@@ -3,15 +3,19 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
+	communityport "github.com/campusos/CampusOS/internal/community/port"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
 	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
+	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -20,6 +24,7 @@ import (
 
 const (
 	moduleEventBus       = "core.event-bus"
+	moduleFeatureConfig  = "core.feature-registry"
 	modulePluginPlatform = "core.plugin-platform"
 	portPluginManager    = "plugin.manager"
 )
@@ -104,26 +109,63 @@ func (m *eventBusModule) Health(context.Context) platformmodule.Health {
 func (m *eventBusModule) EventBus() eventbus.EventBus         { return m.bus }
 func (m *eventBusModule) MemoryBus() *eventbus.MemoryEventBus { return m.memory }
 
-type pluginPlatformModule struct {
-	owner        *Server
-	events       *eventBusModule
-	featureStore platformfeature.Store
-	repository   plugin.PluginRepository
-	manager      *plugin.Manager
-	grpcRuntime  *plugingrpc.GRPCRuntime
-	cancel       context.CancelFunc
+// featureRegistryModule owns Built-in Feature state independently from the
+// external plugin platform. Legacy manifests are imported later through an
+// explicit one-time compatibility seed.
+type featureRegistryModule struct {
+	owner    *Server
+	store    platformfeature.Store
+	registry *platformfeature.Registry
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, featureStore platformfeature.Store, repository plugin.PluginRepository) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, featureStore: featureStore, repository: repository}
+func newFeatureRegistryModule(owner *Server, store platformfeature.Store) *featureRegistryModule {
+	return &featureRegistryModule{owner: owner, store: store}
+}
+
+func (m *featureRegistryModule) ID() string             { return moduleFeatureConfig }
+func (m *featureRegistryModule) Dependencies() []string { return nil }
+func (m *featureRegistryModule) Register(app *platformmodule.AppContext) error {
+	m.registry = platformfeature.NewAuthoritativeRegistry(m.store)
+	for _, def := range []platformfeature.Definition{
+		{ID: "moderation", Mode: platformfeature.AlwaysOn, Dependencies: []string{"core.identity", "core.community"}, LegacyPlugin: "category-moderation"},
+		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
+		{ID: "controlled-richtext-article", Mode: platformfeature.Restart, Dependencies: []string{"core.community", "core.user-storage"}, LegacyPlugin: "controlled-richtext-article"},
+		{ID: "personal-schedule", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-schedule"},
+		{ID: "appearance", Mode: platformfeature.HotGated, LegacyPlugin: "web-theme"},
+	} {
+		if err := m.registry.Register(def); err != nil {
+			return err
+		}
+	}
+	m.owner.features = m.registry
+	return app.Provide("platform.feature-registry", m.registry)
+}
+func (m *featureRegistryModule) Registry() *platformfeature.Registry { return m.registry }
+
+type pluginPlatformModule struct {
+	owner       *Server
+	events      *eventBusModule
+	features    *featureRegistryModule
+	app         *platformmodule.AppContext
+	repository  plugin.PluginRepository
+	manager     *plugin.Manager
+	grpcRuntime *plugingrpc.GRPCRuntime
+	handler     *plugin.Handler
+	hostAPI     *hostapi.HostAPIServer
+	cancel      context.CancelFunc
+}
+
+func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
 func (m *pluginPlatformModule) Dependencies() []string {
-	return []string{moduleEventBus}
+	return []string{moduleEventBus, moduleFeatureConfig}
 }
 
 func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
+	m.app = app
 	m.manager = plugin.NewManager()
 	if m.repository != nil {
 		m.manager.SetPluginRepository(m.repository)
@@ -135,28 +177,8 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	builtinRuntime.RegisterExtension("campus-welcome", campusWelcomeExtension)
 	m.manager.RegisterRuntime("builtin", builtinRuntime)
 	m.owner.manager = m.manager
-	m.owner.features = platformfeature.NewRegistryWithStoreAndConfig(m.manager.IsPluginRunning, func(featureID string) map[string]interface{} {
-		if featureID == "appearance" {
-			webTheme, _ := m.manager.GetPluginConfig("web-theme")
-			homepage, _ := m.manager.GetPluginConfig("homepage-customizer")
-			return map[string]interface{}{"web_theme": webTheme, "homepage": homepage}
-		}
-		pluginID, ok := legacyPluginForFeature(featureID)
-		if !ok {
-			return nil
-		}
-		config, _ := m.manager.GetPluginConfig(pluginID)
-		return config
-	}, m.featureStore)
-	for _, def := range []platformfeature.Definition{
-		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
-		{ID: "controlled-richtext-article", Mode: platformfeature.Restart, Dependencies: []string{"core.community", "core.user-storage"}, LegacyPlugin: "controlled-richtext-article"},
-		{ID: "personal-schedule", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-schedule"},
-		{ID: "appearance", Mode: platformfeature.HotGated, LegacyPlugin: "web-theme"},
-	} {
-		if err := m.owner.features.Register(def); err != nil {
-			return err
-		}
+	if m.features == nil || m.features.Registry() == nil {
+		return errors.New("authoritative feature registry is unavailable")
 	}
 	if err := app.Provide(portPluginManager, m.manager); err != nil {
 		return err
@@ -174,22 +196,41 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	}
 	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
 	m.manager.StartDesiredPlugins(plugin.ScopeUser)
-	m.owner.features.SyncLegacy()
+	if err := m.seedLegacyFeatures(); err != nil {
+		return err
+	}
+	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(m.owner.features))
+	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
+		return err
+	}
+	if err := m.startHostAPI(); err != nil {
+		return err
+	}
 	healthContext, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
 	return nil
 }
 
-func legacyPluginForFeature(featureID string) (string, bool) {
-	switch featureID {
-	case "personal-space", "controlled-richtext-article", "personal-schedule":
-		return featureID, true
-	case "appearance":
-		return "web-theme", true
-	default:
-		return "", false
+func (m *pluginPlatformModule) seedLegacyFeatures() error {
+	registry := m.features.Registry()
+	for _, item := range []struct {
+		feature string
+		plugin  string
+	}{
+		{feature: "moderation", plugin: "category-moderation"},
+		{feature: "personal-space", plugin: "personal-space"},
+		{feature: "controlled-richtext-article", plugin: "controlled-richtext-article"},
+		{feature: "personal-schedule", plugin: "personal-schedule"},
+	} {
+		config, _ := m.manager.GetPluginConfig(item.plugin)
+		if err := registry.SeedLegacy(item.feature, m.manager.IsPluginRunning(item.plugin), config); err != nil {
+			return err
+		}
 	}
+	webTheme, _ := m.manager.GetPluginConfig("web-theme")
+	homepage, _ := m.manager.GetPluginConfig("homepage-customizer")
+	return registry.SeedLegacy("appearance", m.manager.IsPluginRunning("web-theme"), map[string]interface{}{"web_theme": webTheme, "homepage": homepage})
 }
 
 func (m *pluginPlatformModule) Stop(context.Context) error {
@@ -200,6 +241,66 @@ func (m *pluginPlatformModule) Stop(context.Context) error {
 	if m.manager != nil {
 		m.manager.StopAll()
 	}
+	if m.hostAPI != nil {
+		m.hostAPI.Stop()
+		m.hostAPI = nil
+	}
+	return nil
+}
+
+func (m *pluginPlatformModule) startHostAPI() error {
+	if !m.owner.cfg.HostAPI.Enabled {
+		return nil
+	}
+	if m.app == nil {
+		return errors.New("plugin platform app context is unavailable")
+	}
+	usersValue, ok := m.app.Lookup("identity.user-reader")
+	if !ok {
+		return errors.New("identity user reader port is unavailable for Host API")
+	}
+	users, ok := usersValue.(identityport.UserReader)
+	if !ok {
+		return fmt.Errorf("identity user reader port has incompatible type %T", usersValue)
+	}
+	threadsValue, ok := m.app.Lookup("community.content-gateway")
+	if !ok {
+		return errors.New("community content gateway port is unavailable for Host API")
+	}
+	threads, ok := threadsValue.(communityport.ContentGateway)
+	if !ok {
+		return fmt.Errorf("community content gateway port has incompatible type %T", threadsValue)
+	}
+	postsValue, ok := m.app.Lookup("community.moderation-gateway")
+	if !ok {
+		return errors.New("community post reader port is unavailable for Host API")
+	}
+	posts, ok := postsValue.(hostapi.PostReader)
+	if !ok {
+		return fmt.Errorf("community post reader port has incompatible type %T", postsValue)
+	}
+	permissionValue, ok := m.app.Lookup("identity.authorization")
+	if !ok {
+		return errors.New("identity authorization port is unavailable for Host API")
+	}
+	permission, ok := permissionValue.(identityport.Authorization)
+	if !ok {
+		return fmt.Errorf("identity authorization port has incompatible type %T", permissionValue)
+	}
+	api := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(users, threads, posts, m.events.EventBus()))
+	api.SetPluginRepository(m.repository)
+	if store, err := hostapi.NewSQLiteKVStore(m.owner.cfg.Plugin.DataDir); err != nil {
+		log.Printf("⚠️ SQLite 插件 KV 初始化失败，回退到内存存储: %v", err)
+	} else {
+		api.SetStorageStore(store)
+	}
+	api.SetPermissionChecker(permission)
+	server := hostapi.NewHostAPIServer(api, m.owner.cfg.HostAPI.Addr, m.manager.GetPlugin)
+	server.SetPluginAuthenticator(m.manager.AuthorizeHostAPI)
+	if err := server.Start(); err != nil {
+		return err
+	}
+	m.hostAPI = server
 	return nil
 }
 

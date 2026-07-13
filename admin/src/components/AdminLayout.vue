@@ -40,9 +40,13 @@
             <el-icon><DataAnalysis /></el-icon>
             <span>数据架构</span>
           </el-menu-item>
-          <el-menu-item index="/plugins">
-            <el-icon><Connection /></el-icon>
-            <span>插件管理</span>
+		  <el-menu-item index="/plugins">
+			<el-icon><Connection /></el-icon>
+			<span>外部插件</span>
+		  </el-menu-item>
+		  <el-menu-item index="/features">
+			<el-icon><SetUp /></el-icon>
+			<span>内置功能</span>
           </el-menu-item>
           <el-menu-item index="/integrations">
             <el-icon><Operation /></el-icon>
@@ -92,7 +96,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAdminStore } from '@/stores/admin'
+import { useAdminStore } from '@/modules/identity/store'
 import {
   DataAnalysis,
   User,
@@ -106,6 +110,7 @@ import {
   Reading,
   Stamp,
   Lock,
+	SetUp,
   SwitchButton,
 } from '@element-plus/icons-vue'
 
@@ -125,7 +130,8 @@ const currentPageTitle = computed(() => {
     '/categories': '版块管理',
     '/docs': '相关资料',
     '/architecture': '数据架构',
-    '/plugins': '插件管理',
+	'/plugins': '外部插件',
+	'/features': '内置功能',
     '/integrations': '集成中心',
     '/reviews': '帖子审核',
     '/events': '事件日志',

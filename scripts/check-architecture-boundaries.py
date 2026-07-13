@@ -21,6 +21,12 @@ CONCRETE_SEGMENTS = {"repository", "service", "handler", "adapter"}
 FEATURE_ROOTS = {"space", "richtext", "schedule", "appearance", "homepage", "webtheme", "stylepack"}
 ROUTE_CALL_RE = re.compile(r"\.(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*\(")
 NEW_CALL_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\.New[A-Za-z0-9_]*\s*\(")
+MANAGER_STRUCT_RE = re.compile(r"type\s+Manager\s+struct\s*\{(?P<body>.*?)\}", re.DOTALL)
+MANAGER_METHOD_RE = re.compile(r"func\s+\(m\s+\*Manager\).*?(?=\nfunc\s|\Z)", re.DOTALL)
+MANAGER_INTERNAL_STATE_RE = re.compile(
+    r"m\.(?:catalog|audit|ui|events|lifecycle|configs|packages|snapshots|host)\."
+    r"(?:mu|operationMu|plugins|repo|revision|listeners|subscriptions)\b"
+)
 
 
 def load_config(root: Path, config_path: str) -> dict[str, Any]:
@@ -107,6 +113,36 @@ def collect_violations(root: Path, config: dict[str, Any]) -> list[str]:
         for path in sorted(plugin_root.rglob("*.go")):
             if "github.com/campusos/CampusOS/internal/" in path.read_text(encoding="utf-8"):
                 violations.append(f"{path.relative_to(root)}: external plugin imports internal/*")
+
+    manager_path = root / "internal" / "plugin" / "manager.go"
+    if manager_path.exists():
+        manager_text = manager_path.read_text(encoding="utf-8")
+        match = MANAGER_STRUCT_RE.search(manager_text)
+        if not match:
+            violations.append("internal/plugin/manager.go: Manager facade declaration is missing")
+        else:
+            body = match.group("body")
+            if "sync.Mutex" in body or "sync.RWMutex" in body or "map[" in body:
+                violations.append("internal/plugin/manager.go: Manager facade owns mutable core state")
+        if re.search(r"&(?:LifecycleService|ConfigService|UIRegistry|EventRegistry|AuditLogService)\s*\{[^}]*\bm\.[A-Za-z_]", manager_text, re.DOTALL):
+            violations.append("internal/plugin/manager.go: Plugin Platform subservice calls back into Manager")
+        for method in MANAGER_METHOD_RE.findall(manager_text):
+            if MANAGER_INTERNAL_STATE_RE.search(method):
+                violations.append("internal/plugin/manager.go: Manager facade bypasses a subservice public operation")
+                break
+        for service_type in ("PackageService", "SnapshotService", "HostAccessService"):
+            if f"*{service_type}" not in manager_text:
+                violations.append(f"internal/plugin/manager.go: Manager facade is missing {service_type}")
+
+    server_text = "\n".join(path.read_text(encoding="utf-8") for path in sorted((root / "internal" / "server").glob("*.go")))
+    if re.search(r"NewRegistryWithStore(?:AndConfig)?\([^\n]*manager", server_text):
+        violations.append("internal/server: Feature Registry is wired to Plugin Manager at runtime")
+
+    routes_path = root / "internal" / "projectaudit" / "routes.go"
+    if routes_path.exists():
+        routes_text = routes_path.read_text(encoding="utf-8")
+        if 'Owner:      "transport.httpapi"' in routes_text:
+            violations.append("internal/projectaudit/routes.go: HTTP routes use transport as their owner")
 
     agent_root = root / "internal" / "agentcontract"
     if agent_root.exists():
