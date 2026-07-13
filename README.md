@@ -68,7 +68,7 @@ make release-check
 | 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
 | 风格包边界和 SDK 权限 | [风格包能力边界与 CampusStyleSDK 说明](docs/help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
 | 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
-| 当前计划与进度 | [v7 计划书](docs/项目计划v7/00-v7版本计划书.md)、[v7 回顾](docs/项目计划v7/01-v7版本回顾与后续规划.md)、[v0.7.18 完成度复核](docs/进度/v0.7-dev/v0.7.18-dev.md) |
+| 当前计划与进度 | [v8 计划书](docs/项目计划v8/00-v8版本计划书.md)、[v8 进度规则](docs/进度/v0.8-dev/README.md)、[v7 回顾](docs/项目计划v7/01-v7版本回顾与后续规划.md) |
 
 ## License
 
