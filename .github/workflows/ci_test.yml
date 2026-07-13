@@ -144,6 +144,11 @@ jobs:
           pnpm lint
           pnpm format:check
 
+      - name: Run component tests
+        if: matrix.app == 'web' || matrix.app == 'admin'
+        working-directory: ${{ matrix.working-directory }}
+        run: pnpm test:component
+
       # Web/Admin 会先做类型检查，文档站和 TypeScript SDK 也必须在同一门禁中构建。
       - name: Build ${{ matrix.app }}
         working-directory: ${{ matrix.working-directory }}

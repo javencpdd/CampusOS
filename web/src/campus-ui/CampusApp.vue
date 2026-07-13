@@ -33,6 +33,7 @@
                     >{{ item.label }}</el-dropdown-item
                   >
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
+                  <el-dropdown-item @click="router.push('/plugins')">插件中心</el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu></template
               >
@@ -246,9 +247,12 @@ p {
   .header-content {
     padding: 10px 12px;
     align-items: flex-start;
+    flex-wrap: wrap;
   }
   .header-actions {
     gap: 4px;
+    width: 100%;
+    justify-content: flex-start;
   }
   .brand {
     font-size: 18px;

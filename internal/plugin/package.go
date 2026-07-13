@@ -43,25 +43,29 @@ type PackageInfo struct {
 }
 
 type PackagePrecheck struct {
-	Manifest        *Manifest `json:"manifest,omitempty"`
-	Checksum        string    `json:"checksum"`
-	PackageSize     int64     `json:"package_size"`
-	Files           []string  `json:"files"`
-	Permissions     []string  `json:"permissions"`
-	Events          []string  `json:"events"`
-	Conflict        bool      `json:"conflict"`
-	TargetDir       string    `json:"target_dir,omitempty"`
-	Allowed         bool      `json:"allowed"`
-	Warnings        []string  `json:"warnings,omitempty"`
-	Errors          []string  `json:"errors,omitempty"`
-	RiskLevel       string    `json:"risk_level"`
-	RiskScore       int       `json:"risk_score"`
-	RiskReasons     []string  `json:"risk_reasons,omitempty"`
-	ExistingVersion string    `json:"existing_version,omitempty"`
-	ImportVersion   string    `json:"import_version,omitempty"`
-	VersionChange   string    `json:"version_change,omitempty"`
-	SignatureStatus string    `json:"signature_status"`
-	SignatureFiles  []string  `json:"signature_files,omitempty"`
+	Manifest                *Manifest `json:"manifest,omitempty"`
+	Checksum                string    `json:"checksum"`
+	PackageSize             int64     `json:"package_size"`
+	Files                   []string  `json:"files"`
+	Permissions             []string  `json:"permissions"`
+	Events                  []string  `json:"events"`
+	Conflict                bool      `json:"conflict"`
+	TargetDir               string    `json:"target_dir,omitempty"`
+	Allowed                 bool      `json:"allowed"`
+	Warnings                []string  `json:"warnings,omitempty"`
+	Errors                  []string  `json:"errors,omitempty"`
+	RiskLevel               string    `json:"risk_level"`
+	RiskScore               int       `json:"risk_score"`
+	RiskReasons             []string  `json:"risk_reasons,omitempty"`
+	ExistingVersion         string    `json:"existing_version,omitempty"`
+	ImportVersion           string    `json:"import_version,omitempty"`
+	VersionChange           string    `json:"version_change,omitempty"`
+	AddedPermissions        []string  `json:"added_permissions,omitempty"`
+	RemovedPermissions      []string  `json:"removed_permissions,omitempty"`
+	RequiresReauthorization bool      `json:"requires_reauthorization"`
+	DataSchemaChange        string    `json:"data_schema_change,omitempty"`
+	SignatureStatus         string    `json:"signature_status"`
+	SignatureFiles          []string  `json:"signature_files,omitempty"`
 }
 
 func PluginsDirFromEnv() string {
@@ -319,6 +323,20 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 		return result, nil
 	}
 	result.Manifest = manifest
+	trust, trustErr := LoadPluginTrustStore(filepath.Join("data", "config", "plugin-trust-keys.json"))
+	if trustErr != nil {
+		result.Allowed = false
+		result.Errors = append(result.Errors, fmt.Sprintf("load plugin trust store: %v", trustErr))
+		return result, nil
+	}
+	if status, verifyErr := VerifyPluginDirectorySignature(tempDir, trust); verifyErr != nil {
+		result.SignatureStatus = status
+		result.Allowed = false
+		result.Errors = append(result.Errors, verifyErr.Error())
+		return result, nil
+	} else {
+		result.SignatureStatus = status
+	}
 	result.Events = append([]string(nil), manifest.Events.Subscribe...)
 	result.Permissions = flattenPermissions(manifest.Permissions)
 	result.ImportVersion = manifest.Version
@@ -330,7 +348,7 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 		for _, action := range permission.Actions {
 			if !IsKnownPermission(permission.Resource, action) {
 				result.Allowed = false
-				result.Errors = append(result.Errors, fmt.Sprintf("permission %s/%s is not in the Host API v1 catalog", permission.Resource, action))
+				result.Errors = append(result.Errors, fmt.Sprintf("permission %s/%s is not in the Host API permission catalog", permission.Resource, action))
 			}
 		}
 	}
@@ -344,7 +362,21 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 	result.TargetDir = targetDir
 	if _, err := os.Stat(targetDir); err == nil {
 		result.Conflict = true
-		result.ExistingVersion = existingPluginVersion(targetDir)
+		existingManifest, manifestErr := LoadManifest(filepath.Join(targetDir, "plugin.yaml"))
+		if manifestErr == nil && existingManifest != nil {
+			result.ExistingVersion = existingManifest.Version
+			result.AddedPermissions, result.RemovedPermissions = permissionDiff(flattenApprovalPermissions(existingManifest.Permissions), flattenApprovalPermissions(manifest.Permissions))
+			for _, permission := range result.AddedPermissions {
+				if strings.HasPrefix(permission, "user:") {
+					result.RequiresReauthorization = true
+					break
+				}
+			}
+			result.DataSchemaChange = schemaVersionChange(existingManifest.Release.DataSchemaVersion, manifest.Release.DataSchemaVersion)
+		} else {
+			result.ExistingVersion = existingPluginVersion(targetDir)
+			result.Warnings = append(result.Warnings, "installed manifest could not be read for permission and data schema diff")
+		}
 		result.VersionChange = compareVersionChange(result.ExistingVersion, result.ImportVersion)
 		result.Warnings = append(result.Warnings, "plugin with the same name already exists; import requires replace=true")
 		switch result.VersionChange {
@@ -352,6 +384,15 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 			result.Warnings = append(result.Warnings, "imported plugin version is the same as the installed version")
 		case "downgrade":
 			result.Warnings = append(result.Warnings, "imported plugin version is older than the installed version")
+		}
+		if len(result.AddedPermissions) > 0 {
+			result.Warnings = append(result.Warnings, "upgrade adds permissions; review the permission diff before import")
+		}
+		if result.RequiresReauthorization {
+			result.Warnings = append(result.Warnings, "upgrade expands user permissions and requires users to authorize the new version")
+		}
+		if result.DataSchemaChange != "same" && result.DataSchemaChange != "" {
+			result.Warnings = append(result.Warnings, "managed data schema version changes from "+result.DataSchemaChange)
 		}
 	} else if err != nil && !os.IsNotExist(err) {
 		result.Allowed = false
@@ -365,8 +406,13 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 	if len(result.Permissions) == 0 {
 		result.Warnings = append(result.Warnings, "plugin declares no Host API permissions")
 	}
-	if result.SignatureStatus == "unsigned" {
-		result.Warnings = append(result.Warnings, "plugin package is unsigned; signature verification is not enforced in v0.5")
+	if manifest.Release.SignatureRequired && result.SignatureStatus != "verified" {
+		result.Allowed = false
+		result.Errors = append(result.Errors, "plugin manifest requires a signature trusted by this CampusOS instance")
+	} else if result.SignatureStatus == "unsigned" {
+		result.Warnings = append(result.Warnings, "plugin package is unsigned; administrators must review it before import")
+	} else if result.SignatureStatus == "untrusted" {
+		result.Warnings = append(result.Warnings, "plugin signature is valid in structure but its key is not trusted by this CampusOS instance")
 	}
 	result.RiskLevel, result.RiskScore, result.RiskReasons = assessPackageRisk(manifest, result.PackageSize, result.Conflict, result.VersionChange)
 	if result.RiskLevel == "high" {
@@ -672,6 +718,62 @@ func flattenPermissions(perms PermissionsConfig) []string {
 	}
 	sort.Strings(flattened)
 	return flattened
+}
+
+func flattenApprovalPermissions(perms PermissionsConfig) []string {
+	flattened := make([]string, 0)
+	for _, permission := range perms.API {
+		for _, action := range permission.Actions {
+			if resource, value := strings.TrimSpace(permission.Resource), strings.TrimSpace(action); resource != "" && value != "" {
+				flattened = append(flattened, "api:"+resource+":"+value)
+			}
+		}
+	}
+	for _, permission := range perms.User {
+		for _, action := range permission.Actions {
+			if resource, value := strings.TrimSpace(permission.Resource), strings.TrimSpace(action); resource != "" && value != "" {
+				flattened = append(flattened, "user:"+resource+":"+value)
+			}
+		}
+	}
+	return uniqueStrings(flattened)
+}
+
+func permissionDiff(existing, incoming []string) (added, removed []string) {
+	existingSet := make(map[string]bool, len(existing))
+	incomingSet := make(map[string]bool, len(incoming))
+	for _, permission := range existing {
+		existingSet[permission] = true
+	}
+	for _, permission := range incoming {
+		incomingSet[permission] = true
+		if !existingSet[permission] {
+			added = append(added, permission)
+		}
+	}
+	for _, permission := range existing {
+		if !incomingSet[permission] {
+			removed = append(removed, permission)
+		}
+	}
+	sort.Strings(added)
+	sort.Strings(removed)
+	return added, removed
+}
+
+func schemaVersionChange(existing, incoming string) string {
+	existing = strings.TrimSpace(existing)
+	incoming = strings.TrimSpace(incoming)
+	if existing == incoming {
+		return "same"
+	}
+	if existing == "" {
+		existing = "unspecified"
+	}
+	if incoming == "" {
+		incoming = "unspecified"
+	}
+	return existing + " -> " + incoming
 }
 
 func detectSignatureFiles(files []string) (string, []string) {

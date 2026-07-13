@@ -291,7 +291,7 @@ storage:
 	}
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"plugin", "verify", dir, "--json"}, &stdout, &stderr)
-	if code == 0 || !strings.Contains(stderr.String(), "not in the v1 catalog") {
+	if code == 0 || !strings.Contains(stderr.String(), "not in the Host API permission catalog") {
 		t.Fatalf("expected unknown permission rejection, code=%d stderr=%s", code, stderr.String())
 	}
 }

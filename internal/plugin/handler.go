@@ -18,6 +18,7 @@ type Handler struct {
 	manager    *Manager
 	pluginsDir string
 	features   *platformfeature.Registry
+	market     *MarketService
 }
 
 type HandlerOption func(*Handler)
@@ -32,6 +33,10 @@ func WithPluginsDir(dir string) HandlerOption {
 
 func WithFeatureRegistry(features *platformfeature.Registry) HandlerOption {
 	return func(h *Handler) { h.features = features }
+}
+
+func WithMarketService(market *MarketService) HandlerOption {
+	return func(h *Handler) { h.market = market }
 }
 
 // NewHandler 创建插件处理器
@@ -364,20 +369,24 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 	}
 	actorID, actorName := currentActor(c)
 	auditMetadata := map[string]interface{}{
-		"actor_id":          actorID,
-		"actor_name":        actorName,
-		"checksum":          precheck.Checksum,
-		"package_size":      precheck.PackageSize,
-		"risk_level":        precheck.RiskLevel,
-		"risk_score":        precheck.RiskScore,
-		"risk_reasons":      precheck.RiskReasons,
-		"replace":           replace,
-		"conflict":          precheck.Conflict,
-		"existing_version":  precheck.ExistingVersion,
-		"import_version":    precheck.ImportVersion,
-		"version_change":    precheck.VersionChange,
-		"signature_status":  precheck.SignatureStatus,
-		"precheck_warnings": precheck.Warnings,
+		"actor_id":                 actorID,
+		"actor_name":               actorName,
+		"checksum":                 precheck.Checksum,
+		"package_size":             precheck.PackageSize,
+		"risk_level":               precheck.RiskLevel,
+		"risk_score":               precheck.RiskScore,
+		"risk_reasons":             precheck.RiskReasons,
+		"replace":                  replace,
+		"conflict":                 precheck.Conflict,
+		"existing_version":         precheck.ExistingVersion,
+		"import_version":           precheck.ImportVersion,
+		"version_change":           precheck.VersionChange,
+		"added_permissions":        precheck.AddedPermissions,
+		"removed_permissions":      precheck.RemovedPermissions,
+		"requires_reauthorization": precheck.RequiresReauthorization,
+		"data_schema_change":       precheck.DataSchemaChange,
+		"signature_status":         precheck.SignatureStatus,
+		"precheck_warnings":        precheck.Warnings,
 	}
 	if precheck.Manifest != nil {
 		auditMetadata["scope"] = precheck.Manifest.Scope
@@ -411,9 +420,22 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 	hotReloaded := replace && installed.Manifest.IsUserLevel() && installed.Status == StatusRunning
 	auditMetadata["hot_reloaded"] = hotReloaded
 	h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "info", "plugin package imported by admin", auditMetadata)
+	marketSynced := true
+	if h.market != nil && h.market.Available() && installed.Manifest.IsV2() && installed.Manifest.Runtime != "builtin" {
+		if err := h.market.SyncCatalog(c.Request.Context(), h.manager.ListPlugins()); err != nil {
+			marketSynced = false
+			auditMetadata["market_sync_error"] = err.Error()
+			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "warn", "plugin market catalog sync failed after import", auditMetadata)
+		} else if _, err := h.market.RecordImportedRelease(c.Request.Context(), installed.Manifest, precheck.Checksum, precheck.SignatureStatus, actorID); err != nil {
+			marketSynced = false
+			auditMetadata["release_record_error"] = err.Error()
+			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "warn", "plugin market release record failed after import", auditMetadata)
+		}
+	}
 
 	payload := h.pluginPayload(installed)
 	payload["hot_reloaded"] = hotReloaded
+	payload["market_synced"] = marketSynced
 	response.Success(c, payload)
 }
 

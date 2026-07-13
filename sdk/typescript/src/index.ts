@@ -38,6 +38,26 @@ export interface RuntimeManifest {
   plugins: Array<{ name: string; version: string; runtime: string; lifecycle: RuntimeContext['lifecycle']; ui: Record<string, unknown> }>
 }
 
+export interface ResponsiveUI {
+  supported_viewports?: Array<'mobile' | 'tablet' | 'desktop'>
+  minimum_width?: number
+  mobile_behavior?: 'responsive' | 'unsupported'
+  overflow_policy?: 'internal-only' | 'none'
+}
+
+export interface ManagedRecord {
+	id: number
+  plugin_name: string
+  owner_type: 'system' | 'user'
+  owner_id: string
+  collection: string
+  record_key: string
+  data: Record<string, unknown>
+  version: number
+  created_at: string
+  updated_at: string
+}
+
 export interface ClientOptions {
   baseURL?: string
   token: () => string | undefined
@@ -70,6 +90,30 @@ export class CampusExtensionClient {
     if (!response.ok) throw new Error(`extension action failed: ${response.status}`)
     return await response.json() as T
   }
+
+  async listMyRecords(collection: string, page = 1, pageSize = 20): Promise<{ items: ManagedRecord[]; total: number }> {
+	const response = await this.request(`${this.baseURL}/plugin-market/${encodeURIComponent(this.plugin)}/records/${encodeURIComponent(collection)}?page=${page}&page_size=${pageSize}`, { headers: this.headers() })
+    if (!response.ok) throw new Error(`plugin records failed: ${response.status}`)
+    const envelope = await response.json() as { data: { items: ManagedRecord[]; total: number } }
+    return envelope.data
+  }
+
+	async createMyRecord(collection: string, input: { record_key?: string; data: Record<string, unknown> }): Promise<ManagedRecord> {
+		const response = await this.request(`${this.baseURL}/plugin-market/${encodeURIComponent(this.plugin)}/records/${encodeURIComponent(collection)}`, { method: 'POST', headers: { ...this.headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+		if (!response.ok) throw new Error(`create plugin record failed: ${response.status}`)
+		return (await response.json() as { data: ManagedRecord }).data
+	}
+
+	async updateMyRecord(collection: string, recordKey: string, input: { version: number; data: Record<string, unknown> }): Promise<ManagedRecord> {
+		const response = await this.request(`${this.baseURL}/plugin-market/${encodeURIComponent(this.plugin)}/records/${encodeURIComponent(collection)}/${encodeURIComponent(recordKey)}`, { method: 'PUT', headers: { ...this.headers(), 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+		if (!response.ok) throw new Error(`update plugin record failed: ${response.status}`)
+		return (await response.json() as { data: ManagedRecord }).data
+	}
+
+	async deleteMyRecord(collection: string, recordKey: string, version: number): Promise<void> {
+		const response = await this.request(`${this.baseURL}/plugin-market/${encodeURIComponent(this.plugin)}/records/${encodeURIComponent(collection)}/${encodeURIComponent(recordKey)}?version=${version}`, { method: 'DELETE', headers: this.headers() })
+		if (!response.ok) throw new Error(`delete plugin record failed: ${response.status}`)
+	}
 
   private headers(): Record<string, string> {
     const token = this.options.token()

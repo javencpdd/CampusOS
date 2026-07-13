@@ -168,6 +168,14 @@ HostAPI: HostAPIConfig{
 HOST_API_ENABLED=false
 ```
 
+## 6.1 实例模式与本地存储
+
+```dotenv
+CAMPUSOS_INSTANCE_MODE=single
+```
+
+当前用户空间 Local Provider 和旧插件 SQLite KV 都是单写本地实现。`CAMPUSOS_INSTANCE_MODE=multi` 会在启动前被拒绝，避免多个 CampusOS 进程写入同一份本地文件或 SQLite。共享文件 Provider、跨实例 Runtime 协调和 SQLite 迁移属于后续版本，不能通过共享目录绕过。
+
 如果要改端口，可以设置：
 
 ```env

@@ -51,4 +51,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.8 release check passed"
+echo "CampusOS v0.9 release check passed"

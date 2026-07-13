@@ -275,6 +275,39 @@ type StorageDeleteRequest struct {
 	Key        string `json:"key"`
 }
 
+// RecordCreateRequest and related record requests are deliberately scoped to
+// the authenticated plugin. Host API v2 only exposes system-owned collections;
+// user-owned records are mediated by the CampusOS user session endpoints.
+type RecordCreateRequest struct {
+	Collection string                 `json:"collection"`
+	RecordKey  string                 `json:"record_key,omitempty"`
+	Data       map[string]interface{} `json:"data"`
+}
+
+type RecordGetRequest struct {
+	Collection string `json:"collection"`
+	RecordKey  string `json:"record_key"`
+}
+
+type RecordListRequest struct {
+	Collection string `json:"collection"`
+	Page       int    `json:"page,omitempty"`
+	PageSize   int    `json:"page_size,omitempty"`
+}
+
+type RecordUpdateRequest struct {
+	Collection string                 `json:"collection"`
+	RecordKey  string                 `json:"record_key"`
+	Data       map[string]interface{} `json:"data"`
+	Version    int64                  `json:"version"`
+}
+
+type RecordDeleteRequest struct {
+	Collection string `json:"collection"`
+	RecordKey  string `json:"record_key"`
+	Version    int64  `json:"version"`
+}
+
 // ─── 内存 KV 存储（插件数据存储）───
 
 type KVStore interface {
@@ -353,6 +386,7 @@ type HostAPIv2 struct {
 	*HostAPI
 	notification *NotificationService
 	storage      KVStore
+	market       *plugin.MarketService
 	logRepo      plugin.PluginLogRepository
 	configRepo   plugin.PluginRepository
 	permission   PermissionChecker
@@ -387,11 +421,18 @@ func NewHostAPIv2FromHostAPI(base *HostAPI) *HostAPIv2 {
 
 func (h *HostAPIv2) Notification() *NotificationService { return h.notification }
 func (h *HostAPIv2) Storage() KVStore                   { return h.storage }
+func (h *HostAPIv2) Market() *plugin.MarketService      { return h.market }
 
 func (h *HostAPIv2) SetStorageStore(store KVStore) {
 	if store != nil {
 		h.storage = store
 	}
+}
+
+// SetMarketService attaches the host-owned v9 managed-data service. It is
+// intentionally injected by the platform bootstrap, never by an extension.
+func (h *HostAPIv2) SetMarketService(market *plugin.MarketService) {
+	h.market = market
 }
 
 func (h *HostAPIv2) SetPluginLogRepository(repo plugin.PluginLogRepository) {
@@ -623,6 +664,75 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		}
 		if err := hostAPI.Storage().Delete(ctx, req.PluginName, req.Key); err != nil {
 			return nil, fmt.Errorf("storage delete failed: %w", err)
+		}
+		return json.Marshal(map[string]bool{"success": true})
+
+	case "RecordCreate":
+		if hostAPI.Market() == nil {
+			return nil, errors.New("managed data service is not configured")
+		}
+		var req RecordCreateRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		record, err := hostAPI.Market().CreateSystemRecord(ctx, manifest.Name, req.Collection, plugin.RecordInput{RecordKey: req.RecordKey, Data: req.Data})
+		if err != nil {
+			return nil, fmt.Errorf("create managed record: %w", err)
+		}
+		return json.Marshal(record)
+
+	case "RecordGet":
+		if hostAPI.Market() == nil {
+			return nil, errors.New("managed data service is not configured")
+		}
+		var req RecordGetRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		record, err := hostAPI.Market().GetSystemRecord(ctx, manifest.Name, req.Collection, req.RecordKey)
+		if err != nil {
+			return nil, fmt.Errorf("get managed record: %w", err)
+		}
+		return json.Marshal(record)
+
+	case "RecordList":
+		if hostAPI.Market() == nil {
+			return nil, errors.New("managed data service is not configured")
+		}
+		var req RecordListRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		page, err := hostAPI.Market().ListSystemRecords(ctx, manifest.Name, req.Collection, req.Page, req.PageSize)
+		if err != nil {
+			return nil, fmt.Errorf("list managed records: %w", err)
+		}
+		return json.Marshal(page)
+
+	case "RecordUpdate":
+		if hostAPI.Market() == nil {
+			return nil, errors.New("managed data service is not configured")
+		}
+		var req RecordUpdateRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		record, err := hostAPI.Market().UpdateSystemRecord(ctx, manifest.Name, req.Collection, req.RecordKey, plugin.RecordInput{Data: req.Data, Version: req.Version})
+		if err != nil {
+			return nil, fmt.Errorf("update managed record: %w", err)
+		}
+		return json.Marshal(record)
+
+	case "RecordDelete":
+		if hostAPI.Market() == nil {
+			return nil, errors.New("managed data service is not configured")
+		}
+		var req RecordDeleteRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		if err := hostAPI.Market().DeleteSystemRecord(ctx, manifest.Name, req.Collection, req.RecordKey, req.Version); err != nil {
+			return nil, fmt.Errorf("delete managed record: %w", err)
 		}
 		return json.Marshal(map[string]bool{"success": true})
 

@@ -1,7 +1,8 @@
 <template>
   <div class="admin-layout">
     <el-container style="height: 100vh">
-      <el-aside width="220px" class="admin-aside">
+      <div v-if="isMobile && mobileNavOpen" class="nav-scrim" @click="mobileNavOpen = false" />
+      <el-aside width="220px" class="admin-aside" :class="{ 'is-open': mobileNavOpen }">
         <div class="admin-logo">
           <h2>🔧 管理后台</h2>
         </div>
@@ -11,6 +12,7 @@
           background-color="#304156"
           text-color="#bfcbd9"
           active-text-color="#409eff"
+		  @select="closeMobileNav"
         >
           <el-menu-item index="/">
             <el-icon><DataAnalysis /></el-icon>
@@ -44,6 +46,10 @@
 			<el-icon><Connection /></el-icon>
 			<span>外部插件</span>
 		  </el-menu-item>
+		  <el-menu-item index="/plugin-center">
+			<el-icon><Grid /></el-icon>
+			<span>插件中心</span>
+		  </el-menu-item>
 		  <el-menu-item index="/features">
 			<el-icon><SetUp /></el-icon>
 			<span>内置功能</span>
@@ -69,6 +75,9 @@
       <el-container>
         <el-header class="admin-header">
           <div class="header-left">
+			<el-button v-if="isMobile" text aria-label="打开导航" @click="mobileNavOpen = !mobileNavOpen">
+			  <el-icon><Menu /></el-icon>
+			</el-button>
             <el-breadcrumb separator="/">
               <el-breadcrumb-item :to="{ path: '/' }">管理后台</el-breadcrumb-item>
               <el-breadcrumb-item v-if="currentPageTitle">{{ currentPageTitle }}</el-breadcrumb-item>
@@ -94,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '@/modules/identity/store'
 import {
@@ -103,7 +112,8 @@ import {
   UserFilled,
   Document,
   FolderOpened,
-  Connection,
+	Connection,
+	Grid,
   Operation,
   Bell,
   Monitor,
@@ -111,12 +121,28 @@ import {
   Stamp,
   Lock,
 	SetUp,
+	Menu,
   SwitchButton,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
+const isMobile = ref(false)
+const mobileNavOpen = ref(false)
+let mediaQuery: MediaQueryList | undefined
+const updateViewport = () => {
+  isMobile.value = Boolean(mediaQuery?.matches)
+  if (!isMobile.value) mobileNavOpen.value = false
+}
+const closeMobileNav = () => { if (isMobile.value) mobileNavOpen.value = false }
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(max-width: 800px)')
+  updateViewport()
+  mediaQuery.addEventListener('change', updateViewport)
+})
+onBeforeUnmount(() => mediaQuery?.removeEventListener('change', updateViewport))
 
 const activeMenu = computed(() => route.path)
 
@@ -131,6 +157,7 @@ const currentPageTitle = computed(() => {
     '/docs': '相关资料',
     '/architecture': '数据架构',
 	'/plugins': '外部插件',
+	'/plugin-center': '插件中心',
 	'/features': '内置功能',
     '/integrations': '集成中心',
     '/reviews': '帖子审核',
@@ -151,6 +178,8 @@ const handleLogout = () => {
   background-color: #304156;
   overflow-y: auto;
 }
+
+.nav-scrim { display: none; }
 
 .admin-aside::-webkit-scrollbar {
   width: 0;
@@ -195,5 +224,14 @@ const handleLogout = () => {
   background: #f5f7fa;
   min-height: calc(100vh - 60px);
   padding: 20px;
+}
+@media (max-width: 800px) {
+  .admin-aside { position: fixed; inset: 0 auto 0 0; z-index: 1002; height: 100vh; transform: translateX(-100%); transition: transform 160ms ease; box-shadow: 3px 0 14px rgba(0, 21, 41, 0.2); }
+  .admin-aside.is-open { transform: translateX(0); }
+  .nav-scrim { display: block; position: fixed; inset: 0; z-index: 1001; background: rgba(20, 30, 44, 0.36); }
+  .admin-header { padding: 0 12px; }
+  .admin-main { padding: 12px; }
+  .header-right { gap: 4px; }
+  .user-info { max-width: 130px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
 </style>

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://campusos.local/schemas/plugin-manifest-v2.schema.json",
+  "title": "CampusOS External Plugin Manifest v2",
+  "description": "Structural schema for campusos.plugin/v2. CampusOS ParseManifest remains authoritative for runtime and cross-field policy validation.",
+  "type": "object",
+  "required": ["api_version", "host_api_version", "name", "version", "runtime", "scope", "type"],
+  "properties": {
+    "api_version": { "const": "campusos.plugin/v2" },
+    "host_api_version": { "const": "v2" },
+    "name": { "$ref": "#/$defs/pluginID" },
+    "display_name": { "type": "string", "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 4000 },
+    "version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "runtime": { "enum": ["grpc", "wasm"] },
+    "scope": { "enum": ["system", "user"] },
+    "type": { "const": "external" },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "campusos": { "type": "string" },
+        "host_api": { "type": "string" },
+        "sdk_go": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "backend": { "$ref": "#/$defs/backendLifecycle" },
+        "frontend": { "$ref": "#/$defs/frontendLifecycle" }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "api": { "type": "array", "items": { "$ref": "#/$defs/apiPermission" } },
+        "user": { "type": "array", "items": { "$ref": "#/$defs/userPermission" } }
+      },
+      "additionalProperties": false
+    },
+    "managed_data": {
+      "type": "object",
+      "properties": {
+        "default_quota_bytes": { "type": "integer", "minimum": 0 },
+        "collections": { "type": "array", "items": { "$ref": "#/$defs/collection" } }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "allowed_mimes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "allowed_extensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
+        "max_file_bytes": { "type": "integer", "minimum": 0 },
+        "quota_bytes": { "type": "integer", "minimum": 0 },
+        "retention": { "type": "string", "maxLength": 80 }
+      },
+      "additionalProperties": false
+    },
+    "release": {
+      "type": "object",
+      "properties": {
+        "channel": { "type": "string", "maxLength": 80 },
+        "signing_key_id": { "type": "string", "maxLength": 200 },
+        "signature_required": { "type": "boolean" },
+        "data_schema_version": { "type": "string", "maxLength": 128 }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "contract_version": { "const": "campusos.ui/v1" },
+        "responsive": { "$ref": "#/$defs/responsiveUI" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "pluginID": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+      "maxLength": 120
+    },
+    "backendLifecycle": {
+      "type": "object",
+      "properties": { "activation_mode": { "enum": ["restart", "plugin-restart", "hot"] } },
+      "additionalProperties": false
+    },
+    "frontendLifecycle": {
+      "type": "object",
+      "properties": { "activation_mode": { "const": "hot" } },
+      "additionalProperties": false
+    },
+    "apiPermission": {
+      "type": "object",
+      "required": ["resource", "actions"],
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "actions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "userPermission": {
+      "type": "object",
+      "required": ["resource", "actions", "purpose", "revocable"],
+      "properties": {
+        "resource": { "enum": ["managed_data", "plugin_file", "plugin_search"] },
+        "actions": { "type": "array", "minItems": 1, "items": { "enum": ["read", "write", "delete"] } },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "risk": { "enum": ["low", "medium", "high"] },
+        "revocable": { "const": true }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "resource": { "const": "plugin_search" } } },
+          "then": { "properties": { "actions": { "items": { "const": "read" } } } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "collection": {
+      "type": "object",
+      "required": ["name", "owner"],
+      "properties": {
+        "name": { "$ref": "#/$defs/pluginID" },
+        "owner": { "enum": ["system", "user"] },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+        "searchable": { "type": "array", "items": { "type": "string" } },
+        "filterable": { "type": "array", "items": { "type": "string" } },
+        "max_records": { "type": "integer", "minimum": 1 },
+        "max_record_bytes": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "$ref": "#/$defs/pluginID" },
+        "type": { "enum": ["string", "number", "boolean", "array", "object"] },
+        "required": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "responsiveUI": {
+      "type": "object",
+      "properties": {
+        "supported_viewports": { "type": "array", "items": { "enum": ["phone", "tablet", "desktop"] } },
+        "minimum_width": { "type": "integer", "minimum": 0, "maximum": 4096 },
+        "mobile_behavior": { "enum": ["responsive", "unsupported"] },
+        "overflow_policy": { "enum": ["none", "internal-only"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

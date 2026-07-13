@@ -8,15 +8,16 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	HostAPI  HostAPIConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	NATS     NATSConfig
-	JWT      JWTConfig
-	Auth     AuthConfig
-	Plugin   PluginConfig
-	AI       AIConfig
+	Server     ServerConfig
+	HostAPI    HostAPIConfig
+	Database   DatabaseConfig
+	Redis      RedisConfig
+	NATS       NATSConfig
+	JWT        JWTConfig
+	Auth       AuthConfig
+	Plugin     PluginConfig
+	Deployment DeploymentConfig
+	AI         AIConfig
 }
 
 type ServerConfig struct {
@@ -57,6 +58,12 @@ type AuthConfig struct {
 
 type PluginConfig struct {
 	DataDir string
+}
+
+// DeploymentConfig makes local-provider safety explicit. v0.9 supports one
+// writer because User Storage and the legacy plugin KV adapter are local.
+type DeploymentConfig struct {
+	InstanceMode string
 }
 
 type AIConfig struct {
@@ -114,6 +121,9 @@ func Load() *Config {
 		},
 		Plugin: PluginConfig{
 			DataDir: get("PLUGIN_DATA_DIR", "data/plugin_data"),
+		},
+		Deployment: DeploymentConfig{
+			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),
 		},
 		AI: AIConfig{
 			Enabled:              get("AI_ENABLED", "false") == "true",

@@ -1,6 +1,6 @@
-# CampusOS Host API v1 权限目录
+# CampusOS Host API 权限目录（v1 / v2）
 
-> 由 `go run ./cmd/campusos-contracts --write` 从代码生成。Manifest 默认无权限；调用 Host API 时同时校验插件身份和声明权限。
+> 由 `go run ./cmd/campusos-contracts --write` 从代码生成。Manifest 默认无权限；调用 Host API 时同时校验插件身份和声明权限。`Record*` 方法只接受 `campusos.plugin/v2`、`host_api_version: v2` 的系统归属集合。
 
 ## Host API 方法
 
@@ -14,6 +14,11 @@
 | `Log` | `log/write` |
 | `PublishEvent` | `event/publish` |
 | `QueryThreads` | `thread/read` |
+| `RecordCreate` | `managed_data/write` |
+| `RecordDelete` | `managed_data/delete` |
+| `RecordGet` | `managed_data/read` |
+| `RecordList` | `managed_data/read` |
+| `RecordUpdate` | `managed_data/write` |
 | `SendNotification` | `notification/send` |
 | `SetConfig` | `config/write` |
 | `StorageDelete` | `storage/delete` |
@@ -31,6 +36,9 @@
 | `homepage` | `read` | `low` | Read homepage presentation configuration. |
 | `homepage` | `write` | `high` | Change the system homepage presentation. |
 | `log` | `write` | `low` | Write namespaced plugin logs. |
+| `managed_data` | `delete` | `high` | Delete a declared host-managed system record through Host API v2. |
+| `managed_data` | `read` | `medium` | Read declared host-managed system records through Host API v2. |
+| `managed_data` | `write` | `high` | Create or update declared host-managed system records through Host API v2. |
 | `notification` | `send` | `high` | Send a user-facing notification. |
 | `permission` | `check` | `medium` | Evaluate a user's CampusOS permission. |
 | `post` | `delete` | `high` | Delete a reply within an authorized governance scope. |

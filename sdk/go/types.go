@@ -21,6 +21,10 @@ type Manifest struct {
 	Compatibility  CompatibilityConfig    `json:"compatibility,omitempty" yaml:"compatibility,omitempty"`
 	Lifecycle      LifecycleConfig        `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
 	UI             UIContribution         `json:"ui,omitempty" yaml:"ui,omitempty"`
+	Type           string                 `json:"type,omitempty" yaml:"type,omitempty"`
+	ManagedData    ManagedDataConfig      `json:"managed_data,omitempty" yaml:"managed_data,omitempty"`
+	Files          FileCapability         `json:"files,omitempty" yaml:"files,omitempty"`
+	Release        ReleaseConfig          `json:"release,omitempty" yaml:"release,omitempty"`
 	Events         EventsConfig           `json:"events" yaml:"events"`
 	Permissions    PermissionsConfig      `json:"permissions" yaml:"permissions"`
 	Storage        StorageConfig          `json:"storage" yaml:"storage"`
@@ -41,11 +45,18 @@ type FrontendLifecycleConfig struct {
 
 type UIContribution struct {
 	ContractVersion string         `json:"contract_version,omitempty" yaml:"contract_version,omitempty"`
+	Responsive      ResponsiveUI   `json:"responsive,omitempty" yaml:"responsive,omitempty"`
 	Routes          []UIRoute      `json:"routes,omitempty" yaml:"routes,omitempty"`
 	Navigation      []UINavigation `json:"navigation,omitempty" yaml:"navigation,omitempty"`
 	Slots           []UISlot       `json:"slots,omitempty" yaml:"slots,omitempty"`
 	Surfaces        []UISurface    `json:"surfaces,omitempty" yaml:"surfaces,omitempty"`
 	Actions         []UIAction     `json:"actions,omitempty" yaml:"actions,omitempty"`
+}
+type ResponsiveUI struct {
+	SupportedViewports []string `json:"supported_viewports,omitempty" yaml:"supported_viewports,omitempty"`
+	MinimumWidth       int      `json:"minimum_width,omitempty" yaml:"minimum_width,omitempty"`
+	MobileBehavior     string   `json:"mobile_behavior,omitempty" yaml:"mobile_behavior,omitempty"`
+	OverflowPolicy     string   `json:"overflow_policy,omitempty" yaml:"overflow_policy,omitempty"`
 }
 type UIRoute struct {
 	ID           string `json:"id" yaml:"id"`
@@ -102,12 +113,20 @@ type EventsConfig struct {
 }
 
 type PermissionsConfig struct {
-	API []APIPermission `json:"api" yaml:"api"`
+	API  []APIPermission  `json:"api" yaml:"api"`
+	User []UserPermission `json:"user,omitempty" yaml:"user,omitempty"`
 }
 
 type APIPermission struct {
 	Resource string   `json:"resource" yaml:"resource"`
 	Actions  []string `json:"actions" yaml:"actions"`
+}
+type UserPermission struct {
+	Resource  string   `json:"resource" yaml:"resource"`
+	Actions   []string `json:"actions" yaml:"actions"`
+	Purpose   string   `json:"purpose" yaml:"purpose"`
+	Risk      string   `json:"risk,omitempty" yaml:"risk,omitempty"`
+	Revocable bool     `json:"revocable" yaml:"revocable"`
 }
 
 type StorageConfig struct {
@@ -117,6 +136,38 @@ type StorageConfig struct {
 
 type SQLiteConfig struct {
 	Filename string `json:"filename" yaml:"filename"`
+}
+type ManagedDataConfig struct {
+	Collections      []DataCollection `json:"collections,omitempty" yaml:"collections,omitempty"`
+	DefaultQuotaByte int64            `json:"default_quota_bytes,omitempty" yaml:"default_quota_bytes,omitempty"`
+}
+type DataCollection struct {
+	Name          string      `json:"name" yaml:"name"`
+	Owner         string      `json:"owner" yaml:"owner"`
+	Fields        []DataField `json:"fields,omitempty" yaml:"fields,omitempty"`
+	Searchable    []string    `json:"searchable,omitempty" yaml:"searchable,omitempty"`
+	Filterable    []string    `json:"filterable,omitempty" yaml:"filterable,omitempty"`
+	MaxRecords    int         `json:"max_records,omitempty" yaml:"max_records,omitempty"`
+	MaxRecordByte int64       `json:"max_record_bytes,omitempty" yaml:"max_record_bytes,omitempty"`
+}
+type DataField struct {
+	Name     string `json:"name" yaml:"name"`
+	Type     string `json:"type,omitempty" yaml:"type,omitempty"`
+	Required bool   `json:"required,omitempty" yaml:"required,omitempty"`
+}
+type FileCapability struct {
+	Enabled      bool     `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	AllowedMIMEs []string `json:"allowed_mimes,omitempty" yaml:"allowed_mimes,omitempty"`
+	AllowedExts  []string `json:"allowed_extensions,omitempty" yaml:"allowed_extensions,omitempty"`
+	MaxFileBytes int64    `json:"max_file_bytes,omitempty" yaml:"max_file_bytes,omitempty"`
+	QuotaBytes   int64    `json:"quota_bytes,omitempty" yaml:"quota_bytes,omitempty"`
+	Retention    string   `json:"retention,omitempty" yaml:"retention,omitempty"`
+}
+type ReleaseConfig struct {
+	Channel           string `json:"channel,omitempty" yaml:"channel,omitempty"`
+	SigningKeyID      string `json:"signing_key_id,omitempty" yaml:"signing_key_id,omitempty"`
+	SignatureRequired bool   `json:"signature_required,omitempty" yaml:"signature_required,omitempty"`
+	DataSchemaVersion string `json:"data_schema_version,omitempty" yaml:"data_schema_version,omitempty"`
 }
 
 type ConfigSchema struct {

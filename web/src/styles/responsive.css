@@ -1,0 +1,55 @@
+:root {
+  --campus-touch-target: 44px;
+  --campus-focus-ring: #2563eb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--campus-focus-ring);
+  outline-offset: 2px;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+@media (pointer: coarse) {
+  :where(button, [role='button'], .el-button, .el-checkbox, .el-switch) {
+    min-height: var(--campus-touch-target);
+  }
+
+  :where(button, [role='button'], .el-button.is-circle) {
+    min-width: var(--campus-touch-target);
+  }
+}
+
+@media (max-width: 600px) {
+  .el-dialog {
+    max-width: calc(100vw - 24px);
+    margin-top: max(12px, env(safe-area-inset-top, 0)) !important;
+  }
+
+  .el-message-box {
+    max-width: calc(100vw - 24px);
+  }
+}

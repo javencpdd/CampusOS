@@ -17,11 +17,22 @@ var trustedCoreModules = map[string]bool{
 
 type UIContribution struct {
 	ContractVersion string         `yaml:"contract_version,omitempty" json:"contract_version,omitempty"`
+	Responsive      ResponsiveUI   `yaml:"responsive,omitempty" json:"responsive,omitempty"`
 	Routes          []UIRoute      `yaml:"routes,omitempty" json:"routes,omitempty"`
 	Navigation      []UINavigation `yaml:"navigation,omitempty" json:"navigation,omitempty"`
 	Slots           []UISlot       `yaml:"slots,omitempty" json:"slots,omitempty"`
 	Surfaces        []UISurface    `yaml:"surfaces,omitempty" json:"surfaces,omitempty"`
 	Actions         []UIAction     `yaml:"actions,omitempty" json:"actions,omitempty"`
+}
+
+// ResponsiveUI declares the viewport assumptions for a declarative plugin UI.
+// The host can decline to mount an unsafe surface on narrow screens instead of
+// rendering a layout that overflows the page.
+type ResponsiveUI struct {
+	SupportedViewports []string `yaml:"supported_viewports,omitempty" json:"supported_viewports,omitempty"`
+	MinimumWidth       int      `yaml:"minimum_width,omitempty" json:"minimum_width,omitempty"`
+	MobileBehavior     string   `yaml:"mobile_behavior,omitempty" json:"mobile_behavior,omitempty"`
+	OverflowPolicy     string   `yaml:"overflow_policy,omitempty" json:"overflow_policy,omitempty"`
 }
 
 type UIRoute struct {
@@ -77,6 +88,9 @@ func (ui UIContribution) Empty() bool {
 }
 
 func (m *Manifest) validateUI() error {
+	if err := validateResponsiveUI(m.UI.Responsive); err != nil {
+		return err
+	}
 	if m.UI.Empty() {
 		return nil
 	}
@@ -171,6 +185,32 @@ func (m *Manifest) validateUI() error {
 		if !allowedUISlot(slot.Slot) || !surfaces[slot.SurfaceID] {
 			return fmt.Errorf("manifest: ui slot %q has an invalid host slot or surface", slot.ID)
 		}
+	}
+	return nil
+}
+
+func validateResponsiveUI(contract ResponsiveUI) error {
+	if contract.MinimumWidth < 0 || contract.MinimumWidth > 4096 {
+		return fmt.Errorf("manifest: ui.responsive.minimum_width must be between 0 and 4096")
+	}
+	if contract.MobileBehavior != "" && contract.MobileBehavior != "responsive" && contract.MobileBehavior != "unsupported" {
+		return fmt.Errorf("manifest: ui.responsive.mobile_behavior must be responsive or unsupported")
+	}
+	if contract.OverflowPolicy != "" && contract.OverflowPolicy != "internal-only" && contract.OverflowPolicy != "none" {
+		return fmt.Errorf("manifest: ui.responsive.overflow_policy must be internal-only or none")
+	}
+	seen := map[string]bool{}
+	for _, viewport := range contract.SupportedViewports {
+		if viewport != "mobile" && viewport != "tablet" && viewport != "desktop" {
+			return fmt.Errorf("manifest: ui.responsive has unsupported viewport %q", viewport)
+		}
+		if seen[viewport] {
+			return fmt.Errorf("manifest: ui.responsive viewport %q is duplicated", viewport)
+		}
+		seen[viewport] = true
+	}
+	if len(contract.SupportedViewports) > 0 && contract.MinimumWidth > 0 && contract.MinimumWidth < 320 {
+		return fmt.Errorf("manifest: ui.responsive.minimum_width cannot be below 320 when viewports are declared")
 	}
 	return nil
 }

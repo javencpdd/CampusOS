@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -8,10 +9,15 @@ import (
 )
 
 const (
-	ScopeSystem               = "system"
-	ScopeUser                 = "user"
-	CurrentManifestAPIVersion = "campusos.plugin/v1"
-	CurrentHostAPIVersion     = "v1"
+	ScopeSystem = "system"
+	ScopeUser   = "user"
+
+	ManifestAPIVersionV1      = "campusos.plugin/v1"
+	ManifestAPIVersionV2      = "campusos.plugin/v2"
+	CurrentManifestAPIVersion = ManifestAPIVersionV1 // default for legacy packages
+	HostAPIVersionV1          = "v1"
+	HostAPIVersionV2          = "v2"
+	CurrentHostAPIVersion     = HostAPIVersionV1 // default for legacy packages
 )
 
 // Manifest 插件清单（plugin.yaml 的结构定义）
@@ -29,6 +35,10 @@ type Manifest struct {
 	Compatibility  CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
 	Lifecycle      LifecycleConfig     `yaml:"lifecycle,omitempty" json:"lifecycle"`
 	UI             UIContribution      `yaml:"ui,omitempty" json:"ui,omitempty"`
+	Type           string              `yaml:"type,omitempty" json:"type,omitempty"`
+	ManagedData    ManagedDataConfig   `yaml:"managed_data,omitempty" json:"managed_data,omitempty"`
+	Files          FileCapability      `yaml:"files,omitempty" json:"files,omitempty"`
+	Release        ReleaseConfig       `yaml:"release,omitempty" json:"release,omitempty"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -77,12 +87,23 @@ type EventsConfig struct {
 }
 
 type PermissionsConfig struct {
-	API []APIPermission `yaml:"api" json:"api"`
+	API  []APIPermission  `yaml:"api" json:"api"`
+	User []UserPermission `yaml:"user,omitempty" json:"user,omitempty"`
 }
 
 type APIPermission struct {
 	Resource string   `yaml:"resource" json:"resource"`
 	Actions  []string `yaml:"actions" json:"actions"`
+}
+
+// UserPermission is an end-user consent item. It is distinct from the
+// administrator-approved Host API permissions above.
+type UserPermission struct {
+	Resource  string   `yaml:"resource" json:"resource"`
+	Actions   []string `yaml:"actions" json:"actions"`
+	Purpose   string   `yaml:"purpose" json:"purpose"`
+	Risk      string   `yaml:"risk,omitempty" json:"risk,omitempty"`
+	Revocable bool     `yaml:"revocable" json:"revocable"`
 }
 
 type StorageConfig struct {
@@ -92,6 +113,54 @@ type StorageConfig struct {
 
 type SQLiteConfig struct {
 	Filename string `yaml:"filename" json:"filename"`
+}
+
+const (
+	PluginTypeExternal = "external"
+	OwnerSystem        = "system"
+	OwnerUser          = "user"
+)
+
+// ManagedDataConfig opts a v2 plugin into host-managed structured records.
+// The host, rather than the plugin, validates collections, owners, filters,
+// quotas and searchable fields.
+type ManagedDataConfig struct {
+	Collections      []DataCollection `yaml:"collections,omitempty" json:"collections,omitempty"`
+	DefaultQuotaByte int64            `yaml:"default_quota_bytes,omitempty" json:"default_quota_bytes,omitempty"`
+}
+
+type DataCollection struct {
+	Name          string      `yaml:"name" json:"name"`
+	Owner         string      `yaml:"owner" json:"owner"`
+	Fields        []DataField `yaml:"fields,omitempty" json:"fields,omitempty"`
+	Searchable    []string    `yaml:"searchable,omitempty" json:"searchable,omitempty"`
+	Filterable    []string    `yaml:"filterable,omitempty" json:"filterable,omitempty"`
+	MaxRecords    int         `yaml:"max_records,omitempty" json:"max_records,omitempty"`
+	MaxRecordByte int64       `yaml:"max_record_bytes,omitempty" json:"max_record_bytes,omitempty"`
+}
+
+type DataField struct {
+	Name     string `yaml:"name" json:"name"`
+	Type     string `yaml:"type,omitempty" json:"type,omitempty"`
+	Required bool   `yaml:"required,omitempty" json:"required,omitempty"`
+}
+
+// FileCapability permits controlled access to a user-specific plugin file
+// namespace. It deliberately does not expose a filesystem path to plugins.
+type FileCapability struct {
+	Enabled      bool     `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	AllowedMIMEs []string `yaml:"allowed_mimes,omitempty" json:"allowed_mimes,omitempty"`
+	AllowedExts  []string `yaml:"allowed_extensions,omitempty" json:"allowed_extensions,omitempty"`
+	MaxFileBytes int64    `yaml:"max_file_bytes,omitempty" json:"max_file_bytes,omitempty"`
+	QuotaBytes   int64    `yaml:"quota_bytes,omitempty" json:"quota_bytes,omitempty"`
+	Retention    string   `yaml:"retention,omitempty" json:"retention,omitempty"`
+}
+
+type ReleaseConfig struct {
+	Channel           string `yaml:"channel,omitempty" json:"channel,omitempty"`
+	SigningKeyID      string `yaml:"signing_key_id,omitempty" json:"signing_key_id,omitempty"`
+	SignatureRequired bool   `yaml:"signature_required,omitempty" json:"signature_required,omitempty"`
+	DataSchemaVersion string `yaml:"data_schema_version,omitempty" json:"data_schema_version,omitempty"`
 }
 
 type ConfigSchema struct {
@@ -139,14 +208,14 @@ func (m *Manifest) Validate() error {
 	if m.APIVersion == "" {
 		m.APIVersion = CurrentManifestAPIVersion
 	}
-	if m.APIVersion != CurrentManifestAPIVersion {
-		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s)", m.APIVersion, CurrentManifestAPIVersion)
+	if m.APIVersion != ManifestAPIVersionV1 && m.APIVersion != ManifestAPIVersionV2 {
+		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s, %s)", m.APIVersion, ManifestAPIVersionV1, ManifestAPIVersionV2)
 	}
 	if m.HostAPIVersion == "" {
 		m.HostAPIVersion = CurrentHostAPIVersion
 	}
-	if m.HostAPIVersion != CurrentHostAPIVersion {
-		return fmt.Errorf("manifest: unsupported host_api_version %q (supported: %s)", m.HostAPIVersion, CurrentHostAPIVersion)
+	if m.HostAPIVersion != HostAPIVersionV1 && m.HostAPIVersion != HostAPIVersionV2 {
+		return fmt.Errorf("manifest: unsupported host_api_version %q (supported: %s, %s)", m.HostAPIVersion, HostAPIVersionV1, HostAPIVersionV2)
 	}
 	if m.Name == "" {
 		return fmt.Errorf("manifest: name is required")
@@ -193,7 +262,150 @@ func (m *Manifest) Validate() error {
 	if err := m.validateUI(); err != nil {
 		return err
 	}
+	if m.APIVersion == ManifestAPIVersionV2 {
+		if err := m.validateV2(); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (m *Manifest) IsV2() bool { return m != nil && m.APIVersion == ManifestAPIVersionV2 }
+
+func (m *Manifest) Collection(name string) (DataCollection, bool) {
+	if m == nil {
+		return DataCollection{}, false
+	}
+	for _, collection := range m.ManagedData.Collections {
+		if collection.Name == name {
+			return collection, true
+		}
+	}
+	return DataCollection{}, false
+}
+
+func (m *Manifest) validateV2() error {
+	if m.Type == "" {
+		m.Type = PluginTypeExternal
+	}
+	if m.Type != PluginTypeExternal {
+		return fmt.Errorf("manifest: v2 type must be %q", PluginTypeExternal)
+	}
+	if m.HostAPIVersion != HostAPIVersionV2 {
+		return fmt.Errorf("manifest: v2 requires host_api_version %q", HostAPIVersionV2)
+	}
+	if err := m.validateManagedData(); err != nil {
+		return err
+	}
+	if err := m.validateFiles(); err != nil {
+		return err
+	}
+	return m.validateUserPermissions()
+}
+
+func (m *Manifest) validateManagedData() error {
+	seen := map[string]bool{}
+	for i := range m.ManagedData.Collections {
+		collection := &m.ManagedData.Collections[i]
+		if collection.Name == "" || !isManifestIdentifier(collection.Name) {
+			return fmt.Errorf("manifest: managed_data.collections[%d].name is invalid", i)
+		}
+		if seen[collection.Name] {
+			return fmt.Errorf("manifest: managed data collection %q is duplicated", collection.Name)
+		}
+		seen[collection.Name] = true
+		if collection.Owner != OwnerSystem && collection.Owner != OwnerUser {
+			return fmt.Errorf("manifest: managed data collection %q owner must be system or user", collection.Name)
+		}
+		if collection.MaxRecords < 0 || collection.MaxRecordByte < 0 {
+			return fmt.Errorf("manifest: managed data collection %q limits cannot be negative", collection.Name)
+		}
+		fields := map[string]bool{}
+		for index := range collection.Fields {
+			field := &collection.Fields[index]
+			if field.Name == "" || !isManifestIdentifier(field.Name) || fields[field.Name] {
+				return fmt.Errorf("manifest: managed data collection %q has an invalid or duplicate field", collection.Name)
+			}
+			fields[field.Name] = true
+			if field.Type == "" {
+				field.Type = "string"
+			}
+			if field.Type != "string" && field.Type != "number" && field.Type != "boolean" && field.Type != "array" && field.Type != "object" {
+				return fmt.Errorf("manifest: managed data collection %q field %q has unsupported type", collection.Name, field.Name)
+			}
+		}
+		for _, field := range append(append([]string{}, collection.Searchable...), collection.Filterable...) {
+			if !fields[field] {
+				return fmt.Errorf("manifest: managed data collection %q declares undeclared searchable/filterable field %q", collection.Name, field)
+			}
+		}
+	}
+	if m.ManagedData.DefaultQuotaByte < 0 {
+		return errors.New("manifest: managed_data.default_quota_bytes cannot be negative")
+	}
+	return nil
+}
+
+func (m *Manifest) validateFiles() error {
+	files := m.Files
+	if !files.Enabled {
+		return nil
+	}
+	if files.MaxFileBytes < 0 || files.QuotaBytes < 0 {
+		return errors.New("manifest: file limits cannot be negative")
+	}
+	if files.Retention != "" && files.Retention != "retained" && files.Retention != "user-deletable" {
+		return errors.New("manifest: files.retention must be retained or user-deletable")
+	}
+	return nil
+}
+
+func (m *Manifest) validateUserPermissions() error {
+	seen := map[string]bool{}
+	allowed := map[string]map[string]bool{
+		ManagedDataResource:  {"read": true, "write": true, "delete": true},
+		PluginFileResource:   {"read": true, "write": true, "delete": true},
+		PluginSearchResource: {"read": true},
+	}
+	for index, permission := range m.Permissions.User {
+		if permission.Resource == "" || len(permission.Actions) == 0 || permission.Purpose == "" {
+			return fmt.Errorf("manifest: user permission %d requires resource, actions and purpose", index)
+		}
+		actions, ok := allowed[permission.Resource]
+		if !ok {
+			return fmt.Errorf("manifest: user permission %d has unsupported resource %q", index, permission.Resource)
+		}
+		if !permission.Revocable {
+			return fmt.Errorf("manifest: user permission %d must be revocable", index)
+		}
+		if permission.Risk != "" && permission.Risk != "low" && permission.Risk != "medium" && permission.Risk != "high" {
+			return fmt.Errorf("manifest: user permission %d has unsupported risk", index)
+		}
+		for _, action := range permission.Actions {
+			key := permission.Resource + ":" + action
+			if !actions[action] || seen[key] {
+				return fmt.Errorf("manifest: user permission %q is duplicated or invalid", key)
+			}
+			seen[key] = true
+		}
+	}
+	return nil
+}
+
+func isManifestIdentifier(value string) bool {
+	if len(value) == 0 || len(value) > 64 {
+		return false
+	}
+	for index, char := range value {
+		if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '_' || char == '-' {
+			if index == 0 && (char == '_' || char == '-') {
+				return false
+			}
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func (m *Manifest) applyLifecycleDefaults() {
