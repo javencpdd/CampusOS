@@ -7,5 +7,5 @@ description: "Catalog, external runtimes, lifecycle, Host API, Extension Gateway
 kind: core
 activation_mode: always-on
 default_enabled: true
-dependencies: [core.event-bus, core.feature-registry, core.user-storage]
+dependencies: [core.event-bus, core.feature-registry, core.user-storage, core.reliability]
 implementation: internal/plugin

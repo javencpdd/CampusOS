@@ -119,5 +119,15 @@ make database-check
 | 插件/风格包操作 failed | 操作记录、staging、版本 snapshot 和磁盘权限 | 不要直接覆盖正式目录。 |
 | 需回退部署 | 先停止新 producer，等待/冻结 lease，保留 Outbox 和审计 | 不要将 `processing` 直接写成成功。 |
 
+如果 Admin 页面本身能打开但提示“可靠任务加载失败”，先执行：
+
+```bash
+curl -fsS http://localhost:8080/api/v1/health
+tail -n 120 .campusos/logs/api.log
+```
+
+前端开发服务器可在 API 启动失败时继续提供静态页面，因此“页面能打开”不代表后端已
+完成模块装配。正常启动日志必须包含 `CampusOS API 监听`，可靠任务请求应返回 `200`。
+
 详见 [可靠命令与数据所有权](../../architecture/v11可靠命令事件与数据所有权.md) 和
 [Webhook 安全模型](../../architecture/v11Webhook可靠投递与安全模型.md)。

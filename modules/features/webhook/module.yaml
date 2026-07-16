@@ -7,4 +7,5 @@ description: "Managed webhook endpoints, delivery signatures, retries, and deliv
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
+dependencies: [core.event-bus, core.reliability]
 implementation: internal/modules/features/webhook

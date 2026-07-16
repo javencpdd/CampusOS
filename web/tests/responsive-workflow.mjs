@@ -171,7 +171,15 @@ try {
       if ((viewport.width <= 800 || viewport.height <= 480) && route === '/extensions') {
         await adminPage.getByRole('button', { name: '打开导航' }).click()
         await adminPage.getByRole('menuitem', { name: '扩展与集成', exact: true }).waitFor()
-        await adminPage.locator('.nav-scrim').click()
+        const scrim = adminPage.locator('.nav-scrim')
+        const scrimBox = await scrim.boundingBox()
+        if (!scrimBox) throw new Error(`admin navigation scrim is not visible at ${viewport.name}`)
+        await scrim.click({
+          position: {
+            x: Math.max(1, scrimBox.width - 8),
+            y: Math.min(24, Math.max(1, scrimBox.height - 1)),
+          },
+        })
         await adminPage.waitForFunction(() => !document.querySelector('.admin-aside')?.classList.contains('is-open'))
         await adminPage.waitForTimeout(220)
       }
