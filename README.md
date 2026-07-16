@@ -58,10 +58,11 @@ make release-check
 
 | 主题 | 文档 |
 | --- | --- |
+| 新开发者入门 | [官方文档完整入门路径](docs-site/guide/getting-started.md) |
 | 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v10 系统清点与治理](docs/architecture/v10当前系统清点与治理.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
 | 权限与版主 | [v10 权限管理设计与使用入门](docs/help/系统设计相关/v10权限管理设计与使用入门.md) |
-| 插件与资源包 | [插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |
+| 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |
 | 当前版本 | [v10 计划书](docs/项目计划v10/00-v10版本计划书.md)、[最终审计与后续路线](docs/项目计划v10/03-v10最终全方位审计与后续路线.md)、[v0.10 进度记录](docs/进度/v0.10-dev/) |
 
 ## License

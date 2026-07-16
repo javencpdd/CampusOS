@@ -106,7 +106,7 @@ Content-Type: application/json
 
 当前 OpenAPI 已由实际路由生成。接口真相按以下顺序确认：
 
-1. `internal/server/server.go` 的实际路由。
+1. `internal/transport/httpapi/router.go` 的实际路由与 owned route registry。
 2. `docs/api/openapi-v0.6-current.yaml` 的路由、认证、权限和字段级 schema。
 3. 对应 handler 和请求/响应结构；标记为 `generic-experimental` 的动态对象以这里为准。
 4. `web/src/api/index.ts`、`admin/src/api/index.ts` 和本文。

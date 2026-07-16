@@ -73,37 +73,11 @@
     <section class="appearance-band">
       <div class="section-heading">
         <div>
-          <h3>首页资源包</h3>
-          <p>资源包保存在数据目录中，由 Appearance 功能校验、应用和回滚。</p>
+          <h3>外观资源由独立页面管理</h3>
+          <p>这里控制 Appearance Built-in Feature 的启停与配置；首页包切换、系统主题目录和个人主页风格边界在外观页面查看。</p>
         </div>
-        <el-button type="warning" plain :loading="rollingBack" @click="rollbackPack">回滚</el-button>
+        <el-button type="primary" plain @click="$router.push('/appearance')">打开外观与风格包</el-button>
       </div>
-      <div class="pack-controls">
-        <el-select v-model="selectedPack" filterable :loading="packsLoading" placeholder="选择已校验的首页资源包">
-          <el-option
-            v-for="pack in packs"
-            :key="pack.name"
-            :label="`${pack.display_name || pack.name}${pack.version ? ` v${pack.version}` : ''}`"
-            :value="pack.name"
-            :disabled="!pack.validation?.valid"
-          />
-        </el-select>
-        <el-button :loading="packsLoading" @click="loadPacks">刷新目录</el-button>
-        <el-button type="primary" :disabled="!selectedPack" :loading="applyingPack" @click="applySourcePack">应用</el-button>
-        <input ref="packInput" class="hidden" type="file" accept=".zip,application/zip" @change="selectPackFile" />
-        <el-button @click="packInput?.click()">选择 zip</el-button>
-        <el-button :disabled="!packFile" :loading="validatingPack" @click="validatePack">筛查</el-button>
-        <el-button type="primary" :disabled="!packFile || validation?.valid !== true" :loading="uploadingPack" @click="applyPack">导入并应用</el-button>
-        <el-button :loading="downloadingExample" @click="downloadExample">导出当前示例</el-button>
-      </div>
-      <p v-if="packFile" class="file-name">{{ packFile.name }}</p>
-      <el-alert
-        v-if="validation"
-        :type="validation.valid ? 'success' : 'error'"
-        :closable="false"
-        show-icon
-        :title="validation.valid ? '资源包筛查通过' : `筛查失败：${(validation.errors || []).join('；')}`"
-      />
     </section>
 
     <el-dialog v-model="configVisible" :title="`${selectedConfigName} 配置`" width="720px">
@@ -132,43 +106,16 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { featureApi } from '@/modules/features/api'
-import { homeStylePackApi } from '@/modules/appearance/api'
-
-interface FeatureRow {
-  id: string
-  label: string
-  description: string
-  representative: string
-  configSources: Array<{ name: string; label: string }>
-  state?: Record<string, any>
-}
-
-const definitions: FeatureRow[] = [
-  { id: 'personal-space', label: '个人空间', description: '个人主页、内容同步与个人文件入口。', representative: 'personal-space', configSources: [{ name: 'personal-space', label: '空间配置' }] },
-  { id: 'controlled-richtext-article', label: '图文文章', description: '文章草稿、发布、清洗、资产和模板。', representative: 'controlled-richtext-article', configSources: [{ name: 'controlled-richtext-article', label: '文章配置' }] },
-  { id: 'personal-schedule', label: '个人课表', description: '学期课表、Excel 导入、周视图和日历。', representative: 'personal-schedule', configSources: [{ name: 'personal-schedule', label: '课表配置' }] },
-  { id: 'appearance', label: '界面与风格', description: '系统主题、首页布局和风格资源包。', representative: 'web-theme', configSources: [{ name: 'web-theme', label: '主题配置' }, { name: 'homepage-customizer', label: '首页配置' }] },
-]
+import { builtinFeatureDefinitions, mapBuiltinFeatures, type FeatureRow } from '@/modules/features/catalog'
 
 const loading = ref(false)
-const features = ref<FeatureRow[]>(definitions)
+const features = ref<FeatureRow[]>(builtinFeatureDefinitions)
 const configVisible = ref(false)
 const configLoading = ref(false)
 const configSaving = ref(false)
 const selectedConfigName = ref('')
 const configFields = ref<any[]>([])
 const configForm = ref<Record<string, any>>({})
-const packs = ref<any[]>([])
-const packsLoading = ref(false)
-const selectedPack = ref('')
-const applyingPack = ref(false)
-const rollingBack = ref(false)
-const packInput = ref<HTMLInputElement | null>(null)
-const packFile = ref<File | null>(null)
-const validation = ref<any>(null)
-const validatingPack = ref(false)
-const uploadingPack = ref(false)
-const downloadingExample = ref(false)
 
 const unwrap = (payload: any) => payload?.data || payload
 const listItems = (payload: any) => unwrap(payload)?.items || []
@@ -177,8 +124,7 @@ const load = async () => {
   loading.value = true
   try {
     const items = listItems(await featureApi.list())
-    const byName = new Map(items.filter((item: any) => item?.capability_class === 'legacy-builtin').map((item: any) => [item.name, item]))
-    features.value = definitions.map((definition) => ({ ...definition, state: byName.get(definition.representative) as Record<string, any> | undefined }))
+    features.value = mapBuiltinFeatures(items)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载内置功能失败')
   } finally {
@@ -235,113 +181,21 @@ const saveConfig = async () => {
   }
 }
 
-const loadPacks = async () => {
-  packsLoading.value = true
-  try {
-    packs.value = unwrap(await homeStylePackApi.sources())?.items || []
-    if (!packs.value.some((pack) => pack.name === selectedPack.value && pack.validation?.valid)) {
-      selectedPack.value = packs.value.find((pack) => pack.validation?.valid)?.name || ''
-    }
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '加载首页资源包失败')
-  } finally {
-    packsLoading.value = false
-  }
-}
-
-const applySourcePack = async () => {
-  applyingPack.value = true
-  try {
-    await homeStylePackApi.applySource(selectedPack.value)
-    ElMessage.success('首页资源包已应用')
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '应用资源包失败')
-  } finally {
-    applyingPack.value = false
-  }
-}
-
-const selectPackFile = (event: Event) => {
-  packFile.value = (event.target as HTMLInputElement).files?.[0] || null
-  validation.value = null
-}
-
-const validatePack = async () => {
-  if (!packFile.value) return
-  validatingPack.value = true
-  try {
-    validation.value = unwrap(await homeStylePackApi.validate(packFile.value))?.validation
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '资源包筛查失败')
-  } finally {
-    validatingPack.value = false
-  }
-}
-
-const applyPack = async () => {
-  if (!packFile.value || !validation.value?.valid) return
-  uploadingPack.value = true
-  try {
-    await homeStylePackApi.apply(packFile.value)
-    ElMessage.success('首页资源包已导入并应用')
-    await loadPacks()
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '导入资源包失败')
-  } finally {
-    uploadingPack.value = false
-  }
-}
-
-const rollbackPack = async () => {
-  rollingBack.value = true
-  try {
-    await homeStylePackApi.rollback()
-    ElMessage.success('首页风格已回滚')
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '回滚失败')
-  } finally {
-    rollingBack.value = false
-  }
-}
-
-const downloadExample = async () => {
-  downloadingExample.value = true
-  try {
-    const payload: any = await homeStylePackApi.exampleZip()
-    const blob = payload instanceof Blob ? payload : new Blob([payload], { type: 'application/zip' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'homepage-style-pack.zip'
-    link.click()
-    URL.revokeObjectURL(url)
-  } catch (error: any) {
-    ElMessage.error(error?.msg || '导出示例失败')
-  } finally {
-    downloadingExample.value = false
-  }
-}
-
-onMounted(async () => {
-  await Promise.all([load(), loadPacks()])
-})
+onMounted(load)
 </script>
 
 <style scoped>
 .feature-page { display: grid; gap: 16px; max-width: 1440px; }
-.page-header, .section-heading, .core-band, .row-actions, .pack-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.page-header, .section-heading, .core-band, .row-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .page-header { align-items: flex-start; }
 .page-header h2, .section-heading h3 { margin: 0; }
 .page-header p, .section-heading p, .core-band p { margin: 6px 0 0; color: #606266; }
 .eyebrow { color: #909399 !important; font-size: 12px; }
 .core-band, .appearance-band { padding: 18px; background: #fff; border: 1px solid #e4e7ed; }
-.row-actions, .pack-controls { justify-content: flex-start; flex-wrap: wrap; }
-.pack-controls .el-select { width: min(360px, 100%); }
+.row-actions { justify-content: flex-start; flex-wrap: wrap; }
 strong + small { display: block; margin-top: 4px; color: #909399; }
-.field-help, .file-name { margin: 6px 0 0; color: #909399; font-size: 12px; }
-.hidden { display: none; }
+.field-help { margin: 6px 0 0; color: #909399; font-size: 12px; }
 @media (max-width: 760px) {
   .page-header, .section-heading, .core-band { align-items: stretch; flex-direction: column; }
-  .pack-controls > * { width: 100%; }
 }
 </style>

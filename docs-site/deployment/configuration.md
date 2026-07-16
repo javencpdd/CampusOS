@@ -41,9 +41,12 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=di
 Admin 中的官方文档链接默认指向 `http://localhost:3002`。独立部署文档站后，在构建 Admin 前设置：
 
 ```dotenv
+VITE_WEB_URL=https://community.example.edu
 VITE_DOCS_URL=https://docs.example.edu
 VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS
 ```
+
+`VITE_WEB_URL` 用于 Admin 的“外观与风格包”页面打开用户端主题切换页；它不是后端 API 地址。
 
 ## 插件目录
 

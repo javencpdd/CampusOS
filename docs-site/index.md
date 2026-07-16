@@ -11,10 +11,11 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
 </div>
 
 <div class="doc-link-grid">
-  <a href="/guide/introduction"><strong>了解 CampusOS</strong><span>项目能力、技术边界、仓库结构和建议阅读顺序。</span></a>
+  <a href="/guide/getting-started"><strong>完整入门路径</strong><span>从环境准备、启动验证、模块分类到第一次开发闭环。</span></a>
+  <a href="/guide/permission-configuration"><strong>配置角色与权限</strong><span>从权限概念、自定义角色和用户分配，逐步完成板块版主与授权审计。</span></a>
   <a href="/deployment/development"><strong>启动开发环境</strong><span>安装依赖、准备配置、运行 migration 并启动四个开发服务。</span></a>
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
-  <a href="/plugins/create-first-plugin"><strong>编写插件</strong><span>从脚手架到 manifest、测试、打包、预检和管理端导入。</span></a>
+  <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
 </div>
 
 ## 当前界面
@@ -47,5 +48,8 @@ CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL�
 ## 参与开发
 
 - [GitHub 仓库](https://github.com/javencpdd/CampusOS)
+- [完整入门路径](/guide/getting-started)
+- [权限配置入门](/guide/permission-configuration)
+- [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
 - [编写第一个插件](/plugins/create-first-plugin)
 - [构建与发布](/deployment/release)

@@ -1,0 +1,102 @@
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: schedule-helper
+display_name: 课表助手（教程示例）
+version: 0.1.0
+description: 演示如何用受管用户记录保存学期和课程，不直接访问 CampusOS 内置课表数据。
+author: CampusOS Documentation
+runtime: grpc
+scope: user
+type: external
+lifecycle:
+  backend:
+    activation_mode: plugin-restart
+  frontend:
+    activation_mode: hot
+events:
+  subscribe: []
+permissions:
+  api: []
+  user:
+    - resource: managed_data
+      actions: [read, write, delete]
+      purpose: 保存和管理当前用户主动录入的学期与课程。
+      risk: low
+      revocable: true
+    - resource: plugin_search
+      actions: [read]
+      purpose: 只在当前用户自己的课程名称、教师和地点中检索。
+      risk: medium
+      revocable: true
+storage:
+  type: none
+managed_data:
+  default_quota_bytes: 2097152
+  collections:
+    - name: terms
+      owner: user
+      fields:
+        - name: term_key
+          type: string
+          required: true
+        - name: title
+          type: string
+          required: true
+        - name: year
+          type: number
+          required: true
+        - name: semester
+          type: string
+          required: true
+        - name: first_week_start
+          type: string
+          required: true
+      searchable: [title]
+      filterable: [term_key, semester]
+      max_records: 20
+      max_record_bytes: 4096
+    - name: courses
+      owner: user
+      fields:
+        - name: term_key
+          type: string
+          required: true
+        - name: name
+          type: string
+          required: true
+        - name: teacher
+          type: string
+        - name: weekday
+          type: number
+          required: true
+        - name: start_period
+          type: number
+          required: true
+        - name: end_period
+          type: number
+          required: true
+        - name: weeks
+          type: array
+          required: true
+        - name: location
+          type: string
+      searchable: [name, teacher, location]
+      filterable: [term_key, name, weekday]
+      max_records: 500
+      max_record_bytes: 8192
+release:
+  channel: tutorial
+  data_schema_version: "1"
+experience:
+  use_cases:
+    - 学习 Manifest v2 受管用户数据
+    - 按学期保存课程并进行个人检索
+    - 验证插件导入、发布、授权和撤销流程
+  data_use: 只保存用户主动提交到本插件命名空间的学期和课程，不读取内置课表、其他用户或数据库。
+  risk_summary: 数据由 CampusOS 按用户隔离；插件进程不接收用户 ID、JWT 或物理文件路径。
+  disabled_behavior: 停用或撤销授权不会自动删除数据，用户仍可导出或显式删除。
+  maintainer: CampusOS Documentation
+  documentation_url: http://localhost:3002/plugins/schedule-plugin-tutorial
+config:
+  command: ./plugin
+  extension_url: http://127.0.0.1:19092/extension

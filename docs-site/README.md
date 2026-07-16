@@ -9,6 +9,12 @@ pnpm dev
 
 默认地址：`http://localhost:3002`
 
+新开发者入口：`http://localhost:3002/guide/getting-started`
+
+权限配置入门：`http://localhost:3002/guide/permission-configuration`
+
+课表插件教程：`http://localhost:3002/plugins/schedule-plugin-tutorial`
+
 生产构建：
 
 ```bash

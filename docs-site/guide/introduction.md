@@ -52,11 +52,11 @@ docs-site (VitePress, :3002)                          -> data/
 
 ## 推荐阅读顺序
 
-1. [系统架构](/guide/architecture)：了解模块和安全边界。
-2. [开发环境](/deployment/development)：在本机启动完整系统。
+1. [完整入门路径](/guide/getting-started)：启动系统并认识 Web、Admin、Docs、API 和四类模块。
+2. [系统架构](/guide/architecture)：了解模块和安全边界。
 3. [接口约定](/api/overview)：理解认证、响应和错误。
 4. [插件体系](/plugins/overview)：区分 Runtime、生命周期和数据目录。
-5. [编写第一个插件](/plugins/create-first-plugin)：完成一次插件闭环。
+5. [课表插件完整教程](/plugins/schedule-plugin-tutorial)：完成 Manifest v2、受管数据、导入、发布和授权闭环。
 
 ## 仓库与许可
 

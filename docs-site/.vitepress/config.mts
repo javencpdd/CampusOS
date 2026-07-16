@@ -16,7 +16,8 @@ export default defineConfig({
   themeConfig: {
     siteTitle: 'CampusOS 文档',
     nav: [
-      { text: '开始使用', link: '/guide/introduction' },
+      { text: '开始使用', link: '/guide/getting-started' },
+      { text: '权限配置', link: '/guide/permission-configuration' },
       { text: '部署', link: '/deployment/development' },
       { text: 'API', link: '/api/overview' },
       { text: '插件开发', link: '/plugins/overview' },
@@ -27,6 +28,8 @@ export default defineConfig({
         text: '项目指南',
         items: [
           { text: '文档首页', link: '/' },
+          { text: '完整入门路径', link: '/guide/getting-started' },
+          { text: '权限配置入门', link: '/guide/permission-configuration' },
           { text: '项目介绍', link: '/guide/introduction' },
           { text: '系统架构', link: '/guide/architecture' },
           { text: '数据目录', link: '/reference/data-layout' },
@@ -53,6 +56,7 @@ export default defineConfig({
         text: '插件开发',
         items: [
           { text: '插件体系', link: '/plugins/overview' },
+          { text: '课表插件完整教程', link: '/plugins/schedule-plugin-tutorial' },
           { text: '编写第一个插件', link: '/plugins/create-first-plugin' },
           { text: 'Manifest 与配置', link: '/plugins/manifest' },
           { text: '打包、导入与更新', link: '/plugins/package-import' },
