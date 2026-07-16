@@ -82,7 +82,11 @@ jobs:
         run: make migrate-status
 
       - name: Audit data and validate schema contract
-        run: make database-check
+        run: |
+          POSTGRES_CONTAINER="$(docker ps --filter "id=${{ job.services.postgres.id }}" --format '{{.Names}}')"
+          echo "Using PostgreSQL container: $POSTGRES_CONTAINER"
+          export POSTGRES_CONTAINER
+          make database-check
 
       - name: Run Go tests
         run: go test ./... -v -count=1
