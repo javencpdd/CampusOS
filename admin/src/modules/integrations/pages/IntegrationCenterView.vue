@@ -3,13 +3,30 @@
     <div class="page-header">
       <div>
         <h2>集成中心</h2>
-        <p>统一查看插件、AI、个人主页、Webhook、MCP、Message 和基础观测状态。</p>
+        <p>统一查看插件、AI、个人主页、Webhook、MCP、Message 和基础观测状态。每项能力都标明当前成熟度和使用边界。</p>
       </div>
-      <el-button :loading="loading" @click="loadAll">
-        <el-icon><Refresh /></el-icon>
-        刷新
-      </el-button>
+      <div class="header-actions">
+        <el-button plain :icon="Document" @click="openDocs()">集成说明</el-button>
+        <el-button :loading="loading" @click="loadAll">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
+      </div>
     </div>
+
+    <section class="capability-grid" aria-label="集成能力成熟度">
+      <article v-for="item in capabilities" :key="item.id" class="capability-card">
+        <div class="capability-title">
+          <strong>{{ item.title }}</strong>
+          <el-tag :type="item.type" size="small" effect="plain">{{ item.maturity }}</el-tag>
+        </div>
+        <p>{{ item.summary }}</p>
+        <div class="capability-footer">
+          <span>{{ item.boundary }}</span>
+          <el-button link type="primary" @click="openDocs(item.anchor)">查看说明</el-button>
+        </div>
+      </article>
+    </section>
 
     <el-row :gutter="16" class="overview-grid">
       <el-col v-for="card in overview" :key="card.key" :xs="24" :sm="12" :lg="6">
@@ -30,6 +47,9 @@
 
     <el-tabs v-model="activeTab" class="ops-tabs">
       <el-tab-pane label="Webhook" name="webhook">
+        <el-alert class="boundary-alert" type="success" :closable="false" show-icon>
+          <template #title>可用于管理员配置的事件回调。请先使用“测试”确认目标地址、网络和签名接收逻辑，再启用生产事件。</template>
+        </el-alert>
         <el-card shadow="never">
           <template #header>
             <div class="section-header">
@@ -83,6 +103,9 @@
       </el-tab-pane>
 
       <el-tab-pane label="MCP 只读工具" name="mcp">
+        <el-alert class="boundary-alert" type="warning" :closable="false" show-icon>
+          <template #title>当前是 CampusOS 内部 MCP-like 只读工具闭环，不是可供外部客户端连接的标准 MCP Server，也不提供写入工具。</template>
+        </el-alert>
         <el-card shadow="never">
           <template #header>
             <div class="section-header">
@@ -111,6 +134,9 @@
       </el-tab-pane>
 
       <el-tab-pane label="Message Local" name="message">
+        <el-alert class="boundary-alert" type="info" :closable="false" show-icon>
+          <template #title>这是本地适配器与开发验证入口，不等同于 Discord、OneBot 或其他第三方生产消息适配器。</template>
+        </el-alert>
         <el-card shadow="never">
           <template #header>
             <div class="section-header">
@@ -158,7 +184,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { integrationApi, mcpApi, messageApi, webhookApi } from '@/modules/integrations/api'
-import { Plus, Promotion, Refresh } from '@element-plus/icons-vue'
+import { Document, Plus, Promotion, Refresh } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const activeTab = ref('webhook')
@@ -171,6 +197,12 @@ const mcpEnabled = ref(true)
 const mcpResult = ref('')
 const messages = ref<any[]>([])
 const messageForm = ref({ conversation_id: 'local-room', sender_id: 'tester', content: 'ping' })
+const docsBase = (import.meta.env.VITE_DOCS_URL || 'http://localhost:3002').replace(/\/$/, '')
+const capabilities = [
+  { id: 'webhook', title: 'Webhook', maturity: '可配置 / 可测试', type: 'success', summary: '向受控 HTTP 地址发送 CampusOS 事件，并保留投递记录用于排查。', boundary: '需要管理员配置；目标服务负责验证和幂等处理。', anchor: '#webhook' },
+  { id: 'mcp', title: 'MCP-like 工具', maturity: '内部只读', type: 'warning', summary: '在管理端验证受限工具调用和审计，不开放标准 MCP 网络服务。', boundary: '只读；不提供任意外部客户端连接或写操作。', anchor: '#mcp-like' },
+  { id: 'message', title: 'Message Local', maturity: '本地验证', type: 'info', summary: '模拟入站与出站消息，方便测试消息合同和记录。', boundary: '不是第三方平台生产适配器。', anchor: '#message-local' },
+]
 
 const itemsOf = (payload: any): any[] => {
   const candidates = [payload?.data?.items, payload?.items, payload?.data, payload]
@@ -181,6 +213,7 @@ const itemsOf = (payload: any): any[] => {
 }
 
 const dataOf = (payload: any): any => payload?.data || payload
+const openDocs = (anchor = '') => window.open(`${docsBase}/operations/integrations${anchor}`, '_blank', 'noopener,noreferrer')
 
 const loadOverview = async () => {
   const res = await integrationApi.overview()
@@ -335,6 +368,7 @@ onMounted(loadAll)
   justify-content: space-between;
   gap: 12px;
 }
+.header-actions { display: flex; align-items: center; gap: 8px; }
 
 .page-header {
   margin-bottom: 16px;
@@ -353,6 +387,12 @@ onMounted(loadAll)
 .overview-grid {
   margin-bottom: 16px;
 }
+.capability-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.capability-card { display: grid; gap: 10px; padding: 16px; border: 1px solid #e4e7ed; border-radius: 6px; background: #fff; }
+.capability-title, .capability-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.capability-card p { min-height: 42px; margin: 0; color: #606266; line-height: 1.55; }
+.capability-footer { align-items: flex-start; color: #909399; font-size: 12px; line-height: 1.5; }
+.boundary-alert { margin: 0 0 12px; }
 
 .overview-card {
   min-height: 160px;
@@ -405,4 +445,6 @@ onMounted(loadAll)
   border: 1px solid #e4e7ed;
   border-radius: 6px;
 }
+@media (max-width: 900px) { .capability-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .page-header { align-items: flex-start; flex-direction: column; }.header-actions { width: 100%; justify-content: space-between; }.url-input, .events-input { width: min(100%, 360px); }.ops-tabs { padding: 8px; } }
 </style>

@@ -24,7 +24,16 @@ func (h *Handler) MarketCatalog(c *gin.Context) {
 		h.marketError(c, err)
 		return
 	}
-	response.Success(c, gin.H{"items": items, "total": len(items)})
+	payload := gin.H{"items": items, "total": len(items), "catalog_state": "ready"}
+	if len(items) == 0 {
+		// An empty user catalog is a normal governance state: only explicitly
+		// published external plugins are visible here. Keep that distinction in
+		// the API so clients do not imply that built-in features are missing.
+		payload["catalog_state"] = "empty"
+		payload["empty_reason"] = "管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。"
+		payload["request_available"] = true
+	}
+	response.Success(c, payload)
 }
 
 func (h *Handler) MarketMyGrants(c *gin.Context) {

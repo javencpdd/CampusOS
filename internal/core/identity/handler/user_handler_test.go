@@ -13,6 +13,7 @@ import (
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/core/identity/service"
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
@@ -78,5 +79,29 @@ func TestUpdateUserAuthorizationAndFieldFiltering(t *testing.T) {
 	}
 	if payload["request_id"] == "" {
 		t.Fatalf("public response lacks request_id: %s", public.Body.String())
+	}
+}
+
+func TestHealthCheckUsesApplicationVersion(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewUserHandler(nil)
+	router := gin.New()
+	router.GET("/health", handler.HealthCheck)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("health status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var payload struct {
+		Data struct {
+			Version string `json:"version"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Data.Version != platformversion.Number {
+		t.Fatalf("health version=%q want=%q", payload.Data.Version, platformversion.Number)
 	}
 }

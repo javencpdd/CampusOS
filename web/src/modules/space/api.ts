@@ -2,6 +2,7 @@ import api from '../../shared/api/client'
 
 export const spaceApi = {
   me: () => api.get('/spaces/me'),
+  myContents: (params?: { page?: number; page_size?: number }) => api.get('/spaces/me/contents', { params }),
   updateMe: (data: {
     title?: string
     bio?: string

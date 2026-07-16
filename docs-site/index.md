@@ -3,11 +3,11 @@
 CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，同时提供用户社区、管理后台、个人空间、受控富文本、个人课表和可扩展插件运行时。
 
 <div class="status-line">
-  <code>v0.7.0</code>
+  <code>v0.10.0</code>
   <code>Go + Gin</code>
   <code>Vue 3</code>
   <code>PostgreSQL</code>
-  <code>Built-in / Wasm / gRPC</code>
+  <code>Core / Feature / External / Resource</code>
 </div>
 
 <div class="doc-link-grid">
@@ -41,6 +41,7 @@ STOP_EXISTING=true make dev-all
 
 ::: warning 当前开发边界
 CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL、Redis、NATS 和 pgAdmin 等开发依赖，不应把本文中的本地配置直接用于公网生产环境。
+当前兼容名称 `runtime: grpc` 表示受管外部进程，Extension/Event 使用受限 loopback HTTP；它不是标准 protobuf gRPC 协议。
 :::
 
 ## 参与开发

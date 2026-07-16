@@ -39,6 +39,7 @@ type Manifest struct {
 	ManagedData    ManagedDataConfig   `yaml:"managed_data,omitempty" json:"managed_data,omitempty"`
 	Files          FileCapability      `yaml:"files,omitempty" json:"files,omitempty"`
 	Release        ReleaseConfig       `yaml:"release,omitempty" json:"release,omitempty"`
+	Experience     ExperienceConfig    `yaml:"experience,omitempty" json:"experience,omitempty"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -163,6 +164,18 @@ type ReleaseConfig struct {
 	DataSchemaVersion string `yaml:"data_schema_version,omitempty" json:"data_schema_version,omitempty"`
 }
 
+// ExperienceConfig contains optional user-facing wording. It is deliberately
+// descriptive only: it cannot grant Runtime, Host API, or data permissions.
+// Older packages omit it and receive conservative catalog defaults.
+type ExperienceConfig struct {
+	UseCases         []string `yaml:"use_cases,omitempty" json:"use_cases,omitempty"`
+	DataUse          string   `yaml:"data_use,omitempty" json:"data_use,omitempty"`
+	RiskSummary      string   `yaml:"risk_summary,omitempty" json:"risk_summary,omitempty"`
+	DisabledBehavior string   `yaml:"disabled_behavior,omitempty" json:"disabled_behavior,omitempty"`
+	Maintainer       string   `yaml:"maintainer,omitempty" json:"maintainer,omitempty"`
+	DocumentationURL string   `yaml:"documentation_url,omitempty" json:"documentation_url,omitempty"`
+}
+
 type ConfigSchema struct {
 	Fields []ConfigField `yaml:"fields" json:"fields"`
 }
@@ -265,6 +278,23 @@ func (m *Manifest) Validate() error {
 	if m.APIVersion == ManifestAPIVersionV2 {
 		if err := m.validateV2(); err != nil {
 			return err
+		}
+	}
+	return m.validateExperience()
+}
+
+func (m *Manifest) validateExperience() error {
+	if len(m.Experience.UseCases) > 8 {
+		return errors.New("manifest: experience.use_cases supports at most 8 items")
+	}
+	for _, value := range m.Experience.UseCases {
+		if len([]rune(value)) > 120 {
+			return errors.New("manifest: experience.use_cases item is too long")
+		}
+	}
+	for _, value := range []string{m.Experience.DataUse, m.Experience.RiskSummary, m.Experience.DisabledBehavior, m.Experience.Maintainer, m.Experience.DocumentationURL} {
+		if len([]rune(value)) > 1000 {
+			return errors.New("manifest: experience field is too long")
 		}
 	}
 	return nil

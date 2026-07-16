@@ -10,10 +10,12 @@ const (
 	PluginName    = "controlled-richtext-article"
 	ContentFormat = "richtext_article"
 
-	StatusDraft     = "draft"
-	StatusPublished = "published"
-	StatusOffline   = "offline"
-	StatusDeleted   = "deleted"
+	StatusDraft         = "draft"
+	StatusPublished     = "published"
+	StatusPendingReview = "pending_review"
+	StatusOffline       = "offline"
+	StatusTrashed       = "trashed"
+	StatusDeleted       = "deleted"
 )
 
 var (

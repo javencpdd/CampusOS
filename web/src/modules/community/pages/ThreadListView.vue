@@ -3,7 +3,7 @@
     <div class="list-header">
       <h2>帖子列表</h2>
       <div class="search-bar">
-        <el-input v-model="keyword" placeholder="搜索帖子..." @keyup.enter="loadThreads" style="width: 300px">
+        <el-input v-model="keyword" class="thread-search-input" placeholder="搜索帖子..." @keyup.enter="loadThreads">
           <template #append
             ><el-button @click="loadThreads"
               ><el-icon><Search /></el-icon></el-button
@@ -145,5 +145,20 @@ watch(
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+.thread-search-input {
+  width: min(300px, 100%);
+}
+@media (max-width: 600px) {
+  .list-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .search-bar,
+  .thread-search-input {
+    width: 100%;
+  }
 }
 </style>

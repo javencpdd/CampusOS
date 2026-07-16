@@ -131,6 +131,27 @@ func (h *Handler) GetMe(c *gin.Context) {
 	response.Success(c, space)
 }
 
+// ListOwnContents exposes author-only profile content states. This endpoint
+// is intentionally separate from public /u/:username/contents so a visitor
+// cannot infer a user's drafts, private posts or moderation history.
+func (h *Handler) ListOwnContents(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	page, pageSize, ok := pagination(c)
+	if !ok {
+		return
+	}
+	contents, total, err := h.svc.ListOwnContents(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
 func (h *Handler) UpdateMe(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {

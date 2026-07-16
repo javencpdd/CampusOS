@@ -10,31 +10,42 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/campusos/CampusOS/internal/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 )
 
-const APIPrefix = "/api/v1"
+const (
+	APIPrefix              = "/api/v1"
+	OpenAPIContractVersion = platformversion.OpenAPI
+)
 
 var (
-	routePattern      = regexp.MustCompile(`^\s*(public|authenticated|admin)(?:\.Permission\("([^"]+)",\s*"([^"]+)"\))?\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",(.*)$`)
-	permissionPattern = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
-	selectorPattern   = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
+	routePattern                 = regexp.MustCompile(`^\s*(public|authenticated|admin)(.*?)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",(.*)$`)
+	legacyRoutePermissionPattern = regexp.MustCompile(`\.Permission\("([^"]+)",\s*"([^"]+)"\)`)
+	permissionCodePattern        = regexp.MustCompile(`\.PermissionCode\("([^"]+)"\)`)
+	operationPattern             = regexp.MustCompile(`\.Operation\("([^"]+)"\)`)
+	permissionPattern            = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
+	selectorPattern              = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
 )
 
 // RouteContract is the machine-readable authorization record for one Gin route.
 type RouteContract struct {
-	Method      string `json:"method"`
-	Path        string `json:"path"`
-	Handler     string `json:"handler"`
-	ModuleOwner string `json:"module_owner"`
-	Audience    string `json:"audience"`
-	Auth        string `json:"auth"`
-	Permission  string `json:"permission,omitempty"`
-	Ownership   string `json:"ownership"`
-	Scope       string `json:"scope"`
-	Audit       string `json:"audit"`
-	Stability   string `json:"stability"`
-	SourceLine  int    `json:"-"`
+	Method         string   `json:"method"`
+	Path           string   `json:"path"`
+	Handler        string   `json:"handler"`
+	ModuleOwner    string   `json:"module_owner"`
+	Audience       string   `json:"audience"`
+	Auth           string   `json:"auth"`
+	Permission     string   `json:"permission,omitempty"`
+	PermissionCode string   `json:"permission_code,omitempty"`
+	OperationCode  string   `json:"operation_code"`
+	LegacyAliases  []string `json:"legacy_aliases,omitempty"`
+	Ownership      string   `json:"ownership"`
+	Scope          string   `json:"scope"`
+	Audit          string   `json:"audit"`
+	Stability      string   `json:"stability"`
+	SourceLine     int      `json:"-"`
 }
 
 func ParseServerRoutes(path string) ([]RouteContract, error) {
@@ -53,8 +64,8 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		if len(matches) == 0 {
 			continue
 		}
-		group, permissionResource, permissionAction := matches[1], matches[2], matches[3]
-		method, routePath, arguments := matches[4], matches[5], matches[6]
+		group, prefix := matches[1], matches[2]
+		method, routePath, arguments := matches[3], matches[4], matches[5]
 		selectors := selectorPattern.FindAllStringSubmatch(arguments, -1)
 		if len(selectors) == 0 {
 			return nil, fmt.Errorf("route at line %d has no handler selector", lineNumber)
@@ -70,14 +81,34 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 			SourceLine:  lineNumber,
 		}
 		applyAuthorization(&route, group, method)
-		if permissionResource != "" && permissionAction != "" {
-			route.Permission = permissionResource + ":" + permissionAction
+		if permission := legacyRoutePermissionPattern.FindStringSubmatch(prefix); len(permission) > 0 {
+			route.Permission = permission[1] + ":" + permission[2]
+			route.PermissionCode = permissionCodeFor(route.Permission)
+		}
+		if permission := permissionCodePattern.FindStringSubmatch(prefix); len(permission) > 0 {
+			route.PermissionCode = permission[1]
+			if resource, action, ok := legacyPermissionForCode(route.PermissionCode); ok {
+				route.Permission = resource + ":" + action
+			}
 		}
 		if permission := permissionPattern.FindStringSubmatch(arguments); len(permission) > 0 {
 			route.Permission = permission[1] + ":" + permission[2]
+			route.PermissionCode = permissionCodeFor(route.Permission)
 		}
 		if group == "admin" && route.Permission == "" {
 			return nil, fmt.Errorf("admin route %s %s has no explicit permission", method, route.Path)
+		}
+		if group == "admin" && route.PermissionCode == "" {
+			return nil, fmt.Errorf("admin route %s %s has no permission code", method, route.Path)
+		}
+		if operation := operationPattern.FindStringSubmatch(prefix); len(operation) > 0 {
+			route.OperationCode = operation[1]
+		} else {
+			route.OperationCode = "http." + strings.ToLower(method) + "." + routeID(route.Path)
+		}
+		route.LegacyAliases = []string{
+			"http." + strings.ToLower(method) + "." + routeID(route.Path),
+			"httpapi." + strings.ToLower(method) + "." + routeID(route.Path),
 		}
 		routes = append(routes, route)
 	}
@@ -101,16 +132,27 @@ func ValidateRouteDescriptors(routes []RouteContract) error {
 		if strings.HasPrefix(item.ModuleOwner, "unowned:") || item.ModuleOwner == "" || item.ModuleOwner == "transport.httpapi" {
 			return fmt.Errorf("route %s %s has no business module owner", item.Method, item.Path)
 		}
+		operationCode := item.OperationCode
+		if operationCode == "" {
+			operationCode = "http." + strings.ToLower(item.Method) + "." + routeID(item.Path)
+		}
+		permissionCode := item.PermissionCode
+		if permissionCode == "" && item.Permission != "" {
+			permissionCode = permissionCodeFor(item.Permission)
+		}
 		descriptor := platformroute.Descriptor{
-			ID:         "httpapi." + strings.ToLower(item.Method) + "." + routeID(item.Path),
-			Owner:      item.ModuleOwner,
-			Method:     item.Method,
-			Path:       item.Path,
-			Audience:   platformroute.Audience(item.Audience),
-			Auth:       item.Auth,
-			Permission: item.Permission,
-			FeatureID:  featureForRoute(item.Path),
-			Audit:      item.Audit,
+			ID:             "httpapi." + strings.ToLower(item.Method) + "." + routeID(item.Path),
+			OperationCode:  operationCode,
+			LegacyAliases:  append([]string(nil), item.LegacyAliases...),
+			Owner:          item.ModuleOwner,
+			Method:         item.Method,
+			Path:           item.Path,
+			Audience:       platformroute.Audience(item.Audience),
+			Auth:           item.Auth,
+			Permission:     item.Permission,
+			PermissionCode: permissionCode,
+			FeatureID:      featureForRoute(item.Path),
+			Audit:          item.Audit,
 		}
 		if err := registry.Add(descriptor); err != nil {
 			return fmt.Errorf("register route descriptor %s %s: %w", item.Method, item.Path, err)
@@ -124,9 +166,11 @@ func ValidateRouteDescriptors(routes []RouteContract) error {
 
 func moduleOwnerFor(handler, path string) string {
 	switch {
+	case path == APIPrefix:
+		return "core.platform-api"
 	case strings.HasPrefix(path, APIPrefix+"/moderation"):
 		return "core.moderation"
-	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), path == APIPrefix+"/health":
+	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
 		return "core.identity"
 	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"):
 		return "core.community"
@@ -155,6 +199,18 @@ func moduleOwnerFor(handler, path string) string {
 	default:
 		return "unowned:" + handler
 	}
+}
+
+func permissionCodeFor(permission string) string {
+	parts := strings.SplitN(permission, ":", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+	return permissioncode.FromLegacy(parts[0], parts[1])
+}
+
+func legacyPermissionForCode(code string) (string, string, bool) {
+	return permissioncode.LegacyForCode(code)
 }
 
 func routeID(path string) string {
@@ -209,7 +265,7 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 	payload := struct {
 		Version string          `json:"version"`
 		Routes  []RouteContract `json:"routes"`
-	}{Version: "v0.6", Routes: routes}
+	}{Version: "v0.10", Routes: routes}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return nil, err
@@ -219,18 +275,18 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 
 func RoutesMarkdown(routes []RouteContract) []byte {
 	var out strings.Builder
-	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.6\n\n")
+	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.10\n\n")
 	out.WriteString("> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。\n\n")
 	out.WriteString("当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。\n\n")
-	out.WriteString("| Method | Path | Module | Handler | Auth | Permission | Ownership | Scope | Audit |\n")
+	out.WriteString("| Method | Path | Operation | Module | Handler | Auth | Permission Code | Ownership | Scope | Audit |\n")
 	out.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, route := range routes {
-		permission := route.Permission
+		permission := route.PermissionCode
 		if permission == "" {
 			permission = "-"
 		}
-		fmt.Fprintf(&out, "| `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` |\n",
-			route.Method, route.Path, route.ModuleOwner, route.Handler, route.Auth, permission, route.Ownership, route.Scope, route.Audit)
+		fmt.Fprintf(&out, "| `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` | `%s` |\n",
+			route.Method, route.Path, route.OperationCode, route.ModuleOwner, route.Handler, route.Auth, permission, route.Ownership, route.Scope, route.Audit)
 	}
 	return []byte(out.String())
 }
@@ -247,7 +303,7 @@ func OpenAPI(routes []RouteContract) []byte {
 	}
 	sort.Strings(paths)
 	var out strings.Builder
-	out.WriteString("openapi: 3.0.3\ninfo:\n  title: CampusOS Current HTTP API\n  version: 0.6.9-experimental\n  description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.\nservers:\n  - url: http://localhost:8080\npaths:\n")
+	fmt.Fprintf(&out, "openapi: 3.0.3\ninfo:\n  title: CampusOS Current HTTP API\n  version: %s\n  description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.\nservers:\n  - url: http://localhost:8080\npaths:\n", OpenAPIContractVersion)
 	for _, path := range paths {
 		fmt.Fprintf(&out, "  %s:\n", path)
 		sort.Slice(grouped[path], func(i, j int) bool { return grouped[path][i].Method < grouped[path][j].Method })
@@ -261,8 +317,9 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-ownership: %s\n", route.Ownership)
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
-			if route.Permission != "" {
-				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.Permission)
+			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
+			if route.PermissionCode != "" {
+				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
 			if route.Auth != "none" {
 				out.WriteString("      security:\n        - bearerAuth: []\n")

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CampusOS Current HTTP API
-  version: 0.6.9-experimental
+  version: 0.10.0-experimental
   description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.
 servers:
   - url: http://localhost:8080
@@ -15,7 +15,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:read
+      x-campusos-operation: http.get.api.v1.admin.threads
+      x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
       parameters:
@@ -43,6 +44,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/trash:
+    get:
+      operationId: threadHandler_AdminListTrash
+      summary: GET /api/v1/admin/threads/trash
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.admin.threads.trash
+      x-campusos-permission: community.thread.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/threads/{id}:
     delete:
       operationId: threadHandler_AdminDeleteThread
@@ -52,7 +79,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:delete
+      x-campusos-operation: http.community.thread.trash
+      x-campusos-permission: community.thread.trash
       security:
         - bearerAuth: []
       parameters:
@@ -70,6 +98,265 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/direct-restore:
+    post:
+      operationId: threadHandler_AdminDirectRestore
+      summary: POST /api/v1/admin/threads/:id/direct-restore
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.direct_restore
+      x-campusos-permission: community.thread.direct_restore
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/moderation-actions:
+    get:
+      operationId: threadHandler_AdminModerationActions
+      summary: GET /api/v1/admin/threads/:id/moderation-actions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.admin.threads.id.moderation_actions
+      x-campusos-permission: community.thread.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/purge:
+    delete:
+      operationId: threadHandler_AdminPurge
+      summary: DELETE /api/v1/admin/threads/:id/purge
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.purge
+      x-campusos-permission: community.thread.purge
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/review/approve:
+    post:
+      operationId: threadHandler_AdminApprove
+      summary: POST /api/v1/admin/threads/:id/review/approve
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.review_approve
+      x-campusos-permission: community.thread.review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/review/reject:
+    post:
+      operationId: threadHandler_AdminReject
+      summary: POST /api/v1/admin/threads/:id/review/reject
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.review_reject
+      x-campusos-permission: community.thread.review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/take-down:
+    post:
+      operationId: threadHandler_AdminTakeDown
+      summary: POST /api/v1/admin/threads/:id/take-down
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.take_down
+      x-campusos-permission: community.thread.take_down
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/threads/{id}/trash/restore:
+    post:
+      operationId: threadHandler_AdminRestoreTrash
+      summary: POST /api/v1/admin/threads/:id/trash/restore
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.thread.restore_trash
+      x-campusos-permission: community.thread.restore
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/ai/logs:
     get:
       operationId: d_AI
@@ -79,7 +366,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.ai-gateway
       x-campusos-scope: global
-      x-campusos-permission: ai:read
+      x-campusos-operation: http.get.api.v1.ai.logs
+      x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
       responses:
@@ -104,7 +392,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.ai-gateway
       x-campusos-scope: global
-      x-campusos-permission: ai:read
+      x-campusos-operation: http.get.api.v1.ai.status
+      x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
       responses:
@@ -129,6 +418,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.login
       requestBody:
         required: true
         content:
@@ -159,6 +449,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.identity
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.auth.me
       security:
         - bearerAuth: []
       responses:
@@ -188,6 +479,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.register
       requestBody:
         required: true
         content:
@@ -209,6 +501,32 @@ paths:
                         $ref: '#/components/schemas/User'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/authorization-audits:
+    get:
+      operationId: roleHandler_ListAuthorizationAudits
+      summary: GET /api/v1/authorization-audits
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.role.authorization_audits
+      x-campusos-permission: identity.role.read_audit
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/categories:
     get:
       operationId: categoryHandler_List
@@ -218,6 +536,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.categories
       responses:
         '200':
           description: Success
@@ -235,7 +554,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: category:write
+      x-campusos-operation: http.post.api.v1.categories
+      x-campusos-permission: community.category.write
       security:
         - bearerAuth: []
       requestBody:
@@ -272,7 +592,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: category:delete
+      x-campusos-operation: http.delete.api.v1.categories.id
+      x-campusos-permission: community.category.delete
       security:
         - bearerAuth: []
       parameters:
@@ -298,6 +619,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.categories.id
       parameters:
         - name: id
           in: path
@@ -326,7 +648,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: category:write
+      x-campusos-operation: http.put.api.v1.categories.id
+      x-campusos-permission: community.category.write
       security:
         - bearerAuth: []
       parameters:
@@ -369,6 +692,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.events
       responses:
         '200':
           description: Success
@@ -387,6 +711,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.extensions.plugin.wildcardpath
       security:
         - bearerAuth: []
       parameters:
@@ -421,6 +746,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.extensions.plugin.wildcardpath
       security:
         - bearerAuth: []
       parameters:
@@ -455,6 +781,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.patch.api.v1.extensions.plugin.wildcardpath
       security:
         - bearerAuth: []
       parameters:
@@ -496,6 +823,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.extensions.plugin.wildcardpath
       security:
         - bearerAuth: []
       parameters:
@@ -537,6 +865,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.extensions.plugin.wildcardpath
       security:
         - bearerAuth: []
       parameters:
@@ -579,6 +908,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.health
       responses:
         '200':
           description: Success
@@ -597,6 +927,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.home.config
       responses:
         '200':
           description: Success
@@ -615,7 +946,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.post.api.v1.home.style_packs.apply
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       requestBody:
@@ -647,7 +979,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.post.api.v1.home.style_packs.apply_source
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       requestBody:
@@ -679,7 +1012,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.get.api.v1.home.style_packs.example
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       responses:
@@ -704,7 +1038,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.get.api.v1.home.style_packs.example.zip
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       responses:
@@ -729,7 +1064,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.post.api.v1.home.style_packs.rollback
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       requestBody:
@@ -761,7 +1097,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.get.api.v1.home.style_packs.sources
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       responses:
@@ -786,7 +1123,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
-      x-campusos-permission: homepage:configure
+      x-campusos-operation: http.post.api.v1.home.style_packs.validate
+      x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
       requestBody:
@@ -818,7 +1156,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.integration-overview
       x-campusos-scope: global
-      x-campusos-permission: integration:read
+      x-campusos-operation: http.get.api.v1.integrations.overview
+      x-campusos-permission: integration.integration.read
       security:
         - bearerAuth: []
       responses:
@@ -843,7 +1182,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
-      x-campusos-permission: mcp:read
+      x-campusos-operation: http.get.api.v1.mcp.audit
+      x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
       responses:
@@ -868,7 +1208,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
-      x-campusos-permission: mcp:read
+      x-campusos-operation: http.get.api.v1.mcp.settings
+      x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
       responses:
@@ -892,7 +1233,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
-      x-campusos-permission: mcp:configure
+      x-campusos-operation: http.put.api.v1.mcp.settings
+      x-campusos-permission: integration.mcp.configure
       security:
         - bearerAuth: []
       requestBody:
@@ -924,7 +1266,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
-      x-campusos-permission: mcp:read
+      x-campusos-operation: http.get.api.v1.mcp.tools
+      x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
       responses:
@@ -949,7 +1292,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
-      x-campusos-permission: mcp:call
+      x-campusos-operation: http.post.api.v1.mcp.tools.name.call
+      x-campusos-permission: integration.mcp.call
       security:
         - bearerAuth: []
       parameters:
@@ -987,7 +1331,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
-      x-campusos-permission: message:read
+      x-campusos-operation: http.get.api.v1.messages.adapters
+      x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
       responses:
@@ -1012,7 +1357,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
-      x-campusos-permission: message:write
+      x-campusos-operation: http.post.api.v1.messages.bindings
+      x-campusos-permission: integration.message.write
       security:
         - bearerAuth: []
       requestBody:
@@ -1044,7 +1390,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
-      x-campusos-permission: message:write
+      x-campusos-operation: http.post.api.v1.messages.local.inbound
+      x-campusos-permission: integration.message.write
       security:
         - bearerAuth: []
       requestBody:
@@ -1076,7 +1423,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
-      x-campusos-permission: message:read
+      x-campusos-operation: http.get.api.v1.messages.logs
+      x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
       responses:
@@ -1101,7 +1449,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
-      x-campusos-permission: message:read
+      x-campusos-operation: http.get.api.v1.messages.summary
+      x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
       responses:
@@ -1126,7 +1475,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.integration-overview
       x-campusos-scope: global
-      x-campusos-permission: metrics:read
+      x-campusos-operation: http.get.api.v1.metrics.summary
+      x-campusos-permission: platform.metrics.read
       security:
         - bearerAuth: []
       responses:
@@ -1151,7 +1501,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
-      x-campusos-permission: role:read
+      x-campusos-operation: http.get.api.v1.moderation.admin.moderators
+      x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
       responses:
@@ -1176,7 +1527,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
-      x-campusos-permission: role:read
+      x-campusos-operation: http.get.api.v1.moderation.admin.moderators.id
+      x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
       parameters:
@@ -1206,7 +1558,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
-      x-campusos-permission: role:assign
+      x-campusos-operation: http.put.api.v1.moderation.admin.moderators.id
+      x-campusos-permission: identity.role.assign
       security:
         - bearerAuth: []
       parameters:
@@ -1244,6 +1597,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.get.api.v1.moderation.me
       security:
         - bearerAuth: []
       responses:
@@ -1268,6 +1622,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.get.api.v1.moderation.status
       security:
         - bearerAuth: []
       responses:
@@ -1292,6 +1647,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.post.api.v1.moderation.threads.id.lock
       security:
         - bearerAuth: []
       parameters:
@@ -1329,6 +1685,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.post.api.v1.moderation.threads.id.pin
       security:
         - bearerAuth: []
       parameters:
@@ -1366,6 +1723,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.delete.api.v1.moderation.threads.id.posts.post_id
       security:
         - bearerAuth: []
       parameters:
@@ -1401,6 +1759,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.post.api.v1.moderation.threads.id.unlock
       security:
         - bearerAuth: []
       parameters:
@@ -1438,6 +1797,7 @@ paths:
       x-campusos-ownership: category-membership
       x-campusos-module-owner: core.moderation
       x-campusos-scope: assigned-category
+      x-campusos-operation: http.post.api.v1.moderation.threads.id.unpin
       security:
         - bearerAuth: []
       parameters:
@@ -1466,6 +1826,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/permissions:
+    get:
+      operationId: roleHandler_ListPermissionDefinitions
+      summary: GET /api/v1/permissions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.permissions
+      x-campusos-permission: identity.role.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/platform/logs/sources:
     get:
       operationId: d_PlatformLog
@@ -1475,7 +1861,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.platform-log
       x-campusos-scope: global
-      x-campusos-permission: platform_log:read
+      x-campusos-operation: http.get.api.v1.platform.logs.sources
+      x-campusos-permission: platform.platform_log.read
       security:
         - bearerAuth: []
       responses:
@@ -1500,7 +1887,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.platform-log
       x-campusos-scope: global
-      x-campusos-permission: platform_log:read
+      x-campusos-operation: http.get.api.v1.platform.logs.stream
+      x-campusos-permission: platform.platform_log.read
       security:
         - bearerAuth: []
       responses:
@@ -1525,6 +1913,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market
       security:
         - bearerAuth: []
       responses:
@@ -1549,7 +1938,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugin_market.admin.audits
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       responses:
@@ -1574,7 +1964,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:configure
+      x-campusos-operation: http.put.api.v1.plugin_market.admin.catalog.name
+      x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
       parameters:
@@ -1612,7 +2003,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugin_market.admin.overview
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       responses:
@@ -1637,7 +2029,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugin_market.admin.releases.name
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       parameters:
@@ -1667,7 +2060,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:install
+      x-campusos-operation: http.post.api.v1.plugin_market.admin.releases.name
+      x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
       parameters:
@@ -1705,7 +2099,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugin_market.admin.requests
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       responses:
@@ -1730,7 +2125,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:configure
+      x-campusos-operation: http.post.api.v1.plugin_market.admin.requests.id.review
+      x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
       parameters:
@@ -1768,6 +2164,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.me
       security:
         - bearerAuth: []
       responses:
@@ -1792,6 +2189,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.me.usage
       security:
         - bearerAuth: []
       responses:
@@ -1816,6 +2214,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.search
       security:
         - bearerAuth: []
       responses:
@@ -1840,6 +2239,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.plugin_market.name.data
       security:
         - bearerAuth: []
       parameters:
@@ -1870,6 +2270,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_market.name.enable
       security:
         - bearerAuth: []
       parameters:
@@ -1907,6 +2308,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.name.export
       security:
         - bearerAuth: []
       parameters:
@@ -1937,6 +2339,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.name.files
       security:
         - bearerAuth: []
       parameters:
@@ -1966,6 +2369,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_market.name.files
       security:
         - bearerAuth: []
       parameters:
@@ -2003,6 +2407,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.plugin_market.name.files.file_id
       security:
         - bearerAuth: []
       parameters:
@@ -2038,6 +2443,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.name.files.file_id.download
       security:
         - bearerAuth: []
       parameters:
@@ -2073,6 +2479,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.name.records.collection
       security:
         - bearerAuth: []
       parameters:
@@ -2107,6 +2514,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_market.name.records.collection
       security:
         - bearerAuth: []
       parameters:
@@ -2149,6 +2557,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.plugin_market.name.records.collection.key
       security:
         - bearerAuth: []
       parameters:
@@ -2188,6 +2597,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_market.name.records.collection.key
       security:
         - bearerAuth: []
       parameters:
@@ -2227,6 +2637,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.plugin_market.name.records.collection.key
       security:
         - bearerAuth: []
       parameters:
@@ -2274,6 +2685,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_market.name.request
       security:
         - bearerAuth: []
       parameters:
@@ -2311,6 +2723,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_market.name.revoke
       security:
         - bearerAuth: []
       parameters:
@@ -2348,7 +2761,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:install
+      x-campusos-operation: http.post.api.v1.plugin_packages.import
+      x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
       requestBody:
@@ -2380,7 +2794,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:install
+      x-campusos-operation: http.post.api.v1.plugin_packages.precheck
+      x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
       requestBody:
@@ -2412,7 +2827,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugins
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       responses:
@@ -2437,7 +2853,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:uninstall
+      x-campusos-operation: http.delete.api.v1.plugins.name
+      x-campusos-permission: plugin.plugin.uninstall
       security:
         - bearerAuth: []
       parameters:
@@ -2467,7 +2884,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugins.name
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       parameters:
@@ -2498,7 +2916,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:configure
+      x-campusos-operation: http.put.api.v1.plugins.name.config
+      x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
       parameters:
@@ -2536,7 +2955,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:lifecycle
+      x-campusos-operation: http.post.api.v1.plugins.name.disable
+      x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
       parameters:
@@ -2574,7 +2994,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:lifecycle
+      x-campusos-operation: http.post.api.v1.plugins.name.enable
+      x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
       parameters:
@@ -2612,7 +3033,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugins.name.export
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       parameters:
@@ -2643,7 +3065,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugins.name.logs
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       parameters:
@@ -2674,7 +3097,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:lifecycle
+      x-campusos-operation: http.post.api.v1.plugins.name.reload
+      x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
       parameters:
@@ -2712,7 +3136,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:install
+      x-campusos-operation: http.post.api.v1.plugins.name.rollback
+      x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
       parameters:
@@ -2750,7 +3175,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
-      x-campusos-permission: plugin:read
+      x-campusos-operation: http.get.api.v1.plugins.name.snapshots
+      x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
       parameters:
@@ -2781,6 +3207,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.articles
       security:
         - bearerAuth: []
       requestBody:
@@ -2812,6 +3239,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.richtext.articles.id
       security:
         - bearerAuth: []
       parameters:
@@ -2841,6 +3269,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.richtext.articles.id
       parameters:
         - name: id
           in: path
@@ -2864,6 +3293,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.richtext.articles.id
       security:
         - bearerAuth: []
       parameters:
@@ -2901,7 +3331,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
-      x-campusos-permission: richtext:moderate
+      x-campusos-operation: http.community.richtext.trash
+      x-campusos-permission: community.thread.trash
       security:
         - bearerAuth: []
       parameters:
@@ -2932,7 +3363,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
-      x-campusos-permission: richtext:moderate
+      x-campusos-operation: http.community.richtext.take_down
+      x-campusos-permission: community.thread.take_down
       security:
         - bearerAuth: []
       parameters:
@@ -2970,7 +3402,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
-      x-campusos-permission: richtext:moderate
+      x-campusos-operation: http.community.richtext.restore
+      x-campusos-permission: community.thread.direct_restore
       security:
         - bearerAuth: []
       parameters:
@@ -3008,6 +3441,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.richtext.articles.id.me
       security:
         - bearerAuth: []
       parameters:
@@ -3038,6 +3472,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.articles.id.offline
       security:
         - bearerAuth: []
       parameters:
@@ -3075,6 +3510,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.articles.id.publish
       security:
         - bearerAuth: []
       parameters:
@@ -3112,6 +3548,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.assets
       security:
         - bearerAuth: []
       requestBody:
@@ -3143,6 +3580,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.richtext.assets.user_id.filename
       parameters:
         - name: user_id
           in: path
@@ -3172,6 +3610,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.preview
       security:
         - bearerAuth: []
       requestBody:
@@ -3203,6 +3642,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.richtext.status
       responses:
         '200':
           description: Success
@@ -3221,9 +3661,112 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: role:read
+      x-campusos-operation: http.get.api.v1.roles
+      x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: roleHandler_CreateCustomRole
+      summary: POST /api/v1/roles
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.role.create
+      x-campusos-permission: identity.role.create
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/roles/{id}/permissions:
+    get:
+      operationId: roleHandler_ListRolePermissions
+      summary: GET /api/v1/roles/:id/permissions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.roles.id.permissions
+      x-campusos-permission: identity.role.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: roleHandler_UpdateRolePermissions
+      summary: PUT /api/v1/roles/:id/permissions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.role.update_permissions
+      x-campusos-permission: identity.role.update_permissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success
@@ -3246,6 +3789,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.schedule.me
       security:
         - bearerAuth: []
       responses:
@@ -3269,6 +3813,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.schedule.me
       security:
         - bearerAuth: []
       requestBody:
@@ -3300,6 +3845,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.schedule.me.import
       security:
         - bearerAuth: []
       requestBody:
@@ -3331,6 +3877,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.schedule.me.terms
       security:
         - bearerAuth: []
       responses:
@@ -3355,6 +3902,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.schedule.me.terms.activate
       security:
         - bearerAuth: []
       requestBody:
@@ -3386,6 +3934,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-schedule
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.schedule.status
       responses:
         '200':
           description: Success
@@ -3404,6 +3953,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.space.user_id
       parameters:
         - name: user_id
           in: path
@@ -3428,6 +3978,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.space.user_id.contents
       parameters:
         - name: user_id
           in: path
@@ -3452,7 +4003,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
-      x-campusos-permission: space:manage
+      x-campusos-operation: http.get.api.v1.spaces.admin.summary
+      x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
       responses:
@@ -3477,6 +4029,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.spaces.files.user_id.avatars.filename
       parameters:
         - name: user_id
           in: path
@@ -3506,6 +4059,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me
       security:
         - bearerAuth: []
       responses:
@@ -3529,6 +4083,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.spaces.me
       security:
         - bearerAuth: []
       requestBody:
@@ -3560,6 +4115,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.avatar
       security:
         - bearerAuth: []
       requestBody:
@@ -3582,6 +4138,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/spaces/me/contents:
+    get:
+      operationId: d_Space
+      summary: GET /api/v1/spaces/me/contents
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.contents
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/me/storage:
     get:
       operationId: d_Space
@@ -3591,6 +4172,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.storage
       security:
         - bearerAuth: []
       responses:
@@ -3615,6 +4197,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.apply
       security:
         - bearerAuth: []
       requestBody:
@@ -3646,6 +4229,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.default
       security:
         - bearerAuth: []
       requestBody:
@@ -3677,6 +4261,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.export
       security:
         - bearerAuth: []
       requestBody:
@@ -3708,6 +4293,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.styles.html_example
       security:
         - bearerAuth: []
       responses:
@@ -3732,6 +4318,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.html.apply
       security:
         - bearerAuth: []
       requestBody:
@@ -3763,6 +4350,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.html.validate
       security:
         - bearerAuth: []
       requestBody:
@@ -3794,6 +4382,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.packs.apply
       security:
         - bearerAuth: []
       requestBody:
@@ -3825,6 +4414,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.packs.apply_source
       security:
         - bearerAuth: []
       requestBody:
@@ -3856,6 +4446,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.example
       security:
         - bearerAuth: []
       responses:
@@ -3880,6 +4471,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.example.zip
       security:
         - bearerAuth: []
       responses:
@@ -3904,6 +4496,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.sources
       security:
         - bearerAuth: []
       responses:
@@ -3928,6 +4521,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.packs.validate
       security:
         - bearerAuth: []
       requestBody:
@@ -3959,6 +4553,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.preview
       security:
         - bearerAuth: []
       requestBody:
@@ -3990,6 +4585,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.rollback
       security:
         - bearerAuth: []
       requestBody:
@@ -4021,6 +4617,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.spaces.me.styles.validate
       security:
         - bearerAuth: []
       requestBody:
@@ -4052,6 +4649,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.sync_status
       security:
         - bearerAuth: []
       responses:
@@ -4076,7 +4674,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
-      x-campusos-permission: space:manage
+      x-campusos-operation: http.post.api.v1.spaces.user_id.disable
+      x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
       parameters:
@@ -4114,7 +4713,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
-      x-campusos-permission: space:manage
+      x-campusos-operation: http.post.api.v1.spaces.user_id.enable
+      x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
       parameters:
@@ -4152,6 +4752,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.threads
       parameters:
         - name: page
           in: query
@@ -4181,6 +4782,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.threads
       security:
         - bearerAuth: []
       requestBody:
@@ -4217,6 +4819,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.threads.id
       security:
         - bearerAuth: []
       parameters:
@@ -4242,6 +4845,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.threads.id
       parameters:
         - name: id
           in: path
@@ -4270,6 +4874,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.threads.id
       security:
         - bearerAuth: []
       parameters:
@@ -4312,7 +4917,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:lock
+      x-campusos-operation: http.post.api.v1.threads.id.lock
+      x-campusos-permission: community.thread.lock
       security:
         - bearerAuth: []
       parameters:
@@ -4343,6 +4949,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.threads.id.me
       security:
         - bearerAuth: []
       parameters:
@@ -4378,7 +4985,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:pin
+      x-campusos-operation: http.post.api.v1.threads.id.pin
+      x-campusos-permission: community.thread.pin
       security:
         - bearerAuth: []
       parameters:
@@ -4409,6 +5017,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.threads.id.posts
       parameters:
         - name: id
           in: path
@@ -4443,6 +5052,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.threads.id.posts
       security:
         - bearerAuth: []
       parameters:
@@ -4485,6 +5095,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.threads.id.posts.me
       security:
         - bearerAuth: []
       parameters:
@@ -4526,6 +5137,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.threads.id.posts.post_id
       security:
         - bearerAuth: []
       parameters:
@@ -4556,6 +5168,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.community
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.threads.id.posts.post_id
       security:
         - bearerAuth: []
       parameters:
@@ -4594,6 +5207,82 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/threads/{id}/submit-review:
+    post:
+      operationId: threadHandler_SubmitForReview
+      summary: POST /api/v1/threads/:id/submit-review
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.threads.id.submit_review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/threads/{id}/trash/restore:
+    post:
+      operationId: threadHandler_RestoreOwnTrash
+      summary: POST /api/v1/threads/:id/trash/restore
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.threads.id.trash.restore
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/threads/{id}/unlock:
     post:
       operationId: threadHandler_UnlockThread
@@ -4603,7 +5292,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:lock
+      x-campusos-operation: http.post.api.v1.threads.id.unlock
+      x-campusos-permission: community.thread.lock
       security:
         - bearerAuth: []
       parameters:
@@ -4634,7 +5324,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-permission: thread:pin
+      x-campusos-operation: http.post.api.v1.threads.id.unpin
+      x-campusos-permission: community.thread.pin
       security:
         - bearerAuth: []
       parameters:
@@ -4665,6 +5356,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.u.username
       parameters:
         - name: username
           in: path
@@ -4689,6 +5381,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.u.username.contents
       parameters:
         - name: username
           in: path
@@ -4713,6 +5406,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.ui.events
       responses:
         '200':
           description: Success
@@ -4731,6 +5425,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.ui.runtime_manifest
       responses:
         '200':
           description: Success
@@ -4749,6 +5444,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.users
       parameters:
         - name: page
           in: query
@@ -4779,6 +5475,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.users.id
       parameters:
         - name: id
           in: path
@@ -4807,6 +5504,7 @@ paths:
       x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.identity
       x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.users.id
       security:
         - bearerAuth: []
       parameters:
@@ -4849,7 +5547,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: user:suspend
+      x-campusos-operation: http.post.api.v1.users.id.activate
+      x-campusos-permission: identity.user.suspend
       security:
         - bearerAuth: []
       parameters:
@@ -4880,7 +5579,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: role:revoke
+      x-campusos-operation: http.delete.api.v1.users.id.roles
+      x-campusos-permission: identity.role.revoke
       security:
         - bearerAuth: []
       parameters:
@@ -4917,7 +5617,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: role:read
+      x-campusos-operation: http.get.api.v1.users.id.roles
+      x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
       parameters:
@@ -4947,7 +5648,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: role:assign
+      x-campusos-operation: http.post.api.v1.users.id.roles
+      x-campusos-permission: identity.role.assign
       security:
         - bearerAuth: []
       parameters:
@@ -4985,7 +5687,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
-      x-campusos-permission: user:suspend
+      x-campusos-operation: http.post.api.v1.users.id.suspend
+      x-campusos-permission: identity.user.suspend
       security:
         - bearerAuth: []
       parameters:
@@ -5016,6 +5719,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.web_themes
       responses:
         '200':
           description: Success
@@ -5034,6 +5738,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.web_themes.name
       parameters:
         - name: name
           in: path
@@ -5058,6 +5763,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.web_themes.name.assets.wildcardpath
       parameters:
         - name: name
           in: path
@@ -5087,7 +5793,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:read
+      x-campusos-operation: http.get.api.v1.webhooks
+      x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
       responses:
@@ -5111,7 +5818,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:write
+      x-campusos-operation: http.post.api.v1.webhooks
+      x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
       requestBody:
@@ -5143,7 +5851,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:read
+      x-campusos-operation: http.get.api.v1.webhooks.summary
+      x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
       responses:
@@ -5168,7 +5877,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:read
+      x-campusos-operation: http.get.api.v1.webhooks.id.deliveries
+      x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
       parameters:
@@ -5199,7 +5909,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:write
+      x-campusos-operation: http.post.api.v1.webhooks.id.disable
+      x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
       parameters:
@@ -5237,7 +5948,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:write
+      x-campusos-operation: http.post.api.v1.webhooks.id.enable
+      x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
       parameters:
@@ -5275,7 +5987,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
-      x-campusos-permission: webhook:execute
+      x-campusos-operation: http.post.api.v1.webhooks.id.test
+      x-campusos-permission: integration.webhook.execute
       security:
         - bearerAuth: []
       parameters:

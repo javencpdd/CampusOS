@@ -288,13 +288,13 @@ func (m *pluginPlatformModule) startHostAPI() error {
 	if !ok {
 		return fmt.Errorf("identity user reader port has incompatible type %T", usersValue)
 	}
-	threadsValue, ok := m.app.Lookup("community.content-gateway")
+	threadsValue, ok := m.app.Lookup("community.content-query")
 	if !ok {
-		return errors.New("community content gateway port is unavailable for Host API")
+		return errors.New("community content query port is unavailable for Host API")
 	}
-	threads, ok := threadsValue.(communityport.ContentGateway)
+	threads, ok := threadsValue.(communityport.ContentQuery)
 	if !ok {
-		return fmt.Errorf("community content gateway port has incompatible type %T", threadsValue)
+		return fmt.Errorf("community content query port has incompatible type %T", threadsValue)
 	}
 	postsValue, ok := m.app.Lookup("community.moderation-gateway")
 	if !ok {
@@ -312,7 +312,7 @@ func (m *pluginPlatformModule) startHostAPI() error {
 	if !ok {
 		return fmt.Errorf("identity authorization port has incompatible type %T", permissionValue)
 	}
-	api := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPI(users, threads, posts, m.events.EventBus()))
+	api := hostapi.NewHostAPIv2FromHostAPI(hostapi.NewHostAPIWithContentQuery(users, threads, posts, m.events.EventBus()))
 	api.SetPluginRepository(m.repository)
 	if store, err := hostapi.NewSQLiteKVStore(m.owner.cfg.Plugin.DataDir); err != nil {
 		log.Printf("⚠️ SQLite 插件 KV 初始化失败，回退到内存存储: %v", err)

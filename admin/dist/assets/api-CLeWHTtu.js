@@ -1,1 +1,0 @@
-import{a as t}from"./client-D8IfqdU8.js";const r={list:e=>t.get("/events",{params:e})},l={sources:()=>t.get("/platform/logs/sources"),streamUrl:e=>{const s=new URLSearchParams;return s.set("source",e.source),s.set("lines",String(e.lines||200)),s.set("follow",e.follow===!1?"false":"true"),`/api/v1/platform/logs/stream?${s.toString()}`}};export{r as e,l as p};

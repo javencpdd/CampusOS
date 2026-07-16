@@ -1,11 +1,11 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.6.21-dev`
+> 当前实现基线：`v0.10.0`
 
 ## 1. 契约状态
 
-CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些产物由真实路由代码生成并在 CI 检查漂移。
+CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；内容的 `version` 为 v10，并由真实路由代码生成和检查漂移。
 
 当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。注册登录、用户资料、帖子、回复、版块、个人空间、课表、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
 
@@ -47,22 +47,25 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 
 API 请求应使用 `spring` 或 `fall` 作为 `semester`。服务为兼容旧数据可能接受别名，但客户端应发送标准值。
 
-## 4. 角色管理 API
+## 4. 角色与权限管理 API
 
-角色定义、读取、分配和撤销由后台 API 管理。它们不再共用 `role:manage`：
+v10 使用稳定 Permission Code。旧的 `resource:action` 仍作为兼容映射保留，但客户端和新代码应使用以下 Code：
 
-| 方法 | 路径 | 所需权限 | 说明 |
+| 方法 | 路径 | Permission Code | 说明 |
 | --- | --- | --- | --- |
-| `GET` | `/roles` | `role:read` | 列出内置角色；`member`、`guest` 不可通过角色管理接口赋予或撤销。 |
-| `GET` | `/users/:id/roles` | `role:read` | 读取目标用户的有效角色，始终包含隐式基础 `member`。 |
-| `POST` | `/users/:id/roles` | `role:assign` | 分配额外全局角色。`moderator` 不允许经此接口分配，必须使用版主管理 API 指定版块。 |
-| `DELETE` | `/users/:id/roles` | `role:revoke` | 请求体为 `{ "role_id": 2 }`；不能撤销当前操作人的角色。 |
+| `GET` | `/roles`、`/permissions`、`/roles/:id/permissions` | `identity.role.read` | 读取角色、权限目录和角色权限矩阵。 |
+| `GET` | `/authorization-audits` | `identity.role.read_audit` | 读取结构化授权记录。 |
+| `POST` | `/roles` | `identity.role.create` | 创建自定义角色；系统角色不能由此改写。 |
+| `PUT` | `/roles/:id/permissions` | `identity.role.update_permissions` | 更新自定义角色权限；操作者不能授予自己不拥有的 Code。 |
+| `GET` | `/users/:id/roles` | `identity.role.read` | 读取目标用户有效角色，包含隐式基础 `member`。 |
+| `POST` | `/users/:id/roles` | `identity.role.assign` | 分配额外全局角色；`moderator` 必须通过版主管理指定板块。 |
+| `DELETE` | `/users/:id/roles` | `identity.role.revoke` | 撤销额外角色；拒绝自我操作并以原子门禁保留至少一个全局管理员。 |
 
-默认管理员拥有上述三项权限；版主、普通用户和访客不拥有角色管理权限。`member` 是每个有效登录用户自动具备的基础角色，`guest` 只用于匿名访问语义；二者均不是可分配角色。管理员等系统角色使用全局关联，版主只能使用版块作用域关联。
+HTTP Handler 缺少已认证操作者上下文时直接返回 `401`，不会回退到受信任内部调用。`member`、`guest` 是保护角色；系统角色矩阵只读，版主只能使用 category 作用域。完整设计见 [v10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)。
 
 ## 5. 版主管理 API
 
-`category-moderation` 是系统级内置插件。插件整体启用/停用仍在重启 API 后生效，但 `allow_pin`、`allow_lock`、`allow_delete_post` 动作开关保存后立即生效。管理接口可在插件待重启或当前停用时维护授权范围；用户侧治理接口只有在当前 API 进程已加载插件时可用。
+Moderation Core 始终保留权限策略、板块作用域、审计和数据完整性。历史 `category-moderation` 兼容开关只控制用户侧置顶、锁定和删除回复入口；整体启停在重启 API 后生效，`allow_pin`、`allow_lock`、`allow_delete_post` 动作配置保存后立即生效。功能停用不会删除版主范围或审计数据。
 
 | 方法 | 路径 | 所需权限 | 说明 |
 | --- | --- | --- | --- |
@@ -98,10 +101,12 @@ Runtime Manifest 不是授权替代。页面隐藏和 Action 过滤只是减少�
 ## 8. 关联文档
 
 - [接口协议适配器标准说明](../help/系统设计相关/接口协议适配器标准说明.md)
-- [RBAC 权限与版主管理说明](../help/系统设计相关/RBAC权限与版主管理说明.md)
+- [v10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)
+- [RBAC 权限与版主管理说明（历史兼容）](../help/系统设计相关/RBAC权限与版主管理说明.md)
 - [v6 API 契约计划](../项目计划v6/01-v6版本计划书.md)
 - [v6 第三版计划](../项目计划v6/02-v6版本计划书第三版.md)
 - [v0.5 第二版计划书](../项目计划v5/01-v5版本计划书第二版.md)
 - [Host API v2 受管数据合同](Host-API-v2受管数据合同.md)
 - [Plugin Manifest v2 JSON Schema](plugin-manifest-v2.schema.json)
 - [插件市场与受管数据](../help/插件相关/插件市场与受管数据-v0.9.md)
+- [v10 最终全方位审计与后续路线](../项目计划v10/03-v10最终全方位审计与后续路线.md)

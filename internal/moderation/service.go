@@ -173,7 +173,7 @@ func (s *Service) SetModeratorCategories(ctx context.Context, actorID, userID st
 	if err != nil {
 		return ModeratorAssignment{}, err
 	}
-	changed, err := s.permissions.ReplaceCategoryRoleScopes(ctx, userID, "moderator", parsedIDs)
+	changed, err := s.permissions.ReplaceCategoryRoleScopesByActor(ctx, actorID, userID, "moderator", parsedIDs)
 	if err != nil {
 		return ModeratorAssignment{}, err
 	}

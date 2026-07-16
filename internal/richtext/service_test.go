@@ -121,6 +121,49 @@ func TestAdminCanOfflineRestoreAndDeleteArticle(t *testing.T) {
 	}
 }
 
+func TestTakenDownRichTextArticleReturnsToReviewInsteadOfPublic(t *testing.T) {
+	svc, threadRepo := newTestService(true)
+	ctx := context.Background()
+	created, err := svc.CreateDraft(ctx, "1001", "alice", SaveArticleRequest{
+		Title:       "Review after takedown",
+		CategoryID:  "1",
+		ContentHTML: `<p>first version</p>`,
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	if _, err := svc.Publish(ctx, created.ThreadID, "1001"); err != nil {
+		t.Fatalf("publish article: %v", err)
+	}
+	if _, err := svc.AdminOfflineWithReason(ctx, created.ThreadID, "9001", "policy review required"); err != nil {
+		t.Fatalf("take down article: %v", err)
+	}
+	if _, err := svc.UpdateDraft(ctx, created.ThreadID, "1001", SaveArticleRequest{
+		Title:       "Review after takedown",
+		CategoryID:  "1",
+		ContentHTML: `<p>corrected version</p>`,
+	}); err != nil {
+		t.Fatalf("save corrected draft: %v", err)
+	}
+	published, err := svc.Publish(ctx, created.ThreadID, "1001")
+	if err != nil {
+		t.Fatalf("resubmit richtext article: %v", err)
+	}
+	if published.Status != StatusPendingReview {
+		t.Fatalf("expected pending review, got %s", published.Status)
+	}
+	thread, err := threadRepo.GetByID(ctx, created.ThreadID)
+	if err != nil {
+		t.Fatalf("get community thread: %v", err)
+	}
+	if thread.ModerationStatus != communitydomain.ModerationStatusPending || thread.IsPublic() {
+		t.Fatalf("richtext resubmission bypassed moderation: %#v", thread)
+	}
+	if _, err := svc.GetArticle(ctx, created.ThreadID, ""); !errors.Is(err, ErrArticleNotFound) {
+		t.Fatalf("pending article must remain hidden from public reads, got %v", err)
+	}
+}
+
 func TestPluginDisabledDoesNotBlockPlainThreadService(t *testing.T) {
 	svc, threadRepo := newTestService(false)
 	ctx := context.Background()

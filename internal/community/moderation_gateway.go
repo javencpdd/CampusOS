@@ -22,11 +22,14 @@ type moduleModerationGateway struct{ module *Module }
 
 type moduleContentGateway struct{ module *Module }
 type moduleCategoryCatalog struct{ module *Module }
+type moduleContentQuery struct{ module *Module }
 
 type contentGateway struct {
 	threads   repository.ThreadRepository
 	threadSvc *service.ThreadService
 }
+
+type contentQuery struct{ threadSvc *service.ThreadService }
 
 func (g *moduleModerationGateway) gateway() (*moderationGateway, error) {
 	if g == nil || g.module == nil || g.module.threadService == nil || g.module.postService == nil {
@@ -109,20 +112,52 @@ func (g *moduleContentGateway) GetThread(ctx context.Context, id string) (*domai
 	return delegate.threads.GetByID(ctx, id)
 }
 
-func (g *moduleContentGateway) UpdateThread(ctx context.Context, thread *domain.Thread) error {
+func (g *moduleContentGateway) SaveFeatureThread(ctx context.Context, thread *domain.Thread, actorID, action string) (*domain.Thread, error) {
 	delegate, err := g.gateway()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return delegate.threads.Update(ctx, thread)
+	return delegate.threadSvc.SaveFeatureThread(ctx, thread, actorID, action)
 }
 
-func (g *moduleContentGateway) DeleteThread(ctx context.Context, id string) error {
+func (g *moduleContentGateway) TrashThread(ctx context.Context, id, actorID, action, reason string) error {
 	delegate, err := g.gateway()
 	if err != nil {
 		return err
 	}
-	return delegate.threads.Delete(ctx, id)
+	return delegate.threadSvc.TrashThread(ctx, id, actorID, action, reason)
+}
+
+func (g *moduleContentGateway) SubmitThreadForReview(ctx context.Context, id, authorID string) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	return delegate.threadSvc.SubmitForReview(ctx, id, authorID)
+}
+
+func (g *moduleContentGateway) TakeDownThread(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	return delegate.threadSvc.TakeDown(ctx, id, actorID, reason)
+}
+
+func (g *moduleContentGateway) RestoreThreadDirectly(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	return delegate.threadSvc.DirectRestore(ctx, id, actorID, reason)
+}
+
+func (g *moduleContentGateway) RestoreThreadFromTrash(ctx context.Context, id, actorID string) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	return delegate.threadSvc.RestoreFromTrash(ctx, id, actorID)
 }
 
 func (g *moduleContentGateway) ListThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
@@ -146,11 +181,77 @@ func (g *moduleCategoryCatalog) ListCategories(ctx context.Context) ([]*domain.C
 	return g.module.categories.List(ctx)
 }
 
+func (g *moduleContentQuery) ListPublicThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	filter.Status = string(domain.ThreadStatusPublished)
+	filter.PublicationStatus = string(domain.PublicationStatusPublished)
+	filter.ModerationStatus = string(domain.ModerationStatusClear)
+	filter.DeletionStatus = string(domain.DeletionStatusActive)
+	filter.IncludeTrashed = false
+	return g.module.threadService.ListThreads(ctx, filter)
+}
+
+func (g *moduleContentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, errors.New("community content query is unavailable")
+	}
+	return g.module.threadService.GetPublicThread(ctx, id)
+}
+
+func (g *moduleContentQuery) ListAuthorThreads(ctx context.Context, authorID string, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	filter.AuthorID = authorID
+	filter.Status = "all"
+	filter.IncludeTrashed = false
+	filter.DeletionStatus = string(domain.DeletionStatusActive)
+	return g.module.threadService.ListThreads(ctx, filter)
+}
+
 // NewContentGateway is the compatibility constructor for tests and legacy
 // composition. Production modules obtain the module-owned gateway through
 // the "community.content-gateway" port.
 func NewContentGateway(threads repository.ThreadRepository, threadSvc *service.ThreadService) communityport.ContentGateway {
 	return &contentGateway{threads: threads, threadSvc: threadSvc}
+}
+
+// NewContentQuery is the compatibility constructor for legacy composition and
+// tests. Production composition obtains the module-owned query port.
+func NewContentQuery(threadSvc *service.ThreadService) communityport.ContentQuery {
+	return &contentQuery{threadSvc: threadSvc}
+}
+
+func (g *contentQuery) ListPublicThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	filter.Status = string(domain.ThreadStatusPublished)
+	filter.PublicationStatus = string(domain.PublicationStatusPublished)
+	filter.ModerationStatus = string(domain.ModerationStatusClear)
+	filter.DeletionStatus = string(domain.DeletionStatusActive)
+	filter.IncludeTrashed = false
+	return g.threadSvc.ListThreads(ctx, filter)
+}
+
+func (g *contentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content query is unavailable")
+	}
+	return g.threadSvc.GetPublicThread(ctx, id)
+}
+
+func (g *contentQuery) ListAuthorThreads(ctx context.Context, authorID string, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	filter.AuthorID = authorID
+	filter.Status = "all"
+	filter.IncludeTrashed = false
+	filter.DeletionStatus = string(domain.DeletionStatusActive)
+	return g.threadSvc.ListThreads(ctx, filter)
 }
 
 func (g *contentGateway) CreateThread(ctx context.Context, authorID, authorName string, request domain.CreateThreadRequest, options communityport.ThreadCreateOptions) (*domain.Thread, error) {
@@ -167,18 +268,46 @@ func (g *contentGateway) GetThread(ctx context.Context, id string) (*domain.Thre
 	return g.threads.GetByID(ctx, id)
 }
 
-func (g *contentGateway) UpdateThread(ctx context.Context, thread *domain.Thread) error {
-	if g == nil || g.threads == nil {
-		return errors.New("community content gateway is unavailable")
+func (g *contentGateway) SaveFeatureThread(ctx context.Context, thread *domain.Thread, actorID, action string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
 	}
-	return g.threads.Update(ctx, thread)
+	return g.threadSvc.SaveFeatureThread(ctx, thread, actorID, action)
 }
 
-func (g *contentGateway) DeleteThread(ctx context.Context, id string) error {
-	if g == nil || g.threads == nil {
+func (g *contentGateway) TrashThread(ctx context.Context, id, actorID, action, reason string) error {
+	if g == nil || g.threadSvc == nil {
 		return errors.New("community content gateway is unavailable")
 	}
-	return g.threads.Delete(ctx, id)
+	return g.threadSvc.TrashThread(ctx, id, actorID, action, reason)
+}
+
+func (g *contentGateway) SubmitThreadForReview(ctx context.Context, id, authorID string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
+	}
+	return g.threadSvc.SubmitForReview(ctx, id, authorID)
+}
+
+func (g *contentGateway) TakeDownThread(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
+	}
+	return g.threadSvc.TakeDown(ctx, id, actorID, reason)
+}
+
+func (g *contentGateway) RestoreThreadDirectly(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
+	}
+	return g.threadSvc.DirectRestore(ctx, id, actorID, reason)
+}
+
+func (g *contentGateway) RestoreThreadFromTrash(ctx context.Context, id, actorID string) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
+	}
+	return g.threadSvc.RestoreFromTrash(ctx, id, actorID)
 }
 
 func (g *contentGateway) ListThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {

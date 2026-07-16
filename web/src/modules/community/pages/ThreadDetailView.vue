@@ -11,24 +11,66 @@
               <span>浏览：{{ thread.view_count }}</span>
               <span>回复：{{ thread.reply_count }}</span>
               <el-tag v-if="thread.content_format === 'richtext_article'" type="success" size="small">图文</el-tag>
-              <el-tag v-if="thread.status === 'private'" type="warning" size="small">私密</el-tag>
+              <el-tag v-if="publicationStatus === 'private'" type="warning" size="small">私密</el-tag>
+              <el-tag v-if="moderationStatus === 'pending'" type="warning" size="small">待审核</el-tag>
+              <el-tag v-if="moderationStatus === 'taken_down'" type="danger" size="small">已下架</el-tag>
+              <el-tag v-if="moderationStatus === 'rejected'" type="danger" size="small">已拒绝</el-tag>
+              <el-tag v-if="deletionStatus === 'trashed'" type="warning" size="small">回收站</el-tag>
               <el-tag v-for="tag in thread.tags" :key="tag" size="small">{{ tag }}</el-tag>
             </div>
+            <el-alert
+              v-if="isOwnThread && governanceNotice"
+              class="governance-notice"
+              :type="governanceNotice.type"
+              :closable="false"
+              show-icon
+              :title="governanceNotice.title"
+              :description="governanceNotice.description"
+            />
           </div>
-          <div v-if="canManageArticle || canManagePlainThread" class="article-actions">
+          <div v-if="isOwnThread" class="article-actions">
+            <el-button v-if="isTrashed" type="success" size="small" :loading="articleOperating" @click="restoreOwnTrash"
+              >恢复回收站内容</el-button
+            >
+            <el-button
+              v-else-if="needsResubmission"
+              type="primary"
+              size="small"
+              :loading="articleOperating"
+              @click="submitForReview"
+              >重新提交审核</el-button
+            >
             <template v-if="canManageArticle">
-              <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
-              <el-button size="small" @click="offlineArticle" :loading="articleOperating">下架</el-button>
-              <el-button size="small" type="danger" plain @click="deleteArticle" :loading="articleOperating"
+              <el-button v-if="!isTrashed" size="small" @click="$router.push(`/threads/${thread.id}/edit`)"
+                >编辑</el-button
+              >
+              <el-button v-if="!isTrashed" size="small" @click="offlineArticle" :loading="articleOperating"
+                >下架</el-button
+              >
+              <el-button
+                v-if="!isTrashed"
+                size="small"
+                type="danger"
+                plain
+                @click="deleteArticle"
+                :loading="articleOperating"
                 >删除</el-button
               >
             </template>
             <template v-else-if="canManagePlainThread">
-              <el-button size="small" @click="$router.push(`/threads/${thread.id}/edit`)">编辑</el-button>
-              <el-button size="small" @click="togglePlainPrivacy" :loading="articleOperating">
-                {{ thread.status === 'private' ? '设为公开' : '设为私密' }}
+              <el-button v-if="!isTrashed" size="small" @click="$router.push(`/threads/${thread.id}/edit`)"
+                >编辑</el-button
+              >
+              <el-button v-if="!isTrashed" size="small" @click="togglePlainPrivacy" :loading="articleOperating">
+                {{ publicationStatus === 'private' ? '设为公开' : '设为私密' }}
               </el-button>
-              <el-button size="small" type="danger" plain @click="deletePlainThread" :loading="articleOperating"
+              <el-button
+                v-if="!isTrashed"
+                size="small"
+                type="danger"
+                plain
+                @click="deletePlainThread"
+                :loading="articleOperating"
                 >删除</el-button
               >
             </template>
@@ -64,7 +106,7 @@
       <div v-else class="content">{{ thread.content }}</div>
     </el-card>
 
-    <el-card v-if="thread" class="reply-card" v-loading="postsLoading">
+    <el-card v-if="thread && isThreadInteractive" class="reply-card" v-loading="postsLoading">
       <template #header>
         <div class="reply-header">
           <span>回复</span>
@@ -110,7 +152,7 @@
       </div>
     </el-card>
 
-    <el-card v-if="thread" class="reply-editor">
+    <el-card v-if="thread && isThreadInteractive" class="reply-editor">
       <template #header>
         <div class="reply-header">
           <span>{{ replyTarget ? `回复第 ${replyTarget.floor_number || '-'} 楼` : '发表回复' }}</span>
@@ -170,6 +212,51 @@ const postsPage = ref(1)
 const postsPageSize = 20
 const postsTotal = ref(0)
 const isLoggedIn = computed(() => userStore.isLoggedIn)
+const isOwnThread = computed(() => Boolean(thread.value && userStore.user?.id === thread.value.author_id))
+const publicationStatus = computed(() => thread.value?.publication_status || thread.value?.status || 'published')
+const moderationStatus = computed(() => {
+  if (thread.value?.moderation_status) return thread.value.moderation_status
+  if (thread.value?.status === 'pending_review') return 'pending'
+  if (thread.value?.status === 'archived') return 'taken_down'
+  return 'clear'
+})
+const deletionStatus = computed(() => thread.value?.deletion_status || 'active')
+const isTrashed = computed(() => deletionStatus.value === 'trashed')
+const needsResubmission = computed(
+  () => isOwnThread.value && ['taken_down', 'rejected'].includes(moderationStatus.value) && !isTrashed.value,
+)
+const isThreadInteractive = computed(
+  () =>
+    publicationStatus.value === 'published' && moderationStatus.value === 'clear' && deletionStatus.value === 'active',
+)
+const governanceNotice = computed(() => {
+  if (!isOwnThread.value || !thread.value) return null
+  if (isTrashed.value)
+    return {
+      type: 'warning' as const,
+      title: '内容在回收站中',
+      description: '内容不会公开或接受新回复。恢复后会保留原有发布与治理状态。',
+    }
+  if (moderationStatus.value === 'taken_down')
+    return {
+      type: 'error' as const,
+      title: '内容已下架',
+      description: thread.value.moderation_reason || '请完成整改后重新提交审核。',
+    }
+  if (moderationStatus.value === 'rejected')
+    return {
+      type: 'error' as const,
+      title: '审核未通过',
+      description: thread.value.moderation_reason || '请完成整改后重新提交审核。',
+    }
+  if (moderationStatus.value === 'pending')
+    return {
+      type: 'warning' as const,
+      title: '内容正在审核',
+      description: '审核通过前内容不会公开，也不会接受新回复。',
+    }
+  return null
+})
 const canManageArticle = computed(() => Boolean(article.value && userStore.user?.id === thread.value?.author_id))
 const canManagePlainThread = computed(() =>
   Boolean(
@@ -342,6 +429,34 @@ const deletePlainThread = async () => {
   }
 }
 
+const submitForReview = async () => {
+  articleOperating.value = true
+  try {
+    const res: any = await threadApi.submitForReview(threadID())
+    if (res.code === 0) thread.value = res.data
+    ElMessage.success('内容已重新提交审核')
+    await loadArticle()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '重新提交审核失败')
+  } finally {
+    articleOperating.value = false
+  }
+}
+
+const restoreOwnTrash = async () => {
+  articleOperating.value = true
+  try {
+    const res: any = await threadApi.restoreTrash(threadID())
+    if (res.code === 0) thread.value = res.data
+    ElMessage.success('内容已从回收站恢复')
+    await loadArticle()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '恢复回收站内容失败')
+  } finally {
+    articleOperating.value = false
+  }
+}
+
 const setReplyTarget = (post: any) => {
   replyTarget.value = post
 }
@@ -383,7 +498,7 @@ const submitReply = async () => {
 
 onMounted(async () => {
   await loadThread()
-  await loadPosts()
+  if (isThreadInteractive.value) await loadPosts()
 })
 </script>
 
@@ -427,6 +542,10 @@ onMounted(async () => {
   font-size: 14px;
   flex-wrap: wrap;
   align-items: center;
+}
+.governance-notice {
+  margin-top: 12px;
+  max-width: 720px;
 }
 .content {
   line-height: 1.8;

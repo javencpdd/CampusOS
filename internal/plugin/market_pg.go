@@ -237,14 +237,18 @@ func (r *PgMarketStore) UpsertCatalog(ctx context.Context, entry CatalogEntry) (
 	if err != nil {
 		return CatalogEntry{}, err
 	}
-	return scanCatalog(r.pool.QueryRow(ctx, `INSERT INTO plugin_catalog_entries (plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11)
-        ON CONFLICT (plugin_name) DO UPDATE SET display_name=EXCLUDED.display_name,description=EXCLUDED.description,version=EXCLUDED.version,runtime=EXCLUDED.runtime,visibility=CASE WHEN EXCLUDED.visibility='draft' THEN plugin_catalog_entries.visibility ELSE EXCLUDED.visibility END,package_checksum=EXCLUDED.package_checksum,risk_level=EXCLUDED.risk_level,data_capabilities=EXCLUDED.data_capabilities,user_permissions=EXCLUDED.user_permissions,updated_at=EXCLUDED.updated_at
-        RETURNING plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,updated_at`, entry.PluginName, entry.DisplayName, entry.Description, entry.Version, entry.Runtime, entry.Visibility, entry.PackageChecksum, entry.RiskLevel, string(capabilities), string(permissions), entry.UpdatedAt))
+	experience, err := json.Marshal(entry.Experience)
+	if err != nil {
+		return CatalogEntry{}, err
+	}
+	return scanCatalog(r.pool.QueryRow(ctx, `INSERT INTO plugin_catalog_entries (plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12)
+		ON CONFLICT (plugin_name) DO UPDATE SET display_name=EXCLUDED.display_name,description=EXCLUDED.description,version=EXCLUDED.version,runtime=EXCLUDED.runtime,visibility=CASE WHEN EXCLUDED.visibility='draft' THEN plugin_catalog_entries.visibility ELSE EXCLUDED.visibility END,package_checksum=EXCLUDED.package_checksum,risk_level=EXCLUDED.risk_level,data_capabilities=EXCLUDED.data_capabilities,user_permissions=EXCLUDED.user_permissions,experience=EXCLUDED.experience,updated_at=EXCLUDED.updated_at
+		RETURNING plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at`, entry.PluginName, entry.DisplayName, entry.Description, entry.Version, entry.Runtime, entry.Visibility, entry.PackageChecksum, entry.RiskLevel, string(capabilities), string(permissions), string(experience), entry.UpdatedAt))
 }
 
 func (r *PgMarketStore) ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error) {
-	rows, err := r.pool.Query(ctx, `SELECT plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,updated_at FROM plugin_catalog_entries WHERE ($1='' OR visibility=$1) ORDER BY plugin_name`, visibility)
+	rows, err := r.pool.Query(ctx, `SELECT plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at FROM plugin_catalog_entries WHERE ($1='' OR visibility=$1) ORDER BY plugin_name`, visibility)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +423,8 @@ func scanCatalog(row rowScanner) (CatalogEntry, error) {
 	var entry CatalogEntry
 	var capabilities []byte
 	var permissions []byte
-	err := row.Scan(&entry.PluginName, &entry.DisplayName, &entry.Description, &entry.Version, &entry.Runtime, &entry.Visibility, &entry.PackageChecksum, &entry.RiskLevel, &capabilities, &permissions, &entry.UpdatedAt)
+	var experience []byte
+	err := row.Scan(&entry.PluginName, &entry.DisplayName, &entry.Description, &entry.Version, &entry.Runtime, &entry.Visibility, &entry.PackageChecksum, &entry.RiskLevel, &capabilities, &permissions, &experience, &entry.UpdatedAt)
 	if err != nil {
 		return CatalogEntry{}, normalizeMarketRowError(err)
 	}
@@ -428,6 +433,11 @@ func scanCatalog(row rowScanner) (CatalogEntry, error) {
 	}
 	if err := json.Unmarshal(permissions, &entry.UserPermissions); err != nil {
 		return CatalogEntry{}, err
+	}
+	if len(experience) > 0 && string(experience) != "null" {
+		if err := json.Unmarshal(experience, &entry.Experience); err != nil {
+			return CatalogEntry{}, err
+		}
 	}
 	return entry, nil
 }

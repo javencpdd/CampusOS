@@ -26,8 +26,18 @@
         <el-tag v-if="payload.space.style_name" type="success" effect="plain">
           {{ payload.space.style_name }}@{{ payload.space.style_version }}
         </el-tag>
-        <el-tag v-if="payload.space.sync_enabled" type="info" effect="plain">内容同步</el-tag>
+        <el-tag v-if="payload.space.sync_enabled" type="info" effect="plain">展示我的帖子</el-tag>
       </section>
+
+      <el-alert
+        v-if="isOwner"
+        class="owner-content-notice"
+        type="info"
+        :closable="false"
+        show-icon
+        title="这是你的主页预览"
+        description="访客只能看到公开且审核通过的帖子；你还可以看到草稿、私密、待审核、已拒绝和已下架内容。"
+      />
 
       <section v-if="customHTML" class="custom-space-html" v-html="customHTML" />
 
@@ -39,12 +49,20 @@
           <p>{{ item.excerpt }}</p>
           <div class="content-meta">
             <span>{{ formatDate(item.thread_created_at) }}</span>
+            <el-tag v-if="isOwner && item.publication_status === 'draft'" size="small" type="info">草稿</el-tag>
+            <el-tag v-if="isOwner && item.publication_status === 'private'" size="small" type="warning">私密</el-tag>
+            <el-tag v-if="isOwner && item.moderation_status === 'pending'" size="small" type="warning">待审核</el-tag>
+            <el-tag v-if="isOwner && item.moderation_status === 'rejected'" size="small" type="danger">已拒绝</el-tag>
+            <el-tag v-if="isOwner && item.moderation_status === 'taken_down'" size="small" type="danger">已下架</el-tag>
             <el-tag v-for="tag in item.tags || []" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
           </div>
+          <p v-if="isOwner && item.moderation_reason" class="content-governance-reason">
+            治理说明：{{ item.moderation_reason }}
+          </p>
         </article>
       </section>
 
-      <el-empty v-if="contents.length === 0 && !loading" description="暂无同步内容" />
+      <el-empty v-if="contents.length === 0 && !loading" description="暂无符合展示条件的帖子" />
     </template>
   </div>
 </template>
@@ -105,6 +123,10 @@ interface SpaceContent {
   title: string
   excerpt: string
   tags?: string[]
+  publication_status?: string
+  moderation_status?: string
+  deletion_status?: string
+  moderation_reason?: string
   thread_created_at: string
 }
 
@@ -119,6 +141,7 @@ const contents = ref<SpaceContent[]>([])
 const loading = ref(false)
 const loadError = ref('')
 const username = computed(() => String(route.params.username || ''))
+const isOwner = computed(() => Boolean(userStore.isLoggedIn && payload.value?.owner.id === userStore.user?.id))
 
 const spaceStyleVars = computed<Record<string, string>>(() => {
   const tokens = payload.value?.space.style_manifest?.tokens || {}
@@ -176,11 +199,11 @@ const loadSpace = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [spaceRes, contentRes] = await Promise.all([
-      spaceApi.publicByUsername(username.value),
-      spaceApi.publicContentsByUsername(username.value, { page: 1, page_size: 20 }),
-    ])
+    const spaceRes = await spaceApi.publicByUsername(username.value)
     payload.value = unwrap<PublicSpacePayload>(spaceRes)
+    const contentRes = isOwner.value
+      ? await spaceApi.myContents({ page: 1, page_size: 20 })
+      : await spaceApi.publicContentsByUsername(username.value, { page: 1, page_size: 20 })
     contents.value = unwrap<ListPayload<SpaceContent>>(contentRes).items || []
   } catch (error: any) {
     payload.value = null
@@ -196,7 +219,7 @@ const formatDate = (value: string) => {
   return new Date(value).toLocaleDateString()
 }
 
-watch(username, loadSpace, { immediate: true })
+watch([username, () => userStore.user?.id], loadSpace, { immediate: true })
 
 let injectedStyle: HTMLStyleElement | null = null
 
@@ -263,6 +286,9 @@ onUnmounted(() => {
   gap: 8px;
   margin-bottom: 18px;
 }
+.owner-content-notice {
+  margin-bottom: 18px;
+}
 .custom-space-html {
   margin-bottom: 18px;
   overflow-wrap: anywhere;
@@ -301,6 +327,11 @@ onUnmounted(() => {
   margin: 0 0 12px;
   color: var(--space-muted);
   line-height: 1.7;
+}
+.content-governance-reason {
+  margin-top: -4px !important;
+  color: #b42318 !important;
+  font-size: 13px;
 }
 .content-meta {
   display: flex;

@@ -21,15 +21,18 @@ const (
 )
 
 type Descriptor struct {
-	ID         string   `json:"id"`
-	Owner      string   `json:"owner"`
-	Method     string   `json:"method"`
-	Path       string   `json:"path"`
-	Audience   Audience `json:"audience"`
-	Auth       string   `json:"auth"`
-	Permission string   `json:"permission,omitempty"`
-	FeatureID  string   `json:"feature_id,omitempty"`
-	Audit      string   `json:"audit,omitempty"`
+	ID             string   `json:"id"`
+	OperationCode  string   `json:"operation_code,omitempty"`
+	LegacyAliases  []string `json:"legacy_aliases,omitempty"`
+	Owner          string   `json:"owner"`
+	Method         string   `json:"method"`
+	Path           string   `json:"path"`
+	Audience       Audience `json:"audience"`
+	Auth           string   `json:"auth"`
+	Permission     string   `json:"permission,omitempty"`
+	PermissionCode string   `json:"permission_code,omitempty"`
+	FeatureID      string   `json:"feature_id,omitempty"`
+	Audit          string   `json:"audit,omitempty"`
 }
 
 func (d Descriptor) Validate() error {
@@ -52,6 +55,12 @@ func (d Descriptor) Validate() error {
 	}
 	if d.Audience == AudienceAdmin && strings.TrimSpace(d.Permission) == "" {
 		return fmt.Errorf("admin route %q requires permission metadata", d.ID)
+	}
+	if d.Audience == AudienceAdmin && strings.TrimSpace(d.PermissionCode) == "" {
+		return fmt.Errorf("admin route %q requires a permission code", d.ID)
+	}
+	if strings.TrimSpace(d.OperationCode) == "" {
+		return fmt.Errorf("route %q requires an operation code", d.ID)
 	}
 	return nil
 }

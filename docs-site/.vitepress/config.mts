@@ -68,6 +68,7 @@ export default defineConfig({
       {
         text: '运维',
         items: [
+          { text: '集成中心与能力边界', link: '/operations/integrations' },
           { text: '备份、恢复与验收', link: '/operations/recovery' },
         ],
       },

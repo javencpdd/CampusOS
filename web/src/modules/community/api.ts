@@ -15,6 +15,8 @@ export const threadApi = {
   update: (id: string, data: { title?: string; content?: string; tags?: string[]; status?: string }) =>
     api.put(`/threads/${id}`, data),
   delete: (id: string) => api.delete(`/threads/${id}`),
+  submitForReview: (id: string) => api.post(`/threads/${id}/submit-review`),
+  restoreTrash: (id: string) => api.post(`/threads/${id}/trash/restore`),
 }
 
 export const postApi = {

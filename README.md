@@ -1,31 +1,26 @@
 # CampusOS
 
-CampusOS 是一个基于 Go + Vue 3 的校园社区系统，包含用户社区、管理后台、可扩展插件运行时、个人空间、页面风格包和受控集成能力。
+CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容、管理后台、个人空间、课表、可治理插件平台和受控集成能力。
 
 ## 当前状态
 
-当前稳定开发基线为 `v0.9.0`。v9 在 v8 模块化单体边界上完成多端回归门禁、External Plugin Manifest v2、受管数据/文件、用户授权和本地插件目录治理。
+当前开发基线为 `v0.10.0`。v10 已完成产品语义闭环与统一治理，并通过 Go、Web、Admin、文档站、SDK、数据库、恢复演练和七视口浏览器发布门禁。
 
-- 社区：注册、登录、版块与默认标签、普通文本帖子、受控富文本图文文章、带楼层号的回复、私密可见和管理端治理。
-- 个人能力：公开个人主页、头像和每用户本地存储、风格包、按学期分离的课表和日历浏览。
-- 风格系统：个人主页风格归主页所有者；管理员可提供覆盖完整用户前台的系统主题，用户按本机账号选择；动态特效和只读数据调用运行在权限受控沙箱中。
-- 插件：支持 Built-in、gRPC process 和 Wasm Runtime，提供 Host API v1/v2、Go/TypeScript SDK、CLI、受管记录与文件、版本化用户授权、签名预检、更新前快照和管理端回滚；系统级插件重启生效，用户级插件可热加载。
-- 本地插件目录：管理员治理已安装 v2 外部插件的可见性、申请与发布记录；用户可授权、撤销、导出或删除自己的受管数据。插件代码仍只在 `data/plugins/`，资源包仍只在 `data/resources/` 或 Legacy `data/plugin_data/`。
-- 权限：角色操作和插件、集成、日志、富文本等管理权限已拆分；版主按指定版块治理；运行中插件使用可过期、可轮换和可撤销的 Host token。
-- 集成：AI Gateway、Webhook 投递、内部 MCP-like 只读工具和 Message local adapter。
+- 内容：普通文本与富文本共用发布、审核、下架、整改、回收站和清除状态合同；公开列表、个人主页和只读集成使用 Community 内容事实源。
+- 权限：使用稳定 Permission Code、路由 Operation、全局/板块作用域、自定义角色、越权防护、最后管理员并发保护和授权审计。
+- 扩展：区分 External Plugin、Built-in Feature、Resource Package 与 Integration；支持 Wasm 和进程 Runtime、Host API v1/v2、受管数据/文件、用户授权与本地插件目录。
+- 前端：Web 与 Admin 按布局能力适配手机、平板、横屏和桌面；课表、内容治理、插件中心和权限页纳入七视口回归。
 
-项目当前**尚未**提供标准 MCP Server、真实 Discord/OneBot 适配器、公开插件市场、任意同源 JavaScript 页面风格或生产级高可用部署。这些需要在后续版本独立立项。
+当前仍不提供标准 MCP Server、标准 protobuf gRPC 扩展协议、真实 Discord/OneBot 生产适配器、远程公共插件市场或生产级高可用部署。历史名为 `runtime: grpc` 的进程 Runtime 当前通过受限 loopback HTTP Extension 合同通信。
 
 ## 快速开始
 
-需要：Go、Node.js + pnpm、Docker Compose，以及可用的 PostgreSQL/Redis/NATS 开发环境。
+需要 Go、Node.js + pnpm、Docker Compose，以及可用的 PostgreSQL、Redis 和 NATS 开发环境。
 
 ```bash
 cp .env.example .env
 STOP_EXISTING=true make dev-all
 ```
-
-开发入口：
 
 | 服务 | 地址 |
 | --- | --- |
@@ -34,21 +29,20 @@ STOP_EXISTING=true make dev-all
 | 官方文档 | `http://localhost:3002` |
 | API | `http://localhost:8080/api/v1` |
 
-环境变量、开发账号、pgAdmin、手动启动、数据库迁移和故障排查见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
+环境变量、开发账号、数据库迁移、手动启动和故障排查见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 仓库结构
 
 | 路径 | 作用 |
 | --- | --- |
-| `cmd/server/` | API 服务入口 |
-| `internal/` | 社区、身份、插件、个人空间、课表、富文本、AI 和集成服务 |
-| `web/` | 用户前台 |
-| `admin/` | 管理后台 |
-| `docs-site/` | 可独立部署和迁移的官方文档前端 |
-| `data/plugins/` | 内置和已安装插件的代码与 manifest |
-| `data/plugin_data/` | 插件运行数据和可编辑风格包源码 |
-| `data/personal-space/<user_id>/` | 用户文件、图片、课表和文档 |
-| `docs/` | 计划、帮助、架构、API 和进度记录 |
+| `cmd/`、`internal/` | 服务入口、模块化单体、领域服务与扩展平台 |
+| `web/`、`admin/` | 用户前台与管理后台 |
+| `docs-site/`、`docs/` | 对外文档站与仓库内计划、帮助、API、架构和进度证据 |
+| `data/plugins/` | 插件实现代码与 Manifest |
+| `data/plugin_data/` | 插件运行数据及 Legacy Resource Source |
+| `data/resources/` | 主题、主页包、空间风格、Skills、Prompt 等资源包 |
+| `data/personal-space/<user_id>/` | 用户文件、图片、课表与插件用户附件 |
+| `sdk/`、`examples/plugins/` | Go/TypeScript SDK 与可验证插件示例 |
 
 ## 验证
 
@@ -56,20 +50,19 @@ STOP_EXISTING=true make dev-all
 make release-check
 ```
 
-完整的前端构建、migration、smoke、贡献和 PR 命令见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
+完整门禁、恢复演练和贡献脚本说明见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 文档
 
-面向使用者和插件开发者的文档由 `docs-site/` 提供，本地地址为 `http://localhost:3002`。仓库内的计划、进度和内部维护资料从 [文档门户](docs/README.md) 开始。
+所有文档从 [CampusOS 文档门户](docs/README.md) 进入。高频入口：
 
-| 入口 | 文档 |
+| 主题 | 文档 |
 | --- | --- |
-| 架构和数据边界 | [当前架构概览](docs/architecture/当前架构概览.md) |
-| 当前 API 分组和契约状态 | [API 索引](docs/api/API索引.md) |
-| 插件位置、内置插件和生命周期 | [插件保存位置与当前插件作用汇总](docs/help/插件相关/插件保存位置与当前插件作用汇总.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md) |
-| 风格包边界和 SDK 权限 | [风格包能力边界与 CampusStyleSDK 说明](docs/help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
-| 项目 Skills | [Skills 文档索引](docs/skills/README.md) |
-| 当前计划与进度 | [v9 计划书](docs/项目计划v9/00-v9版本计划书.md)、[v9 完成回顾](docs/项目计划v9/01-v9完成回顾.md)、[v9 进度记录](docs/进度/v0.9-dev/) |
+| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v10 系统清点与治理](docs/architecture/v10当前系统清点与治理.md) |
+| HTTP API | [API 索引](docs/api/API索引.md) |
+| 权限与版主 | [v10 权限管理设计与使用入门](docs/help/系统设计相关/v10权限管理设计与使用入门.md) |
+| 插件与资源包 | [插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |
+| 当前版本 | [v10 计划书](docs/项目计划v10/00-v10版本计划书.md)、[最终审计与后续路线](docs/项目计划v10/03-v10最终全方位审计与后续路线.md)、[v0.10 进度记录](docs/进度/v0.10-dev/) |
 
 ## License
 

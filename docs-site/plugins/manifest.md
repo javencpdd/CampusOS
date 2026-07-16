@@ -36,14 +36,18 @@ config:
 
 `module` 必须是插件目录内的相对路径，不能使用绝对路径或 `../`。
 
-gRPC：
+受管进程（历史兼容名称 `grpc`）：
 
 ```yaml
 runtime: grpc
 config:
   command: ./plugin
+  extension_url: http://127.0.0.1:19091/extension
+  event_url: http://127.0.0.1:19091/event # 可选；未配置时事件只记录、不误探测端口
   event_timeout_ms: 1000
 ```
+
+当前 Runtime 只启动插件目录内的 `plugin` 可执行文件，并只接受显式的 loopback HTTP 端点。`grpc` 是兼容标识，不是标准 protobuf gRPC 协议承诺。
 
 Built-in：
 

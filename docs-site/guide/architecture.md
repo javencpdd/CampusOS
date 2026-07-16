@@ -19,12 +19,13 @@ browser
 
 | 模块 | 职责 |
 | --- | --- |
-| `internal/core/identity` | 用户、账号、JWT、角色和权限。 |
-| `internal/community` | 版块、帖子、回复、标签和社区事件。 |
+| `internal/core/identity` | 用户、账号、JWT、角色、稳定权限目录、作用域与授权审计。 |
+| `internal/core/storage` | 用户目录、安全路径、配额和资产存储 Port。 |
+| `internal/community` | 版块、帖子、回复、标签、内容治理状态机和统一 `ContentQuery`。 |
 | `internal/moderation` | 版块版主作用域、治理动作和审计。 |
-| `internal/plugin` | Manager、manifest、Runtime、插件包、配置和日志。 |
+| `internal/plugin` | External Plugin Catalog、Runtime、Lifecycle、配置、UI/Event 与审计 Facade。 |
 | `internal/plugin/hostapi` | 插件访问主系统能力的受控边界。 |
-| `internal/space` | 个人主页、头像、用户文件和主页所有者风格包。 |
+| `internal/space` | 个人主页、头像、主页所有者风格和 Community 内容查询适配。 |
 | `internal/stylepack`、`internal/webtheme` | 目标作用域筛查、沙箱特效声明和管理员系统主题目录。 |
 | `internal/richtext` | 富文本草稿、清洗、发布和图片资产。 |
 | `internal/schedule` | 学期课表、日历计算和表格导入。 |
@@ -36,8 +37,8 @@ browser
 
 ```text
 authentication
-  -> resource:action
-  -> ownership or scope
+  -> stable permission code and route operation
+  -> ownership or server-derived scope
   -> operation constraints
   -> audit
 ```
@@ -46,13 +47,14 @@ authentication
 
 ## 插件边界
 
-CampusOS 当前支持三种 Runtime：
+CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 的 Resource Package。External Plugin 当前有以下运行方式：
 
 | Runtime | 运行方式 | 适用场景 |
 | --- | --- | --- |
-| `builtin` | 业务实现编译在 CampusOS 后端中，插件目录保存 manifest 和配置。 | 随系统部署的默认能力。 |
 | `wasm` | 由 wazero 在受控 Runtime 中加载模块。 | 小型事件逻辑和隔离执行。 |
-| `grpc` | 外部进程通过 gRPC 与主系统通信。 | 复杂依赖和独立服务。 |
+| `grpc`（兼容名称） | CampusOS 启停外部进程；Extension/Event 仅访问显式声明并校验的 loopback HTTP 端点。 | 当前受管进程扩展；不是标准 protobuf gRPC。 |
+
+历史 `runtime: builtin` 只作为旧 Manifest 到 Built-in Feature/Core 的兼容映射，不是第三方动态安装进程内 Go 代码的入口。
 
 插件不能直接获得主系统全部能力。Host API 根据插件 manifest 中声明的权限进行默认拒绝检查。
 

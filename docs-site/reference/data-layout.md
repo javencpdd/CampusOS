@@ -5,13 +5,14 @@
 ```text
 data/
 ├── plugins/                       插件实现和 manifest
-├── plugin_data/                   插件运行数据和源码风格包
+├── plugin_data/                   插件运行数据和 Legacy 源码风格包
 ├── personal-space/<user_id>/      用户个人文件
 │   ├── file/
 │   ├── img/
 │   ├── excel/
 │   ├── word/
 │   └── pdf/
+├── resources/                     无 Runtime 的主题、主页包、空间风格、Skill/Prompt 等资源
 ├── images/                        非用户归属的全局图片
 ├── config/                        本地配置预留
 ├── dist/                          本地发布产物预留
@@ -24,7 +25,7 @@ data/
 
 - `plugin.yaml`
 - 插件 README
-- `plugin.wasm` 或 gRPC 可执行入口
+- `plugin.wasm` 或受管进程可执行入口（历史 Runtime 名称为 `grpc`）
 - 插件运行需要的静态资源
 
 `data/plugin_data/<plugin>/` 保存运行后产生或可编辑的数据：
@@ -57,7 +58,7 @@ data/personal-space/<user_id>/
 
 ## 页面风格包
 
-可编辑源码风格包放在：
+新 Resource Package 的目标仓库是 `data/resources/`。为保持已有用户包兼容，可编辑源码风格包仍可从以下 Legacy Resource Source 读取：
 
 ```text
 data/plugin_data/<plugin>/style-packs/<pack>/

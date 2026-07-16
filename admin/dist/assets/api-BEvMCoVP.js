@@ -1,1 +1,0 @@
-import{a as t}from"./client-D8IfqdU8.js";const l={list:()=>t.get("/plugins"),getCompatibility:i=>t.get(`/plugins/${i}`),enableCompatibility:i=>t.post(`/plugins/${i}/enable`),disableCompatibility:i=>t.post(`/plugins/${i}/disable`),updateCompatibilityConfig:(i,p)=>t.put(`/plugins/${i}/config`,p)};export{l as f};

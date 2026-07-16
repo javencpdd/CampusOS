@@ -26,16 +26,16 @@ type ModuleConfig struct {
 }
 
 type Module struct {
-	config    ModuleConfig
-	app       *platformmodule.AppContext
-	repo      Repository
-	users     identityport.UserReader
-	community communityport.ContentGateway
-	storage   corestorage.Port
-	styles    StyleApplication
-	attacher  interface{ AttachSpaceStyleTarget(StyleApplication) }
-	service   *Service
-	handler   *Handler
+	config       ModuleConfig
+	app          *platformmodule.AppContext
+	repo         Repository
+	users        identityport.UserReader
+	contentQuery communityport.ContentQuery
+	storage      corestorage.Port
+	styles       StyleApplication
+	attacher     interface{ AttachSpaceStyleTarget(StyleApplication) }
+	service      *Service
+	handler      *Handler
 }
 
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
@@ -66,13 +66,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("identity user reader port has incompatible type %T", userValue)
 	}
-	communityValue, ok := app.Lookup("community.content-gateway")
+	communityValue, ok := app.Lookup("community.content-query")
 	if !ok {
-		return errors.New("community content gateway port is unavailable")
+		return errors.New("community content query port is unavailable")
 	}
-	community, ok := communityValue.(communityport.ContentGateway)
+	contentQuery, ok := communityValue.(communityport.ContentQuery)
 	if !ok {
-		return fmt.Errorf("community content gateway port has incompatible type %T", communityValue)
+		return fmt.Errorf("community content query port has incompatible type %T", communityValue)
 	}
 	storageValue, ok := app.Lookup("storage.user")
 	if !ok {
@@ -94,17 +94,17 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("appearance application cannot attach personal-space styles: %T", appearanceValue)
 	}
-	m.app, m.repo, m.users, m.community, m.storage = app, repo, users, community, storage
+	m.app, m.repo, m.users, m.contentQuery, m.storage = app, repo, users, contentQuery, storage
 	m.styles, m.attacher = styles, attacher
 	return nil
 }
 
 func (m *Module) Start(ctx context.Context) error {
-	if m.app == nil || m.repo == nil || m.users == nil || m.community == nil || m.storage == nil {
+	if m.app == nil || m.repo == nil || m.users == nil || m.contentQuery == nil || m.storage == nil {
 		return errors.New("personal space module is not registered")
 	}
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
-	svc.SetThreadRepository(communityThreadGateway{gateway: m.community})
+	svc.SetContentQuery(m.contentQuery)
 	svc.SetPluginEnabledChecker(m.enabled)
 	config := FileStorageConfig{}
 	if m.config.FileStorageConfig != nil {

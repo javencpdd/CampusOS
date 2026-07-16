@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/campusos/CampusOS/internal/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
@@ -30,11 +31,14 @@ func (r *Router) RouteDescriptors() []platformroute.Descriptor {
 }
 
 type ownedGroup struct {
-	group       *gin.RouterGroup
-	registry    *platformroute.Registry
-	audience    platformroute.Audience
-	permissions middleware.PermissionChecker
-	permission  string
+	group          *gin.RouterGroup
+	registry       *platformroute.Registry
+	audience       platformroute.Audience
+	permissions    middleware.PermissionChecker
+	permission     string
+	permissionCode string
+	operation      string
+	scopeType      string
 }
 
 func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, audience platformroute.Audience, permissions middleware.PermissionChecker) *ownedGroup {
@@ -46,6 +50,36 @@ func (g *ownedGroup) Use(handlers ...gin.HandlerFunc) { g.group.Use(handlers...)
 func (g *ownedGroup) Permission(resource, action string) *ownedGroup {
 	copy := *g
 	copy.permission = strings.TrimSpace(resource) + ":" + strings.TrimSpace(action)
+	copy.permissionCode = permissioncode.FromLegacy(resource, action)
+	return &copy
+}
+
+// PermissionCode binds a v10 stable permission while retaining the legacy
+// resource:action pair for rolling upgrades and legacy audit correlation.
+func (g *ownedGroup) PermissionCode(code string) *ownedGroup {
+	copy := *g
+	code = strings.TrimSpace(code)
+	copy.permissionCode = code
+	if resource, action, ok := permissioncode.LegacyForCode(code); ok {
+		copy.permission = resource + ":" + action
+	}
+	return &copy
+}
+
+// Operation lets new or renamed routes declare a stable transport operation.
+// Existing routes receive an equally stable handler-based operation until they
+// are explicitly named in their owning module.
+func (g *ownedGroup) Operation(code string) *ownedGroup {
+	copy := *g
+	copy.operation = strings.TrimSpace(code)
+	return &copy
+}
+
+// Scoped declares that a route's concrete authorization scope is derived by
+// its service from the persisted resource, rather than from request input.
+func (g *ownedGroup) Scoped(scopeType string) *ownedGroup {
+	copy := *g
+	copy.scopeType = strings.TrimSpace(scopeType)
 	return &copy
 }
 
@@ -69,24 +103,52 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	if len(handlers) == 0 {
 		panic("HTTP route requires a handler")
 	}
+	fullPath := strings.TrimSuffix(g.group.BasePath(), "/")
+	if strings.TrimSpace(path) != "" {
+		fullPath += "/" + strings.TrimPrefix(path, "/")
+	}
+	handlerName := runtimeFunctionName(handlers[len(handlers)-1])
+	owner := moduleOwner(handlerName, fullPath)
+	operation := g.operation
+	if operation == "" {
+		// Existing routes retain their URL-derived operation as a compatibility
+		// baseline. New/high-risk routes declare Operation explicitly; no new
+		// route may rely on a URL-derived identifier after the v10 transition.
+		operation = routeDescriptorID(method, fullPath)
+	}
+	if operation == "" {
+		panic(fmt.Sprintf("HTTP route %s %s has no operation code", method, fullPath))
+	}
 	permission := g.permission
+	permissionCode := g.permissionCode
 	if g.audience == platformroute.AudienceAdmin {
 		parts := strings.SplitN(permission, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			panic(fmt.Sprintf("admin route %s %s requires permission metadata", method, path))
 		}
-		handlers = append([]gin.HandlerFunc{middleware.RequirePermission(g.permissions, parts[0], parts[1])}, handlers...)
+		if permissionCode == "" {
+			permissionCode = permissioncode.FromLegacy(parts[0], parts[1])
+		}
+		if permissionCode == "" {
+			panic(fmt.Sprintf("admin route %s %s requires permission code metadata", method, path))
+		}
+		permissionMiddleware := middleware.RequirePermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation)
+		if g.scopeType != "" {
+			permissionMiddleware = middleware.RequireScopedPermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation, g.scopeType)
+		}
+		handlers = append([]gin.HandlerFunc{permissionMiddleware}, handlers...)
 	}
-	fullPath := strings.TrimSuffix(g.group.BasePath(), "/") + "/" + strings.TrimPrefix(path, "/")
-	handlerName := runtimeFunctionName(handlers[len(handlers)-1])
 	descriptor := platformroute.Descriptor{
-		ID:         routeDescriptorID(method, fullPath),
-		Owner:      moduleOwner(handlerName, fullPath),
-		Method:     method,
-		Path:       fullPath,
-		Audience:   g.audience,
-		Permission: permission,
-		FeatureID:  routeFeature(fullPath),
+		ID:             routeDescriptorID(method, fullPath),
+		OperationCode:  operation,
+		LegacyAliases:  []string{routeDescriptorID(method, fullPath), "httpapi." + strings.TrimPrefix(routeDescriptorID(method, fullPath), "http.")},
+		Owner:          owner,
+		Method:         method,
+		Path:           fullPath,
+		Audience:       g.audience,
+		Permission:     permission,
+		PermissionCode: permissionCode,
+		FeatureID:      routeFeature(fullPath),
 	}
 	switch g.audience {
 	case platformroute.AudiencePublic:
@@ -122,6 +184,8 @@ func runtimeFunctionName(handler gin.HandlerFunc) string {
 
 func moduleOwner(handlerName, path string) string {
 	switch {
+	case strings.Contains(handlerName, "/internal/transport/httpapi/"), strings.Contains(handlerName, "/internal/transport/httpapi."):
+		return "core.platform-api"
 	case strings.Contains(handlerName, "/internal/core/identity/"):
 		return "core.identity"
 	case strings.Contains(handlerName, "/internal/community/"):

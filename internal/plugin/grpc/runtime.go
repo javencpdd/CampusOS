@@ -17,22 +17,26 @@ import (
 	"github.com/campusos/CampusOS/internal/plugin"
 )
 
-// GRPCRuntime gRPC 插件运行时
+// GRPCRuntime is the process runtime kept under the historical "grpc" type.
+// Extension calls currently use the documented loopback HTTP contract.
 type GRPCRuntime struct {
-	mu        sync.RWMutex
-	processes map[string]*pluginProcess
+	mu         sync.RWMutex
+	processes  map[string]*pluginProcess
+	httpClient *http.Client
 }
 
 type pluginProcess struct {
-	cmd     *exec.Cmd
-	plugin  *plugin.Plugin
-	started time.Time
+	cmd      *exec.Cmd
+	plugin   *plugin.Plugin
+	done     chan error
+	stopping bool
 }
 
 // NewGRPCRuntime 创建 gRPC 运行时
 func NewGRPCRuntime() *GRPCRuntime {
 	return &GRPCRuntime{
-		processes: make(map[string]*pluginProcess),
+		processes:  make(map[string]*pluginProcess),
+		httpClient: http.DefaultClient,
 	}
 }
 
@@ -62,23 +66,30 @@ func (r *GRPCRuntime) Start(_ context.Context, p *plugin.Plugin) error {
 		return fmt.Errorf("start plugin process: %w", err)
 	}
 
-	r.processes[p.ID] = &pluginProcess{
-		cmd:     cmd,
-		plugin:  p,
-		started: time.Now(),
+	process := &pluginProcess{
+		cmd:    cmd,
+		plugin: p,
+		done:   make(chan error, 1),
 	}
+	r.processes[p.ID] = process
 
 	// 监控进程退出
 	go func() {
 		err := cmd.Wait()
 		r.mu.Lock()
-		delete(r.processes, p.ID)
+		current, currentExists := r.processes[p.ID]
+		if currentExists && current == process {
+			delete(r.processes, p.ID)
+		}
+		stopping := process.stopping
 		r.mu.Unlock()
-		if err != nil {
+		if err != nil && !stopping {
 			log.Printf("⚠️  插件进程退出: %s (error: %v)", p.ID, err)
 			p.Status = plugin.StatusError
 			p.ErrorMsg = err.Error()
 		}
+		process.done <- err
+		close(process.done)
 	}()
 
 	return nil
@@ -91,34 +102,38 @@ func (r *GRPCRuntime) Stop(_ context.Context, name string) error {
 		r.mu.Unlock()
 		return fmt.Errorf("plugin '%s' is not running", name)
 	}
+	proc.stopping = true
 	r.mu.Unlock()
 
 	// 发送 SIGTERM 优雅关闭
 	if proc.cmd.Process != nil {
-		proc.cmd.Process.Signal(syscall.SIGTERM)
-
-		// 等待 5 秒后强制关闭
-		done := make(chan error, 1)
-		go func() {
-			done <- proc.cmd.Wait()
-		}()
+		_ = proc.cmd.Process.Signal(syscall.SIGTERM)
 
 		select {
-		case <-done:
+		case <-proc.done:
 			// 正常退出
 		case <-time.After(5 * time.Second):
-			proc.cmd.Process.Kill()
+			if err := proc.cmd.Process.Kill(); err != nil {
+				return fmt.Errorf("kill plugin '%s': %w", name, err)
+			}
+			select {
+			case <-proc.done:
+			case <-time.After(2 * time.Second):
+				return fmt.Errorf("plugin '%s' did not exit after kill", name)
+			}
 		}
 	}
 
 	r.mu.Lock()
-	delete(r.processes, name)
+	if current, exists := r.processes[name]; exists && current == proc {
+		delete(r.processes, name)
+	}
 	r.mu.Unlock()
 
 	return nil
 }
 
-func (r *GRPCRuntime) SendEvent(_ context.Context, pluginName string, event *plugin.EventMessage) (*plugin.PluginResponse, error) {
+func (r *GRPCRuntime) SendEvent(ctx context.Context, pluginName string, event *plugin.EventMessage) (*plugin.PluginResponse, error) {
 	r.mu.RLock()
 	proc, ok := r.processes[pluginName]
 	r.mu.RUnlock()
@@ -126,22 +141,45 @@ func (r *GRPCRuntime) SendEvent(_ context.Context, pluginName string, event *plu
 		return nil, fmt.Errorf("plugin '%s' is not running", pluginName)
 	}
 
-	// 尝试通过 HTTP 调用插件的 /event 端点
-	pluginAddr := fmt.Sprintf("http://localhost:%d/event", 9000+proc.started.UnixNano()%1000)
-	data, _ := json.Marshal(event)
-
-	resp, err := http.Post(pluginAddr, "application/json", bytes.NewReader(data))
+	rawURL, _ := proc.plugin.Manifest.Config["event_url"].(string)
+	if rawURL == "" {
+		// Historical process manifests did not expose an event endpoint. Keep
+		// them running without probing an unrelated local port.
+		log.Printf("📨 插件 %s 未配置 event_url，事件 %s 仅记录", pluginName, event.Type)
+		return &plugin.PluginResponse{Allowed: true, Message: "processed (no event endpoint)"}, nil
+	}
+	endpoint, err := parseLoopbackEndpoint(pluginName, "event_url", rawURL)
 	if err != nil {
-		// 插件不支持 HTTP，降级为日志记录
-		log.Printf("📨 发送事件到插件 %s: %s (subject: %s) [HTTP不可用，仅记录]", pluginName, event.Type, event.Subject)
-		return &plugin.PluginResponse{Allowed: true, Message: "processed (no HTTP)"}, nil
+		return nil, err
+	}
+	data, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	resp, err := r.client().Do(request)
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("plugin '%s' event endpoint returned HTTP %d", pluginName, resp.StatusCode)
+	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		return &plugin.PluginResponse{Allowed: true, Message: "processed"}, nil
+	}
 	var result plugin.PluginResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		return &plugin.PluginResponse{Allowed: true, Message: "processed"}, nil
+		return nil, fmt.Errorf("decode plugin '%s' event response: %w", pluginName, err)
 	}
 	return &result, nil
 }
@@ -154,9 +192,9 @@ func (r *GRPCRuntime) DispatchExtension(ctx context.Context, pluginName string, 
 		return nil, fmt.Errorf("plugin '%s' is not running", pluginName)
 	}
 	rawURL, _ := proc.plugin.Manifest.Config["extension_url"].(string)
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Scheme != "http" || (parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost" && parsed.Hostname() != "::1") {
-		return nil, fmt.Errorf("plugin '%s' must configure a loopback extension_url", pluginName)
+	parsed, err := parseLoopbackEndpoint(pluginName, "extension_url", rawURL)
+	if err != nil {
+		return nil, err
 	}
 	payload, err := json.Marshal(request)
 	if err != nil {
@@ -167,7 +205,7 @@ func (r *GRPCRuntime) DispatchExtension(ctx context.Context, pluginName string, 
 		return nil, err
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
-	response, err := http.DefaultClient.Do(httpRequest)
+	response, err := r.client().Do(httpRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +215,25 @@ func (r *GRPCRuntime) DispatchExtension(ctx context.Context, pluginName string, 
 		return nil, err
 	}
 	return &plugin.ExtensionResponse{Status: response.StatusCode, Headers: map[string]string{"Content-Type": response.Header.Get("Content-Type")}, Body: body}, nil
+}
+
+func (r *GRPCRuntime) client() *http.Client {
+	if r.httpClient != nil {
+		return r.httpClient
+	}
+	return http.DefaultClient
+}
+
+func parseLoopbackEndpoint(pluginName, field, rawURL string) (*url.URL, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme != "http" || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" {
+		return nil, fmt.Errorf("plugin '%s' must configure a valid loopback %s", pluginName, field)
+	}
+	hostname := parsed.Hostname()
+	if hostname != "127.0.0.1" && hostname != "localhost" && hostname != "::1" {
+		return nil, fmt.Errorf("plugin '%s' must configure a loopback %s", pluginName, field)
+	}
+	return parsed, nil
 }
 
 func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {

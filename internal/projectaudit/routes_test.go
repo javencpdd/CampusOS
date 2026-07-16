@@ -50,7 +50,7 @@ func TestOpenAPIIsValidYAMLWithCoreFieldContracts(t *testing.T) {
 
 	text := string(document)
 	for _, expected := range []string{
-		"version: 0.6.9-experimental",
+		"version: " + OpenAPIContractVersion,
 		"$ref: '#/components/schemas/RegisterRequest'",
 		"$ref: '#/components/schemas/CreateThreadRequest'",
 		"$ref: '#/components/schemas/UpdateUserRequest'",

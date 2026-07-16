@@ -120,7 +120,8 @@ def main() -> int:
     if errors:
         return emit(args.json, errors, warnings, {})
 
-    readme_lines = readme.read_text(encoding="utf-8").splitlines()
+    readme_text = readme.read_text(encoding="utf-8")
+    readme_lines = readme_text.splitlines()
     docs_text = docs_index.read_text(encoding="utf-8")
     headings = [line[3:].strip() for line in readme_lines if line.startswith("## ")]
 
@@ -142,6 +143,39 @@ def main() -> int:
     for required in ("当前状态", "快速开始", "文档"):
         if required not in headings:
             errors.append(f"README is missing required section: {required}")
+
+    current_version = ""
+    version_source = root / "internal/platform/version/version.go"
+    if version_source.is_file():
+        match = re.search(
+            r'\bNumber\s*=\s*"(\d+\.\d+\.\d+)"',
+            version_source.read_text(encoding="utf-8"),
+        )
+        if match:
+            current_version = "v" + match.group(1)
+    if not current_version:
+        server_main = root / "cmd/server/main.go"
+        if server_main.is_file():
+            match = re.search(
+                r"CampusOS (v\d+\.\d+\.\d+) starting",
+                server_main.read_text(encoding="utf-8"),
+            )
+            if match:
+                current_version = match.group(1)
+    if current_version:
+        version_surfaces = {
+            "README baseline": readme,
+            "docs portal baseline": docs_index,
+            "docs-site home baseline": root / "docs-site/index.md",
+            "docs-site introduction baseline": root / "docs-site/guide/introduction.md",
+        }
+        for label, surface in version_surfaces.items():
+            if surface.is_file() and current_version not in surface.read_text(
+                encoding="utf-8"
+            ):
+                errors.append(
+                    f"{label} does not match server startup version: {current_version}"
+                )
 
     for heading in headings:
         if any(marker.lower() in heading.lower() for marker in DETAIL_HEADING_MARKERS):

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/internal/server"
 	"github.com/campusos/CampusOS/pkg/config"
 )
@@ -10,7 +11,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	log.Printf("🚀 CampusOS v0.9.0 starting on %s", cfg.Server.Addr())
+	log.Printf("CampusOS %s starting on %s", platformversion.Display, cfg.Server.Addr())
 	log.Printf("📖 API docs: http://%s/api/v1/health", cfg.Server.Addr())
 
 	srv := server.New(cfg)

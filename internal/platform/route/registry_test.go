@@ -4,7 +4,7 @@ import "testing"
 
 func TestRegistryRejectsDuplicateMethodAndPath(t *testing.T) {
 	registry := NewRegistry()
-	first := Descriptor{ID: "identity.health", Owner: "core.identity", Method: "GET", Path: "/api/v1/health", Audience: AudiencePublic, Auth: "none"}
+	first := Descriptor{ID: "identity.health", OperationCode: "http.identity.health", Owner: "core.identity", Method: "GET", Path: "/api/v1/health", Audience: AudiencePublic, Auth: "none"}
 	if err := registry.Add(first); err != nil {
 		t.Fatal(err)
 	}
@@ -16,7 +16,7 @@ func TestRegistryRejectsDuplicateMethodAndPath(t *testing.T) {
 }
 
 func TestDescriptorRequiresAdminPermission(t *testing.T) {
-	descriptor := Descriptor{ID: "admin.users", Owner: "core.identity", Method: "GET", Path: "/api/v1/users", Audience: AudienceAdmin, Auth: "jwt"}
+	descriptor := Descriptor{ID: "admin.users", OperationCode: "http.identity.users", Owner: "core.identity", Method: "GET", Path: "/api/v1/users", Audience: AudienceAdmin, Auth: "jwt"}
 	if err := descriptor.Validate(); err == nil {
 		t.Fatal("expected missing permission metadata error")
 	}
@@ -25,8 +25,8 @@ func TestDescriptorRequiresAdminPermission(t *testing.T) {
 func TestRegistryOrdersDescriptorsDeterministically(t *testing.T) {
 	registry := NewRegistry()
 	for _, descriptor := range []Descriptor{
-		{ID: "community.post", Owner: "core.community", Method: "POST", Path: "/api/v1/threads", Audience: AudienceAuthenticated, Auth: "jwt"},
-		{ID: "community.list", Owner: "core.community", Method: "GET", Path: "/api/v1/threads", Audience: AudiencePublic, Auth: "none"},
+		{ID: "community.post", OperationCode: "http.community.post", Owner: "core.community", Method: "POST", Path: "/api/v1/threads", Audience: AudienceAuthenticated, Auth: "jwt"},
+		{ID: "community.list", OperationCode: "http.community.list", Owner: "core.community", Method: "GET", Path: "/api/v1/threads", Audience: AudiencePublic, Auth: "none"},
 	} {
 		if err := registry.Add(descriptor); err != nil {
 			t.Fatal(err)

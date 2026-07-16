@@ -9,6 +9,7 @@ import (
 	communityport "github.com/campusos/CampusOS/internal/community/port"
 	"github.com/campusos/CampusOS/internal/community/repository"
 	"github.com/campusos/CampusOS/internal/community/service"
+	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -25,6 +26,7 @@ const (
 	portPostPort        = "community.post-port"
 	portModeration      = "community.moderation-gateway"
 	portContent         = "community.content-gateway"
+	portContentQuery    = "community.content-query"
 )
 
 type HTTPHandlers struct {
@@ -41,6 +43,7 @@ type Module struct {
 	threads    repository.ThreadRepository
 	categories repository.CategoryRepository
 	posts      repository.PostRepository
+	governance repository.ContentGovernanceRepository
 
 	threadService   *service.ThreadService
 	categoryService *service.CategoryService
@@ -80,6 +83,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if m.posts, valid = posts.(repository.PostRepository); !valid {
 		return fmt.Errorf("community post repository adapter has incompatible type %T", posts)
 	}
+	governance, ok := app.Lookup(portGovernanceRepository)
+	if !ok {
+		return errors.New("community governance repository adapter is not bound by profile")
+	}
+	if m.governance, valid = governance.(repository.ContentGovernanceRepository); !valid {
+		return fmt.Errorf("community governance repository adapter has incompatible type %T", governance)
+	}
 	m.app = app
 	for _, binding := range []struct {
 		name  string
@@ -97,7 +107,10 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if err := app.Provide(portModeration, &moduleModerationGateway{module: m}); err != nil {
 		return err
 	}
-	return app.Provide(portContent, &moduleContentGateway{module: m})
+	if err := app.Provide(portContent, &moduleContentGateway{module: m}); err != nil {
+		return err
+	}
+	return app.Provide(portContentQuery, &moduleContentQuery{module: m})
 }
 
 func (m *Module) Start(context.Context) error {
@@ -129,8 +142,18 @@ func (m *Module) Start(context.Context) error {
 		return fmt.Errorf("community cache port has incompatible type %T", cacheValue)
 	}
 	threads := service.NewThreadService(m.threads, bus)
+	// Standalone Community tests and legacy composition can omit Identity's
+	// policy port. The production module graph always provides it before Start.
+	if authorizationValue, found := m.app.Lookup("identity.authorization"); found {
+		authorization, compatible := authorizationValue.(identityport.Authorization)
+		if !compatible || authorization == nil {
+			return fmt.Errorf("community authorization port has incompatible type %T", authorizationValue)
+		}
+		threads.SetContentAuthorization(authorization)
+	}
 	threads.SetCategoryRepository(m.categories)
 	threads.SetCache(appCache)
+	threads.SetGovernanceRepository(m.governance)
 	categories := service.NewCategoryService(m.categories, bus)
 	posts := service.NewPostService(m.posts, bus)
 	posts.SetThreadRepository(m.threads)

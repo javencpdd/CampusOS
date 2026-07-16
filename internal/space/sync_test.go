@@ -6,6 +6,7 @@ import (
 	"time"
 
 	communitydomain "github.com/campusos/CampusOS/internal/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
 	communityrepo "github.com/campusos/CampusOS/internal/community/repository"
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -178,6 +179,41 @@ func TestSyncThreadNormalizesNilTags(t *testing.T) {
 	}
 }
 
+func TestListOwnContentsUsesAuthorFactAndKeepsGovernanceDetailsPrivate(t *testing.T) {
+	user := &identitydomain.User{ID: "1001", Username: "alice", Nickname: "Alice"}
+	query := &capturingContentQuery{authorThreads: []*communitydomain.Thread{{
+		ID:                "2002",
+		Title:             "Corrected article",
+		Content:           "author-only moderation status",
+		AuthorID:          user.ID,
+		AuthorName:        user.Nickname,
+		CategoryID:        "2",
+		Status:            communitydomain.ThreadStatusArchived,
+		PublicationStatus: communitydomain.PublicationStatusPublished,
+		ModerationStatus:  communitydomain.ModerationStatusTakenDown,
+		DeletionStatus:    communitydomain.DeletionStatusActive,
+		ModerationReason:  "please add the source",
+		CreatedAt:         time.Now().UTC(),
+		UpdatedAt:         time.Now().UTC(),
+	}}}
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(user))
+	svc.SetContentQuery(query)
+
+	contents, total, err := svc.ListOwnContents(context.Background(), user.ID, 1, 20)
+	if err != nil {
+		t.Fatalf("list own contents: %v", err)
+	}
+	if total != 1 || len(contents) != 1 {
+		t.Fatalf("expected one author content item, total=%d contents=%#v", total, contents)
+	}
+	if contents[0].ModerationStatus != string(communitydomain.ModerationStatusTakenDown) || contents[0].ModerationReason != "please add the source" {
+		t.Fatalf("owner must receive canonical governance state: %#v", contents[0])
+	}
+	if query.authorCalls != 1 || query.publicCalls != 0 {
+		t.Fatalf("owner view must use author fact query only: %#v", query)
+	}
+}
+
 func testThread(authorID, categoryID string, tags []string) *communitydomain.Thread {
 	now := time.Now().UTC()
 	return &communitydomain.Thread{
@@ -196,6 +232,29 @@ func testThread(authorID, categoryID string, tags []string) *communitydomain.Thr
 
 type capturingContentRepository struct {
 	last *SpaceContent
+}
+
+var _ communityport.ContentQuery = (*capturingContentQuery)(nil)
+
+type capturingContentQuery struct {
+	publicCalls   int
+	authorCalls   int
+	authorThreads []*communitydomain.Thread
+}
+
+func (q *capturingContentQuery) GetPublicThread(_ context.Context, _ string) (*communitydomain.Thread, error) {
+	q.publicCalls++
+	return nil, communityrepo.ErrThreadNotFound
+}
+
+func (q *capturingContentQuery) ListPublicThreads(_ context.Context, _ communitydomain.ThreadListFilter) ([]*communitydomain.Thread, int64, error) {
+	q.publicCalls++
+	return []*communitydomain.Thread{}, 0, nil
+}
+
+func (q *capturingContentQuery) ListAuthorThreads(_ context.Context, _ string, _ communitydomain.ThreadListFilter) ([]*communitydomain.Thread, int64, error) {
+	q.authorCalls++
+	return q.authorThreads, int64(len(q.authorThreads)), nil
 }
 
 func (r *capturingContentRepository) UpsertContent(_ context.Context, content *SpaceContent) error {
