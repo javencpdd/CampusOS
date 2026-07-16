@@ -23,28 +23,28 @@ type Store interface {
 	Retry(context.Context, string, string, int64, time.Time, string) error
 	DeadLetter(context.Context, string, string, int64, string) error
 	Get(context.Context, string) (*Event, error)
-	List(context.Context, EventFilter) ([]Event, error)
+	List(context.Context, EventFilter, PageRequest) ([]Event, int64, error)
 	Replay(context.Context, string) (*Event, error)
 	Summary(context.Context) (Summary, error)
 	Heartbeat(context.Context, string, time.Time) error
-	ListWorkers(context.Context, int) ([]WorkerLease, error)
+	ListWorkers(context.Context, PageRequest) ([]WorkerLease, int64, error)
 	HasConsumerReceipt(context.Context, string, string) (bool, error)
 	RecordConsumerReceipt(context.Context, ConsumerReceipt) error
 	StartAttempt(context.Context, DeliveryAttempt) (*DeliveryAttempt, error)
 	FinishAttempt(context.Context, DeliveryAttempt) error
-	ListAttempts(context.Context, string, int) ([]DeliveryAttempt, error)
+	ListAttempts(context.Context, string, PageRequest) ([]DeliveryAttempt, int64, error)
 
 	RecordCommandAudit(context.Context, CommandAudit) error
-	ListCommandAudits(context.Context, int) ([]CommandAudit, error)
+	ListCommandAudits(context.Context, PageRequest) ([]CommandAudit, int64, error)
 	StartOperation(context.Context, Operation) (*Operation, error)
 	UpdateOperation(context.Context, Operation) error
-	ListOperations(context.Context, string, int) ([]Operation, error)
+	ListOperations(context.Context, string, PageRequest) ([]Operation, int64, error)
 	RecoverInterruptedOperations(context.Context) ([]Operation, error)
 	RecordCompatibility(context.Context, CompatibilityUsage) error
-	ListCompatibility(context.Context, int) ([]CompatibilityUsage, error)
+	ListCompatibility(context.Context, PageRequest) ([]CompatibilityUsage, int64, error)
 	PreviewRetention(context.Context, string, time.Time) (RetentionPreview, error)
 	StartRetentionRun(context.Context, RetentionRun) (*RetentionRun, error)
-	ListRetentionRuns(context.Context, int) ([]RetentionRun, error)
+	ListRetentionRuns(context.Context, PageRequest) ([]RetentionRun, int64, error)
 }
 
 // MemoryStore is a deterministic local-profile adapter. The PostgreSQL store
@@ -72,6 +72,20 @@ func NewMemoryStore() *MemoryStore {
 		receipts:      make(map[string]ConsumerReceipt),
 		attempts:      make(map[string]DeliveryAttempt),
 	}
+}
+
+func paginateValues[T any](items []T, page PageRequest, defaultSize, maximumSize int) ([]T, int64) {
+	page = normalizePageRequest(page, defaultSize, maximumSize)
+	total := int64(len(items))
+	offset := page.offset()
+	if offset >= len(items) {
+		return []T{}, total
+	}
+	end := offset + page.PageSize
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[offset:end], total
 }
 
 func (s *MemoryStore) Enqueue(_ context.Context, event *Event) (*Event, error) {
@@ -117,6 +131,9 @@ func (s *MemoryStore) Claim(_ context.Context, owner string, limit int, lease ti
 	}
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].AvailableAt.Equal(items[j].AvailableAt) {
+			if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+				return items[i].ID < items[j].ID
+			}
 			return items[i].CreatedAt.Before(items[j].CreatedAt)
 		}
 		return items[i].AvailableAt.Before(items[j].AvailableAt)
@@ -177,14 +194,10 @@ func (s *MemoryStore) finish(id, owner string, generation int64, status string, 
 	return nil
 }
 
-func (s *MemoryStore) List(_ context.Context, filter EventFilter) ([]Event, error) {
+func (s *MemoryStore) List(_ context.Context, filter EventFilter, page PageRequest) ([]Event, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	limit := filter.Limit
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-	items := make([]Event, 0, limit)
+	items := make([]Event, 0, len(s.events))
 	for _, event := range s.events {
 		if filter.Status != "" && event.Status != filter.Status {
 			continue
@@ -194,11 +207,14 @@ func (s *MemoryStore) List(_ context.Context, filter EventFilter) ([]Event, erro
 		}
 		items = append(items, cloneEvent(event))
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	paged, total := paginateValues(items, page, 100, 500)
+	return paged, total, nil
 }
 
 func (s *MemoryStore) Get(_ context.Context, id string) (*Event, error) {
@@ -270,21 +286,21 @@ func (s *MemoryStore) Heartbeat(_ context.Context, workerID string, at time.Time
 	return nil
 }
 
-func (s *MemoryStore) ListWorkers(_ context.Context, limit int) ([]WorkerLease, error) {
+func (s *MemoryStore) ListWorkers(_ context.Context, page PageRequest) ([]WorkerLease, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
 	items := make([]WorkerLease, 0, len(s.workers))
 	for workerID, heartbeat := range s.workers {
 		items = append(items, WorkerLease{WorkerID: workerID, LastHeartbeatAt: heartbeat, UpdatedAt: heartbeat})
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].LastHeartbeatAt.After(items[j].LastHeartbeatAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].LastHeartbeatAt.Equal(items[j].LastHeartbeatAt) {
+			return items[i].WorkerID < items[j].WorkerID
+		}
+		return items[i].LastHeartbeatAt.After(items[j].LastHeartbeatAt)
+	})
+	paged, total := paginateValues(items, page, 50, 200)
+	return paged, total, nil
 }
 
 func receiptKey(consumer, eventID string) string {
@@ -353,23 +369,23 @@ func (s *MemoryStore) FinishAttempt(_ context.Context, attempt DeliveryAttempt) 
 	return nil
 }
 
-func (s *MemoryStore) ListAttempts(_ context.Context, eventID string, limit int) ([]DeliveryAttempt, error) {
+func (s *MemoryStore) ListAttempts(_ context.Context, eventID string, page PageRequest) ([]DeliveryAttempt, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 500 {
-		limit = 100
-	}
-	items := make([]DeliveryAttempt, 0, limit)
+	items := make([]DeliveryAttempt, 0, len(s.attempts))
 	for _, attempt := range s.attempts {
 		if eventID == "" || attempt.EventID == eventID {
 			items = append(items, attempt)
 		}
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].StartedAt.After(items[j].StartedAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].StartedAt.Equal(items[j].StartedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].StartedAt.After(items[j].StartedAt)
+	})
+	paged, total := paginateValues(items, page, 100, 500)
+	return paged, total, nil
 }
 
 func (s *MemoryStore) RecordCommandAudit(_ context.Context, audit CommandAudit) error {
@@ -388,21 +404,21 @@ func (s *MemoryStore) RecordCommandAudit(_ context.Context, audit CommandAudit) 
 	return nil
 }
 
-func (s *MemoryStore) ListCommandAudits(_ context.Context, limit int) ([]CommandAudit, error) {
+func (s *MemoryStore) ListCommandAudits(_ context.Context, page PageRequest) ([]CommandAudit, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
 	items := make([]CommandAudit, 0, len(s.audits))
 	for _, audit := range s.audits {
 		items = append(items, cloneCommandAudit(audit))
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	paged, total := paginateValues(items, page, 50, 200)
+	return paged, total, nil
 }
 
 func (s *MemoryStore) StartOperation(_ context.Context, operation Operation) (*Operation, error) {
@@ -441,23 +457,23 @@ func (s *MemoryStore) UpdateOperation(_ context.Context, operation Operation) er
 	return nil
 }
 
-func (s *MemoryStore) ListOperations(_ context.Context, kind string, limit int) ([]Operation, error) {
+func (s *MemoryStore) ListOperations(_ context.Context, kind string, page PageRequest) ([]Operation, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
-	items := make([]Operation, 0, limit)
+	items := make([]Operation, 0, len(s.operations))
 	for _, operation := range s.operations {
 		if kind == "" || operation.Kind == kind {
 			items = append(items, operation)
 		}
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	paged, total := paginateValues(items, page, 50, 200)
+	return paged, total, nil
 }
 
 func (s *MemoryStore) RecoverInterruptedOperations(_ context.Context) ([]Operation, error) {
@@ -499,21 +515,21 @@ func (s *MemoryStore) RecordCompatibility(_ context.Context, usage Compatibility
 	return nil
 }
 
-func (s *MemoryStore) ListCompatibility(_ context.Context, limit int) ([]CompatibilityUsage, error) {
+func (s *MemoryStore) ListCompatibility(_ context.Context, page PageRequest) ([]CompatibilityUsage, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
 	items := make([]CompatibilityUsage, 0, len(s.compatibility))
 	for _, usage := range s.compatibility {
 		items = append(items, usage)
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].LastSeen.After(items[j].LastSeen) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].LastSeen.Equal(items[j].LastSeen) {
+			return items[i].Key < items[j].Key
+		}
+		return items[i].LastSeen.After(items[j].LastSeen)
+	})
+	paged, total := paginateValues(items, page, 50, 200)
+	return paged, total, nil
 }
 
 func (s *MemoryStore) PreviewRetention(_ context.Context, target string, before time.Time) (RetentionPreview, error) {
@@ -556,18 +572,18 @@ func (s *MemoryStore) StartRetentionRun(_ context.Context, run RetentionRun) (*R
 	return &copyRun, nil
 }
 
-func (s *MemoryStore) ListRetentionRuns(_ context.Context, limit int) ([]RetentionRun, error) {
+func (s *MemoryStore) ListRetentionRuns(_ context.Context, page PageRequest) ([]RetentionRun, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if limit <= 0 || limit > 200 {
-		limit = 50
-	}
 	items := append([]RetentionRun(nil), s.retentionRuns...)
-	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	paged, total := paginateValues(items, page, 50, 200)
+	return paged, total, nil
 }
 
 func supportedRetentionTarget(target string) bool {

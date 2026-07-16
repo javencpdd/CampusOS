@@ -105,7 +105,7 @@ func (s *PostgreSQLStore) Claim(ctx context.Context, owner string, limit int, le
 				(status IN ('pending', 'retry') AND available_at <= NOW())
 				OR (status = 'processing' AND lease_until < NOW())
 		  )
-		ORDER BY available_at ASC, created_at ASC
+		ORDER BY available_at ASC, created_at ASC, id ASC
 		LIMIT $2
 		FOR UPDATE SKIP LOCKED
 	)
@@ -170,22 +170,24 @@ func (s *PostgreSQLStore) finish(ctx context.Context, id, owner string, generati
 	return nil
 }
 
-func (s *PostgreSQLStore) List(ctx context.Context, filter EventFilter) ([]Event, error) {
-	limit := filter.Limit
-	if limit <= 0 || limit > 500 {
-		limit = 100
+func (s *PostgreSQLStore) List(ctx context.Context, filter EventFilter, page PageRequest) ([]Event, int64, error) {
+	page = normalizePageRequest(page, 100, 500)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_outbox
+		WHERE ($1 = '' OR status = $1) AND ($2 = '' OR event_type = $2)`, filter.Status, filter.Type).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT id, event_type, schema_version, aggregate_type, aggregate_id, payload, headers, status,
 		COALESCE(idempotency_key, ''), attempts, max_attempts, available_at, COALESCE(lease_owner, ''),
 		lease_until, lease_generation, COALESCE(last_error, ''), dead_lettered_at, created_at, updated_at
 		FROM platform_outbox
 		WHERE ($1 = '' OR status = $1) AND ($2 = '' OR event_type = $2)
-		ORDER BY created_at DESC LIMIT $3`, filter.Status, filter.Type, limit)
+		ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4`, filter.Status, filter.Type, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]Event, 0, limit)
+	items := make([]Event, 0, page.PageSize)
 	for rows.Next() {
 		var event Event
 		if err := rows.Scan(&event.ID, &event.Type, &event.SchemaVersion, &event.AggregateType, &event.AggregateID,
@@ -193,11 +195,11 @@ func (s *PostgreSQLStore) List(ctx context.Context, filter EventFilter) ([]Event
 			&event.Attempts, &event.MaxAttempts, &event.AvailableAt, &event.LeaseOwner,
 			&event.LeaseUntil, &event.LeaseGeneration, &event.LastError, &event.DeadLetteredAt,
 			&event.CreatedAt, &event.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, event)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) Get(ctx context.Context, id string) (*Event, error) {
@@ -247,25 +249,27 @@ func (s *PostgreSQLStore) Heartbeat(ctx context.Context, workerID string, at tim
 	return err
 }
 
-func (s *PostgreSQLStore) ListWorkers(ctx context.Context, limit int) ([]WorkerLease, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (s *PostgreSQLStore) ListWorkers(ctx context.Context, page PageRequest) ([]WorkerLease, int64, error) {
+	page = normalizePageRequest(page, 50, 200)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_worker_leases`).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT worker_id, last_heartbeat_at, updated_at
-		FROM platform_worker_leases ORDER BY last_heartbeat_at DESC LIMIT $1`, limit)
+		FROM platform_worker_leases ORDER BY last_heartbeat_at DESC, worker_id ASC LIMIT $1 OFFSET $2`, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]WorkerLease, 0, limit)
+	items := make([]WorkerLease, 0, page.PageSize)
 	for rows.Next() {
 		var item WorkerLease
 		if err := rows.Scan(&item.WorkerID, &item.LastHeartbeatAt, &item.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) HasConsumerReceipt(ctx context.Context, consumer, eventID string) (bool, error) {
@@ -331,30 +335,33 @@ func (s *PostgreSQLStore) FinishAttempt(ctx context.Context, attempt DeliveryAtt
 	return nil
 }
 
-func (s *PostgreSQLStore) ListAttempts(ctx context.Context, eventID string, limit int) ([]DeliveryAttempt, error) {
-	if limit <= 0 || limit > 500 {
-		limit = 100
+func (s *PostgreSQLStore) ListAttempts(ctx context.Context, eventID string, page PageRequest) ([]DeliveryAttempt, int64, error) {
+	page = normalizePageRequest(page, 100, 500)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_outbox_attempts
+		WHERE ($1 = '' OR event_id = $1)`, eventID).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT id, event_id, consumer_name, worker_id, lease_generation,
 		attempt, status, COALESCE(error_message, ''), started_at, finished_at
 		FROM platform_outbox_attempts
 		WHERE ($1 = '' OR event_id = $1)
-		ORDER BY started_at DESC LIMIT $2`, eventID, limit)
+		ORDER BY started_at DESC, id DESC LIMIT $2 OFFSET $3`, eventID, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]DeliveryAttempt, 0, limit)
+	items := make([]DeliveryAttempt, 0, page.PageSize)
 	for rows.Next() {
 		var attempt DeliveryAttempt
 		if err := rows.Scan(&attempt.ID, &attempt.EventID, &attempt.ConsumerName, &attempt.WorkerID,
 			&attempt.LeaseGeneration, &attempt.Attempt, &attempt.Status, &attempt.Error,
 			&attempt.StartedAt, &attempt.FinishedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, attempt)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) RecordCommandAudit(ctx context.Context, audit CommandAudit) error {
@@ -378,21 +385,23 @@ func (s *PostgreSQLStore) RecordCommandAudit(ctx context.Context, audit CommandA
 	return err
 }
 
-func (s *PostgreSQLStore) ListCommandAudits(ctx context.Context, limit int) ([]CommandAudit, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (s *PostgreSQLStore) ListCommandAudits(ctx context.Context, page PageRequest) ([]CommandAudit, int64, error) {
+	page = normalizePageRequest(page, 50, 200)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_command_audits`).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT id, command_id, command_code,
 		COALESCE(actor_id, ''), COALESCE(actor_type, ''), COALESCE(resource_type, ''), COALESCE(resource_id, ''),
 		COALESCE(operation_code, ''), COALESCE(permission_code, ''), COALESCE(request_id, ''), COALESCE(trace_id, ''),
 		COALESCE(event_id, ''), details, created_at
 		FROM platform_command_audits
-		ORDER BY created_at DESC LIMIT $1`, limit)
+		ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]CommandAudit, 0, limit)
+	items := make([]CommandAudit, 0, page.PageSize)
 	for rows.Next() {
 		var audit CommandAudit
 		if err := rows.Scan(
@@ -400,11 +409,11 @@ func (s *PostgreSQLStore) ListCommandAudits(ctx context.Context, limit int) ([]C
 			&audit.ResourceType, &audit.ResourceID, &audit.OperationCode, &audit.PermissionCode,
 			&audit.RequestID, &audit.TraceID, &audit.EventID, &audit.Details, &audit.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, audit)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) StartOperation(ctx context.Context, operation Operation) (*Operation, error) {
@@ -466,29 +475,32 @@ func (s *PostgreSQLStore) UpdateOperation(ctx context.Context, operation Operati
 	return nil
 }
 
-func (s *PostgreSQLStore) ListOperations(ctx context.Context, kind string, limit int) ([]Operation, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (s *PostgreSQLStore) ListOperations(ctx context.Context, kind string, page PageRequest) ([]Operation, int64, error) {
+	page = normalizePageRequest(page, 50, 200)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_operation_runs
+		WHERE ($1 = '' OR kind = $1)`, kind).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT id, kind, subject_type, subject_id, status,
 		COALESCE(actor_id, ''), COALESCE(idempotency_key, ''), details, COALESCE(error_message, ''), created_at, updated_at
 		FROM platform_operation_runs WHERE ($1 = '' OR kind = $1)
-		ORDER BY created_at DESC LIMIT $2`, kind, limit)
+		ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3`, kind, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]Operation, 0, limit)
+	items := make([]Operation, 0, page.PageSize)
 	for rows.Next() {
 		var operation Operation
 		if err := rows.Scan(&operation.ID, &operation.Kind, &operation.SubjectType, &operation.SubjectID,
 			&operation.Status, &operation.ActorID, &operation.IdempotencyKey, &operation.Details,
 			&operation.Error, &operation.CreatedAt, &operation.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, operation)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) RecoverInterruptedOperations(ctx context.Context) ([]Operation, error) {
@@ -534,25 +546,27 @@ func (s *PostgreSQLStore) RecordCompatibility(ctx context.Context, usage Compati
 	return err
 }
 
-func (s *PostgreSQLStore) ListCompatibility(ctx context.Context, limit int) ([]CompatibilityUsage, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (s *PostgreSQLStore) ListCompatibility(ctx context.Context, page PageRequest) ([]CompatibilityUsage, int64, error) {
+	page = normalizePageRequest(page, 50, 200)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_compatibility_usage`).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT usage_key, usage_kind, detail, first_seen, last_seen, usage_count
-		FROM platform_compatibility_usage ORDER BY last_seen DESC LIMIT $1`, limit)
+		FROM platform_compatibility_usage ORDER BY last_seen DESC, usage_key ASC LIMIT $1 OFFSET $2`, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]CompatibilityUsage, 0, limit)
+	items := make([]CompatibilityUsage, 0, page.PageSize)
 	for rows.Next() {
 		var usage CompatibilityUsage
 		if err := rows.Scan(&usage.Key, &usage.Kind, &usage.Detail, &usage.FirstSeen, &usage.LastSeen, &usage.Count); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, usage)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func (s *PostgreSQLStore) PreviewRetention(ctx context.Context, target string, before time.Time) (RetentionPreview, error) {
@@ -591,25 +605,27 @@ func (s *PostgreSQLStore) StartRetentionRun(ctx context.Context, run RetentionRu
 	return &run, nil
 }
 
-func (s *PostgreSQLStore) ListRetentionRuns(ctx context.Context, limit int) ([]RetentionRun, error) {
-	if limit <= 0 || limit > 200 {
-		limit = 50
+func (s *PostgreSQLStore) ListRetentionRuns(ctx context.Context, page PageRequest) ([]RetentionRun, int64, error) {
+	page = normalizePageRequest(page, 50, 200)
+	var total int64
+	if err := s.db(ctx).QueryRow(ctx, `SELECT COUNT(*) FROM platform_retention_runs`).Scan(&total); err != nil {
+		return nil, 0, err
 	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT id, target, before_at, eligible_rows, mode, status, created_at
-		FROM platform_retention_runs ORDER BY created_at DESC LIMIT $1`, limit)
+		FROM platform_retention_runs ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`, page.PageSize, page.offset())
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	items := make([]RetentionRun, 0, limit)
+	items := make([]RetentionRun, 0, page.PageSize)
 	for rows.Next() {
 		var item RetentionRun
 		if err := rows.Scan(&item.ID, &item.Target, &item.Before, &item.EligibleRows, &item.Mode, &item.Status, &item.CreatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+	return items, total, rows.Err()
 }
 
 func retentionPreviewQuery(target string) (string, bool) {

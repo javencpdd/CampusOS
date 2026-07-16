@@ -71,6 +71,7 @@ generated-files-check:
 database-check:
 	./scripts/database-check.sh all
 	./scripts/test-v10-module-separation-migration.sh
+	./scripts/test-v11-reliability-migration.sh
 
 backup:
 	./scripts/backup.sh

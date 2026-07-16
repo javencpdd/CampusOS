@@ -5,22 +5,43 @@
 > 机器可读权威合同：[openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)
 
 所有接口沿用 CampusOS `{ code, msg, data, request_id }` 响应包络。可靠任务 API 只在
-管理员权限通过后可用，列表上限由服务端限制，且不返回 Outbox payload、Webhook
-Secret、Token 或 command audit 的 `details`。
+管理员权限通过后可用。列表统一使用 `page`、`page_size`，其中 `page_size` 最大为
+`100`；旧客户端仍可传 `limit`，服务端会把它视为第一页的页大小。列表响应结构为：
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 0,
+    "total_pages": 0
+  }
+}
+```
+
+`total` 顶层字段为兼容字段，当前与 `pagination.total` 一致。查询按认证用户限流；无
+用户上下文时按客户端 IP 限流。默认窗口为每分钟 `120` 次，超过限制返回 `429` 和
+`Retry-After`。当前限流器是单进程保护，不代表多实例共享配额。
+
+事件、重放、操作、兼容遥测和命令审计都通过显式响应 DTO 输出。接口不返回 Outbox
+`payload`、`headers`、`idempotency_key`，也不返回 Webhook Secret、Token、operation
+`details`、compatibility `detail` 或 command audit `details`。
 
 ## 1. 只读接口
 
 | 方法 | 路径 | Permission Code | 说明 |
 | --- | --- | --- | --- |
 | `GET` | `/platform/reliability/summary` | `platform.reliability.read` | 返回 pending、processing、retry、published、dead 和最早待处理时间。 |
-| `GET` | `/platform/reliability/events` | `platform.reliability.read` | 支持 `status`、`type`、`limit`；返回事件元数据和状态，不返回敏感 payload。 |
-| `GET` | `/platform/reliability/attempts` | `platform.reliability.read` | 支持 `event_id`、`limit`；返回消费者尝试证据。 |
-| `GET` | `/platform/reliability/workers` | `platform.reliability.read` | 返回 worker heartbeat。 |
-| `GET` | `/platform/reliability/operations` | `platform.reliability.read` | 支持 `kind`、`limit`；返回可恢复文件/资源操作状态。 |
-| `GET` | `/platform/reliability/command-audits` | `platform.reliability.read` | 返回 command、actor、资源、request/trace/event 关联；不返回 raw details。 |
-| `GET` | `/platform/reliability/compatibility` | `platform.reliability.read` | 返回兼容路径使用计数。 |
+| `GET` | `/platform/reliability/events` | `platform.reliability.read` | 支持 `status`、`type`、`page`、`page_size`；返回事件元数据和状态。 |
+| `GET` | `/platform/reliability/attempts` | `platform.reliability.read` | 支持 `event_id`、`page`、`page_size`；返回消费者尝试证据。 |
+| `GET` | `/platform/reliability/workers` | `platform.reliability.read` | 支持分页；返回 worker heartbeat。 |
+| `GET` | `/platform/reliability/operations` | `platform.reliability.read` | 支持 `kind` 和分页；返回不含内部 details 的操作状态。 |
+| `GET` | `/platform/reliability/command-audits` | `platform.reliability.read` | 支持分页；返回 command、actor、资源、request/trace/event 关联。 |
+| `GET` | `/platform/reliability/compatibility` | `platform.reliability.read` | 支持分页；返回不含 raw detail 的兼容路径计数。 |
 | `GET` | `/platform/reliability/retention-preview` | `platform.retention.preview` | 支持 `target`、RFC3339 `before`；只计算候选数。 |
-| `GET` | `/platform/reliability/retention-runs` | `platform.retention.preview` | 返回已经保存的 dry-run。 |
+| `GET` | `/platform/reliability/retention-runs` | `platform.retention.preview` | 支持分页；返回已经保存的 dry-run。 |
 
 ## 2. 高风险写接口
 
@@ -39,7 +60,8 @@ curl -fsS -X POST \
 ```
 
 错误语义：找不到事件返回 `404`；事件不是 dead、缺少幂等键或相同幂等请求仍在处理中
-返回 `409`；没有认证 actor 返回 `401`。客户端不应把 `409` 当成可无条件重试。
+返回 `409`；没有认证 actor 返回 `401`。客户端不应把 `409` 当成可无条件重试。成功
+响应同样只返回事件元数据，不返回被重放事件的 payload、headers 或幂等键。
 
 ## 3. Webhook 合同补充
 

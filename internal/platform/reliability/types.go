@@ -112,7 +112,42 @@ type CommandAudit struct {
 type EventFilter struct {
 	Status string
 	Type   string
-	Limit  int
+	// Limit is retained for internal callers using the pre-pagination service
+	// helper. HTTP handlers use PageRequest instead.
+	Limit int
+}
+
+// PageRequest is the shared bounded pagination contract for reliability
+// administration queries. Page numbers are one-based.
+type PageRequest struct {
+	Page     int
+	PageSize int
+}
+
+func normalizePageRequest(page PageRequest, defaultSize, maximumSize int) PageRequest {
+	if defaultSize <= 0 {
+		defaultSize = 50
+	}
+	if maximumSize <= 0 {
+		maximumSize = 100
+	}
+	if page.Page < 1 {
+		page.Page = 1
+	}
+	if page.PageSize < 1 {
+		page.PageSize = defaultSize
+	}
+	if page.PageSize > maximumSize {
+		page.PageSize = maximumSize
+	}
+	return page
+}
+
+func (p PageRequest) offset() int {
+	if p.Page <= 1 || p.PageSize <= 0 {
+		return 0
+	}
+	return (p.Page - 1) * p.PageSize
 }
 
 type Summary struct {

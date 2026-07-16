@@ -272,7 +272,7 @@ func TestCommandAuditListIsNewestFirstAndCopiesDetails(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	items, err := store.ListCommandAudits(context.Background(), 10)
+	items, _, err := store.ListCommandAudits(context.Background(), PageRequest{Page: 1, PageSize: 10})
 	if err != nil || len(items) != 2 {
 		t.Fatalf("list command audits: items=%d err=%v", len(items), err)
 	}
@@ -280,7 +280,7 @@ func TestCommandAuditListIsNewestFirstAndCopiesDetails(t *testing.T) {
 		t.Fatalf("command audits were not newest first: %+v", items)
 	}
 	items[1].Details[0] = 'X'
-	again, err := store.ListCommandAudits(context.Background(), 10)
+	again, _, err := store.ListCommandAudits(context.Background(), PageRequest{Page: 1, PageSize: 10})
 	if err != nil || string(again[1].Details) != string(oldDetails) {
 		t.Fatalf("command audit details leaked mutable memory: items=%+v err=%v", again, err)
 	}

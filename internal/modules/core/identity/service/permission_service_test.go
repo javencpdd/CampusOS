@@ -229,7 +229,7 @@ func TestPermissionCatalogFallbackIsRecordedWithoutChangingDecision(t *testing.T
 	if err != nil || !allowed {
 		t.Fatalf("legacy catalog permission result allowed=%v err=%v", allowed, err)
 	}
-	usages, err := store.ListCompatibility(ctx, 10)
+	usages, _, err := store.ListCompatibility(ctx, reliability.PageRequest{Page: 1, PageSize: 10})
 	if err != nil || len(usages) != 1 {
 		t.Fatalf("compatibility usage=%#v err=%v", usages, err)
 	}

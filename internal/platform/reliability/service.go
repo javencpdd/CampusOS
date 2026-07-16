@@ -162,10 +162,22 @@ func (s *Service) ProcessOnce(ctx context.Context) (int, error) {
 
 func (s *Service) Summary(ctx context.Context) (Summary, error) { return s.store.Summary(ctx) }
 func (s *Service) List(ctx context.Context, filter EventFilter) ([]Event, error) {
-	return s.store.List(ctx, filter)
+	pageSize := filter.Limit
+	if pageSize <= 0 {
+		pageSize = 100
+	}
+	items, _, err := s.store.List(ctx, filter, PageRequest{Page: 1, PageSize: pageSize})
+	return items, err
+}
+func (s *Service) ListPage(ctx context.Context, filter EventFilter, page PageRequest) ([]Event, int64, error) {
+	return s.store.List(ctx, filter, page)
 }
 func (s *Service) ListAttempts(ctx context.Context, eventID string, limit int) ([]DeliveryAttempt, error) {
-	return s.store.ListAttempts(ctx, eventID, limit)
+	items, _, err := s.store.ListAttempts(ctx, eventID, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+func (s *Service) ListAttemptsPage(ctx context.Context, eventID string, page PageRequest) ([]DeliveryAttempt, int64, error) {
+	return s.store.ListAttempts(ctx, eventID, page)
 }
 func (s *Service) Replay(ctx context.Context, id string) (*Event, error) {
 	return s.store.Replay(ctx, id)
@@ -258,17 +270,34 @@ func replayOperationKey(actorID, eventID, idempotencyKey string) string {
 	return fmt.Sprintf("reliability.replay:%x", digest[:])
 }
 func (s *Service) ListCompatibility(ctx context.Context, limit int) ([]CompatibilityUsage, error) {
-	return s.store.ListCompatibility(ctx, limit)
+	items, _, err := s.store.ListCompatibility(ctx, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+func (s *Service) ListCompatibilityPage(ctx context.Context, page PageRequest) ([]CompatibilityUsage, int64, error) {
+	return s.store.ListCompatibility(ctx, page)
 }
 func (s *Service) ListWorkers(ctx context.Context, limit int) ([]WorkerLease, error) {
-	return s.store.ListWorkers(ctx, limit)
+	items, _, err := s.store.ListWorkers(ctx, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+func (s *Service) ListWorkersPage(ctx context.Context, page PageRequest) ([]WorkerLease, int64, error) {
+	return s.store.ListWorkers(ctx, page)
 }
 func (s *Service) ListOperations(ctx context.Context, kind string, limit int) ([]Operation, error) {
-	return s.store.ListOperations(ctx, kind, limit)
+	items, _, err := s.store.ListOperations(ctx, kind, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+func (s *Service) ListOperationsPage(ctx context.Context, kind string, page PageRequest) ([]Operation, int64, error) {
+	return s.store.ListOperations(ctx, kind, page)
 }
 
 func (s *Service) ListCommandAudits(ctx context.Context, limit int) ([]CommandAudit, error) {
-	return s.store.ListCommandAudits(ctx, limit)
+	items, _, err := s.store.ListCommandAudits(ctx, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+
+func (s *Service) ListCommandAuditsPage(ctx context.Context, page PageRequest) ([]CommandAudit, int64, error) {
+	return s.store.ListCommandAudits(ctx, page)
 }
 
 // RecoverInterruptedOperations makes a process-interrupted filesystem workflow
@@ -298,7 +327,12 @@ func (s *Service) StartRetentionPreview(ctx context.Context, target string, befo
 }
 
 func (s *Service) ListRetentionRuns(ctx context.Context, limit int) ([]RetentionRun, error) {
-	return s.store.ListRetentionRuns(ctx, limit)
+	items, _, err := s.store.ListRetentionRuns(ctx, PageRequest{Page: 1, PageSize: limit})
+	return items, err
+}
+
+func (s *Service) ListRetentionRunsPage(ctx context.Context, page PageRequest) ([]RetentionRun, int64, error) {
+	return s.store.ListRetentionRuns(ctx, page)
 }
 
 func (s *Service) RecordCompatibility(ctx context.Context, key, kind string, detail any) error {
