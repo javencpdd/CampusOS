@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) runApplication(infra *infrastructureBootstrap) error {
-	if s.ai == nil || s.ai.Service() == nil || s.webhook == nil || s.webhook.Service() == nil || s.mcp == nil || s.mcp.Service() == nil || s.message == nil || s.message.Service() == nil || s.platformLog == nil || s.platformLog.Service() == nil || s.integration == nil || s.integration.Handler() == nil {
+	if s.reliability == nil || s.reliability.Service() == nil || s.reliability.Handler() == nil || s.ai == nil || s.ai.Service() == nil || s.webhook == nil || s.webhook.Service() == nil || s.mcp == nil || s.mcp.Service() == nil || s.message == nil || s.message.Service() == nil || s.platformLog == nil || s.platformLog.Service() == nil || s.integration == nil || s.integration.Handler() == nil {
 		return fmt.Errorf("integration modules are unavailable")
 	}
 
@@ -62,6 +62,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		Schedule:      s.schedule.Handler(),
 		PlatformLog:   s.platformLog.Handler(),
 		Moderation:    s.moderation.Handler(),
+		Reliability:   s.reliability.Handler(),
 		Metrics:       infra.metrics,
 	})
 	if err := s.identity.SyncRouteDescriptors(context.Background(), router.RouteDescriptors()); err != nil {

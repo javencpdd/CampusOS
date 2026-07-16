@@ -1,11 +1,11 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.10.0`
+> 当前实现基线：`v0.11.0`
 
 ## 1. 契约状态
 
-CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；内容的 `version` 为 v10，并由真实路由代码生成和检查漂移。
+CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；内容的 `version` 为 v11，并由真实路由代码生成和检查漂移。
 
 当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。注册登录、用户资料、帖子、回复、版块、个人空间、课表、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
 
@@ -29,6 +29,7 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 | 插件业务 Gateway | `/extensions/:plugin/*path` | JWT、权限、状态、健康、大小、超时、Trace、审计和 Runtime 分发。 |
 | 用户前台系统主题 | `/web-themes/*` | 公开列出管理员提供且筛查通过的 `target:web` 风格包、读取运行包和声明图片资源。 |
 | 集成 | `/webhooks/*`、`/mcp/*`、`/message/*`、`/ai/*` | Webhook、内部 MCP-like 工具、Message local adapter 和 AI Gateway。 |
+| 可靠任务 | `/platform/reliability/*` | 持久事件、消费尝试、Worker、可恢复操作、命令关联审计、兼容遥测、dry-run 与受控重放。 |
 | 运维 | `/health`、`/metrics`、`/platform-logs/*` | 健康、最小指标和管理员日志流。 |
 
 不同接口的认证和权限要求不同。客户端不能根据 UI 推断授权，应处理 HTTP 失败和 CampusOS 响应包络。
@@ -80,7 +81,17 @@ Moderation Core 始终保留权限策略、板块作用域、审计和数据完�
 
 授权时不能信任客户端提供的版块。主题操作从 `threads.category_id` 取作用域，回复操作先读取回复所属主题再取其版块；跨版块请求返回 `403`。插件当前停用时，用户侧治理接口返回 `503`，已保存的版主分配和审计数据不会删除。
 
-## 6. 兼容性规则
+## 6. 可靠任务 API
+
+| 方法 | 路径 | Permission Code | 说明 |
+| --- | --- | --- |
+| `GET` | `/platform/reliability/summary`、`/events`、`/attempts`、`/workers`、`/operations`、`/command-audits`、`/compatibility` | `platform.reliability.read` | 读取队列、Worker、操作、命令关联和兼容使用；不返回 payload、Secret 或审计 details。 |
+| `POST` | `/platform/reliability/events/:id/replay` | `platform.reliability.replay` | 仅重放 dead-letter；要求认证 actor 与 `Idempotency-Key`。 |
+| `GET`/`POST` | `/platform/reliability/retention-preview`、`/retention-runs`、`/retention-runs/preview` | `platform.retention.preview` | 仅计算和保存 dry-run，不执行物理删除。 |
+
+详细请求、错误与 Webhook 补充见 [v11 可靠任务与 Webhook 合同](v11可靠任务与Webhook合同.md)。
+
+## 7. 兼容性规则
 
 1. 新公开 API 应使用 `/api/v1` 前缀，并在所属模块中记录请求/响应变化。
 2. 不应静默改变已有字段或路由语义；行为变化时新增明确字段或版本化路由。
@@ -88,7 +99,7 @@ Moderation Core 始终保留权限策略、板块作用域、审计和数据完�
 4. 内部 `/mcp/*` 路由不等同于标准 MCP；标准服务需要独立传输、认证、能力协商和契约测试。
 5. `make contracts-check` 必须通过；新增管理路由没有显式 `RequirePermission` 时生成器直接失败。
 
-## 7. 插件 UI Runtime 与 Gateway
+## 8. 插件 UI Runtime 与 Gateway
 
 | 方法 | 路径 | 认证 | 说明 |
 | --- | --- | --- | --- |
@@ -98,10 +109,12 @@ Moderation Core 始终保留权限策略、板块作用域、审计和数据完�
 
 Runtime Manifest 不是授权替代。页面隐藏和 Action 过滤只是减少误操作，最终业务授权仍在 Gateway、插件服务和 Core 领域服务完成。详细合同见 [插件前端运行时与 Extension Gateway](../help/插件相关/插件前端运行时与Extension%20Gateway.md)。
 
-## 8. 关联文档
+## 9. 关联文档
 
 - [接口协议适配器标准说明](../help/系统设计相关/接口协议适配器标准说明.md)
 - [v10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)
+- [v11 权限管理与可靠审计设计入门](../help/系统设计相关/v11权限管理与可靠审计设计入门.md)
+- [v11 可靠任务与 Webhook 合同](v11可靠任务与Webhook合同.md)
 - [RBAC 权限与版主管理说明（历史兼容）](../help/系统设计相关/RBAC权限与版主管理说明.md)
 - [v6 API 契约计划](../项目计划v6/01-v6版本计划书.md)
 - [v6 第三版计划](../项目计划v6/02-v6版本计划书第三版.md)

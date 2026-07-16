@@ -21,6 +21,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/internal/plugin"
 	modulecatalog "github.com/campusos/CampusOS/modules"
@@ -54,6 +55,7 @@ type Dependencies struct {
 	Schedule      *schedule.Handler
 	PlatformLog   *platformlog.Handler
 	Moderation    *moderation.Handler
+	Reliability   *reliability.Handler
 	Metrics       *observability.Collector
 }
 
@@ -277,6 +279,17 @@ func Build(d Dependencies) *Router {
 		admin.Permission("message", "read").GET("/messages/summary", d.Message.Summary)
 		admin.Permission("platform_log", "read").GET("/platform/logs/sources", d.PlatformLog.Sources)
 		admin.Permission("platform_log", "read").GET("/platform/logs/stream", d.PlatformLog.Stream)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.summary").GET("/platform/reliability/summary", d.Reliability.Summary)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.events").GET("/platform/reliability/events", d.Reliability.ListEvents)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.attempts").GET("/platform/reliability/attempts", d.Reliability.ListAttempts)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.workers").GET("/platform/reliability/workers", d.Reliability.ListWorkers)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.operations").GET("/platform/reliability/operations", d.Reliability.ListOperations)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.command_audits").GET("/platform/reliability/command-audits", d.Reliability.ListCommandAudits)
+		admin.PermissionCode("platform.reliability.read").Operation("http.platform.reliability.compatibility").GET("/platform/reliability/compatibility", d.Reliability.ListCompatibility)
+		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_preview").GET("/platform/reliability/retention-preview", d.Reliability.PreviewRetention)
+		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_runs").GET("/platform/reliability/retention-runs", d.Reliability.ListRetentionRuns)
+		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_preview_create").POST("/platform/reliability/retention-runs/preview", d.Reliability.StartRetentionPreview)
+		admin.PermissionCode("platform.reliability.replay").Operation("http.platform.reliability.replay").POST("/platform/reliability/events/:id/replay", d.Reliability.Replay)
 		admin.Permission("homepage", "configure").POST("/home/style-packs/validate", d.Homepage.ValidateStylePack)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example", d.Homepage.StylePackExample)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example.zip", d.Homepage.StylePackExampleZip)

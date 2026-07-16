@@ -68,7 +68,7 @@ CAMPUSOS_INSTANCE_MODE=single
 
 当前 `User Storage Local Provider` 和 Host API v1 的 SQLite KV 均为本地单写实现。设置 `CAMPUSOS_INSTANCE_MODE=multi` 会让服务在启动前明确拒绝运行，避免多个实例悄悄写同一份本地文件或 SQLite 数据。
 
-生产多实例方案需要共享 User Storage Provider、外部插件 Runtime 协调和 SQLite 迁移，尚不属于 v0.10 交付范围。不要通过共享宿主目录绕过此限制。
+生产多实例方案需要共享 User Storage Provider、外部插件 Runtime 协调、SQLite 迁移以及集群级 Webhook 限流，尚不属于 v0.11 交付范围。不要通过共享宿主目录绕过此限制。
 
 ## 本地日志
 

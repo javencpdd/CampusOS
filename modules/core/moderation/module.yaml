@@ -3,7 +3,7 @@ id: core.moderation
 feature_id: moderation
 name: moderation
 display_name: "Category Moderation"
-version: "0.10.0"
+version: "0.11.0"
 description: "Always-on category scope, authorization policy, audit, and integrity enforcement."
 kind: core
 activation_mode: always-on

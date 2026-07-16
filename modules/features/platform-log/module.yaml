@@ -2,7 +2,7 @@ schema: campusos.module/v1
 id: feature.platform-log
 name: platform-log
 display_name: "Platform Log"
-version: "0.10.0"
+version: "0.11.0"
 description: "Administrative view of approved backend and frontend runtime log sources."
 kind: builtin-feature
 activation_mode: restart

@@ -11,6 +11,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -55,7 +56,9 @@ func NewModule() *Module { return &Module{} }
 
 func (m *Module) ID() string { return ModuleID }
 
-func (m *Module) Dependencies() []string { return []string{"core.event-bus", "core.identity"} }
+func (m *Module) Dependencies() []string {
+	return []string{"core.event-bus", "core.identity", reliability.ModuleID}
+}
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -142,6 +145,13 @@ func (m *Module) Start(context.Context) error {
 		return fmt.Errorf("community cache port has incompatible type %T", cacheValue)
 	}
 	threads := service.NewThreadService(m.threads, bus)
+	if reliabilityValue, found := m.app.Lookup("platform.reliability.service"); found {
+		reliable, compatible := reliabilityValue.(*reliability.Service)
+		if !compatible || reliable == nil {
+			return fmt.Errorf("community reliability port has incompatible type %T", reliabilityValue)
+		}
+		threads.SetReliability(reliable)
+	}
 	// Standalone Community tests and legacy composition can omit Identity's
 	// policy port. The production module graph always provides it before Start.
 	if authorizationValue, found := m.app.Lookup("identity.authorization"); found {

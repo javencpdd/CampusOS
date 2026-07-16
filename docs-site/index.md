@@ -3,7 +3,7 @@
 CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，同时提供用户社区、管理后台、个人空间、受控富文本、个人课表和可扩展插件运行时。
 
 <div class="status-line">
-  <code>v0.10.0</code>
+  <code>v0.11.0</code>
   <code>Go + Gin</code>
   <code>Vue 3</code>
   <code>PostgreSQL</code>
@@ -16,6 +16,7 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
   <a href="/deployment/development"><strong>启动开发环境</strong><span>安装依赖、准备配置、运行 migration 并启动四个开发服务。</span></a>
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
   <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
+  <a href="/operations/reliable-tasks"><strong>可靠任务与 Webhook</strong><span>查看持久事件、失败队列、重放边界和安全投递配置。</span></a>
 </div>
 
 ## 当前界面

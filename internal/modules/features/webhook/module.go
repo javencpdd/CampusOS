@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/observability"
 )
@@ -13,16 +14,27 @@ import (
 const ModuleID = "integration.webhook"
 const portStore = "integration.webhook.adapter.store"
 
+type Config struct {
+	EgressPolicy EgressPolicy
+}
+
 type Module struct {
 	metrics *observability.Collector
+	config  Config
 	app     *platformmodule.AppContext
 	service *Service
 	handler *Handler
 }
 
-func NewModule(metrics *observability.Collector) *Module { return &Module{metrics: metrics} }
-func (m *Module) ID() string                             { return ModuleID }
-func (m *Module) Dependencies() []string                 { return []string{"core.event-bus"} }
+func NewModule(metrics *observability.Collector, config ...Config) *Module {
+	module := &Module{metrics: metrics}
+	if len(config) > 0 {
+		module.config = config[0]
+	}
+	return module
+}
+func (m *Module) ID() string             { return ModuleID }
+func (m *Module) Dependencies() []string { return []string{"core.event-bus", reliability.ModuleID} }
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
 		return errors.New("webhook module app context is required")
@@ -47,7 +59,16 @@ func (m *Module) Start(context.Context) error {
 	if !ok || bus == nil {
 		return fmt.Errorf("webhook event bus port has incompatible type %T", busValue)
 	}
-	m.service = NewService(store, m.metrics)
+	reliabilityValue, ok := m.app.Lookup("platform.reliability.service")
+	if !ok {
+		return errors.New("webhook reliability port is unavailable")
+	}
+	reliable, ok := reliabilityValue.(*reliability.Service)
+	if !ok || reliable == nil {
+		return fmt.Errorf("webhook reliability port has incompatible type %T", reliabilityValue)
+	}
+	m.service = NewService(store, m.metrics, reliable)
+	m.service.SetEgressPolicy(m.config.EgressPolicy)
 	if err := m.service.Register(bus); err != nil {
 		return err
 	}

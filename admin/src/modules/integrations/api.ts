@@ -14,7 +14,7 @@ export const spaceAdminApi = {
 export const webhookApi = {
   list: () => api.get('/webhooks'),
   summary: () => api.get('/webhooks/summary'),
-  create: (data: { name: string; url: string; secret?: string; events?: string[]; enabled?: boolean; max_retries?: number; timeout_ms?: number }) =>
+  create: (data: { name: string; url: string; secret?: string; events?: string[]; enabled?: boolean; max_retries?: number; timeout_ms?: number; max_concurrent?: number; rate_limit_per_minute?: number }) =>
     api.post('/webhooks', data),
   test: (id: string) => api.post(`/webhooks/${id}/test`),
   enable: (id: string) => api.post(`/webhooks/${id}/enable`),

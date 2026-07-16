@@ -102,6 +102,7 @@ func (s *Service) ListPublicContentsByUserID(ctx context.Context, userID string,
 	if s.contentQuery != nil {
 		return s.listPublicContentsFromFact(ctx, userID, page, pageSize)
 	}
+	s.recordLegacyContentProjectionUse(ctx, "list_public_by_user_id")
 	if s.contentRepo == nil {
 		return nil, 0, ErrContentRepositoryUnavailable
 	}
@@ -133,6 +134,7 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 	if s.contentQuery != nil {
 		return s.listPublicContentsFromFact(ctx, user.ID, page, pageSize)
 	}
+	s.recordLegacyContentProjectionUse(ctx, "list_public_by_username")
 	if err := s.BackfillUserContents(ctx, user.ID); err != nil {
 		return nil, 0, err
 	}
@@ -154,6 +156,7 @@ func (s *Service) ListOwnContents(ctx context.Context, userID string, page, page
 	if s.contentQuery != nil {
 		return s.listOwnContentsFromFact(ctx, userID, page, pageSize)
 	}
+	s.recordLegacyContentProjectionUse(ctx, "list_own")
 	if s.contentRepo == nil {
 		return nil, 0, ErrContentRepositoryUnavailable
 	}

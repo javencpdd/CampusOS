@@ -1,0 +1,12 @@
+schema: campusos.module/v1
+id: core.reliability
+name: reliability
+display_name: "Reliable Command and Event Core"
+version: "0.11.0"
+description: "Transactional command audit, durable outbox, worker leases, and safe replay observability."
+kind: core
+activation_mode: always-on
+dependencies:
+  - core.event-bus
+default_enabled: true
+implementation: internal/platform/reliability

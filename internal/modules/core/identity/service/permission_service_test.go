@@ -8,6 +8,8 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 )
 
 func TestPermissionServiceAssignRoleIsValidatedAndIdempotent(t *testing.T) {
@@ -199,6 +201,40 @@ func TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation(t *testi
 	definitions, err := service.ListPermissionDefinitions(ctx)
 	if err != nil || len(definitions) == 0 {
 		t.Fatalf("permission definitions=%d err=%v", len(definitions), err)
+	}
+}
+
+func TestPermissionCatalogFallbackIsRecordedWithoutChangingDecision(t *testing.T) {
+	ctx := context.Background()
+	users := repository.NewMemoryUserRepository()
+	if err := users.Create(ctx, &domain.User{
+		ID: "2501", Username: "legacy_catalog_admin", Nickname: "Legacy Catalog Admin",
+		Email: "legacy-catalog@example.test", Status: domain.UserStatusActive,
+		CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Expose only the pre-catalog interface so the service takes the rolling
+	// upgrade fallback even though the underlying memory adapter has a catalog.
+	legacyRoles := struct{ repository.RoleRepository }{repository.NewMemoryRoleRepository()}
+	service := NewPermissionService(legacyRoles, users)
+	store := reliability.NewMemoryStore()
+	service.SetReliability(reliability.NewService(transaction.NewMemory(), store))
+	if assigned, err := legacyRoles.AssignRole(ctx, "2501", 1, "global", nil); err != nil || !assigned {
+		t.Fatalf("seed administrator assignment: assigned=%v err=%v", assigned, err)
+	}
+
+	allowed, err := service.CheckCode(ctx, "2501", "identity.user.suspend")
+	if err != nil || !allowed {
+		t.Fatalf("legacy catalog permission result allowed=%v err=%v", allowed, err)
+	}
+	usages, _, err := store.ListCompatibility(ctx, reliability.PageRequest{Page: 1, PageSize: 10})
+	if err != nil || len(usages) != 1 {
+		t.Fatalf("compatibility usage=%#v err=%v", usages, err)
+	}
+	if usages[0].Key != "legacy-permission-catalog" || usages[0].Kind != "authorization" {
+		t.Fatalf("unexpected compatibility usage: %#v", usages[0])
 	}
 }
 

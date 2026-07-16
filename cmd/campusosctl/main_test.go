@@ -38,7 +38,7 @@ func TestPluginInitCreatesScaffold(t *testing.T) {
 	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
 		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
 	}
-	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.11.0" {
+	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.12.0" {
 		t.Fatalf("unexpected CampusOS compatibility range: %q", manifest.Compatibility.CampusOS)
 	}
 	if manifest.Compatibility.SDKGo != campusossdk.SDKVersion {

@@ -27,14 +27,22 @@ type UserLookup interface {
 	GetByUsername(ctx context.Context, username string) (*identitydomain.User, error)
 }
 
+// CompatibilityReporter is deliberately narrow so Personal Space can report
+// rolling-upgrade reads without importing the platform reliability package.
+// Core composition supplies it; legacy embedders can leave it unset.
+type CompatibilityReporter interface {
+	RecordCompatibility(context.Context, string, string, any) error
+}
+
 type Service struct {
-	repo         Repository
-	contentRepo  ContentRepository
-	threadRepo   ThreadRepository
-	contentQuery communityport.ContentQuery
-	users        UserLookup
-	fileStore    *LocalFileStore
-	enabled      func() bool
+	repo          Repository
+	contentRepo   ContentRepository
+	threadRepo    ThreadRepository
+	contentQuery  communityport.ContentQuery
+	users         UserLookup
+	fileStore     *LocalFileStore
+	enabled       func() bool
+	compatibility CompatibilityReporter
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -64,6 +72,21 @@ func (s *Service) SetFileStore(store *LocalFileStore) {
 
 func (s *Service) SetPluginEnabledChecker(checker func() bool) {
 	s.enabled = checker
+}
+
+func (s *Service) SetCompatibilityReporter(reporter CompatibilityReporter) {
+	s.compatibility = reporter
+}
+
+func (s *Service) recordLegacyContentProjectionUse(ctx context.Context, operation string) {
+	if s.compatibility == nil {
+		return
+	}
+	// Telemetry is advisory only. It must not make a public profile unreadable
+	// while a rolling-upgrade instance still uses user_space_contents.
+	_ = s.compatibility.RecordCompatibility(ctx, "legacy-user-space-contents", "personal-space", map[string]string{
+		"operation": operation,
+	})
 }
 
 func (s *Service) GetPublicByUserID(ctx context.Context, userID string) (*PublicSpace, error) {

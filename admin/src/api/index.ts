@@ -5,4 +5,4 @@ export { threadApi, richTextAdminApi, categoryApi } from '../modules/community/a
 export { pluginApi } from '../modules/plugins/api'
 export { homeStylePackApi } from '../modules/appearance/api'
 export { integrationApi, spaceAdminApi, webhookApi, mcpApi, messageApi } from '../modules/integrations/api'
-export { eventApi, platformLogApi, healthApi } from '../modules/operations/api'
+export { eventApi, platformLogApi, healthApi, reliabilityApi } from '../modules/operations/api'

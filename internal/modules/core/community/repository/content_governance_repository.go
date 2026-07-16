@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -29,8 +31,12 @@ func NewPgContentGovernanceRepository(pool *pgxpool.Pool) *PgContentGovernanceRe
 	return &PgContentGovernanceRepository{pool: pool}
 }
 
+func (r *PgContentGovernanceRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
+
 func (r *PgContentGovernanceRepository) CreateRevision(ctx context.Context, value *domain.ContentRevision) error {
-	_, err := r.pool.Exec(ctx, `INSERT INTO content_revisions
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO content_revisions
 		(id, thread_id, version, title, content, content_format, tags, action, reason, created_by, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, '')::bigint, $11)`,
 		value.ID, value.ThreadID, value.Version, value.Title, value.Content, value.ContentFormat, value.Tags,
@@ -39,7 +45,7 @@ func (r *PgContentGovernanceRepository) CreateRevision(ctx context.Context, valu
 }
 
 func (r *PgContentGovernanceRepository) CreateModerationCase(ctx context.Context, value *domain.ModerationCase) error {
-	_, err := r.pool.Exec(ctx, `INSERT INTO content_moderation_cases
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO content_moderation_cases
 		(id, thread_id, status, reason, opened_by, resolved_by, opened_at, resolved_at)
 		VALUES ($1, $2, $3, $4, NULLIF($5, '')::bigint, NULLIF($6, '')::bigint, $7, $8)`,
 		value.ID, value.ThreadID, value.Status, value.Reason, value.OpenedBy, value.ResolvedBy, value.OpenedAt, value.ResolvedAt)
@@ -47,14 +53,14 @@ func (r *PgContentGovernanceRepository) CreateModerationCase(ctx context.Context
 }
 
 func (r *PgContentGovernanceRepository) ResolveModerationCase(ctx context.Context, id, status, resolvedBy string, resolvedAt time.Time) error {
-	_, err := r.pool.Exec(ctx, `UPDATE content_moderation_cases
+	_, err := r.db(ctx).Exec(ctx, `UPDATE content_moderation_cases
 		SET status=$1, resolved_by=NULLIF($2, '')::bigint, resolved_at=$3
 		WHERE id=$4 AND resolved_at IS NULL`, status, resolvedBy, resolvedAt, id)
 	return err
 }
 
 func (r *PgContentGovernanceRepository) CreateModerationAction(ctx context.Context, value *domain.ModerationAction) error {
-	_, err := r.pool.Exec(ctx, `INSERT INTO content_moderation_actions
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO content_moderation_actions
 		(id, case_id, thread_id, action, reason, actor_id, before_state, after_state, created_at)
 		VALUES ($1, NULLIF($2, '')::bigint, $3, $4, $5, NULLIF($6, '')::bigint, $7, $8, $9)`,
 		value.ID, value.CaseID, value.ThreadID, value.Action, value.Reason, value.ActorID,
@@ -64,7 +70,7 @@ func (r *PgContentGovernanceRepository) CreateModerationAction(ctx context.Conte
 
 func (r *PgContentGovernanceRepository) LatestOpenCase(ctx context.Context, threadID string) (*domain.ModerationCase, error) {
 	value := &domain.ModerationCase{}
-	err := r.pool.QueryRow(ctx, `SELECT id, thread_id, status, reason, COALESCE(opened_by::text, ''),
+	err := r.db(ctx).QueryRow(ctx, `SELECT id, thread_id, status, reason, COALESCE(opened_by::text, ''),
 		COALESCE(resolved_by::text, ''), opened_at, resolved_at
 		FROM content_moderation_cases
 		WHERE thread_id=$1 AND resolved_at IS NULL
@@ -81,7 +87,7 @@ func (r *PgContentGovernanceRepository) LatestOpenCase(ctx context.Context, thre
 }
 
 func (r *PgContentGovernanceRepository) ListModerationActions(ctx context.Context, threadID string) ([]*domain.ModerationAction, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, COALESCE(case_id::text, ''), thread_id, action, reason,
+	rows, err := r.db(ctx).Query(ctx, `SELECT id, COALESCE(case_id::text, ''), thread_id, action, reason,
 		COALESCE(actor_id::text, ''), before_state, after_state, created_at
 		FROM content_moderation_actions WHERE thread_id=$1 ORDER BY created_at DESC`, threadID)
 	if err != nil {
@@ -107,11 +113,56 @@ type MemoryContentGovernanceRepository struct {
 	actions   map[string][]*domain.ModerationAction
 }
 
+type memoryContentGovernanceSnapshot struct {
+	Revisions map[string][]*domain.ContentRevision  `json:"revisions"`
+	Cases     map[string][]*domain.ModerationCase   `json:"cases"`
+	Actions   map[string][]*domain.ModerationAction `json:"actions"`
+}
+
 func NewMemoryContentGovernanceRepository() *MemoryContentGovernanceRepository {
 	return &MemoryContentGovernanceRepository{
 		revisions: make(map[string][]*domain.ContentRevision),
 		cases:     make(map[string][]*domain.ModerationCase),
 		actions:   make(map[string][]*domain.ModerationAction),
+	}
+}
+
+func (r *MemoryContentGovernanceRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	payload, err := json.Marshal(memoryContentGovernanceSnapshot{
+		Revisions: r.revisions,
+		Cases:     r.cases,
+		Actions:   r.actions,
+	})
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), payload...)
+}
+
+func (r *MemoryContentGovernanceRepository) Restore(value any) {
+	payload, ok := value.([]byte)
+	if !ok || len(payload) == 0 {
+		return
+	}
+	snapshot := memoryContentGovernanceSnapshot{}
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.revisions = snapshot.Revisions
+	r.cases = snapshot.Cases
+	r.actions = snapshot.Actions
+	if r.revisions == nil {
+		r.revisions = make(map[string][]*domain.ContentRevision)
+	}
+	if r.cases == nil {
+		r.cases = make(map[string][]*domain.ModerationCase)
+	}
+	if r.actions == nil {
+		r.actions = make(map[string][]*domain.ModerationAction)
 	}
 }
 

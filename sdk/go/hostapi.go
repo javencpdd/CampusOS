@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
-	SDKVersion            = "v0.10"
+	SDKVersion            = "v0.11"
 	HostAPIVersion        = "v2"
 )
 

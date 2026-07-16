@@ -2,7 +2,7 @@ schema: campusos.module/v1
 id: feature.webhook
 name: webhook
 display_name: "Webhook"
-version: "0.10.0"
+version: "0.11.0"
 description: "Managed webhook endpoints, delivery signatures, retries, and delivery audit."
 kind: builtin-feature
 activation_mode: restart

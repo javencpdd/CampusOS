@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 )
 
 func TestCreateThreadMergesCategoryDefaultTags(t *testing.T) {
@@ -227,6 +230,75 @@ func (f fakeContentAuthorization) CheckCodeScoped(_ context.Context, _ string, _
 		return false, errors.New("unexpected scope type")
 	}
 	return scopeID == f.allowedCategory, nil
+}
+
+type auditingContentAuthorization struct {
+	fakeContentAuthorization
+	decisions []string
+}
+
+func (f *auditingContentAuthorization) RecordContentAuthorizationDecision(_ context.Context, _ string, code string, categoryID int64, outcome, _ string) error {
+	f.decisions = append(f.decisions, code+":"+strconv.FormatInt(categoryID, 10)+":"+outcome)
+	return nil
+}
+
+type failingGovernanceRepository struct {
+	*repository.MemoryContentGovernanceRepository
+}
+
+func (r failingGovernanceRepository) CreateModerationAction(context.Context, *domain.ModerationAction) error {
+	return errors.New("content governance audit write failed")
+}
+
+func TestGovernanceCommandRollsBackWhenRequiredEvidenceFails(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := repository.NewMemoryThreadRepository()
+	governance := failingGovernanceRepository{MemoryContentGovernanceRepository: repository.NewMemoryContentGovernanceRepository()}
+	svc := NewThreadService(threadRepo, nil)
+	svc.SetGovernanceRepository(governance)
+	svc.SetContentAuthorization(fakeContentAuthorization{allowedCategory: 12})
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
+	thread, err := svc.CreateThread(ctx, "1001", "alice", domain.CreateThreadRequest{Title: "atomic governance", Content: "body", CategoryID: "12"})
+	if err != nil {
+		t.Fatalf("create thread: %v", err)
+	}
+	if _, err := svc.TakeDown(ctx, thread.ID, "moderator", "required evidence failure"); err == nil {
+		t.Fatal("expected governance audit failure")
+	}
+	stored, err := threadRepo.GetByID(ctx, thread.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.ModerationStatus != domain.ModerationStatusClear || stored.CurrentRevision != 1 {
+		t.Fatalf("failed governance command changed content: %#v", stored)
+	}
+}
+
+func TestGovernanceDenyAuditSurvivesReliableTransactionRollback(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := repository.NewMemoryThreadRepository()
+	svc := NewThreadService(threadRepo, nil)
+	svc.SetGovernanceRepository(repository.NewMemoryContentGovernanceRepository())
+	authorization := &auditingContentAuthorization{fakeContentAuthorization: fakeContentAuthorization{allowedCategory: 12}}
+	svc.SetContentAuthorization(authorization)
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
+	thread, err := svc.CreateThread(ctx, "1001", "alice", domain.CreateThreadRequest{Title: "deny audit", Content: "body", CategoryID: "13"})
+	if err != nil {
+		t.Fatalf("create thread: %v", err)
+	}
+	if _, err := svc.TakeDown(ctx, thread.ID, "moderator", "outside scope"); err == nil {
+		t.Fatal("expected out-of-scope governance command to be denied")
+	}
+	if len(authorization.decisions) != 1 || authorization.decisions[0] != "community.thread.take_down:13:deny" {
+		t.Fatalf("expected persisted deny evidence after rollback, got %#v", authorization.decisions)
+	}
+	stored, err := threadRepo.GetByID(ctx, thread.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.ModerationStatus != domain.ModerationStatusClear {
+		t.Fatalf("denied command changed thread state: %#v", stored)
+	}
 }
 
 func ptrString(value string) *string { return &value }

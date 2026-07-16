@@ -84,6 +84,12 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 	if err := ValidateExternalPluginManifest(manifest); err != nil {
 		return nil, fmt.Errorf("external plugin boundary: %w", err)
 	}
+	if manifest.Runtime == "grpc" && m.compatibility != nil {
+		_ = m.compatibility.RecordCompatibility(context.Background(), "legacy-runtime-name:grpc", "external-plugin-runtime-alias", map[string]string{
+			"plugin":  manifest.Name,
+			"runtime": manifest.Runtime,
+		})
+	}
 
 	m.catalog.mu.Lock()
 
@@ -871,6 +877,20 @@ func (m *Manager) ListPlugins() []*Plugin {
 
 // Uninstall 卸载插件
 func (m *PackageService) Uninstall(name string) error {
+	ctx := context.Background()
+	if m.tracker != nil {
+		return m.tracker.Track(ctx, OperationRequest{
+			Kind: "plugin.package.uninstall", SubjectType: "plugin", SubjectID: name,
+		}, func(operationCtx context.Context) error {
+			return m.uninstall(operationCtx, name)
+		})
+	}
+	return m.uninstall(ctx, name)
+}
+
+func (m *PackageService) uninstall(ctx context.Context, name string) error {
+	m.operationMu.Lock()
+	defer m.operationMu.Unlock()
 	m.catalog.mu.Lock()
 	p, ok := m.catalog.plugins[name]
 	if !ok {
@@ -900,7 +920,7 @@ func (m *PackageService) Uninstall(name string) error {
 	m.catalog.mu.Unlock()
 
 	if repo != nil {
-		if err := repo.Delete(context.Background(), name); err != nil {
+		if err := repo.Delete(ctx, name); err != nil {
 			return err
 		}
 	}
@@ -955,6 +975,30 @@ func (m *PackageService) InstallFromPluginsDir(dir string) error {
 }
 
 func (m *PackageService) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+	return m.ImportPackageContext(context.Background(), packagePath, pluginsDir, replace)
+}
+
+func (m *PackageService) ImportPackageContext(ctx context.Context, packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if m.tracker == nil {
+		return m.importPackage(ctx, packagePath, pluginsDir, replace)
+	}
+	var installed *Plugin
+	err := m.tracker.Track(ctx, OperationRequest{
+		Kind: "plugin.package.import", SubjectType: "plugin_package", SubjectID: filepath.Base(packagePath),
+	}, func(operationCtx context.Context) error {
+		var installErr error
+		installed, installErr = m.importPackage(operationCtx, packagePath, pluginsDir, replace)
+		return installErr
+	})
+	return installed, err
+}
+
+func (m *PackageService) importPackage(ctx context.Context, packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+	m.operationMu.Lock()
+	defer m.operationMu.Unlock()
 	precheck, err := PrecheckPluginPackage(packagePath, pluginsDir)
 	if err != nil {
 		return nil, err
@@ -967,10 +1011,10 @@ func (m *PackageService) ImportPackage(packagePath, pluginsDir string, replace b
 		return nil, fmt.Errorf("system-level plugins must be deployed with server code and take effect after restart")
 	}
 
-	m.catalog.mu.RLock()
-	existing, loaded := m.catalog.plugins[manifest.Name]
-	m.catalog.mu.RUnlock()
+	existing, loaded := m.catalog.Get(manifest.Name)
 	wasEnabled := false
+	var snapshot *VersionSnapshot
+	snapshotDir := snapshotDataDir(pluginsDir)
 	if loaded {
 		if existing.Manifest != nil && existing.Manifest.IsSystemLevel() {
 			return nil, fmt.Errorf("system-level plugin '%s' cannot be updated at runtime", manifest.Name)
@@ -978,40 +1022,117 @@ func (m *PackageService) ImportPackage(packagePath, pluginsDir string, replace b
 		if !replace {
 			return nil, fmt.Errorf("plugin '%s' already installed; use replace to overwrite", manifest.Name)
 		}
-		wasEnabled = existing.DesiredEnabled
-		if _, err := CreatePluginSnapshot(existing.Directory, snapshotDataDir(pluginsDir), "pre-update"); err != nil {
+		wasEnabled = existing.DesiredEnabled || existing.Status == StatusRunning
+		snapshot, err = CreatePluginSnapshot(existing.Directory, snapshotDir, "pre-update")
+		if err != nil {
 			return nil, fmt.Errorf("create pre-update snapshot: %w", err)
 		}
-		if err := m.Uninstall(manifest.Name); err != nil {
+		snapshot.PackagePath = filepath.Join(snapshotDir, manifest.Name, "version-snapshots", snapshot.ID, snapshot.PackagePath)
+		if _, err := m.detachForReplacement(manifest.Name); err != nil {
 			return nil, err
 		}
 	}
 
 	info, err := InstallPluginPackage(packagePath, pluginsDir, replace)
 	if err != nil {
+		if loaded {
+			return nil, m.restoreFailedReplacement(ctx, manifest.Name, snapshot, pluginsDir, wasEnabled, err)
+		}
 		return nil, err
 	}
 	installed, err := m.Install(info.PluginDir)
 	if err != nil {
+		if loaded {
+			return nil, m.restoreFailedReplacement(ctx, manifest.Name, snapshot, pluginsDir, wasEnabled, err)
+		}
+		_ = os.RemoveAll(info.PluginDir)
 		return nil, err
 	}
 	m.catalog.mu.Lock()
 	installed.Checksum = info.Checksum
 	installed.PackageSize = info.PackageSize
 	m.catalog.mu.Unlock()
-	if err := m.syncPluginRecord(context.Background(), installed); err != nil {
+	if err := m.syncPluginRecord(ctx, installed); err != nil {
+		if loaded {
+			return nil, m.restoreFailedReplacement(ctx, manifest.Name, snapshot, pluginsDir, wasEnabled, err)
+		}
+		_, _ = m.detachForReplacement(installed.Manifest.Name)
+		_ = os.RemoveAll(info.PluginDir)
 		return nil, err
 	}
 	if wasEnabled {
 		if err := m.lifecycle.RequestEnable(installed.Manifest.Name); err != nil {
-			return nil, err
+			return nil, m.restoreFailedReplacement(ctx, manifest.Name, snapshot, pluginsDir, wasEnabled, err)
 		}
 		if err := m.lifecycle.HealthCheck(installed.Manifest.Name); err != nil {
 			m.lifecycle.markPluginError(installed.Manifest.Name, fmt.Errorf("post-install health check failed: %w", err))
-			return nil, fmt.Errorf("post-install health check failed for %s: %w; use a version snapshot to roll back", installed.Manifest.Name, err)
+			return nil, m.restoreFailedReplacement(ctx, manifest.Name, snapshot, pluginsDir, wasEnabled, fmt.Errorf("post-install health check failed: %w", err))
 		}
 	}
 	return installed, nil
+}
+
+// detachForReplacement removes only the in-process catalog entry. It leaves
+// the persistent record intact until a replacement has been installed and
+// verified, so an interrupted upgrade has an explicit restore path.
+func (m *PackageService) detachForReplacement(name string) (*Plugin, error) {
+	current, ok := m.catalog.Get(name)
+	if !ok || current == nil {
+		return nil, fmt.Errorf("plugin '%s' not found", name)
+	}
+	if current.Manifest != nil && current.Manifest.IsSystemLevel() {
+		return nil, fmt.Errorf("system-level plugin '%s' cannot be updated at runtime", name)
+	}
+	if current.Status == StatusRunning {
+		if err := m.lifecycle.Stop(name); err != nil {
+			return nil, fmt.Errorf("stop plugin before replacement: %w", err)
+		}
+	}
+	m.catalog.mu.Lock()
+	defer m.catalog.mu.Unlock()
+	current, ok = m.catalog.plugins[name]
+	if !ok {
+		return nil, fmt.Errorf("plugin '%s' disappeared during replacement", name)
+	}
+	m.events.Remove(name)
+	delete(m.catalog.plugins, name)
+	m.ui.Bump()
+	return clonePlugin(current), nil
+}
+
+func (m *PackageService) restoreFailedReplacement(ctx context.Context, name string, snapshot *VersionSnapshot, pluginsDir string, wasEnabled bool, cause error) error {
+	if snapshot == nil || snapshot.PackagePath == "" {
+		return cause
+	}
+	// Any partially registered replacement is detached before the archived
+	// version is restored over the plugin directory. The restore package was
+	// created before the original runtime was stopped.
+	if _, ok := m.catalog.Get(name); ok {
+		_, _ = m.detachForReplacement(name)
+	}
+	info, restoreErr := InstallPluginPackage(snapshot.PackagePath, pluginsDir, true)
+	if restoreErr == nil {
+		var restored *Plugin
+		restored, restoreErr = m.Install(info.PluginDir)
+		if restoreErr == nil {
+			m.catalog.mu.Lock()
+			restored.Checksum = info.Checksum
+			restored.PackageSize = info.PackageSize
+			m.catalog.mu.Unlock()
+			restoreErr = m.syncPluginRecord(ctx, restored)
+			if restoreErr == nil && wasEnabled {
+				restoreErr = m.lifecycle.RequestEnable(restored.Manifest.Name)
+			}
+		}
+	}
+	if restoreErr != nil {
+		return fmt.Errorf("plugin replacement failed: %w; automatic restore from snapshot %s also failed: %v", cause, snapshot.ID, restoreErr)
+	}
+	m.audit.Record(ctx, name, "warn", "plugin replacement automatically restored the prior snapshot", map[string]interface{}{
+		"snapshot_id": snapshot.ID,
+		"cause":       cause.Error(),
+	})
+	return fmt.Errorf("plugin replacement failed and the prior version was restored: %w", cause)
 }
 
 func snapshotDataDir(pluginsDir string) string {

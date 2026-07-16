@@ -9,9 +9,9 @@ runtime: grpc
 scope: user
 capabilities: [host.logs, host.storage]
 compatibility:
-  campusos: ">=0.6.0 <0.11.0"
+  campusos: ">=0.6.0 <0.12.0"
   host_api: "v1"
-  sdk_go: "v0.10"
+  sdk_go: "v0.11"
 events:
   subscribe: ["thread.created"]
 permissions:

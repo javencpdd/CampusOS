@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -20,6 +21,10 @@ func NewPgThreadRepository(pool *pgxpool.Pool) *PgThreadRepository {
 	return &PgThreadRepository{pool: pool}
 }
 
+func (r *PgThreadRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
+
 func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) error {
 	contentFormat := thread.ContentFormat
 	if contentFormat == "" {
@@ -30,7 +35,7 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 		publication_status, moderation_status, deletion_status, moderation_reason, moderation_by, moderation_at, current_revision,
 		tags, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::bigint, $14, $15, $16, $17, $18)`
-	_, err := r.pool.Exec(ctx, query,
+	_, err := r.db(ctx).Exec(ctx, query,
 		thread.ID, thread.Title, thread.Content, contentFormat,
 		thread.AuthorID, thread.AuthorName, thread.CategoryID,
 		thread.Status, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
@@ -39,7 +44,7 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 }
 
 func (r *PgThreadRepository) GetByID(ctx context.Context, id string) (*domain.Thread, error) {
-	t, err := scanThread(r.pool.QueryRow(ctx, selectThreadSQL("id = $1"), id))
+	t, err := scanThread(r.db(ctx).QueryRow(ctx, selectThreadSQL("id = $1"), id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrThreadNotFound
@@ -56,7 +61,7 @@ func (r *PgThreadRepository) IncrementViewCount(ctx context.Context, id string) 
 		RETURNING id, title, content, content_format, author_id, author_name, category_id, status,
 			publication_status, moderation_status, deletion_status, moderation_reason, COALESCE(moderation_by::text, ''), moderation_at, current_revision,
 			is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at`
-	t, err := scanThread(r.pool.QueryRow(ctx, query, id))
+	t, err := scanThread(r.db(ctx).QueryRow(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrThreadNotFound
@@ -71,7 +76,7 @@ func (r *PgThreadRepository) IncrementReplyCount(ctx context.Context, id string,
 		SET reply_count = GREATEST(reply_count + $2, 0),
 			updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'active'`
-	tag, err := r.pool.Exec(ctx, query, id, delta)
+	tag, err := r.db(ctx).Exec(ctx, query, id, delta)
 	if err != nil {
 		return err
 	}
@@ -82,6 +87,14 @@ func (r *PgThreadRepository) IncrementReplyCount(ctx context.Context, id string,
 }
 
 func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) error {
+	return r.update(ctx, thread, nil)
+}
+
+func (r *PgThreadRepository) UpdateIfRevision(ctx context.Context, thread *domain.Thread, expected int) error {
+	return r.update(ctx, thread, &expected)
+}
+
+func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, expected *int) error {
 	query := `UPDATE threads
 		SET title=$1,
 			content=$2,
@@ -104,22 +117,32 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 			current_revision=$19,
 			updated_at=$20
 		WHERE id = $21 AND deleted_at IS NULL`
+	if expected != nil {
+		query += " AND current_revision = $22"
+	}
 	contentFormat := thread.ContentFormat
 	if contentFormat == "" {
 		contentFormat = "markdown"
 	}
 	thread.NormalizeContentState()
-	tag, err := r.pool.Exec(ctx, query,
+	args := []interface{}{
 		thread.Title, thread.Content, thread.CategoryID, thread.Status,
 		thread.IsPinned, thread.IsLocked, thread.IsHighlighted,
 		thread.ViewCount, thread.ReplyCount, thread.LikeCount, thread.Tags,
 		contentFormat, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
 		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, time.Now().UTC(), thread.ID,
-	)
+	}
+	if expected != nil {
+		args = append(args, *expected)
+	}
+	tag, err := r.db(ctx).Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
+		if expected != nil {
+			return ErrThreadRevisionConflict
+		}
 		return ErrThreadNotFound
 	}
 	return nil
@@ -129,7 +152,7 @@ func (r *PgThreadRepository) Delete(ctx context.Context, id string) error {
 	query := `UPDATE threads
 		SET deletion_status='trashed', status='archived', updated_at=$1
 		WHERE id=$2 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'active'`
-	tag, err := r.pool.Exec(ctx, query, time.Now().UTC(), id)
+	tag, err := r.db(ctx).Exec(ctx, query, time.Now().UTC(), id)
 	if err != nil {
 		return err
 	}
@@ -140,14 +163,30 @@ func (r *PgThreadRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *PgThreadRepository) Purge(ctx context.Context, id string) error {
+	return r.purge(ctx, id, nil)
+}
+
+func (r *PgThreadRepository) PurgeIfRevision(ctx context.Context, id string, expected int) error {
+	return r.purge(ctx, id, &expected)
+}
+
+func (r *PgThreadRepository) purge(ctx context.Context, id string, expected *int) error {
 	query := `UPDATE threads
 		SET deletion_status='purged', status='archived', deleted_at=$1, updated_at=$1
 		WHERE id=$2 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'trashed'`
-	tag, err := r.pool.Exec(ctx, query, time.Now().UTC(), id)
+	args := []interface{}{time.Now().UTC(), id}
+	if expected != nil {
+		query += " AND current_revision = $3"
+		args = append(args, *expected)
+	}
+	tag, err := r.db(ctx).Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
+		if expected != nil {
+			return ErrThreadRevisionConflict
+		}
 		return ErrThreadNotFound
 	}
 	return nil
@@ -220,7 +259,7 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 
 	// count
 	var total int64
-	err := r.pool.QueryRow(ctx, "SELECT COUNT(*) FROM threads WHERE "+whereStr, args...).Scan(&total)
+	err := r.db(ctx).QueryRow(ctx, "SELECT COUNT(*) FROM threads WHERE "+whereStr, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -242,7 +281,7 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		whereStr, argIdx, argIdx+1)
 	args = append(args, pageSize, offset)
 
-	rows, err := r.pool.Query(ctx, query, args...)
+	rows, err := r.db(ctx).Query(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}

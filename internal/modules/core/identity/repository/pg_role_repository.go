@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -77,10 +78,31 @@ func NewPgRoleRepository(pool *pgxpool.Pool) *PgRoleRepository {
 	return &PgRoleRepository{pool: pool}
 }
 
+func (r *PgRoleRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
+
+// withTransaction participates in a Core command transaction when one is
+// present and otherwise preserves the repository's historical atomic helper.
+func (r *PgRoleRepository) withTransaction(ctx context.Context, action func(transaction.Executor) error) error {
+	if tx, ok := transaction.FromContext(ctx); ok {
+		return action(tx)
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := action(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *PgRoleRepository) GetRoleByName(ctx context.Context, name string) (*Role, error) {
 	query := `SELECT id, name, description, is_system FROM roles WHERE name = $1 AND deleted_at IS NULL`
 	role := &Role{}
-	err := r.pool.QueryRow(ctx, query, name).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem)
+	err := r.db(ctx).QueryRow(ctx, query, name).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrRoleNotFound
@@ -93,7 +115,7 @@ func (r *PgRoleRepository) GetRoleByName(ctx context.Context, name string) (*Rol
 func (r *PgRoleRepository) GetRoleByID(ctx context.Context, id int64) (*Role, error) {
 	query := `SELECT id, name, description, is_system FROM roles WHERE id = $1 AND deleted_at IS NULL`
 	role := &Role{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem)
+	err := r.db(ctx).QueryRow(ctx, query, id).Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrRoleNotFound
@@ -119,7 +141,7 @@ func (r *PgRoleRepository) GetUserRoles(ctx context.Context, userID string) ([]*
 				)
 			  )
 		ORDER BY r.id ASC`
-	rows, err := r.pool.Query(ctx, query, userID)
+	rows, err := r.db(ctx).Query(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +166,7 @@ func (r *PgRoleRepository) ListRoleAssignments(ctx context.Context, userID strin
 		  AND ($1 = '' OR ur.user_id::text = $1)
 		  AND ($2 = 0 OR ur.role_id = $2)
 		ORDER BY ur.user_id ASC, ur.role_id ASC, ur.scope_type ASC, ur.scope_id ASC NULLS FIRST`
-	rows, err := r.pool.Query(ctx, query, userID, roleID)
+	rows, err := r.db(ctx).Query(ctx, query, userID, roleID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,13 +201,13 @@ func (r *PgRoleRepository) AssignRole(ctx context.Context, userID string, roleID
 			VALUES ($1, $2, $3, $4, NULL)
 			ON CONFLICT (user_id, role_id, scope_type)
 			WHERE deleted_at IS NULL AND scope_id IS NULL DO NOTHING`
-		tag, err = r.pool.Exec(ctx, query, idgen.New(), userID, roleID, scopeType)
+		tag, err = r.db(ctx).Exec(ctx, query, idgen.New(), userID, roleID, scopeType)
 	} else {
 		query = `INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (user_id, role_id, scope_type, scope_id)
 			WHERE deleted_at IS NULL DO NOTHING`
-		tag, err = r.pool.Exec(ctx, query, idgen.New(), userID, roleID, scopeType, scopeID)
+		tag, err = r.db(ctx).Exec(ctx, query, idgen.New(), userID, roleID, scopeType, scopeID)
 	}
 	if err != nil {
 		return false, err
@@ -194,36 +216,34 @@ func (r *PgRoleRepository) AssignRole(ctx context.Context, userID string, roleID
 }
 
 func (r *PgRoleRepository) ReplaceRoleScopes(ctx context.Context, userID string, roleID int64, scopeType string, scopeIDs []int64) (bool, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx)
-
 	uniqueScopeIDs := uniquePositiveIDs(scopeIDs)
-	tag, err := tx.Exec(ctx, `UPDATE user_roles
-		SET deleted_at = NOW()
-		WHERE user_id = $1
-		  AND role_id = $2
-		  AND scope_type = $3
-		  AND scope_id IS NOT NULL
-		  AND deleted_at IS NULL
-		  AND NOT (scope_id = ANY($4::bigint[]))`, userID, roleID, scopeType, uniqueScopeIDs)
-	if err != nil {
-		return false, err
-	}
-	changed := tag.RowsAffected() > 0
-	for _, scopeID := range uniqueScopeIDs {
-		insertTag, err := tx.Exec(ctx, `INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (user_id, role_id, scope_type, scope_id)
-			WHERE deleted_at IS NULL DO NOTHING`, idgen.New(), userID, roleID, scopeType, scopeID)
+	changed := false
+	err := r.withTransaction(ctx, func(db transaction.Executor) error {
+		tag, err := db.Exec(ctx, `UPDATE user_roles
+			SET deleted_at = NOW()
+			WHERE user_id = $1
+			  AND role_id = $2
+			  AND scope_type = $3
+			  AND scope_id IS NOT NULL
+			  AND deleted_at IS NULL
+			  AND NOT (scope_id = ANY($4::bigint[]))`, userID, roleID, scopeType, uniqueScopeIDs)
 		if err != nil {
-			return false, err
+			return err
 		}
-		changed = changed || insertTag.RowsAffected() > 0
-	}
-	if err := tx.Commit(ctx); err != nil {
+		changed = tag.RowsAffected() > 0
+		for _, scopeID := range uniqueScopeIDs {
+			insertTag, err := db.Exec(ctx, `INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (user_id, role_id, scope_type, scope_id)
+				WHERE deleted_at IS NULL DO NOTHING`, idgen.New(), userID, roleID, scopeType, scopeID)
+			if err != nil {
+				return err
+			}
+			changed = changed || insertTag.RowsAffected() > 0
+		}
+		return nil
+	})
+	if err != nil {
 		return false, err
 	}
 	return changed, nil
@@ -235,7 +255,7 @@ func (r *PgRoleRepository) RevokeRole(ctx context.Context, userID string, roleID
 		WHERE user_id = $1
 		  AND role_id = $2
 		  AND deleted_at IS NULL`
-	tag, err := r.pool.Exec(ctx, query, userID, roleID)
+	tag, err := r.db(ctx).Exec(ctx, query, userID, roleID)
 	if err != nil {
 		return false, err
 	}
@@ -243,44 +263,40 @@ func (r *PgRoleRepository) RevokeRole(ctx context.Context, userID string, roleID
 }
 
 func (r *PgRoleRepository) RevokeRoleUnlessLastGlobal(ctx context.Context, userID string, roleID int64) (bool, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return false, err
-	}
-	defer tx.Rollback(ctx)
-
-	// Serialize protected-role revocations per role. A row lock alone cannot
-	// protect the aggregate when two administrators revoke each other.
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, roleID); err != nil {
-		return false, err
-	}
-	var assigned bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (
-		SELECT 1 FROM user_roles
-		WHERE user_id=$1 AND role_id=$2 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL
-	)`, userID, roleID).Scan(&assigned); err != nil {
-		return false, err
-	}
-	if !assigned {
-		return false, nil
-	}
-	var count int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM user_roles
-		WHERE role_id=$1 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, roleID).Scan(&count); err != nil {
-		return false, err
-	}
-	if count <= 1 {
-		return false, ErrLastGlobalRoleAssignment
-	}
-	tag, err := tx.Exec(ctx, `UPDATE user_roles SET deleted_at=NOW()
-		WHERE user_id=$1 AND role_id=$2 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, userID, roleID)
-	if err != nil {
-		return false, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return false, err
-	}
-	return tag.RowsAffected() > 0, nil
+	revoked := false
+	err := r.withTransaction(ctx, func(db transaction.Executor) error {
+		// Serialize protected-role revocations per role. A row lock alone cannot
+		// protect the aggregate when two administrators revoke each other.
+		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, roleID); err != nil {
+			return err
+		}
+		var assigned bool
+		if err := db.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM user_roles
+			WHERE user_id=$1 AND role_id=$2 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL
+		)`, userID, roleID).Scan(&assigned); err != nil {
+			return err
+		}
+		if !assigned {
+			return nil
+		}
+		var count int
+		if err := db.QueryRow(ctx, `SELECT count(*) FROM user_roles
+			WHERE role_id=$1 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, roleID).Scan(&count); err != nil {
+			return err
+		}
+		if count <= 1 {
+			return ErrLastGlobalRoleAssignment
+		}
+		tag, err := db.Exec(ctx, `UPDATE user_roles SET deleted_at=NOW()
+			WHERE user_id=$1 AND role_id=$2 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, userID, roleID)
+		if err != nil {
+			return err
+		}
+		revoked = tag.RowsAffected() > 0
+		return nil
+	})
+	return revoked, err
 }
 
 func (r *PgRoleRepository) HasPermission(ctx context.Context, userID string, resource, action string) (bool, error) {
@@ -306,7 +322,7 @@ func (r *PgRoleRepository) HasPermission(ctx context.Context, userID string, res
 			  )
 	)`
 	var allowed bool
-	err := r.pool.QueryRow(ctx, query, userID, resource, action).Scan(&allowed)
+	err := r.db(ctx).QueryRow(ctx, query, userID, resource, action).Scan(&allowed)
 	if err != nil {
 		return false, err
 	}
@@ -329,7 +345,7 @@ func (r *PgRoleRepository) HasScopedPermission(ctx context.Context, userID strin
 			  )
 	)`
 	var allowed bool
-	if err := r.pool.QueryRow(ctx, query, userID, resource, action, scopeType, scopeID).Scan(&allowed); err != nil {
+	if err := r.db(ctx).QueryRow(ctx, query, userID, resource, action, scopeType, scopeID).Scan(&allowed); err != nil {
 		return false, err
 	}
 	return allowed, nil
@@ -337,7 +353,7 @@ func (r *PgRoleRepository) HasScopedPermission(ctx context.Context, userID strin
 
 func (r *PgRoleRepository) ListRoles(ctx context.Context) ([]*Role, error) {
 	query := `SELECT id, name, description, is_system FROM roles WHERE deleted_at IS NULL ORDER BY id ASC`
-	rows, err := r.pool.Query(ctx, query)
+	rows, err := r.db(ctx).Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +371,7 @@ func (r *PgRoleRepository) ListRoles(ctx context.Context) ([]*Role, error) {
 }
 
 func (r *PgRoleRepository) ListPermissionDefinitions(ctx context.Context) ([]PermissionDefinition, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, code, domain, resource, action, description, risk_level, allowed_scope_types, audit_level, deprecated_at, created_at, updated_at
+	rows, err := r.db(ctx).Query(ctx, `SELECT id, code, domain, resource, action, description, risk_level, allowed_scope_types, audit_level, deprecated_at, created_at, updated_at
 		FROM permission_definitions ORDER BY domain, resource, action, code`)
 	if err != nil {
 		return nil, err
@@ -373,7 +389,7 @@ func (r *PgRoleRepository) ListPermissionDefinitions(ctx context.Context) ([]Per
 }
 
 func (r *PgRoleRepository) ListRolePermissions(ctx context.Context, roleID int64) ([]RolePermission, error) {
-	rows, err := r.pool.Query(ctx, `SELECT rp.role_id, r.name, pd.id, pd.code, pd.domain, pd.resource, pd.action, pd.description, pd.risk_level, pd.allowed_scope_types, pd.audit_level, pd.deprecated_at, pd.created_at, pd.updated_at, rp.created_by, rp.created_at
+	rows, err := r.db(ctx).Query(ctx, `SELECT rp.role_id, r.name, pd.id, pd.code, pd.domain, pd.resource, pd.action, pd.description, pd.risk_level, pd.allowed_scope_types, pd.audit_level, pd.deprecated_at, pd.created_at, pd.updated_at, rp.created_by, rp.created_at
 		FROM role_permissions rp
 		INNER JOIN roles r ON r.id = rp.role_id AND r.deleted_at IS NULL
 		INNER JOIN permission_definitions pd ON pd.id = rp.permission_id
@@ -402,29 +418,26 @@ func (r *PgRoleRepository) ReplaceRolePermissions(ctx context.Context, roleID in
 	if roleID <= 0 {
 		return ErrRoleNotFound
 	}
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `UPDATE role_permissions SET deleted_at=NOW() WHERE role_id=$1 AND deleted_at IS NULL`, roleID); err != nil {
-		return err
-	}
-	for _, code := range uniqueCodes(codes) {
-		var permissionID int64
-		if err := tx.QueryRow(ctx, `SELECT id FROM permission_definitions WHERE code=$1 AND deprecated_at IS NULL`, code).Scan(&permissionID); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return fmt.Errorf("permission definition %q: %w", code, ErrRoleNotFound)
+	return r.withTransaction(ctx, func(db transaction.Executor) error {
+		if _, err := db.Exec(ctx, `UPDATE role_permissions SET deleted_at=NOW() WHERE role_id=$1 AND deleted_at IS NULL`, roleID); err != nil {
+			return err
+		}
+		for _, code := range uniqueCodes(codes) {
+			var permissionID int64
+			if err := db.QueryRow(ctx, `SELECT id FROM permission_definitions WHERE code=$1 AND deprecated_at IS NULL`, code).Scan(&permissionID); err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return fmt.Errorf("permission definition %q: %w", code, ErrRoleNotFound)
+				}
+				return err
 			}
-			return err
+			if _, err := db.Exec(ctx, `INSERT INTO role_permissions (id, role_id, permission_id, created_by, created_at, deleted_at)
+				VALUES ($1,$2,$3,$4,NOW(),NULL)
+				ON CONFLICT (role_id, permission_id) WHERE deleted_at IS NULL DO UPDATE SET created_by=EXCLUDED.created_by, created_at=EXCLUDED.created_at, deleted_at=NULL`, idgen.New(), roleID, permissionID, actorID); err != nil {
+				return err
+			}
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO role_permissions (id, role_id, permission_id, created_by, created_at, deleted_at)
-			VALUES ($1,$2,$3,$4,NOW(),NULL)
-			ON CONFLICT (role_id, permission_id) WHERE deleted_at IS NULL DO UPDATE SET created_by=EXCLUDED.created_by, created_at=EXCLUDED.created_at, deleted_at=NULL`, idgen.New(), roleID, permissionID, actorID); err != nil {
-			return err
-		}
-	}
-	return tx.Commit(ctx)
+		return nil
+	})
 }
 
 func (r *PgRoleRepository) CreateCustomRole(ctx context.Context, role Role) (*Role, error) {
@@ -436,7 +449,7 @@ func (r *PgRoleRepository) CreateCustomRole(ctx context.Context, role Role) (*Ro
 	role.ID = idgen.New()
 	role.IsSystem = false
 	created := &Role{}
-	err := r.pool.QueryRow(ctx, `INSERT INTO roles (id, name, description, is_system, created_at, updated_at)
+	err := r.db(ctx).QueryRow(ctx, `INSERT INTO roles (id, name, description, is_system, created_at, updated_at)
 		VALUES ($1,$2,$3,FALSE,NOW(),NOW())
 		RETURNING id,name,description,is_system`, role.ID, role.Name, role.Description).Scan(&created.ID, &created.Name, &created.Description, &created.IsSystem)
 	if err != nil {
@@ -450,7 +463,7 @@ func (r *PgRoleRepository) UpdateCustomRole(ctx context.Context, role Role) (*Ro
 		return nil, ErrRoleNotFound
 	}
 	updated := &Role{}
-	err := r.pool.QueryRow(ctx, `UPDATE roles SET description=$2, updated_at=NOW()
+	err := r.db(ctx).QueryRow(ctx, `UPDATE roles SET description=$2, updated_at=NOW()
 		WHERE id=$1 AND is_system=FALSE AND deleted_at IS NULL
 		RETURNING id,name,description,is_system`, role.ID, strings.TrimSpace(role.Description)).Scan(&updated.ID, &updated.Name, &updated.Description, &updated.IsSystem)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -464,7 +477,7 @@ func (r *PgRoleRepository) UpdateCustomRole(ctx context.Context, role Role) (*Ro
 
 func (r *PgRoleRepository) HasPermissionCode(ctx context.Context, userID, code string) (bool, error) {
 	var allowed bool
-	err := r.pool.QueryRow(ctx, `SELECT EXISTS (
+	err := r.db(ctx).QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1
 		FROM role_permissions rp
 		INNER JOIN permission_definitions pd ON pd.id=rp.permission_id AND pd.deprecated_at IS NULL
@@ -479,7 +492,7 @@ func (r *PgRoleRepository) HasPermissionCode(ctx context.Context, userID, code s
 
 func (r *PgRoleRepository) HasScopedPermissionCode(ctx context.Context, userID, code, scopeType string, scopeID int64) (bool, error) {
 	var allowed bool
-	err := r.pool.QueryRow(ctx, `SELECT EXISTS (
+	err := r.db(ctx).QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1
 		FROM role_permissions rp
 		INNER JOIN permission_definitions pd ON pd.id=rp.permission_id AND pd.deprecated_at IS NULL
@@ -499,7 +512,7 @@ func (r *PgRoleRepository) HasScopedPermissionCode(ctx context.Context, userID, 
 // category ID before it changes content.
 func (r *PgRoleRepository) HasAnyScopedPermissionCode(ctx context.Context, userID, code, scopeType string) (bool, error) {
 	var allowed bool
-	err := r.pool.QueryRow(ctx, `SELECT EXISTS (
+	err := r.db(ctx).QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1
 		FROM role_permissions rp
 		INNER JOIN permission_definitions pd ON pd.id=rp.permission_id AND pd.deprecated_at IS NULL
@@ -552,7 +565,7 @@ func (r *PgRoleRepository) SyncRouteOperations(ctx context.Context, operations [
 }
 
 func (r *PgRoleRepository) ListRouteOperations(ctx context.Context) ([]RouteOperation, error) {
-	rows, err := r.pool.Query(ctx, `SELECT ro.id,ro.operation_code,ro.module_owner,ro.method,ro.path_template,ro.audience,COALESCE(pd.code,''),ro.legacy_aliases,ro.updated_at
+	rows, err := r.db(ctx).Query(ctx, `SELECT ro.id,ro.operation_code,ro.module_owner,ro.method,ro.path_template,ro.audience,COALESCE(pd.code,''),ro.legacy_aliases,ro.updated_at
 		FROM route_operations ro
 		LEFT JOIN route_permission_bindings rpb ON rpb.route_operation_id=ro.id AND rpb.deleted_at IS NULL
 		LEFT JOIN permission_definitions pd ON pd.id=rpb.permission_id
@@ -582,7 +595,7 @@ func (r *PgRoleRepository) RecordAuthorizationAudit(ctx context.Context, audit A
 	if audit.CreatedAt.IsZero() {
 		audit.CreatedAt = time.Now().UTC()
 	}
-	_, err := r.pool.Exec(ctx, `INSERT INTO authorization_audits (id,request_id,actor_id,permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at)
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO authorization_audits (id,request_id,actor_id,permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at)
 		VALUES ($1,$2,NULLIF($3,'')::bigint,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, idgen.New(), audit.RequestID, audit.ActorID, audit.PermissionCode, audit.OperationCode, audit.ScopeType, audit.ScopeID, audit.ResourceType, audit.ResourceID, audit.Outcome, audit.Reason, audit.IPAddress, audit.CreatedAt)
 	return err
 }
@@ -591,7 +604,7 @@ func (r *PgRoleRepository) ListAuthorizationAudits(ctx context.Context, limit in
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	rows, err := r.pool.Query(ctx, `SELECT id,request_id,COALESCE(actor_id::text,''),permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at
+	rows, err := r.db(ctx).Query(ctx, `SELECT id,request_id,COALESCE(actor_id::text,''),permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at
 		FROM authorization_audits ORDER BY created_at DESC,id DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
@@ -610,7 +623,7 @@ func (r *PgRoleRepository) ListAuthorizationAudits(ctx context.Context, limit in
 
 func (r *PgRoleRepository) CountGlobalRoleAssignments(ctx context.Context, roleID int64) (int, error) {
 	var count int
-	err := r.pool.QueryRow(ctx, `SELECT count(*) FROM user_roles WHERE role_id=$1 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, roleID).Scan(&count)
+	err := r.db(ctx).QueryRow(ctx, `SELECT count(*) FROM user_roles WHERE role_id=$1 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, roleID).Scan(&count)
 	return count, err
 }
 
@@ -637,6 +650,15 @@ type MemoryRoleRepository struct {
 	authorizationAudits []AuthorizationAudit
 }
 
+type memoryRoleSnapshot struct {
+	Roles               map[string]*Role                 `json:"roles"`
+	UserRoles           map[string][]*UserRoleAssignment `json:"user_roles"`
+	Definitions         map[string]*PermissionDefinition `json:"definitions"`
+	RolePermissions     map[int64]map[string]bool        `json:"role_permissions"`
+	RouteOperations     map[string]RouteOperation        `json:"route_operations"`
+	AuthorizationAudits []AuthorizationAudit             `json:"authorization_audits"`
+}
+
 func NewMemoryRoleRepository() *MemoryRoleRepository {
 	repo := &MemoryRoleRepository{
 		roles:           make(map[string]*Role),
@@ -652,6 +674,42 @@ func NewMemoryRoleRepository() *MemoryRoleRepository {
 	repo.roles["guest"] = &Role{ID: 4, Name: "guest", Description: "未登录用户", IsSystem: true}
 	repo.seedAuthorizationCatalog()
 	return repo
+}
+
+func (r *MemoryRoleRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	payload, err := json.Marshal(memoryRoleSnapshot{
+		Roles:               r.roles,
+		UserRoles:           r.userRoles,
+		Definitions:         r.definitions,
+		RolePermissions:     r.rolePermissions,
+		RouteOperations:     r.routeOperations,
+		AuthorizationAudits: r.authorizationAudits,
+	})
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), payload...)
+}
+
+func (r *MemoryRoleRepository) Restore(value any) {
+	payload, ok := value.([]byte)
+	if !ok || len(payload) == 0 {
+		return
+	}
+	state := memoryRoleSnapshot{}
+	if err := json.Unmarshal(payload, &state); err != nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.roles = state.Roles
+	r.userRoles = state.UserRoles
+	r.definitions = state.Definitions
+	r.rolePermissions = state.RolePermissions
+	r.routeOperations = state.RouteOperations
+	r.authorizationAudits = state.AuthorizationAudits
 }
 
 func (r *MemoryRoleRepository) GetRoleByName(_ context.Context, name string) (*Role, error) {
@@ -939,6 +997,9 @@ func (r *MemoryRoleRepository) seedAuthorizationCatalog() {
 		{"identity.role.create", "role", "manage", []string{"admin"}},
 		{"identity.role.update_permissions", "role", "manage", []string{"admin"}},
 		{"identity.role.read_audit", "role", "read", []string{"admin"}},
+		{"platform.reliability.read", "metrics", "read", []string{"admin"}},
+		{"platform.reliability.replay", "plugin", "configure", []string{"admin"}},
+		{"platform.retention.preview", "metrics", "read", []string{"admin"}},
 	} {
 		r.ensureMemoryDefinition(definition.code, definition.resource, definition.action, now)
 		for _, roleName := range definition.roles {

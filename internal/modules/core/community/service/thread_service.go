@@ -11,6 +11,8 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
@@ -30,6 +32,7 @@ type ThreadService struct {
 	authorization ContentAuthorization
 	bus           eventbus.EventBus
 	cache         cache.Cache
+	reliable      *reliability.Service
 }
 
 // ContentAuthorization is the narrow server-side policy port used for
@@ -43,8 +46,24 @@ type ContentAuthorization interface {
 // legacy composition retain a narrow policy contract. Production Identity
 // supplies it to persist resource-derived allow and deny decisions.
 type ContentAuthorizationAuditor interface {
-	RecordContentAuthorizationDecision(context.Context, string, string, int64, string, string)
+	RecordContentAuthorizationDecision(context.Context, string, string, int64, string, string) error
 }
+
+// contentAuthorizationFailure retains enough server-derived context to write a
+// deny/error audit after a command transaction rolls back. Persisting that
+// audit inside the failed transaction would discard the evidence together
+// with the rejected command.
+type contentAuthorizationFailure struct {
+	err        error
+	actorID    string
+	code       string
+	categoryID int64
+	outcome    string
+	reason     string
+}
+
+func (e *contentAuthorizationFailure) Error() string { return e.err.Error() }
+func (e *contentAuthorizationFailure) Unwrap() error { return e.err }
 
 type CreateThreadOptions struct {
 	Status        domain.ThreadStatus
@@ -67,10 +86,85 @@ func (s *ThreadService) SetCategoryRepository(repo repository.CategoryRepository
 
 func (s *ThreadService) SetGovernanceRepository(repo repository.ContentGovernanceRepository) {
 	s.governance = repo
+	if s.reliable != nil {
+		if snapshotter, ok := repo.(transaction.Snapshotter); ok {
+			s.reliable.RegisterMemorySnapshotters(snapshotter)
+		}
+	}
 }
 
 func (s *ThreadService) SetContentAuthorization(authorization ContentAuthorization) {
 	s.authorization = authorization
+}
+
+func (s *ThreadService) SetReliability(reliable *reliability.Service) {
+	s.reliable = reliable
+	if reliable == nil {
+		return
+	}
+	if snapshotter, ok := s.repo.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+	if snapshotter, ok := s.governance.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+}
+
+func (s *ThreadService) executeGovernanceCommand(ctx context.Context, actorID, code, threadID, eventType string, action func(context.Context) (*domain.Thread, error)) (*domain.Thread, error) {
+	if s.reliable == nil || transaction.Active(ctx) {
+		return action(ctx)
+	}
+	var result *domain.Thread
+	err := s.reliable.Execute(ctx, reliability.Command{
+		Code: code, ActorID: actorID, ResourceType: "thread", ResourceID: threadID,
+		OperationCode: code, PermissionCode: code,
+		EventFactory: func() (reliability.Event, error) {
+			return reliability.NewEvent(eventType, "thread", threadID, result)
+		},
+	}, func(commandCtx context.Context) error {
+		var commandErr error
+		result, commandErr = action(commandCtx)
+		return commandErr
+	})
+	s.recordRolledBackAuthorizationDecision(ctx, err)
+	if err == nil {
+		// Cache deletion is an external side effect. The inner action skips it
+		// while TxKernel is active; invalidate only after the command commits.
+		s.invalidateListCache(ctx)
+	}
+	return result, err
+}
+
+func (s *ThreadService) executeGovernanceDelete(ctx context.Context, actorID, code, threadID string, action func(context.Context) error) error {
+	if s.reliable == nil || transaction.Active(ctx) {
+		return action(ctx)
+	}
+	err := s.reliable.Execute(ctx, reliability.Command{
+		Code: code, ActorID: actorID, ResourceType: "thread", ResourceID: threadID,
+		OperationCode: code, PermissionCode: code,
+		EventFactory: func() (reliability.Event, error) {
+			return reliability.NewEvent(eventbus.EventThreadDeleted, "thread", threadID, map[string]string{"thread_id": threadID, "action": code})
+		},
+	}, action)
+	s.recordRolledBackAuthorizationDecision(ctx, err)
+	if err == nil {
+		s.invalidateListCache(ctx)
+	}
+	return err
+}
+
+func (s *ThreadService) updateGoverned(ctx context.Context, thread *domain.Thread) error {
+	if guarded, ok := s.repo.(repository.GovernedThreadRepository); ok {
+		return guarded.UpdateIfRevision(ctx, thread, thread.CurrentRevision-1)
+	}
+	return s.repo.Update(ctx, thread)
+}
+
+func (s *ThreadService) purgeGoverned(ctx context.Context, thread *domain.Thread) error {
+	if guarded, ok := s.repo.(repository.GovernedThreadRepository); ok {
+		return guarded.PurgeIfRevision(ctx, thread.ID, thread.CurrentRevision)
+	}
+	return s.repo.Purge(ctx, thread.ID)
 }
 
 // CreateThread 创建帖子
@@ -129,7 +223,7 @@ func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, a
 	s.invalidateListCache(ctx)
 
 	// 发布 thread.created 事件
-	if s.bus != nil {
+	if s.bus != nil && !transaction.Active(ctx) {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
 			eventbus.EventThreadCreated, "campusos.community", "thread."+thread.ID, thread,
 		))
@@ -302,7 +396,7 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 	thread.CurrentRevision++
 	thread.SyncLegacyStatus()
 
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, fmt.Errorf("update thread: %w", err)
 	}
 	if resubmitted {
@@ -362,7 +456,7 @@ func (s *ThreadService) SaveFeatureThread(ctx context.Context, candidate *domain
 	thread.CurrentRevision++
 	thread.UpdatedAt = time.Now().UTC()
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, fmt.Errorf("update feature thread: %w", err)
 	}
 	if action == "" {
@@ -459,7 +553,7 @@ func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) e
 	s.invalidateListCache(ctx)
 
 	// 发布 thread.deleted 事件
-	if s.bus != nil {
+	if s.bus != nil && !transaction.Active(ctx) {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
 			eventbus.EventThreadDeleted, "campusos.community", "thread."+id, thread,
 		))
@@ -494,7 +588,7 @@ func (s *ThreadService) TrashThread(ctx context.Context, id, actorID, action, re
 		return err
 	}
 	s.invalidateListCache(ctx)
-	if s.bus != nil {
+	if s.bus != nil && !transaction.Active(ctx) {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
 			eventbus.EventThreadDeleted, "campusos.community", "thread."+id, thread,
 		))
@@ -503,6 +597,11 @@ func (s *ThreadService) TrashThread(ctx context.Context, id, actorID, action, re
 }
 
 func (s *ThreadService) AdminDeleteThread(ctx context.Context, id, actorID string) error {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceDelete(ctx, actorID, "community.thread.trash", id, func(commandCtx context.Context) error {
+			return s.AdminDeleteThread(commandCtx, id, actorID)
+		})
+	}
 	thread, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get thread: %w", err)
@@ -516,6 +615,11 @@ func (s *ThreadService) AdminDeleteThread(ctx context.Context, id, actorID strin
 // TakeDown prevents public visibility without changing the author's intended
 // publication choice. A subsequent author publish request enters review.
 func (s *ThreadService) TakeDown(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceCommand(ctx, actorID, "community.thread.take_down", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+			return s.TakeDown(commandCtx, id, actorID, reason)
+		})
+	}
 	if strings.TrimSpace(reason) == "" {
 		return nil, ErrModerationReasonRequired
 	}
@@ -539,7 +643,7 @@ func (s *ThreadService) TakeDown(ctx context.Context, id, actorID, reason string
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, actorID, "take_down", reason, before, true); err != nil {
@@ -570,7 +674,7 @@ func (s *ThreadService) SubmitForReview(ctx context.Context, id, authorID string
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, authorID, "submit_review", "author resubmitted content", before, true); err != nil {
@@ -582,6 +686,11 @@ func (s *ThreadService) SubmitForReview(ctx context.Context, id, authorID string
 }
 
 func (s *ThreadService) Approve(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceCommand(ctx, actorID, "community.thread.review", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+			return s.Approve(commandCtx, id, actorID, reason)
+		})
+	}
 	thread, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
@@ -593,6 +702,11 @@ func (s *ThreadService) Approve(ctx context.Context, id, actorID, reason string)
 }
 
 func (s *ThreadService) Reject(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceCommand(ctx, actorID, "community.thread.review", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+			return s.Reject(commandCtx, id, actorID, reason)
+		})
+	}
 	if strings.TrimSpace(reason) == "" {
 		return nil, ErrModerationReasonRequired
 	}
@@ -607,6 +721,11 @@ func (s *ThreadService) Reject(ctx context.Context, id, actorID, reason string) 
 }
 
 func (s *ThreadService) DirectRestore(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceCommand(ctx, actorID, "community.thread.direct_restore", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+			return s.DirectRestore(commandCtx, id, actorID, reason)
+		})
+	}
 	if strings.TrimSpace(reason) == "" {
 		return nil, ErrModerationReasonRequired
 	}
@@ -630,7 +749,7 @@ func (s *ThreadService) DirectRestore(ctx context.Context, id, actorID, reason s
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, actorID, "direct_restore", reason, before, false); err != nil {
@@ -658,7 +777,7 @@ func (s *ThreadService) RestoreFromTrash(ctx context.Context, id, actorID string
 	thread.CurrentRevision++
 	thread.UpdatedAt = time.Now().UTC()
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, actorID, "restore_trash", "", before, false); err != nil {
@@ -670,6 +789,11 @@ func (s *ThreadService) RestoreFromTrash(ctx context.Context, id, actorID string
 }
 
 func (s *ThreadService) AdminRestoreFromTrash(ctx context.Context, id, actorID, reason string) (*domain.Thread, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceCommand(ctx, actorID, "community.thread.restore", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+			return s.AdminRestoreFromTrash(commandCtx, id, actorID, reason)
+		})
+	}
 	if strings.TrimSpace(reason) == "" {
 		return nil, ErrModerationReasonRequired
 	}
@@ -689,7 +813,7 @@ func (s *ThreadService) AdminRestoreFromTrash(ctx context.Context, id, actorID, 
 	thread.CurrentRevision++
 	thread.UpdatedAt = time.Now().UTC()
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, actorID, "admin_restore_trash", reason, before, false); err != nil {
@@ -701,6 +825,11 @@ func (s *ThreadService) AdminRestoreFromTrash(ctx context.Context, id, actorID, 
 }
 
 func (s *ThreadService) PurgeThread(ctx context.Context, id, actorID, reason string) error {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeGovernanceDelete(ctx, actorID, "community.thread.purge", id, func(commandCtx context.Context) error {
+			return s.PurgeThread(commandCtx, id, actorID, reason)
+		})
+	}
 	if strings.TrimSpace(reason) == "" {
 		return ErrModerationReasonRequired
 	}
@@ -718,14 +847,14 @@ func (s *ThreadService) PurgeThread(ctx context.Context, id, actorID, reason str
 	before := domain.ContentStateSummary(thread)
 	thread.DeletionStatus = domain.DeletionStatusPurged
 	thread.SyncLegacyStatus()
-	if err := s.repo.Purge(ctx, id); err != nil {
+	if err := s.purgeGoverned(ctx, thread); err != nil {
 		return err
 	}
 	if err := s.recordModerationAction(ctx, thread, actorID, "purge", reason, before); err != nil {
 		return err
 	}
 	s.invalidateListCache(ctx)
-	if s.bus != nil {
+	if s.bus != nil && !transaction.Active(ctx) {
 		_ = s.bus.Publish(ctx, eventbus.NewEvent(
 			eventbus.EventThreadDeleted, "campusos.community", "thread."+thread.ID, thread,
 		))
@@ -748,23 +877,42 @@ func (s *ThreadService) requireContentPermission(ctx context.Context, actorID, c
 	}
 	allowed, err := s.authorization.CheckCodeScoped(ctx, actorID, code, "category", categoryID)
 	if err != nil {
-		s.recordContentAuthorizationDecision(ctx, actorID, code, categoryID, "error", "scoped permission check failed")
-		return err
+		return s.contentAuthorizationFailure(ctx, err, actorID, code, categoryID, "error", "scoped permission check failed")
 	}
 	if !allowed {
-		s.recordContentAuthorizationDecision(ctx, actorID, code, categoryID, "deny", "content governance scope denied")
-		return errors.New("permission denied: content governance scope")
+		return s.contentAuthorizationFailure(ctx, errors.New("permission denied: content governance scope"), actorID, code, categoryID, "deny", "content governance scope denied")
 	}
-	s.recordContentAuthorizationDecision(ctx, actorID, code, categoryID, "allow", "")
-	return nil
+	return s.recordContentAuthorizationDecision(ctx, actorID, code, categoryID, "allow", "")
 }
 
-func (s *ThreadService) recordContentAuthorizationDecision(ctx context.Context, actorID, code string, categoryID int64, outcome, reason string) {
-	auditor, ok := s.authorization.(ContentAuthorizationAuditor)
-	if !ok {
+func (s *ThreadService) contentAuthorizationFailure(ctx context.Context, err error, actorID, code string, categoryID int64, outcome, reason string) error {
+	if !transaction.Active(ctx) {
+		// A non-transactional legacy path can persist its decision immediately.
+		_ = s.recordContentAuthorizationDecision(ctx, actorID, code, categoryID, outcome, reason)
+		return err
+	}
+	return &contentAuthorizationFailure{
+		err: err, actorID: actorID, code: code, categoryID: categoryID, outcome: outcome, reason: reason,
+	}
+}
+
+func (s *ThreadService) recordRolledBackAuthorizationDecision(ctx context.Context, err error) {
+	var decision *contentAuthorizationFailure
+	if !errors.As(err, &decision) || decision == nil {
 		return
 	}
-	auditor.RecordContentAuthorizationDecision(ctx, actorID, code, categoryID, outcome, reason)
+	// A deny/error audit is evidence for a request that made no business
+	// change. It is intentionally best effort: a failed audit must never turn
+	// the original denied request into an allowed one.
+	_ = s.recordContentAuthorizationDecision(ctx, decision.actorID, decision.code, decision.categoryID, decision.outcome, decision.reason)
+}
+
+func (s *ThreadService) recordContentAuthorizationDecision(ctx context.Context, actorID, code string, categoryID int64, outcome, reason string) error {
+	auditor, ok := s.authorization.(ContentAuthorizationAuditor)
+	if !ok {
+		return nil
+	}
+	return auditor.RecordContentAuthorizationDecision(ctx, actorID, code, categoryID, outcome, reason)
 }
 
 func (s *ThreadService) ListModerationActions(ctx context.Context, id string) ([]*domain.ModerationAction, error) {
@@ -795,7 +943,7 @@ func (s *ThreadService) resolveModeration(ctx context.Context, id, actorID, reas
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return nil, err
 	}
 	if err := s.recordTransition(ctx, thread, actorID, action, reason, before, target == domain.ModerationStatusRejected); err != nil {
@@ -816,7 +964,7 @@ func (s *ThreadService) trashThread(ctx context.Context, thread *domain.Thread, 
 	thread.CurrentRevision++
 	thread.UpdatedAt = time.Now().UTC()
 	thread.SyncLegacyStatus()
-	if err := s.repo.Update(ctx, thread); err != nil {
+	if err := s.updateGoverned(ctx, thread); err != nil {
 		return err
 	}
 	return s.recordTransition(ctx, thread, actorID, action, reason, before, false)
@@ -889,7 +1037,7 @@ func (s *ThreadService) recordModerationActionWithCase(ctx context.Context, thre
 }
 
 func (s *ThreadService) publishThreadUpdated(ctx context.Context, thread *domain.Thread) {
-	if s.bus == nil || thread == nil {
+	if s.bus == nil || thread == nil || transaction.Active(ctx) {
 		return
 	}
 	_ = s.bus.Publish(ctx, eventbus.NewEvent(
@@ -901,7 +1049,7 @@ func ptrTime(value time.Time) *time.Time { return &value }
 
 // invalidateListCache 清除帖子列表缓存
 func (s *ThreadService) invalidateListCache(ctx context.Context) {
-	if s.cache == nil {
+	if s.cache == nil || transaction.Active(ctx) {
 		return
 	}
 	// 清除常见的列表缓存 key

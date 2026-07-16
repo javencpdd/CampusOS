@@ -3,7 +3,7 @@ id: feature.personal-space
 feature_id: personal-space
 name: personal-space
 display_name: "Personal Space"
-version: "0.10.0"
+version: "0.11.0"
 description: "Personal homepage, content projection, profile styles, and user file entry points."
 kind: builtin-feature
 activation_mode: restart

@@ -18,6 +18,7 @@ type Config struct {
 	Plugin     PluginConfig
 	Deployment DeploymentConfig
 	AI         AIConfig
+	Webhook    WebhookConfig
 }
 
 type ServerConfig struct {
@@ -75,6 +76,13 @@ type AIConfig struct {
 	Timeout              string
 	MaxRequestsPerMinute int
 	MaxConcurrent        int
+}
+
+// WebhookConfig keeps outbound delivery safe by default. Private destinations
+// require an explicit development/test opt-in and an optional host allowlist.
+type WebhookConfig struct {
+	AllowedHosts        []string
+	AllowPrivateNetwork bool
 }
 
 func Load() *Config {
@@ -135,7 +143,22 @@ func Load() *Config {
 			MaxRequestsPerMinute: getInt("AI_MAX_REQUESTS_PER_MINUTE", 60),
 			MaxConcurrent:        getInt("AI_MAX_CONCURRENT", 4),
 		},
+		Webhook: WebhookConfig{
+			AllowedHosts:        splitCSV(get("WEBHOOK_ALLOWED_HOSTS", "")),
+			AllowPrivateNetwork: getBool("WEBHOOK_ALLOW_PRIVATE_NETWORK", false),
+		},
 	}
+}
+
+func splitCSV(value string) []string {
+	items := make([]string, 0)
+	for _, item := range strings.Split(value, ",") {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 func (s *ServerConfig) Addr() string {

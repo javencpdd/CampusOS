@@ -66,6 +66,7 @@
             <el-menu-item index="/architecture">数据架构</el-menu-item>
             <el-menu-item index="/events">事件日志</el-menu-item>
             <el-menu-item index="/platform-logs">平台日志</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/reliability">可靠任务</el-menu-item>
             <el-menu-item index="/docs">相关资料</el-menu-item>
           </el-sub-menu>
         </el-menu>
@@ -163,6 +164,7 @@ const currentPageTitle = computed(() => {
     "/reviews": "帖子审核",
     "/events": "事件日志",
     "/platform-logs": "平台日志",
+    "/reliability": "可靠任务",
   };
   return titles[route.path] || "";
 });

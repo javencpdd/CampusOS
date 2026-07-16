@@ -11,6 +11,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/webtheme"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 )
 
 const ModuleID = "feature.appearance"
@@ -34,7 +35,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.feature-registry"}
+	return []string{"core.community", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -61,6 +62,15 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		homepage.NewService(homepageConfig, categoryCatalogAdapter{catalog: m.categories}),
 		webtheme.NewService(webThemeConfig),
 	)
+	value, ok = app.Lookup("platform.reliability.service")
+	if !ok {
+		return errors.New("appearance reliability port is unavailable")
+	}
+	reliable, ok := value.(*reliability.Service)
+	if !ok || reliable == nil {
+		return fmt.Errorf("appearance reliability port has incompatible type %T", value)
+	}
+	m.application.SetReliability(reliable)
 	m.homeHandler = homepage.NewHandler(m.application)
 	m.themeHandler = webtheme.NewHandler(m.application)
 	if err := app.Provide("appearance.application", m.application); err != nil {

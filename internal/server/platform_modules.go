@@ -12,6 +12,7 @@ import (
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/plugin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
@@ -182,12 +183,20 @@ func newPluginPlatformModule(owner *Server, events *eventBusModule, features *fe
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
 func (m *pluginPlatformModule) Dependencies() []string {
-	return []string{moduleEventBus, moduleFeatureConfig, corestorage.ModuleID}
+	return []string{moduleEventBus, moduleFeatureConfig, corestorage.ModuleID, reliability.ModuleID}
 }
 
 func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	m.app = app
 	m.manager = plugin.NewManager()
+	if reliabilityValue, ok := app.Lookup("platform.reliability.service"); ok {
+		reliable, compatible := reliabilityValue.(*reliability.Service)
+		if !compatible || reliable == nil {
+			return fmt.Errorf("plugin reliability port has incompatible type %T", reliabilityValue)
+		}
+		m.manager.SetOperationTracker(reliabilityPluginOperationTracker{service: reliable})
+		m.manager.SetCompatibilityReporter(reliabilityPluginOperationTracker{service: reliable})
+	}
 	if m.repository != nil {
 		m.manager.SetPluginRepository(m.repository)
 	}
@@ -202,6 +211,27 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 		return err
 	}
 	return app.Provide("plugin.catalog", pluginport.NewCatalogAdapter(m.manager.Catalog()))
+}
+
+type reliabilityPluginOperationTracker struct {
+	service *reliability.Service
+}
+
+func (t reliabilityPluginOperationTracker) Track(ctx context.Context, request plugin.OperationRequest, action func(context.Context) error) error {
+	if t.service == nil {
+		return action(ctx)
+	}
+	return t.service.TrackOperation(ctx, reliability.Operation{
+		Kind: request.Kind, SubjectType: request.SubjectType, SubjectID: request.SubjectID,
+		ActorID: request.ActorID, IdempotencyKey: request.IdempotencyKey,
+	}, action)
+}
+
+func (t reliabilityPluginOperationTracker) RecordCompatibility(ctx context.Context, key, kind string, detail any) error {
+	if t.service == nil {
+		return nil
+	}
+	return t.service.RecordCompatibility(ctx, key, kind, detail)
 }
 
 func (m *pluginPlatformModule) Start(ctx context.Context) error {

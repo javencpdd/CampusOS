@@ -50,7 +50,7 @@ func runResourceAdopt(args []string, stdout io.Writer) error {
 	kind := flags.String("type", "", "resource type")
 	id := flags.String("id", "", "resource ID; defaults to directory name")
 	version := flags.String("version", "legacy-v10", "resource version")
-	compatibility := flags.String("compatibility", ">=0.10.0 <0.11.0", "CampusOS compatibility range")
+	compatibility := flags.String("compatibility", ">=0.11.0 <0.12.0", "CampusOS compatibility range")
 	source := flags.String("source", "v10-layout-migration", "resource source")
 	entry := flags.String("entry", "style.yaml", "resource entry file")
 	force := flags.Bool("force", false, "replace an existing resource.json")

@@ -3,7 +3,7 @@ id: feature.personal-schedule
 feature_id: personal-schedule
 name: personal-schedule
 display_name: "Personal Schedule"
-version: "0.10.0"
+version: "0.11.0"
 description: "Term schedules, spreadsheet import, week view, and calendar browsing backed by User Storage."
 kind: builtin-feature
 activation_mode: restart
