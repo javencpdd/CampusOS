@@ -77,25 +77,29 @@ func TestPluginInitCreatesGRPCScaffold(t *testing.T) {
 	}
 }
 
-func TestPluginInitCreatesBuiltinScaffold(t *testing.T) {
+func TestPluginInitRejectsBuiltinModules(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "builtin-plugin")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
 	code := run([]string{"plugin", "init", "builtin-plugin", "--runtime", "builtin", "--dir", dir}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	if code == 0 || !strings.Contains(stderr.String(), "modules/*/module.yaml") {
+		t.Fatalf("expected builtin separation error, code=%d stderr=%s", code, stderr.String())
 	}
+}
 
-	manifest, err := plugin.LoadManifest(filepath.Join(dir, "plugin.yaml"))
-	if err != nil {
-		t.Fatalf("load manifest: %v", err)
+func TestResourceAdoptAcceptsDocumentedDirectoryFirstSyntax(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "style.yaml"), []byte("name: test\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if manifest.Runtime != "builtin" {
-		t.Fatalf("expected builtin runtime, got %q", manifest.Runtime)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := run([]string{"resource", "adopt", directory, "--type", "theme"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("resource adopt failed: code=%d stderr=%s", code, stderr.String())
 	}
-	if manifest.Config["mode"] != "metadata" {
-		t.Fatalf("expected builtin mode config, got %#v", manifest.Config)
+	if code := run([]string{"resource", "inspect", directory}, &stdout, &stderr); code != 0 {
+		t.Fatalf("resource inspect failed: code=%d stderr=%s", code, stderr.String())
 	}
 }
 
@@ -286,7 +290,9 @@ func TestPluginVerifyRejectsUnknownPermission(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`
 name: unknown-permission
 version: "0.1.0"
-runtime: builtin
+runtime: wasm
+config:
+  module: plugin.wasm
 permissions:
   api:
     - resource: database
@@ -294,6 +300,9 @@ permissions:
 storage:
   type: none
 `), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "plugin.wasm"), []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00}, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer

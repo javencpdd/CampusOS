@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.resource/v1",
+  "id": "kinetic-journal",
+  "type": "space-style-pack",
+  "version": "0.1.0",
+  "compatibility": ">=0.10.0 <0.11.0",
+  "entry": "style.yaml",
+  "checksum": "cdb9ad6b4bd5d55dcf496acd540ba4bed2131aee46b71cd97a45509ca9f957f5",
+  "source": "campusos-builtin"
+}

@@ -11,15 +11,7 @@ type CapabilityClass string
 
 const (
 	ExternalPlugin CapabilityClass = "external-plugin"
-	LegacyBuiltin  CapabilityClass = "legacy-builtin"
 )
-
-var legacyBuiltinMapping = map[string]string{
-	"campus-welcome":      "compat.builtin.campus-welcome",
-	"category-moderation": "core.moderation", "personal-space": "feature.personal-space",
-	"controlled-richtext-article": "feature.controlled-richtext-article", "personal-schedule": "feature.personal-schedule",
-	"homepage-customizer": "feature.appearance", "web-theme": "feature.appearance",
-}
 
 type PluginCatalog struct {
 	mu      sync.RWMutex
@@ -67,36 +59,10 @@ func clonePlugin(item *Plugin) *Plugin {
 	return &copyPlugin
 }
 func (c *PluginCatalog) Classify(manifest *Manifest) CapabilityClass {
-	if manifest != nil && manifest.Runtime == "builtin" {
-		if _, ok := legacyBuiltinMapping[manifest.Name]; ok {
-			return LegacyBuiltin
-		}
-	}
 	return ExternalPlugin
 }
-func (c *PluginCatalog) LegacyModule(name string) (string, bool) {
-	value, ok := legacyBuiltinMapping[name]
-	return value, ok
-}
 func (c *PluginCatalog) ListExternal() []*Plugin {
-	all := c.List()
-	result := make([]*Plugin, 0, len(all))
-	for _, p := range all {
-		if c.Classify(p.Manifest) == ExternalPlugin {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-func (c *PluginCatalog) ListLegacyBuiltins() []*Plugin {
-	all := c.List()
-	result := make([]*Plugin, 0, len(all))
-	for _, p := range all {
-		if c.Classify(p.Manifest) == LegacyBuiltin {
-			result = append(result, p)
-		}
-	}
-	return result
+	return c.List()
 }
 
 type RuntimeRegistry struct {

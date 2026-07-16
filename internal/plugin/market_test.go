@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	corestorage "github.com/campusos/CampusOS/internal/core/storage"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 )
 
 func TestMarketServiceScopesRecordsAndRequiresGrant(t *testing.T) {

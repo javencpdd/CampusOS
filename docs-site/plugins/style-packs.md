@@ -38,12 +38,12 @@ viewport_support:
 系统主题源码保存在：
 
 ```text
-data/plugin_data/web-theme/style-packs/<theme>/
+data/resources/themes/<theme>/
 ```
 
-用户只能从管理员提供且筛查通过的目录中选择，不能从用户端安装系统主题。`data/plugins/<plugin>/` 只保存插件 manifest 和切换、导入、导出实现；图片、模板、CSS、预览和 schema 等风格数据全部放在 `data/plugin_data/<plugin>/`。
+用户只能从管理员提供且筛查通过的目录中选择，不能从用户端安装系统主题。风格包是 Resource Package，图片、模板、CSS、预览和 schema 全部保存在 `data/resources`；`data/plugins` 与 `data/plugin_data` 只服务 External Plugin。
 
-管理员可以直接维护该目录，也可以把下载的系统主题提供插件按部署包拆分到 `data/plugins/` 和对应 `data/plugin_data/` 后重启 API。当前在线插件导入只支持可热更新的用户级插件，不会绕过系统插件的重启和代码审查边界。
+管理员可以直接维护资源目录，或使用 `campusosctl resource adopt/inspect` 生成并检查 `resource.json`。资源包导入不会启动进程，也不会绕过 Appearance 的路径、HTML/CSS、脚本沙箱、对比度和 checksum 审查。
 
 ## 完整目录
 
@@ -135,17 +135,17 @@ CampusEffect.register({
 完整用户前台主题：
 
 ```text
-data/plugin_data/web-theme/style-packs/campus-canvas/
+data/resources/themes/campus-canvas/
 ```
 
 全视口 v2 参考包：
 
 ```text
-data/plugin_data/web-theme/style-packs/aurora-campus/
+data/resources/themes/aurora-campus/
 ```
 
 个人主页和同步帖子动态示例：
 
 ```text
-data/plugin_data/personal-space/style-packs/kinetic-journal/
+data/resources/space-style-packs/kinetic-journal/
 ```

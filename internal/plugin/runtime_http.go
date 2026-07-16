@@ -10,6 +10,7 @@ import (
 	"time"
 
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
+	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -25,6 +26,11 @@ type RuntimeHTTPHandler struct {
 	manager  *Manager
 	check    PermissionChecker
 	features *platformfeature.Registry
+	modules  *modulecatalog.Catalog
+}
+
+func (h *RuntimeHTTPHandler) SetModuleCatalog(catalog *modulecatalog.Catalog) {
+	h.modules = catalog
 }
 
 func NewRuntimeHTTPHandler(manager *Manager, check PermissionChecker, registries ...*platformfeature.Registry) *RuntimeHTTPHandler {
@@ -41,10 +47,6 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 	items := make([]gin.H, 0, len(plugins))
 	for _, p := range plugins {
 		if p == nil || p.Manifest == nil || p.Manifest.UI.Empty() || p.FrontendState == FrontendUnloaded {
-			continue
-		}
-		featureID, isBuiltinProjection := legacyBuiltinFeatureID(p.Manifest.Name)
-		if isBuiltinProjection && h.features != nil && !h.features.Enabled(featureID) {
 			continue
 		}
 		ui := cloneUI(p.Manifest.UI)
@@ -64,14 +66,6 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 			ui.Surfaces[index].Schema = filterSchemaActions(ui.Surfaces[index].Schema, allowedActions)
 		}
 		state, _ := h.manager.LifecycleState(p.ID)
-		if isBuiltinProjection && h.features != nil {
-			if featureState, found := h.features.Get(featureID); found {
-				state.ActivationMode = string(featureState.Mode)
-				state.BackendActivationMode = string(featureState.Mode)
-				state.DesiredEnabled = featureState.DesiredEnabled
-				state.PendingRestart = featureState.PendingRestart
-			}
-		}
 		items = append(items, gin.H{
 			"name": p.Manifest.Name, "version": p.Manifest.Version,
 			"runtime": p.Manifest.Runtime, "scope": p.Manifest.Scope,
@@ -83,7 +77,47 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 		"revision":         h.manager.UIRevision(),
 		"current_theme":    h.currentTheme(),
 		"plugins":          items,
+		"modules":          h.moduleContributions(),
 	})
+}
+
+func (h *RuntimeHTTPHandler) moduleContributions() []gin.H {
+	items := make([]gin.H, 0)
+	if h.modules == nil || h.features == nil {
+		return items
+	}
+	for _, resolved := range h.modules.UIContributions() {
+		descriptor := resolved.Descriptor
+		if descriptor.FeatureID == "" || !h.features.Enabled(descriptor.FeatureID) {
+			continue
+		}
+		state, _ := h.features.Get(descriptor.FeatureID)
+		items = append(items, gin.H{
+			"name": descriptor.Name, "module_id": descriptor.ID,
+			"feature_id": descriptor.FeatureID, "version": descriptor.Version,
+			"kind": descriptor.Kind, "lifecycle": moduleLifecycle(state), "ui": descriptor.UI,
+		})
+	}
+	return items
+}
+
+func moduleLifecycle(state platformfeature.State) gin.H {
+	backendState := BackendStopped
+	frontendState := FrontendUnloaded
+	health := HealthUnavailable
+	if state.Enabled {
+		backendState = BackendRunning
+		frontendState = FrontendLoaded
+		health = HealthHealthy
+	} else if state.PendingRestart {
+		backendState = BackendPendingRestart
+	}
+	return gin.H{
+		"scope": ScopeSystem, "activation_mode": state.Mode,
+		"backend_activation_mode": state.Mode, "frontend_activation_mode": ActivationHot,
+		"backend_state": backendState, "frontend_state": frontendState, "health": health,
+		"desired_enabled": state.DesiredEnabled, "pending_restart": state.PendingRestart,
+	}
 }
 
 func (h *RuntimeHTTPHandler) currentTheme() string {
@@ -94,12 +128,7 @@ func (h *RuntimeHTTPHandler) currentTheme() string {
 			return strings.TrimSpace(value)
 		}
 	}
-	config, ok := h.manager.GetPluginConfig("web-theme")
-	if !ok {
-		return ""
-	}
-	value, _ := config["default_style_pack"].(string)
-	return strings.TrimSpace(value)
+	return ""
 }
 
 func filterSchemaActions(node map[string]interface{}, allowed map[string]bool) map[string]interface{} {

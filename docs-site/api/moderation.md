@@ -54,7 +54,7 @@ GET /api/v1/moderation/me?thread_id=<thread_id>
 Authorization: Bearer <access_token>
 ```
 
-响应中的 `actions` 由后端根据插件状态、动作开关、角色权限和版块 scope 计算。前端只应显示返回为 `true` 的按钮。
+响应中的 `actions` 由后端根据 Moderation Core 动作上限、角色权限和版块 scope 计算。前端只应显示返回为 `true` 的按钮。
 
 ## 治理接口
 
@@ -66,11 +66,11 @@ Authorization: Bearer <access_token>
 | `POST` | `/moderation/threads/:id/unlock` | 解锁主题。 |
 | `DELETE` | `/moderation/threads/:thread_id/posts/:post_id` | 删除回复。 |
 
-跨版块请求返回 `403`。插件整体停用并重启后返回 `503/71001`。
+跨版块请求返回 `403`。Moderation Core 始终启用，不能通过 Feature API 停用。
 
-## 插件配置热更新
+## Core 动作上限热更新
 
-`category-moderation` 是系统级插件，整体启用或停用需要重启 API。但以下动作开关保存后立即作用于下一次授权检查：
+`core.moderation` 是 `always-on` Core Module。以下动作开关保存后立即作用于下一次授权检查：
 
 ```json
 {
@@ -83,11 +83,11 @@ Authorization: Bearer <access_token>
 配置通过：
 
 ```http
-PUT /api/v1/plugins/category-moderation/config
+PUT /api/v1/features/category-moderation/config
 ```
 
 旧页面尚未刷新时可能仍显示按钮，但后端会立即拒绝已经关闭的动作。刷新帖子详情后按钮会同步。
 
 ## 审计
 
-版主范围变更、置顶、锁定和删除回复写入 `audit_logs`。插件停用不会删除 scope 或历史审计。
+版主范围变更、置顶、锁定和删除回复写入 `audit_logs`。调整动作上限不会删除 scope 或历史审计。

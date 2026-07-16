@@ -123,12 +123,12 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | --- | --- |
 | API 启动与装配 | `cmd/server/`、`internal/server/` |
 | HTTP 路由合同 | `internal/transport/httpapi/` |
-| 身份与权限 | `internal/core/identity/` |
-| 帖子、版块和内容治理 | `internal/community/` |
-| 个人课表 | `internal/schedule/` |
-| User Storage | `internal/core/storage/` |
+| 身份与权限 | `internal/modules/core/identity/` |
+| 帖子、版块和内容治理 | `internal/modules/core/community/` |
+| 个人课表 | `internal/modules/features/schedule/` |
+| User Storage | `internal/modules/core/userstorage/` |
 | 插件平台 | `internal/plugin/` |
-| 风格包与 Appearance | `internal/appearance/`、`internal/stylepack/`、`internal/webtheme/` |
+| 风格包与 Appearance | `internal/modules/features/appearance/runtime/`、`internal/modules/features/appearance/stylepack/`、`internal/modules/features/appearance/webtheme/` |
 | 用户前台 | `web/src/modules/` |
 | 管理后台 | `admin/src/modules/` |
 | 官方文档站 | `docs-site/` |
@@ -137,8 +137,9 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 
 ```text
 data/plugins/<id>/                 插件实现和 plugin.yaml
-data/plugin_data/<id>/             插件运行数据和 Legacy 资源来源
-data/resources/<type>/<id>/        新 Resource Package 仓库
+data/plugin_data/<id>/             External Plugin 私有运行数据
+data/module_data/<feature>/        Built-in Feature 本地可变数据
+data/resources/<type>/<id>/        Resource Package 仓库
 data/personal-space/<user-id>/     用户文件、课表和插件用户附件
 ```
 

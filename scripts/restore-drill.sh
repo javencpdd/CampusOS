@@ -38,7 +38,10 @@ SELECT 'plugins=' || count(*) FROM plugins;
 SELECT 'migrations=' || count(*) FROM schema_migrations;
 " | tee "$work_dir/restored-counts.txt"
 
-test -f "$work_dir/extracted/files/data/plugins/personal-space/plugin.yaml"
+test -f "$work_dir/extracted/files/modules/features/personal-schedule/module.yaml"
+test -f "$work_dir/extracted/files/data/plugins/hello-wasm/plugin.yaml"
 test -d "$work_dir/extracted/files/data/plugin_data"
+test -f "$work_dir/extracted/files/data/module_data/personal-space/styles/clean-blog.space-style.json"
+test -f "$work_dir/extracted/files/data/resources/themes/campus-canvas/resource.json"
 test -d "$work_dir/extracted/files/data/personal-space"
-echo "single-node restore drill passed: database and file assets restored in isolation"
+echo "single-node restore drill passed: database, modules, plugins, resources, and user assets restored in isolation"

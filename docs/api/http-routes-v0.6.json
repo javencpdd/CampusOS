@@ -2402,6 +2402,101 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/features",
+      "handler": "d.Feature",
+      "module_owner": "core.feature-registry",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "feature:read",
+      "permission_code": "platform.feature.read",
+      "operation_code": "http.platform.feature.list",
+      "legacy_aliases": [
+        "http.get.api.v1.features",
+        "httpapi.get.api.v1.features"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/features/:id",
+      "handler": "d.Feature",
+      "module_owner": "core.feature-registry",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "feature:read",
+      "permission_code": "platform.feature.read",
+      "operation_code": "http.platform.feature.get",
+      "legacy_aliases": [
+        "http.get.api.v1.features.id",
+        "httpapi.get.api.v1.features.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/features/:id/config",
+      "handler": "d.Feature",
+      "module_owner": "core.feature-registry",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "feature:configure",
+      "permission_code": "platform.feature.configure",
+      "operation_code": "http.platform.feature.configure",
+      "legacy_aliases": [
+        "http.put.api.v1.features.id.config",
+        "httpapi.put.api.v1.features.id.config"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/features/:id/enable",
+      "handler": "d.Feature",
+      "module_owner": "core.feature-registry",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "feature:lifecycle",
+      "permission_code": "platform.feature.lifecycle",
+      "operation_code": "http.platform.feature.enable",
+      "legacy_aliases": [
+        "http.post.api.v1.features.id.enable",
+        "httpapi.post.api.v1.features.id.enable"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/features/:id/disable",
+      "handler": "d.Feature",
+      "module_owner": "core.feature-registry",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "feature:lifecycle",
+      "permission_code": "platform.feature.lifecycle",
+      "operation_code": "http.platform.feature.disable",
+      "legacy_aliases": [
+        "http.post.api.v1.features.id.disable",
+        "httpapi.post.api.v1.features.id.disable"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/plugin-market/admin/overview",
       "handler": "d.Plugin",
       "module_owner": "core.plugin-platform",

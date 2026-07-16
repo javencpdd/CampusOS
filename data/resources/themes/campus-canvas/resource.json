@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.resource/v1",
+  "id": "campus-canvas",
+  "type": "theme",
+  "version": "0.1.0",
+  "compatibility": ">=0.10.0 <0.11.0",
+  "entry": "style.yaml",
+  "checksum": "8910d7081daf60bd72ec69b764f8819190d9828c10e3daa9926c30b5c796f9a5",
+  "source": "campusos-builtin"
+}

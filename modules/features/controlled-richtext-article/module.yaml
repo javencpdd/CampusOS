@@ -1,0 +1,61 @@
+schema: campusos.module/v1
+id: feature.controlled-richtext-article
+feature_id: controlled-richtext-article
+name: controlled-richtext-article
+display_name: "Controlled RichText Article"
+version: "0.10.0"
+description: "Draft, publish, sanitize, preview, asset, and template support for image-text articles."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.community, core.user-storage, core.feature-registry]
+implementation: internal/modules/features/richtext
+compatibility_aliases:
+  - name: controlled-richtext-article
+config:
+  editor_mode: controlled-html
+  file_url_prefix: "/api/v1/richtext/assets"
+  max_image_mb: 5
+  allow_plain_text_template: true
+  default_template: richtext
+  future_editor_provider: textarea-controlled-html
+config_schema:
+  fields:
+    - key: editor_mode
+      label: "Editor mode"
+      type: select
+      required: true
+      default: controlled-html
+      options:
+        - {label: "Controlled HTML", value: controlled-html}
+    - key: file_url_prefix
+      label: "File URL prefix"
+      type: string
+      required: true
+      default: "/api/v1/richtext/assets"
+    - key: max_image_mb
+      label: "Max image MB"
+      type: number
+      required: true
+      default: 5
+    - key: allow_plain_text_template
+      label: "Allow plain text"
+      type: boolean
+      default: true
+    - key: default_template
+      label: "Default template"
+      type: select
+      default: richtext
+      options:
+        - {label: "RichText article", value: richtext}
+        - {label: "Plain text", value: plain_text}
+    - key: future_editor_provider
+      label: "Future editor provider"
+      type: select
+      default: textarea-controlled-html
+      options:
+        - {label: "Textarea controlled HTML", value: textarea-controlled-html}
+        - {label: "Tiptap placeholder", value: tiptap-placeholder}
+        - {label: "wangEditor placeholder", value: wangeditor-placeholder}
+        - {label: "BlockNote placeholder", value: blocknote-placeholder}
+        - {label: "Quill placeholder", value: quill-placeholder}

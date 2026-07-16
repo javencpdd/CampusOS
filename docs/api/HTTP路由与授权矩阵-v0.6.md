@@ -143,6 +143,11 @@
 | `POST` | `/api/v1/plugin-packages/precheck` | `http.post.api.v1.plugin_packages.precheck` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/plugins/:name/snapshots` | `http.get.api.v1.plugins.name.snapshots` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
 | `POST` | `/api/v1/plugins/:name/rollback` | `http.post.api.v1.plugins.name.rollback` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/features` | `http.platform.feature.list` | `core.feature-registry` | `d.Feature` | `jwt+permission` | `platform.feature.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/features/:id` | `http.platform.feature.get` | `core.feature-registry` | `d.Feature` | `jwt+permission` | `platform.feature.read` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/features/:id/config` | `http.platform.feature.configure` | `core.feature-registry` | `d.Feature` | `jwt+permission` | `platform.feature.configure` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/features/:id/enable` | `http.platform.feature.enable` | `core.feature-registry` | `d.Feature` | `jwt+permission` | `platform.feature.lifecycle` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/features/:id/disable` | `http.platform.feature.disable` | `core.feature-registry` | `d.Feature` | `jwt+permission` | `platform.feature.lifecycle` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/plugin-market/admin/overview` | `http.get.api.v1.plugin_market.admin.overview` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
 | `PUT` | `/api/v1/plugin-market/admin/catalog/:name` | `http.put.api.v1.plugin_market.admin.catalog.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.configure` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/plugin-market/admin/requests` | `http.get.api.v1.plugin_market.admin.requests` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |

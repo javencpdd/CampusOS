@@ -6,23 +6,24 @@ package httpapi
 import (
 	"context"
 
-	"github.com/campusos/CampusOS/internal/ai"
-	communitycore "github.com/campusos/CampusOS/internal/community"
-	identitycore "github.com/campusos/CampusOS/internal/core/identity"
-	"github.com/campusos/CampusOS/internal/homepage"
-	"github.com/campusos/CampusOS/internal/integration"
-	"github.com/campusos/CampusOS/internal/mcp"
-	"github.com/campusos/CampusOS/internal/message"
-	"github.com/campusos/CampusOS/internal/moderation"
+	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
+	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
+	"github.com/campusos/CampusOS/internal/modules/core/moderation"
+	"github.com/campusos/CampusOS/internal/modules/features/ai"
+	"github.com/campusos/CampusOS/internal/modules/features/appearance/homepage"
+	"github.com/campusos/CampusOS/internal/modules/features/appearance/webtheme"
+	"github.com/campusos/CampusOS/internal/modules/features/integration"
+	"github.com/campusos/CampusOS/internal/modules/features/mcp"
+	"github.com/campusos/CampusOS/internal/modules/features/message"
+	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
+	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
+	"github.com/campusos/CampusOS/internal/modules/features/richtext"
+	"github.com/campusos/CampusOS/internal/modules/features/schedule"
+	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
-	"github.com/campusos/CampusOS/internal/platformlog"
 	"github.com/campusos/CampusOS/internal/plugin"
-	"github.com/campusos/CampusOS/internal/richtext"
-	"github.com/campusos/CampusOS/internal/schedule"
-	"github.com/campusos/CampusOS/internal/space"
-	"github.com/campusos/CampusOS/internal/webhook"
-	"github.com/campusos/CampusOS/internal/webtheme"
+	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/campusos/CampusOS/pkg/observability"
@@ -35,6 +36,8 @@ type Dependencies struct {
 	JWT           *auth.JWTManager
 	Permissions   middleware.PermissionChecker
 	Features      *platformfeature.Registry
+	Feature       *platformfeature.Handler
+	ModuleCatalog *modulecatalog.Catalog
 	PluginManager *plugin.Manager
 	Identity      identitycore.HTTPHandlers
 	Community     communitycore.HTTPHandlers
@@ -67,6 +70,7 @@ func Build(d Dependencies) *Router {
 	runtimeHTTPHandler := plugin.NewRuntimeHTTPHandler(d.PluginManager, func(ctx context.Context, userID, resource, action string) (bool, error) {
 		return d.Permissions.Check(ctx, userID, resource, action)
 	}, d.Features)
+	runtimeHTTPHandler.SetModuleCatalog(d.ModuleCatalog)
 
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
@@ -235,6 +239,11 @@ func Build(d Dependencies) *Router {
 		admin.Permission("plugin", "install").POST("/plugin-packages/precheck", d.Plugin.PrecheckPluginPackage)
 		admin.Permission("plugin", "read").GET("/plugins/:name/snapshots", d.Plugin.ListVersionSnapshots)
 		admin.Permission("plugin", "install").POST("/plugins/:name/rollback", d.Plugin.RollbackVersionSnapshot)
+		admin.Permission("feature", "read").Operation("http.platform.feature.list").GET("/features", d.Feature.List)
+		admin.Permission("feature", "read").Operation("http.platform.feature.get").GET("/features/:id", d.Feature.Get)
+		admin.Permission("feature", "configure").Operation("http.platform.feature.configure").PUT("/features/:id/config", d.Feature.UpdateConfig)
+		admin.Permission("feature", "lifecycle").Operation("http.platform.feature.enable").POST("/features/:id/enable", d.Feature.Enable)
+		admin.Permission("feature", "lifecycle").Operation("http.platform.feature.disable").POST("/features/:id/disable", d.Feature.Disable)
 		admin.Permission("plugin", "read").GET("/plugin-market/admin/overview", d.Plugin.AdminMarketOverview)
 		admin.Permission("plugin", "configure").PUT("/plugin-market/admin/catalog/:name", d.Plugin.AdminSetMarketVisibility)
 		admin.Permission("plugin", "read").GET("/plugin-market/admin/requests", d.Plugin.AdminMarketRequests)

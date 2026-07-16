@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `name` | 是 | 插件唯一名称。 |
 | `version` | 是 | 建议使用语义化版本。 |
-| `runtime` | 是 | `builtin`、`wasm` 或 `grpc`。 |
+| `runtime` | 是 | External Plugin 使用 `wasm` 或 `grpc`（受管进程兼容名）。 |
 | `scope` | 建议 | `system` 或 `user`。第三方默认使用 `user`。 |
 | `lifecycle` | 否 | 后端 `restart/plugin-restart/hot` 与前端 `hot`；缺省值按 Runtime 推导。 |
 | `ui` | 否 | `campusos.ui/v1` Route、Navigation、Slot、Surface 和 Action。 |
@@ -49,16 +49,9 @@ config:
 
 当前 Runtime 只启动插件目录内的 `plugin` 可执行文件，并只接受显式的 loopback HTTP 端点。`grpc` 是兼容标识，不是标准 protobuf gRPC 协议承诺。
 
-Built-in：
-
-```yaml
-runtime: builtin
-scope: system
-config:
-  enabled_feature: true
-```
-
-Built-in 的配置是否热更新由具体内置服务决定；插件整体启停由 `lifecycle.backend.activation_mode` 决定，不由 scope 单独决定。
+`runtime: builtin` 只为旧 Manifest 检查和迁移保留解析能力。CLI、目录扫描、
+Plugin Manager 和插件包导入都会拒绝它。内置功能使用
+`modules/{core,features}/<id>/module.yaml`，并通过 `/api/v1/features` 管理。
 
 ## 生命周期与默认 UI
 

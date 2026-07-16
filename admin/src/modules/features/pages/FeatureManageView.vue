@@ -135,8 +135,8 @@ const load = async () => {
 const toggle = async (row: FeatureRow, enabled: boolean) => {
   try {
     const payload = unwrap(enabled
-      ? await featureApi.enableCompatibility(row.representative)
-      : await featureApi.disableCompatibility(row.representative))
+      ? await featureApi.enable(row.id)
+      : await featureApi.disable(row.id))
     ElMessage.success(payload?.message || '目标状态已保存')
     await load()
   } catch (error: any) {
@@ -149,7 +149,7 @@ const openConfig = async (name: string) => {
   configVisible.value = true
   configLoading.value = true
   try {
-    const detail = unwrap(await featureApi.getCompatibility(name))
+    const detail = unwrap(await featureApi.get(name))
     configFields.value = detail?.config_schema?.fields || []
     const config = detail?.config || {}
     configForm.value = Object.fromEntries(configFields.value.map((field) => [field.key, normalize(field, config[field.key] ?? field.default)]))
@@ -170,7 +170,7 @@ const saveConfig = async () => {
   configSaving.value = true
   try {
     const payload = Object.fromEntries(configFields.value.map((field) => [field.key, normalize(field, configForm.value[field.key])]))
-    await featureApi.updateCompatibilityConfig(selectedConfigName.value, payload)
+    await featureApi.updateConfig(selectedConfigName.value, payload)
     ElMessage.success('内置功能配置已保存')
     configVisible.value = false
     await load()

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
+	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/gin-gonic/gin"
 )
 
@@ -39,7 +41,7 @@ func (r *gatewayTestRuntime) HealthCheck(_ context.Context, name string) error {
 	return nil
 }
 func (r *gatewayTestRuntime) IsRunning(name string) bool { return r.running[name] }
-func (r *gatewayTestRuntime) Type() string               { return "builtin" }
+func (r *gatewayTestRuntime) Type() string               { return "wasm" }
 func (r *gatewayTestRuntime) DispatchExtension(ctx context.Context, _ string, request *ExtensionRequest) (*ExtensionResponse, error) {
 	return r.handler(ctx, request)
 }
@@ -49,7 +51,7 @@ func TestExtensionGatewayUsesTrustedCallerContext(t *testing.T) {
 	dir := t.TempDir()
 	manifest := `name: gateway-test
 version: 0.1.0
-runtime: builtin
+runtime: wasm
 scope: user
 ui:
   actions:
@@ -79,7 +81,7 @@ ui:
 		body, _ := json.Marshal(map[string]string{"user_id": request.Caller.UserID, "username": request.Caller.Username})
 		return &ExtensionResponse{Status: 200, Headers: map[string]string{"Content-Type": "application/json"}, Body: body}, nil
 	}
-	manager.RegisterRuntime("builtin", runtime)
+	manager.RegisterRuntime("wasm", runtime)
 	if _, err := manager.Install(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -106,12 +108,12 @@ ui:
 	}
 }
 
-func TestRuntimeManifestIncludesIndependentLifecycleStates(t *testing.T) {
+func TestRuntimeManifestSeparatesExternalPluginsAndBuiltInModules(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`name: ui-runtime-test
 version: 0.1.0
-runtime: builtin
+runtime: wasm
 scope: system
 ui:
   surfaces:
@@ -125,11 +127,22 @@ ui:
 		t.Fatal(err)
 	}
 	manager := NewManager()
-	manager.RegisterRuntime("builtin", &gatewayTestRuntime{})
+	manager.RegisterRuntime("wasm", &gatewayTestRuntime{})
 	if _, err := manager.Install(dir); err != nil {
 		t.Fatal(err)
 	}
-	handler := NewRuntimeHTTPHandler(manager, nil)
+	catalog := modulecatalog.MustLoad()
+	features := platformfeature.NewAuthoritativeRegistry(platformfeature.NewMemoryStore())
+	for _, descriptor := range catalog.FeatureDescriptors() {
+		if err := features.Register(platformfeature.Definition{
+			ID: descriptor.FeatureID, Mode: platformfeature.ActivationMode(descriptor.ActivationMode),
+			DefaultEnabled: descriptor.DefaultEnabled, DefaultConfig: descriptor.Config,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler := NewRuntimeHTTPHandler(manager, nil, features)
+	handler.SetModuleCatalog(catalog)
 	router := gin.New()
 	router.GET("/runtime", handler.RuntimeManifest)
 	recorder := httptest.NewRecorder()
@@ -137,7 +150,11 @@ ui:
 	if recorder.Code != http.StatusOK {
 		t.Fatal(recorder.Body.String())
 	}
-	if !strings.Contains(recorder.Body.String(), `"frontend_state":"loaded"`) || !strings.Contains(recorder.Body.String(), `"backend_activation_mode":"restart"`) {
-		t.Fatalf("missing lifecycle states: %s", recorder.Body.String())
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"frontend_state":"loaded"`) || !strings.Contains(body, `"backend_activation_mode":"hot"`) {
+		t.Fatalf("missing external plugin lifecycle states: %s", body)
+	}
+	if !strings.Contains(body, `"feature_id":"personal-schedule"`) || !strings.Contains(body, `"feature_id":"appearance"`) {
+		t.Fatalf("built-in module UI contributions are missing: %s", body)
 	}
 }

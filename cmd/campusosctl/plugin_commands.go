@@ -127,8 +127,6 @@ func buildPlugin(dir string) (*plugin.Manifest, string, []string, error) {
 		return nil, "", nil, err
 	}
 	switch manifest.Runtime {
-	case "builtin":
-		return manifest, "", []string{"builtin metadata validated; compile with CampusOS"}, nil
 	case "grpc":
 		artifact := filepath.Join(dir, "plugin")
 		if err := runCommand(dir, nil, "go", "build", "-o", "plugin", "."); err != nil {

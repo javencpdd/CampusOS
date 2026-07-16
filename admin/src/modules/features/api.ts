@@ -1,13 +1,12 @@
 import api from '../../shared/api/client'
 
-// v0.8 keeps the historical /plugins endpoints as a compatibility projection.
-// Built-in Feature screens use this adapter so they never invoke external
-// plugin install, uninstall, reload, package or snapshot operations.
+// Core modules and Built-in Features use an independent management plane.
+// The external /plugins lifecycle never receives these requests.
 export const featureApi = {
-  list: () => api.get('/plugins'),
-  getCompatibility: (name: string) => api.get(`/plugins/${name}`),
-  enableCompatibility: (name: string) => api.post(`/plugins/${name}/enable`),
-  disableCompatibility: (name: string) => api.post(`/plugins/${name}/disable`),
-  updateCompatibilityConfig: (name: string, config: Record<string, unknown>) =>
-    api.put(`/plugins/${name}/config`, config),
+  list: () => api.get('/features'),
+  get: (id: string) => api.get(`/features/${id}`),
+  enable: (id: string) => api.post(`/features/${id}/enable`),
+  disable: (id: string) => api.post(`/features/${id}/disable`),
+  updateConfig: (id: string, config: Record<string, unknown>) =>
+    api.put(`/features/${id}/config`, config),
 }

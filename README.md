@@ -36,10 +36,12 @@ STOP_EXISTING=true make dev-all
 | 路径 | 作用 |
 | --- | --- |
 | `cmd/`、`internal/` | 服务入口、模块化单体、领域服务与扩展平台 |
+| `modules/`、`internal/modules/` | 编译期 Core/Built-in Feature 描述符与实现；不进入插件安装流程 |
 | `web/`、`admin/` | 用户前台与管理后台 |
 | `docs-site/`、`docs/` | 对外文档站与仓库内计划、帮助、API、架构和进度证据 |
-| `data/plugins/` | 插件实现代码与 Manifest |
-| `data/plugin_data/` | 插件运行数据及 Legacy Resource Source |
+| `data/plugins/` | External Plugin 实现代码、Manifest 与运行入口 |
+| `data/plugin_data/` | External Plugin 私有运行数据与版本快照 |
+| `data/module_data/` | Built-in Feature 本地可变数据 |
 | `data/resources/` | 主题、主页包、空间风格、Skills、Prompt 等资源包 |
 | `data/personal-space/<user_id>/` | 用户文件、图片、课表与插件用户附件 |
 | `sdk/`、`examples/plugins/` | Go/TypeScript SDK 与可验证插件示例 |
@@ -59,7 +61,7 @@ make release-check
 | 主题 | 文档 |
 | --- | --- |
 | 新开发者入门 | [官方文档完整入门路径](docs-site/guide/getting-started.md) |
-| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v10 系统清点与治理](docs/architecture/v10当前系统清点与治理.md) |
+| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v10 模块/插件/资源物理隔离](docs/architecture/v10模块插件资源物理隔离.md)、[v10 系统清点与治理](docs/architecture/v10当前系统清点与治理.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
 | 权限与版主 | [v10 权限管理设计与使用入门](docs/help/系统设计相关/v10权限管理设计与使用入门.md) |
 | 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |

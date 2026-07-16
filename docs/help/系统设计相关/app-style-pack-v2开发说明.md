@@ -25,7 +25,7 @@ viewport_support:
 ## 2. 目录与布局
 
 ```text
-data/plugin_data/web-theme/style-packs/<pack>/
+data/resources/themes/<pack>/
 ├── style.yaml
 ├── README.md
 ├── preview.png
@@ -97,10 +97,10 @@ Override 只表达位置和视觉变体。渲染回退顺序是：兼容 Overrid
 
 ## 5. 数据边界与示例
 
-`data/plugins/web-theme/` 只保存插件 manifest、切换/读取实现说明和生命周期配置。所有风格包、图片、预览、模板、CSS、特效和 schema 都是数据，只能放在：
+`modules/features/appearance/` 只保存插件 manifest、切换/读取实现说明和生命周期配置。所有风格包、图片、预览、模板、CSS、特效和 schema 都是数据，只能放在：
 
 ```text
-data/plugin_data/web-theme/style-packs/<pack>/
+data/resources/themes/<pack>/
 ```
 
-`data/plugin_data/web-theme/style-packs/aurora-campus/` 是 v2 示例，包含项目自有校园背景、全视口阅读布局、响应式处理和隔离 Canvas 特效。它只参考沉浸式博客的页面层次与阅读组织，没有复制第三方代码或业务模型。
+`data/resources/themes/aurora-campus/` 是 v2 示例，包含项目自有校园背景、全视口阅读布局、响应式处理和隔离 Canvas 特效。它只参考沉浸式博客的页面层次与阅读组织，没有复制第三方代码或业务模型。

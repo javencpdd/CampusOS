@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.resource/v1",
+  "id": "campus-hero",
+  "type": "homepage-pack",
+  "version": "0.1.0",
+  "compatibility": "\u003e=0.10.0 \u003c0.11.0",
+  "entry": "style.yaml",
+  "checksum": "46e3c1763ff1b9c16a4ece53454337f4537d92828e8e281f2527ae7727e75247",
+  "source": "campusos-builtin"
+}

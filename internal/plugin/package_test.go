@@ -52,6 +52,31 @@ func TestPackagePluginAndInstallPluginPackage(t *testing.T) {
 	}
 }
 
+func TestValidatePluginPackageDirRejectsCompiledModuleNames(t *testing.T) {
+	for _, name := range []string{"personal-schedule", "homepage-customizer", "moderation"} {
+		directory := writePackablePlugin(t, t.TempDir(), name, "0.1.0")
+		if _, err := ValidatePluginPackageDir(directory); err == nil || !strings.Contains(err.Error(), "reserved") {
+			t.Fatalf("expected compiled module name %q to be rejected, got %v", name, err)
+		}
+	}
+}
+
+func TestValidatePluginPackageDirRejectsLegacyBuiltinRuntime(t *testing.T) {
+	directory := writePackablePlugin(t, t.TempDir(), "legacy-builtin", "0.1.0")
+	manifestPath := filepath.Join(directory, "plugin.yaml")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = []byte(strings.Replace(string(data), "runtime: wasm", "runtime: builtin", 1))
+	if err := os.WriteFile(manifestPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ValidatePluginPackageDir(directory); err == nil || !strings.Contains(err.Error(), "runtime builtin") {
+		t.Fatalf("expected legacy builtin runtime to be rejected, got %v", err)
+	}
+}
+
 func TestManagerImportPackageReplaceAndExport(t *testing.T) {
 	sourceV1 := writePackablePlugin(t, t.TempDir(), "replaceable", "0.1.0")
 	sourceV2 := writePackablePlugin(t, t.TempDir(), "replaceable", "0.2.0")

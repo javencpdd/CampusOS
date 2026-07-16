@@ -2,7 +2,10 @@ package port
 
 import "context"
 
-type Descriptor struct{ ID, Version, Runtime string }
+type Descriptor struct {
+	ID, Version, Runtime string
+	Status               string
+}
 type Catalog interface {
 	List(context.Context) ([]Descriptor, error)
 	Get(context.Context, string) (Descriptor, error)

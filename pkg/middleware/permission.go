@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/campusos/CampusOS/internal/core/identity/permissioncode"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )

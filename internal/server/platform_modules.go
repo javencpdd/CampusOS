@@ -2,23 +2,22 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	communityport "github.com/campusos/CampusOS/internal/community/port"
-	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
-	corestorage "github.com/campusos/CampusOS/internal/core/storage"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/plugin"
-	pluginbuiltin "github.com/campusos/CampusOS/internal/plugin/builtin"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
+	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -117,6 +116,8 @@ type featureRegistryModule struct {
 	owner    *Server
 	store    platformfeature.Store
 	registry *platformfeature.Registry
+	catalog  *modulecatalog.Catalog
+	handler  *platformfeature.Handler
 }
 
 func newFeatureRegistryModule(owner *Server, store platformfeature.Store) *featureRegistryModule {
@@ -126,22 +127,39 @@ func newFeatureRegistryModule(owner *Server, store platformfeature.Store) *featu
 func (m *featureRegistryModule) ID() string             { return moduleFeatureConfig }
 func (m *featureRegistryModule) Dependencies() []string { return nil }
 func (m *featureRegistryModule) Register(app *platformmodule.AppContext) error {
+	catalog, err := modulecatalog.Load()
+	if err != nil {
+		return fmt.Errorf("load built-in module catalog: %w", err)
+	}
 	m.registry = platformfeature.NewAuthoritativeRegistry(m.store)
-	for _, def := range []platformfeature.Definition{
-		{ID: "moderation", Mode: platformfeature.AlwaysOn, Dependencies: []string{"core.identity", "core.community"}, LegacyPlugin: "category-moderation"},
-		{ID: "personal-space", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-space"},
-		{ID: "controlled-richtext-article", Mode: platformfeature.Restart, Dependencies: []string{"core.community", "core.user-storage"}, LegacyPlugin: "controlled-richtext-article"},
-		{ID: "personal-schedule", Mode: platformfeature.Restart, Dependencies: []string{"core.identity", "core.user-storage"}, LegacyPlugin: "personal-schedule"},
-		{ID: "appearance", Mode: platformfeature.HotGated, LegacyPlugin: "web-theme"},
-	} {
+	for _, descriptor := range catalog.FeatureDescriptors() {
+		def := platformfeature.Definition{
+			ID:             descriptor.FeatureID,
+			Mode:           platformfeature.ActivationMode(descriptor.ActivationMode),
+			Dependencies:   append([]string(nil), descriptor.Dependencies...),
+			DefaultEnabled: descriptor.DefaultEnabled,
+			DefaultConfig:  modulecatalog.DeepCopyConfig(descriptor.Config),
+		}
 		if err := m.registry.Register(def); err != nil {
 			return err
 		}
 	}
+	m.catalog = catalog
+	m.handler = platformfeature.NewHandler(m.registry, catalog)
 	m.owner.features = m.registry
-	return app.Provide("platform.feature-registry", m.registry)
+	m.owner.featureHandler = m.handler
+	m.owner.moduleCatalog = catalog
+	if err := app.Provide("platform.feature-registry", m.registry); err != nil {
+		return err
+	}
+	if err := app.Provide("platform.module-catalog", catalog); err != nil {
+		return err
+	}
+	return app.Provide("feature.http-handler", m.handler)
 }
 func (m *featureRegistryModule) Registry() *platformfeature.Registry { return m.registry }
+func (m *featureRegistryModule) Catalog() *modulecatalog.Catalog     { return m.catalog }
+func (m *featureRegistryModule) Handler() *platformfeature.Handler   { return m.handler }
 
 type pluginPlatformModule struct {
 	owner       *Server
@@ -176,9 +194,6 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	m.grpcRuntime = plugingrpc.NewGRPCRuntime()
 	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
-	builtinRuntime := pluginbuiltin.NewRuntime()
-	builtinRuntime.RegisterExtension("campus-welcome", campusWelcomeExtension)
-	m.manager.RegisterRuntime("builtin", builtinRuntime)
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
 		return errors.New("authoritative feature registry is unavailable")
@@ -199,9 +214,6 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	}
 	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
 	m.manager.StartDesiredPlugins(plugin.ScopeUser)
-	if err := m.seedLegacyFeatures(); err != nil {
-		return err
-	}
 	storageValue, ok := m.app.Lookup("storage.user")
 	if !ok {
 		return errors.New("user storage port is unavailable for plugin market")
@@ -224,7 +236,7 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
 		return fmt.Errorf("sync plugin market catalog: %w", err)
 	}
-	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithFeatureRegistry(m.owner.features), plugin.WithMarketService(m.market))
+	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market))
 	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
 		return err
 	}
@@ -235,27 +247,6 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	m.cancel = cancel
 	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
 	return nil
-}
-
-func (m *pluginPlatformModule) seedLegacyFeatures() error {
-	registry := m.features.Registry()
-	for _, item := range []struct {
-		feature string
-		plugin  string
-	}{
-		{feature: "moderation", plugin: "category-moderation"},
-		{feature: "personal-space", plugin: "personal-space"},
-		{feature: "controlled-richtext-article", plugin: "controlled-richtext-article"},
-		{feature: "personal-schedule", plugin: "personal-schedule"},
-	} {
-		config, _ := m.manager.GetPluginConfig(item.plugin)
-		if err := registry.SeedLegacy(item.feature, m.manager.IsPluginRunning(item.plugin), config); err != nil {
-			return err
-		}
-	}
-	webTheme, _ := m.manager.GetPluginConfig("web-theme")
-	homepage, _ := m.manager.GetPluginConfig("homepage-customizer")
-	return registry.SeedLegacy("appearance", m.manager.IsPluginRunning("web-theme"), map[string]interface{}{"web_theme": webTheme, "homepage": homepage})
 }
 
 func (m *pluginPlatformModule) Stop(context.Context) error {
@@ -335,18 +326,4 @@ func (m *pluginPlatformModule) Health(context.Context) platformmodule.Health {
 		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "plugin manager is unavailable"}
 	}
 	return platformmodule.Health{Status: platformmodule.HealthHealthy}
-}
-
-func campusWelcomeExtension(_ context.Context, request *plugin.ExtensionRequest) (*plugin.ExtensionResponse, error) {
-	body, _ := json.Marshal(map[string]interface{}{
-		"message":  "CampusOS extension gateway is ready",
-		"path":     request.Path,
-		"caller":   map[string]string{"user_id": request.Caller.UserID, "username": request.Caller.Username},
-		"trace_id": request.Caller.TraceID,
-	})
-	return &plugin.ExtensionResponse{
-		Status:  200,
-		Headers: map[string]string{"Content-Type": "application/json"},
-		Body:    body,
-	}, nil
 }

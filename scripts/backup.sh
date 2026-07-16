@@ -17,6 +17,9 @@ DB_PASSWORD="${DB_PASSWORD:-${POSTGRES_PASSWORD:-campusos_dev}}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-campusos-postgres}"
 PLUGINS_DIR="${PLUGINS_DIR:-data/plugins}"
 PLUGIN_DATA_DIR="${PLUGIN_DATA_DIR:-data/plugin_data}"
+MODULES_DIR="${MODULES_DIR:-modules}"
+MODULE_DATA_DIR="${MODULE_DATA_DIR:-data/module_data}"
+RESOURCE_DIR="${RESOURCE_DIR:-data/resources}"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUTPUT_DIR"
@@ -36,7 +39,7 @@ dump_database() {
 
 dump_database
 
-paths=(migrations "$PLUGINS_DIR" "$PLUGIN_DATA_DIR" data/personal-space data/images data/config data/skills)
+paths=(migrations "$MODULES_DIR" "$PLUGINS_DIR" "$PLUGIN_DATA_DIR" "$MODULE_DATA_DIR" "$RESOURCE_DIR" data/personal-space data/images data/config data/skills)
 [[ -f .env ]] && paths+=(.env)
 existing=()
 for item in "${paths[@]}"; do
@@ -45,11 +48,14 @@ done
 tar -czf "$work_dir/files.tar.gz" "${existing[@]}"
 
 cat >"$work_dir/metadata.txt" <<EOF
-format=campusos-single-node-v1
+format=campusos-single-node-v2
 created_at=$timestamp
 database=$DB_NAME
 plugins_dir=$PLUGINS_DIR
 plugin_data_dir=$PLUGIN_DATA_DIR
+modules_dir=$MODULES_DIR
+module_data_dir=$MODULE_DATA_DIR
+resource_dir=$RESOURCE_DIR
 EOF
 
 (

@@ -1,0 +1,87 @@
+api_version: campusos.plugin/v2
+host_api_version: v2
+name: campus-welcome
+display_name: "Campus Welcome"
+version: "0.2.0"
+description: "External reference plugin for the complete CampusOS UI runtime and Extension Gateway path."
+author: "CampusOS Team"
+runtime: grpc
+scope: user
+type: external
+lifecycle:
+  backend:
+    activation_mode: plugin-restart
+  frontend:
+    activation_mode: hot
+events:
+  subscribe: []
+permissions:
+  api: []
+storage:
+  type: none
+experience:
+  use_cases: ["验证动态插件页面", "验证 Extension Gateway 调用"]
+  data_use: "只接收宿主注入的当前调用上下文，不保存用户数据。"
+  risk_summary: "运行在独立受管进程中，不读取 CampusOS 数据库、JWT 私钥或宿主文件系统。"
+  disabled_behavior: "停用后页面与扩展调用立即不可用，不删除任何 CampusOS 数据。"
+  maintainer: "CampusOS Team"
+  documentation_url: "/docs/help/插件相关/campus-welcome"
+ui:
+  contract_version: campusos.ui/v1
+  actions:
+    - id: plugin.campus-welcome.action.gateway-check
+      label: "检查插件链路"
+      method: GET
+      path: /welcome
+      confirm: false
+      audit: true
+  surfaces:
+    - id: plugin.campus-welcome.page
+      version: v1
+      type: page
+      layout_role: main
+      renderer: schema
+      action_ids:
+        - plugin.campus-welcome.action.gateway-check
+      public_tokens:
+        - brand_color
+        - surface_background
+      regions:
+        - title
+        - content
+        - actions
+      schema:
+        component: stack
+        children:
+          - component: heading
+            level: 1
+            text: "Campus Welcome"
+          - component: text
+            text: "该页面由外部插件 Manifest 动态注册，按钮通过 Core Extension Gateway 调用受管进程。"
+          - component: card
+            children:
+              - component: heading
+                level: 3
+                text: "完整链路示例"
+              - component: text
+                text: "用户身份、Trace ID、超时、请求大小和审计由 Core 负责，插件不会信任客户端提交的用户字段。"
+              - component: button
+                text: "检查插件链路"
+                tone: primary
+                action_id: plugin.campus-welcome.action.gateway-check
+  routes:
+    - id: plugin.campus-welcome.route.main
+      path: /extensions/campus-welcome
+      surface_id: plugin.campus-welcome.page
+      title: "Campus Welcome"
+      requires_auth: true
+  navigation:
+    - id: plugin.campus-welcome.navigation.main
+      label: "插件示例"
+      route_id: plugin.campus-welcome.route.main
+      location: header
+      order: 90
+  slots: []
+config:
+  command: ./plugin
+  extension_url: http://127.0.0.1:19093/extension

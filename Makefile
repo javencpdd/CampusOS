@@ -54,12 +54,14 @@ frontend-budget:
 
 data-governance-check:
 	python3 scripts/check-data-governance.py
+	./scripts/test-v10-layout-migration.sh
 
 generated-files-check:
 	python3 scripts/check-generated-files.py
 
 database-check:
 	./scripts/database-check.sh all
+	./scripts/test-v10-module-separation-migration.sh
 
 backup:
 	./scripts/backup.sh

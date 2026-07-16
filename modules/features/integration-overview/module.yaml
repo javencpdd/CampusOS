@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: feature.integration-overview
+name: integration-overview
+display_name: "Integration Overview"
+version: "0.10.0"
+description: "Read-only maturity, status, metrics, and documentation overview for integrations."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+implementation: internal/modules/features/integration

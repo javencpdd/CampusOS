@@ -37,7 +37,8 @@ export class RuntimeRegistry {
     }
     const nextDisposers: Array<() => void> = []
     try {
-      for (const plugin of manifest.plugins) this.registerPlugin(plugin, next, nextDisposers)
+      for (const module of manifest.modules || []) this.registerPlugin(module, next, nextDisposers)
+      for (const plugin of manifest.plugins || []) this.registerPlugin(plugin, next, nextDisposers)
     } catch (error) {
       nextDisposers.reverse().forEach((dispose) => dispose())
       throw error

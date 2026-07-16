@@ -1,0 +1,86 @@
+schema: campusos.module/v1
+id: feature.appearance
+feature_id: appearance
+name: appearance
+display_name: "Appearance"
+version: "0.10.0"
+description: "Unified facade for system themes, homepage layouts, personal-space styles, and appearance preferences."
+kind: builtin-feature
+activation_mode: hot-gated
+default_enabled: true
+dependencies: [core.community, core.feature-registry]
+implementation: internal/modules/features/appearance
+compatibility_aliases:
+  - name: homepage-customizer
+    config_section: homepage
+  - name: web-theme
+    config_section: web_theme
+config:
+  homepage:
+    hero_title: "欢迎来到 CampusOS"
+    hero_subtitle: "下一代校园社区引擎 - 事件驱动、AI Native 的社区操作系统"
+    background_image: ""
+    background_overlay: "rgba(15, 23, 42, 0.45)"
+    show_category_tags: true
+    category_tag_limit: 8
+    custom_html_enabled: false
+    custom_html: ""
+    custom_css: ""
+    active_style_pack: ""
+    style_pack_version: ""
+  web_theme:
+    default_style_pack: campus-canvas
+    allow_user_switch: true
+config_sections:
+  homepage:
+    display_name: "Homepage Customizer"
+    config_schema:
+      fields:
+        - {key: hero_title, label: "Hero title", type: string, required: true, default: "欢迎来到 CampusOS"}
+        - {key: hero_subtitle, label: "Hero subtitle", type: text, required: true, default: "下一代校园社区引擎 - 事件驱动、AI Native 的社区操作系统"}
+        - {key: background_image, label: "Background image", type: string, default: ""}
+        - {key: background_overlay, label: "Background overlay", type: string, default: "rgba(15, 23, 42, 0.45)"}
+        - {key: show_category_tags, label: "Show category tags", type: boolean, default: true}
+        - {key: category_tag_limit, label: "Category tag limit", type: number, default: 8}
+        - {key: custom_html_enabled, label: "Custom HTML enabled", type: boolean, default: false}
+        - {key: custom_html, label: "Custom HTML", type: text, default: ""}
+        - {key: custom_css, label: "Custom CSS", type: text, default: ""}
+        - {key: active_style_pack, label: "Active style pack", type: string, default: ""}
+        - {key: style_pack_version, label: "Style pack version", type: string, default: ""}
+  web_theme:
+    display_name: "Web Theme"
+    config_schema:
+      fields:
+        - key: default_style_pack
+          label: "Default web theme"
+          type: string
+          description: "Default theme Resource Package under data/resources/themes."
+          required: true
+          default: campus-canvas
+        - key: allow_user_switch
+          label: "Allow user switching"
+          type: boolean
+          description: "Allow each user to select an administrator-provided theme."
+          default: true
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: module.appearance.page.main
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.appearance
+      regions: [catalog, preview, permissions]
+  routes:
+    - id: module.appearance.route.main
+      path: /appearance
+      surface_id: module.appearance.page.main
+      title: "界面风格"
+      requires_auth: true
+  navigation:
+    - id: module.appearance.navigation.main
+      label: "风格"
+      route_id: module.appearance.route.main
+      location: user-menu
+      order: 50

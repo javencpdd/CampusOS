@@ -20,7 +20,7 @@
       :closable="false"
       show-icon
       title="风格包是 Resource Package，不是可卸载业务插件"
-      description="data/plugins 只保存切换、校验和导入导出的实现；主题、模板、图片和 CSS 保存在 data/resources 或 data/plugin_data 的兼容资源目录。"
+      description="Appearance 是内置功能；主题、模板、图片和 CSS 统一保存在 data/resources，外部插件目录不保存内置风格包。"
     />
 
     <section class="ownership-grid" aria-label="风格包选择边界">
@@ -74,7 +74,7 @@
       </div>
       <div class="path-list">
         <code>data/resources/space-style-packs/</code>
-        <code>data/plugin_data/personal-space/style-packs/（兼容来源）</code>
+        <code>data/module_data/personal-space/（内置状态数据）</code>
       </div>
     </section>
   </div>

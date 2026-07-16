@@ -42,14 +42,22 @@ export const builtinFeatureDefinitions: FeatureRow[] = [
 ]
 
 export const mapBuiltinFeatures = (items: any[]): FeatureRow[] => {
-  const compatibility = new Map(
-    items
-      .filter((item) => item?.capability_class === 'legacy-builtin')
-      .map((item) => [item.name, item]),
-  )
-  return builtinFeatureDefinitions.map((definition) => ({
-    ...definition,
-    configSources: definition.configSources.map((source) => ({ ...source })),
-    state: compatibility.get(definition.representative),
-  }))
+  const byIdentifier = new Map<string, any>()
+  items.forEach((item) => {
+    if (item?.id) byIdentifier.set(String(item.id), item)
+    if (item?.name) byIdentifier.set(String(item.name), item)
+  })
+
+  return builtinFeatureDefinitions.map((definition) => {
+    const aliases = [definition.id, definition.representative, ...definition.configSources.map((source) => source.name)]
+    const state = aliases.map((identifier) => byIdentifier.get(identifier)).find(Boolean)
+    return {
+      ...definition,
+      configSources: (state?.config_sources || definition.configSources).map((source: any) => ({
+        name: source.id || source.name,
+        label: source.label,
+      })),
+      state,
+    }
+  })
 }

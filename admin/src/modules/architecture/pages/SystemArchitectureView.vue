@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000025</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000026</el-tag>
     </section>
 
     <el-alert
@@ -1297,28 +1297,50 @@ const storageRows = [
     note: "数据库只保存 URL 或元数据；恢复时必须与数据库同时恢复。",
   },
   {
+    path: "modules/ + internal/modules/",
+    category: "编译期模块",
+    type: "primary",
+    purpose: "Core/Built-in Feature 描述符与 Go 实现；不进入插件安装流程。",
+    contents: [
+      "modules/core、modules/features：campusos.module/v1 描述符",
+      "internal/modules/core、internal/modules/features：编译期实现",
+    ],
+    note: "模块随主程序构建；Core 不可停用，Built-in Feature 由 /features 管理。",
+  },
+  {
     path: "data/plugins/<plugin>/",
-    category: "插件实现",
+    category: "外部插件实现",
     type: "warning",
-    purpose: "内置或已安装插件的 manifest、运行入口和实现代码。",
+    purpose: "可独立安装的 External Plugin manifest、运行入口和实现代码。",
     contents: [
       "plugin.yaml",
-      "Wasm/gRPC runtime 文件",
-      "插件 README 与内置静态示例",
+      "Wasm/受管进程 runtime 文件",
+      "插件 README 与随代码部署的静态输入",
     ],
-    note: "系统级插件随服务部署；不要把运行数据写入此目录。",
+    note: "禁止放入 Built-in Feature、模块数据或风格包；不要把运行数据写入此目录。",
   },
   {
     path: "data/plugin_data/<plugin>/",
-    category: "插件数据",
+    category: "外部插件数据",
     type: "warning",
-    purpose: "v1 插件 KV、插件私有运行数据和 Legacy Style Pack 来源。",
+    purpose: "External Plugin 的 v1 KV、私有运行数据和版本快照。",
     contents: [
       "SQLite-backed v1 插件 KV",
-      "personal-space 与 homepage 的 Legacy style-packs",
-      "插件私有运行数据",
+      "version-snapshots/",
+      "插件私有缓存和可恢复运行状态",
     ],
     note: "v2 结构化记录进入 PostgreSQL，v2 用户附件进入个人空间；本目录仍应与 data/plugins 分开备份。",
+  },
+  {
+    path: "data/module_data/<feature>/",
+    category: "内置功能数据",
+    type: "primary",
+    purpose: "Built-in Feature 拥有的本地可变数据。",
+    contents: [
+      "personal-space/styles/：内置个人主页 JSON 风格",
+      "后续 Feature 的本地索引或可恢复状态",
+    ],
+    note: "不由 Plugin Manager 打包或删除；功能停用必须保留数据。",
   },
   {
     path: "data/resources/<kind>/",
@@ -1329,9 +1351,9 @@ const storageRows = [
     contents: [
       "themes/、homepage-packs/、space-style-packs/",
       "skills/、prompts/、personas/、knowledge-metadata/",
-      "校验后的资源与 manifest",
+      "校验后的资源与 resource.json",
     ],
-    note: "资源包不能包含 plugin.yaml、go.mod、后台进程或数据库迁移；Legacy 来源会在迁移工具具备后再分批导入。",
+    note: "资源包不能包含 plugin.yaml、go.mod、后台进程或数据库迁移；入口、路径与 checksum 必须通过校验。",
   },
   {
     path: "data/images/、data/config/、data/dist/、data/skills/",
@@ -1595,6 +1617,21 @@ const migrations = [
       "route_operations",
       "route_permission_bindings",
       "authorization_audits",
+    ],
+  },
+  {
+    version: "000026",
+    file: "000026_v10_module_plugin_separation.up.sql",
+    title: "v10 模块、插件与资源分离",
+    scope: "模块化单体与插件平台",
+    summary:
+      "将历史 Built-in 状态和配置迁入 Feature Store，合并 Appearance，软删除外部插件目录中的历史 Built-in 活跃行，并补充 Feature 权限。",
+    tables: [
+      "builtin_feature_states",
+      "plugins",
+      "permissions",
+      "permission_definitions",
+      "role_permissions",
     ],
   },
 ];
