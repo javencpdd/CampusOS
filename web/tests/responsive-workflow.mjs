@@ -158,6 +158,7 @@ try {
     '/plugin-center',
     '/extensions',
     '/features',
+    '/appearance',
     '/integrations',
     '/architecture',
   ]

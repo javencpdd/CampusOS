@@ -179,7 +179,7 @@
                 只包含受校验的数据资源，不注册业务路由、后台进程或数据库迁移。
               </p>
             </div>
-            <el-button plain @click="go('/features')"
+            <el-button plain @click="go('/appearance')"
               >查看外观资源入口</el-button
             >
           </div>
@@ -239,6 +239,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { Refresh } from "@element-plus/icons-vue";
 import { featureApi } from "@/modules/features/api";
+import { mapBuiltinFeatures } from "@/modules/features/catalog";
 import { pluginApi } from "@/modules/plugins/api";
 import { useLayoutCapability } from "@/shared/layout/useLayoutCapability";
 
@@ -329,7 +330,7 @@ const load = async () => {
       [pluginApi.list(), featureApi.list(), pluginApi.marketOverview()],
     );
     plugins.value = itemsOf(pluginResponse);
-    features.value = itemsOf(featureResponse);
+    features.value = mapBuiltinFeatures(itemsOf(featureResponse));
     market.value = dataOf(marketResponse) || {};
   } finally {
     loading.value = false;

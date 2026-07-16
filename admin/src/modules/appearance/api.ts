@@ -10,6 +10,10 @@ export const homeStylePackApi = {
   rollback: () => api.post('/home/style-packs/rollback'),
 }
 
+export const webThemeCatalogApi = {
+  catalog: () => api.get('/web-themes'),
+}
+
 function withFile(path: string, file: File) {
   const form = new FormData()
   form.append('file', file)

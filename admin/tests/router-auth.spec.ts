@@ -31,5 +31,10 @@ describe("Admin navigation and permission gates", () => {
     expect(resolved.name).toBe("Features");
     expect(resolved.meta.requiresAuth).toBe(true);
     expect(resolved.meta.adminOnly).toBe(true);
+
+    const appearance = router.resolve("/appearance");
+    expect(appearance.name).toBe("Appearance");
+    expect(appearance.meta.requiresAuth).toBe(true);
+    expect(appearance.meta.adminOnly).toBe(true);
   });
 });

@@ -136,6 +136,11 @@ try {
   await adminPage.goto(`${adminURL}/features`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '内置功能', exact: true }).waitFor()
   await adminPage.getByText('core.moderation', { exact: true }).waitFor()
+  await adminPage.getByText('个人课表', { exact: true }).waitFor()
+  await adminPage.goto(`${adminURL}/appearance`, { waitUntil: 'domcontentloaded' })
+  await adminPage.getByRole('heading', { name: '外观与风格包', exact: true }).waitFor()
+  await adminPage.getByRole('heading', { name: '系统主题目录', exact: true }).waitFor()
+  await adminPage.getByText('主页所有者选择', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/architecture`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '系统数据架构' }).waitFor()
   await adminContext.close()
@@ -147,9 +152,15 @@ try {
     .getByText(/CampusOS/)
     .first()
     .waitFor()
+  await docsPage.goto(`${docsURL}/guide/getting-started`, { waitUntil: 'domcontentloaded' })
+  await docsPage.getByRole('heading', { name: /CampusOS 完整入门路径/ }).waitFor()
+  await docsPage.goto(`${docsURL}/guide/permission-configuration`, { waitUntil: 'domcontentloaded' })
+  await docsPage.getByRole('heading', { name: /CampusOS 权限配置入门/ }).waitFor()
+  await docsPage.goto(`${docsURL}/plugins/schedule-plugin-tutorial`, { waitUntil: 'domcontentloaded' })
+  await docsPage.getByRole('heading', { name: /以课表为例编写 CampusOS 插件/ }).waitFor()
   await docsContext.close()
   console.log(
-    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin external plugins/features, architecture, docs',
+    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins/features/appearance, architecture, onboarding and permission docs',
   )
 } finally {
   if (threadID && accessToken) {

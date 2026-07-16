@@ -1,6 +1,6 @@
 # 编写第一个插件
 
-本教程创建一个名为 `notice-board` 的 Wasm 插件目录，完成初始化、manifest 检查和打包。脚手架不会替你生成业务 Wasm 模块，实际事件逻辑可以参考 `data/plugins/hello-wasm`。
+本教程创建一个名为 `notice-board` 的最小 Wasm 插件目录，重点是脚手架、manifest 检查和打包。需要包含受管数据、管理员发布和用户授权的完整业务示例时，请改读 [以课表为例编写 CampusOS 插件](/plugins/schedule-plugin-tutorial)。脚手架不会替你生成业务 Wasm 模块，实际事件逻辑可以参考 `data/plugins/hello-wasm`。
 
 ## 1. 创建脚手架
 

@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { Document, Link, Promotion } from '@element-plus/icons-vue'
 
-const docsUrl = import.meta.env.VITE_DOCS_URL || 'http://localhost:3002'
+const docsUrl = (import.meta.env.VITE_DOCS_URL || 'http://localhost:3002').replace(/\/$/, '')
 const githubUrl = import.meta.env.VITE_GITHUB_URL || 'https://github.com/javencpdd/CampusOS'
 
 const resources = [
@@ -52,6 +52,27 @@ const resources = [
     url: docsUrl,
     icon: Document,
     tone: 'tone-docs',
+  },
+  {
+    title: '完整入门路径',
+    description: '从环境准备、启动验证和模块分类，一直走到 Admin 入口、测试与提交前检查。',
+    url: `${docsUrl}/guide/getting-started`,
+    icon: Document,
+    tone: 'tone-guide',
+  },
+  {
+    title: '权限配置入门',
+    description: '逐步理解角色、Permission Code、板块范围和审计，并完成自定义角色与版主配置。',
+    url: `${docsUrl}/guide/permission-configuration`,
+    icon: Document,
+    tone: 'tone-permission',
+  },
+  {
+    title: '课表插件完整教程',
+    description: '以课表为例区分 Built-in Feature 与 External Plugin，并演示受管数据、打包、发布和授权。',
+    url: `${docsUrl}/plugins/schedule-plugin-tutorial`,
+    icon: Document,
+    tone: 'tone-plugin',
   },
   {
     title: 'GitHub 仓库',
@@ -135,6 +156,21 @@ const openExternal = (url: string) => {
 .tone-source {
   color: #1d4ed8;
   background: #eff6ff;
+}
+
+.tone-guide {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.tone-plugin {
+  color: #7c3aed;
+  background: #f5f3ff;
+}
+
+.tone-permission {
+  color: #b42318;
+  background: #fff1f0;
 }
 
 .resource-copy {

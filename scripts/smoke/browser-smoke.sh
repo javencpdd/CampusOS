@@ -55,7 +55,7 @@ if [[ "${RUN_STYLE_PACK_SMOKE:-true}" == "true" ]]; then
 fi
 
 if [[ "${RUN_RESPONSIVE_SMOKE:-true}" == "true" ]]; then
-  echo "running five-viewport responsive workflow"
+  echo "running seven-viewport responsive workflow"
   (
     cd web
     CHROME_BIN="$CHROME_BIN" \

@@ -85,6 +85,7 @@ permissions:
 | `hello-wasm` | 最小可运行 Wasm 事件插件。 |
 | `grpc-example` | 兼容 `grpc` 名称的最小进程模板，不代表标准 gRPC。 |
 | `v2-managed-example` | 可编译、可测试的受管数据、用户 Grant 与 loopback Extension 示例。 |
+| `schedule-helper` | 课表领域教程示例；演示 Manifest v2 用户受管记录，不读取内置个人课表。 |
 | `campus-welcome` | UI Runtime、声明式 Surface、Action 和 Extension Gateway 完整示例。 |
 | `personal-space` | Built-in Feature 个人主页能力；用户文件由 User Storage Core 提供。 |
 | `homepage-customizer` | Built-in 首页配置与风格包。 |

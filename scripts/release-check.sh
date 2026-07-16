@@ -3,6 +3,7 @@ set -euo pipefail
 
 cleanup() {
   rm -f examples/plugins/grpc-example/plugin
+  rm -f examples/plugins/schedule-helper/plugin
   rm -f examples/plugins/v2-managed-example/plugin
 }
 trap cleanup EXIT
@@ -33,13 +34,15 @@ python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.p
 echo "==> plugin templates"
 go run ./cmd/campusosctl plugin dev examples/plugins/builtin-example --json
 go run ./cmd/campusosctl plugin dev examples/plugins/grpc-example --json
+go run ./cmd/campusosctl plugin dev examples/plugins/schedule-helper --json
+(cd examples/plugins/schedule-helper && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/v2-managed-example --json
 (cd examples/plugins/v2-managed-example && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
 
 echo "==> frontend builds"
 (cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)
-(cd admin && pnpm build)
+(cd admin && pnpm test:component && pnpm build)
 (cd docs-site && pnpm build)
 python3 scripts/check-frontend-bundles.py
 
