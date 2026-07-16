@@ -8,7 +8,7 @@ description: "Personal homepage, content projection, profile styles, and user fi
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.identity, core.community, core.user-storage, core.feature-registry, feature.appearance]
+dependencies: [core.identity, core.community, core.user-storage, core.reliability, core.feature-registry, feature.appearance]
 implementation: internal/modules/features/personalspace
 compatibility_aliases:
   - name: personal-space

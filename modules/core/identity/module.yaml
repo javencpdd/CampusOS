@@ -7,4 +7,5 @@ description: "Users, sessions, roles, permissions, scopes, and authorization dec
 kind: core
 activation_mode: always-on
 default_enabled: true
+dependencies: [core.event-bus, core.reliability]
 implementation: internal/modules/core/identity

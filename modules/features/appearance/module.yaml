@@ -8,7 +8,7 @@ description: "Unified facade for system themes, homepage layouts, personal-space
 kind: builtin-feature
 activation_mode: hot-gated
 default_enabled: true
-dependencies: [core.community, core.feature-registry]
+dependencies: [core.community, core.feature-registry, core.reliability]
 implementation: internal/modules/features/appearance
 compatibility_aliases:
   - name: homepage-customizer
