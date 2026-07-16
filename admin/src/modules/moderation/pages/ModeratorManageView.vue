@@ -172,7 +172,7 @@ const saveScope = async () => {
 const saveConfig = async () => {
   configSaving.value = true
   try {
-	await featureApi.updateCompatibilityConfig('category-moderation', { ...config })
+	await featureApi.updateConfig('category-moderation', { ...config })
     ElMessage.success('权限配置已保存并立即生效')
     await load()
   } catch (error: any) {

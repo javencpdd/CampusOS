@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/campusos/CampusOS/internal/core/identity/permissioncode"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
@@ -186,33 +186,35 @@ func moduleOwner(handlerName, path string) string {
 	switch {
 	case strings.Contains(handlerName, "/internal/transport/httpapi/"), strings.Contains(handlerName, "/internal/transport/httpapi."):
 		return "core.platform-api"
-	case strings.Contains(handlerName, "/internal/core/identity/"):
+	case strings.Contains(handlerName, "/internal/modules/core/identity/"):
 		return "core.identity"
-	case strings.Contains(handlerName, "/internal/community/"):
+	case strings.Contains(handlerName, "/internal/modules/core/community/"):
 		return "core.community"
-	case strings.Contains(handlerName, "/internal/moderation.") || strings.Contains(handlerName, "/internal/moderation/"):
+	case strings.Contains(handlerName, "/internal/modules/core/moderation.") || strings.Contains(handlerName, "/internal/modules/core/moderation/"):
 		return "core.moderation"
-	case strings.Contains(handlerName, "/internal/space.") || strings.Contains(handlerName, "/internal/space/"):
+	case strings.Contains(handlerName, "/internal/modules/features/personalspace.") || strings.Contains(handlerName, "/internal/modules/features/personalspace/"):
 		return "feature.personal-space"
-	case strings.Contains(handlerName, "/internal/richtext.") || strings.Contains(handlerName, "/internal/richtext/"):
+	case strings.Contains(handlerName, "/internal/modules/features/richtext.") || strings.Contains(handlerName, "/internal/modules/features/richtext/"):
 		return "feature.controlled-richtext-article"
-	case strings.Contains(handlerName, "/internal/schedule.") || strings.Contains(handlerName, "/internal/schedule/"):
+	case strings.Contains(handlerName, "/internal/modules/features/schedule.") || strings.Contains(handlerName, "/internal/modules/features/schedule/"):
 		return "feature.personal-schedule"
-	case strings.Contains(handlerName, "/internal/homepage.") || strings.Contains(handlerName, "/internal/homepage/"), strings.Contains(handlerName, "/internal/webtheme.") || strings.Contains(handlerName, "/internal/webtheme/"):
+	case strings.Contains(handlerName, "/internal/modules/features/appearance/homepage.") || strings.Contains(handlerName, "/internal/modules/features/appearance/homepage/"), strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme.") || strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme/"):
 		return "feature.appearance"
+	case strings.Contains(handlerName, "/internal/platform/feature.") || strings.Contains(handlerName, "/internal/platform/feature/"):
+		return "core.feature-registry"
 	case strings.Contains(handlerName, "/internal/plugin.") || strings.Contains(handlerName, "/internal/plugin/"):
 		return "core.plugin-platform"
-	case strings.Contains(handlerName, "/internal/ai.") || strings.Contains(handlerName, "/internal/ai/"):
+	case strings.Contains(handlerName, "/internal/modules/features/ai.") || strings.Contains(handlerName, "/internal/modules/features/ai/"):
 		return "feature.ai-gateway"
-	case strings.Contains(handlerName, "/internal/webhook.") || strings.Contains(handlerName, "/internal/webhook/"):
+	case strings.Contains(handlerName, "/internal/modules/features/webhook.") || strings.Contains(handlerName, "/internal/modules/features/webhook/"):
 		return "feature.webhook"
-	case strings.Contains(handlerName, "/internal/mcp.") || strings.Contains(handlerName, "/internal/mcp/"):
+	case strings.Contains(handlerName, "/internal/modules/features/mcp.") || strings.Contains(handlerName, "/internal/modules/features/mcp/"):
 		return "feature.mcp"
-	case strings.Contains(handlerName, "/internal/message.") || strings.Contains(handlerName, "/internal/message/"):
+	case strings.Contains(handlerName, "/internal/modules/features/message.") || strings.Contains(handlerName, "/internal/modules/features/message/"):
 		return "feature.message"
-	case strings.Contains(handlerName, "/internal/platformlog.") || strings.Contains(handlerName, "/internal/platformlog/"):
+	case strings.Contains(handlerName, "/internal/modules/features/platformlog.") || strings.Contains(handlerName, "/internal/modules/features/platformlog/"):
 		return "feature.platform-log"
-	case strings.Contains(handlerName, "/internal/integration.") || strings.Contains(handlerName, "/internal/integration/"):
+	case strings.Contains(handlerName, "/internal/modules/features/integration.") || strings.Contains(handlerName, "/internal/modules/features/integration/"):
 		return "feature.integration-overview"
 	default:
 		panic(fmt.Sprintf("HTTP route %s has no module owner (handler %s)", path, handlerName))

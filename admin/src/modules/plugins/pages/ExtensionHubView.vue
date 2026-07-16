@@ -198,7 +198,7 @@
             type="info"
             :closable="false"
             show-icon
-            title="当前资源目录的校验、导入和应用由 Appearance 与资源仓库负责；Legacy Style Pack 仍从 data/plugin_data 只读兼容。"
+            title="资源包由 Appearance 与 Resource Repository 校验、导入和应用；data/plugin_data 只保存 External Plugin 运行数据。"
           />
         </el-tab-pane>
 

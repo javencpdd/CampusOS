@@ -1,0 +1,19 @@
+schema: campusos.module/v1
+id: feature.builtin-example
+name: builtin-example
+display_name: "Built-in Feature Example"
+version: "0.1.0"
+description: "Documentation-only example of a compiled CampusOS Built-in Feature descriptor."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: false
+implementation: internal/modules/features/builtinexample
+config:
+  mode: metadata
+config_schema:
+  fields:
+    - key: mode
+      label: "Mode"
+      type: string
+      required: true
+      default: metadata

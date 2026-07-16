@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/campusos/CampusOS/internal/core/identity/permissioncode"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 )
@@ -182,6 +182,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.personal-schedule"
 	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
 		return "feature.appearance"
+	case strings.HasPrefix(path, APIPrefix+"/features"):
+		return "core.feature-registry"
 	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):

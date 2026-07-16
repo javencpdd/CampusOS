@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: core.event-bus
+name: event-bus
+display_name: "Event Bus"
+version: "0.10.0"
+description: "Platform event transport with NATS and process-local fallback."
+kind: core
+activation_mode: always-on
+default_enabled: true
+implementation: internal/server/platform_modules.go

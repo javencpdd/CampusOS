@@ -98,7 +98,24 @@ func cloneConfig(config map[string]interface{}) map[string]interface{} {
 	}
 	copy := make(map[string]interface{}, len(config))
 	for key, value := range config {
-		copy[key] = value
+		copy[key] = cloneConfigValue(value)
 	}
 	return copy
+}
+
+func cloneConfigValue(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		return cloneConfig(typed)
+	case []interface{}:
+		copy := make([]interface{}, len(typed))
+		for index := range typed {
+			copy[index] = cloneConfigValue(typed[index])
+		}
+		return copy
+	case []string:
+		return append([]string(nil), typed...)
+	default:
+		return typed
+	}
 }

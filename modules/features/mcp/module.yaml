@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: feature.mcp
+name: mcp
+display_name: "MCP Integration"
+version: "0.10.0"
+description: "Controlled read-only MCP-like tools and audit; not a public standard MCP server."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+implementation: internal/modules/features/mcp

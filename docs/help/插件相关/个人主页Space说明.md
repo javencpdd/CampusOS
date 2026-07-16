@@ -1,11 +1,11 @@
 # CampusOS 个人主页 Space 说明
 
-> 适用阶段：v0.5-dev
-> 更新时间：2026-07-08
+> 适用阶段：v0.10
+> 更新时间：2026-07-16
 
 ## 1. 功能定位
 
-个人主页 Space 是 `personal-space` 内置默认插件对应的后端基础能力，当前统一承载公开主页、风格包和个人空间文件能力。实现仍位于 `internal/space/`，插件目录位于 `data/plugins/personal-space/`，用于保存 manifest、默认风格包和默认文件存储配置。
+个人主页 Space 是 `personal-space` Built-in Feature，负责公开主页、主页设置和个人主页风格装配。实现位于 `internal/modules/features/personalspace/`，描述符位于 `modules/features/personal-space/module.yaml`。用户文件的安全路径、所有权和配额由独立的 User Storage Core 负责，资源包位于 `data/resources`。
 
 当前实现重点是稳定数据边界：
 
@@ -24,8 +24,8 @@
 | 受限 HTML/CSS 风格编辑、检测、示例生成和应用 | 已支持 |
 | 风格包回滚、恢复默认 | 已支持 |
 | 头像上传到个人空间 | 已支持 |
-| 默认 10MB 本地个人空间 | 已支持，可通过插件配置调整 |
-| 头像源文件保留最近 3 个 | 已支持，可通过插件配置调整 |
+| 默认 10MB 本地个人空间 | 已支持，可通过 Feature 配置调整 |
+| 头像源文件保留最近 3 个 | 已支持，可通过 Feature 配置调整 |
 | 个人云盘接入 | 后续任务，当前只保留配置占位 |
 
 ## 2. API 接口
@@ -237,7 +237,7 @@ GET /api/v1/spaces/files/:user_id/avatars/:filename
 
 ### 2.10 HTML 风格检测、示例和应用
 
-个人空间允许用户在风格包基础上编写受限 HTML 片段，用于更开放地定制公开个人主页。该能力仍归属于 `personal-space` 默认插件，插件禁用后相关接口会返回不可用。
+个人空间允许用户在风格包基础上编写受限 HTML 片段，用于更开放地定制公开个人主页。该能力归属于 Personal Space Feature；Feature 停用后页面接口会被 Gate 拒绝，但 User Storage、课表、富文本资产和已有数据保持不变。
 
 检测接口：
 
@@ -287,7 +287,7 @@ POST /api/v1/spaces/me/styles/packs/apply-source
 `apply-source` 用于应用源码目录中的内置风格包：
 
 ```text
-data/plugin_data/personal-space/style-packs/<name>/
+data/resources/space-style-packs/<name>/
 ```
 
 筛查通过后，服务会把风格包中的 HTML/CSS 编译到当前用户的 `style_manifest.custom_html`、`style_manifest.custom_css` 和 `style_manifest.source_style_pack`，并继续复用应用前快照、回滚和恢复默认流程。
@@ -336,21 +336,21 @@ user_space_contents
 | `thread_created_at` / `thread_updated_at` | 来源帖子时间 |
 | `synced_at` | 最近同步时间 |
 
-个人空间文件当前不新增数据库表。头像 URL 写入 `user_spaces.avatar`，文件本体保存在 `personal-space` 插件配置指定的本地目录。后续如接入个人云盘，可以在不改变公开主页字段的前提下扩展 provider 配置和文件索引表。
+个人空间文件当前不新增数据库表。头像 URL 写入 `user_spaces.avatar`，文件本体由 User Storage Core 保存在 Feature 配置指定的本地根目录。后续如接入个人云盘，可以在不改变公开主页字段的前提下扩展 Provider 配置和文件索引表。
 
-## 3.1 插件配置
+## 3.1 Feature 配置
 
-默认插件配置位于：
+默认配置描述符位于：
 
 ```text
-data/plugins/personal-space/plugin.yaml
+modules/features/personal-space/module.yaml
 ```
 
 关键配置：
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
-| `styles_dir` | `data/plugin_data/personal-space/styles` | 默认 JSON 风格包数据目录 |
+| `styles_dir` | `data/module_data/personal-space/styles` | 默认 JSON 风格包数据目录 |
 | `file_root` | `data/personal-space` | 个人空间本地文件根目录 |
 | `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
 | `default_quota_mb` | `10` | 每个用户初始本地空间 |
@@ -407,13 +407,13 @@ web/src/data/spaceStyleExamples.ts
 后端同源 JSON 示例位于：
 
 ```text
-data/plugin_data/personal-space/styles/
+data/module_data/personal-space/styles/
 ```
 
 文件夹拓展风格包示例位于：
 
 ```text
-data/plugin_data/personal-space/style-packs/
+data/resources/space-style-packs/
 ```
 
 ## 7. 后续任务

@@ -1,97 +1,81 @@
 # 插件体系
 
-## 插件是什么
+## 先确认你要开发什么
 
-CampusOS 插件是带有 `plugin.yaml` 的独立功能目录。Manager 通过 manifest 识别插件名称、版本、Runtime、事件、权限、存储和配置，再决定如何加载。
+| 目标 | 应使用的类型 |
+| --- | --- |
+| 修改身份、社区、权限、User Storage 等平台完整性能力 | Core Module |
+| 增加随主程序发布、可启停的官方业务功能 | Built-in Feature |
+| 独立安装、升级、卸载和迁移的扩展 | External Plugin |
+| 主题、主页风格、个人主页风格、Skill/Prompt | Resource Package |
 
-插件实现默认保存在：
+本章的“插件”专指 External Plugin。内置课表、个人空间、富文本和 Appearance
+由 Feature Registry 管理，不在插件目录中。
+
+## 外部插件目录
 
 ```text
-data/plugins/<plugin-name>/
+data/plugins/<plugin-name>/       实现、plugin.yaml、Wasm/进程入口
+data/plugin_data/<plugin-name>/  KV、快照和运行数据
 ```
 
-运行数据保存在：
-
-```text
-data/plugin_data/<plugin-name>/
-```
-
-这两个目录不能混用。插件包可以更新代码，但不应覆盖用户数据。
+插件包更新代码时不能覆盖用户数据。需要写用户文件时，必须声明能力并通过
+Host API/User Storage，不得自行拼接 `data/personal-space` 绝对路径。
 
 ## Runtime
 
-### Built-in 兼容映射
-
-`runtime: builtin` 不启动外部进程。真实业务实现编译在 CampusOS 后端中，插件目录提供 manifest、配置和说明。
-
-个人空间、课表、富文本和外观等当前由 Built-in Feature Registry 管理；Moderation 的权限、作用域和审计属于始终启用的 Core。旧 `runtime: builtin` Manifest 只保留配置和兼容映射。
-
-Built-in 不是允许第三方直接把任意 Go 代码放入目录后动态执行。增加新的 Built-in 能力通常仍需修改并重新编译 CampusOS。
-
 ### Wasm
 
-`runtime: wasm` 由 wazero 加载模块。插件通常包含：
+`runtime: wasm` 由 wazero 在受控环境中加载，适合小型事件逻辑。Wasm 只能
+调用声明并获准的 Host API。
 
-```text
-plugin.yaml
-plugin.wasm
-README.md
-```
+### 受管进程
 
-适合小型事件处理和需要更强隔离的扩展。Wasm 插件只能通过声明并获准的 Host API 访问主系统。
+`runtime: grpc` 是历史兼容名称。CampusOS 启停独立进程，并通过显式声明、
+严格校验的 loopback HTTP Extension/Event 端点通信。它目前不是标准
+protobuf gRPC 协议。
 
-### 受管进程（历史名称 `grpc`）
+### 为什么没有 builtin
 
-`runtime: grpc` 作为独立进程运行。CampusOS 当前通过受限 loopback HTTP 调用显式配置的 Extension/Event 端点，不提供稳定 protobuf gRPC 协议。
+`runtime: builtin` 只保留旧文件解析能力，不能被 Plugin Manager、CLI 或导入
+流程安装。Built-in 使用 `modules/*/module.yaml`，并随 CampusOS 重新编译。
 
-进程插件必须说明入口、loopback 端点、超时和故障恢复要求；不能据此假设任意标准 gRPC 服务可以直接导入。
-
-## 事件与 Host API
-
-插件可以订阅核心事件，例如：
+## 权限和事件
 
 ```yaml
 events:
-  subscribe:
-    - thread.created
-    - post.created
-```
-
-插件调用 Host API 前，Manager 会根据 manifest 权限检查：
-
-```yaml
+  subscribe: [thread.created]
 permissions:
   api:
     - resource: log
       actions: [write]
 ```
 
-权限默认拒绝。只声明当前功能需要的最小集合，不要使用“以后可能会用”为理由申请高风险权限。
+Manifest 是权限申请，不是授权结果。Host API 默认拒绝；用户数据能力还需要
+用户 Grant。外部插件永远不能直接取得数据库连接、JWT 私钥、CampusOS 用户
+Token、`AppContext` 或内部 Service。
 
-## 管理级别与生效方式
+## UI Runtime
 
-| 字段 | 说明 |
-| --- | --- |
-| `scope: system/user` | 管理级别、安装权限和系统重要性。 |
-| `lifecycle.backend.activation_mode` | `restart`、`plugin-restart` 或 `hot`。 |
-| `lifecycle.frontend.activation_mode` | 当前统一为 `hot`。 |
+外部插件可以声明 Route、Navigation、Surface 和 Action。业务 Action 通过：
 
-这里的 `user` 不表示普通用户可以自行安装插件。安装、配置和更新仍属于管理员操作。受管进程可以只重启插件，Wasm 可以热替换；具体行为不能再从 scope 推断。
+```text
+/api/v1/extensions/:plugin/*path
+```
 
-## 示例插件
+Core 注入可信调用者上下文，插件不能相信请求正文中的伪造用户 ID。运行清单
+将外部贡献放在 `plugins[]`，内置功能贡献放在 `modules[]`。
 
-| 插件 | 用途 |
-| --- | --- |
-| `hello-wasm` | 最小可运行 Wasm 事件插件。 |
-| `grpc-example` | 兼容 `grpc` 名称的最小进程模板，不代表标准 gRPC。 |
-| `v2-managed-example` | 可编译、可测试的受管数据、用户 Grant 与 loopback Extension 示例。 |
-| `schedule-helper` | 课表领域教程示例；演示 Manifest v2 用户受管记录，不读取内置个人课表。 |
-| `campus-welcome` | UI Runtime、声明式 Surface、Action 和 Extension Gateway 完整示例。 |
-| `personal-space` | Built-in Feature 个人主页能力；用户文件由 User Storage Core 提供。 |
-| `homepage-customizer` | Built-in 首页配置与风格包。 |
-| `web-theme` | Built-in 完整用户前台系统主题目录、用户本地选择和沙箱特效能力。 |
-| `controlled-richtext-article` | Built-in 富文本文章。 |
-| `personal-schedule` | Built-in 个人课表。 |
-| `category-moderation` | Legacy Manifest；权限、作用域和审计已归 Moderation Core。 |
+## 示例
 
-下一步：[编写第一个插件](/plugins/create-first-plugin)。
+| 示例 | 位置 | 用途 |
+| --- | --- | --- |
+| `hello-wasm` | `data/plugins/hello-wasm` | 最小 Wasm 事件插件 |
+| `grpc-example` | `examples/plugins/grpc-example` | 最小受管进程模板 |
+| `campus-welcome` | `examples/plugins/campus-welcome` | UI Surface 与 Gateway |
+| `v2-managed-example` | `examples/plugins/v2-managed-example` | Grant、受管记录和文件 |
+| `schedule-helper` | `examples/plugins/schedule-helper` | 以课表场景讲解可移植外部插件 |
+| Built-in descriptor | `examples/modules/builtin-feature-example` | 仅说明模块描述符，不可 `plugin install` |
+
+下一步：[课表插件完整教程](/plugins/schedule-plugin-tutorial) 或
+[编写第一个插件](/plugins/create-first-plugin)。

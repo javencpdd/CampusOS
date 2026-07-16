@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: core.identity
+name: identity
+display_name: "Identity and Authorization"
+version: "0.10.0"
+description: "Users, sessions, roles, permissions, scopes, and authorization decisions."
+kind: core
+activation_mode: always-on
+default_enabled: true
+implementation: internal/modules/core/identity

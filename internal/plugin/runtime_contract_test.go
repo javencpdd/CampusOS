@@ -322,7 +322,7 @@ func TestManagerUpdateConfigUsesSchemaAndPersists(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: configurable-plugin
 version: "0.1.0"
-runtime: builtin
+runtime: wasm
 config:
   title: Default
   enabled: true
@@ -343,7 +343,7 @@ config_schema:
 	manager := NewManager()
 	repo := NewMemoryPluginRepository()
 	manager.SetPluginRepository(repo)
-	manager.RegisterRuntime("builtin", newFakeRuntime())
+	manager.RegisterRuntime("wasm", newFakeRuntime())
 
 	if _, err := manager.Install(dir); err != nil {
 		t.Fatalf("install plugin: %v", err)
@@ -377,138 +377,16 @@ config_schema:
 	}
 }
 
-func TestManagerUpdateConfigRejectsUnsafeHomepageCustomHTML(t *testing.T) {
+func TestPluginManagerRejectsCompiledAppearanceModuleAlias(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: homepage-customizer
 version: "0.1.0"
-runtime: builtin
-config:
-  custom_html_enabled: false
-  custom_html: ""
-config_schema:
-  fields:
-    - key: custom_html_enabled
-      type: boolean
-      default: false
-    - key: custom_html
-      type: text
-      default: ""
+runtime: wasm
 `)
 
 	manager := NewManager()
-	manager.RegisterRuntime("builtin", newFakeRuntime())
-	installed, err := manager.Install(dir)
-	if err != nil {
-		t.Fatalf("install plugin: %v", err)
-	}
-
-	_, err = manager.UpdateConfig("homepage-customizer", map[string]interface{}{
-		"custom_html_enabled": true,
-		"custom_html":         `<img src=x onerror="alert(1)">`,
-	})
-	if err == nil {
-		t.Fatalf("expected unsafe html config to fail")
-	}
-	if !strings.Contains(err.Error(), "custom_html") {
-		t.Fatalf("expected custom_html error, got %v", err)
-	}
-	if installed.Manifest.Config["custom_html"] != "" {
-		t.Fatalf("unsafe html should not be stored: %#v", installed.Manifest.Config)
-	}
-}
-
-func TestManagerUpdateConfigAcceptsSafeHomepageCustomHTML(t *testing.T) {
-	dir := writePluginManifest(t, `
-name: homepage-customizer
-version: "0.1.0"
-runtime: builtin
-config:
-  custom_html_enabled: false
-  custom_html: ""
-config_schema:
-  fields:
-    - key: custom_html_enabled
-      type: boolean
-      default: false
-    - key: custom_html
-      type: text
-      default: ""
-`)
-
-	manager := NewManager()
-	manager.RegisterRuntime("builtin", newFakeRuntime())
-	if _, err := manager.Install(dir); err != nil {
-		t.Fatalf("install plugin: %v", err)
-	}
-
-	config, err := manager.UpdateConfig("homepage-customizer", map[string]interface{}{
-		"custom_html_enabled": true,
-		"custom_html":         `<section><h2>CampusOS</h2><a href="/threads">Threads</a></section>`,
-	})
-	if err != nil {
-		t.Fatalf("update safe config: %v", err)
-	}
-	if config["custom_html"] == "" {
-		t.Fatalf("expected custom_html to be stored")
-	}
-}
-
-func TestManagerUpdateConfigPreservesHomepageInternalSnapshot(t *testing.T) {
-	dir := writePluginManifest(t, `
-name: homepage-customizer
-version: "0.1.0"
-runtime: builtin
-config:
-  custom_html_enabled: false
-  custom_html: ""
-config_schema:
-  fields:
-    - key: custom_html_enabled
-      type: boolean
-      default: false
-    - key: custom_html
-      type: text
-      default: ""
-`)
-
-	manager := NewManager()
-	manager.RegisterRuntime("builtin", newFakeRuntime())
-	installed, err := manager.Install(dir)
-	if err != nil {
-		t.Fatalf("install plugin: %v", err)
-	}
-
-	snapshot := map[string]interface{}{
-		"created_at": "2026-07-08T00:00:00Z",
-		"config": map[string]interface{}{
-			"custom_html_enabled": false,
-			"custom_html":         "",
-		},
-	}
-	config, err := manager.UpdateConfig("homepage-customizer", map[string]interface{}{
-		"custom_html_enabled":  true,
-		"custom_html":          `<section>ok</section>`,
-		"last_config_snapshot": snapshot,
-	})
-	if err != nil {
-		t.Fatalf("update config with snapshot: %v", err)
-	}
-	if _, ok := config["last_config_snapshot"]; !ok {
-		t.Fatalf("expected snapshot to be returned: %#v", config)
-	}
-
-	config, err = manager.UpdateConfig("homepage-customizer", map[string]interface{}{
-		"custom_html_enabled": false,
-		"custom_html":         "",
-	})
-	if err != nil {
-		t.Fatalf("update config preserving snapshot: %v", err)
-	}
-	if _, ok := config["last_config_snapshot"]; !ok {
-		t.Fatalf("expected snapshot to be preserved: %#v", config)
-	}
-	if _, ok := installed.Manifest.Config["last_config_snapshot"]; !ok {
-		t.Fatalf("expected installed config to keep snapshot: %#v", installed.Manifest.Config)
+	if _, err := manager.Install(dir); err == nil || !strings.Contains(err.Error(), "reserved") {
+		t.Fatalf("expected compiled module alias rejection, got %v", err)
 	}
 }
 

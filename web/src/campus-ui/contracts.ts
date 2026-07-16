@@ -84,11 +84,17 @@ export interface RuntimePlugin {
   lifecycle: LifecycleState
   ui: UIContribution
 }
+export interface RuntimeModule extends RuntimePlugin {
+  module_id: string
+  feature_id: string
+  kind: 'core' | 'builtin-feature'
+}
 export interface UIRuntimeManifest {
   contract_version: string
   revision: number
   current_theme?: string
   plugins: RuntimePlugin[]
+  modules?: RuntimeModule[]
 }
 export interface RuntimeNavigation extends UINavigation {
   plugin: string

@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -17,8 +16,17 @@ import (
 type Handler struct {
 	manager    *Manager
 	pluginsDir string
-	features   *platformfeature.Registry
+	builtins   BuiltinFeatureCompatibility
 	market     *MarketService
+}
+
+// BuiltinFeatureCompatibility is a deprecated transport adapter only. The
+// external Plugin Manager never receives module descriptors or lifecycle.
+type BuiltinFeatureCompatibility interface {
+	CompatibilityGet(string) (map[string]interface{}, bool)
+	CompatibilityUpdateConfig(string, map[string]interface{}) (map[string]interface{}, error)
+	CompatibilityRequest(string, bool) (map[string]interface{}, error)
+	CompatibilityKnown(string) bool
 }
 
 type HandlerOption func(*Handler)
@@ -31,8 +39,8 @@ func WithPluginsDir(dir string) HandlerOption {
 	}
 }
 
-func WithFeatureRegistry(features *platformfeature.Registry) HandlerOption {
-	return func(h *Handler) { h.features = features }
+func WithBuiltinFeatureCompatibility(features BuiltinFeatureCompatibility) HandlerOption {
+	return func(h *Handler) { h.builtins = features }
 }
 
 func WithMarketService(market *MarketService) HandlerOption {
@@ -68,17 +76,17 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 	name := c.Param("name")
 	p, ok := h.manager.GetPlugin(name)
 	if !ok {
+		if payload, compatible := h.compatibilityGet(name); compatible {
+			response.Success(c, payload)
+			return
+		}
 		response.Error(c, http.StatusNotFound, 60003, "plugin not found")
 		return
 	}
 	payload := h.pluginPayload(p)
 	payload["permissions"] = p.Manifest.Permissions
 	payload["storage"] = p.Manifest.Storage
-	if config, projected := h.projectedFeatureConfig(name); projected {
-		payload["config"] = config
-	} else {
-		payload["config"] = p.Manifest.Config
-	}
+	payload["config"] = p.Manifest.Config
 	payload["config_schema"] = p.Manifest.ConfigSchema
 	response.Success(c, payload)
 }
@@ -107,60 +115,17 @@ func (h *Handler) UpdatePluginConfig(c *gin.Context) {
 }
 
 func (h *Handler) updateConfig(name string, input map[string]interface{}) (map[string]interface{}, error) {
-	featureID, projected := legacyBuiltinFeatureID(name)
-	if !projected || h.features == nil {
-		return h.manager.UpdateConfig(name, input)
+	if h.builtins != nil && h.builtins.CompatibilityKnown(name) {
+		return h.builtins.CompatibilityUpdateConfig(name, input)
 	}
-	p, ok := h.manager.GetPlugin(name)
-	if !ok || p == nil || p.Manifest == nil {
-		return nil, os.ErrNotExist
-	}
-	current, _ := h.projectedFeatureConfig(name)
-	normalized, err := normalizePluginConfig(p.Manifest, input)
-	if err != nil {
-		return nil, err
-	}
-	preservePluginInternalConfig(name, normalized, input, current)
-	if err := validatePluginSpecificConfig(name, normalized); err != nil {
-		return nil, err
-	}
-	if err := h.updateFeatureConfig(featureID, name, normalized); err != nil {
-		return nil, err
-	}
-	return copyConfigMap(normalized), nil
+	return h.manager.UpdateConfig(name, input)
 }
 
-func (h *Handler) updateFeatureConfig(featureID, pluginID string, config map[string]interface{}) error {
-	if featureID != "appearance" {
-		return h.features.UpdateConfig(featureID, config)
-	}
-	root := h.features.Config(featureID)
-	section := "web_theme"
-	if pluginID == "homepage-customizer" {
-		section = "homepage"
-	}
-	root[section] = config
-	return h.features.UpdateConfig(featureID, root)
-}
-
-func (h *Handler) projectedFeatureConfig(pluginID string) (map[string]interface{}, bool) {
-	if h.features == nil {
+func (h *Handler) compatibilityGet(name string) (map[string]interface{}, bool) {
+	if h.builtins == nil {
 		return nil, false
 	}
-	featureID, ok := legacyBuiltinFeatureID(pluginID)
-	if !ok {
-		return nil, false
-	}
-	root := h.features.Config(featureID)
-	if featureID != "appearance" {
-		return root, true
-	}
-	section := "web_theme"
-	if pluginID == "homepage-customizer" {
-		section = "homepage"
-	}
-	value, _ := root[section].(map[string]interface{})
-	return copyConfigMap(value), true
+	return h.builtins.CompatibilityGet(name)
 }
 
 // ListPluginLogs 获取插件运行日志
@@ -191,14 +156,11 @@ func (h *Handler) ListPluginLogs(c *gin.Context) {
 // POST /api/v1/plugins/:name/enable
 func (h *Handler) EnablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if handled, err := h.requestFeatureState(name, true); handled {
+	if payload, handled, err := h.requestFeatureState(name, true); handled {
 		if err != nil {
 			response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 			return
 		}
-		p, _ := h.manager.GetPlugin(name)
-		payload := h.pluginPayload(p)
-		payload["message"] = featureLifecycleMessage(payload, true)
 		response.Success(c, payload)
 		return
 	}
@@ -216,14 +178,11 @@ func (h *Handler) EnablePlugin(c *gin.Context) {
 // POST /api/v1/plugins/:name/disable
 func (h *Handler) DisablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if handled, err := h.requestFeatureState(name, false); handled {
+	if payload, handled, err := h.requestFeatureState(name, false); handled {
 		if err != nil {
 			response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 			return
 		}
-		p, _ := h.manager.GetPlugin(name)
-		payload := h.pluginPayload(p)
-		payload["message"] = featureLifecycleMessage(payload, false)
 		response.Success(c, payload)
 		return
 	}
@@ -237,35 +196,12 @@ func (h *Handler) DisablePlugin(c *gin.Context) {
 	response.Success(c, payload)
 }
 
-func (h *Handler) requestFeatureState(pluginID string, enabled bool) (bool, error) {
-	if h.features == nil {
-		return false, nil
+func (h *Handler) requestFeatureState(identifier string, enabled bool) (map[string]interface{}, bool, error) {
+	if h.builtins == nil || !h.builtins.CompatibilityKnown(identifier) {
+		return nil, false, nil
 	}
-	featureID, ok := legacyBuiltinFeatureID(pluginID)
-	if !ok {
-		return false, nil
-	}
-	_, found := h.features.Get(featureID)
-	if !found {
-		return false, nil
-	}
-	if _, err := h.features.Request(featureID, enabled); err != nil {
-		return true, err
-	}
-	return true, nil
-}
-
-func legacyBuiltinFeatureID(pluginID string) (string, bool) {
-	switch pluginID {
-	case "category-moderation":
-		return "moderation", true
-	case "personal-space", "controlled-richtext-article", "personal-schedule":
-		return pluginID, true
-	case "web-theme", "homepage-customizer":
-		return "appearance", true
-	default:
-		return "", false
-	}
+	payload, err := h.builtins.CompatibilityRequest(identifier, enabled)
+	return payload, true, err
 }
 
 // ReloadUserPlugin reloads changed user-level plugin code without restarting
@@ -273,7 +209,7 @@ func legacyBuiltinFeatureID(pluginID string) (string, bool) {
 // POST /api/v1/plugins/:name/reload
 func (h *Handler) ReloadUserPlugin(c *gin.Context) {
 	name := c.Param("name")
-	if _, builtin := legacyBuiltinFeatureID(name); builtin {
+	if h.builtins != nil && h.builtins.CompatibilityKnown(name) {
 		response.Error(c, http.StatusBadRequest, 60004, "core modules and built-in features are not reloadable plugins")
 		return
 	}
@@ -291,7 +227,7 @@ func (h *Handler) ReloadUserPlugin(c *gin.Context) {
 // DELETE /api/v1/plugins/:name
 func (h *Handler) UninstallPlugin(c *gin.Context) {
 	name := c.Param("name")
-	if _, builtin := legacyBuiltinFeatureID(name); builtin {
+	if h.builtins != nil && h.builtins.CompatibilityKnown(name) {
 		response.Error(c, http.StatusBadRequest, 60004, "core modules and built-in features cannot be uninstalled")
 		return
 	}
@@ -553,51 +489,9 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 		"checksum":                 p.Checksum,
 		"package_size":             p.PackageSize,
 	}
-	if classification == LegacyBuiltin {
-		payload["lifecycle_owner"] = "builtin-feature-registry"
-		if h.features != nil {
-			if featureID, ok := legacyBuiltinFeatureID(p.Manifest.Name); ok {
-				if state, found := h.features.Get(featureID); found {
-					payload["feature_state"] = state
-					payload["activation_mode"] = state.Mode
-					payload["backend_activation_mode"] = state.Mode
-					payload["desired_enabled"] = state.DesiredEnabled
-					payload["pending_restart"] = state.PendingRestart
-					payload["status"] = StatusStopped
-					payload["backend_state"] = BackendStopped
-					payload["frontend_state"] = FrontendUnloaded
-					if state.Enabled {
-						payload["status"] = StatusRunning
-						payload["backend_state"] = BackendRunning
-						payload["frontend_state"] = FrontendLoaded
-					}
-					if featureID == "moderation" {
-						payload["lifecycle_owner"] = "core-module"
-					}
-				}
-			}
-		}
-	} else {
-		payload["lifecycle_owner"] = "plugin-platform"
-	}
+	payload["lifecycle_owner"] = "plugin-platform"
 	payload["capability_class"] = classification
 	return payload
-}
-
-func featureLifecycleMessage(payload gin.H, enabled bool) string {
-	if payload["lifecycle_owner"] == "core-module" {
-		return "core moderation is always on; only its action policy is configurable"
-	}
-	if payload["activation_mode"] == platformfeature.Restart {
-		if enabled {
-			return "built-in feature enable staged; restart the API server to apply"
-		}
-		return "built-in feature disable staged; restart the API server to apply"
-	}
-	if enabled {
-		return "built-in feature enabled"
-	}
-	return "built-in feature disabled"
 }
 
 func lifecycleMessage(payload gin.H, enabled bool) string {

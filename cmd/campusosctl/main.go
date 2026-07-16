@@ -26,6 +26,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "plugin":
 		return runPlugin(args[1:], stdout, stderr)
+	case "resource":
+		return runResource(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		printUsage(stdout)
 		return 0
@@ -109,7 +111,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 func runPluginInit(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("plugin init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	runtime := fs.String("runtime", "wasm", "plugin runtime: wasm, grpc or builtin")
+	runtime := fs.String("runtime", "wasm", "external plugin runtime: wasm or grpc")
 	dir := fs.String("dir", "", "target directory; defaults to the plugin name")
 	name := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -121,17 +123,17 @@ func runPluginInit(args []string, stdout io.Writer) error {
 	}
 	if name == "" {
 		if fs.NArg() != 1 {
-			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc|builtin] [--dir path]")
+			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
 		}
 		name = fs.Arg(0)
 	} else if fs.NArg() != 0 {
-		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc|builtin] [--dir path]")
+		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
 	}
 	if err := plugin.ValidatePluginName(name); err != nil {
 		return err
 	}
-	if *runtime != "wasm" && *runtime != "grpc" && *runtime != "builtin" {
-		return fmt.Errorf("runtime must be wasm, grpc or builtin, got %q", *runtime)
+	if *runtime != "wasm" && *runtime != "grpc" {
+		return fmt.Errorf("runtime must be wasm or grpc; compiled features use modules/*/module.yaml, got %q", *runtime)
 	}
 	targetDir := *dir
 	if targetDir == "" {
@@ -170,6 +172,9 @@ func runPluginInspect(args []string, stdout io.Writer) error {
 	manifest, err := plugin.LoadManifest(filepath.Join(pluginDir, "plugin.yaml"))
 	if err != nil {
 		return err
+	}
+	if manifest.Runtime == "builtin" {
+		return errors.New("runtime builtin is not an external plugin; inspect modules/*/module.yaml through campusosctl module in a future release")
 	}
 	result := map[string]interface{}{
 		"name":          manifest.Name,
@@ -309,15 +314,6 @@ func pluginManifestTemplate(name, runtime string) string {
       type: "number"
       required: true
       default: 1000`
-	} else {
-		scope = plugin.ScopeSystem
-		config = `  mode: "metadata"`
-		configSchema = `  fields:
-    - key: "mode"
-      label: "Mode"
-      type: "string"
-      required: true
-      default: "metadata"`
 	}
 	return strings.TrimSpace(fmt.Sprintf(`
 name: %s
@@ -374,6 +370,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "commands:")
 	fmt.Fprintln(w, "  plugin    plugin scaffolding and inspection")
+	fmt.Fprintln(w, "  resource  resource package adoption and inspection")
 }
 
 func printPluginUsage(w io.Writer) {

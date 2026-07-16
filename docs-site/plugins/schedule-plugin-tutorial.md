@@ -10,7 +10,7 @@ examples/plugins/schedule-helper/
 
 | 需求 | 应选择的类型 | 原因 |
 | --- | --- | --- |
-| 修改内置课表的学期、日历或 Excel 解析 | Built-in Feature | 需要修改 `internal/schedule` 并随 CampusOS 编译发布 |
+| 修改内置课表的学期、日历或 Excel 解析 | Built-in Feature | 需要修改 `internal/modules/features/schedule` 并随 CampusOS 编译发布 |
 | 增加可独立安装的课程提醒、课程评价或导出适配 | External Plugin | 可单独安装、升级、停用和卸载 |
 | 只改变课表页面颜色、字体、背景和间距 | Resource Package | 没有业务 Runtime，不应伪装成插件 |
 
@@ -21,9 +21,9 @@ examples/plugins/schedule-helper/
 现有课表实现由以下部分组成：
 
 ```text
-internal/schedule/                         业务、导入、日历和 HTTP Handler
-data/plugins/personal-schedule/            Legacy Built-in Manifest 与说明
-data/personal-space/<user>/file/schedule/  每个用户自己的学期 JSON
+internal/modules/features/schedule/            业务、导入、日历和 HTTP Handler
+modules/features/personal-schedule/             campusos.module/v1 描述符与说明
+data/personal-space/<user>/file/schedule/       每个用户自己的学期 JSON
 ```
 
 模块 ID 是 `feature.personal-schedule`，显式依赖 Identity、User Storage 和 Feature Registry。Admin 的 `/features` 管理功能状态和公共配置；用户在 `/schedule` 管理自己的私有课表。
@@ -38,7 +38,7 @@ data/personal-space/<user>/file/schedule/  每个用户自己的学期 JSON
 - CampusOS 按插件、用户和集合隔离数据。
 - 用户明确授权后，浏览器通过受管 REST API 读写自己的记录。
 - 插件进程只提供健康和 Extension 端点，不接收用户 ID、JWT、数据库连接或物理目录。
-- 它不会自动同步 `internal/schedule` 的课表；当前没有向 External Plugin 发布稳定的个人课表 Host API。
+- 它不会自动同步 `internal/modules/features/schedule` 的课表；当前没有向 External Plugin 发布稳定的个人课表 Host API。
 
 最后一点是安全边界，不是遗漏。未来若开放 `ScheduleQuery`，应增加正式权限、裁剪后的 DTO、用户同意和负向测试，而不是让插件读取 `data/personal-space`。
 
@@ -306,7 +306,7 @@ make docs-links
 ## 13. 常见错误
 
 **把 `personal-schedule` 当作普通外部插件导入**  
-它是 Built-in Feature，Legacy Manifest 只保留配置和兼容映射。
+它是 Built-in Feature，`module.yaml` 是当前权威描述符，不能通过插件导入流程安装。
 
 **插件直接读取 `data/personal-space/<user>/file/schedule`**  
 这会绕过用户授权、路径安全和 Storage Provider，属于禁止行为。

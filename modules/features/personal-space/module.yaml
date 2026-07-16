@@ -1,0 +1,91 @@
+schema: campusos.module/v1
+id: feature.personal-space
+feature_id: personal-space
+name: personal-space
+display_name: "Personal Space"
+version: "0.10.0"
+description: "Personal homepage, content projection, profile styles, and user file entry points."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.identity, core.community, core.user-storage, core.feature-registry, feature.appearance]
+implementation: internal/modules/features/personalspace
+compatibility_aliases:
+  - name: personal-space
+config:
+  styles_dir: "data/module_data/personal-space/styles"
+  file_root: "data/personal-space"
+  file_url_prefix: "/api/v1/spaces/files"
+  default_quota_mb: 10
+  avatar_keep_limit: 3
+  max_avatar_mb: 2
+  future_storage_provider: local
+config_schema:
+  fields:
+    - key: styles_dir
+      label: "Styles directory"
+      type: string
+      description: "Built-in personal-space style state under data/module_data."
+      required: true
+      default: "data/module_data/personal-space/styles"
+    - key: file_root
+      label: "File root"
+      type: string
+      description: "User Storage root; existing paths are preserved during the separation migration."
+      required: true
+      default: "data/personal-space"
+    - key: file_url_prefix
+      label: "File URL prefix"
+      type: string
+      description: "Public API URL prefix for personal-space files."
+      required: true
+      default: "/api/v1/spaces/files"
+    - key: default_quota_mb
+      label: "Default quota MB"
+      type: number
+      description: "Default local storage quota assigned to each user."
+      required: true
+      default: 10
+    - key: avatar_keep_limit
+      label: "Avatar keep limit"
+      type: number
+      description: "Number of recent avatar source files retained per user."
+      required: true
+      default: 3
+    - key: max_avatar_mb
+      label: "Max avatar MB"
+      type: number
+      description: "Maximum size of a single avatar upload."
+      required: true
+      default: 2
+    - key: future_storage_provider
+      label: "Storage provider"
+      type: select
+      description: "Reserved provider selector for future personal cloud storage."
+      required: true
+      default: local
+      options:
+        - {label: "Local", value: local}
+        - {label: "Cloud placeholder", value: cloud-placeholder}
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: module.personal-space.page.settings
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.personal-space
+      regions: [profile, files, style, storage]
+  routes:
+    - id: module.personal-space.route.settings
+      path: /space/settings
+      surface_id: module.personal-space.page.settings
+      title: "个人空间"
+      requires_auth: true
+  navigation:
+    - id: module.personal-space.navigation.settings
+      label: "个人空间"
+      route_id: module.personal-space.route.settings
+      location: user-menu
+      order: 30

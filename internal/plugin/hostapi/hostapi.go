@@ -5,9 +5,9 @@ import (
 	"errors"
 	"log"
 
-	"github.com/campusos/CampusOS/internal/community/domain"
-	communityport "github.com/campusos/CampusOS/internal/community/port"
-	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
+	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
 

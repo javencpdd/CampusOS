@@ -44,11 +44,22 @@ class ArchitectureCheckTests(unittest.TestCase):
     def test_backend_allows_same_domain_and_rejects_cross_domain_repository(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            self.write(root, "internal/community/service/service.go", 'package service\nimport "github.com/campusos/CampusOS/internal/community/repository"\n')
+            self.write(root, "internal/modules/core/community/service/service.go", 'package service\nimport "github.com/campusos/CampusOS/internal/modules/core/community/repository"\n')
             self.assertEqual([], BACKEND.collect_violations(root, self.backend_config()))
-            self.write(root, "internal/mcp/mcp.go", 'package mcp\nimport "github.com/campusos/CampusOS/internal/community/repository"\n')
+            self.write(root, "internal/modules/features/mcp/mcp.go", 'package mcp\nimport "github.com/campusos/CampusOS/internal/modules/core/community/repository"\n')
             violations = BACKEND.collect_violations(root, self.backend_config())
             self.assertTrue(any("cross-domain concrete import" in item for item in violations), violations)
+
+    def test_backend_rejects_feature_plugin_manager_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.write(
+                root,
+                "internal/modules/features/schedule/module.go",
+                'package schedule\nimport "github.com/campusos/CampusOS/internal/plugin"\ntype Module struct { manager *plugin.Manager }\n',
+            )
+            violations = BACKEND.collect_violations(root, self.backend_config())
+            self.assertTrue(any("built-in feature directly depends on Plugin Manager" in item for item in violations), violations)
 
     def test_backend_rejects_allowlist_expansion(self) -> None:
         config = self.backend_config()

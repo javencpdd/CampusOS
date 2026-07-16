@@ -1,6 +1,6 @@
 # 插件前端运行时与 Extension Gateway
 
-> 适用基线：v0.6 插件 UI Runtime（`campusos.ui/v1`）
+> 适用基线：v0.10 External Plugin UI Runtime（`campusos.ui/v1`）
 
 ## 1. 一句话理解
 
@@ -13,7 +13,7 @@ plugin.yaml ui
   -> Route / Navigation / Slot / Surface / Action
   -> POST|GET /api/v1/extensions/<plugin>/<path>
   -> Core trusted context
-  -> builtin | gRPC | Wasm Runtime
+  -> managed process | Wasm Runtime
 ```
 
 ## 2. 生命周期不等于 scope
@@ -28,7 +28,7 @@ lifecycle:
     activation_mode: hot
 ```
 
-旧 manifest 不必修改。默认值为：builtin+system 使用 `restart`，gRPC 使用 `plugin-restart`，Wasm 使用 `hot`，所有前端使用 `hot`。系统级 gRPC 因此可以只重启插件；系统级 Wasm 也可以热替换。只有 Core 进程内 builtin 默认需要整站重启。
+旧 External Plugin manifest 不必修改。默认值为：gRPC 兼容名的受管进程使用 `plugin-restart`，Wasm 使用 `hot`，所有前端使用 `hot`。`runtime: builtin` 只保留解析迁移能力，不能安装；编译期 UI 由 Module Catalog 放入 Runtime Manifest 的 `modules[]`，不走 External Plugin Gateway 生命周期。
 
 Admin 会分别显示 BackendState、FrontendState 和 Health。后端短暂 restarting/degraded 时，前端贡献不会自动消失；用户会看到统一健康提示。管理员明确停用或卸载插件时，Runtime Registry 才清理其路由、菜单、插槽、Surface、Action 和缓存。
 
@@ -83,7 +83,7 @@ Authorization: Bearer <user token>
 
 Gateway 只接受 manifest 中声明的 Action，限制请求体为 1 MiB、处理时间为 5 秒，并检查插件后端状态、健康、用户权限、Trace ID 和审计。客户端请求体里的 `user_id`、角色或管理员字段没有可信意义。
 
-Runtime 收到的 `caller.user_id`、`caller.username` 和 `caller.trace_id` 由 Core 从已验证 JWT 和请求上下文生成。builtin 使用 Core 注册的 handler；gRPC 外部进程必须配置 loopback `extension_url`；Wasm 通过受限 `extension.request` ABI 接收 JSON。
+Runtime 收到的 `caller.user_id`、`caller.username` 和 `caller.trace_id` 由 Core 从已验证 JWT 和请求上下文生成。受管进程必须配置 loopback `extension_url`；Wasm 通过受限 `extension.request` ABI 接收 JSON。
 
 ## 5. 权限差异
 
@@ -94,7 +94,7 @@ Runtime 收到的 `caller.user_id`、`caller.username` 和 `caller.trace_id` 由
 
 ## 6. 可运行示例
 
-`data/plugins/campus-welcome/` 展示完整链路。启动后访问 `/extensions/campus-welcome`，按钮会经 Gateway 调用 builtin Runtime，并在插件日志中留下带 Trace ID 的审计记录。
+`examples/plugins/campus-welcome/` 展示完整链路。它是可运行的受管进程 External Plugin；安装并启动后访问 `/extensions/campus-welcome`，按钮会经 Gateway 调用插件进程，并在插件日志中留下带 Trace ID 的审计记录。
 
 ## 7. 更新与清理检查
 

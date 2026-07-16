@@ -18,7 +18,7 @@ from typing import Any
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
 IMPORT_RE = re.compile(r'"github\.com/campusos/CampusOS/(internal/[^"\s]+)"')
 CONCRETE_SEGMENTS = {"repository", "service", "handler", "adapter"}
-FEATURE_ROOTS = {"space", "richtext", "schedule", "appearance", "homepage", "webtheme", "stylepack"}
+FEATURE_ROOTS = {"features/personalspace", "features/richtext", "features/schedule", "features/appearance"}
 ROUTE_CALL_RE = re.compile(r"\.(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s*\(")
 NEW_CALL_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\.New[A-Za-z0-9_]*\s*\(")
 MANAGER_STRUCT_RE = re.compile(r"type\s+Manager\s+struct\s*\{(?P<body>.*?)\}", re.DOTALL)
@@ -37,8 +37,8 @@ def relative_domain(path: str) -> str:
     parts = Path(path).parts
     if len(parts) < 2 or parts[0] != "internal":
         return ""
-    if parts[1] == "core" and len(parts) > 2:
-        return "/".join(parts[1:3])
+    if parts[1] == "modules" and len(parts) > 3 and parts[2] in {"core", "features"}:
+        return "/".join(parts[2:4])
     if parts[1] == "platform" and len(parts) > 2:
         return "/".join(parts[1:3])
     return parts[1]
@@ -108,11 +108,11 @@ def collect_violations(root: Path, config: dict[str, Any]) -> list[str]:
             if re.search(r"\bmanager\s+\*Manager\b|\.manager\b", text) and source not in manager_backrefs:
                 violations.append(f"{source}: Plugin Platform subservice depends on Manager")
 
-    plugin_root = root / "data" / "plugins"
-    if plugin_root.exists():
-        for path in sorted(plugin_root.rglob("*.go")):
-            if "github.com/campusos/CampusOS/internal/" in path.read_text(encoding="utf-8"):
-                violations.append(f"{path.relative_to(root)}: external plugin imports internal/*")
+    for plugin_root in (root / "data" / "plugins", root / "examples" / "plugins"):
+        if plugin_root.exists():
+            for path in sorted(plugin_root.rglob("*.go")):
+                if "github.com/campusos/CampusOS/internal/" in path.read_text(encoding="utf-8"):
+                    violations.append(f"{path.relative_to(root)}: external plugin imports internal/*")
 
     manager_path = root / "internal" / "plugin" / "manager.go"
     if manager_path.exists():
@@ -146,7 +146,12 @@ def collect_violations(root: Path, config: dict[str, Any]) -> list[str]:
 
     agent_root = root / "internal" / "agentcontract"
     if agent_root.exists():
-        forbidden = ("pkg/database", "pkg/auth", "internal/core/identity/repository", "internal/core/storage")
+        forbidden = (
+            "pkg/database",
+            "pkg/auth",
+            "internal/modules/core/identity/repository",
+            "internal/modules/core/userstorage",
+        )
         for path in sorted(agent_root.rglob("*.go")):
             if path.name.endswith("_test.go"):
                 continue

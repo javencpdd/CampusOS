@@ -1,7 +1,7 @@
 # CampusOS 风格包能力边界与 CampusStyleSDK 说明
 
-> 适用基线：`v0.6.23-dev`
-> 更新时间：2026-07-12
+> 适用基线：`v0.10`
+> 更新时间：2026-07-16
 
 ## 1. 为什么先定义边界
 
@@ -16,27 +16,27 @@
 | `target` | 提供者与选择者 | 实际范围 | 强制 CSS 根选择器 |
 | --- | --- | --- | --- |
 | `personal-space` | 管理员提供内置包；个人用户选择自己的包或上传个人包 | `/u/:username` 中的完整个人主页内容，包括资料头部、头像、元信息、自定义模板、帖子列表和空状态 | `.public-space[data-campusos-space]` |
-| `homepage` | 管理员通过 `homepage-customizer` 统一配置 | 仅用户前台 `/` 首页；当前只支持安全 HTML/CSS，不加载脚本或 SDK | `.home[data-campusos-home]` |
+| `homepage` | 管理员通过 Appearance Feature 统一配置 | 仅用户前台 `/` 首页；当前只支持安全 HTML/CSS，不加载脚本或 SDK | `.home[data-campusos-home]` |
 | `web` | 后端管理员提供，用户从已提供目录中本地选择 | 整个用户前台，包括首页、帖子、课表、登录、注册、个人主页外壳等；不进入 Admin 管理端 | `.app-container[data-campusos-web]` |
 
 个人主页的风格归主页所有者，不归访问者。访问者打开用户 A 的 `/u/A` 时，后端按 A 的用户 ID 读取 `user_spaces.style_manifest`；无论访问者是谁，看到的都是 A 已应用的主页风格。访问用户 B 时不会继承 A 的风格。
 
-系统主题由 `web-theme` 系统级插件提供。管理员把通过筛查的源码包放在：
+系统主题由 Appearance Built-in Feature 提供。管理员把通过筛查的源码包放在：
 
 ```text
-data/plugin_data/web-theme/style-packs/<theme>/
+data/resources/themes/<theme>/
 ```
 
-用户只能选择目录中筛查通过的包，不能从用户端安装系统主题。选择按用户 ID 保存在浏览器本地，切换立即生效。`web-theme` 插件本身的启停属于系统插件生命周期，重启 API 后才生效。
+用户只能选择目录中筛查通过的包，不能从用户端安装系统主题。选择按用户 ID 保存在浏览器本地，切换立即生效；Appearance 使用独立 Feature 生命周期，不进入 Plugin Manager。
 
-插件实现与风格数据必须分离：`data/plugins/<plugin>/` 只负责插件 manifest、切换、导入、导出和运行逻辑；风格包目录、JSON 风格、模板、图片、CSS、预览、特效和配置 schema 统一保存到 `data/plugin_data/<plugin>/`。例如旧个人主页 JSON 风格也位于 `data/plugin_data/personal-space/styles/`。
+External Plugin 与风格数据必须分离：`data/plugins/<plugin>/` 和 `data/plugin_data/<plugin>/` 只服务可独立安装的插件；风格包目录、模板、图片、CSS、预览、特效和配置 schema 统一保存到 `data/resources/<type>/<package>/`。个人主页内置 JSON 风格状态位于 `data/module_data/personal-space/styles/`。
 
 管理员当前有两种供给方式：
 
-1. 直接编写或复制 `data/plugin_data/web-theme/style-packs/<theme>/`，由目录 API 每次重新筛查。
-2. 下载随系统插件发布的主题提供包，审查后把插件实现部署到 `data/plugins/`、把风格数据部署到对应 `data/plugin_data/`，再重启 API。
+1. 直接编写或复制 `data/resources/themes/<theme>/`，由目录 API 每次重新筛查。
+2. 下载 Resource Package，审查后放入 `data/resources/themes/<theme>/`，使用 `campusosctl resource adopt/inspect` 生成并核验 `resource.json`。
 
-当前 Admin 在线导入只接受可热更新的用户级插件，按既有安全规则拒绝系统级插件运行时导入。因此“下载系统主题插件”目前是受控部署操作，不是普通用户或管理员页面中的免重启市场安装。后续可增加专门的系统主题上传、版本快照和回滚流程。
+External Plugin 在线导入不会接管 Theme Package。系统主题仍由 Appearance 的资源筛查、应用与回滚流程管理，不允许通过插件安装绕过路径、内容、权限或 checksum 校验。
 
 ## 3. CSS 能做什么
 
@@ -140,13 +140,13 @@ CampusEffect.register({
 完整用户前台系统主题：
 
 ```text
-data/plugin_data/web-theme/style-packs/campus-canvas/
+data/resources/themes/campus-canvas/
 ```
 
 完整个人主页和帖子卡片动态示例：
 
 ```text
-data/plugin_data/personal-space/style-packs/kinetic-journal/
+data/resources/space-style-packs/kinetic-journal/
 ```
 
 `kinetic-journal` 会设计主页资料区、头像、元信息、介绍模板、同步帖子、标签和空状态，并通过 `space.posts.read` 调节沙箱背景节点数量。它不会读取访问者身份数据，也不会跨用户调用接口。

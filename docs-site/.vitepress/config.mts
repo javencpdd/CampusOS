@@ -32,6 +32,7 @@ export default defineConfig({
           { text: '权限配置入门', link: '/guide/permission-configuration' },
           { text: '项目介绍', link: '/guide/introduction' },
           { text: '系统架构', link: '/guide/architecture' },
+          { text: '模块与插件边界', link: '/guide/module-plugin-resource-boundaries' },
           { text: '数据目录', link: '/reference/data-layout' },
         ],
       },

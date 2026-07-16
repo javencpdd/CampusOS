@@ -14,11 +14,10 @@ lifecycle:
 
 | Runtime | 后端 | 前端 |
 | --- | --- | --- |
-| builtin + system | `restart` | `hot` |
 | 受管进程（`grpc` 兼容名） | `plugin-restart` | `hot` |
 | Wasm | `hot` | `hot` |
 
-旧 manifest 会自动得到这些默认值。受管进程可以只重启插件；Wasm 使用候选实例验证成功后原子替换；Core 始终启用，Built-in Feature 则按自身 `restart` 或 `hot-gated` 策略生效。
+旧 External Plugin manifest 会自动得到这些默认值。受管进程可以只重启插件；Wasm 使用候选实例验证成功后原子替换。`runtime: builtin` 只能解析用于迁移，不能安装；Core 始终启用，Built-in Feature 由独立 Feature Registry 按 `restart` 或 `hot-gated` 策略生效。
 
 ## 三轴状态
 
@@ -30,6 +29,6 @@ lifecycle:
 
 ## 数据保留
 
-停止、禁用或热卸载前端不会自动删除 `data/plugin_data/<plugin>/`、PostgreSQL 配置和日志、用户业务数据或审计。系统级插件不能从 Admin 卸载；用户级插件卸载前应备份数据并阅读插件 README。
+停止、禁用或热卸载前端不会自动删除 `data/plugin_data/<plugin>/`、PostgreSQL 配置和日志、用户业务数据或审计。External Plugin 卸载前应备份数据并阅读插件 README；Core/Built-in Feature 不进入卸载流程。
 
 下一步阅读 [前端运行时与 Gateway](./frontend-runtime.md)。

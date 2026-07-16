@@ -9,7 +9,7 @@
 - 受管进程的健康和 Extension 端点。
 - 插件代码、插件数据与内置个人课表之间的边界。
 
-它不会读取 `internal/schedule`、PostgreSQL、CampusOS JWT 或 `data/personal-space` 的物理路径。用户记录只能由已登录用户通过 `/api/v1/plugin-market/schedule-helper/records/*` 访问。
+它不会读取 `internal/modules/features/schedule`、PostgreSQL、CampusOS JWT 或 `data/personal-space` 的物理路径。用户记录只能由已登录用户通过 `/api/v1/plugin-market/schedule-helper/records/*` 访问。
 
 验证：
 

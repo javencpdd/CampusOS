@@ -28,7 +28,7 @@ prepare() {
   done
   (cd "$target" && sha256sum -c SHA256SUMS)
   reject_unsafe_archive "$target/files.tar.gz"
-  grep -qx 'format=campusos-single-node-v1' "$target/metadata.txt"
+  grep -Eqx 'format=campusos-single-node-v(1|2)' "$target/metadata.txt"
 }
 
 case "$ACTION" in

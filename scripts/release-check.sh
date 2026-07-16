@@ -3,6 +3,7 @@ set -euo pipefail
 
 cleanup() {
   rm -f examples/plugins/grpc-example/plugin
+  rm -f examples/plugins/campus-welcome/plugin
   rm -f examples/plugins/schedule-helper/plugin
   rm -f examples/plugins/v2-managed-example/plugin
 }
@@ -32,13 +33,25 @@ echo "==> database"
 python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 echo "==> plugin templates"
-go run ./cmd/campusosctl plugin dev examples/plugins/builtin-example --json
+go test ./modules -count=1
+go run ./cmd/campusosctl plugin dev examples/plugins/campus-welcome --json
+(cd examples/plugins/campus-welcome && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/grpc-example --json
 go run ./cmd/campusosctl plugin dev examples/plugins/schedule-helper --json
 (cd examples/plugins/schedule-helper && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/v2-managed-example --json
 (cd examples/plugins/v2-managed-example && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
+
+echo "==> resource packages"
+for resource in \
+  data/resources/homepage-packs/campus-hero \
+  data/resources/space-style-packs/clean-blog \
+  data/resources/space-style-packs/kinetic-journal \
+  data/resources/themes/aurora-campus \
+  data/resources/themes/campus-canvas; do
+  go run ./cmd/campusosctl resource inspect "$resource" >/dev/null
+done
 
 echo "==> frontend builds"
 (cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)

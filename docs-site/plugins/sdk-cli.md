@@ -16,7 +16,6 @@ go run ./cmd/campusosctl plugin pack my-plugin
 
 | Runtime | build/test 行为 | 生命周期 |
 | --- | --- | --- |
-| Built-in | 校验 Manifest；代码随 CampusOS 编译测试 | builtin+system 默认 `restart` |
 | gRPC process | `go test ./...`、构建 `plugin` 可执行文件 | 默认 `plugin-restart` |
 | Wasm | 检查 `plugin.wasm` 魔数和运行包 | 默认 `hot`，候选实例验证后交换 |
 
@@ -26,4 +25,11 @@ go run ./cmd/campusosctl plugin pack my-plugin
 
 Go SDK 的 `NewHarness` 可注入配置、KV、用户、帖子、权限允许/拒绝、Host API 失败、日志、通知和事件，不需要启动完整服务器。HTTP 403 可通过 `errors.Is(err, campusos.ErrPermissionDenied)` 判断。
 
-可运行模板位于 `examples/plugins/builtin-example`、`grpc-example` 和 `wasm-example`。
+External Plugin 可运行模板位于 `examples/plugins/grpc-example` 和 `examples/plugins/wasm-example`。`examples/modules/builtin-feature-example` 只演示编译期模块描述符，不支持 `plugin install`。
+
+资源目录使用独立命令：
+
+```bash
+go run ./cmd/campusosctl resource adopt data/resources/themes/my-theme --type theme
+go run ./cmd/campusosctl resource inspect data/resources/themes/my-theme
+```

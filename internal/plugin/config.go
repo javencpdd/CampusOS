@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/campusos/CampusOS/internal/safehtml"
-	"github.com/campusos/CampusOS/internal/stylepack"
 )
 
 func normalizePluginConfig(manifest *Manifest, input map[string]interface{}) (map[string]interface{}, error) {
@@ -108,66 +105,4 @@ func copyConfigMap(input map[string]interface{}) map[string]interface{} {
 		copied[key] = value
 	}
 	return copied
-}
-
-func validatePluginSpecificConfig(pluginName string, config map[string]interface{}) error {
-	if pluginName != "homepage-customizer" {
-		return nil
-	}
-	if err := validateHomepageCustomHTML(config); err != nil {
-		return err
-	}
-	if err := validateHomepageCustomCSS(config); err != nil {
-		return err
-	}
-	return nil
-}
-
-func preservePluginInternalConfig(pluginName string, normalized, incoming, current map[string]interface{}) {
-	if pluginName != "homepage-customizer" {
-		return
-	}
-	const snapshotKey = "last_config_snapshot"
-	if value, ok := incoming[snapshotKey]; ok {
-		normalized[snapshotKey] = value
-		return
-	}
-	if value, ok := current[snapshotKey]; ok {
-		normalized[snapshotKey] = value
-	}
-}
-
-func validateHomepageCustomHTML(config map[string]interface{}) error {
-	value, ok := config["custom_html"]
-	if !ok || value == nil {
-		return nil
-	}
-	htmlValue := strings.TrimSpace(fmt.Sprint(value))
-	if htmlValue == "" {
-		return nil
-	}
-	result := safehtml.Validate(htmlValue)
-	if result.Valid {
-		return nil
-	}
-	return fmt.Errorf("config field %q failed safe HTML validation: %s", "custom_html", strings.Join(result.Errors, "; "))
-}
-
-func validateHomepageCustomCSS(config map[string]interface{}) error {
-	value, ok := config["custom_css"]
-	if !ok || value == nil {
-		return nil
-	}
-	cssValue := strings.TrimSpace(fmt.Sprint(value))
-	if cssValue == "" {
-		return nil
-	}
-	result := stylepack.ValidateCSS(cssValue)
-	if result.Valid {
-		result = stylepack.ValidateCSSScope(stylepack.TargetHomepage, cssValue)
-	}
-	if result.Valid {
-		return nil
-	}
-	return fmt.Errorf("config field %q failed safe CSS validation: %s", "custom_css", strings.Join(result.Errors, "; "))
 }

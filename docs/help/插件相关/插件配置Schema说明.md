@@ -86,10 +86,9 @@ config_schema:
 ```bash
 go run ./cmd/campusosctl plugin init my-plugin --runtime wasm
 go run ./cmd/campusosctl plugin init my-grpc-plugin --runtime grpc
-go run ./cmd/campusosctl plugin init my-builtin-plugin --runtime builtin
 ```
 
-Wasm 插件模板默认暴露 `entrypoint` 和 `event_timeout_ms`；gRPC 插件模板默认暴露 `command` 和 `event_timeout_ms`；built-in 插件模板默认暴露 `mode`。
+Wasm 插件模板默认暴露 `entrypoint` 和 `event_timeout_ms`；gRPC（受管进程兼容名称）模板默认暴露 `command` 和 `event_timeout_ms`。CLI 不再生成 `runtime: builtin`；编译期能力应使用 `campusos.module/v1` 描述符并随主程序构建。
 
 `campusosctl plugin inspect` 会输出 `config_schema`：
 

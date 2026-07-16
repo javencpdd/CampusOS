@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	corestorage "github.com/campusos/CampusOS/internal/core/storage"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 

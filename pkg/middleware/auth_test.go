@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/campusos/CampusOS/internal/core/identity/domain"
-	"github.com/campusos/CampusOS/internal/core/identity/repository"
-	"github.com/campusos/CampusOS/internal/core/identity/service"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"

@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: feature.ai-gateway
+name: ai-gateway
+display_name: "AI Gateway"
+version: "0.10.0"
+description: "Configured AI provider gateway, rate limits, and call audit."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+implementation: internal/modules/features/ai

@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: core.feature-registry
+name: feature-registry
+display_name: "Built-in Feature Registry"
+version: "0.10.0"
+description: "Authoritative state, configuration, activation mode, and health contract for built-in features."
+kind: core
+activation_mode: always-on
+default_enabled: true
+implementation: internal/platform/feature

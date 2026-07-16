@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/campusos/CampusOS/internal/community/domain"
-	"github.com/campusos/CampusOS/internal/community/repository"
-	corestorage "github.com/campusos/CampusOS/internal/core/storage"
+	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/plugin"
 )
 

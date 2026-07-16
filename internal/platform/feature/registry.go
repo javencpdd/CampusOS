@@ -17,10 +17,12 @@ const (
 )
 
 type Definition struct {
-	ID           string         `json:"id"`
-	Mode         ActivationMode `json:"activation_mode"`
-	Dependencies []string       `json:"dependencies,omitempty"`
-	LegacyPlugin string         `json:"legacy_plugin,omitempty"`
+	ID             string                 `json:"id"`
+	Mode           ActivationMode         `json:"activation_mode"`
+	Dependencies   []string               `json:"dependencies,omitempty"`
+	DefaultEnabled bool                   `json:"default_enabled"`
+	DefaultConfig  map[string]interface{} `json:"-"`
+	LegacyPlugin   string                 `json:"legacy_plugin,omitempty"`
 }
 
 type State struct {
@@ -84,6 +86,10 @@ func (r *Registry) Register(def Definition) error {
 		return fmt.Errorf("load feature state %q: %w", def.ID, err)
 	}
 	if found {
+		config := stored.Config
+		if len(config) == 0 && len(def.DefaultConfig) > 0 {
+			config = cloneConfig(def.DefaultConfig)
+		}
 		state := State{Definition: def, Enabled: stored.EffectiveEnabled, DesiredEnabled: stored.DesiredEnabled, PendingRestart: stored.PendingRestart}
 		switch def.Mode {
 		case AlwaysOn:
@@ -102,21 +108,25 @@ func (r *Registry) Register(def Definition) error {
 		r.states[def.ID] = state
 		r.persisted[def.ID] = true
 		if state.Enabled != stored.EffectiveEnabled || state.PendingRestart != stored.PendingRestart || state.DesiredEnabled != stored.DesiredEnabled {
-			if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: stored.Config}); err != nil {
+			if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: config}); err != nil {
 				return fmt.Errorf("activate feature state %q: %w", def.ID, err)
+			}
+		} else if len(stored.Config) == 0 && len(config) > 0 {
+			if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: state.DesiredEnabled, EffectiveEnabled: state.Enabled, PendingRestart: state.PendingRestart, Config: config}); err != nil {
+				return fmt.Errorf("seed feature default config %q: %w", def.ID, err)
 			}
 		}
 		return nil
 	}
-	enabled := def.Mode == AlwaysOn
+	enabled := def.Mode == AlwaysOn || def.DefaultEnabled
 	if !enabled && def.LegacyPlugin != "" && r.legacy != nil {
 		enabled = r.legacy(def.LegacyPlugin)
 	}
 	r.states[def.ID] = State{Definition: def, Enabled: enabled, DesiredEnabled: enabled}
 	r.persisted[def.ID] = false
-	if def.Mode == AlwaysOn {
-		if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: true, EffectiveEnabled: true, Config: map[string]interface{}{}}); err != nil {
-			return fmt.Errorf("save always-on feature state %q: %w", def.ID, err)
+	if def.Mode == AlwaysOn || def.DefaultEnabled || len(def.DefaultConfig) > 0 {
+		if err := r.store.Save(context.Background(), StoredState{FeatureID: def.ID, DesiredEnabled: enabled, EffectiveEnabled: enabled, Config: cloneConfig(def.DefaultConfig)}); err != nil {
+			return fmt.Errorf("save feature default state %q: %w", def.ID, err)
 		}
 		r.persisted[def.ID] = true
 	}

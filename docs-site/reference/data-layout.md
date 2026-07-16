@@ -1,97 +1,116 @@
 # 数据目录
 
-## 总体结构
+## 当前结构
 
 ```text
+modules/                              编译期模块描述符，不是运行数据
 data/
-├── plugins/                       插件实现和 manifest
-├── plugin_data/                   插件运行数据和 Legacy 源码风格包
-├── personal-space/<user_id>/      用户个人文件
-│   ├── file/
-│   ├── img/
-│   ├── excel/
-│   ├── word/
-│   └── pdf/
-├── resources/                     无 Runtime 的主题、主页包、空间风格、Skill/Prompt 等资源
-├── images/                        非用户归属的全局图片
-├── config/                        本地配置预留
-├── dist/                          本地发布产物预留
-└── skills/                        本地 Skill 数据预留
+├── plugins/<plugin>/                 External Plugin 实现和 plugin.yaml
+├── plugin_data/<plugin>/             External Plugin 私有运行数据与版本快照
+├── module_data/<feature>/            Built-in Feature 本地数据
+├── resources/
+│   ├── themes/
+│   ├── homepage-packs/
+│   ├── space-style-packs/
+│   ├── skills/
+│   ├── prompts/
+│   ├── personas/
+│   └── knowledge-metadata/
+├── personal-space/<user_id>/         User Storage Core 管理的用户文件
+├── images/                            无用户归属的全局图片
+├── config/                            本地配置预留
+├── dist/                              本地发布产物预留
+└── skills/                            旧本地 Skill 导入预留
 ```
 
-## 插件代码与数据分离
+## External Plugin
 
-`data/plugins/<plugin>/` 只保存插件实现：
+`data/plugins/<plugin>/` 只保存实现和随代码部署的静态输入：
 
-- `plugin.yaml`
-- 插件 README
-- `plugin.wasm` 或受管进程可执行入口（历史 Runtime 名称为 `grpc`）
-- 插件运行需要的静态资源
+- `plugin.yaml`；
+- `plugin.wasm`，或受管进程的可执行入口；
+- README 和运行所需静态文件。
 
-`data/plugin_data/<plugin>/` 保存运行后产生或可编辑的数据：
+`data/plugin_data/<plugin>/` 只保存该外部插件的 KV、缓存、版本快照和可恢复
+运行状态。插件代码包不会自动携带这些数据，备份和迁移必须分别处理。
 
-- SQLite/KV 文件
-- 缓存和生成文件
-- 页面风格包源码目录
-- 插件自己的可恢复状态
+内置课表、个人空间、富文本、Appearance 和 Moderation 不允许出现在这两个
+目录中。
 
-插件包导出不会自动包含 `plugin_data`。迁移插件时必须分别考虑代码包和运行数据。
+## Built-in Feature 数据
+
+模块描述符在 `modules/`，实现代码在 `internal/modules/`。Built-in Feature
+需要本地可变数据时使用 `data/module_data/<feature>/`。当前个人主页内置 JSON
+风格位于：
+
+```text
+data/module_data/personal-space/styles/
+```
+
+功能停用不会删除这里的数据。
 
 ## 用户个人空间
 
-默认根目录为：
+所有用户文件通过 User Storage Core 写入：
 
 ```text
 data/personal-space/<user_id>/
+├── img/avatars/                       头像源文件，默认保留最近 3 个
+├── img/richtext/                      富文本图片
+├── file/schedule/                     学期课表索引和 JSON
+├── plugins/<plugin>/                  获得用户授权的插件附件
+├── excel/
+├── word/
+└── pdf/
 ```
 
-常见子目录：
+默认配额为 10 MB，可在 Personal Space Built-in Feature 配置中调整。课表和
+富文本只依赖 User Storage Port，不依赖个人主页功能是否启用。
 
-| 路径 | 内容 |
-| --- | --- |
-| `img/avatars/` | 头像源文件，默认保留最近 3 个。 |
-| `img/richtext/` | 富文本文章图片。 |
-| `file/schedule/` | 个人课表索引和学期 JSON。 |
-| `excel/`、`word/`、`pdf/` | 按文件类型分类的上传文件。 |
+## Resource Package
 
-默认个人空间配额为 10MB，由 `personal-space` 插件配置控制。头像、富文本图片和课表文件共同计入配额。
-
-## 页面风格包
-
-新 Resource Package 的目标仓库是 `data/resources/`。为保持已有用户包兼容，可编辑源码风格包仍可从以下 Legacy Resource Source 读取：
+主题和风格包统一保存在：
 
 ```text
-data/plugin_data/<plugin>/style-packs/<pack>/
+data/resources/themes/<id>/
+data/resources/homepage-packs/<id>/
+data/resources/space-style-packs/<id>/
 ```
 
-当前三个目标目录：
+每个目录必须有 `resource.json`，并且通常包含 `style.yaml`、README、预览、
+模板、图片、CSS、配置 schema 和可选受限特效。`resource.json` 声明稳定 ID、
+类型、版本、兼容范围、入口、来源和 checksum。
 
-```text
-data/plugin_data/personal-space/style-packs/      个人主页所有者风格
-data/plugin_data/homepage-customizer/style-packs/ 管理员统一首页风格
-data/plugin_data/web-theme/style-packs/           管理员提供的完整用户前台主题
+```bash
+go run ./cmd/campusosctl resource inspect data/resources/themes/campus-canvas
 ```
 
-典型结构：
+Resource Package 不能包含 `plugin.yaml`、Go/Cargo Runtime、migration 或启动
+脚本。它没有业务进程生命周期，也不能取得数据库、JWT、用户 Token 或任意
+文件系统权限。
 
-```text
-style.yaml
-README.md
-preview.png
-templates/
-assets/
-styles/
-config.schema.json
+## 从旧布局迁移
+
+旧版把 Built-in 描述符和风格包放在 `data/plugins`、`data/plugin_data`。v10
+提供可回滚迁移：
+
+```bash
+./scripts/migrate-v10-module-plugin-layout.sh check
+./scripts/migrate-v10-module-plugin-layout.sh apply backups/v10-layout-before
+./scripts/migrate-v10-module-plugin-layout.sh rollback backups/v10-layout-before
 ```
 
-风格包不应放入 `data/plugins`，因为它不是插件 Runtime 的实现代码。可选的 `effects/main.js` 仍属于风格包数据，但只能通过沙箱运行时执行；`effects/source.ts` 是不直接运行的开发源码。
+迁移不覆盖同名目标；每个移动写入状态文件；旧风格包迁入后必须生成并通过
+Resource Manifest 校验。
 
 ## 备份边界
 
-完整恢复至少需要同一时间点的：
+`scripts/backup.sh` 的 v2 格式同时包含：PostgreSQL、`modules/`、外部插件、
+插件数据、模块数据、资源包和用户文件。恢复工具继续接受旧 v1 备份。
 
-1. PostgreSQL 数据。
-2. `data/` 持久文件。
-3. `.env` 或等价的安全配置备份。
+```bash
+make backup
+make restore-drill
+```
 
-只备份数据库会丢失用户头像、富文本图片和插件文件；只备份 `data/` 会丢失用户、帖子、授权和插件状态。
+只备份数据库会丢失文件；只备份 `data/` 会丢失账号、帖子、授权和状态。

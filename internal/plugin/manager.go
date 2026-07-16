@@ -81,6 +81,9 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("load manifest from %s: %w", dir, err)
 	}
+	if err := ValidateExternalPluginManifest(manifest); err != nil {
+		return nil, fmt.Errorf("external plugin boundary: %w", err)
+	}
 
 	m.catalog.mu.Lock()
 
@@ -765,11 +768,6 @@ func (m *ConfigService) updateConfig(name string, config map[string]interface{})
 	}
 	normalized, err := normalizePluginConfig(p.Manifest, config)
 	if err != nil {
-		m.catalog.mu.Unlock()
-		return nil, err
-	}
-	preservePluginInternalConfig(name, normalized, config, p.Manifest.Config)
-	if err := validatePluginSpecificConfig(name, normalized); err != nil {
 		m.catalog.mu.Unlock()
 		return nil, err
 	}

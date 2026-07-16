@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.resource/v1",
+  "id": "clean-blog",
+  "type": "space-style-pack",
+  "version": "0.1.0",
+  "compatibility": "\u003e=0.10.0 \u003c0.11.0",
+  "entry": "style.yaml",
+  "checksum": "1f5596f932c5d275d012db7ee3860bf50f43a3735d835d99b9bf6e0840f1f101",
+  "source": "campusos-builtin"
+}

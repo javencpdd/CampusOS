@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	modulecatalog "github.com/campusos/CampusOS/modules"
 )
 
 const (
@@ -529,7 +531,7 @@ func ValidatePluginPackageDir(pluginDir string) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := ValidatePluginName(manifest.Name); err != nil {
+	if err := ValidateExternalPluginManifest(manifest); err != nil {
 		return nil, err
 	}
 	if manifest.Runtime == "wasm" {
@@ -547,6 +549,29 @@ func ValidatePluginPackageDir(pluginDir string) (*Manifest, error) {
 		}
 	}
 	return manifest, nil
+}
+
+// ValidateExternalPluginManifest is shared by directory discovery and package
+// import. Legacy builtin manifests remain parseable by migration tooling, but
+// the external Plugin Platform never installs them.
+func ValidateExternalPluginManifest(manifest *Manifest) error {
+	if manifest == nil {
+		return errors.New("plugin manifest is required")
+	}
+	if err := ValidatePluginName(manifest.Name); err != nil {
+		return err
+	}
+	if manifest.Runtime == "builtin" {
+		return errors.New("runtime builtin is reserved for legacy inspection; use modules/<kind>/<id>/module.yaml for compiled CampusOS modules")
+	}
+	catalog, err := modulecatalog.Load()
+	if err != nil {
+		return fmt.Errorf("load compiled module catalog: %w", err)
+	}
+	if catalog.IsReservedExtensionName(manifest.Name) {
+		return fmt.Errorf("plugin name %q is reserved by a compiled CampusOS module or compatibility alias", manifest.Name)
+	}
+	return nil
 }
 
 func ValidatePluginName(name string) error {

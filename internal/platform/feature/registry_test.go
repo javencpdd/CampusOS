@@ -111,3 +111,21 @@ func TestRegistrySeedsLegacyConfigOnceAndThenOwnsUpdates(t *testing.T) {
 		t.Fatalf("feature config was overwritten by legacy source: %#v", registry.Config("space"))
 	}
 }
+
+func TestRegistryPersistsDescriptorDefaultsWithoutPluginSeed(t *testing.T) {
+	store := NewMemoryStore()
+	registry := NewAuthoritativeRegistry(store)
+	defaults := map[string]interface{}{"homepage": map[string]interface{}{"hero_title": "CampusOS"}}
+	if err := registry.Register(Definition{ID: "appearance", Mode: HotGated, DefaultEnabled: true, DefaultConfig: defaults}); err != nil {
+		t.Fatal(err)
+	}
+	if !registry.Enabled("appearance") {
+		t.Fatal("descriptor default did not enable feature")
+	}
+	config := registry.Config("appearance")
+	homepage := config["homepage"].(map[string]interface{})
+	homepage["hero_title"] = "mutated"
+	if got := registry.Config("appearance")["homepage"].(map[string]interface{})["hero_title"]; got != "CampusOS" {
+		t.Fatalf("nested config escaped clone boundary: %v", got)
+	}
+}
