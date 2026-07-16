@@ -39,13 +39,13 @@ func (m *Module) Start(context.Context) error {
 	if !ok {
 		return fmt.Errorf("community category catalog port has incompatible type %T", categoriesValue)
 	}
-	threadsValue, ok := m.app.Lookup("community.content-gateway")
+	threadsValue, ok := m.app.Lookup("community.content-query")
 	if !ok {
-		return errors.New("community content gateway port is unavailable")
+		return errors.New("community content query port is unavailable")
 	}
-	threads, ok := threadsValue.(communityport.ContentGateway)
+	threads, ok := threadsValue.(communityport.ContentQuery)
 	if !ok {
-		return fmt.Errorf("community content gateway port has incompatible type %T", threadsValue)
+		return fmt.Errorf("community content query port has incompatible type %T", threadsValue)
 	}
 	auditValue, ok := m.app.Lookup(portAuditStore)
 	if !ok {

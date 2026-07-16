@@ -1,5 +1,5 @@
 <template>
-  <div class="schedule-view" v-loading="loading">
+  <div ref="scheduleRoot" class="schedule-view" :data-layout-mode="layoutMode" v-loading="loading">
     <el-card class="schedule-card" shadow="never">
       <template #header>
         <div class="schedule-header">
@@ -89,7 +89,31 @@
 
       <el-tabs v-model="viewMode" class="schedule-tabs">
         <el-tab-pane label="周课表" name="week">
-          <div class="schedule-grid" :style="{ '--day-count': String(weekdays.length) }">
+          <div v-if="isCompact" class="schedule-agenda" aria-label="紧凑周课程列表">
+            <section v-for="day in weekdays" :key="day.value" class="agenda-day">
+              <header>
+                <strong>{{ day.label }}</strong>
+                <span>{{ weekDate(selectedWeek, day.value - 1) }}</span>
+              </header>
+              <div v-if="coursesForDay(day.value).length" class="agenda-course-list">
+                <button
+                  v-for="course in coursesForDay(day.value)"
+                  :key="course.id"
+                  class="agenda-course"
+                  :style="{ borderLeftColor: course.color, backgroundColor: softColor(course.color) }"
+                  @click="openCourseDialog(course)"
+                >
+                  <strong>{{ course.name }}</strong>
+                  <span>第 {{ course.start_period }}-{{ course.end_period }} 节</span>
+                  <span v-if="course.location || course.teacher">{{
+                    [course.location, course.teacher].filter(Boolean).join(' · ')
+                  }}</span>
+                </button>
+              </div>
+              <span v-else class="agenda-empty">暂无课程</span>
+            </section>
+          </div>
+          <div v-else class="schedule-grid" :style="{ '--day-count': String(weekdays.length) }">
             <div class="grid-corner">节次</div>
             <div v-for="day in weekdays" :key="day.value" class="grid-day">
               {{ day.label }}
@@ -114,7 +138,30 @@
           </div>
         </el-tab-pane>
         <el-tab-pane label="日历" name="calendar">
-          <div class="calendar-scroll">
+          <div v-if="isCompact" class="calendar-agenda">
+            <el-date-picker v-model="calendarDate" type="date" aria-label="选择日历日期" class="calendar-date-picker" />
+            <section v-for="day in calendarAgendaDays" :key="day.date" class="calendar-agenda-day">
+              <header>
+                <strong>{{ day.label }}</strong>
+                <span>{{ day.date }}</span>
+              </header>
+              <button
+                v-for="course in day.courses"
+                :key="`${day.date}-${course.id}`"
+                class="agenda-course"
+                :style="{ borderLeftColor: course.color, backgroundColor: softColor(course.color) }"
+                @click="openCourseDialog(course)"
+              >
+                <strong>{{ course.name }}</strong>
+                <span>第 {{ course.start_period }}-{{ course.end_period }} 节</span>
+                <span v-if="course.location || course.teacher">{{
+                  [course.location, course.teacher].filter(Boolean).join(' · ')
+                }}</span>
+              </button>
+              <span v-if="!day.courses.length" class="agenda-empty">暂无课程</span>
+            </section>
+          </div>
+          <div v-else class="calendar-scroll">
             <el-calendar v-model="calendarDate" class="schedule-calendar">
               <template #date-cell="{ data }">
                 <div class="calendar-cell" :class="{ 'calendar-cell-selected': data.isSelected }">
@@ -140,7 +187,7 @@
       </el-tabs>
     </el-card>
 
-    <el-drawer v-model="courseDrawer" title="课程" size="420px">
+    <el-drawer v-model="courseDrawer" title="课程" :size="isCompact ? '100%' : '420px'">
       <el-form label-position="top" :model="courseForm">
         <el-form-item label="课程名称" required>
           <el-input v-model="courseForm.name" maxlength="120" />
@@ -192,7 +239,7 @@
       </div>
     </el-drawer>
 
-    <el-drawer v-model="jsonDrawer" title="当前学期课表 JSON" size="55%">
+    <el-drawer v-model="jsonDrawer" title="当前学期课表 JSON" :size="isCompact ? '100%' : '55%'">
       <el-input v-model="rawJson" type="textarea" :rows="24" spellcheck="false" class="json-editor" />
       <div class="drawer-actions">
         <span></span>
@@ -225,6 +272,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { scheduleApi } from '@/modules/schedule/api'
+import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
 
 interface Course {
   id: string
@@ -254,6 +302,8 @@ interface TermSummary {
 }
 
 const loading = ref(false)
+const scheduleRoot = ref<HTMLElement | null>(null)
+const { mode: layoutMode, isCompact } = useLayoutCapability(scheduleRoot)
 const saving = ref(false)
 const importing = ref(false)
 const disabled = ref(false)
@@ -329,6 +379,21 @@ const coursesForSelectedWeek = computed(() =>
     return weeks.length === 0 || weeks.includes(selectedWeek.value)
   }),
 )
+const calendarAgendaDays = computed(() => {
+  const selected = new Date(calendarDate.value)
+  const weekday = selected.getDay() === 0 ? 7 : selected.getDay()
+  selected.setDate(selected.getDate() - weekday + 1)
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(selected)
+    day.setDate(day.getDate() + index)
+    const date = formatDate(day)
+    return {
+      date,
+      label: allWeekdays[index].label,
+      courses: calendarCourses(date),
+    }
+  })
+})
 
 const unwrap = (res: any) => res?.data || res
 
@@ -500,6 +565,11 @@ const handleImport = async (event: Event) => {
 
 const coursesAt = (weekday: number, period: number) =>
   coursesForSelectedWeek.value.filter((course) => course.weekday === weekday && course.start_period === period)
+
+const coursesForDay = (weekday: number) =>
+  coursesForSelectedWeek.value
+    .filter((course) => course.weekday === weekday)
+    .sort((left, right) => left.start_period - right.start_period)
 
 const periodLabel = (period: number) => schedule.settings.period_labels?.[period - 1] || `${period}`
 
@@ -774,6 +844,7 @@ onBeforeUnmount(() => {
 .schedule-view {
   display: grid;
   gap: 16px;
+  container-type: inline-size;
 }
 .schedule-card {
   border-radius: 8px;
@@ -817,6 +888,60 @@ onBeforeUnmount(() => {
   border: 1px solid #ebeef5;
   border-radius: 8px;
   overflow: auto;
+}
+.schedule-agenda,
+.calendar-agenda {
+  display: grid;
+  gap: 10px;
+}
+.agenda-day,
+.calendar-agenda-day {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+}
+.agenda-day > header,
+.calendar-agenda-day > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #303133;
+}
+.agenda-day > header span,
+.calendar-agenda-day > header span,
+.agenda-empty {
+  color: #606266;
+  font-size: 13px;
+}
+.agenda-course-list {
+  display: grid;
+  gap: 8px;
+}
+.agenda-course {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-left: 4px solid;
+  border-radius: 6px;
+  color: #303133;
+  cursor: pointer;
+  text-align: left;
+}
+.agenda-course strong {
+  font-size: 14px;
+}
+.agenda-course span {
+  color: #606266;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.calendar-date-picker {
+  width: 100%;
 }
 .grid-corner,
 .grid-day,
@@ -924,8 +1049,47 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
   }
-  .schedule-grid {
-    grid-template-columns: 60px repeat(var(--day-count), minmax(112px, 1fr));
+  .schedule-meta {
+    gap: 6px 10px;
+    flex-wrap: wrap;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .header-actions .el-button {
+    flex: 1 1 calc(50% - 8px);
+    min-height: 44px;
+  }
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .toolbar > * {
+    min-width: 0;
+    width: 100%;
+  }
+  .toolbar :deep(.el-radio-group) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .toolbar :deep(.el-radio-button__inner) {
+    width: 100%;
+  }
+  .schedule-tabs :deep(.el-tabs__nav) {
+    width: 100%;
+  }
+  .schedule-tabs :deep(.el-tabs__item) {
+    width: 50%;
+    text-align: center;
+  }
+}
+@media (max-width: 420px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+  .header-actions .el-button {
+    flex-basis: 100%;
   }
 }
 </style>

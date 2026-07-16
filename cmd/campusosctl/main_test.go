@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/campusos/CampusOS/internal/plugin"
+	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
 
 func TestPluginInitCreatesScaffold(t *testing.T) {
@@ -36,6 +37,12 @@ func TestPluginInitCreatesScaffold(t *testing.T) {
 	}
 	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
 		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
+	}
+	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.11.0" {
+		t.Fatalf("unexpected CampusOS compatibility range: %q", manifest.Compatibility.CampusOS)
+	}
+	if manifest.Compatibility.SDKGo != campusossdk.SDKVersion {
+		t.Fatalf("unexpected Go SDK compatibility: %q", manifest.Compatibility.SDKGo)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); err != nil {
 		t.Fatalf("expected README: %v", err)

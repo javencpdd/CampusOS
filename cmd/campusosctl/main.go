@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/plugin"
+	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
 
 func main() {
@@ -330,9 +331,9 @@ runtime: %s
 scope: %s
 
 compatibility:
-  campusos: ">=0.6.0 <0.9.0"
+  campusos: ">=0.6.0 <0.11.0"
   host_api: "v1"
-  sdk_go: "v0.6"
+  sdk_go: "%s"
 
 events:
   subscribe:
@@ -351,7 +352,7 @@ config:
 
 config_schema:
 %s
-`, name, name, runtime, scope, config, configSchema)) + "\n"
+`, name, name, runtime, scope, campusossdk.SDKVersion, config, configSchema)) + "\n"
 }
 
 func pluginReadmeTemplate(name string) string {

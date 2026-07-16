@@ -1,5 +1,5 @@
 {
-  "version": "v0.6",
+  "version": "v0.10",
   "routes": [
     {
       "method": "GET",
@@ -8,6 +8,11 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.health",
+      "legacy_aliases": [
+        "http.get.api.v1.health",
+        "httpapi.get.api.v1.health"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -20,6 +25,11 @@
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.home.config",
+      "legacy_aliases": [
+        "http.get.api.v1.home.config",
+        "httpapi.get.api.v1.home.config"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -32,6 +42,11 @@
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.web_themes",
+      "legacy_aliases": [
+        "http.get.api.v1.web_themes",
+        "httpapi.get.api.v1.web_themes"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -44,6 +59,11 @@
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.web_themes.name",
+      "legacy_aliases": [
+        "http.get.api.v1.web_themes.name",
+        "httpapi.get.api.v1.web_themes.name"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -56,6 +76,11 @@
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.web_themes.name.assets.wildcardpath",
+      "legacy_aliases": [
+        "http.get.api.v1.web_themes.name.assets.wildcardpath",
+        "httpapi.get.api.v1.web_themes.name.assets.wildcardpath"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -68,6 +93,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.ui.runtime_manifest",
+      "legacy_aliases": [
+        "http.get.api.v1.ui.runtime_manifest",
+        "httpapi.get.api.v1.ui.runtime_manifest"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -80,6 +110,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.ui.events",
+      "legacy_aliases": [
+        "http.get.api.v1.ui.events",
+        "httpapi.get.api.v1.ui.events"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -92,6 +127,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.richtext.status",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.status",
+        "httpapi.get.api.v1.richtext.status"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -104,6 +144,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.schedule.status",
+      "legacy_aliases": [
+        "http.get.api.v1.schedule.status",
+        "httpapi.get.api.v1.schedule.status"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -116,6 +161,11 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.post.api.v1.auth.register",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.register",
+        "httpapi.post.api.v1.auth.register"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log",
@@ -128,6 +178,11 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.post.api.v1.auth.login",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.login",
+        "httpapi.post.api.v1.auth.login"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log",
@@ -140,6 +195,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.threads",
+      "legacy_aliases": [
+        "http.get.api.v1.threads",
+        "httpapi.get.api.v1.threads"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -152,6 +212,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.threads.id",
+      "legacy_aliases": [
+        "http.get.api.v1.threads.id",
+        "httpapi.get.api.v1.threads.id"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -164,6 +229,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.richtext.articles.id",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.articles.id",
+        "httpapi.get.api.v1.richtext.articles.id"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -176,6 +246,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.richtext.assets.user_id.filename",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.assets.user_id.filename",
+        "httpapi.get.api.v1.richtext.assets.user_id.filename"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -188,6 +263,11 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.users",
+      "legacy_aliases": [
+        "http.get.api.v1.users",
+        "httpapi.get.api.v1.users"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -200,6 +280,11 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.users.id",
+      "legacy_aliases": [
+        "http.get.api.v1.users.id",
+        "httpapi.get.api.v1.users.id"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -212,6 +297,11 @@
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.space.user_id.contents",
+      "legacy_aliases": [
+        "http.get.api.v1.space.user_id.contents",
+        "httpapi.get.api.v1.space.user_id.contents"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -224,6 +314,11 @@
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.space.user_id",
+      "legacy_aliases": [
+        "http.get.api.v1.space.user_id",
+        "httpapi.get.api.v1.space.user_id"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -236,6 +331,11 @@
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.spaces.files.user_id.avatars.filename",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.files.user_id.avatars.filename",
+        "httpapi.get.api.v1.spaces.files.user_id.avatars.filename"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -248,6 +348,11 @@
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.u.username.contents",
+      "legacy_aliases": [
+        "http.get.api.v1.u.username.contents",
+        "httpapi.get.api.v1.u.username.contents"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -260,6 +365,11 @@
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.u.username",
+      "legacy_aliases": [
+        "http.get.api.v1.u.username",
+        "httpapi.get.api.v1.u.username"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -272,6 +382,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.categories",
+      "legacy_aliases": [
+        "http.get.api.v1.categories",
+        "httpapi.get.api.v1.categories"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -284,6 +399,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.categories.id",
+      "legacy_aliases": [
+        "http.get.api.v1.categories.id",
+        "httpapi.get.api.v1.categories.id"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -296,6 +416,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.threads.id.posts",
+      "legacy_aliases": [
+        "http.get.api.v1.threads.id.posts",
+        "httpapi.get.api.v1.threads.id.posts"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -308,6 +433,11 @@
       "module_owner": "core.community",
       "audience": "public",
       "auth": "none",
+      "operation_code": "http.get.api.v1.events",
+      "legacy_aliases": [
+        "http.get.api.v1.events",
+        "httpapi.get.api.v1.events"
+      ],
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
@@ -320,6 +450,11 @@
       "module_owner": "core.identity",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.auth.me",
+      "legacy_aliases": [
+        "http.get.api.v1.auth.me",
+        "httpapi.get.api.v1.auth.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -332,6 +467,11 @@
       "module_owner": "core.identity",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.users.id",
+      "legacy_aliases": [
+        "http.put.api.v1.users.id",
+        "httpapi.put.api.v1.users.id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -344,6 +484,28 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me",
+        "httpapi.get.api.v1.spaces.me"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/spaces/me/contents",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.contents",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.contents",
+        "httpapi.get.api.v1.spaces.me.contents"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -356,6 +518,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.spaces.me",
+      "legacy_aliases": [
+        "http.put.api.v1.spaces.me",
+        "httpapi.put.api.v1.spaces.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -368,6 +535,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.storage",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.storage",
+        "httpapi.get.api.v1.spaces.me.storage"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -380,6 +552,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.avatar",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.avatar",
+        "httpapi.post.api.v1.spaces.me.avatar"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -392,6 +569,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.validate",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.validate",
+        "httpapi.post.api.v1.spaces.me.styles.validate"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -404,6 +586,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.preview",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.preview",
+        "httpapi.post.api.v1.spaces.me.styles.preview"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -416,6 +603,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.export",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.export",
+        "httpapi.post.api.v1.spaces.me.styles.export"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -428,6 +620,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.apply",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.apply",
+        "httpapi.post.api.v1.spaces.me.styles.apply"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -440,6 +637,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.html.validate",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.html.validate",
+        "httpapi.post.api.v1.spaces.me.styles.html.validate"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -452,6 +654,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.styles.html_example",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.styles.html_example",
+        "httpapi.get.api.v1.spaces.me.styles.html_example"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -464,6 +671,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.html.apply",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.html.apply",
+        "httpapi.post.api.v1.spaces.me.styles.html.apply"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -476,6 +688,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.packs.validate",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.packs.validate",
+        "httpapi.post.api.v1.spaces.me.styles.packs.validate"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -488,6 +705,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.styles.packs.example",
+        "httpapi.get.api.v1.spaces.me.styles.packs.example"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -500,6 +722,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example.zip",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.styles.packs.example.zip",
+        "httpapi.get.api.v1.spaces.me.styles.packs.example.zip"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -512,6 +739,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.styles.packs.sources",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.styles.packs.sources",
+        "httpapi.get.api.v1.spaces.me.styles.packs.sources"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -524,6 +756,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.packs.apply",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.packs.apply",
+        "httpapi.post.api.v1.spaces.me.styles.packs.apply"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -536,6 +773,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.packs.apply_source",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.packs.apply_source",
+        "httpapi.post.api.v1.spaces.me.styles.packs.apply_source"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -548,6 +790,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.rollback",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.rollback",
+        "httpapi.post.api.v1.spaces.me.styles.rollback"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -560,6 +807,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.spaces.me.styles.default",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.styles.default",
+        "httpapi.post.api.v1.spaces.me.styles.default"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -572,6 +824,11 @@
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.sync_status",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.sync_status",
+        "httpapi.get.api.v1.spaces.me.sync_status"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -584,6 +841,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.schedule.me",
+      "legacy_aliases": [
+        "http.get.api.v1.schedule.me",
+        "httpapi.get.api.v1.schedule.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -596,6 +858,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.schedule.me.terms",
+      "legacy_aliases": [
+        "http.get.api.v1.schedule.me.terms",
+        "httpapi.get.api.v1.schedule.me.terms"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -608,6 +875,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.schedule.me.terms.activate",
+      "legacy_aliases": [
+        "http.post.api.v1.schedule.me.terms.activate",
+        "httpapi.post.api.v1.schedule.me.terms.activate"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -620,6 +892,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.schedule.me",
+      "legacy_aliases": [
+        "http.put.api.v1.schedule.me",
+        "httpapi.put.api.v1.schedule.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -632,6 +909,11 @@
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.schedule.me.import",
+      "legacy_aliases": [
+        "http.post.api.v1.schedule.me.import",
+        "httpapi.post.api.v1.schedule.me.import"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -644,6 +926,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles",
+        "httpapi.post.api.v1.richtext.articles"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -656,6 +943,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.richtext.articles.id.me",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.articles.id.me",
+        "httpapi.get.api.v1.richtext.articles.id.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -668,6 +960,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.richtext.articles.id",
+      "legacy_aliases": [
+        "http.put.api.v1.richtext.articles.id",
+        "httpapi.put.api.v1.richtext.articles.id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -680,6 +977,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.preview",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.preview",
+        "httpapi.post.api.v1.richtext.preview"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -692,6 +994,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.assets",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.assets",
+        "httpapi.post.api.v1.richtext.assets"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -704,6 +1011,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles.id.publish",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.publish",
+        "httpapi.post.api.v1.richtext.articles.id.publish"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -716,6 +1028,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles.id.offline",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.offline",
+        "httpapi.post.api.v1.richtext.articles.id.offline"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -728,6 +1045,11 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.richtext.articles.id",
+      "legacy_aliases": [
+        "http.delete.api.v1.richtext.articles.id",
+        "httpapi.delete.api.v1.richtext.articles.id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -740,6 +1062,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.threads",
+      "legacy_aliases": [
+        "http.post.api.v1.threads",
+        "httpapi.post.api.v1.threads"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -752,6 +1079,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.threads.id.me",
+      "legacy_aliases": [
+        "http.get.api.v1.threads.id.me",
+        "httpapi.get.api.v1.threads.id.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -764,6 +1096,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.threads.id",
+      "legacy_aliases": [
+        "http.put.api.v1.threads.id",
+        "httpapi.put.api.v1.threads.id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -776,6 +1113,45 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.threads.id",
+      "legacy_aliases": [
+        "http.delete.api.v1.threads.id",
+        "httpapi.delete.api.v1.threads.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/threads/:id/submit-review",
+      "handler": "threadHandler.SubmitForReview",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.threads.id.submit_review",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.submit_review",
+        "httpapi.post.api.v1.threads.id.submit_review"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/threads/:id/trash/restore",
+      "handler": "threadHandler.RestoreOwnTrash",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.threads.id.trash.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.trash.restore",
+        "httpapi.post.api.v1.threads.id.trash.restore"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -788,6 +1164,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.threads.id.posts.me",
+      "legacy_aliases": [
+        "http.get.api.v1.threads.id.posts.me",
+        "httpapi.get.api.v1.threads.id.posts.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -800,6 +1181,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.threads.id.posts",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.posts",
+        "httpapi.post.api.v1.threads.id.posts"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -812,6 +1198,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.threads.id.posts.post_id",
+      "legacy_aliases": [
+        "http.put.api.v1.threads.id.posts.post_id",
+        "httpapi.put.api.v1.threads.id.posts.post_id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -824,6 +1215,11 @@
       "module_owner": "core.community",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.threads.id.posts.post_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.threads.id.posts.post_id",
+        "httpapi.delete.api.v1.threads.id.posts.post_id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -836,6 +1232,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.moderation.status",
+      "legacy_aliases": [
+        "http.get.api.v1.moderation.status",
+        "httpapi.get.api.v1.moderation.status"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -848,6 +1249,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.moderation.me",
+      "legacy_aliases": [
+        "http.get.api.v1.moderation.me",
+        "httpapi.get.api.v1.moderation.me"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -860,6 +1266,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.moderation.threads.id.pin",
+      "legacy_aliases": [
+        "http.post.api.v1.moderation.threads.id.pin",
+        "httpapi.post.api.v1.moderation.threads.id.pin"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -872,6 +1283,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.moderation.threads.id.unpin",
+      "legacy_aliases": [
+        "http.post.api.v1.moderation.threads.id.unpin",
+        "httpapi.post.api.v1.moderation.threads.id.unpin"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -884,6 +1300,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.moderation.threads.id.lock",
+      "legacy_aliases": [
+        "http.post.api.v1.moderation.threads.id.lock",
+        "httpapi.post.api.v1.moderation.threads.id.lock"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -896,6 +1317,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.moderation.threads.id.unlock",
+      "legacy_aliases": [
+        "http.post.api.v1.moderation.threads.id.unlock",
+        "httpapi.post.api.v1.moderation.threads.id.unlock"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -908,6 +1334,11 @@
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.moderation.threads.id.posts.post_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.moderation.threads.id.posts.post_id",
+        "httpapi.delete.api.v1.moderation.threads.id.posts.post_id"
+      ],
       "ownership": "category-membership",
       "scope": "assigned-category",
       "audit": "moderation-audit",
@@ -920,6 +1351,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market",
+        "httpapi.get.api.v1.plugin_market"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -932,6 +1368,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.me",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.me",
+        "httpapi.get.api.v1.plugin_market.me"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -944,6 +1385,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.me.usage",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.me.usage",
+        "httpapi.get.api.v1.plugin_market.me.usage"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -956,6 +1402,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.name.enable",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.name.enable",
+        "httpapi.post.api.v1.plugin_market.name.enable"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -968,6 +1419,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.name.revoke",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.name.revoke",
+        "httpapi.post.api.v1.plugin_market.name.revoke"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -980,6 +1436,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.name.request",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.name.request",
+        "httpapi.post.api.v1.plugin_market.name.request"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -992,6 +1453,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.search",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.search",
+        "httpapi.get.api.v1.plugin_market.search"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1004,6 +1470,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.name.records.collection",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.name.records.collection",
+        "httpapi.post.api.v1.plugin_market.name.records.collection"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1016,6 +1487,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.name.records.collection",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.name.records.collection",
+        "httpapi.get.api.v1.plugin_market.name.records.collection"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1028,6 +1504,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.name.records.collection.key",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.name.records.collection.key",
+        "httpapi.get.api.v1.plugin_market.name.records.collection.key"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1040,6 +1521,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.plugin_market.name.records.collection.key",
+      "legacy_aliases": [
+        "http.put.api.v1.plugin_market.name.records.collection.key",
+        "httpapi.put.api.v1.plugin_market.name.records.collection.key"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1052,6 +1538,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.plugin_market.name.records.collection.key",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_market.name.records.collection.key",
+        "httpapi.delete.api.v1.plugin_market.name.records.collection.key"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1064,6 +1555,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.name.files",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.name.files",
+        "httpapi.post.api.v1.plugin_market.name.files"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1076,6 +1572,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.name.files",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.name.files",
+        "httpapi.get.api.v1.plugin_market.name.files"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1088,6 +1589,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.name.files.file_id.download",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.name.files.file_id.download",
+        "httpapi.get.api.v1.plugin_market.name.files.file_id.download"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1100,6 +1606,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.plugin_market.name.files.file_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_market.name.files.file_id",
+        "httpapi.delete.api.v1.plugin_market.name.files.file_id"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1112,6 +1623,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.name.export",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.name.export",
+        "httpapi.get.api.v1.plugin_market.name.export"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1124,6 +1640,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.plugin_market.name.data",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_market.name.data",
+        "httpapi.delete.api.v1.plugin_market.name.data"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1136,6 +1657,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.get.api.v1.extensions.plugin.wildcardpath",
+      "legacy_aliases": [
+        "http.get.api.v1.extensions.plugin.wildcardpath",
+        "httpapi.get.api.v1.extensions.plugin.wildcardpath"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log-read",
@@ -1148,6 +1674,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.post.api.v1.extensions.plugin.wildcardpath",
+      "legacy_aliases": [
+        "http.post.api.v1.extensions.plugin.wildcardpath",
+        "httpapi.post.api.v1.extensions.plugin.wildcardpath"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1160,6 +1691,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.put.api.v1.extensions.plugin.wildcardpath",
+      "legacy_aliases": [
+        "http.put.api.v1.extensions.plugin.wildcardpath",
+        "httpapi.put.api.v1.extensions.plugin.wildcardpath"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1172,6 +1708,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.patch.api.v1.extensions.plugin.wildcardpath",
+      "legacy_aliases": [
+        "http.patch.api.v1.extensions.plugin.wildcardpath",
+        "httpapi.patch.api.v1.extensions.plugin.wildcardpath"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1184,6 +1725,11 @@
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
+      "operation_code": "http.delete.api.v1.extensions.plugin.wildcardpath",
+      "legacy_aliases": [
+        "http.delete.api.v1.extensions.plugin.wildcardpath",
+        "httpapi.delete.api.v1.extensions.plugin.wildcardpath"
+      ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
@@ -1197,6 +1743,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "user:suspend",
+      "permission_code": "identity.user.suspend",
+      "operation_code": "http.post.api.v1.users.id.suspend",
+      "legacy_aliases": [
+        "http.post.api.v1.users.id.suspend",
+        "httpapi.post.api.v1.users.id.suspend"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1210,6 +1762,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "user:suspend",
+      "permission_code": "identity.user.suspend",
+      "operation_code": "http.post.api.v1.users.id.activate",
+      "legacy_aliases": [
+        "http.post.api.v1.users.id.activate",
+        "httpapi.post.api.v1.users.id.activate"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1223,6 +1781,50 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:read",
+      "permission_code": "community.thread.read",
+      "operation_code": "http.get.api.v1.admin.threads",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.threads",
+        "httpapi.get.api.v1.admin.threads"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/threads/trash",
+      "handler": "threadHandler.AdminListTrash",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:read",
+      "permission_code": "community.thread.read",
+      "operation_code": "http.get.api.v1.admin.threads.trash",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.threads.trash",
+        "httpapi.get.api.v1.admin.threads.trash"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/threads/:id/moderation-actions",
+      "handler": "threadHandler.AdminModerationActions",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:read",
+      "permission_code": "community.thread.read",
+      "operation_code": "http.get.api.v1.admin.threads.id.moderation_actions",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.threads.id.moderation_actions",
+        "httpapi.get.api.v1.admin.threads.id.moderation_actions"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1236,6 +1838,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:pin",
+      "permission_code": "community.thread.pin",
+      "operation_code": "http.post.api.v1.threads.id.pin",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.pin",
+        "httpapi.post.api.v1.threads.id.pin"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1249,6 +1857,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:pin",
+      "permission_code": "community.thread.pin",
+      "operation_code": "http.post.api.v1.threads.id.unpin",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.unpin",
+        "httpapi.post.api.v1.threads.id.unpin"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1262,6 +1876,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:lock",
+      "permission_code": "community.thread.lock",
+      "operation_code": "http.post.api.v1.threads.id.lock",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.lock",
+        "httpapi.post.api.v1.threads.id.lock"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1275,6 +1895,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:lock",
+      "permission_code": "community.thread.lock",
+      "operation_code": "http.post.api.v1.threads.id.unlock",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.unlock",
+        "httpapi.post.api.v1.threads.id.unlock"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1288,6 +1914,126 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "thread:delete",
+      "permission_code": "community.thread.trash",
+      "operation_code": "http.community.thread.trash",
+      "legacy_aliases": [
+        "http.delete.api.v1.admin.threads.id",
+        "httpapi.delete.api.v1.admin.threads.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/:id/take-down",
+      "handler": "threadHandler.AdminTakeDown",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.take_down",
+      "operation_code": "http.community.thread.take_down",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.id.take_down",
+        "httpapi.post.api.v1.admin.threads.id.take_down"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/:id/review/approve",
+      "handler": "threadHandler.AdminApprove",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:write",
+      "permission_code": "community.thread.review",
+      "operation_code": "http.community.thread.review_approve",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.id.review.approve",
+        "httpapi.post.api.v1.admin.threads.id.review.approve"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/:id/review/reject",
+      "handler": "threadHandler.AdminReject",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:write",
+      "permission_code": "community.thread.review",
+      "operation_code": "http.community.thread.review_reject",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.id.review.reject",
+        "httpapi.post.api.v1.admin.threads.id.review.reject"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/:id/direct-restore",
+      "handler": "threadHandler.AdminDirectRestore",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.direct_restore",
+      "operation_code": "http.community.thread.direct_restore",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.id.direct_restore",
+        "httpapi.post.api.v1.admin.threads.id.direct_restore"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/:id/trash/restore",
+      "handler": "threadHandler.AdminRestoreTrash",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.restore",
+      "operation_code": "http.community.thread.restore_trash",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.id.trash.restore",
+        "httpapi.post.api.v1.admin.threads.id.trash.restore"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/threads/:id/purge",
+      "handler": "threadHandler.AdminPurge",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.purge",
+      "operation_code": "http.community.thread.purge",
+      "legacy_aliases": [
+        "http.delete.api.v1.admin.threads.id.purge",
+        "httpapi.delete.api.v1.admin.threads.id.purge"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1300,7 +2046,13 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+permission",
-      "permission": "richtext:moderate",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.take_down",
+      "operation_code": "http.community.richtext.take_down",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.admin.offline",
+        "httpapi.post.api.v1.richtext.articles.id.admin.offline"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1313,7 +2065,13 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+permission",
-      "permission": "richtext:moderate",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.direct_restore",
+      "operation_code": "http.community.richtext.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.admin.restore",
+        "httpapi.post.api.v1.richtext.articles.id.admin.restore"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1326,7 +2084,13 @@
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+permission",
-      "permission": "richtext:moderate",
+      "permission": "thread:delete",
+      "permission_code": "community.thread.trash",
+      "operation_code": "http.community.richtext.trash",
+      "legacy_aliases": [
+        "http.delete.api.v1.richtext.articles.id.admin",
+        "httpapi.delete.api.v1.richtext.articles.id.admin"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1340,6 +2104,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:write",
+      "permission_code": "community.category.write",
+      "operation_code": "http.post.api.v1.categories",
+      "legacy_aliases": [
+        "http.post.api.v1.categories",
+        "httpapi.post.api.v1.categories"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1353,6 +2123,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:write",
+      "permission_code": "community.category.write",
+      "operation_code": "http.put.api.v1.categories.id",
+      "legacy_aliases": [
+        "http.put.api.v1.categories.id",
+        "httpapi.put.api.v1.categories.id"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1366,6 +2142,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:delete",
+      "permission_code": "community.category.delete",
+      "operation_code": "http.delete.api.v1.categories.id",
+      "legacy_aliases": [
+        "http.delete.api.v1.categories.id",
+        "httpapi.delete.api.v1.categories.id"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1379,6 +2161,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins",
+        "httpapi.get.api.v1.plugins"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1392,6 +2180,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name",
+        "httpapi.get.api.v1.plugins.name"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1405,6 +2199,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name.logs",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.logs",
+        "httpapi.get.api.v1.plugins.name.logs"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1418,6 +2218,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name.export",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.export",
+        "httpapi.get.api.v1.plugins.name.export"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1431,6 +2237,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.put.api.v1.plugins.name.config",
+      "legacy_aliases": [
+        "http.put.api.v1.plugins.name.config",
+        "httpapi.put.api.v1.plugins.name.config"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1444,6 +2256,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:lifecycle",
+      "permission_code": "plugin.plugin.lifecycle",
+      "operation_code": "http.post.api.v1.plugins.name.enable",
+      "legacy_aliases": [
+        "http.post.api.v1.plugins.name.enable",
+        "httpapi.post.api.v1.plugins.name.enable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1457,6 +2275,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:lifecycle",
+      "permission_code": "plugin.plugin.lifecycle",
+      "operation_code": "http.post.api.v1.plugins.name.disable",
+      "legacy_aliases": [
+        "http.post.api.v1.plugins.name.disable",
+        "httpapi.post.api.v1.plugins.name.disable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1470,6 +2294,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:lifecycle",
+      "permission_code": "plugin.plugin.lifecycle",
+      "operation_code": "http.post.api.v1.plugins.name.reload",
+      "legacy_aliases": [
+        "http.post.api.v1.plugins.name.reload",
+        "httpapi.post.api.v1.plugins.name.reload"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1483,6 +2313,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:uninstall",
+      "permission_code": "plugin.plugin.uninstall",
+      "operation_code": "http.delete.api.v1.plugins.name",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugins.name",
+        "httpapi.delete.api.v1.plugins.name"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1496,6 +2332,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:install",
+      "permission_code": "plugin.plugin.install",
+      "operation_code": "http.post.api.v1.plugin_packages.import",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_packages.import",
+        "httpapi.post.api.v1.plugin_packages.import"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1509,6 +2351,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:install",
+      "permission_code": "plugin.plugin.install",
+      "operation_code": "http.post.api.v1.plugin_packages.precheck",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_packages.precheck",
+        "httpapi.post.api.v1.plugin_packages.precheck"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1522,6 +2370,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name.snapshots",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.snapshots",
+        "httpapi.get.api.v1.plugins.name.snapshots"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1535,6 +2389,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:install",
+      "permission_code": "plugin.plugin.install",
+      "operation_code": "http.post.api.v1.plugins.name.rollback",
+      "legacy_aliases": [
+        "http.post.api.v1.plugins.name.rollback",
+        "httpapi.post.api.v1.plugins.name.rollback"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1548,6 +2408,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugin_market.admin.overview",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.admin.overview",
+        "httpapi.get.api.v1.plugin_market.admin.overview"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1561,6 +2427,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.put.api.v1.plugin_market.admin.catalog.name",
+      "legacy_aliases": [
+        "http.put.api.v1.plugin_market.admin.catalog.name",
+        "httpapi.put.api.v1.plugin_market.admin.catalog.name"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1574,6 +2446,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugin_market.admin.requests",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.admin.requests",
+        "httpapi.get.api.v1.plugin_market.admin.requests"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1587,6 +2465,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.post.api.v1.plugin_market.admin.requests.id.review",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.admin.requests.id.review",
+        "httpapi.post.api.v1.plugin_market.admin.requests.id.review"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1600,6 +2484,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugin_market.admin.releases.name",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.admin.releases.name",
+        "httpapi.get.api.v1.plugin_market.admin.releases.name"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1613,6 +2503,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugin_market.admin.audits",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.admin.audits",
+        "httpapi.get.api.v1.plugin_market.admin.audits"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1626,6 +2522,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "plugin:install",
+      "permission_code": "plugin.plugin.install",
+      "operation_code": "http.post.api.v1.plugin_market.admin.releases.name",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.admin.releases.name",
+        "httpapi.post.api.v1.plugin_market.admin.releases.name"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1639,6 +2541,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "ai:read",
+      "permission_code": "ai.ai.read",
+      "operation_code": "http.get.api.v1.ai.status",
+      "legacy_aliases": [
+        "http.get.api.v1.ai.status",
+        "httpapi.get.api.v1.ai.status"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1652,6 +2560,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "ai:read",
+      "permission_code": "ai.ai.read",
+      "operation_code": "http.get.api.v1.ai.logs",
+      "legacy_aliases": [
+        "http.get.api.v1.ai.logs",
+        "httpapi.get.api.v1.ai.logs"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1665,6 +2579,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "integration:read",
+      "permission_code": "integration.integration.read",
+      "operation_code": "http.get.api.v1.integrations.overview",
+      "legacy_aliases": [
+        "http.get.api.v1.integrations.overview",
+        "httpapi.get.api.v1.integrations.overview"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1678,6 +2598,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "metrics:read",
+      "permission_code": "platform.metrics.read",
+      "operation_code": "http.get.api.v1.metrics.summary",
+      "legacy_aliases": [
+        "http.get.api.v1.metrics.summary",
+        "httpapi.get.api.v1.metrics.summary"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1691,6 +2617,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "space:manage",
+      "permission_code": "personal_space.space.manage",
+      "operation_code": "http.get.api.v1.spaces.admin.summary",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.admin.summary",
+        "httpapi.get.api.v1.spaces.admin.summary"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1704,6 +2636,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "space:manage",
+      "permission_code": "personal_space.space.manage",
+      "operation_code": "http.post.api.v1.spaces.user_id.disable",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.user_id.disable",
+        "httpapi.post.api.v1.spaces.user_id.disable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1717,6 +2655,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "space:manage",
+      "permission_code": "personal_space.space.manage",
+      "operation_code": "http.post.api.v1.spaces.user_id.enable",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.user_id.enable",
+        "httpapi.post.api.v1.spaces.user_id.enable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1730,6 +2674,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:read",
+      "permission_code": "integration.webhook.read",
+      "operation_code": "http.get.api.v1.webhooks",
+      "legacy_aliases": [
+        "http.get.api.v1.webhooks",
+        "httpapi.get.api.v1.webhooks"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1743,6 +2693,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:write",
+      "permission_code": "integration.webhook.write",
+      "operation_code": "http.post.api.v1.webhooks",
+      "legacy_aliases": [
+        "http.post.api.v1.webhooks",
+        "httpapi.post.api.v1.webhooks"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1756,6 +2712,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:read",
+      "permission_code": "integration.webhook.read",
+      "operation_code": "http.get.api.v1.webhooks.summary",
+      "legacy_aliases": [
+        "http.get.api.v1.webhooks.summary",
+        "httpapi.get.api.v1.webhooks.summary"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1769,6 +2731,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:execute",
+      "permission_code": "integration.webhook.execute",
+      "operation_code": "http.post.api.v1.webhooks.id.test",
+      "legacy_aliases": [
+        "http.post.api.v1.webhooks.id.test",
+        "httpapi.post.api.v1.webhooks.id.test"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1782,6 +2750,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:write",
+      "permission_code": "integration.webhook.write",
+      "operation_code": "http.post.api.v1.webhooks.id.enable",
+      "legacy_aliases": [
+        "http.post.api.v1.webhooks.id.enable",
+        "httpapi.post.api.v1.webhooks.id.enable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1795,6 +2769,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:write",
+      "permission_code": "integration.webhook.write",
+      "operation_code": "http.post.api.v1.webhooks.id.disable",
+      "legacy_aliases": [
+        "http.post.api.v1.webhooks.id.disable",
+        "httpapi.post.api.v1.webhooks.id.disable"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1808,6 +2788,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "webhook:read",
+      "permission_code": "integration.webhook.read",
+      "operation_code": "http.get.api.v1.webhooks.id.deliveries",
+      "legacy_aliases": [
+        "http.get.api.v1.webhooks.id.deliveries",
+        "httpapi.get.api.v1.webhooks.id.deliveries"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1821,6 +2807,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "mcp:read",
+      "permission_code": "integration.mcp.read",
+      "operation_code": "http.get.api.v1.mcp.tools",
+      "legacy_aliases": [
+        "http.get.api.v1.mcp.tools",
+        "httpapi.get.api.v1.mcp.tools"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1834,6 +2826,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "mcp:call",
+      "permission_code": "integration.mcp.call",
+      "operation_code": "http.post.api.v1.mcp.tools.name.call",
+      "legacy_aliases": [
+        "http.post.api.v1.mcp.tools.name.call",
+        "httpapi.post.api.v1.mcp.tools.name.call"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1847,6 +2845,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "mcp:read",
+      "permission_code": "integration.mcp.read",
+      "operation_code": "http.get.api.v1.mcp.audit",
+      "legacy_aliases": [
+        "http.get.api.v1.mcp.audit",
+        "httpapi.get.api.v1.mcp.audit"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1860,6 +2864,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "mcp:read",
+      "permission_code": "integration.mcp.read",
+      "operation_code": "http.get.api.v1.mcp.settings",
+      "legacy_aliases": [
+        "http.get.api.v1.mcp.settings",
+        "httpapi.get.api.v1.mcp.settings"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1873,6 +2883,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "mcp:configure",
+      "permission_code": "integration.mcp.configure",
+      "operation_code": "http.put.api.v1.mcp.settings",
+      "legacy_aliases": [
+        "http.put.api.v1.mcp.settings",
+        "httpapi.put.api.v1.mcp.settings"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1886,6 +2902,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "message:read",
+      "permission_code": "integration.message.read",
+      "operation_code": "http.get.api.v1.messages.adapters",
+      "legacy_aliases": [
+        "http.get.api.v1.messages.adapters",
+        "httpapi.get.api.v1.messages.adapters"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1899,6 +2921,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "message:write",
+      "permission_code": "integration.message.write",
+      "operation_code": "http.post.api.v1.messages.local.inbound",
+      "legacy_aliases": [
+        "http.post.api.v1.messages.local.inbound",
+        "httpapi.post.api.v1.messages.local.inbound"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1912,6 +2940,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "message:read",
+      "permission_code": "integration.message.read",
+      "operation_code": "http.get.api.v1.messages.logs",
+      "legacy_aliases": [
+        "http.get.api.v1.messages.logs",
+        "httpapi.get.api.v1.messages.logs"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1925,6 +2959,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "message:write",
+      "permission_code": "integration.message.write",
+      "operation_code": "http.post.api.v1.messages.bindings",
+      "legacy_aliases": [
+        "http.post.api.v1.messages.bindings",
+        "httpapi.post.api.v1.messages.bindings"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1938,6 +2978,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "message:read",
+      "permission_code": "integration.message.read",
+      "operation_code": "http.get.api.v1.messages.summary",
+      "legacy_aliases": [
+        "http.get.api.v1.messages.summary",
+        "httpapi.get.api.v1.messages.summary"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1951,6 +2997,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "platform_log:read",
+      "permission_code": "platform.platform_log.read",
+      "operation_code": "http.get.api.v1.platform.logs.sources",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.logs.sources",
+        "httpapi.get.api.v1.platform.logs.sources"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1964,6 +3016,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "platform_log:read",
+      "permission_code": "platform.platform_log.read",
+      "operation_code": "http.get.api.v1.platform.logs.stream",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.logs.stream",
+        "httpapi.get.api.v1.platform.logs.stream"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -1977,6 +3035,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.post.api.v1.home.style_packs.validate",
+      "legacy_aliases": [
+        "http.post.api.v1.home.style_packs.validate",
+        "httpapi.post.api.v1.home.style_packs.validate"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -1990,6 +3054,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.get.api.v1.home.style_packs.example",
+      "legacy_aliases": [
+        "http.get.api.v1.home.style_packs.example",
+        "httpapi.get.api.v1.home.style_packs.example"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2003,6 +3073,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.get.api.v1.home.style_packs.example.zip",
+      "legacy_aliases": [
+        "http.get.api.v1.home.style_packs.example.zip",
+        "httpapi.get.api.v1.home.style_packs.example.zip"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2016,6 +3092,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.get.api.v1.home.style_packs.sources",
+      "legacy_aliases": [
+        "http.get.api.v1.home.style_packs.sources",
+        "httpapi.get.api.v1.home.style_packs.sources"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2029,6 +3111,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.post.api.v1.home.style_packs.apply",
+      "legacy_aliases": [
+        "http.post.api.v1.home.style_packs.apply",
+        "httpapi.post.api.v1.home.style_packs.apply"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -2042,6 +3130,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.post.api.v1.home.style_packs.apply_source",
+      "legacy_aliases": [
+        "http.post.api.v1.home.style_packs.apply_source",
+        "httpapi.post.api.v1.home.style_packs.apply_source"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -2055,6 +3149,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.post.api.v1.home.style_packs.rollback",
+      "legacy_aliases": [
+        "http.post.api.v1.home.style_packs.rollback",
+        "httpapi.post.api.v1.home.style_packs.rollback"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -2068,9 +3168,110 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.roles",
+      "legacy_aliases": [
+        "http.get.api.v1.roles",
+        "httpapi.get.api.v1.roles"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/permissions",
+      "handler": "roleHandler.ListPermissionDefinitions",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.permissions",
+      "legacy_aliases": [
+        "http.get.api.v1.permissions",
+        "httpapi.get.api.v1.permissions"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/roles/:id/permissions",
+      "handler": "roleHandler.ListRolePermissions",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.roles.id.permissions",
+      "legacy_aliases": [
+        "http.get.api.v1.roles.id.permissions",
+        "httpapi.get.api.v1.roles.id.permissions"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/authorization-audits",
+      "handler": "roleHandler.ListAuthorizationAudits",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:read",
+      "permission_code": "identity.role.read_audit",
+      "operation_code": "http.identity.role.authorization_audits",
+      "legacy_aliases": [
+        "http.get.api.v1.authorization_audits",
+        "httpapi.get.api.v1.authorization_audits"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/roles",
+      "handler": "roleHandler.CreateCustomRole",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:manage",
+      "permission_code": "identity.role.create",
+      "operation_code": "http.identity.role.create",
+      "legacy_aliases": [
+        "http.post.api.v1.roles",
+        "httpapi.post.api.v1.roles"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/roles/:id/permissions",
+      "handler": "roleHandler.UpdateRolePermissions",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:manage",
+      "permission_code": "identity.role.update_permissions",
+      "operation_code": "http.identity.role.update_permissions",
+      "legacy_aliases": [
+        "http.put.api.v1.roles.id.permissions",
+        "httpapi.put.api.v1.roles.id.permissions"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {
@@ -2081,6 +3282,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.users.id.roles",
+      "legacy_aliases": [
+        "http.get.api.v1.users.id.roles",
+        "httpapi.get.api.v1.users.id.roles"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2094,6 +3301,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:assign",
+      "permission_code": "identity.role.assign",
+      "operation_code": "http.post.api.v1.users.id.roles",
+      "legacy_aliases": [
+        "http.post.api.v1.users.id.roles",
+        "httpapi.post.api.v1.users.id.roles"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -2107,6 +3320,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:revoke",
+      "permission_code": "identity.role.revoke",
+      "operation_code": "http.delete.api.v1.users.id.roles",
+      "legacy_aliases": [
+        "http.delete.api.v1.users.id.roles",
+        "httpapi.delete.api.v1.users.id.roles"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
@@ -2120,6 +3339,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.moderation.admin.moderators",
+      "legacy_aliases": [
+        "http.get.api.v1.moderation.admin.moderators",
+        "httpapi.get.api.v1.moderation.admin.moderators"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2133,6 +3358,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:read",
+      "permission_code": "identity.role.read",
+      "operation_code": "http.get.api.v1.moderation.admin.moderators.id",
+      "legacy_aliases": [
+        "http.get.api.v1.moderation.admin.moderators.id",
+        "httpapi.get.api.v1.moderation.admin.moderators.id"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
@@ -2146,6 +3377,12 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "role:assign",
+      "permission_code": "identity.role.assign",
+      "operation_code": "http.put.api.v1.moderation.admin.moderators.id",
+      "legacy_aliases": [
+        "http.put.api.v1.moderation.admin.moderators.id",
+        "httpapi.put.api.v1.moderation.admin.moderators.id"
+      ],
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",

@@ -123,6 +123,7 @@ type CatalogEntry struct {
 	RiskLevel        string           `json:"risk_level,omitempty"`
 	DataCapabilities []string         `json:"data_capabilities,omitempty"`
 	UserPermissions  []UserPermission `json:"user_permissions,omitempty"`
+	Experience       ExperienceConfig `json:"experience,omitempty"`
 	UpdatedAt        time.Time        `json:"updated_at"`
 }
 
@@ -264,7 +265,7 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		entry := CatalogEntry{
 			PluginName: manifest.Name, DisplayName: manifest.DisplayName, Description: manifest.Description,
 			Version: manifest.Version, Runtime: manifest.Runtime, Visibility: CatalogDraft,
-			PackageChecksum: installed.Checksum, DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, UpdatedAt: s.now(),
+			PackageChecksum: installed.Checksum, RiskLevel: catalogRiskLevel(manifest), DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, Experience: normalizedExperience(manifest), UpdatedAt: s.now(),
 		}
 		if visibility, ok := visibilityByPlugin[manifest.Name]; ok {
 			entry.Visibility = visibility
@@ -274,6 +275,46 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		}
 	}
 	return nil
+}
+
+func normalizedExperience(manifest *Manifest) ExperienceConfig {
+	if manifest == nil {
+		return ExperienceConfig{}
+	}
+	experience := manifest.Experience
+	if experience.Maintainer == "" {
+		experience.Maintainer = manifest.Author
+	}
+	if experience.DataUse == "" {
+		if len(manifest.ManagedData.Collections) == 0 && !manifest.Files.Enabled {
+			experience.DataUse = "不保存个人数据。"
+		} else {
+			experience.DataUse = "仅使用你在授权时确认的受管数据和个人文件。"
+		}
+	}
+	if experience.RiskSummary == "" {
+		experience.RiskSummary = "权限可随时撤销；系统级能力仍由管理员审核。"
+	}
+	if experience.DisabledBehavior == "" {
+		experience.DisabledBehavior = "停用或撤销授权不会自动删除你的数据；可在插件中心导出或删除。"
+	}
+	return experience
+}
+
+func catalogRiskLevel(manifest *Manifest) string {
+	if manifest == nil {
+		return "unknown"
+	}
+	level := "low"
+	for _, permission := range manifest.Permissions.User {
+		switch permission.Risk {
+		case "high":
+			return "high"
+		case "medium":
+			level = "medium"
+		}
+	}
+	return level
 }
 
 func (s *MarketService) SetCatalogVisibility(ctx context.Context, pluginName, visibility, actorID string) (CatalogEntry, error) {

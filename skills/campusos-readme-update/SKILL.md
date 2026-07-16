@@ -100,6 +100,8 @@ Prefer updating an existing canonical document over creating another overlapping
 4. Replace the README detail with a concise statement and link, or remove it when the docs portal already provides the needed route.
 5. Synchronize current baseline and progress links only when the active stage actually advanced.
 
+The structure audit compares the server startup version with `README.md`, `docs/README.md`, the docs-site home page, and the docs-site introduction. Update those entry surfaces together; historical compatibility filenames and versioned reference pages do not need renaming.
+
 Avoid copying the same table or command catalog into README and docs. The detailed document is canonical; README is a summary and route.
 
 ### 6. Validate Documentation Integrity

@@ -23,6 +23,8 @@ type CurrentUser interface {
 }
 type Authorization interface {
 	Check(context.Context, string, string, string) (bool, error)
+	CheckCode(context.Context, string, string) (bool, error)
+	CheckCodeScoped(context.Context, string, string, string, int64) (bool, error)
 }
 type RoleAdministration interface {
 	Assign(context.Context, string, string, string) error
@@ -41,4 +43,5 @@ type ModerationPolicy interface {
 	CheckScoped(context.Context, string, string, string, string, int64) (bool, error)
 	ListRoleAssignments(context.Context, string, string) ([]RoleAssignment, error)
 	ReplaceCategoryRoleScopes(context.Context, string, string, []int64) (bool, error)
+	ReplaceCategoryRoleScopesByActor(context.Context, string, string, string, []int64) (bool, error)
 }

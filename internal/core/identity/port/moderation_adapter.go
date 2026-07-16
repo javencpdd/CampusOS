@@ -39,3 +39,7 @@ func (p *PermissionModerationPolicy) ListRoleAssignments(ctx context.Context, us
 func (p *PermissionModerationPolicy) ReplaceCategoryRoleScopes(ctx context.Context, userID, roleName string, categoryIDs []int64) (bool, error) {
 	return p.permissions.ReplaceCategoryRoleScopes(ctx, userID, roleName, categoryIDs)
 }
+
+func (p *PermissionModerationPolicy) ReplaceCategoryRoleScopesByActor(ctx context.Context, actorID, userID, roleName string, categoryIDs []int64) (bool, error) {
+	return p.permissions.ReplaceCategoryRoleScopesByActor(ctx, actorID, userID, roleName, categoryIDs)
+}

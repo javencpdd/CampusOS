@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	communityport "github.com/campusos/CampusOS/internal/community/port"
 	identitydomain "github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/stylepack"
 	"github.com/campusos/CampusOS/pkg/idgen"
@@ -27,12 +28,13 @@ type UserLookup interface {
 }
 
 type Service struct {
-	repo        Repository
-	contentRepo ContentRepository
-	threadRepo  ThreadRepository
-	users       UserLookup
-	fileStore   *LocalFileStore
-	enabled     func() bool
+	repo         Repository
+	contentRepo  ContentRepository
+	threadRepo   ThreadRepository
+	contentQuery communityport.ContentQuery
+	users        UserLookup
+	fileStore    *LocalFileStore
+	enabled      func() bool
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -47,6 +49,13 @@ func NewService(repo Repository, users UserLookup, contentRepos ...ContentReposi
 
 func (s *Service) SetThreadRepository(repo ThreadRepository) {
 	s.threadRepo = repo
+}
+
+// SetContentQuery switches public profile reads to Community's canonical
+// visibility query. The legacy thread repository remains only for projection
+// backfill and shadow comparison during the deprecation period.
+func (s *Service) SetContentQuery(query communityport.ContentQuery) {
+	s.contentQuery = query
 }
 
 func (s *Service) SetFileStore(store *LocalFileStore) {

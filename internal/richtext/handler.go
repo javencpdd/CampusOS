@@ -3,6 +3,7 @@ package richtext
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -106,7 +107,22 @@ func (h *Handler) AdminOffline(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.svc.AdminOffline(c.Request.Context(), c.Param("id"), adminID)
+	reason := "administrator marked richtext article offline"
+	if c.Request.ContentLength > 0 {
+		var req struct {
+			Reason string `json:"reason"`
+		}
+		if err := requestutil.BindJSONStrict(c, &req); err != nil {
+			response.Error(c, http.StatusBadRequest, 10001, "invalid moderation request: "+err.Error())
+			return
+		}
+		if strings.TrimSpace(req.Reason) == "" {
+			response.Error(c, http.StatusBadRequest, 10001, "moderation reason is required")
+			return
+		}
+		reason = strings.TrimSpace(req.Reason)
+	}
+	result, err := h.svc.AdminOfflineWithReason(c.Request.Context(), c.Param("id"), adminID, reason)
 	if err != nil {
 		writeRichTextError(c, err)
 		return

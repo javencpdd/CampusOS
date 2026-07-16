@@ -17,7 +17,19 @@ INSERT INTO campusos_audit_results VALUES
 ('duplicate active email', 'duplicate', (SELECT count(*) FROM (SELECT email FROM users WHERE deleted_at IS NULL GROUP BY email HAVING count(*) > 1) d)),
 ('invalid users.status', 'status', (SELECT count(*) FROM users WHERE status NOT IN ('active', 'suspended', 'deactivated'))),
 ('invalid threads.status', 'status', (SELECT count(*) FROM threads WHERE status NOT IN ('draft', 'pending_review', 'published', 'private', 'archived'))),
+('invalid threads.publication_status', 'status', (SELECT count(*) FROM threads WHERE publication_status NOT IN ('draft', 'published', 'private'))),
+('invalid threads.moderation_status', 'status', (SELECT count(*) FROM threads WHERE moderation_status NOT IN ('clear', 'pending', 'rejected', 'taken_down'))),
+('invalid threads.deletion_status', 'status', (SELECT count(*) FROM threads WHERE deletion_status NOT IN ('active', 'trashed', 'purged'))),
+('deleted thread not purged in governance state', 'status', (SELECT count(*) FROM threads WHERE deleted_at IS NOT NULL AND deletion_status <> 'purged')),
 ('invalid posts.status', 'status', (SELECT count(*) FROM posts WHERE status NOT IN ('published', 'deleted'))),
+('content_revisions.thread_id orphan', 'orphan', (SELECT count(*) FROM content_revisions cr LEFT JOIN threads t ON t.id = cr.thread_id WHERE t.id IS NULL)),
+('content_moderation_cases.thread_id orphan', 'orphan', (SELECT count(*) FROM content_moderation_cases mc LEFT JOIN threads t ON t.id = mc.thread_id WHERE t.id IS NULL)),
+('content_moderation_actions.thread_id orphan', 'orphan', (SELECT count(*) FROM content_moderation_actions ma LEFT JOIN threads t ON t.id = ma.thread_id WHERE t.id IS NULL)),
+('content_moderation_actions.case_id orphan', 'orphan', (SELECT count(*) FROM content_moderation_actions ma LEFT JOIN content_moderation_cases mc ON mc.id = ma.case_id WHERE ma.case_id IS NOT NULL AND mc.id IS NULL)),
+('active role_permissions role orphan', 'orphan', (SELECT count(*) FROM role_permissions rp LEFT JOIN roles r ON r.id = rp.role_id WHERE rp.deleted_at IS NULL AND r.id IS NULL)),
+('active role_permissions definition orphan', 'orphan', (SELECT count(*) FROM role_permissions rp LEFT JOIN permission_definitions pd ON pd.id = rp.permission_id WHERE rp.deleted_at IS NULL AND pd.id IS NULL)),
+('active route_permission_bindings operation orphan', 'orphan', (SELECT count(*) FROM route_permission_bindings rb LEFT JOIN route_operations ro ON ro.id = rb.route_operation_id WHERE rb.deleted_at IS NULL AND ro.id IS NULL)),
+('active route_permission_bindings definition orphan', 'orphan', (SELECT count(*) FROM route_permission_bindings rb LEFT JOIN permission_definitions pd ON pd.id = rb.permission_id WHERE rb.deleted_at IS NULL AND pd.id IS NULL)),
 ('negative content counter', 'counter', (
     SELECT (SELECT count(*) FROM categories WHERE thread_count < 0 OR post_count < 0)
          + (SELECT count(*) FROM threads WHERE view_count < 0 OR reply_count < 0 OR like_count < 0)

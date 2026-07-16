@@ -31,6 +31,7 @@ Default policy targets enforced by `audit_readme_structure.py`:
 - No more than 8 level-two sections.
 - Must include current status, quick start, and documentation sections.
 - Must link `docs/README.md`.
+- Root README, docs portal, and docs-site entry pages must match the server startup version.
 - Must not add detailed-reference headings such as full API lists, migration history, troubleshooting, plugin development tutorials, or configuration reference.
 
 These are guardrails, not a target size. Prefer a shorter README when navigation remains clear.

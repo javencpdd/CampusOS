@@ -59,11 +59,13 @@ def architecture_view(root: Path) -> tuple[str, set[str], list[tuple[str, str, s
     source = read(root / "admin/src/modules/architecture/pages/SystemArchitectureView.vue")
     tables_block = block(source, "const databaseTables", "const relations")
     relations_block = block(source, "const relations", "const storageRows")
-    tables = set(re.findall(r"\bname:\s*'([A-Za-z_][A-Za-z0-9_]*)'", tables_block))
+    # Vue/TypeScript formatters are free to use either single or double
+    # quotes. The architecture contract is the object shape, not formatting.
+    tables = set(re.findall(r"\bname:\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]", tables_block))
     relations = [
         (match.group("id"), match.group("source"), match.group("target"))
         for match in re.finditer(
-            r"\bid:\s*'(?P<id>[^']+)'\s*,\s*source:\s*'(?P<source>[A-Za-z_][A-Za-z0-9_]*)'\s*,\s*target:\s*'(?P<target>[A-Za-z_][A-Za-z0-9_]*)'",
+            r"\bid:\s*['\"](?P<id>[^'\"]+)['\"]\s*,\s*source:\s*['\"](?P<source>[A-Za-z_][A-Za-z0-9_]*)['\"]\s*,\s*target:\s*['\"](?P<target>[A-Za-z_][A-Za-z0-9_]*)['\"]",
             relations_block,
         )
     ]
@@ -95,7 +97,9 @@ def report(root: Path) -> dict[str, object]:
         "latest_migration": latest_version,
         "advertised_latest_migration": advertised.group(1) if advertised else "",
         "migration_header_current": bool(advertised and advertised.group(1) == latest_version),
-        "migration_timeline_current": f"version: '{latest_version}'" in view_source,
+        "migration_timeline_current": bool(
+            re.search(rf"version:\s*['\"]{re.escape(latest_version)}['\"]", view_source)
+        ),
         "foreign_key_wording_current": not foreign_keys or "迁移中没有声明外键" not in view_source,
     }
 

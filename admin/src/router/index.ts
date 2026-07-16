@@ -9,7 +9,7 @@ import { pluginRoutes } from '../modules/plugins/routes'
 
 const legacyRedirects = [
   '/admin', '/admin/users', '/admin/moderators', '/admin/threads', '/admin/categories', '/admin/docs', '/admin/architecture',
-  '/admin/plugins', '/admin/features', '/admin/integrations', '/admin/reviews', '/admin/events', '/admin/platform-logs',
+  '/admin/plugins', '/admin/plugin-center', '/admin/features', '/admin/extensions', '/admin/permissions', '/admin/integrations', '/admin/reviews', '/admin/events', '/admin/platform-logs',
 ]
 
 const router = createRouter({

@@ -25,12 +25,16 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 	if contentFormat == "" {
 		contentFormat = "markdown"
 	}
-	query := `INSERT INTO threads (id, title, content, content_format, author_id, author_name, category_id, status, tags, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+	thread.NormalizeContentState()
+	query := `INSERT INTO threads (id, title, content, content_format, author_id, author_name, category_id, status,
+		publication_status, moderation_status, deletion_status, moderation_reason, moderation_by, moderation_at, current_revision,
+		tags, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NULLIF($13, '')::bigint, $14, $15, $16, $17, $18)`
 	_, err := r.pool.Exec(ctx, query,
 		thread.ID, thread.Title, thread.Content, contentFormat,
 		thread.AuthorID, thread.AuthorName, thread.CategoryID,
-		thread.Status, thread.Tags, thread.CreatedAt, thread.UpdatedAt)
+		thread.Status, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
+		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, thread.Tags, thread.CreatedAt, thread.UpdatedAt)
 	return err
 }
 
@@ -48,9 +52,10 @@ func (r *PgThreadRepository) GetByID(ctx context.Context, id string) (*domain.Th
 func (r *PgThreadRepository) IncrementViewCount(ctx context.Context, id string) (*domain.Thread, error) {
 	query := `UPDATE threads
 		SET view_count = view_count + 1
-		WHERE id = $1 AND deleted_at IS NULL
+		WHERE id = $1 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'active'
 		RETURNING id, title, content, content_format, author_id, author_name, category_id, status,
-			is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at`
+			publication_status, moderation_status, deletion_status, moderation_reason, COALESCE(moderation_by::text, ''), moderation_at, current_revision,
+			is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at`
 	t, err := scanThread(r.pool.QueryRow(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -65,7 +70,7 @@ func (r *PgThreadRepository) IncrementReplyCount(ctx context.Context, id string,
 	query := `UPDATE threads
 		SET reply_count = GREATEST(reply_count + $2, 0),
 			updated_at = NOW()
-		WHERE id = $1 AND deleted_at IS NULL`
+		WHERE id = $1 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'active'`
 	tag, err := r.pool.Exec(ctx, query, id, delta)
 	if err != nil {
 		return err
@@ -80,7 +85,6 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 	query := `UPDATE threads
 		SET title=$1,
 			content=$2,
-			content_format=$14,
 			category_id=$3,
 			status=$4,
 			is_pinned=$5,
@@ -90,17 +94,27 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 			reply_count=$9,
 			like_count=$10,
 			tags=$11,
-			updated_at=$12
-		WHERE id = $13 AND deleted_at IS NULL`
+			content_format=$12,
+			publication_status=$13,
+			moderation_status=$14,
+			deletion_status=$15,
+			moderation_reason=$16,
+			moderation_by=NULLIF($17, '')::bigint,
+			moderation_at=$18,
+			current_revision=$19,
+			updated_at=$20
+		WHERE id = $21 AND deleted_at IS NULL`
 	contentFormat := thread.ContentFormat
 	if contentFormat == "" {
 		contentFormat = "markdown"
 	}
+	thread.NormalizeContentState()
 	tag, err := r.pool.Exec(ctx, query,
 		thread.Title, thread.Content, thread.CategoryID, thread.Status,
 		thread.IsPinned, thread.IsLocked, thread.IsHighlighted,
 		thread.ViewCount, thread.ReplyCount, thread.LikeCount, thread.Tags,
-		time.Now().UTC(), thread.ID, contentFormat,
+		contentFormat, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
+		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, time.Now().UTC(), thread.ID,
 	)
 	if err != nil {
 		return err
@@ -112,7 +126,23 @@ func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) 
 }
 
 func (r *PgThreadRepository) Delete(ctx context.Context, id string) error {
-	query := `UPDATE threads SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL`
+	query := `UPDATE threads
+		SET deletion_status='trashed', status='archived', updated_at=$1
+		WHERE id=$2 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'active'`
+	tag, err := r.pool.Exec(ctx, query, time.Now().UTC(), id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrThreadNotFound
+	}
+	return nil
+}
+
+func (r *PgThreadRepository) Purge(ctx context.Context, id string) error {
+	query := `UPDATE threads
+		SET deletion_status='purged', status='archived', deleted_at=$1, updated_at=$1
+		WHERE id=$2 AND deleted_at IS NULL AND COALESCE(deletion_status, 'active') = 'trashed'`
 	tag, err := r.pool.Exec(ctx, query, time.Now().UTC(), id)
 	if err != nil {
 		return err
@@ -133,6 +163,11 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		args = append(args, filter.CategoryID)
 		argIdx++
 	}
+	if len(filter.CategoryIDs) > 0 {
+		where = append(where, fmt.Sprintf("category_id = ANY($%d::text[])", argIdx))
+		args = append(args, filter.CategoryIDs)
+		argIdx++
+	}
 	if filter.AuthorID != "" {
 		where = append(where, fmt.Sprintf("author_id = $%d", argIdx))
 		args = append(args, filter.AuthorID)
@@ -147,6 +182,33 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		where = append(where, fmt.Sprintf("content_format = $%d", argIdx))
 		args = append(args, filter.ContentFormat)
 		argIdx++
+	}
+	if filter.Tag != "" {
+		where = append(where, fmt.Sprintf("tags @> ARRAY[$%d]::text[]", argIdx))
+		args = append(args, filter.Tag)
+		argIdx++
+	}
+	if len(filter.AnyTags) > 0 {
+		where = append(where, fmt.Sprintf("tags && $%d::text[]", argIdx))
+		args = append(args, filter.AnyTags)
+		argIdx++
+	}
+	if filter.PublicationStatus != "" {
+		where = append(where, fmt.Sprintf("publication_status = $%d", argIdx))
+		args = append(args, filter.PublicationStatus)
+		argIdx++
+	}
+	if filter.ModerationStatus != "" {
+		where = append(where, fmt.Sprintf("moderation_status = $%d", argIdx))
+		args = append(args, filter.ModerationStatus)
+		argIdx++
+	}
+	if filter.DeletionStatus != "" {
+		where = append(where, fmt.Sprintf("deletion_status = $%d", argIdx))
+		args = append(args, filter.DeletionStatus)
+		argIdx++
+	} else if !filter.IncludeTrashed {
+		where = append(where, "COALESCE(deletion_status, 'active') = 'active'")
 	}
 	if filter.Keyword != "" {
 		where = append(where, fmt.Sprintf("(title ILIKE $%d OR content ILIKE $%d)", argIdx, argIdx))
@@ -174,7 +236,8 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 	offset := (page - 1) * pageSize
 
 	query := fmt.Sprintf(`SELECT id, title, content, content_format, author_id, author_name, category_id, status,
-		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
+		publication_status, moderation_status, deletion_status, moderation_reason, COALESCE(moderation_by::text, ''), moderation_at, current_revision,
+		is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at
 		FROM threads WHERE %s ORDER BY is_pinned DESC, created_at DESC LIMIT $%d OFFSET $%d`,
 		whereStr, argIdx, argIdx+1)
 	args = append(args, pageSize, offset)
@@ -189,10 +252,12 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 	for rows.Next() {
 		t := &domain.Thread{}
 		if err := rows.Scan(&t.ID, &t.Title, &t.Content, &t.ContentFormat, &t.AuthorID, &t.AuthorName, &t.CategoryID,
-			&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
+			&t.Status, &t.PublicationStatus, &t.ModerationStatus, &t.DeletionStatus, &t.ModerationReason, &t.ModerationBy, &t.ModerationAt, &t.CurrentRevision,
+			&t.IsPinned, &t.IsLocked, &t.IsHighlighted, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
 			&t.Tags, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
+		t.NormalizeContentState()
 		threads = append(threads, t)
 	}
 	return threads, total, nil
@@ -204,7 +269,8 @@ type rowScanner interface {
 
 func selectThreadSQL(where string) string {
 	return `SELECT id, title, content, content_format, author_id, author_name, category_id, status,
-		is_pinned, is_locked, view_count, reply_count, like_count, tags, created_at, updated_at
+		publication_status, moderation_status, deletion_status, moderation_reason, COALESCE(moderation_by::text, ''), moderation_at, current_revision,
+		is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at
 		FROM threads WHERE ` + where + ` AND deleted_at IS NULL`
 }
 
@@ -212,8 +278,12 @@ func scanThread(row rowScanner) (*domain.Thread, error) {
 	t := &domain.Thread{}
 	err := row.Scan(
 		&t.ID, &t.Title, &t.Content, &t.ContentFormat, &t.AuthorID, &t.AuthorName, &t.CategoryID,
-		&t.Status, &t.IsPinned, &t.IsLocked, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
+		&t.Status, &t.PublicationStatus, &t.ModerationStatus, &t.DeletionStatus, &t.ModerationReason, &t.ModerationBy, &t.ModerationAt, &t.CurrentRevision,
+		&t.IsPinned, &t.IsLocked, &t.IsHighlighted, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
 		&t.Tags, &t.CreatedAt, &t.UpdatedAt,
 	)
+	if err == nil {
+		t.NormalizeContentState()
+	}
 	return t, err
 }

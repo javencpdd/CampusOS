@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links architecture-check frontend-budget database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -37,6 +37,13 @@ contracts-check:
 docs-links:
 	python3 scripts/check-doc-links.py
 
+readme-check:
+	python3 skills/campusos-readme-update/scripts/audit_readme_structure.py --root .
+	python3 skills/campusos-readme-update/scripts/check_readme_links.py --root . README.md docs/README.md
+
+version-check:
+	python3 scripts/check-version-sync.py
+
 architecture-check:
 	python3 scripts/check-architecture-boundaries.py
 	python3 scripts/check-frontend-boundaries.py
@@ -44,6 +51,12 @@ architecture-check:
 
 frontend-budget:
 	python3 scripts/check-frontend-bundles.py
+
+data-governance-check:
+	python3 scripts/check-data-governance.py
+
+generated-files-check:
+	python3 scripts/check-generated-files.py
 
 database-check:
 	./scripts/database-check.sh all

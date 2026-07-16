@@ -99,6 +99,9 @@ func (s *Service) ListPublicContentsByUserID(ctx context.Context, userID string,
 	if err := s.ensureEnabled(); err != nil {
 		return nil, 0, err
 	}
+	if s.contentQuery != nil {
+		return s.listPublicContentsFromFact(ctx, userID, page, pageSize)
+	}
 	if s.contentRepo == nil {
 		return nil, 0, ErrContentRepositoryUnavailable
 	}
@@ -116,7 +119,9 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 		return nil, 0, err
 	}
 	if s.contentRepo == nil {
-		return nil, 0, ErrContentRepositoryUnavailable
+		if s.contentQuery == nil {
+			return nil, 0, ErrContentRepositoryUnavailable
+		}
 	}
 	user, err := s.users.GetByUsername(ctx, username)
 	if err != nil {
@@ -125,10 +130,88 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 	if _, err := s.getPublicSpace(ctx, user); err != nil {
 		return nil, 0, err
 	}
+	if s.contentQuery != nil {
+		return s.listPublicContentsFromFact(ctx, user.ID, page, pageSize)
+	}
 	if err := s.BackfillUserContents(ctx, user.ID); err != nil {
 		return nil, 0, err
 	}
 	return s.contentRepo.ListContentsByUserID(ctx, user.ID, normalizePage(page), normalizePageSize(pageSize))
+}
+
+// ListOwnContents returns the homepage owner's active content from the
+// Community fact source. It deliberately differs from the public profile
+// query: the owner may see draft, private, pending, rejected and taken-down
+// items together with their moderation reason, while visitors never receive
+// those states through the public endpoints.
+func (s *Service) ListOwnContents(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, 0, err
+	}
+	if _, err := s.users.GetByID(ctx, userID); err != nil {
+		return nil, 0, fmt.Errorf("get owner: %w", err)
+	}
+	if s.contentQuery != nil {
+		return s.listOwnContentsFromFact(ctx, userID, page, pageSize)
+	}
+	if s.contentRepo == nil {
+		return nil, 0, ErrContentRepositoryUnavailable
+	}
+	// Legacy adapters only contain public projection rows. They are retained
+	// for rolling upgrades; production composition always supplies ContentQuery.
+	if err := s.BackfillUserContents(ctx, userID); err != nil {
+		return nil, 0, err
+	}
+	return s.contentRepo.ListContentsByUserID(ctx, userID, normalizePage(page), normalizePageSize(pageSize))
+}
+
+func (s *Service) listPublicContentsFromFact(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	space, err := s.GetPublicByUserID(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if space.Space == nil || !space.Space.SyncEnabled {
+		return []*SpaceContent{}, 0, nil
+	}
+	threads, total, err := s.contentQuery.ListPublicThreads(ctx, communitydomain.ThreadListFilter{
+		AuthorID:    userID,
+		CategoryIDs: normalizedFilterValues(space.Space.SyncCategories),
+		AnyTags:     normalizedFilterValues(space.Space.SyncTags),
+		Page:        normalizePage(page),
+		PageSize:    normalizePageSize(pageSize),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("query public profile content: %w", err)
+	}
+	contents := make([]*SpaceContent, 0, len(threads))
+	for _, thread := range threads {
+		contents = append(contents, contentFromThread(thread))
+	}
+	return contents, total, nil
+}
+
+func (s *Service) listOwnContentsFromFact(ctx context.Context, userID string, page, pageSize int) ([]*SpaceContent, int64, error) {
+	space, err := s.GetOwnSpace(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if space.Space == nil || !space.Space.SyncEnabled {
+		return []*SpaceContent{}, 0, nil
+	}
+	threads, total, err := s.contentQuery.ListAuthorThreads(ctx, userID, communitydomain.ThreadListFilter{
+		CategoryIDs: normalizedFilterValues(space.Space.SyncCategories),
+		AnyTags:     normalizedFilterValues(space.Space.SyncTags),
+		Page:        normalizePage(page),
+		PageSize:    normalizePageSize(pageSize),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("query owner profile content: %w", err)
+	}
+	contents := make([]*SpaceContent, 0, len(threads))
+	for _, thread := range threads {
+		contents = append(contents, contentFromThread(thread))
+	}
+	return contents, total, nil
 }
 
 func (s *Service) BackfillUserContents(ctx context.Context, userID string) error {
@@ -190,13 +273,55 @@ func shouldSyncThread(space *Space, thread *communitydomain.Thread) bool {
 	if space.Visibility != VisibilityPublic || !space.SyncEnabled {
 		return false
 	}
-	if thread.Status != communitydomain.ThreadStatusPublished {
+	if !thread.IsPublic() {
 		return false
 	}
 	if !matchesCategory(space.SyncCategories, thread.CategoryID) {
 		return false
 	}
 	return matchesAnyTag(space.SyncTags, thread.Tags)
+}
+
+func contentFromThread(thread *communitydomain.Thread) *SpaceContent {
+	if thread == nil {
+		return nil
+	}
+	return &SpaceContent{
+		ID:                thread.ID,
+		UserID:            thread.AuthorID,
+		ThreadID:          thread.ID,
+		Title:             strings.TrimSpace(thread.Title),
+		Excerpt:           excerpt(thread.Content, 240),
+		AuthorName:        thread.AuthorName,
+		CategoryID:        thread.CategoryID,
+		Tags:              normalizedTags(thread.Tags),
+		Status:            string(thread.Status),
+		PublicationStatus: string(thread.PublicationStatus),
+		ModerationStatus:  string(thread.ModerationStatus),
+		DeletionStatus:    string(thread.DeletionStatus),
+		ModerationReason:  thread.ModerationReason,
+		ThreadCreatedAt:   thread.CreatedAt,
+		ThreadUpdatedAt:   thread.UpdatedAt,
+		SyncedAt:          thread.UpdatedAt,
+	}
+}
+
+func normalizedFilterValues(values []string) []string {
+	items := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		items = append(items, value)
+	}
+	return items
 }
 
 func matchesCategory(allowed []string, categoryID string) bool {

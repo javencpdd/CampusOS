@@ -3,17 +3,24 @@ set -euo pipefail
 
 cleanup() {
   rm -f examples/plugins/grpc-example/plugin
+  rm -f examples/plugins/v2-managed-example/plugin
 }
 trap cleanup EXIT
 
 echo "==> contracts"
 go run ./cmd/campusos-contracts --check
+make version-check
 
 echo "==> documentation links"
 python3 scripts/check-doc-links.py
+make readme-check
 
 echo "==> architecture boundaries"
 make architecture-check
+
+echo "==> data and generated file governance"
+make data-governance-check
+make generated-files-check
 
 echo "==> Go tests"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
@@ -26,6 +33,8 @@ python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.p
 echo "==> plugin templates"
 go run ./cmd/campusosctl plugin dev examples/plugins/builtin-example --json
 go run ./cmd/campusosctl plugin dev examples/plugins/grpc-example --json
+go run ./cmd/campusosctl plugin dev examples/plugins/v2-managed-example --json
+(cd examples/plugins/v2-managed-example && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
 
 echo "==> frontend builds"
@@ -51,4 +60,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.9 release check passed"
+echo "CampusOS v0.10 release check passed"

@@ -57,13 +57,13 @@ type Service struct {
 	mu         sync.RWMutex
 	enabled    bool
 	categories communityport.CategoryCatalog
-	threads    communityport.ContentGateway
+	threads    communityport.ContentQuery
 	audit      AuditStore
 	metrics    *observability.Collector
 	tools      map[string]Tool
 }
 
-func NewService(categories communityport.CategoryCatalog, threads communityport.ContentGateway, audit AuditStore, metrics *observability.Collector) *Service {
+func NewService(categories communityport.CategoryCatalog, threads communityport.ContentQuery, audit AuditStore, metrics *observability.Collector) *Service {
 	s := &Service{
 		enabled:    true,
 		categories: categories,
@@ -160,7 +160,7 @@ func (s *Service) call(ctx context.Context, name string, args map[string]interfa
 		if pageSize > 50 {
 			pageSize = 50
 		}
-		threads, total, err := s.threads.ListThreads(ctx, domain.ThreadListFilter{
+		threads, total, err := s.threads.ListPublicThreads(ctx, domain.ThreadListFilter{
 			Page:       page,
 			PageSize:   pageSize,
 			CategoryID: stringArg(args, "category_id"),
@@ -176,12 +176,9 @@ func (s *Service) call(ctx context.Context, name string, args map[string]interfa
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
-		thread, err := s.threads.GetThread(ctx, id)
+		thread, err := s.threads.GetPublicThread(ctx, id)
 		if err != nil {
 			return nil, err
-		}
-		if thread.Status != domain.ThreadStatusPublished {
-			return nil, communityport.ErrThreadNotFound
 		}
 		return thread, nil
 	default:

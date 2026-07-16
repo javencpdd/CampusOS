@@ -62,6 +62,11 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		Moderation:    s.moderation.Handler(),
 		Metrics:       infra.metrics,
 	})
+	if err := s.identity.SyncRouteDescriptors(context.Background(), router.RouteDescriptors()); err != nil {
+		// The catalog is additive. Keep a pre-migration deployment readable, but
+		// make the missing evidence impossible to overlook in server logs.
+		log.Printf("⚠️ 路由权限目录同步失败: %v", err)
+	}
 
 	log.Printf("🚀 CampusOS API 监听 %s", s.cfg.Server.Addr())
 	log.Printf("📋 API 端点总数: %d", len(router.Routes()))

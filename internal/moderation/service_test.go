@@ -19,12 +19,13 @@ import (
 func TestCategoryModeratorCanOnlyGovernAssignedCategories(t *testing.T) {
 	ctx := context.Background()
 	userRepo := identityrepo.NewMemoryUserRepository()
-	if err := userRepo.Create(ctx, &identitydomain.User{
-		ID: "1001", Username: "moderator", Nickname: "Moderator",
-		Email: "moderator@example.test", Status: identitydomain.UserStatusActive,
-		CreatedAt: time.Now(), UpdatedAt: time.Now(),
-	}); err != nil {
-		t.Fatalf("create user: %v", err)
+	for _, user := range []*identitydomain.User{
+		{ID: "1001", Username: "moderator", Nickname: "Moderator", Email: "moderator@example.test", Status: identitydomain.UserStatusActive, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{ID: "9001", Username: "admin", Nickname: "Admin", Email: "admin@example.test", Status: identitydomain.UserStatusActive, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+	} {
+		if err := userRepo.Create(ctx, user); err != nil {
+			t.Fatalf("create user: %v", err)
+		}
 	}
 	categoryRepo := communityrepo.NewMemoryCategoryRepository()
 	for _, category := range []*communitydomain.Category{
@@ -56,6 +57,9 @@ func TestCategoryModeratorCanOnlyGovernAssignedCategories(t *testing.T) {
 	postSvc.SetThreadRepository(threadRepo)
 	audit := NewMemoryAuditStore()
 	permissionSvc := identitysvc.NewPermissionService(identityrepo.NewMemoryRoleRepository(), userRepo)
+	if _, err := permissionSvc.AssignRole(ctx, "9001", 1); err != nil {
+		t.Fatalf("assign test administrator: %v", err)
+	}
 	service := NewService(identityport.NewPermissionModerationPolicy(permissionSvc), communitycore.NewModerationGateway(categoryRepo, threadRepo, postRepo, threadSvc, postSvc), audit, Config{
 		AllowPin: true, AllowLock: true, AllowDeletePost: true,
 	})

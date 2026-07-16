@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ type ThreadRepository interface {
 	IncrementReplyCount(ctx context.Context, id string, delta int64) error
 	Update(ctx context.Context, thread *domain.Thread) error
 	Delete(ctx context.Context, id string) error
+	Purge(ctx context.Context, id string) error
 	List(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 }
 
@@ -39,7 +41,8 @@ func NewMemoryThreadRepository() *MemoryThreadRepository {
 func (r *MemoryThreadRepository) Create(_ context.Context, thread *domain.Thread) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.threads[thread.ID] = thread
+	thread.NormalizeContentState()
+	r.threads[thread.ID] = cloneThread(thread)
 	return nil
 }
 
@@ -50,7 +53,7 @@ func (r *MemoryThreadRepository) GetByID(_ context.Context, id string) (*domain.
 	if !ok {
 		return nil, ErrThreadNotFound
 	}
-	return thread, nil
+	return cloneThread(thread), nil
 }
 
 func (r *MemoryThreadRepository) IncrementViewCount(_ context.Context, id string) (*domain.Thread, error) {
@@ -62,7 +65,7 @@ func (r *MemoryThreadRepository) IncrementViewCount(_ context.Context, id string
 		return nil, ErrThreadNotFound
 	}
 	thread.ViewCount++
-	return thread, nil
+	return cloneThread(thread), nil
 }
 
 func (r *MemoryThreadRepository) IncrementReplyCount(_ context.Context, id string, delta int64) error {
@@ -87,11 +90,27 @@ func (r *MemoryThreadRepository) Update(_ context.Context, thread *domain.Thread
 	if _, ok := r.threads[thread.ID]; !ok {
 		return ErrThreadNotFound
 	}
-	r.threads[thread.ID] = thread
+	thread.NormalizeContentState()
+	r.threads[thread.ID] = cloneThread(thread)
 	return nil
 }
 
 func (r *MemoryThreadRepository) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.threads[id]; !ok {
+		return ErrThreadNotFound
+	}
+	thread := r.threads[id]
+	thread.NormalizeContentState()
+	thread.DeletionStatus = domain.DeletionStatusTrashed
+	thread.SyncLegacyStatus()
+	thread.UpdatedAt = time.Now().UTC()
+	r.threads[id] = cloneThread(thread)
+	return nil
+}
+
+func (r *MemoryThreadRepository) Purge(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.threads[id]; !ok {
@@ -108,7 +127,12 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 	// 过滤
 	var filtered []*domain.Thread
 	for _, t := range r.threads {
+		t = cloneThread(t)
+		t.NormalizeContentState()
 		if filter.CategoryID != "" && t.CategoryID != filter.CategoryID {
+			continue
+		}
+		if len(filter.CategoryIDs) > 0 && !containsString(filter.CategoryIDs, t.CategoryID) {
 			continue
 		}
 		if filter.AuthorID != "" && t.AuthorID != filter.AuthorID {
@@ -120,11 +144,35 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 		if filter.ContentFormat != "" && t.ContentFormat != filter.ContentFormat {
 			continue
 		}
+		if filter.Tag != "" && !containsTag(t.Tags, filter.Tag) {
+			continue
+		}
+		if len(filter.AnyTags) > 0 && !containsAnyTag(t.Tags, filter.AnyTags) {
+			continue
+		}
+		if filter.PublicationStatus != "" && string(t.PublicationStatus) != filter.PublicationStatus {
+			continue
+		}
+		if filter.ModerationStatus != "" && string(t.ModerationStatus) != filter.ModerationStatus {
+			continue
+		}
+		if filter.DeletionStatus != "" && string(t.DeletionStatus) != filter.DeletionStatus {
+			continue
+		}
+		if !filter.IncludeTrashed && t.DeletionStatus != domain.DeletionStatusActive {
+			continue
+		}
 		if filter.Keyword != "" && !strings.Contains(strings.ToLower(t.Title), strings.ToLower(filter.Keyword)) && !strings.Contains(strings.ToLower(t.Content), strings.ToLower(filter.Keyword)) {
 			continue
 		}
 		filtered = append(filtered, t)
 	}
+	sort.Slice(filtered, func(i, j int) bool {
+		if filtered[i].IsPinned != filtered[j].IsPinned {
+			return filtered[i].IsPinned
+		}
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
 
 	total := int64(len(filtered))
 
@@ -147,4 +195,44 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 	}
 
 	return filtered[start:end], total, nil
+}
+
+func containsTag(tags []string, wanted string) bool {
+	for _, tag := range tags {
+		if strings.EqualFold(strings.TrimSpace(tag), strings.TrimSpace(wanted)) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAnyTag(tags, wanted []string) bool {
+	for _, item := range wanted {
+		if containsTag(tags, item) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(values []string, wanted string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+func cloneThread(thread *domain.Thread) *domain.Thread {
+	if thread == nil {
+		return nil
+	}
+	clone := *thread
+	clone.Tags = append([]string(nil), thread.Tags...)
+	if thread.ModerationAt != nil {
+		value := *thread.ModerationAt
+		clone.ModerationAt = &value
+	}
+	return &clone
 }

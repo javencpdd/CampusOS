@@ -25,6 +25,15 @@ type CategoryReader interface {
 type CategoryCatalog interface {
 	ListCategories(context.Context) ([]*domain.Category, error)
 }
+
+// ContentQuery is Community's read-only content fact contract. Consumers may
+// choose author/category/tag/pagination filters, but cannot widen public
+// visibility by submitting publication, moderation, or deletion states.
+type ContentQuery interface {
+	GetPublicThread(context.Context, string) (*domain.Thread, error)
+	ListPublicThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+	ListAuthorThreads(context.Context, string, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+}
 type ThreadReader interface {
 	GetThread(context.Context, string) (Thread, error)
 }
@@ -55,8 +64,12 @@ type ModerationGateway interface {
 type ContentGateway interface {
 	CreateThread(context.Context, string, string, domain.CreateThreadRequest, ThreadCreateOptions) (*domain.Thread, error)
 	GetThread(context.Context, string) (*domain.Thread, error)
-	UpdateThread(context.Context, *domain.Thread) error
-	DeleteThread(context.Context, string) error
+	SaveFeatureThread(context.Context, *domain.Thread, string, string) (*domain.Thread, error)
+	TrashThread(context.Context, string, string, string, string) error
+	SubmitThreadForReview(context.Context, string, string) (*domain.Thread, error)
+	TakeDownThread(context.Context, string, string, string) (*domain.Thread, error)
+	RestoreThreadDirectly(context.Context, string, string, string) (*domain.Thread, error)
+	RestoreThreadFromTrash(context.Context, string, string) (*domain.Thread, error)
 	ListThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 	InvalidateThreadList(context.Context)
 }

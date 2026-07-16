@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2>个人主页</h2>
-        <p>配置公开主页、内容同步和风格包。</p>
+        <p>配置公开主页、帖子展示筛选和风格包。</p>
       </div>
       <div class="header-actions">
         <el-button @click="goPublicSpace" :disabled="!owner?.username">
@@ -81,10 +81,11 @@
                 </el-form-item>
               </el-col>
             </el-row>
-            <el-form-item label="内容同步">
+            <el-form-item label="在个人主页展示我的帖子">
               <el-switch v-model="form.sync_enabled" active-text="启用" inactive-text="关闭" />
+              <div class="form-hint">不会复制帖子。个人主页直接读取你自己的帖子，并始终遵守公开、审核和删除状态。</div>
             </el-form-item>
-            <el-form-item label="同步版块">
+            <el-form-item label="展示哪些版块的帖子">
               <el-select
                 v-model="form.sync_categories"
                 class="field-full"
@@ -93,8 +94,9 @@
                 allow-create
                 default-first-option
               />
+              <div class="form-hint">留空表示不按版块筛选。</div>
             </el-form-item>
-            <el-form-item label="同步标签">
+            <el-form-item label="展示哪些标签的帖子">
               <el-select
                 v-model="form.sync_tags"
                 class="field-full"
@@ -103,6 +105,7 @@
                 allow-create
                 default-first-option
               />
+              <div class="form-hint">留空表示不按标签筛选。</div>
             </el-form-item>
             <el-button type="primary" @click="saveSpace" :loading="saving">
               <el-icon><Check /></el-icon>
@@ -1066,6 +1069,12 @@ onMounted(loadSpace)
   color: #606266;
   font-size: 13px;
   line-height: 1.5;
+}
+.form-hint {
+  margin-top: 6px;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.55;
 }
 .pack-row {
   display: flex;

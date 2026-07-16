@@ -17,6 +17,12 @@ export const roleApi = {
   getUserRoles: (userId: string) => api.get(`/users/${userId}/roles`),
   assign: (userId: string, roleId: number) => api.post(`/users/${userId}/roles`, { role_id: roleId }),
   revoke: (userId: string, roleId: number) => api.delete(`/users/${userId}/roles`, { data: { role_id: roleId } }),
+  permissions: () => api.get('/permissions'),
+  getPermissions: (roleId: number) => api.get(`/roles/${roleId}/permissions`),
+  updatePermissions: (roleId: number, permissionCodes: string[]) =>
+    api.put(`/roles/${roleId}/permissions`, { permission_codes: permissionCodes }),
+  createCustom: (data: { name: string; description?: string; permission_codes: string[] }) => api.post('/roles', data),
+  authorizationAudits: (limit = 100) => api.get('/authorization-audits', { params: { limit } }),
 }
 
 export const moderationApi = {

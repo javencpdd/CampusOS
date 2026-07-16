@@ -5,6 +5,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/core/identity/service"
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -191,6 +192,6 @@ func (h *UserHandler) HealthCheck(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":  "ok",
 		"service": "CampusOS",
-		"version": "0.9.0",
+		"version": platformversion.Number,
 	})
 }

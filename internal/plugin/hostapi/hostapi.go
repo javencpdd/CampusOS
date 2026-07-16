@@ -2,9 +2,11 @@ package hostapi
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/campusos/CampusOS/internal/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/community/port"
 	identityport "github.com/campusos/CampusOS/internal/core/identity/port"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -26,6 +28,22 @@ func NewHostAPI(
 	return &HostAPI{
 		identity: &IdentityAPI{users: users},
 		data:     &DataAPI{threads: threads, posts: posts},
+		event:    &EventAPI{bus: bus},
+	}
+}
+
+// NewHostAPIWithContentQuery is the production composition path. External
+// plugins receive only Community's public visibility query, never a concrete
+// repository or an unrestricted content service.
+func NewHostAPIWithContentQuery(
+	users identityport.UserReader,
+	threads communityport.ContentQuery,
+	posts PostReader,
+	bus eventbus.EventBus,
+) *HostAPI {
+	return &HostAPI{
+		identity: &IdentityAPI{users: users},
+		data:     &DataAPI{publicThreads: threads, posts: posts},
 		event:    &EventAPI{bus: bus},
 	}
 }
@@ -56,8 +74,9 @@ func (api *IdentityAPI) GetUser(ctx context.Context, userID string) (map[string]
 
 // DataAPI 数据查询接口
 type DataAPI struct {
-	threads ThreadReader
-	posts   PostReader
+	threads       ThreadReader
+	publicThreads communityport.ContentQuery
+	posts         PostReader
 }
 
 type ThreadReader interface {
@@ -71,7 +90,20 @@ type PostReader interface {
 
 // GetThread 查询主题详情
 func (api *DataAPI) GetThread(ctx context.Context, threadID string) (map[string]interface{}, error) {
-	thread, err := api.threads.GetThread(ctx, threadID)
+	var (
+		thread *domain.Thread
+		err    error
+	)
+	if api.publicThreads != nil {
+		thread, err = api.publicThreads.GetPublicThread(ctx, threadID)
+	} else if api.threads != nil {
+		thread, err = api.threads.GetThread(ctx, threadID)
+		if err == nil && !thread.IsPublic() {
+			return nil, errors.New("public thread not found")
+		}
+	} else {
+		return nil, errors.New("public thread query is unavailable")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +169,19 @@ func (api *DataAPI) QueryThreads(ctx context.Context, filter map[string]interfac
 		f.PageSize = v
 	}
 
-	threads, _, err := api.threads.ListThreads(ctx, f)
+	var threads []*domain.Thread
+	var err error
+	if api.publicThreads != nil {
+		threads, _, err = api.publicThreads.ListPublicThreads(ctx, f)
+	} else if api.threads != nil {
+		f.Status = string(domain.ThreadStatusPublished)
+		f.PublicationStatus = string(domain.PublicationStatusPublished)
+		f.ModerationStatus = string(domain.ModerationStatusClear)
+		f.DeletionStatus = string(domain.DeletionStatusActive)
+		threads, _, err = api.threads.ListThreads(ctx, f)
+	} else {
+		return nil, errors.New("public thread query is unavailable")
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/campusos/CampusOS/internal/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/core/identity/service"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -130,3 +131,25 @@ func (m *Module) Permissions() *service.PermissionService { return m.permissionS
 func (m *Module) Handlers() HTTPHandlers { return m.handlers }
 
 func (m *Module) JWTManager() *auth.JWTManager { return m.config.JWT }
+
+// SyncRouteDescriptors keeps transport descriptors at the Identity boundary.
+// Server composition supplies public route metadata only; conversion to the
+// authorization repository model remains owned by Identity.
+func (m *Module) SyncRouteDescriptors(ctx context.Context, descriptors []platformroute.Descriptor) error {
+	if m.permissionService == nil {
+		return errors.New("identity permission service is unavailable")
+	}
+	operations := make([]repository.RouteOperation, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		operations = append(operations, repository.RouteOperation{
+			OperationCode:  descriptor.OperationCode,
+			ModuleOwner:    descriptor.Owner,
+			Method:         descriptor.Method,
+			PathTemplate:   descriptor.Path,
+			Audience:       string(descriptor.Audience),
+			PermissionCode: descriptor.PermissionCode,
+			LegacyAliases:  append([]string(nil), descriptor.LegacyAliases...),
+		})
+	}
+	return m.permissionService.SyncRouteOperations(ctx, operations)
+}

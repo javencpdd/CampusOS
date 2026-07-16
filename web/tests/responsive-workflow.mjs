@@ -10,11 +10,13 @@ const email = process.env.CAMPUSOS_ADMIN_EMAIL || 'admin@campusos.local'
 const password = process.env.CAMPUSOS_ADMIN_PASSWORD || 'Admin@123456'
 const screenshotDir = process.env.RESPONSIVE_SCREENSHOT_DIR || path.join(os.tmpdir(), 'campusos-responsive-smoke')
 const allViewports = [
-  { name: 'phone-narrow', width: 360, height: 800 },
-  { name: 'phone', width: 390, height: 844 },
-  { name: 'tablet', width: 768, height: 1024 },
-  { name: 'desktop', width: 1440, height: 900 },
-  { name: 'wide', width: 1920, height: 1080 },
+  { name: 'phone-narrow', width: 320, height: 568 },
+  { name: 'phone', width: 360, height: 800 },
+  { name: 'phone-large', width: 393, height: 852 },
+  { name: 'tablet-portrait', width: 768, height: 1024 },
+  { name: 'tablet-landscape', width: 1024, height: 768 },
+  { name: 'desktop', width: 1366, height: 768 },
+  { name: 'phone-landscape', width: 852, height: 393 },
 ]
 const requestedViewports = (process.env.RESPONSIVE_VIEWPORTS || '')
   .split(',')
@@ -52,10 +54,39 @@ async function navigate(page, url) {
   }
 }
 
+async function waitForSettledPage(page) {
+  await page.waitForFunction(() => document.querySelector('#app')?.childElementCount > 0)
+  // Vue mounts the route before onMounted starts its API requests. Allow that
+  // tick, then require Element Plus loading masks to be gone before capturing.
+  await page.waitForTimeout(250)
+  await page.waitForFunction(() => {
+    return ![...document.querySelectorAll('.el-loading-mask')].some((element) => {
+      const style = window.getComputedStyle(element)
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
+    })
+  })
+  await page.waitForTimeout(120)
+}
+
+async function evaluateWhenStable(page, expression) {
+  let lastError
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await page.evaluate(expression)
+    } catch (error) {
+      lastError = error
+      if (!String(error).includes('Execution context was destroyed') || attempt === 2) throw error
+      await page.waitForLoadState('domcontentloaded')
+      await waitForSettledPage(page)
+    }
+  }
+  throw lastError
+}
+
 async function assertNoOverflow(page, label) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  const overflow = await evaluateWhenStable(page, () => document.documentElement.scrollWidth - window.innerWidth)
   if (overflow > 1) throw new Error(`${label} has ${overflow}px horizontal overflow`)
-  const focusable = await page.evaluate(() => {
+  const focusable = await evaluateWhenStable(page, () => {
     const target = document.querySelector(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
     )
@@ -66,7 +97,7 @@ async function assertNoOverflow(page, label) {
 }
 
 async function assertRenderedMedia(page, label) {
-  const failures = await page.evaluate(() => {
+  const failures = await evaluateWhenStable(page, () => {
     const brokenImages = [...document.images]
       .filter((image) => image.currentSrc && (!image.complete || image.naturalWidth === 0))
       .map((image) => image.currentSrc)
@@ -98,7 +129,8 @@ try {
     await webPage.setViewportSize(viewport)
     for (const route of webPaths) {
       await navigate(webPage, `${webURL}${route}`)
-      await webPage.waitForFunction(() => document.querySelector('#app')?.childElementCount > 0)
+      await webPage.evaluate(() => window.scrollTo(0, 0))
+      await waitForSettledPage(webPage)
       await assertNoOverflow(webPage, `web ${route} at ${viewport.name}`)
       await assertRenderedMedia(webPage, `web ${route} at ${viewport.name}`)
       await webPage.screenshot({
@@ -118,16 +150,29 @@ try {
   const adminErrors = []
   collectPageErrors(adminPage, adminErrors)
   await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码')
-  const adminPaths = ['/', '/users', '/plugins', '/plugin-center', '/features', '/architecture']
+  const adminPaths = [
+    '/',
+    '/users',
+    '/permissions',
+    '/plugins',
+    '/plugin-center',
+    '/extensions',
+    '/features',
+    '/integrations',
+    '/architecture',
+  ]
   for (const viewport of viewports) {
     await adminPage.setViewportSize(viewport)
     for (const route of adminPaths) {
       await navigate(adminPage, `${adminURL}${route}`)
-      await adminPage.waitForFunction(() => document.querySelector('#app')?.childElementCount > 0)
-      if (viewport.width <= 800 && route === '/plugin-center') {
+      await adminPage.evaluate(() => window.scrollTo(0, 0))
+      await waitForSettledPage(adminPage)
+      if ((viewport.width <= 800 || viewport.height <= 480) && route === '/extensions') {
         await adminPage.getByRole('button', { name: '打开导航' }).click()
-        await adminPage.getByText('外部插件', { exact: true }).waitFor()
+        await adminPage.getByRole('menuitem', { name: '扩展与集成', exact: true }).waitFor()
         await adminPage.locator('.nav-scrim').click()
+        await adminPage.waitForFunction(() => !document.querySelector('.admin-aside')?.classList.contains('is-open'))
+        await adminPage.waitForTimeout(220)
       }
       await assertNoOverflow(adminPage, `admin ${route} at ${viewport.name}`)
       await assertRenderedMedia(adminPage, `admin ${route} at ${viewport.name}`)

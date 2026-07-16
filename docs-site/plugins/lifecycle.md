@@ -15,10 +15,10 @@ lifecycle:
 | Runtime | 后端 | 前端 |
 | --- | --- | --- |
 | builtin + system | `restart` | `hot` |
-| gRPC | `plugin-restart` | `hot` |
+| 受管进程（`grpc` 兼容名） | `plugin-restart` | `hot` |
 | Wasm | `hot` | `hot` |
 
-旧 manifest 会自动得到这些默认值。系统级 gRPC 可以只重启插件；Wasm 使用候选实例验证成功后原子替换；Core 进程内 builtin 默认仍需整站重启。
+旧 manifest 会自动得到这些默认值。受管进程可以只重启插件；Wasm 使用候选实例验证成功后原子替换；Core 始终启用，Built-in Feature 则按自身 `restart` 或 `hot-gated` 策略生效。
 
 ## 三轴状态
 

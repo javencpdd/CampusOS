@@ -1,181 +1,197 @@
-# CampusOS HTTP 路由与授权矩阵 v0.6
+# CampusOS HTTP 路由与授权矩阵 v0.10
 
 > 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。
 
 当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。
 
-| Method | Path | Module | Handler | Auth | Permission | Ownership | Scope | Audit |
+| Method | Path | Operation | Module | Handler | Auth | Permission Code | Ownership | Scope | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/health` | `core.identity` | `userHandler.HealthCheck` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/home/config` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/web-themes` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/web-themes/:name` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/web-themes/:name/assets/*path` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/ui/runtime-manifest` | `core.plugin-platform` | `runtimeHTTPHandler.RuntimeManifest` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/ui/events` | `core.plugin-platform` | `runtimeHTTPHandler.Events` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/richtext/status` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/schedule/status` | `feature.personal-schedule` | `d.Schedule` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `POST` | `/api/v1/auth/register` | `core.identity` | `userHandler.Register` | `none` | `-` | `none` | `public` | `request-log` |
-| `POST` | `/api/v1/auth/login` | `core.identity` | `userHandler.Login` | `none` | `-` | `none` | `public` | `request-log` |
-| `GET` | `/api/v1/threads` | `core.community` | `threadHandler.ListThreads` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/threads/:id` | `core.community` | `threadHandler.GetThread` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/richtext/articles/:id` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/richtext/assets/:user_id/:filename` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/users` | `core.identity` | `userHandler.ListUsers` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/users/:id` | `core.identity` | `userHandler.GetUser` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/space/:user_id/contents` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/space/:user_id` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/spaces/files/:user_id/avatars/:filename` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/u/:username/contents` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/u/:username` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/categories` | `core.community` | `categoryHandler.List` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/categories/:id` | `core.community` | `categoryHandler.Get` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/threads/:id/posts` | `core.community` | `postHandler.ListPosts` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/events` | `core.community` | `eventHandler.ListEvents` | `none` | `-` | `none` | `public` | `request-log-read` |
-| `GET` | `/api/v1/auth/me` | `core.identity` | `userHandler.GetMe` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `PUT` | `/api/v1/users/:id` | `core.identity` | `userHandler.UpdateUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/spaces/me` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `PUT` | `/api/v1/spaces/me` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/spaces/me/storage` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/spaces/me/avatar` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/preview` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/export` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/html/validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/spaces/me/styles/html-example` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/spaces/me/styles/html/apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/packs/validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/spaces/me/styles/packs/example` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/spaces/me/styles/packs/example.zip` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/spaces/me/styles/packs/sources` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/spaces/me/styles/packs/apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/packs/apply-source` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/rollback` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/spaces/me/styles/default` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/spaces/me/sync-status` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/schedule/me` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/schedule/me/terms` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/schedule/me/terms/activate` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `PUT` | `/api/v1/schedule/me` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/schedule/me/import` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/richtext/articles` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/richtext/articles/:id/me` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `PUT` | `/api/v1/richtext/articles/:id` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/richtext/preview` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/richtext/assets` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/richtext/articles/:id/publish` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/richtext/articles/:id/offline` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `DELETE` | `/api/v1/richtext/articles/:id` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/threads` | `core.community` | `threadHandler.CreateThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/threads/:id/me` | `core.community` | `threadHandler.GetThreadForCurrentUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `PUT` | `/api/v1/threads/:id` | `core.community` | `threadHandler.UpdateThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `DELETE` | `/api/v1/threads/:id` | `core.community` | `threadHandler.DeleteThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/threads/:id/posts/me` | `core.community` | `postHandler.ListPostsForCurrentUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/threads/:id/posts` | `core.community` | `postHandler.CreatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `PUT` | `/api/v1/threads/:id/posts/:post_id` | `core.community` | `postHandler.UpdatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `DELETE` | `/api/v1/threads/:id/posts/:post_id` | `core.community` | `postHandler.DeletePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/moderation/status` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `GET` | `/api/v1/moderation/me` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `POST` | `/api/v1/moderation/threads/:id/pin` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `POST` | `/api/v1/moderation/threads/:id/unpin` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `POST` | `/api/v1/moderation/threads/:id/lock` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `POST` | `/api/v1/moderation/threads/:id/unlock` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `DELETE` | `/api/v1/moderation/threads/:id/posts/:post_id` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
-| `GET` | `/api/v1/plugin-market` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/plugin-market/me` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/plugin-market/me/usage` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/plugin-market/:name/enable` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/plugin-market/:name/revoke` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/plugin-market/:name/request` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/plugin-market/search` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/plugin-market/:name/records/:collection` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/plugin-market/:name/records/:collection` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/plugin-market/:name/records/:collection/:key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `PUT` | `/api/v1/plugin-market/:name/records/:collection/:key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `DELETE` | `/api/v1/plugin-market/:name/records/:collection/:key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/plugin-market/:name/files` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/plugin-market/:name/files` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `GET` | `/api/v1/plugin-market/:name/files/:file_id/download` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `DELETE` | `/api/v1/plugin-market/:name/files/:file_id` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/plugin-market/:name/export` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `DELETE` | `/api/v1/plugin-market/:name/data` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `GET` | `/api/v1/extensions/:plugin/*path` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
-| `POST` | `/api/v1/extensions/:plugin/*path` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `PUT` | `/api/v1/extensions/:plugin/*path` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `PATCH` | `/api/v1/extensions/:plugin/*path` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `DELETE` | `/api/v1/extensions/:plugin/*path` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
-| `POST` | `/api/v1/users/:id/suspend` | `core.identity` | `userHandler.SuspendUser` | `jwt+permission` | `user:suspend` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/users/:id/activate` | `core.identity` | `userHandler.ActivateUser` | `jwt+permission` | `user:suspend` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/admin/threads` | `core.community` | `threadHandler.AdminListThreads` | `jwt+permission` | `thread:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/threads/:id/pin` | `core.community` | `threadHandler.PinThread` | `jwt+permission` | `thread:pin` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/threads/:id/unpin` | `core.community` | `threadHandler.UnpinThread` | `jwt+permission` | `thread:pin` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/threads/:id/lock` | `core.community` | `threadHandler.LockThread` | `jwt+permission` | `thread:lock` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/threads/:id/unlock` | `core.community` | `threadHandler.UnlockThread` | `jwt+permission` | `thread:lock` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/admin/threads/:id` | `core.community` | `threadHandler.AdminDeleteThread` | `jwt+permission` | `thread:delete` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/richtext/articles/:id/admin/offline` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `richtext:moderate` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/richtext/articles/:id/admin/restore` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `richtext:moderate` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/richtext/articles/:id/admin` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `richtext:moderate` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/categories` | `core.community` | `categoryHandler.Create` | `jwt+permission` | `category:write` | `none` | `global` | `request-log` |
-| `PUT` | `/api/v1/categories/:id` | `core.community` | `categoryHandler.Update` | `jwt+permission` | `category:write` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/categories/:id` | `core.community` | `categoryHandler.Delete` | `jwt+permission` | `category:delete` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/plugins` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/plugins/:name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/plugins/:name/logs` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/plugins/:name/export` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `PUT` | `/api/v1/plugins/:name/config` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:configure` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/plugins/:name/enable` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:lifecycle` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/plugins/:name/disable` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:lifecycle` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/plugins/:name/reload` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:lifecycle` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/plugins/:name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:uninstall` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/plugin-packages/import` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:install` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/plugin-packages/precheck` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:install` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/plugins/:name/snapshots` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/plugins/:name/rollback` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:install` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/plugin-market/admin/overview` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `PUT` | `/api/v1/plugin-market/admin/catalog/:name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:configure` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/plugin-market/admin/requests` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/plugin-market/admin/requests/:id/review` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:configure` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/plugin-market/admin/releases/:name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/plugin-market/admin/audits` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/plugin-market/admin/releases/:name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin:install` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/ai/status` | `feature.ai-gateway` | `d.AI` | `jwt+permission` | `ai:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/ai/logs` | `feature.ai-gateway` | `d.AI` | `jwt+permission` | `ai:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/integrations/overview` | `feature.integration-overview` | `d.Integration` | `jwt+permission` | `integration:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/metrics/summary` | `feature.integration-overview` | `d.Integration` | `jwt+permission` | `metrics:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/spaces/admin/summary` | `feature.personal-space` | `d.Space` | `jwt+permission` | `space:manage` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/spaces/:user_id/disable` | `feature.personal-space` | `d.Space` | `jwt+permission` | `space:manage` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/spaces/:user_id/enable` | `feature.personal-space` | `d.Space` | `jwt+permission` | `space:manage` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/webhooks` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/webhooks` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:write` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/webhooks/summary` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/webhooks/:id/test` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:execute` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/webhooks/:id/enable` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:write` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/webhooks/:id/disable` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:write` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/webhooks/:id/deliveries` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `webhook:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/mcp/tools` | `feature.mcp` | `d.MCP` | `jwt+permission` | `mcp:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/mcp/tools/:name/call` | `feature.mcp` | `d.MCP` | `jwt+permission` | `mcp:call` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/mcp/audit` | `feature.mcp` | `d.MCP` | `jwt+permission` | `mcp:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/mcp/settings` | `feature.mcp` | `d.MCP` | `jwt+permission` | `mcp:read` | `none` | `global` | `request-log-read` |
-| `PUT` | `/api/v1/mcp/settings` | `feature.mcp` | `d.MCP` | `jwt+permission` | `mcp:configure` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/messages/adapters` | `feature.message` | `d.Message` | `jwt+permission` | `message:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/messages/local/inbound` | `feature.message` | `d.Message` | `jwt+permission` | `message:write` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/messages/logs` | `feature.message` | `d.Message` | `jwt+permission` | `message:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/messages/bindings` | `feature.message` | `d.Message` | `jwt+permission` | `message:write` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/messages/summary` | `feature.message` | `d.Message` | `jwt+permission` | `message:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/platform/logs/sources` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform_log:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/platform/logs/stream` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform_log:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/home/style-packs/validate` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/home/style-packs/example` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/home/style-packs/example.zip` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/home/style-packs/sources` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/home/style-packs/apply` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/home/style-packs/apply-source` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log` |
-| `POST` | `/api/v1/home/style-packs/rollback` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `homepage:configure` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/roles` | `core.identity` | `roleHandler.ListRoles` | `jwt+permission` | `role:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/users/:id/roles` | `core.identity` | `roleHandler.GetUserRoles` | `jwt+permission` | `role:read` | `none` | `global` | `request-log-read` |
-| `POST` | `/api/v1/users/:id/roles` | `core.identity` | `roleHandler.AssignRole` | `jwt+permission` | `role:assign` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/users/:id/roles` | `core.identity` | `roleHandler.RevokeRole` | `jwt+permission` | `role:revoke` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/moderation/admin/moderators` | `core.moderation` | `d.Moderation` | `jwt+permission` | `role:read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/moderation/admin/moderators/:id` | `core.moderation` | `d.Moderation` | `jwt+permission` | `role:read` | `none` | `global` | `request-log-read` |
-| `PUT` | `/api/v1/moderation/admin/moderators/:id` | `core.moderation` | `d.Moderation` | `jwt+permission` | `role:assign` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/health` | `http.get.api.v1.health` | `core.identity` | `userHandler.HealthCheck` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/home/config` | `http.get.api.v1.home.config` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/web-themes` | `http.get.api.v1.web_themes` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/web-themes/:name` | `http.get.api.v1.web_themes.name` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/web-themes/:name/assets/*path` | `http.get.api.v1.web_themes.name.assets.wildcardpath` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/ui/runtime-manifest` | `http.get.api.v1.ui.runtime_manifest` | `core.plugin-platform` | `runtimeHTTPHandler.RuntimeManifest` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/ui/events` | `http.get.api.v1.ui.events` | `core.plugin-platform` | `runtimeHTTPHandler.Events` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/richtext/status` | `http.get.api.v1.richtext.status` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/schedule/status` | `http.get.api.v1.schedule.status` | `feature.personal-schedule` | `d.Schedule` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `POST` | `/api/v1/auth/register` | `http.post.api.v1.auth.register` | `core.identity` | `userHandler.Register` | `none` | `-` | `none` | `public` | `request-log` |
+| `POST` | `/api/v1/auth/login` | `http.post.api.v1.auth.login` | `core.identity` | `userHandler.Login` | `none` | `-` | `none` | `public` | `request-log` |
+| `GET` | `/api/v1/threads` | `http.get.api.v1.threads` | `core.community` | `threadHandler.ListThreads` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/threads/:id` | `http.get.api.v1.threads.id` | `core.community` | `threadHandler.GetThread` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/richtext/articles/:id` | `http.get.api.v1.richtext.articles.id` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/richtext/assets/:user_id/:filename` | `http.get.api.v1.richtext.assets.user_id.filename` | `feature.controlled-richtext-article` | `d.RichText` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/users` | `http.get.api.v1.users` | `core.identity` | `userHandler.ListUsers` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/users/:id` | `http.get.api.v1.users.id` | `core.identity` | `userHandler.GetUser` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/space/:user_id/contents` | `http.get.api.v1.space.user_id.contents` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/space/:user_id` | `http.get.api.v1.space.user_id` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/spaces/files/:user_id/avatars/:filename` | `http.get.api.v1.spaces.files.user_id.avatars.filename` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/u/:username/contents` | `http.get.api.v1.u.username.contents` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/u/:username` | `http.get.api.v1.u.username` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/categories` | `http.get.api.v1.categories` | `core.community` | `categoryHandler.List` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/categories/:id` | `http.get.api.v1.categories.id` | `core.community` | `categoryHandler.Get` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/threads/:id/posts` | `http.get.api.v1.threads.id.posts` | `core.community` | `postHandler.ListPosts` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/events` | `http.get.api.v1.events` | `core.community` | `eventHandler.ListEvents` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/auth/me` | `http.get.api.v1.auth.me` | `core.identity` | `userHandler.GetMe` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/users/:id` | `http.put.api.v1.users.id` | `core.identity` | `userHandler.UpdateUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me` | `http.get.api.v1.spaces.me` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/spaces/me/contents` | `http.get.api.v1.spaces.me.contents` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/spaces/me` | `http.put.api.v1.spaces.me` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me/storage` | `http.get.api.v1.spaces.me.storage` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/spaces/me/avatar` | `http.post.api.v1.spaces.me.avatar` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/validate` | `http.post.api.v1.spaces.me.styles.validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/preview` | `http.post.api.v1.spaces.me.styles.preview` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/export` | `http.post.api.v1.spaces.me.styles.export` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/apply` | `http.post.api.v1.spaces.me.styles.apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/html/validate` | `http.post.api.v1.spaces.me.styles.html.validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me/styles/html-example` | `http.get.api.v1.spaces.me.styles.html_example` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/spaces/me/styles/html/apply` | `http.post.api.v1.spaces.me.styles.html.apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/packs/validate` | `http.post.api.v1.spaces.me.styles.packs.validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me/styles/packs/example` | `http.get.api.v1.spaces.me.styles.packs.example` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/spaces/me/styles/packs/example.zip` | `http.get.api.v1.spaces.me.styles.packs.example.zip` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/spaces/me/styles/packs/sources` | `http.get.api.v1.spaces.me.styles.packs.sources` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/spaces/me/styles/packs/apply` | `http.post.api.v1.spaces.me.styles.packs.apply` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/packs/apply-source` | `http.post.api.v1.spaces.me.styles.packs.apply_source` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/rollback` | `http.post.api.v1.spaces.me.styles.rollback` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/spaces/me/styles/default` | `http.post.api.v1.spaces.me.styles.default` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me/sync-status` | `http.get.api.v1.spaces.me.sync_status` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/schedule/me` | `http.get.api.v1.schedule.me` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/schedule/me/terms` | `http.get.api.v1.schedule.me.terms` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/schedule/me/terms/activate` | `http.post.api.v1.schedule.me.terms.activate` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PUT` | `/api/v1/schedule/me` | `http.put.api.v1.schedule.me` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/schedule/me/import` | `http.post.api.v1.schedule.me.import` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/richtext/articles` | `http.post.api.v1.richtext.articles` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/richtext/articles/:id/me` | `http.get.api.v1.richtext.articles.id.me` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/richtext/articles/:id` | `http.put.api.v1.richtext.articles.id` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/richtext/preview` | `http.post.api.v1.richtext.preview` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/richtext/assets` | `http.post.api.v1.richtext.assets` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/richtext/articles/:id/publish` | `http.post.api.v1.richtext.articles.id.publish` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/richtext/articles/:id/offline` | `http.post.api.v1.richtext.articles.id.offline` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/richtext/articles/:id` | `http.delete.api.v1.richtext.articles.id` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/threads` | `http.post.api.v1.threads` | `core.community` | `threadHandler.CreateThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/threads/:id/me` | `http.get.api.v1.threads.id.me` | `core.community` | `threadHandler.GetThreadForCurrentUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/threads/:id` | `http.put.api.v1.threads.id` | `core.community` | `threadHandler.UpdateThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/threads/:id` | `http.delete.api.v1.threads.id` | `core.community` | `threadHandler.DeleteThread` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/threads/:id/submit-review` | `http.post.api.v1.threads.id.submit_review` | `core.community` | `threadHandler.SubmitForReview` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/threads/:id/trash/restore` | `http.post.api.v1.threads.id.trash.restore` | `core.community` | `threadHandler.RestoreOwnTrash` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/threads/:id/posts/me` | `http.get.api.v1.threads.id.posts.me` | `core.community` | `postHandler.ListPostsForCurrentUser` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/threads/:id/posts` | `http.post.api.v1.threads.id.posts` | `core.community` | `postHandler.CreatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PUT` | `/api/v1/threads/:id/posts/:post_id` | `http.put.api.v1.threads.id.posts.post_id` | `core.community` | `postHandler.UpdatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/threads/:id/posts/:post_id` | `http.delete.api.v1.threads.id.posts.post_id` | `core.community` | `postHandler.DeletePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/moderation/status` | `http.get.api.v1.moderation.status` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `GET` | `/api/v1/moderation/me` | `http.get.api.v1.moderation.me` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `POST` | `/api/v1/moderation/threads/:id/pin` | `http.post.api.v1.moderation.threads.id.pin` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `POST` | `/api/v1/moderation/threads/:id/unpin` | `http.post.api.v1.moderation.threads.id.unpin` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `POST` | `/api/v1/moderation/threads/:id/lock` | `http.post.api.v1.moderation.threads.id.lock` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `POST` | `/api/v1/moderation/threads/:id/unlock` | `http.post.api.v1.moderation.threads.id.unlock` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `DELETE` | `/api/v1/moderation/threads/:id/posts/:post_id` | `http.delete.api.v1.moderation.threads.id.posts.post_id` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
+| `GET` | `/api/v1/plugin-market` | `http.get.api.v1.plugin_market` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/plugin-market/me` | `http.get.api.v1.plugin_market.me` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/plugin-market/me/usage` | `http.get.api.v1.plugin_market.me.usage` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/plugin-market/:name/enable` | `http.post.api.v1.plugin_market.name.enable` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/plugin-market/:name/revoke` | `http.post.api.v1.plugin_market.name.revoke` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/plugin-market/:name/request` | `http.post.api.v1.plugin_market.name.request` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/plugin-market/search` | `http.get.api.v1.plugin_market.search` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/plugin-market/:name/records/:collection` | `http.post.api.v1.plugin_market.name.records.collection` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/plugin-market/:name/records/:collection` | `http.get.api.v1.plugin_market.name.records.collection` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/plugin-market/:name/records/:collection/:key` | `http.get.api.v1.plugin_market.name.records.collection.key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/plugin-market/:name/records/:collection/:key` | `http.put.api.v1.plugin_market.name.records.collection.key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/plugin-market/:name/records/:collection/:key` | `http.delete.api.v1.plugin_market.name.records.collection.key` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/plugin-market/:name/files` | `http.post.api.v1.plugin_market.name.files` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/plugin-market/:name/files` | `http.get.api.v1.plugin_market.name.files` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `GET` | `/api/v1/plugin-market/:name/files/:file_id/download` | `http.get.api.v1.plugin_market.name.files.file_id.download` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `DELETE` | `/api/v1/plugin-market/:name/files/:file_id` | `http.delete.api.v1.plugin_market.name.files.file_id` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/plugin-market/:name/export` | `http.get.api.v1.plugin_market.name.export` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `DELETE` | `/api/v1/plugin-market/:name/data` | `http.delete.api.v1.plugin_market.name.data` | `core.plugin-platform` | `d.Plugin` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/extensions/:plugin/*path` | `http.get.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/extensions/:plugin/*path` | `http.post.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PUT` | `/api/v1/extensions/:plugin/*path` | `http.put.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `PATCH` | `/api/v1/extensions/:plugin/*path` | `http.patch.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/extensions/:plugin/*path` | `http.delete.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/users/:id/suspend` | `http.post.api.v1.users.id.suspend` | `core.identity` | `userHandler.SuspendUser` | `jwt+permission` | `identity.user.suspend` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/users/:id/activate` | `http.post.api.v1.users.id.activate` | `core.identity` | `userHandler.ActivateUser` | `jwt+permission` | `identity.user.suspend` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/admin/threads` | `http.get.api.v1.admin.threads` | `core.community` | `threadHandler.AdminListThreads` | `jwt+permission` | `community.thread.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/admin/threads/trash` | `http.get.api.v1.admin.threads.trash` | `core.community` | `threadHandler.AdminListTrash` | `jwt+permission` | `community.thread.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/admin/threads/:id/moderation-actions` | `http.get.api.v1.admin.threads.id.moderation_actions` | `core.community` | `threadHandler.AdminModerationActions` | `jwt+permission` | `community.thread.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/threads/:id/pin` | `http.post.api.v1.threads.id.pin` | `core.community` | `threadHandler.PinThread` | `jwt+permission` | `community.thread.pin` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/threads/:id/unpin` | `http.post.api.v1.threads.id.unpin` | `core.community` | `threadHandler.UnpinThread` | `jwt+permission` | `community.thread.pin` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/threads/:id/lock` | `http.post.api.v1.threads.id.lock` | `core.community` | `threadHandler.LockThread` | `jwt+permission` | `community.thread.lock` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/threads/:id/unlock` | `http.post.api.v1.threads.id.unlock` | `core.community` | `threadHandler.UnlockThread` | `jwt+permission` | `community.thread.lock` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/admin/threads/:id` | `http.community.thread.trash` | `core.community` | `threadHandler.AdminDeleteThread` | `jwt+permission` | `community.thread.trash` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/admin/threads/:id/take-down` | `http.community.thread.take_down` | `core.community` | `threadHandler.AdminTakeDown` | `jwt+permission` | `community.thread.take_down` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/admin/threads/:id/review/approve` | `http.community.thread.review_approve` | `core.community` | `threadHandler.AdminApprove` | `jwt+permission` | `community.thread.review` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/admin/threads/:id/review/reject` | `http.community.thread.review_reject` | `core.community` | `threadHandler.AdminReject` | `jwt+permission` | `community.thread.review` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/admin/threads/:id/direct-restore` | `http.community.thread.direct_restore` | `core.community` | `threadHandler.AdminDirectRestore` | `jwt+permission` | `community.thread.direct_restore` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/admin/threads/:id/trash/restore` | `http.community.thread.restore_trash` | `core.community` | `threadHandler.AdminRestoreTrash` | `jwt+permission` | `community.thread.restore` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/admin/threads/:id/purge` | `http.community.thread.purge` | `core.community` | `threadHandler.AdminPurge` | `jwt+permission` | `community.thread.purge` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/richtext/articles/:id/admin/offline` | `http.community.richtext.take_down` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `community.thread.take_down` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/richtext/articles/:id/admin/restore` | `http.community.richtext.restore` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `community.thread.direct_restore` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/richtext/articles/:id/admin` | `http.community.richtext.trash` | `feature.controlled-richtext-article` | `d.RichText` | `jwt+permission` | `community.thread.trash` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/categories` | `http.post.api.v1.categories` | `core.community` | `categoryHandler.Create` | `jwt+permission` | `community.category.write` | `none` | `global` | `request-log` |
+| `PUT` | `/api/v1/categories/:id` | `http.put.api.v1.categories.id` | `core.community` | `categoryHandler.Update` | `jwt+permission` | `community.category.write` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/categories/:id` | `http.delete.api.v1.categories.id` | `core.community` | `categoryHandler.Delete` | `jwt+permission` | `community.category.delete` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/plugins` | `http.get.api.v1.plugins` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/plugins/:name` | `http.get.api.v1.plugins.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/plugins/:name/logs` | `http.get.api.v1.plugins.name.logs` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/plugins/:name/export` | `http.get.api.v1.plugins.name.export` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/plugins/:name/config` | `http.put.api.v1.plugins.name.config` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.configure` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/plugins/:name/enable` | `http.post.api.v1.plugins.name.enable` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.lifecycle` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/plugins/:name/disable` | `http.post.api.v1.plugins.name.disable` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.lifecycle` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/plugins/:name/reload` | `http.post.api.v1.plugins.name.reload` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.lifecycle` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/plugins/:name` | `http.delete.api.v1.plugins.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.uninstall` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/plugin-packages/import` | `http.post.api.v1.plugin_packages.import` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/plugin-packages/precheck` | `http.post.api.v1.plugin_packages.precheck` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/plugins/:name/snapshots` | `http.get.api.v1.plugins.name.snapshots` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/plugins/:name/rollback` | `http.post.api.v1.plugins.name.rollback` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/plugin-market/admin/overview` | `http.get.api.v1.plugin_market.admin.overview` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/plugin-market/admin/catalog/:name` | `http.put.api.v1.plugin_market.admin.catalog.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.configure` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/plugin-market/admin/requests` | `http.get.api.v1.plugin_market.admin.requests` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/plugin-market/admin/requests/:id/review` | `http.post.api.v1.plugin_market.admin.requests.id.review` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.configure` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/plugin-market/admin/releases/:name` | `http.get.api.v1.plugin_market.admin.releases.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/plugin-market/admin/audits` | `http.get.api.v1.plugin_market.admin.audits` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/plugin-market/admin/releases/:name` | `http.post.api.v1.plugin_market.admin.releases.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.install` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/ai/status` | `http.get.api.v1.ai.status` | `feature.ai-gateway` | `d.AI` | `jwt+permission` | `ai.ai.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/ai/logs` | `http.get.api.v1.ai.logs` | `feature.ai-gateway` | `d.AI` | `jwt+permission` | `ai.ai.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/integrations/overview` | `http.get.api.v1.integrations.overview` | `feature.integration-overview` | `d.Integration` | `jwt+permission` | `integration.integration.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/metrics/summary` | `http.get.api.v1.metrics.summary` | `feature.integration-overview` | `d.Integration` | `jwt+permission` | `platform.metrics.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/spaces/admin/summary` | `http.get.api.v1.spaces.admin.summary` | `feature.personal-space` | `d.Space` | `jwt+permission` | `personal_space.space.manage` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/spaces/:user_id/disable` | `http.post.api.v1.spaces.user_id.disable` | `feature.personal-space` | `d.Space` | `jwt+permission` | `personal_space.space.manage` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/spaces/:user_id/enable` | `http.post.api.v1.spaces.user_id.enable` | `feature.personal-space` | `d.Space` | `jwt+permission` | `personal_space.space.manage` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/webhooks` | `http.get.api.v1.webhooks` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/webhooks` | `http.post.api.v1.webhooks` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.write` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/webhooks/summary` | `http.get.api.v1.webhooks.summary` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/webhooks/:id/test` | `http.post.api.v1.webhooks.id.test` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.execute` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/webhooks/:id/enable` | `http.post.api.v1.webhooks.id.enable` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.write` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/webhooks/:id/disable` | `http.post.api.v1.webhooks.id.disable` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.write` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/webhooks/:id/deliveries` | `http.get.api.v1.webhooks.id.deliveries` | `feature.webhook` | `d.Webhook` | `jwt+permission` | `integration.webhook.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/mcp/tools` | `http.get.api.v1.mcp.tools` | `feature.mcp` | `d.MCP` | `jwt+permission` | `integration.mcp.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/mcp/tools/:name/call` | `http.post.api.v1.mcp.tools.name.call` | `feature.mcp` | `d.MCP` | `jwt+permission` | `integration.mcp.call` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/mcp/audit` | `http.get.api.v1.mcp.audit` | `feature.mcp` | `d.MCP` | `jwt+permission` | `integration.mcp.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/mcp/settings` | `http.get.api.v1.mcp.settings` | `feature.mcp` | `d.MCP` | `jwt+permission` | `integration.mcp.read` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/mcp/settings` | `http.put.api.v1.mcp.settings` | `feature.mcp` | `d.MCP` | `jwt+permission` | `integration.mcp.configure` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/messages/adapters` | `http.get.api.v1.messages.adapters` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/messages/local/inbound` | `http.post.api.v1.messages.local.inbound` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.write` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/messages/logs` | `http.get.api.v1.messages.logs` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/messages/bindings` | `http.post.api.v1.messages.bindings` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.write` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/messages/summary` | `http.get.api.v1.messages.summary` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/logs/sources` | `http.get.api.v1.platform.logs.sources` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform.platform_log.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/logs/stream` | `http.get.api.v1.platform.logs.stream` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform.platform_log.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/home/style-packs/validate` | `http.post.api.v1.home.style_packs.validate` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/home/style-packs/example` | `http.get.api.v1.home.style_packs.example` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/home/style-packs/example.zip` | `http.get.api.v1.home.style_packs.example.zip` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/home/style-packs/sources` | `http.get.api.v1.home.style_packs.sources` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/home/style-packs/apply` | `http.post.api.v1.home.style_packs.apply` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/home/style-packs/apply-source` | `http.post.api.v1.home.style_packs.apply_source` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/home/style-packs/rollback` | `http.post.api.v1.home.style_packs.rollback` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/roles` | `http.get.api.v1.roles` | `core.identity` | `roleHandler.ListRoles` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/permissions` | `http.get.api.v1.permissions` | `core.identity` | `roleHandler.ListPermissionDefinitions` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/roles/:id/permissions` | `http.get.api.v1.roles.id.permissions` | `core.identity` | `roleHandler.ListRolePermissions` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/authorization-audits` | `http.identity.role.authorization_audits` | `core.identity` | `roleHandler.ListAuthorizationAudits` | `jwt+permission` | `identity.role.read_audit` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/roles` | `http.identity.role.create` | `core.identity` | `roleHandler.CreateCustomRole` | `jwt+permission` | `identity.role.create` | `none` | `global` | `request-log` |
+| `PUT` | `/api/v1/roles/:id/permissions` | `http.identity.role.update_permissions` | `core.identity` | `roleHandler.UpdateRolePermissions` | `jwt+permission` | `identity.role.update_permissions` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/users/:id/roles` | `http.get.api.v1.users.id.roles` | `core.identity` | `roleHandler.GetUserRoles` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/users/:id/roles` | `http.post.api.v1.users.id.roles` | `core.identity` | `roleHandler.AssignRole` | `jwt+permission` | `identity.role.assign` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/users/:id/roles` | `http.delete.api.v1.users.id.roles` | `core.identity` | `roleHandler.RevokeRole` | `jwt+permission` | `identity.role.revoke` | `none` | `global` | `request-log` |
+| `GET` | `/api/v1/moderation/admin/moderators` | `http.get.api.v1.moderation.admin.moderators` | `core.moderation` | `d.Moderation` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/moderation/admin/moderators/:id` | `http.get.api.v1.moderation.admin.moderators.id` | `core.moderation` | `d.Moderation` | `jwt+permission` | `identity.role.read` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/moderation/admin/moderators/:id` | `http.put.api.v1.moderation.admin.moderators.id` | `core.moderation` | `d.Moderation` | `jwt+permission` | `identity.role.assign` | `none` | `global` | `request-log` |

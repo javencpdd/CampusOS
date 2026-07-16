@@ -30,6 +30,16 @@
     </section>
 
     <div v-if="!loading" class="plugin-list">
+      <el-empty v-if="!catalog.length" class="catalog-empty" :description="catalogEmptyReason">
+        <template #image
+          ><el-icon class="empty-icon"><Box /></el-icon
+        ></template>
+        <template #default>
+          <p class="empty-title">暂时没有可用的外部插件</p>
+          <p class="empty-copy">{{ catalogEmptyReason }}</p>
+          <el-button type="primary" @click="focusRequest">申请安装插件</el-button>
+        </template>
+      </el-empty>
       <article v-for="entry in catalog" :key="entry.plugin_name" class="plugin-item">
         <div class="plugin-heading">
           <div>
@@ -39,6 +49,37 @@
           <el-tag :type="grantType(entry.plugin_name)" effect="plain">{{ grantLabel(entry.plugin_name) }}</el-tag>
         </div>
         <p>{{ entry.description || '该插件未提供详细介绍。' }}</p>
+        <dl class="experience-list">
+          <div v-if="entry.experience?.use_cases?.length">
+            <dt>适合场景</dt>
+            <dd>{{ entry.experience.use_cases.join('、') }}</dd>
+          </div>
+          <div>
+            <dt>数据使用</dt>
+            <dd>{{ entry.experience?.data_use || '仅使用你明确授权的数据。' }}</dd>
+          </div>
+          <div>
+            <dt>风险与控制</dt>
+            <dd>{{ entry.experience?.risk_summary || '可随时撤销授权。' }}</dd>
+          </div>
+          <div>
+            <dt>关闭后</dt>
+            <dd>{{ entry.experience?.disabled_behavior || '不会自动删除个人数据。' }}</dd>
+          </div>
+          <div v-if="entry.experience?.maintainer || entry.experience?.documentation_url">
+            <dt>维护与帮助</dt>
+            <dd>
+              <span v-if="entry.experience?.maintainer">{{ entry.experience.maintainer }}</span>
+              <a
+                v-if="entry.experience?.documentation_url"
+                :href="entry.experience.documentation_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                >查看使用说明</a
+              >
+            </dd>
+          </div>
+        </dl>
         <div class="capability-list">
           <span v-for="capability in entry.data_capabilities" :key="capability" class="capability">{{
             capabilityLabel(capability)
@@ -94,7 +135,6 @@
           >
         </div>
       </article>
-      <el-empty v-if="!catalog.length" description="管理员暂未发布可用插件" />
     </div>
     <div v-else class="loading-state"><el-skeleton :rows="5" animated /></div>
 
@@ -129,7 +169,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Delete, Download, Refresh } from '@element-plus/icons-vue'
+import { Box, Delete, Download, Refresh } from '@element-plus/icons-vue'
 import { pluginCenterApi } from '../api'
 
 type Permission = { resource: string; actions: string[]; purpose: string; risk?: string; revocable: boolean }
@@ -141,6 +181,14 @@ type CatalogEntry = {
   runtime: string
   data_capabilities: string[]
   user_permissions: Permission[]
+  experience?: {
+    use_cases?: string[]
+    data_use?: string
+    risk_summary?: string
+    disabled_behavior?: string
+    maintainer?: string
+    documentation_url?: string
+  }
 }
 type Grant = { plugin_name: string; status: string; permissions: string[] }
 type Usage = {
@@ -160,7 +208,9 @@ const catalog = ref<CatalogEntry[]>([]),
   selected = ref<CatalogEntry | null>(null),
   selectedPermissions = ref<string[]>([]),
   requestName = ref(''),
-  requestMessage = ref('')
+  requestMessage = ref(''),
+  catalogState = ref('ready'),
+  catalogEmptyReason = ref('管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。')
 const unwrap = (value: any) => value?.data || value || {}
 const enabledGrants = computed(
   () => new Map(grants.value.filter((grant) => grant.status === 'enabled').map((grant) => [grant.plugin_name, grant])),
@@ -173,7 +223,11 @@ const load = async () => {
       pluginCenterApi.myGrants(),
       pluginCenterApi.myUsage(),
     ])
-    catalog.value = unwrap(catalogResponse).items || []
+    const catalogData = unwrap(catalogResponse)
+    catalog.value = catalogData.items || []
+    catalogState.value = catalogData.catalog_state || (catalog.value.length ? 'ready' : 'empty')
+    catalogEmptyReason.value =
+      catalogData.empty_reason || '管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。'
     grants.value = unwrap(grantResponse).items || []
     usages.value = unwrap(usageResponse).items || []
   } catch (error: any) {
@@ -195,6 +249,10 @@ const permissionKey = (permission: Permission) => `${permission.resource}:${perm
 const permissionPurpose = (permission: Permission) => permission.purpose || '未说明用途'
 const capabilityLabel = (capability: string) =>
   ({ 'managed-data': '受管数据', 'user-files': '个人文件', 'user-consent': '需用户授权' })[capability] || capability
+const focusRequest = () => {
+  const target = document.querySelector<HTMLInputElement>('.request-fields input')
+  target?.focus()
+}
 const openConsent = (entry: CatalogEntry) => {
   selected.value = entry
   selectedPermissions.value = entry.user_permissions?.map(permissionKey) || []
@@ -358,6 +416,53 @@ h2 {
   gap: 8px;
   margin: 0;
 }
+.experience-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 11px 12px;
+  border-left: 3px solid #4a85c5;
+  background: color-mix(in srgb, var(--campus-page-background, #f4f6f8) 84%, #d9ecff);
+}
+.experience-list div {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+}
+.experience-list dt {
+  color: var(--campus-muted-color, #687385);
+  font-size: 12px;
+}
+.experience-list dd {
+  margin: 0;
+  color: var(--campus-text-color, #1f2937);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.experience-list a {
+  margin-left: 10px;
+}
+.catalog-empty {
+  padding: 34px 18px;
+  border: 1px solid var(--campus-border-color, #dfe3e8);
+  background: var(--campus-surface-color, #fff);
+}
+.empty-icon {
+  font-size: 44px;
+  color: #4a85c5;
+}
+.empty-title {
+  margin-top: 10px;
+  color: var(--campus-text-color, #1f2937);
+  font-weight: 650;
+}
+.empty-copy {
+  max-width: 480px;
+  margin: 7px auto 14px;
+  color: var(--campus-muted-color, #687385);
+  font-size: 13px;
+  line-height: 1.6;
+}
 .usage-list {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -441,6 +546,10 @@ h2 {
   }
   .request-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .experience-list div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 }
 </style>

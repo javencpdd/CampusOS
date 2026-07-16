@@ -4,17 +4,17 @@
 
 CampusOS 面向校园社区场景，把论坛、个人空间和插件平台放在同一套系统中。用户可以按版块发布普通文本帖子或受控富文本文章、回复和管理自己的内容；管理员可以管理用户、版块、插件、集成和平台运行信息。
 
-项目当前稳定开发基线为 `v0.7.0`。v7 已完成模块化单体边界优化：Module Registry 管理 Core 生命周期，Feature Registry 管理内置功能，Plugin Platform 通过兼容 Facade 管理外部扩展，Resource Repository 管理无运行时资源包。现有 API、数据库、插件和前端合同保持兼容。
+项目当前开发基线为 `v0.10.0`。v7-v9 建立了模块化单体、功能域边界、Manifest v2、受管插件数据和用户授权；v10 完成内容治理状态机、统一内容查询、稳定权限 Code、路由操作目录、授权审计、扩展清单和重点页面七视口适配。旧 API、旧权限表、旧资源来源和 Manifest 仍通过兼容层读取。
 
 ## 已实现能力
 
 | 领域 | 当前能力 |
 | --- | --- |
-| 社区 | 注册登录、版块、默认标签、普通帖子、富文本图文文章、回复楼层、私密帖子。 |
-| 用户空间 | 公开个人主页、头像、每用户本地空间、风格包、内容同步。 |
+| 社区 | 注册登录、版块与标签、普通/富文本帖子、回复楼层、私密内容，以及发布、审核、下架、整改和回收站状态机。 |
+| 用户空间 | 公开个人主页、头像、每用户本地空间、风格包，以及通过 Community `ContentQuery` 得到的一致内容视图。 |
 | 个人课表 | 独立学期 JSON、第一周设置、周课表、日历和 Excel/CSV/JSON 导入。 |
-| 管理后台 | 用户、帖子、版块、版主、插件、集成、日志和数据库架构说明。 |
-| 插件运行时 | Built-in、Wasm、gRPC，支持事件、Host API、配置、日志和 KV。 |
+| 管理后台 | 用户与权限、内容治理、版块和版主、扩展与集成、日志和数据库架构说明。 |
+| 扩展平台 | Built-in Feature、Wasm 和兼容 `grpc` 名称的受管进程 Runtime，支持 Host API、配置、日志、KV、Catalog 和用户 Grant。 |
 | 插件包 | CLI 初始化、检查、打包和安装；Admin 预检、导入、导出和覆盖更新。 |
 | 低风险集成 | AI Gateway、Webhook、内部 MCP-like 只读工具和 Message local adapter。 |
 
@@ -23,6 +23,7 @@ CampusOS 面向校园社区场景，把论坛、个人空间和插件平台放�
 以下项目仍属于后续工作，不能把现有实现描述成已经完成：
 
 - 标准 MCP Server。
+- 标准 protobuf gRPC 插件协议；当前 `runtime: grpc` 使用受限 loopback HTTP 合同。
 - Discord、OneBot v11 等真实外部消息适配器。
 - 公网插件市场和自动信任第三方插件。
 - 在主页面同源执行任意 JavaScript 的风格包；动态特效只允许使用受筛查的 `sandbox-worker.v1`。
@@ -47,6 +48,7 @@ docs-site (VitePress, :3002)                          -> data/
 | `data/plugins/` | 插件实现、manifest 和运行入口。 |
 | `data/plugin_data/` | 插件运行数据和可编辑风格包源码。 |
 | `data/personal-space/` | 每个用户的本地文件和图片。 |
+| `data/resources/` | 无业务 Runtime 的主题、主页包、空间风格、Skill、Prompt 等 Resource Package。 |
 
 ## 推荐阅读顺序
 
