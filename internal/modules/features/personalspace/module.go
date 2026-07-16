@@ -43,7 +43,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.community", "core.user-storage", "core.feature-registry", "feature.appearance"}
+	return []string{"core.identity", "core.community", "core.user-storage", "core.reliability", "core.feature-registry", "feature.appearance"}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -106,6 +106,11 @@ func (m *Module) Start(ctx context.Context) error {
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
 	svc.SetContentQuery(m.contentQuery)
 	svc.SetPluginEnabledChecker(m.enabled)
+	if value, ok := m.app.Lookup("platform.reliability.service"); ok {
+		if reporter, ok := value.(CompatibilityReporter); ok {
+			svc.SetCompatibilityReporter(reporter)
+		}
+	}
 	config := FileStorageConfig{}
 	if m.config.FileStorageConfig != nil {
 		config = m.config.FileStorageConfig()

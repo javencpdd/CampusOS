@@ -9,6 +9,8 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 )
 
 var (
@@ -30,10 +32,42 @@ type UserLookup interface {
 type PermissionService struct {
 	roleRepo repository.RoleRepository
 	userRepo UserLookup
+	reliable *reliability.Service
 }
 
 func NewPermissionService(roleRepo repository.RoleRepository, userRepo UserLookup) *PermissionService {
 	return &PermissionService{roleRepo: roleRepo, userRepo: userRepo}
+}
+
+func (s *PermissionService) SetReliability(reliable *reliability.Service) {
+	s.reliable = reliable
+	if reliable == nil {
+		return
+	}
+	if snapshotter, ok := s.roleRepo.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+}
+
+// executeCommand keeps role, scope, and catalog mutations on the same Core
+// transaction as their command audit and durable event. The active guard is
+// needed because public compatibility methods call themselves through this
+// helper with the transaction context.
+func (s *PermissionService) executeCommand(ctx context.Context, actorID, code, resourceType, resourceID string, action func(context.Context) error) error {
+	if s.reliable == nil || transaction.Active(ctx) {
+		return action(ctx)
+	}
+	event, err := reliability.NewEvent("authorization.changed", resourceType, resourceID, map[string]string{
+		"command": code, "actor_id": actorID, "resource_type": resourceType, "resource_id": resourceID,
+	})
+	if err != nil {
+		return err
+	}
+	return s.reliable.Execute(ctx, reliability.Command{
+		Code: code, ActorID: actorID, ResourceType: resourceType, ResourceID: resourceID,
+		OperationCode: code, PermissionCode: code,
+		Event: &event,
+	}, action)
 }
 
 // Check checks whether a user has the requested resource action.
@@ -67,6 +101,7 @@ func (s *PermissionService) CheckCode(ctx context.Context, userID, code string) 
 			return false, err
 		}
 	}
+	s.recordLegacyPermissionCatalogUse(ctx, code, "global")
 	resource, action, ok := permissioncode.LegacyForCode(code)
 	if !ok {
 		return false, nil
@@ -109,6 +144,7 @@ func (s *PermissionService) CheckCodeScoped(ctx context.Context, userID, code, s
 			return false, err
 		}
 	}
+	s.recordLegacyPermissionCatalogUse(ctx, code, "scoped")
 	resource, action, ok := permissioncode.LegacyForCode(code)
 	if !ok {
 		return false, nil
@@ -235,6 +271,15 @@ func (s *PermissionService) RevokeRole(ctx context.Context, userID string, roleI
 // management flow. The legacy AssignRole method remains for compatibility with
 // trusted internal callers during the migration.
 func (s *PermissionService) AssignRoleByActor(ctx context.Context, actorID, userID string, roleID int64) (bool, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		var assigned bool
+		err := s.executeCommand(ctx, actorID, "identity.role.assign", "user_role", userID+":"+strconv.FormatInt(roleID, 10), func(commandCtx context.Context) error {
+			var commandErr error
+			assigned, commandErr = s.AssignRoleByActor(commandCtx, actorID, userID, roleID)
+			return commandErr
+		})
+		return assigned, err
+	}
 	if actorID == "" || actorID == userID {
 		return false, ErrPermissionEscalation
 	}
@@ -249,15 +294,26 @@ func (s *PermissionService) AssignRoleByActor(ctx context.Context, actorID, user
 		return false, err
 	}
 	if assigned {
-		s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
+		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
 			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.role.assign",
 			ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
-		})
+		}); err != nil {
+			return false, err
+		}
 	}
 	return assigned, nil
 }
 
 func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, userID string, roleID int64) (bool, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		var revoked bool
+		err := s.executeCommand(ctx, actorID, "identity.role.revoke", "user_role", userID+":"+strconv.FormatInt(roleID, 10), func(commandCtx context.Context) error {
+			var commandErr error
+			revoked, commandErr = s.RevokeRoleByActor(commandCtx, actorID, userID, roleID)
+			return commandErr
+		})
+		return revoked, err
+	}
 	if actorID == "" || actorID == userID {
 		return false, ErrPermissionEscalation
 	}
@@ -322,10 +378,12 @@ func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, user
 	if !revoked {
 		return false, ErrRoleAssignmentNotFound
 	}
-	s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
+	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
 		ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
 		ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
-	})
+	}); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -360,6 +418,15 @@ func (s *PermissionService) ReplaceCategoryRoleScopes(ctx context.Context, userI
 // route middleware and granting a role whose effective permissions exceed the
 // actor's own permissions.
 func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context, actorID, userID, roleName string, categoryIDs []int64) (bool, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		var changed bool
+		err := s.executeCommand(ctx, actorID, "identity.moderator.scope.replace", "user_role", userID+":"+roleName, func(commandCtx context.Context) error {
+			var commandErr error
+			changed, commandErr = s.ReplaceCategoryRoleScopesByActor(commandCtx, actorID, userID, roleName, categoryIDs)
+			return commandErr
+		})
+		return changed, err
+	}
 	if actorID == "" || actorID == userID {
 		return false, ErrPermissionEscalation
 	}
@@ -378,10 +445,12 @@ func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context
 		return false, err
 	}
 	if changed {
-		s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
+		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
 			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.moderator.scope.replace",
 			ScopeType: "category", ResourceType: "user_role", ResourceID: userID + ":" + roleName, Outcome: "allow",
-		})
+		}); err != nil {
+			return false, err
+		}
 	}
 	return changed, nil
 }
@@ -426,6 +495,15 @@ func (s *PermissionService) ListRolePermissions(ctx context.Context, roleID int6
 }
 
 func (s *PermissionService) CreateCustomRole(ctx context.Context, actorID, name, description string, permissionCodes []string) (*repository.Role, error) {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		var role *repository.Role
+		err := s.executeCommand(ctx, actorID, "identity.role.create", "role", strings.ToLower(strings.TrimSpace(name)), func(commandCtx context.Context) error {
+			var commandErr error
+			role, commandErr = s.CreateCustomRole(commandCtx, actorID, name, description, permissionCodes)
+			return commandErr
+		})
+		return role, err
+	}
 	catalog, ok := s.authorizationRepository()
 	if !ok {
 		return nil, ErrAuthorizationCatalog
@@ -450,11 +528,18 @@ func (s *PermissionService) CreateCustomRole(ctx context.Context, actorID, name,
 	if err := catalog.ReplaceRolePermissions(ctx, role.ID, permissionCodes, actorID); err != nil {
 		return nil, err
 	}
-	s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"})
+	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"}); err != nil {
+		return nil, err
+	}
 	return role, nil
 }
 
 func (s *PermissionService) UpdateRolePermissions(ctx context.Context, actorID string, roleID int64, permissionCodes []string) error {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		return s.executeCommand(ctx, actorID, "identity.role.update_permissions", "role", strconv.FormatInt(roleID, 10), func(commandCtx context.Context) error {
+			return s.UpdateRolePermissions(commandCtx, actorID, roleID, permissionCodes)
+		})
+	}
 	catalog, ok := s.authorizationRepository()
 	if !ok {
 		return ErrAuthorizationCatalog
@@ -479,8 +564,7 @@ func (s *PermissionService) UpdateRolePermissions(ctx context.Context, actorID s
 	if err := catalog.ReplaceRolePermissions(ctx, roleID, permissionCodes, actorID); err != nil {
 		return err
 	}
-	s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
-	return nil
+	return s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
 }
 
 func (s *PermissionService) ListAuthorizationAudits(ctx context.Context, limit int) ([]repository.AuthorizationAudit, error) {
@@ -500,14 +584,14 @@ func (s *PermissionService) SyncRouteOperations(ctx context.Context, operations 
 }
 
 func (s *PermissionService) RecordRouteDecision(ctx context.Context, audit repository.AuthorizationAudit) {
-	s.recordAuthorizationAudit(ctx, audit)
+	_ = s.recordAuthorizationAudit(ctx, audit)
 }
 
 // RecordHTTPAuthorizationDecision is intentionally a small transport-facing
 // adapter. It keeps Gin/middleware free of Identity repository types while
 // preserving request-level allow/deny evidence for high-risk administration.
 func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context, actorID, permissionCode, operationCode, outcome, reason, requestID, ipAddress string) {
-	s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
+	_ = s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
 		ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
 		Outcome: outcome, Reason: reason, RequestID: requestID, IPAddress: ipAddress,
 	})
@@ -516,9 +600,9 @@ func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context,
 // RecordContentAuthorizationDecision keeps the resource-derived category
 // scope alongside the decision. Community uses this optional Port without
 // importing Identity repository types.
-func (s *PermissionService) RecordContentAuthorizationDecision(ctx context.Context, actorID, permissionCode string, scopeID int64, outcome, reason string) {
+func (s *PermissionService) RecordContentAuthorizationDecision(ctx context.Context, actorID, permissionCode string, scopeID int64, outcome, reason string) error {
 	scope := scopeID
-	s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
+	return s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
 		ActorID: actorID, PermissionCode: permissionCode, OperationCode: "community.content." + strings.ReplaceAll(permissionCode, ".", "_"),
 		ScopeType: "category", ScopeID: &scope, ResourceType: "thread", Outcome: outcome, Reason: reason,
 	})
@@ -568,12 +652,36 @@ func (s *PermissionService) authorizationRepository() (repository.AuthorizationR
 	return catalog, ok
 }
 
-func (s *PermissionService) recordAuthorizationAudit(ctx context.Context, audit repository.AuthorizationAudit) {
-	catalog, ok := s.authorizationRepository()
-	if !ok {
+// recordLegacyPermissionCatalogUse makes the additive v10-to-v11 catalog
+// fallback observable without changing an authorization decision. A failed
+// telemetry write must never broaden or deny a user's permission.
+func (s *PermissionService) recordLegacyPermissionCatalogUse(ctx context.Context, code, check string) {
+	if s.reliable == nil {
 		return
 	}
-	_ = catalog.RecordAuthorizationAudit(ctx, audit)
+	_ = s.reliable.RecordCompatibility(ctx, "legacy-permission-catalog", "authorization", map[string]string{
+		"permission_code": code,
+		"check":           check,
+	})
+}
+
+func (s *PermissionService) recordAuthorizationAudit(ctx context.Context, audit repository.AuthorizationAudit) error {
+	catalog, ok := s.authorizationRepository()
+	if !ok {
+		return ErrAuthorizationCatalog
+	}
+	return catalog.RecordAuthorizationAudit(ctx, audit)
+}
+
+// recordRequiredAuthorizationAudit fails closed when the caller is executing
+// through the reliable command path. Legacy direct service callers retain
+// their pre-v11 behavior when an old adapter has not implemented the catalog.
+func (s *PermissionService) recordRequiredAuthorizationAudit(ctx context.Context, audit repository.AuthorizationAudit) error {
+	err := s.recordAuthorizationAudit(ctx, audit)
+	if errors.Is(err, ErrAuthorizationCatalog) && !transaction.Active(ctx) {
+		return nil
+	}
+	return err
 }
 
 func isCatalogUnavailable(err error) bool {

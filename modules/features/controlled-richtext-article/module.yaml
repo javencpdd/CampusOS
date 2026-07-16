@@ -3,7 +3,7 @@ id: feature.controlled-richtext-article
 feature_id: controlled-richtext-article
 name: controlled-richtext-article
 display_name: "Controlled RichText Article"
-version: "0.10.0"
+version: "0.11.0"
 description: "Draft, publish, sanitize, preview, asset, and template support for image-text articles."
 kind: builtin-feature
 activation_mode: restart

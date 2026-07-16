@@ -53,6 +53,9 @@ func LegacyForCode(code string) (resource, action string, ok bool) {
 		"identity.role.create":             {"role", "manage"},
 		"identity.role.update_permissions": {"role", "manage"},
 		"identity.role.read_audit":         {"role", "read"},
+		"platform.reliability.read":        {"metrics", "read"},
+		"platform.reliability.replay":      {"plugin", "configure"},
+		"platform.retention.preview":       {"metrics", "read"},
 	}
 	if pair, exists := special[code]; exists {
 		return pair[0], pair[1], true

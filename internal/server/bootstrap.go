@@ -22,6 +22,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformruntime "github.com/campusos/CampusOS/internal/platform/runtime"
 	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/pkg/cache"
@@ -75,6 +76,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		marketStore = plugin.NewPgMarketStore(pool)
 	}
 	events := newEventBusModule(s.cfg)
+	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
 	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore)
 	identityModule := identitycore.NewModule(identitycore.Config{JWT: s.newJWTManager(), PasswordHashEnabled: s.cfg.Auth.PasswordHashEnabled})
@@ -102,7 +104,10 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-schedule") },
 	})
 	aiModule := ai.NewModule(s.cfg.AI)
-	webhookModule := webhook.NewModule(metricsCollector)
+	webhookModule := webhook.NewModule(metricsCollector, webhook.Config{EgressPolicy: webhook.EgressPolicy{
+		AllowedHosts:        s.cfg.Webhook.AllowedHosts,
+		AllowPrivateNetwork: s.cfg.Webhook.AllowPrivateNetwork,
+	}})
 	mcpModule := mcp.NewModule(metricsCollector)
 	messageModule := message.NewModule(metricsCollector)
 	platformLogModule := platformlog.NewModule()
@@ -123,8 +128,10 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.message = messageModule
 	s.platformLog = platformLogModule
 	s.integration = integrationModule
+	s.reliability = reliabilityModule
 	entries := []platformruntime.Registration{
 		{Module: events, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: reliabilityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: features, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},
@@ -151,6 +158,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				return err
 			}
 			if pool != nil {
+				if err := reliability.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
 				if err := identitycore.BindPostgreSQLAdapters(app, pool); err != nil {
 					return err
 				}
@@ -176,6 +186,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 					return err
 				}
 				return message.BindPostgreSQLAdapter(app, pool)
+			}
+			if err := reliability.BindMemoryAdapter(app); err != nil {
+				return err
 			}
 			if err := identitycore.BindMemoryAdapters(app); err != nil {
 				return err

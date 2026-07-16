@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CampusOS Current HTTP API
-  version: 0.10.0-experimental
+  version: 0.11.0-experimental
   description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.
 servers:
   - url: http://localhost:8080
@@ -2064,6 +2064,312 @@ paths:
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.platform.logs.stream
       x-campusos-permission: platform.platform_log.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/attempts:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/attempts
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.attempts
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/command-audits:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/command-audits
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.command_audits
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/compatibility:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/compatibility
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.compatibility
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/events:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/events
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.events
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/events/{id}/replay:
+    post:
+      operationId: d_Reliability
+      summary: POST /api/v1/platform/reliability/events/:id/replay
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.replay
+      x-campusos-permission: platform.reliability.replay
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/operations:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/operations
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.operations
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/retention-preview:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/retention-preview
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.retention_preview
+      x-campusos-permission: platform.retention.preview
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/retention-runs:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/retention-runs
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.retention_runs
+      x-campusos-permission: platform.retention.preview
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/retention-runs/preview:
+    post:
+      operationId: d_Reliability
+      summary: POST /api/v1/platform/reliability/retention-runs/preview
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.retention_preview_create
+      x-campusos-permission: platform.retention.preview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/summary:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/summary
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.summary
+      x-campusos-permission: platform.reliability.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/reliability/workers:
+    get:
+      operationId: d_Reliability
+      summary: GET /api/v1/platform/reliability/workers
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.reliability
+      x-campusos-scope: global
+      x-campusos-operation: http.platform.reliability.workers
+      x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
       responses:

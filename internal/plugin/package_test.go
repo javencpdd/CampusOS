@@ -3,6 +3,8 @@ package plugin
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -125,6 +127,84 @@ func TestManagerImportPackageReplaceAndExport(t *testing.T) {
 	}
 	if manifest.Version != "0.2.0" {
 		t.Fatalf("unexpected exported version: %#v", manifest)
+	}
+}
+
+type failingPluginRecordRepository struct {
+	*MemoryPluginRepository
+	failVersion string
+}
+
+func (r *failingPluginRecordRepository) Save(ctx context.Context, record *PluginRecord) error {
+	if record != nil && record.Version == r.failVersion {
+		return errors.New("simulated plugin catalog persistence failure")
+	}
+	return r.MemoryPluginRepository.Save(ctx, record)
+}
+
+type recordingCompatibilityReporter struct {
+	keys []string
+}
+
+func (r *recordingCompatibilityReporter) RecordCompatibility(_ context.Context, key, _ string, _ any) error {
+	r.keys = append(r.keys, key)
+	return nil
+}
+
+func TestPluginInstallRecordsLegacyRuntimeCompatibilityUse(t *testing.T) {
+	source := writePackablePlugin(t, t.TempDir(), "legacy-runtime", "0.1.0")
+	manifestPath := filepath.Join(source, "plugin.yaml")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "runtime: wasm", "runtime: grpc", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reporter := &recordingCompatibilityReporter{}
+	manager := NewManager()
+	manager.SetCompatibilityReporter(reporter)
+	if _, err := manager.Install(source); err != nil {
+		t.Fatal(err)
+	}
+	if len(reporter.keys) != 1 || reporter.keys[0] != "legacy-runtime-name:grpc" {
+		t.Fatalf("legacy runtime use was not recorded: %#v", reporter.keys)
+	}
+}
+
+func TestManagerImportPackageRestoresPriorVersionAfterCatalogFailure(t *testing.T) {
+	sourceV1 := writePackablePlugin(t, t.TempDir(), "recoverable", "0.1.0")
+	sourceV2 := writePackablePlugin(t, t.TempDir(), "recoverable", "0.2.0")
+	packageV1 := filepath.Join(t.TempDir(), "recoverable-v1.campusos-plugin.tar.gz")
+	packageV2 := filepath.Join(t.TempDir(), "recoverable-v2.campusos-plugin.tar.gz")
+	if _, err := PackagePlugin(sourceV1, packageV1); err != nil {
+		t.Fatalf("package v1: %v", err)
+	}
+	if _, err := PackagePlugin(sourceV2, packageV2); err != nil {
+		t.Fatalf("package v2: %v", err)
+	}
+
+	manager := NewManager()
+	repository := &failingPluginRecordRepository{MemoryPluginRepository: NewMemoryPluginRepository()}
+	manager.SetPluginRepository(repository)
+	installDir := t.TempDir()
+	if _, err := manager.ImportPackage(packageV1, installDir, false); err != nil {
+		t.Fatalf("import v1: %v", err)
+	}
+	repository.failVersion = "0.2.0"
+	if _, err := manager.ImportPackage(packageV2, installDir, true); err == nil {
+		t.Fatal("expected catalog persistence failure")
+	}
+	restored, ok := manager.GetPlugin("recoverable")
+	if !ok || restored.Manifest == nil || restored.Manifest.Version != "0.1.0" {
+		t.Fatalf("prior catalog version was not restored: %#v", restored)
+	}
+	manifest, err := LoadManifest(filepath.Join(installDir, "recoverable", "plugin.yaml"))
+	if err != nil {
+		t.Fatalf("load restored package manifest: %v", err)
+	}
+	if manifest.Version != "0.1.0" {
+		t.Fatalf("prior package files were not restored: %#v", manifest)
 	}
 }
 

@@ -4,10 +4,11 @@ CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容
 
 ## 当前状态
 
-当前开发基线为 `v0.10.0`。v10 已完成产品语义闭环与统一治理，并通过 Go、Web、Admin、文档站、SDK、数据库、恢复演练和七视口浏览器发布门禁。
+当前开发基线为 `v0.11.0`。v10 的产品语义闭环与统一治理继续有效；v11 已为高风险命令补齐事务、持久事件、Worker、命令关联审计、Webhook 安全投递和保留预演，并通过对应的代码、合同、数据库和前端门禁。
 
 - 内容：普通文本与富文本共用发布、审核、下架、整改、回收站和清除状态合同；公开列表、个人主页和只读集成使用 Community 内容事实源。
 - 权限：使用稳定 Permission Code、路由 Operation、全局/板块作用域、自定义角色、越权防护、最后管理员并发保护和授权审计。
+- 可靠运行：注册、角色/权限和内容治理高风险写操作可与 required audit、Outbox 同事务提交；持久 Worker 提供 lease、重试、dead-letter、受控重放和可恢复操作记录。
 - 扩展：区分 External Plugin、Built-in Feature、Resource Package 与 Integration；支持 Wasm 和进程 Runtime、Host API v1/v2、受管数据/文件、用户授权与本地插件目录。
 - 前端：Web 与 Admin 按布局能力适配手机、平板、横屏和桌面；课表、内容治理、插件中心和权限页纳入七视口回归。
 
@@ -61,12 +62,12 @@ make release-check
 | 主题 | 文档 |
 | --- | --- |
 | 新开发者入门 | [官方文档完整入门路径](docs-site/guide/getting-started.md) |
-| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v10 模块/插件/资源物理隔离](docs/architecture/v10模块插件资源物理隔离.md)、[v10 系统清点与治理](docs/architecture/v10当前系统清点与治理.md) |
+| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v11 可靠命令与数据所有权](docs/architecture/v11可靠命令事件与数据所有权.md)、[v10 模块/插件/资源物理隔离](docs/architecture/v10模块插件资源物理隔离.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
-| 权限与版主 | [v10 权限管理设计与使用入门](docs/help/系统设计相关/v10权限管理设计与使用入门.md) |
+| 权限与可靠审计 | [v11 权限管理与可靠审计设计入门](docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md)、[可靠任务与 Webhook 安全运维](docs/help/系统设计相关/v11可靠任务与Webhook安全运维.md) |
 | 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |
-| 当前版本 | [v10 计划书](docs/项目计划v10/00-v10版本计划书.md)、[最终审计与后续路线](docs/项目计划v10/03-v10最终全方位审计与后续路线.md)、[v0.10 进度记录](docs/进度/v0.10-dev/) |
-| 下一版本规划 | [v11 可靠命令与持久事件实施计划](docs/项目计划v11/00-v11版本计划书.md)、[v11 权限管理与可靠审计设计入门](docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
+| 当前版本 | [v11 计划书](docs/项目计划v11/00-v11版本计划书.md)、[v11 实施回顾与 v12 进入条件](docs/项目计划v11/01-v11实施回顾与v12进入条件.md)、[v0.11 进度记录](docs/进度/v0.11-dev/) |
+| 历史封版与后续 | [v10 最终审计与后续路线](docs/项目计划v10/03-v10最终全方位审计与后续路线.md)、[v12 进入条件](docs/项目计划v11/01-v11实施回顾与v12进入条件.md) |
 
 ## License
 

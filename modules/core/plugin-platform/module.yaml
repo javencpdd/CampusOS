@@ -2,7 +2,7 @@ schema: campusos.module/v1
 id: core.plugin-platform
 name: plugin-platform
 display_name: "External Plugin Platform"
-version: "0.10.0"
+version: "0.11.0"
 description: "Catalog, external runtimes, lifecycle, Host API, Extension Gateway, configuration, UI, event, and audit services."
 kind: core
 activation_mode: always-on

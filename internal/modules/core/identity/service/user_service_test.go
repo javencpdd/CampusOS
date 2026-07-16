@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/auth"
 )
 
@@ -14,6 +17,12 @@ type captureAccountRepo struct {
 	userID     string
 	email      string
 	credential string
+}
+
+type failingAccountRepo struct{ captureAccountRepo }
+
+func (r *failingAccountRepo) CreateAccount(context.Context, string, string, string) error {
+	return errors.New("account write failed")
 }
 
 func (r *captureAccountRepo) CreateAccount(_ context.Context, userID, email, credential string) error {
@@ -95,6 +104,24 @@ func TestLoginUsesPlaintextCredentialWhenHashingDisabled(t *testing.T) {
 	}
 	if loggedIn.ID != user.ID {
 		t.Fatalf("expected user %s, got %s", user.ID, loggedIn.ID)
+	}
+}
+
+func TestRegisterRollsBackUserWhenAccountOrRequiredAuditFails(t *testing.T) {
+	userRepo := repository.NewMemoryUserRepository()
+	svc := NewUserService(userRepo, testJWTManager(), &failingAccountRepo{}, nil)
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
+	_, err := svc.Register(context.Background(), domain.CreateUserRequest{
+		Username: "rollback_user",
+		Nickname: "Rollback User",
+		Email:    "rollback@example.test",
+		Password: "Secret123",
+	})
+	if err == nil {
+		t.Fatal("expected account write failure")
+	}
+	if _, getErr := userRepo.GetByEmail(context.Background(), "rollback@example.test"); !errors.Is(getErr, repository.ErrUserNotFound) {
+		t.Fatalf("failed registration left a user record: %v", getErr)
 	}
 }
 

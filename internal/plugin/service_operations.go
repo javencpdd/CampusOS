@@ -22,6 +22,18 @@ func (m *Manager) DispatchEvent(ctx context.Context, event *EventMessage) {
 	m.events.DispatchEvent(ctx, event)
 }
 func (m *Manager) SetPluginRepository(repo PluginRepository) { m.packages.SetRepository(repo) }
+func (m *Manager) SetOperationTracker(tracker OperationTracker) {
+	m.packages.SetOperationTracker(tracker)
+}
+func (m *Manager) SetCompatibilityReporter(reporter CompatibilityReporter) {
+	m.packages.SetCompatibilityReporter(reporter)
+}
+func (m *Manager) RecordCompatibility(ctx context.Context, key, kind string, detail any) {
+	if m == nil || m.packages == nil || m.packages.compatibility == nil {
+		return
+	}
+	_ = m.packages.compatibility.RecordCompatibility(ctx, key, kind, detail)
+}
 func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
 	m.audit.SetRepository(repo)
 }
@@ -42,6 +54,9 @@ func (m *Manager) InstallFromPluginsDir(dir string) error {
 }
 func (m *Manager) ImportPackage(packagePath, pluginsDir string, replace bool) (*Plugin, error) {
 	return m.packages.ImportPackage(packagePath, pluginsDir, replace)
+}
+func (m *Manager) ImportPackageContext(ctx context.Context, packagePath, pluginsDir string, replace bool) (*Plugin, error) {
+	return m.packages.ImportPackageContext(ctx, packagePath, pluginsDir, replace)
 }
 func (m *Manager) HealthCheck(name string) error { return m.lifecycle.HealthCheck(name) }
 func (m *Manager) DispatchExtension(ctx context.Context, name string, request *ExtensionRequest) (*ExtensionResponse, error) {

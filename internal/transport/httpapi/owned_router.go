@@ -202,6 +202,8 @@ func moduleOwner(handlerName, path string) string {
 		return "feature.appearance"
 	case strings.Contains(handlerName, "/internal/platform/feature.") || strings.Contains(handlerName, "/internal/platform/feature/"):
 		return "core.feature-registry"
+	case strings.Contains(handlerName, "/internal/platform/reliability.") || strings.Contains(handlerName, "/internal/platform/reliability/"):
+		return "core.reliability"
 	case strings.Contains(handlerName, "/internal/plugin.") || strings.Contains(handlerName, "/internal/plugin/"):
 		return "core.plugin-platform"
 	case strings.Contains(handlerName, "/internal/modules/features/ai.") || strings.Contains(handlerName, "/internal/modules/features/ai/"):

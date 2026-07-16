@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -12,6 +13,7 @@ import (
 )
 
 var ErrThreadNotFound = errors.New("thread not found")
+var ErrThreadRevisionConflict = errors.New("thread revision conflict")
 
 // ThreadRepository 帖子仓储接口
 type ThreadRepository interface {
@@ -25,6 +27,14 @@ type ThreadRepository interface {
 	List(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 }
 
+// GovernedThreadRepository is an optional optimistic-concurrency adapter for
+// high-risk moderation transitions. The base repository stays compatible with
+// legacy callers while PostgreSQL and Memory profiles both provide it.
+type GovernedThreadRepository interface {
+	UpdateIfRevision(context.Context, *domain.Thread, int) error
+	PurgeIfRevision(context.Context, string, int) error
+}
+
 // MemoryThreadRepository 内存帖子仓储（Demo 用）
 type MemoryThreadRepository struct {
 	mu      sync.RWMutex
@@ -36,6 +46,33 @@ func NewMemoryThreadRepository() *MemoryThreadRepository {
 	return &MemoryThreadRepository{
 		threads: make(map[string]*domain.Thread),
 	}
+}
+
+// Snapshot and Restore give the local profile the same all-or-nothing command
+// semantics that PostgreSQL provides through TxKernel. They are only used by
+// the in-memory transaction adapter during tests and local development.
+func (r *MemoryThreadRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	payload, err := json.Marshal(r.threads)
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), payload...)
+}
+
+func (r *MemoryThreadRepository) Restore(value any) {
+	payload, ok := value.([]byte)
+	if !ok || len(payload) == 0 {
+		return
+	}
+	items := make(map[string]*domain.Thread)
+	if err := json.Unmarshal(payload, &items); err != nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.threads = items
 }
 
 func (r *MemoryThreadRepository) Create(_ context.Context, thread *domain.Thread) error {
@@ -95,6 +132,21 @@ func (r *MemoryThreadRepository) Update(_ context.Context, thread *domain.Thread
 	return nil
 }
 
+func (r *MemoryThreadRepository) UpdateIfRevision(_ context.Context, thread *domain.Thread, expected int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	current, ok := r.threads[thread.ID]
+	if !ok {
+		return ErrThreadNotFound
+	}
+	if current.CurrentRevision != expected {
+		return ErrThreadRevisionConflict
+	}
+	thread.NormalizeContentState()
+	r.threads[thread.ID] = cloneThread(thread)
+	return nil
+}
+
 func (r *MemoryThreadRepository) Delete(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -115,6 +167,20 @@ func (r *MemoryThreadRepository) Purge(_ context.Context, id string) error {
 	defer r.mu.Unlock()
 	if _, ok := r.threads[id]; !ok {
 		return ErrThreadNotFound
+	}
+	delete(r.threads, id)
+	return nil
+}
+
+func (r *MemoryThreadRepository) PurgeIfRevision(_ context.Context, id string, expected int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	thread, ok := r.threads[id]
+	if !ok {
+		return ErrThreadNotFound
+	}
+	if thread.CurrentRevision != expected {
+		return ErrThreadRevisionConflict
 	}
 	delete(r.threads, id)
 	return nil

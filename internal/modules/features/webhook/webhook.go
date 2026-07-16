@@ -9,12 +9,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/campusos/CampusOS/pkg/observability"
@@ -26,32 +30,69 @@ import (
 
 var ErrEndpointNotFound = errors.New("webhook endpoint not found")
 
+const (
+	webhookSignatureVersion  = "v1"
+	maxWebhookRedirects      = 3
+	maxWebhookResponseBody   = 64 << 10
+	maxWebhookResponseHeader = 32 << 10
+)
+
+var errWebhookResponseTooLarge = errors.New("webhook response body exceeds the 64 KiB safety limit")
+
 type Endpoint struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	URL        string    `json:"url"`
-	Secret     string    `json:"-"`
-	Events     []string  `json:"events"`
-	Enabled    bool      `json:"enabled"`
-	MaxRetries int       `json:"max_retries"`
-	TimeoutMS  int       `json:"timeout_ms"`
-	CreatedBy  string    `json:"created_by"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	URL        string   `json:"url"`
+	Secret     string   `json:"-"`
+	Events     []string `json:"events"`
+	Enabled    bool     `json:"enabled"`
+	MaxRetries int      `json:"max_retries"`
+	TimeoutMS  int      `json:"timeout_ms"`
+	// MaxConcurrent and RateLimitPerMinute apply to one endpoint. They are
+	// intentionally bounded by Service before use; a webhook configuration
+	// cannot turn the worker into an unbounded outbound traffic generator.
+	MaxConcurrent      int       `json:"max_concurrent"`
+	RateLimitPerMinute int       `json:"rate_limit_per_minute"`
+	CreatedBy          string    `json:"created_by"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// EgressPolicy is intentionally restrictive by default. It guards both
+// endpoint registration and every outbound dial so DNS rebinding cannot turn a
+// previously valid hostname into an internal-network request.
+type EgressPolicy struct {
+	AllowedHosts        []string
+	AllowPrivateNetwork bool
+}
+
+func (p EgressPolicy) normalizedAllowedHosts() []string {
+	items := make([]string, 0, len(p.AllowedHosts))
+	for _, host := range p.AllowedHosts {
+		host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+		if host != "" {
+			items = append(items, host)
+		}
+	}
+	return items
 }
 
 type Delivery struct {
-	ID             string    `json:"id"`
-	EndpointID     string    `json:"endpoint_id"`
-	EventID        string    `json:"event_id"`
-	EventType      string    `json:"event_type"`
-	TargetURL      string    `json:"target_url"`
-	Status         string    `json:"status"`
-	Attempts       int       `json:"attempts"`
-	ResponseStatus int       `json:"response_status"`
-	ErrorMessage   string    `json:"error_message,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             string     `json:"id"`
+	EndpointID     string     `json:"endpoint_id"`
+	EventID        string     `json:"event_id"`
+	OutboxEventID  string     `json:"outbox_event_id,omitempty"`
+	DeliveryKey    string     `json:"delivery_key,omitempty"`
+	EventType      string     `json:"event_type"`
+	TargetURL      string     `json:"target_url"`
+	Status         string     `json:"status"`
+	Attempts       int        `json:"attempts"`
+	ResponseStatus int        `json:"response_status"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
+	NextAttemptAt  *time.Time `json:"next_attempt_at,omitempty"`
+	DeadLetteredAt *time.Time `json:"dead_lettered_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type Summary struct {
@@ -74,29 +115,70 @@ type Store interface {
 }
 
 type Service struct {
-	store   Store
-	metrics *observability.Collector
+	store       Store
+	metrics     *observability.Collector
+	reliability *reliability.Service
+	egress      EgressPolicy
+
+	limiterMu sync.Mutex
+	limiters  map[string]*endpointLimiter
 }
 
-func NewService(store Store, metrics *observability.Collector) *Service {
-	return &Service{store: store, metrics: metrics}
+type endpointLimiter struct {
+	maxConcurrent int
+	ratePerMinute int
+	inFlight      int
+	windowStarted time.Time
+	windowCount   int
+}
+
+func NewService(store Store, metrics *observability.Collector, reliable ...*reliability.Service) *Service {
+	service := &Service{store: store, metrics: metrics, limiters: make(map[string]*endpointLimiter)}
+	if len(reliable) > 0 {
+		service.reliability = reliable[0]
+	}
+	return service
+}
+
+func (s *Service) SetEgressPolicy(policy EgressPolicy) {
+	policy.AllowedHosts = policy.normalizedAllowedHosts()
+	s.egress = policy
 }
 
 func (s *Service) Register(bus eventbus.EventBus) error {
-	if bus == nil || s == nil {
+	if s == nil {
 		return nil
 	}
-	for _, eventType := range []string{
+	eventTypes := []string{
 		eventbus.EventUserCreated,
 		eventbus.EventThreadCreated,
 		eventbus.EventThreadUpdated,
 		eventbus.EventThreadDeleted,
 		eventbus.EventPostCreated,
 		eventbus.EventCategoryCreated,
-	} {
+	}
+	if s.reliability != nil {
+		for _, eventType := range eventTypes {
+			s.reliability.RegisterConsumer(eventType, "webhook.fanout", func(ctx context.Context, event reliability.Event) error {
+				legacy := eventbus.NewEvent(event.Type, "campusos.reliability", event.AggregateType+"."+event.AggregateID, nil)
+				legacy.ID = event.ID
+				legacy.Time = event.CreatedAt.UTC().Format(time.RFC3339Nano)
+				if len(event.Payload) > 0 {
+					if err := json.Unmarshal(event.Payload, &legacy.Data); err != nil {
+						return reliability.Permanent(fmt.Errorf("decode webhook fan-out payload: %w", err))
+					}
+				}
+				return s.DeliverEvent(ctx, legacy)
+			})
+		}
+		s.reliability.RegisterHandler("webhook.delivery", s.handleQueuedDelivery)
+	}
+	if bus == nil {
+		return nil
+	}
+	for _, eventType := range eventTypes {
 		if err := bus.Subscribe(eventType, func(ctx context.Context, event eventbus.Event) error {
-			go s.DeliverEvent(context.Background(), event)
-			return nil
+			return s.DeliverEvent(ctx, event)
 		}); err != nil {
 			return err
 		}
@@ -113,7 +195,7 @@ func (s *Service) CreateEndpoint(ctx context.Context, endpoint *Endpoint) error 
 	if endpoint.Name == "" {
 		return errors.New("name is required")
 	}
-	if err := validateURL(endpoint.URL); err != nil {
+	if err := validateURLWithPolicy(endpoint.URL, s.egress); err != nil {
 		return err
 	}
 	if endpoint.ID == "" {
@@ -130,6 +212,18 @@ func (s *Service) CreateEndpoint(ctx context.Context, endpoint *Endpoint) error 
 	}
 	if endpoint.TimeoutMS > 30000 {
 		endpoint.TimeoutMS = 30000
+	}
+	if endpoint.MaxConcurrent <= 0 {
+		endpoint.MaxConcurrent = 2
+	}
+	if endpoint.MaxConcurrent > 16 {
+		endpoint.MaxConcurrent = 16
+	}
+	if endpoint.RateLimitPerMinute <= 0 {
+		endpoint.RateLimitPerMinute = 60
+	}
+	if endpoint.RateLimitPerMinute > 600 {
+		endpoint.RateLimitPerMinute = 600
 	}
 	now := time.Now().UTC()
 	if endpoint.CreatedAt.IsZero() {
@@ -164,32 +258,83 @@ func (s *Service) TestEndpoint(ctx context.Context, endpointID string) (*Deliver
 	event := eventbus.NewEvent("webhook.test", "campusos.webhook", "webhook."+endpointID, map[string]interface{}{
 		"message": "CampusOS webhook test event",
 	})
-	return s.deliverToEndpoint(ctx, endpoint, event)
+	return s.deliverToEndpoint(ctx, endpoint, event, "", 1, 0)
 }
 
-func (s *Service) DeliverEvent(ctx context.Context, event eventbus.Event) {
+func (s *Service) DeliverEvent(ctx context.Context, event eventbus.Event) error {
 	endpoints, err := s.store.ListEndpoints(ctx)
 	if err != nil {
-		return
+		return err
 	}
+	var firstErr error
 	for _, endpoint := range endpoints {
 		if endpoint.Enabled && endpointMatches(endpoint, event.Type) {
-			_, _ = s.deliverToEndpoint(ctx, endpoint, event)
+			if s.reliability == nil {
+				if _, err := s.deliverToEndpoint(ctx, endpoint, event, "", 1, 0); err != nil && firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			if err := s.enqueueDelivery(ctx, endpoint, event); err != nil && firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
+	return firstErr
 }
 
-func (s *Service) deliverToEndpoint(ctx context.Context, endpoint *Endpoint, event eventbus.Event) (*Delivery, error) {
+type queuedDelivery struct {
+	EndpointID string         `json:"endpoint_id"`
+	Event      eventbus.Event `json:"event"`
+}
+
+func (s *Service) enqueueDelivery(ctx context.Context, endpoint *Endpoint, event eventbus.Event) error {
+	durable, err := reliability.NewEvent("webhook.delivery", "webhook_endpoint", endpoint.ID, queuedDelivery{EndpointID: endpoint.ID, Event: event})
+	if err != nil {
+		return err
+	}
+	durable.IdempotencyKey = "webhook.delivery:" + endpoint.ID + ":" + event.ID
+	durable.MaxAttempts = endpoint.MaxRetries + 1
+	_, err = s.reliability.Enqueue(ctx, durable)
+	return err
+}
+
+func (s *Service) handleQueuedDelivery(ctx context.Context, durable reliability.Event) error {
+	var queued queuedDelivery
+	if err := json.Unmarshal(durable.Payload, &queued); err != nil {
+		return reliability.Permanent(fmt.Errorf("decode webhook delivery payload: %w", err))
+	}
+	endpoint, err := s.store.GetEndpoint(ctx, queued.EndpointID)
+	if errors.Is(err, ErrEndpointNotFound) {
+		return nil // endpoint was removed or unavailable after the event was queued
+	}
+	if err != nil {
+		return reliability.Retryable(err, 0)
+	}
+	if !endpoint.Enabled || !endpointMatches(endpoint, queued.Event.Type) {
+		return nil
+	}
+	_, err = s.deliverToEndpoint(ctx, endpoint, queued.Event, durable.ID, durable.Attempts, durable.MaxAttempts)
+	return err
+}
+
+func (s *Service) deliverToEndpoint(ctx context.Context, endpoint *Endpoint, event eventbus.Event, outboxEventID string, attempts, maxAttempts int) (*Delivery, error) {
 	now := time.Now().UTC()
+	if attempts <= 0 {
+		attempts = 1
+	}
 	delivery := &Delivery{
-		ID:         fmt.Sprintf("%d", idgen.New()),
-		EndpointID: endpoint.ID,
-		EventID:    event.ID,
-		EventType:  event.Type,
-		TargetURL:  endpoint.URL,
-		Status:     "pending",
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:            fmt.Sprintf("%d", idgen.New()),
+		EndpointID:    endpoint.ID,
+		EventID:       event.ID,
+		OutboxEventID: outboxEventID,
+		DeliveryKey:   endpoint.ID + ":" + event.ID,
+		EventType:     event.Type,
+		TargetURL:     endpoint.URL,
+		Status:        "pending",
+		Attempts:      attempts,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	body, err := json.Marshal(event)
@@ -200,39 +345,57 @@ func (s *Service) deliverToEndpoint(ctx context.Context, endpoint *Endpoint, eve
 		return delivery, err
 	}
 
-	attempts := endpoint.MaxRetries + 1
-	var lastErr error
-	for i := 0; i < attempts; i++ {
-		delivery.Attempts = i + 1
-		statusCode, err := postSignedJSON(ctx, endpoint, body)
-		delivery.ResponseStatus = statusCode
-		if err == nil && statusCode >= 200 && statusCode < 300 {
-			delivery.Status = "success"
-			delivery.ErrorMessage = ""
-			delivery.UpdatedAt = time.Now().UTC()
-			_ = s.store.SaveDelivery(ctx, delivery)
-			if s.metrics != nil {
-				s.metrics.RecordExternal("webhook.delivery", true)
-			}
-			return delivery, nil
-		}
-		if err != nil {
-			lastErr = err
-		} else {
-			lastErr = fmt.Errorf("unexpected status %d", statusCode)
-		}
-		time.Sleep(time.Duration(i+1) * 100 * time.Millisecond)
+	release, wait, limited := s.acquireEndpoint(endpoint, now)
+	if limited {
+		delivery.Status = "retry"
+		next := now.Add(wait)
+		delivery.NextAttemptAt = &next
+		delivery.ErrorMessage = "webhook endpoint concurrency or rate limit reached"
+		delivery.UpdatedAt = now
+		_ = s.store.SaveDelivery(ctx, delivery)
+		return delivery, reliability.Retryable(errors.New(delivery.ErrorMessage), wait)
 	}
-	delivery.Status = "failed"
-	if lastErr != nil {
-		delivery.ErrorMessage = lastErr.Error()
+	defer release()
+
+	statusCode, retryAfter, sendErr := postSignedJSON(ctx, endpoint, event.ID, body, s.egress)
+	delivery.ResponseStatus = statusCode
+	if sendErr == nil && statusCode >= 200 && statusCode < 300 {
+		delivery.Status = "success"
+		delivery.ErrorMessage = ""
+		delivery.UpdatedAt = time.Now().UTC()
+		_ = s.store.SaveDelivery(ctx, delivery)
+		if s.metrics != nil {
+			s.metrics.RecordExternal("webhook.delivery", true)
+		}
+		return delivery, nil
+	}
+	if sendErr == nil {
+		sendErr = fmt.Errorf("unexpected status %d", statusCode)
+	}
+	delivery.ErrorMessage = sendErr.Error()
+	if retryableHTTPStatus(statusCode) && (maxAttempts <= 0 || attempts < maxAttempts) {
+		delivery.Status = "retry"
+		if retryAfter <= 0 {
+			retryAfter = time.Second * time.Duration(1<<min(attempts-1, 6))
+		}
+		next := time.Now().UTC().Add(retryAfter)
+		delivery.NextAttemptAt = &next
+	} else {
+		delivery.Status = "failed"
+		if outboxEventID != "" {
+			dead := time.Now().UTC()
+			delivery.DeadLetteredAt = &dead
+		}
 	}
 	delivery.UpdatedAt = time.Now().UTC()
 	_ = s.store.SaveDelivery(ctx, delivery)
 	if s.metrics != nil {
 		s.metrics.RecordExternal("webhook.delivery", false)
 	}
-	return delivery, lastErr
+	if delivery.Status == "retry" {
+		return delivery, reliability.Retryable(sendErr, time.Until(*delivery.NextAttemptAt))
+	}
+	return delivery, reliability.Permanent(sendErr)
 }
 
 func SignPayload(secret string, body []byte) string {
@@ -241,27 +404,210 @@ func SignPayload(secret string, body []byte) string {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil))
 }
 
-func postSignedJSON(ctx context.Context, endpoint *Endpoint, body []byte) (int, error) {
+// SignPayloadV1 covers a timestamp and the body. Receivers reject stale
+// timestamps and deduplicate X-CampusOS-Event-ID; the legacy SignPayload
+// helper remains for compatibility with existing receiver tests only.
+func SignPayloadV1(secret, timestamp string, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(timestamp))
+	_, _ = mac.Write([]byte("."))
+	_, _ = mac.Write(body)
+	return webhookSignatureVersion + "=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+func postSignedJSON(ctx context.Context, endpoint *Endpoint, eventID string, body []byte, policy EgressPolicy) (int, time.Duration, error) {
+	if endpoint == nil {
+		return 0, 0, errors.New("webhook endpoint is required")
+	}
+	if err := validateURLWithPolicy(endpoint.URL, policy); err != nil {
+		return 0, 0, err
+	}
 	timeout := time.Duration(endpoint.TimeoutMS) * time.Millisecond
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
-	client := &http.Client{Timeout: timeout}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.URL, bytes.NewReader(body))
-	if err != nil {
-		return 0, err
+	transport := newSafeWebhookTransport(policy, timeout)
+	client := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			if len(via) >= maxWebhookRedirects {
+				return fmt.Errorf("webhook redirect limit of %d exceeded", maxWebhookRedirects)
+			}
+			return validateURLWithPolicy(request.URL.String(), policy)
+		},
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "CampusOS-Webhook/0.5")
-	if endpoint.Secret != "" {
-		req.Header.Set("X-CampusOS-Signature", SignPayload(endpoint.Secret, body))
+	req, err := newSignedRequest(ctx, endpoint, eventID, body)
+	if err != nil {
+		return 0, 0, err
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode, nil
+	if err := readWebhookResponseBody(resp.Body); err != nil {
+		return resp.StatusCode, 0, err
+	}
+	return resp.StatusCode, parseRetryAfter(resp.Header.Get("Retry-After"), time.Now().UTC()), nil
+}
+
+func newSafeWebhookTransport(policy EgressPolicy, timeout time.Duration) *http.Transport {
+	return &http.Transport{
+		// Do not inherit HTTP proxy environment variables: a proxy would bypass
+		// the destination resolver and reopen the SSRF boundary this transport
+		// deliberately enforces.
+		Proxy:                  nil,
+		ForceAttemptHTTP2:      true,
+		MaxIdleConns:           16,
+		IdleConnTimeout:        30 * time.Second,
+		TLSHandshakeTimeout:    timeout,
+		ResponseHeaderTimeout:  timeout,
+		MaxResponseHeaderBytes: maxWebhookResponseHeader,
+		DialContext: func(dialCtx context.Context, network, address string) (net.Conn, error) {
+			return safeDialContextWithPolicy(dialCtx, network, address, policy)
+		},
+	}
+}
+
+func newSignedRequest(ctx context.Context, endpoint *Endpoint, eventID string, body []byte) (*http.Request, error) {
+	if endpoint == nil {
+		return nil, errors.New("webhook endpoint is required")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.URL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "CampusOS-Webhook/0.11")
+	req.Header.Set("X-CampusOS-Signature-Version", webhookSignatureVersion)
+	req.Header.Set("X-CampusOS-Timestamp", strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	req.Header.Set("X-CampusOS-Event-ID", eventID)
+	if endpoint.Secret != "" {
+		req.Header.Set("X-CampusOS-Signature", SignPayloadV1(endpoint.Secret, req.Header.Get("X-CampusOS-Timestamp"), body))
+	}
+	return req, nil
+}
+
+func readWebhookResponseBody(reader io.Reader) error {
+	responseBody, err := io.ReadAll(io.LimitReader(reader, maxWebhookResponseBody+1))
+	if err != nil {
+		return err
+	}
+	if len(responseBody) > maxWebhookResponseBody {
+		return errWebhookResponseTooLarge
+	}
+	return nil
+}
+
+func parseRetryAfter(raw string, now time.Time) time.Duration {
+	const maxRetryAfter = 24 * time.Hour
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+	if seconds, err := strconv.ParseInt(raw, 10, 64); err == nil && seconds > 0 {
+		value := time.Duration(seconds) * time.Second
+		if value > maxRetryAfter {
+			return maxRetryAfter
+		}
+		return value
+	}
+	if at, err := http.ParseTime(raw); err == nil && at.After(now) {
+		value := at.Sub(now)
+		if value > maxRetryAfter {
+			return maxRetryAfter
+		}
+		return value
+	}
+	return 0
+}
+
+func (s *Service) acquireEndpoint(endpoint *Endpoint, now time.Time) (func(), time.Duration, bool) {
+	if endpoint == nil {
+		return func() {}, time.Second, true
+	}
+	maxConcurrent := endpoint.MaxConcurrent
+	if maxConcurrent <= 0 {
+		maxConcurrent = 2
+	}
+	ratePerMinute := endpoint.RateLimitPerMinute
+	if ratePerMinute <= 0 {
+		ratePerMinute = 60
+	}
+	s.limiterMu.Lock()
+	defer s.limiterMu.Unlock()
+	limiter := s.limiters[endpoint.ID]
+	if limiter == nil || limiter.maxConcurrent != maxConcurrent || limiter.ratePerMinute != ratePerMinute {
+		limiter = &endpointLimiter{maxConcurrent: maxConcurrent, ratePerMinute: ratePerMinute, windowStarted: now}
+		s.limiters[endpoint.ID] = limiter
+	}
+	if now.Sub(limiter.windowStarted) >= time.Minute {
+		limiter.windowStarted = now
+		limiter.windowCount = 0
+	}
+	if limiter.inFlight >= limiter.maxConcurrent {
+		return func() {}, time.Second, true
+	}
+	if limiter.windowCount >= limiter.ratePerMinute {
+		wait := time.Until(limiter.windowStarted.Add(time.Minute))
+		if wait <= 0 {
+			wait = time.Second
+		}
+		return func() {}, wait, true
+	}
+	limiter.inFlight++
+	limiter.windowCount++
+	return func() {
+		s.limiterMu.Lock()
+		defer s.limiterMu.Unlock()
+		if current := s.limiters[endpoint.ID]; current == limiter && current.inFlight > 0 {
+			current.inFlight--
+		}
+	}, 0, false
+}
+
+func retryableHTTPStatus(status int) bool {
+	return status == 0 || status == http.StatusRequestTimeout || status == http.StatusTooManyRequests || status >= 500
+}
+
+func safeDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return safeDialContextWithPolicy(ctx, network, address, EgressPolicy{})
+}
+
+func safeDialContextWithPolicy(ctx context.Context, network, address string, policy EgressPolicy) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	addresses, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("resolve webhook host: %w", err)
+	}
+	if len(addresses) == 0 {
+		return nil, errors.New("webhook host resolved to no addresses")
+	}
+	dialer := &net.Dialer{}
+	if err := policy.validateHost(host); err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, address := range addresses {
+		ip := address.IP
+		if !policy.AllowPrivateNetwork && unsafeWebhookAddress(ip) {
+			lastErr = fmt.Errorf("webhook destination %s is not allowed", ip.String())
+			continue
+		}
+		connection, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if dialErr == nil {
+			return connection, nil
+		}
+		lastErr = dialErr
+	}
+	if lastErr == nil {
+		lastErr = errors.New("webhook destination is not allowed")
+	}
+	return nil, lastErr
 }
 
 func endpointMatches(endpoint *Endpoint, eventType string) bool {
@@ -294,6 +640,10 @@ func normalizeEvents(values []string) []string {
 }
 
 func validateURL(raw string) error {
+	return validateURLWithPolicy(raw, EgressPolicy{})
+}
+
+func validateURLWithPolicy(raw string, policy EgressPolicy) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return err
@@ -304,17 +654,72 @@ func validateURL(raw string) error {
 	if parsed.Host == "" {
 		return errors.New("webhook url host is required")
 	}
+	if parsed.User != nil {
+		return errors.New("webhook url must not contain user information")
+	}
+	if parsed.Fragment != "" {
+		return errors.New("webhook url must not contain a fragment")
+	}
+	host := strings.TrimSuffix(strings.ToLower(parsed.Hostname()), ".")
+	if host == "" {
+		return errors.New("webhook url hostname is required")
+	}
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		if !policy.AllowPrivateNetwork {
+			return errors.New("webhook url host is not allowed")
+		}
+	}
+	if err := policy.validateHost(host); err != nil {
+		return err
+	}
+	if ip := net.ParseIP(host); ip != nil && !policy.AllowPrivateNetwork && unsafeWebhookAddress(ip) {
+		return errors.New("webhook url private or loopback address is not allowed")
+	}
+	if port := parsed.Port(); port != "" {
+		value, parseErr := strconv.ParseUint(port, 10, 16)
+		if parseErr != nil || value == 0 {
+			return errors.New("webhook url port is invalid")
+		}
+	}
 	return nil
 }
 
+func (p EgressPolicy) validateHost(host string) error {
+	allowed := p.normalizedAllowedHosts()
+	if len(allowed) == 0 {
+		return nil
+	}
+	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+	for _, candidate := range allowed {
+		if host == candidate || strings.HasSuffix(host, "."+candidate) {
+			return nil
+		}
+	}
+	return fmt.Errorf("webhook host %q is not allowed by egress policy", host)
+}
+
+func unsafeWebhookAddress(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+		return true
+	}
+	if ip.Equal(net.ParseIP("169.254.169.254")) {
+		return true
+	}
+	return false
+}
+
 type MemoryStore struct {
-	mu         sync.RWMutex
-	endpoints  map[string]*Endpoint
-	deliveries []*Delivery
+	mu            sync.RWMutex
+	endpoints     map[string]*Endpoint
+	deliveries    []*Delivery
+	deliveryIndex map[string]int
 }
 
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{endpoints: make(map[string]*Endpoint)}
+	return &MemoryStore{endpoints: make(map[string]*Endpoint), deliveryIndex: make(map[string]int)}
 }
 
 func (s *MemoryStore) CreateEndpoint(_ context.Context, endpoint *Endpoint) error {
@@ -359,6 +764,15 @@ func (s *MemoryStore) UpdateEndpointEnabled(_ context.Context, id string, enable
 func (s *MemoryStore) SaveDelivery(_ context.Context, delivery *Delivery) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	key := delivery.DeliveryKey
+	if key == "" {
+		key = delivery.ID
+	}
+	if index, ok := s.deliveryIndex[key]; ok {
+		s.deliveries[index] = cloneDelivery(delivery)
+		return nil
+	}
+	s.deliveryIndex[key] = len(s.deliveries)
 	s.deliveries = append(s.deliveries, cloneDelivery(delivery))
 	return nil
 }
@@ -411,18 +825,18 @@ func NewPgStore(pool *pgxpool.Pool) *PgStore {
 
 func (s *PgStore) CreateEndpoint(ctx context.Context, endpoint *Endpoint) error {
 	query := `INSERT INTO webhook_endpoints (
-			id, name, url, secret, events, enabled, max_retries, timeout_ms, created_by, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+			id, name, url, secret, events, enabled, max_retries, timeout_ms, max_concurrent, rate_limit_per_minute, created_by, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 	_, err := s.pool.Exec(ctx, query,
 		endpoint.ID, endpoint.Name, endpoint.URL, endpoint.Secret, endpoint.Events,
-		endpoint.Enabled, endpoint.MaxRetries, endpoint.TimeoutMS, endpoint.CreatedBy,
-		endpoint.CreatedAt, endpoint.UpdatedAt,
+		endpoint.Enabled, endpoint.MaxRetries, endpoint.TimeoutMS, endpoint.MaxConcurrent, endpoint.RateLimitPerMinute,
+		endpoint.CreatedBy, endpoint.CreatedAt, endpoint.UpdatedAt,
 	)
 	return err
 }
 
 func (s *PgStore) ListEndpoints(ctx context.Context) ([]*Endpoint, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, name, url, secret, events, enabled, max_retries, timeout_ms, created_by, created_at, updated_at
+	rows, err := s.pool.Query(ctx, `SELECT id, name, url, secret, events, enabled, max_retries, timeout_ms, max_concurrent, rate_limit_per_minute, created_by, created_at, updated_at
 		FROM webhook_endpoints WHERE deleted_at IS NULL ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -432,7 +846,7 @@ func (s *PgStore) ListEndpoints(ctx context.Context) ([]*Endpoint, error) {
 	for rows.Next() {
 		endpoint := &Endpoint{}
 		if err := rows.Scan(&endpoint.ID, &endpoint.Name, &endpoint.URL, &endpoint.Secret,
-			&endpoint.Events, &endpoint.Enabled, &endpoint.MaxRetries, &endpoint.TimeoutMS,
+			&endpoint.Events, &endpoint.Enabled, &endpoint.MaxRetries, &endpoint.TimeoutMS, &endpoint.MaxConcurrent, &endpoint.RateLimitPerMinute,
 			&endpoint.CreatedBy, &endpoint.CreatedAt, &endpoint.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -443,10 +857,10 @@ func (s *PgStore) ListEndpoints(ctx context.Context) ([]*Endpoint, error) {
 
 func (s *PgStore) GetEndpoint(ctx context.Context, id string) (*Endpoint, error) {
 	endpoint := &Endpoint{}
-	err := s.pool.QueryRow(ctx, `SELECT id, name, url, secret, events, enabled, max_retries, timeout_ms, created_by, created_at, updated_at
+	err := s.pool.QueryRow(ctx, `SELECT id, name, url, secret, events, enabled, max_retries, timeout_ms, max_concurrent, rate_limit_per_minute, created_by, created_at, updated_at
 		FROM webhook_endpoints WHERE id = $1 AND deleted_at IS NULL`, id).Scan(
 		&endpoint.ID, &endpoint.Name, &endpoint.URL, &endpoint.Secret, &endpoint.Events,
-		&endpoint.Enabled, &endpoint.MaxRetries, &endpoint.TimeoutMS, &endpoint.CreatedBy,
+		&endpoint.Enabled, &endpoint.MaxRetries, &endpoint.TimeoutMS, &endpoint.MaxConcurrent, &endpoint.RateLimitPerMinute, &endpoint.CreatedBy,
 		&endpoint.CreatedAt, &endpoint.UpdatedAt,
 	)
 	if err != nil {
@@ -473,12 +887,19 @@ func (s *PgStore) UpdateEndpointEnabled(ctx context.Context, id string, enabled 
 func (s *PgStore) SaveDelivery(ctx context.Context, delivery *Delivery) error {
 	query := `INSERT INTO webhook_deliveries (
 			id, endpoint_id, event_id, event_type, target_url, status, attempts, response_status,
-			error_message, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+			error_message, created_at, updated_at, outbox_event_id, delivery_key, next_attempt_at, dead_lettered_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, ''), NULLIF($13, ''), $14, $15)
+		ON CONFLICT (delivery_key) WHERE delivery_key IS NOT NULL DO UPDATE SET
+			outbox_event_id = EXCLUDED.outbox_event_id,
+			status = EXCLUDED.status, attempts = EXCLUDED.attempts,
+			response_status = EXCLUDED.response_status, error_message = EXCLUDED.error_message,
+			next_attempt_at = EXCLUDED.next_attempt_at, dead_lettered_at = EXCLUDED.dead_lettered_at,
+			updated_at = EXCLUDED.updated_at`
 	_, err := s.pool.Exec(ctx, query,
 		delivery.ID, delivery.EndpointID, delivery.EventID, delivery.EventType, delivery.TargetURL,
 		delivery.Status, delivery.Attempts, delivery.ResponseStatus, delivery.ErrorMessage,
-		delivery.CreatedAt, delivery.UpdatedAt,
+		delivery.CreatedAt, delivery.UpdatedAt, delivery.OutboxEventID, delivery.DeliveryKey,
+		delivery.NextAttemptAt, delivery.DeadLetteredAt,
 	)
 	return err
 }
@@ -488,7 +909,8 @@ func (s *PgStore) ListDeliveries(ctx context.Context, endpointID string, limit i
 		limit = 100
 	}
 	rows, err := s.pool.Query(ctx, `SELECT id, endpoint_id, event_id, event_type, target_url, status,
-			attempts, response_status, error_message, created_at, updated_at
+			attempts, response_status, error_message, created_at, updated_at,
+			COALESCE(outbox_event_id, ''), COALESCE(delivery_key, ''), next_attempt_at, dead_lettered_at
 		FROM webhook_deliveries
 		WHERE ($1 = '' OR endpoint_id = $1)
 		ORDER BY created_at DESC
@@ -502,7 +924,8 @@ func (s *PgStore) ListDeliveries(ctx context.Context, endpointID string, limit i
 		delivery := &Delivery{}
 		if err := rows.Scan(&delivery.ID, &delivery.EndpointID, &delivery.EventID, &delivery.EventType,
 			&delivery.TargetURL, &delivery.Status, &delivery.Attempts, &delivery.ResponseStatus,
-			&delivery.ErrorMessage, &delivery.CreatedAt, &delivery.UpdatedAt); err != nil {
+			&delivery.ErrorMessage, &delivery.CreatedAt, &delivery.UpdatedAt, &delivery.OutboxEventID,
+			&delivery.DeliveryKey, &delivery.NextAttemptAt, &delivery.DeadLetteredAt); err != nil {
 			return nil, err
 		}
 		items = append(items, delivery)
@@ -544,13 +967,15 @@ func (h *Handler) ListEndpoints(c *gin.Context) {
 
 func (h *Handler) CreateEndpoint(c *gin.Context) {
 	var req struct {
-		Name       string   `json:"name" binding:"required"`
-		URL        string   `json:"url" binding:"required"`
-		Secret     string   `json:"secret"`
-		Events     []string `json:"events"`
-		Enabled    *bool    `json:"enabled"`
-		MaxRetries int      `json:"max_retries"`
-		TimeoutMS  int      `json:"timeout_ms"`
+		Name               string   `json:"name" binding:"required"`
+		URL                string   `json:"url" binding:"required"`
+		Secret             string   `json:"secret"`
+		Events             []string `json:"events"`
+		Enabled            *bool    `json:"enabled"`
+		MaxRetries         int      `json:"max_retries"`
+		TimeoutMS          int      `json:"timeout_ms"`
+		MaxConcurrent      int      `json:"max_concurrent"`
+		RateLimitPerMinute int      `json:"rate_limit_per_minute"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, 70002, "invalid request: "+err.Error())
@@ -561,14 +986,16 @@ func (h *Handler) CreateEndpoint(c *gin.Context) {
 		enabled = *req.Enabled
 	}
 	endpoint := &Endpoint{
-		Name:       req.Name,
-		URL:        req.URL,
-		Secret:     req.Secret,
-		Events:     req.Events,
-		Enabled:    enabled,
-		MaxRetries: req.MaxRetries,
-		TimeoutMS:  req.TimeoutMS,
-		CreatedBy:  currentUserID(c),
+		Name:               req.Name,
+		URL:                req.URL,
+		Secret:             req.Secret,
+		Events:             req.Events,
+		Enabled:            enabled,
+		MaxRetries:         req.MaxRetries,
+		TimeoutMS:          req.TimeoutMS,
+		MaxConcurrent:      req.MaxConcurrent,
+		RateLimitPerMinute: req.RateLimitPerMinute,
+		CreatedBy:          currentUserID(c),
 	}
 	if err := h.svc.CreateEndpoint(c.Request.Context(), endpoint); err != nil {
 		response.Error(c, http.StatusBadRequest, 70002, err.Error())

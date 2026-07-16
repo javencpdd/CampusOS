@@ -4,17 +4,17 @@
 
 ## Webhook
 
-**成熟度：可配置、可测试。**
+**成熟度：持久投递、可配置、可测试。**
 
-Webhook 会把已订阅的 CampusOS 事件投递到管理员配置的 HTTP 地址。适合由你自己维护的业务服务接收事件，例如同步校园公告、触发内部通知或记录运营数据。
+Webhook 会把已提交的 CampusOS 事件经持久队列投递到管理员配置的 HTTP 地址。适合由你自己维护的业务服务接收事件，例如同步校园公告、触发内部通知或记录运营数据。它采用至少一次语义，接收方必须按事件 ID 幂等。
 
 使用步骤：
 
 1. 在“Webhook”页填写名称、可访问的 HTTP URL 和事件列表。
-2. 保存后点击“测试”，检查目标服务是否收到请求。
-3. 在投递记录中检查状态；确认目标服务已经验证签名、处理重试和幂等后再长期启用。
+2. 保存后点击“测试”，检查目标服务是否收到请求。测试同样经过安全 egress 检查，但不是持久任务。
+3. 在投递记录与“可靠任务”中检查状态；确认目标服务已经验证 v1 签名、timestamp、事件 ID 幂等和重试后再长期启用。
 
-Webhook 目标地址由管理员负责。不要将内网敏感地址、携带 CampusOS Token 的 URL 或不可信重定向地址作为目标。CampusOS 不会把数据库连接、JWT 私钥或用户 Session 发送给 Webhook。
+Webhook 目标地址由管理员负责。默认拒绝内网、loopback、link-local、危险 redirect 和 DNS rebinding；不要将携带 CampusOS Token 的 URL 或不可信重定向地址作为目标。CampusOS 不会把数据库连接、JWT 私钥或用户 Session 发送给 Webhook。详细排障见 [可靠任务与 Webhook](/operations/reliable-tasks)。
 
 ## MCP-like
 

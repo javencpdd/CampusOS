@@ -48,7 +48,7 @@
     <el-tabs v-model="activeTab" class="ops-tabs">
       <el-tab-pane label="Webhook" name="webhook">
         <el-alert class="boundary-alert" type="success" :closable="false" show-icon>
-          <template #title>可用于管理员配置的事件回调。请先使用“测试”确认目标地址、网络和签名接收逻辑，再启用生产事件。</template>
+          <template #title>持久任务会在提交后投递。生产默认拒绝内网目标；请先验证签名、事件幂等和目标网络，再启用生产事件。</template>
         </el-alert>
         <el-card shadow="never">
           <template #header>
@@ -65,10 +65,16 @@
               <el-input v-model="webhookForm.name" placeholder="mock endpoint" />
             </el-form-item>
             <el-form-item label="URL">
-              <el-input v-model="webhookForm.url" placeholder="http://localhost:9000/webhook" class="url-input" />
+              <el-input v-model="webhookForm.url" placeholder="https://hooks.example.com/campusos" class="url-input" />
             </el-form-item>
             <el-form-item label="事件">
               <el-input v-model="webhookForm.events" placeholder="thread.created,user.created" class="events-input" />
+            </el-form-item>
+            <el-form-item label="并发">
+              <el-input-number v-model="webhookForm.maxConcurrent" :min="1" :max="16" controls-position="right" aria-label="单端点最大并发投递数" />
+            </el-form-item>
+            <el-form-item label="每分钟">
+              <el-input-number v-model="webhookForm.rateLimitPerMinute" :min="1" :max="600" controls-position="right" aria-label="单端点每分钟投递上限" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="webhookCreating" @click="createWebhook">
@@ -89,6 +95,9 @@
               <template #default="{ row }">
                 <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
               </template>
+            </el-table-column>
+            <el-table-column label="投递限制" width="138">
+              <template #default="{ row }">{{ row.max_concurrent || 2 }} 并发 / {{ row.rate_limit_per_minute || 60 }}/分</template>
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
               <template #default="{ row }">
@@ -191,7 +200,7 @@ const activeTab = ref('webhook')
 const overview = ref<any[]>([])
 const webhooks = ref<any[]>([])
 const webhookCreating = ref(false)
-const webhookForm = ref({ name: '', url: '', events: 'thread.created,user.created' })
+const webhookForm = ref({ name: '', url: '', events: 'thread.created,user.created', maxConcurrent: 2, rateLimitPerMinute: 60 })
 const mcpTools = ref<any[]>([])
 const mcpEnabled = ref(true)
 const mcpResult = ref('')
@@ -260,6 +269,8 @@ const createWebhook = async () => {
       url: webhookForm.value.url,
       events: webhookForm.value.events.split(',').map((item) => item.trim()).filter(Boolean),
       enabled: true,
+      max_concurrent: webhookForm.value.maxConcurrent,
+      rate_limit_per_minute: webhookForm.value.rateLimitPerMinute,
     })
     ElMessage.success('Webhook 已创建')
     webhookForm.value.name = ''

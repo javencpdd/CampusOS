@@ -2,7 +2,7 @@ schema: campusos.module/v1
 id: core.community
 name: community
 display_name: "Community"
-version: "0.10.0"
+version: "0.11.0"
 description: "Categories, tags, threads, posts, publication state, and public content policy."
 kind: core
 activation_mode: always-on

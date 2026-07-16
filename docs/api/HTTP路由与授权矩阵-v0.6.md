@@ -1,4 +1,4 @@
-# CampusOS HTTP 路由与授权矩阵 v0.10
+# CampusOS HTTP 路由与授权矩阵 v0.11
 
 > 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。
 
@@ -181,6 +181,17 @@
 | `GET` | `/api/v1/messages/summary` | `http.get.api.v1.messages.summary` | `feature.message` | `d.Message` | `jwt+permission` | `integration.message.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/platform/logs/sources` | `http.get.api.v1.platform.logs.sources` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform.platform_log.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/platform/logs/stream` | `http.get.api.v1.platform.logs.stream` | `feature.platform-log` | `d.PlatformLog` | `jwt+permission` | `platform.platform_log.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/summary` | `http.platform.reliability.summary` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/events` | `http.platform.reliability.events` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/attempts` | `http.platform.reliability.attempts` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/workers` | `http.platform.reliability.workers` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/operations` | `http.platform.reliability.operations` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/command-audits` | `http.platform.reliability.command_audits` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/compatibility` | `http.platform.reliability.compatibility` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/retention-preview` | `http.platform.reliability.retention_preview` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.retention.preview` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/platform/reliability/retention-runs` | `http.platform.reliability.retention_runs` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.retention.preview` | `none` | `global` | `request-log-read` |
+| `POST` | `/api/v1/platform/reliability/retention-runs/preview` | `http.platform.reliability.retention_preview_create` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.retention.preview` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/platform/reliability/events/:id/replay` | `http.platform.reliability.replay` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.replay` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/home/style-packs/validate` | `http.post.api.v1.home.style_packs.validate` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/home/style-packs/example` | `http.get.api.v1.home.style_packs.example` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/home/style-packs/example.zip` | `http.get.api.v1.home.style_packs.example.zip` | `feature.appearance` | `d.Homepage` | `jwt+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |

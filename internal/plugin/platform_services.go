@@ -13,6 +13,28 @@ const (
 	ExternalPlugin CapabilityClass = "external-plugin"
 )
 
+// OperationTracker is a narrow platform callback for file-backed plugin
+// imports. It records staged work and compensation evidence without giving the
+// Plugin Platform a Core database handle.
+type OperationTracker interface {
+	Track(context.Context, OperationRequest, func(context.Context) error) error
+}
+
+// CompatibilityReporter records actual use of a temporary compatibility path.
+// It is best effort and deliberately exposes no Core database capability to
+// the Plugin Platform.
+type CompatibilityReporter interface {
+	RecordCompatibility(context.Context, string, string, any) error
+}
+
+type OperationRequest struct {
+	Kind           string
+	SubjectType    string
+	SubjectID      string
+	ActorID        string
+	IdempotencyKey string
+}
+
 type PluginCatalog struct {
 	mu      sync.RWMutex
 	plugins map[string]*Plugin
@@ -254,15 +276,26 @@ func (s *AuditLogService) List(ctx context.Context, plugin string, limit int) ([
 // PackageService owns package discovery, installation, replacement and export.
 // PluginCatalog remains the only owner of installed-plugin state.
 type PackageService struct {
-	catalog   *PluginCatalog
-	lifecycle *LifecycleService
-	ui        *UIRegistry
-	events    *EventRegistry
-	audit     *AuditLogService
+	operationMu   sync.Mutex
+	catalog       *PluginCatalog
+	lifecycle     *LifecycleService
+	ui            *UIRegistry
+	events        *EventRegistry
+	audit         *AuditLogService
+	tracker       OperationTracker
+	compatibility CompatibilityReporter
 }
 
 func NewPackageService(catalog *PluginCatalog, lifecycle *LifecycleService, ui *UIRegistry, events *EventRegistry, audit *AuditLogService) *PackageService {
 	return &PackageService{catalog: catalog, lifecycle: lifecycle, ui: ui, events: events, audit: audit}
+}
+
+func (s *PackageService) SetOperationTracker(tracker OperationTracker) {
+	s.tracker = tracker
+}
+
+func (s *PackageService) SetCompatibilityReporter(reporter CompatibilityReporter) {
+	s.compatibility = reporter
 }
 
 // SnapshotService owns version-snapshot lookup and rollback orchestration.

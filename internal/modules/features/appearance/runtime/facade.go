@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/resource"
 )
 
@@ -32,7 +33,10 @@ type Facade struct {
 	Validator   PackageValidator
 	Preferences PreferenceStore
 	Policy      AppearancePolicy
+	reliability *reliability.Service
 }
+
+func (f *Facade) SetReliability(service *reliability.Service) { f.reliability = service }
 
 func (f Facade) Apply(ctx context.Context, userID string, kind resource.Type, id string) error {
 	if f.Catalog == nil || f.Preferences == nil || f.Policy == nil {
@@ -45,7 +49,16 @@ func (f Facade) Apply(ctx context.Context, userID string, kind resource.Type, id
 	if err = f.Policy.CanApply(ctx, userID, item); err != nil {
 		return err
 	}
-	return f.Preferences.Set(ctx, userID, kind, id)
+	apply := func(operationCtx context.Context) error {
+		return f.Preferences.Set(operationCtx, userID, kind, id)
+	}
+	if f.reliability == nil {
+		return apply(ctx)
+	}
+	return f.reliability.TrackOperation(ctx, reliability.Operation{
+		Kind: "appearance.resource.apply", SubjectType: string(kind), SubjectID: id,
+		ActorID: userID,
+	}, apply)
 }
 
 type ValidatorAdapter struct{}

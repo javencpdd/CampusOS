@@ -1,5 +1,5 @@
 {
-  "version": "v0.10",
+  "version": "v0.11",
   "routes": [
     {
       "method": "GET",
@@ -3120,6 +3120,215 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/summary",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.summary",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.summary",
+        "httpapi.get.api.v1.platform.reliability.summary"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/events",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.events",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.events",
+        "httpapi.get.api.v1.platform.reliability.events"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/attempts",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.attempts",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.attempts",
+        "httpapi.get.api.v1.platform.reliability.attempts"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/workers",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.workers",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.workers",
+        "httpapi.get.api.v1.platform.reliability.workers"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/operations",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.operations",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.operations",
+        "httpapi.get.api.v1.platform.reliability.operations"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/command-audits",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.command_audits",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.command_audits",
+        "httpapi.get.api.v1.platform.reliability.command_audits"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/compatibility",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.platform.reliability.compatibility",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.compatibility",
+        "httpapi.get.api.v1.platform.reliability.compatibility"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/retention-preview",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.retention.preview",
+      "operation_code": "http.platform.reliability.retention_preview",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.retention_preview",
+        "httpapi.get.api.v1.platform.reliability.retention_preview"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/reliability/retention-runs",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.retention.preview",
+      "operation_code": "http.platform.reliability.retention_runs",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.reliability.retention_runs",
+        "httpapi.get.api.v1.platform.reliability.retention_runs"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/platform/reliability/retention-runs/preview",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.retention.preview",
+      "operation_code": "http.platform.reliability.retention_preview_create",
+      "legacy_aliases": [
+        "http.post.api.v1.platform.reliability.retention_runs.preview",
+        "httpapi.post.api.v1.platform.reliability.retention_runs.preview"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/platform/reliability/events/:id/replay",
+      "handler": "d.Reliability",
+      "module_owner": "core.reliability",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "plugin:configure",
+      "permission_code": "platform.reliability.replay",
+      "operation_code": "http.platform.reliability.replay",
+      "legacy_aliases": [
+        "http.post.api.v1.platform.reliability.events.id.replay",
+        "httpapi.post.api.v1.platform.reliability.events.id.replay"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

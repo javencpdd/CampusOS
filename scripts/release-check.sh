@@ -19,6 +19,9 @@ make readme-check
 
 echo "==> architecture boundaries"
 make architecture-check
+make reliability-check
+make outbox-check
+make failure-injection-check
 
 echo "==> data and generated file governance"
 make data-governance-check
@@ -76,4 +79,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.10 release check passed"
+echo "CampusOS v0.11 release check passed"

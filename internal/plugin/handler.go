@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -77,6 +78,7 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 	p, ok := h.manager.GetPlugin(name)
 	if !ok {
 		if payload, compatible := h.compatibilityGet(name); compatible {
+			h.manager.RecordCompatibility(c.Request.Context(), "legacy-builtin-api:"+name, "deprecated-plugin-feature-read", map[string]string{"feature": name, "method": c.Request.Method})
 			response.Success(c, payload)
 			return
 		}
@@ -100,7 +102,7 @@ func (h *Handler) UpdatePluginConfig(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 60005, "invalid config: "+err.Error())
 		return
 	}
-	config, err := h.updateConfig(name, req)
+	config, err := h.updateConfig(c.Request.Context(), name, req)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "not found") {
@@ -114,8 +116,9 @@ func (h *Handler) UpdatePluginConfig(c *gin.Context) {
 	response.Success(c, gin.H{"name": name, "config": config})
 }
 
-func (h *Handler) updateConfig(name string, input map[string]interface{}) (map[string]interface{}, error) {
+func (h *Handler) updateConfig(ctx context.Context, name string, input map[string]interface{}) (map[string]interface{}, error) {
 	if h.builtins != nil && h.builtins.CompatibilityKnown(name) {
+		h.manager.RecordCompatibility(ctx, "legacy-builtin-api:"+name, "deprecated-plugin-feature-config", map[string]string{"feature": name})
 		return h.builtins.CompatibilityUpdateConfig(name, input)
 	}
 	return h.manager.UpdateConfig(name, input)
@@ -156,7 +159,7 @@ func (h *Handler) ListPluginLogs(c *gin.Context) {
 // POST /api/v1/plugins/:name/enable
 func (h *Handler) EnablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if payload, handled, err := h.requestFeatureState(name, true); handled {
+	if payload, handled, err := h.requestFeatureState(c.Request.Context(), name, true); handled {
 		if err != nil {
 			response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 			return
@@ -178,7 +181,7 @@ func (h *Handler) EnablePlugin(c *gin.Context) {
 // POST /api/v1/plugins/:name/disable
 func (h *Handler) DisablePlugin(c *gin.Context) {
 	name := c.Param("name")
-	if payload, handled, err := h.requestFeatureState(name, false); handled {
+	if payload, handled, err := h.requestFeatureState(c.Request.Context(), name, false); handled {
 		if err != nil {
 			response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
 			return
@@ -196,10 +199,11 @@ func (h *Handler) DisablePlugin(c *gin.Context) {
 	response.Success(c, payload)
 }
 
-func (h *Handler) requestFeatureState(identifier string, enabled bool) (map[string]interface{}, bool, error) {
+func (h *Handler) requestFeatureState(ctx context.Context, identifier string, enabled bool) (map[string]interface{}, bool, error) {
 	if h.builtins == nil || !h.builtins.CompatibilityKnown(identifier) {
 		return nil, false, nil
 	}
+	h.manager.RecordCompatibility(ctx, "legacy-builtin-api:"+identifier, "deprecated-plugin-feature-lifecycle", map[string]string{"feature": identifier})
 	payload, err := h.builtins.CompatibilityRequest(identifier, enabled)
 	return payload, true, err
 }
@@ -340,7 +344,7 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		response.Error(c, http.StatusConflict, 60004, "plugin with the same name already exists; enable replace to overwrite")
 		return
 	}
-	installed, err := h.manager.ImportPackage(packagePath, h.pluginsDir, replace)
+	installed, err := h.manager.ImportPackageContext(c.Request.Context(), packagePath, h.pluginsDir, replace)
 	if err != nil {
 		auditMetadata["outcome"] = "failed"
 		auditMetadata["error"] = err.Error()

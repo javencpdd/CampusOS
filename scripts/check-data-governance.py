@@ -140,6 +140,7 @@ def validate_modules(errors: list[str]) -> None:
         platform_kernel_locations = {
             "internal/server/platform_modules.go",
             "internal/platform/feature",
+            "internal/platform/reliability",
             "internal/plugin",
         }
         if not implementation.startswith("internal/modules/") and implementation not in platform_kernel_locations:

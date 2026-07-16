@@ -51,7 +51,7 @@ func (r *MemoryUserRepository) Create(_ context.Context, user *domain.User) erro
 		}
 	}
 
-	r.users[user.ID] = user
+	r.users[user.ID] = cloneUser(user)
 	return nil
 }
 
@@ -63,7 +63,7 @@ func (r *MemoryUserRepository) GetByID(_ context.Context, id string) (*domain.Us
 	if !ok {
 		return nil, ErrUserNotFound
 	}
-	return user, nil
+	return cloneUser(user), nil
 }
 
 func (r *MemoryUserRepository) GetByEmail(_ context.Context, email string) (*domain.User, error) {
@@ -72,7 +72,7 @@ func (r *MemoryUserRepository) GetByEmail(_ context.Context, email string) (*dom
 
 	for _, u := range r.users {
 		if u.Email == email {
-			return u, nil
+			return cloneUser(u), nil
 		}
 	}
 	return nil, ErrUserNotFound
@@ -84,7 +84,7 @@ func (r *MemoryUserRepository) GetByUsername(_ context.Context, username string)
 
 	for _, u := range r.users {
 		if u.Username == username {
-			return u, nil
+			return cloneUser(u), nil
 		}
 	}
 	return nil, ErrUserNotFound
@@ -97,7 +97,7 @@ func (r *MemoryUserRepository) Update(_ context.Context, user *domain.User) erro
 	if _, ok := r.users[user.ID]; !ok {
 		return ErrUserNotFound
 	}
-	r.users[user.ID] = user
+	r.users[user.ID] = cloneUser(user)
 	return nil
 }
 
@@ -110,7 +110,7 @@ func (r *MemoryUserRepository) List(_ context.Context, page, pageSize int) ([]*d
 	// 简单分页
 	all := make([]*domain.User, 0, len(r.users))
 	for _, u := range r.users {
-		all = append(all, u)
+		all = append(all, cloneUser(u))
 	}
 
 	start := (page - 1) * pageSize
@@ -124,4 +124,48 @@ func (r *MemoryUserRepository) List(_ context.Context, page, pageSize int) ([]*d
 	}
 
 	return all[start:end], total, nil
+}
+
+// DeleteForRegistration is deliberately narrow: it only supports compensating
+// a just-created user when a non-transactional local test adapter fails while
+// creating the associated account. Production PostgreSQL uses TxKernel.
+func (r *MemoryUserRepository) DeleteForRegistration(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, exists := r.users[id]; !exists {
+		return ErrUserNotFound
+	}
+	delete(r.users, id)
+	return nil
+}
+
+func (r *MemoryUserRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	items := make(map[string]*domain.User, len(r.users))
+	for id, user := range r.users {
+		items[id] = cloneUser(user)
+	}
+	return items
+}
+
+func (r *MemoryUserRepository) Restore(value any) {
+	items, ok := value.(map[string]*domain.User)
+	if !ok {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users = make(map[string]*domain.User, len(items))
+	for id, user := range items {
+		r.users[id] = cloneUser(user)
+	}
+}
+
+func cloneUser(user *domain.User) *domain.User {
+	if user == nil {
+		return nil
+	}
+	copyUser := *user
+	return &copyUser
 }

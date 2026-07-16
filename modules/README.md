@@ -10,10 +10,10 @@ modules/
 ```
 
 Implementation code lives under `internal/modules/`, except for the platform
-kernel and Plugin Platform infrastructure explicitly named by their module
-descriptor. Mutable module data belongs in `data/module_data/`; user-owned
-files belong in `data/personal-space/`; themes and style packs belong in
-`data/resources/`.
+kernel, Reliability Core, and Plugin Platform infrastructure explicitly named
+by their module descriptor. Mutable module data belongs in `data/module_data/`;
+user-owned files belong in `data/personal-space/`; themes and style packs
+belong in `data/resources/`.
 
 External extensions use `plugin.yaml` and live in `data/plugins/`. A directory
 under `modules/` must never be packaged, installed, upgraded, or removed by the

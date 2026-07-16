@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -48,6 +48,15 @@ architecture-check:
 	python3 scripts/check-architecture-boundaries.py
 	python3 scripts/check-frontend-boundaries.py
 	python3 scripts/test-architecture-checks.py
+
+reliability-check:
+	python3 scripts/check-reliability-boundaries.py
+
+outbox-check:
+	./scripts/check-outbox.sh
+
+failure-injection-check:
+	./scripts/check-failure-injection.sh
 
 frontend-budget:
 	python3 scripts/check-frontend-bundles.py

@@ -184,6 +184,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.appearance"
 	case strings.HasPrefix(path, APIPrefix+"/features"):
 		return "core.feature-registry"
+	case strings.HasPrefix(path, APIPrefix+"/platform/reliability"):
+		return "core.reliability"
 	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):
@@ -267,7 +269,7 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 	payload := struct {
 		Version string          `json:"version"`
 		Routes  []RouteContract `json:"routes"`
-	}{Version: "v0.10", Routes: routes}
+	}{Version: "v0.11", Routes: routes}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return nil, err
@@ -277,7 +279,7 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 
 func RoutesMarkdown(routes []RouteContract) []byte {
 	var out strings.Builder
-	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.10\n\n")
+	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.11\n\n")
 	out.WriteString("> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。\n\n")
 	out.WriteString("当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。\n\n")
 	out.WriteString("| Method | Path | Operation | Module | Handler | Auth | Permission Code | Ownership | Scope | Audit |\n")

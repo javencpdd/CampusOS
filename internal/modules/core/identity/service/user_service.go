@@ -9,6 +9,8 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
@@ -20,6 +22,7 @@ type UserService struct {
 	pgRepo   PgUserRepo
 	roleRepo RoleQuerier
 	bus      eventbus.EventBus
+	reliable *reliability.Service
 
 	passwordHashEnabled bool
 }
@@ -27,6 +30,10 @@ type UserService struct {
 type PgUserRepo interface {
 	CreateAccount(ctx context.Context, userID, email, hashedPassword string) error
 	GetCredentialByEmail(ctx context.Context, email string) (string, string, error)
+}
+
+type registrationCompensator interface {
+	DeleteForRegistration(context.Context, string) error
 }
 
 type RoleQuerier interface {
@@ -54,6 +61,17 @@ func (s *UserService) SetPasswordHashEnabled(enabled bool) {
 	s.passwordHashEnabled = enabled
 }
 
+// SetReliability connects account registration to the Core transactional
+// command/outbox boundary without exposing a database handle to Identity.
+func (s *UserService) SetReliability(reliable *reliability.Service) {
+	s.reliable = reliable
+	if reliable != nil {
+		if snapshotter, ok := s.repo.(transaction.Snapshotter); ok {
+			reliable.RegisterMemorySnapshotters(snapshotter)
+		}
+	}
+}
+
 func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest) (*domain.User, error) {
 	credential := req.Password
 	if s.passwordHashEnabled {
@@ -75,28 +93,53 @@ func (s *UserService) Register(ctx context.Context, req domain.CreateUserRequest
 		UpdatedAt: now,
 	}
 
-	if err := s.repo.Create(ctx, user); err != nil {
-		if errors.Is(err, repository.ErrUsernameExists) {
-			return nil, fmt.Errorf("username '%s' already taken", req.Username)
+	create := func(commandCtx context.Context) error {
+		if err := s.repo.Create(commandCtx, user); err != nil {
+			if errors.Is(err, repository.ErrUsernameExists) {
+				return fmt.Errorf("username '%s' already taken", req.Username)
+			}
+			if errors.Is(err, repository.ErrEmailExists) {
+				return fmt.Errorf("email '%s' already registered", req.Email)
+			}
+			return fmt.Errorf("create user: %w", err)
 		}
-		if errors.Is(err, repository.ErrEmailExists) {
-			return nil, fmt.Errorf("email '%s' already registered", req.Email)
+		if s.pgRepo != nil {
+			if err := s.pgRepo.CreateAccount(commandCtx, user.ID, req.Email, credential); err != nil {
+				if compensator, ok := s.repo.(registrationCompensator); ok {
+					// This is redundant under PostgreSQL TxKernel, but it makes a
+					// local adapter with a failing credential store deterministic.
+					_ = compensator.DeleteForRegistration(commandCtx, user.ID)
+				}
+				return fmt.Errorf("create account: %w", err)
+			}
 		}
-		return nil, fmt.Errorf("create user: %w", err)
+		return nil
 	}
 
-	// 保存账号凭据
-	if s.pgRepo != nil {
-		if err := s.pgRepo.CreateAccount(ctx, user.ID, req.Email, credential); err != nil {
-			return nil, fmt.Errorf("create account: %w", err)
+	if s.reliable != nil {
+		event, err := reliability.NewEvent(eventbus.EventUserCreated, "user", user.ID, user)
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	// 发布 user.created 事件
-	if s.bus != nil {
-		_ = s.bus.Publish(ctx, eventbus.NewEvent(
-			eventbus.EventUserCreated, "campusos.identity", "user."+user.ID, user,
-		))
+		if err := s.reliable.Execute(ctx, reliability.Command{
+			Code:           "identity.user.register",
+			ResourceType:   "user",
+			ResourceID:     user.ID,
+			OperationCode:  "identity.user.register",
+			IdempotencyKey: "identity.user.register:" + user.ID,
+			Event:          &event,
+		}, create); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := create(ctx); err != nil {
+			return nil, err
+		}
+		if s.bus != nil {
+			_ = s.bus.Publish(ctx, eventbus.NewEvent(
+				eventbus.EventUserCreated, "campusos.identity", "user."+user.ID, user,
+			))
+		}
 	}
 
 	return user, nil

@@ -18,7 +18,7 @@ func TestAPIIndexNegotiatesJSONAndHTML(t *testing.T) {
 	jsonRequest.Header.Set("Accept", "application/json")
 	jsonRecorder := httptest.NewRecorder()
 	r.ServeHTTP(jsonRecorder, jsonRequest)
-	if jsonRecorder.Code != http.StatusOK || !strings.Contains(jsonRecorder.Body.String(), `"version":"v1"`) || !strings.Contains(jsonRecorder.Body.String(), `"application_version":"v0.10.0"`) {
+	if jsonRecorder.Code != http.StatusOK || !strings.Contains(jsonRecorder.Body.String(), `"version":"v1"`) || !strings.Contains(jsonRecorder.Body.String(), `"application_version":"v0.11.0"`) {
 		t.Fatalf("expected JSON API index, status=%d body=%s", jsonRecorder.Code, jsonRecorder.Body.String())
 	}
 

@@ -17,6 +17,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	"github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/plugin"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -45,6 +46,7 @@ type Server struct {
 	message        *message.Module
 	platformLog    *platformlog.Module
 	integration    *integration.Module
+	reliability    *reliability.Module
 	appContext     *platformmodule.AppContext
 }
 

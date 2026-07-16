@@ -260,20 +260,33 @@ func InstallPluginPackage(packagePath, pluginsDir string, replace bool) (*Packag
 	if err != nil {
 		return nil, err
 	}
+	backupDir := ""
 	if _, err := os.Stat(targetDir); err == nil {
 		if !replace {
 			return nil, fmt.Errorf("%s already exists; use replace to overwrite", targetDir)
 		}
-		if err := os.RemoveAll(targetDir); err != nil {
+		// Rename the current package out of the way rather than deleting it.
+		// A failed replacement can therefore restore the exact prior files.
+		backupDir = targetDir + ".rollback-" + fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+		if err := os.Rename(targetDir, backupDir); err != nil {
 			return nil, err
 		}
 	} else if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
 	if err := os.Rename(tempDir, targetDir); err != nil {
+		if backupDir != "" {
+			_ = os.Rename(backupDir, targetDir)
+		}
 		return nil, err
 	}
 	keepTemp = true
+	if backupDir != "" {
+		// The new package is already fully installed. A retained backup is safe
+		// and can be cleaned by an operator; never report this atomic install as
+		// failed after the target switch succeeded.
+		_ = os.RemoveAll(backupDir)
+	}
 
 	return &PackageInfo{
 		Manifest:    manifest,

@@ -10,6 +10,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -52,7 +53,7 @@ func NewModule(config Config) *Module {
 
 func (m *Module) ID() string { return ModuleID }
 
-func (m *Module) Dependencies() []string { return []string{"core.event-bus"} }
+func (m *Module) Dependencies() []string { return []string{"core.event-bus", reliability.ModuleID} }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -99,6 +100,17 @@ func (m *Module) Start(context.Context) error {
 	if !ok || bus == nil {
 		return fmt.Errorf("identity event bus port has incompatible type %T", value)
 	}
+	// The registry dependency guarantees this port in a full server. Keep
+	// standalone module tests and legacy embedders compatible until they adopt
+	// the Core reliability module.
+	var reliable *reliability.Service
+	if reliabilityValue, exists := m.app.Lookup("platform.reliability.service"); exists {
+		var compatible bool
+		reliable, compatible = reliabilityValue.(*reliability.Service)
+		if !compatible || reliable == nil {
+			return fmt.Errorf("identity reliability port has incompatible type %T", reliabilityValue)
+		}
+	}
 	permissions := m.permissionService
 	var credentials service.PgUserRepo
 	if adapter, ok := m.users.(service.PgUserRepo); ok {
@@ -107,6 +119,10 @@ func (m *Module) Start(context.Context) error {
 	users := service.NewUserService(m.users, m.config.JWT, credentials, bus)
 	users.SetPasswordHashEnabled(m.config.PasswordHashEnabled)
 	users.SetRoleRepository(m.roles)
+	if reliable != nil {
+		users.SetReliability(reliable)
+		permissions.SetReliability(reliable)
+	}
 	m.userService = users
 	m.handlers = HTTPHandlers{User: handler.NewUserHandler(users), Role: handler.NewRoleHandler(permissions)}
 	if err := m.app.Provide(portAuthorization, identityport.Authorization(permissions)); err != nil {

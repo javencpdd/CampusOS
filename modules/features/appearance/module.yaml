@@ -3,7 +3,7 @@ id: feature.appearance
 feature_id: appearance
 name: appearance
 display_name: "Appearance"
-version: "0.10.0"
+version: "0.11.0"
 description: "Unified facade for system themes, homepage layouts, personal-space styles, and appearance preferences."
 kind: builtin-feature
 activation_mode: hot-gated

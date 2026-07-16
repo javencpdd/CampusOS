@@ -2,7 +2,7 @@ schema: campusos.module/v1
 id: core.user-storage
 name: user-storage
 display_name: "User Storage"
-version: "0.10.0"
+version: "0.11.0"
 description: "Safe paths, ownership, quota, assets, and storage provider boundary for user-owned files."
 kind: core
 activation_mode: always-on
