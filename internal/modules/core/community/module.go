@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/handler"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/cache"
@@ -40,11 +42,12 @@ type HTTPHandlers struct {
 // Module owns Community adapter lookup, application composition, public Ports,
 // and HTTP handlers. Other domains consume only the Ports or events.
 type Module struct {
-	app        *platformmodule.AppContext
-	threads    repository.ThreadRepository
-	categories repository.CategoryRepository
-	posts      repository.PostRepository
-	governance repository.ContentGovernanceRepository
+	app          *platformmodule.AppContext
+	threads      repository.ThreadRepository
+	categories   repository.CategoryRepository
+	posts        repository.PostRepository
+	governance   repository.ContentGovernanceRepository
+	typePolicies repository.ThreadTypePolicyRepository
 
 	threadService   *service.ThreadService
 	categoryService *service.CategoryService
@@ -57,7 +60,7 @@ func NewModule() *Module { return &Module{} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.event-bus", "core.identity", reliability.ModuleID}
+	return []string{"core.event-bus", "core.identity", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -92,6 +95,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}
 	if m.governance, valid = governance.(repository.ContentGovernanceRepository); !valid {
 		return fmt.Errorf("community governance repository adapter has incompatible type %T", governance)
+	}
+	typePolicies, ok := app.Lookup(portThreadTypePolicyRepo)
+	if !ok {
+		return errors.New("community thread type policy repository adapter is not bound by profile")
+	}
+	if m.typePolicies, valid = typePolicies.(repository.ThreadTypePolicyRepository); !valid {
+		return fmt.Errorf("community thread type policy repository adapter has incompatible type %T", typePolicies)
 	}
 	m.app = app
 	for _, binding := range []struct {
@@ -162,11 +172,44 @@ func (m *Module) Start(context.Context) error {
 		threads.SetContentAuthorization(authorization)
 	}
 	threads.SetCategoryRepository(m.categories)
+	threads.SetThreadTypePolicyRepository(m.typePolicies)
+	featureValue, found := m.app.Lookup("platform.feature-registry")
+	if !found {
+		return errors.New("community feature registry port is unavailable")
+	}
+	features, compatible := featureValue.(*platformfeature.Registry)
+	if !compatible || features == nil {
+		return fmt.Errorf("community feature registry port has incompatible type %T", featureValue)
+	}
+	threads.SetThreadTypeEnabledChecker(func(threadType domain.ThreadType) bool {
+		switch domain.NormalizeThreadType(threadType) {
+		case domain.ThreadTypeDiscussion:
+			return true
+		case domain.ThreadTypeArticle:
+			return features.Enabled("controlled-richtext-article")
+		case domain.ThreadTypeMutualAid:
+			return features.Enabled("mutual-aid")
+		case domain.ThreadTypeSecondhand:
+			return features.Enabled("secondhand")
+		default:
+			return false
+		}
+	})
 	threads.SetCache(appCache)
 	threads.SetGovernanceRepository(m.governance)
 	categories := service.NewCategoryService(m.categories, bus)
+	categories.SetThreadRepository(m.threads)
+	categories.SetThreadTypePolicyRepository(m.typePolicies)
+	if reliabilityValue, found := m.app.Lookup("platform.reliability.service"); found {
+		reliable, compatible := reliabilityValue.(*reliability.Service)
+		if !compatible || reliable == nil {
+			return fmt.Errorf("community reliability port has incompatible type %T", reliabilityValue)
+		}
+		categories.SetReliability(reliable)
+	}
 	posts := service.NewPostService(m.posts, bus)
 	posts.SetThreadRepository(m.threads)
+	posts.SetCategoryRepository(m.categories)
 	posts.SetCache(appCache)
 	m.threadService = threads
 	m.categoryService = categories

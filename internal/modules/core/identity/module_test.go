@@ -21,7 +21,13 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 		t.Fatal(err)
 	}
 	jwt := auth.NewJWTManager(auth.JWTConfig{Secret: "test-secret", AccessTTL: time.Hour, RefreshTTL: 2 * time.Hour})
-	module := NewModule(Config{JWT: jwt, PasswordHashEnabled: true})
+	module := NewModule(Config{
+		JWT:                   jwt,
+		PasswordHashEnabled:   true,
+		ChallengeActiveKeyID:  "test-v1",
+		ChallengeHMACKeys:     map[string]string{"test-v1": "test-challenge-signing-secret"},
+		ChallengeIPHashSecret: "test-challenge-ip-hash-secret",
+	})
 	if err := module.Register(app); err != nil {
 		t.Fatal(err)
 	}
@@ -37,6 +43,20 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	}
 	if _, ok := value.(identityport.UserReader); !ok {
 		t.Fatalf("unexpected user reader port type %T", value)
+	}
+	value, ok = app.Lookup(portAccountReader)
+	if !ok {
+		t.Fatal("identity account reader port is missing")
+	}
+	if _, ok := value.(identityport.AccountReader); !ok {
+		t.Fatalf("unexpected account reader port type %T", value)
+	}
+	value, ok = app.Lookup(portChallengeDispatchReader)
+	if !ok {
+		t.Fatal("identity challenge dispatch reader port is missing")
+	}
+	if _, ok := value.(identityport.ChallengeDispatchReader); !ok {
+		t.Fatalf("unexpected challenge dispatch reader port type %T", value)
 	}
 	value, ok = app.Lookup(portAuthorization)
 	if !ok {

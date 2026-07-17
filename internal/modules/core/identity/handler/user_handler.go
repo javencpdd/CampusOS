@@ -1,11 +1,19 @@
 package handler
 
 import (
+	"crypto/subtle"
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -13,7 +21,24 @@ import (
 
 // UserHandler 用户 HTTP 处理器
 type UserHandler struct {
-	svc *service.UserService
+	svc         *service.UserService
+	challenges  *service.ChallengeService
+	sessions    *service.SessionService
+	recovery    *service.RecoveryService
+	sessionHTTP SessionHTTPConfig
+}
+
+const (
+	refreshCookieName = "campusos_refresh"
+	csrfCookieName    = "campusos_csrf"
+	csrfHeaderName    = "X-CSRF-Token"
+)
+
+// SessionHTTPConfig controls transport behavior only. It contains no signing,
+// refresh, or credential material.
+type SessionHTTPConfig struct {
+	RefreshBodyCompat bool
+	CookieSecure      bool
 }
 
 // NewUserHandler 创建用户处理器
@@ -21,17 +46,373 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{svc: svc}
 }
 
+func (h *UserHandler) SetChallengeService(challenges *service.ChallengeService) {
+	h.challenges = challenges
+}
+
+func (h *UserHandler) SetSessionService(sessions *service.SessionService, config SessionHTTPConfig) {
+	h.sessions = sessions
+	h.sessionHTTP = config
+}
+
+func (h *UserHandler) SetRecoveryService(recovery *service.RecoveryService) {
+	h.recovery = recovery
+}
+
+// RequestRegistrationChallenge begins the verified registration flow without
+// revealing whether a future email address is already associated with an
+// account. Duplicate registration is resolved only by the final command.
+// POST /api/v1/auth/registration/challenge
+func (h *UserHandler) RequestRegistrationChallenge(c *gin.Context) {
+	if h.challenges == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is unavailable")
+		return
+	}
+	var req domain.RegistrationChallengeRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	receipt, err := h.challenges.Request(c.Request.Context(), domain.ChallengeRequest{
+		Purpose:  domain.ChallengePurposeRegistration,
+		Email:    req.Email,
+		ClientIP: c.ClientIP(),
+	})
+	if errors.Is(err, service.ErrChallengeRateLimited) {
+		response.Error(c, http.StatusTooManyRequests, 10010, "verification request is temporarily limited")
+		return
+	}
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "registration verification request was not accepted")
+		return
+	}
+	response.Success(c, receipt)
+}
+
+// VerifyRegistrationChallenge validates a code and returns the short-lived
+// Ticket that the final registration command consumes exactly once.
+// POST /api/v1/auth/registration/verify
+func (h *UserHandler) VerifyRegistrationChallenge(c *gin.Context) {
+	if h.challenges == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is unavailable")
+		return
+	}
+	var req domain.RegistrationChallengeVerificationRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	ticket, err := h.challenges.Verify(c.Request.Context(), domain.ChallengeVerificationRequest{
+		PublicID: req.ChallengeID,
+		Purpose:  domain.ChallengePurposeRegistration,
+		Code:     req.Code,
+	})
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "registration verification is invalid or expired")
+		return
+	}
+	response.Success(c, ticket)
+}
+
+// RequestPasswordReset always returns the same accepted envelope for an
+// unknown, legacy, suspended, or eligible account. The opaque challenge ID is
+// usable only when a matching code was delivered to a verified email address.
+// POST /api/v1/auth/password-reset/challenge
+func (h *UserHandler) RequestPasswordReset(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	var req domain.PasswordResetChallengeRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	result, err := h.recovery.RequestPasswordReset(c.Request.Context(), req.Email, c.ClientIP())
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is temporarily unavailable")
+		return
+	}
+	response.Success(c, result)
+}
+
+// VerifyPasswordReset validates an emailed code and exposes only the short
+// lived opaque Ticket required by the next, atomic completion command.
+// POST /api/v1/auth/password-reset/verify
+func (h *UserHandler) VerifyPasswordReset(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	var req domain.PasswordResetVerificationRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	ticket, err := h.recovery.VerifyPasswordReset(c.Request.Context(), req)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "account recovery verification is invalid or expired")
+		return
+	}
+	response.Success(c, ticket)
+}
+
+// CompletePasswordReset changes the credential, invalidates every existing
+// login, and consumes the Ticket in a single reliable command.
+// POST /api/v1/auth/password-reset/complete
+func (h *UserHandler) CompletePasswordReset(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	var req domain.PasswordResetCompletionRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	if err := h.recovery.CompletePasswordReset(c.Request.Context(), req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "account recovery is invalid or expired")
+		return
+	}
+	h.clearSessionCookies(c)
+	response.Success(c, gin.H{"reset": true, "relogin_required": true})
+}
+
+// RequestEmailBinding starts a verified personal-email transition for the
+// currently authenticated user. System-managed accounts are intentionally
+// excluded from this public path.
+// POST /api/v1/auth/email-binding/challenge
+func (h *UserHandler) RequestEmailBinding(c *gin.Context) {
+	if h.recovery == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	userID, _, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req domain.EmailBindingChallengeRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	receipt, err := h.recovery.RequestEmailBinding(c.Request.Context(), userID, req, c.ClientIP())
+	if errors.Is(err, service.ErrChallengeRateLimited) {
+		response.Error(c, http.StatusTooManyRequests, 10010, "email verification request is temporarily limited")
+		return
+	}
+	if err != nil {
+		response.Error(c, http.StatusConflict, 10004, "email cannot be bound to this account")
+		return
+	}
+	response.Success(c, receipt)
+}
+
+// VerifyEmailBinding validates the binding code while the user remains
+// authenticated. Completing the next step will revoke all current sessions.
+// POST /api/v1/auth/email-binding/verify
+func (h *UserHandler) VerifyEmailBinding(c *gin.Context) {
+	if h.recovery == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	if _, _, ok := currentSession(c); !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req domain.EmailBindingVerificationRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	ticket, err := h.recovery.VerifyEmailBinding(c.Request.Context(), req)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "email verification is invalid or expired")
+		return
+	}
+	response.Success(c, ticket)
+}
+
+// CompleteEmailBinding commits the authoritative account email and its
+// compatibility projection, then forces a fresh login under the new identity.
+// POST /api/v1/auth/email-binding/complete
+func (h *UserHandler) CompleteEmailBinding(c *gin.Context) {
+	if h.recovery == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	userID, _, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req domain.EmailBindingCompletionRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	if err := h.recovery.CompleteEmailBinding(c.Request.Context(), userID, req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "email binding is invalid or expired")
+		return
+	}
+	h.clearSessionCookies(c)
+	response.Success(c, gin.H{"bound": true, "relogin_required": true})
+}
+
+// CompleteAdminRecovery is public only because the user proves possession of
+// a code delivered to the independently verified address. It reveals no Case
+// details and can neither read nor set a password from the Admin surface.
+// POST /api/v1/auth/recovery/complete
+func (h *UserHandler) CompleteAdminRecovery(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	var req domain.RecoveryCaseCompletionRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	if err := h.recovery.CompleteAdminRecoveryCase(c.Request.Context(), req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "account recovery is invalid or expired")
+		return
+	}
+	h.clearSessionCookies(c)
+	response.Success(c, gin.H{"reset": true, "relogin_required": true})
+}
+
+// ListAdminRecoveryCases exposes masked workflow metadata only.
+// GET /api/v1/admin/identity/recovery-cases
+func (h *UserHandler) ListAdminRecoveryCases(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	items, err := h.recovery.ListAdminRecoveryCases(c.Request.Context(), limit)
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "recovery cases are unavailable")
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": len(items)})
+}
+
+// CreateAdminRecoveryCase records a proof reference, not the proof itself,
+// and issues a Challenge to the newly supplied address.
+// POST /api/v1/admin/identity/recovery-cases
+func (h *UserHandler) CreateAdminRecoveryCase(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	actorID, ok := currentRoleActorID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req domain.AdminRecoveryCaseCreateRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	caseView, err := h.recovery.CreateAdminRecoveryCase(c.Request.Context(), actorID, req, c.ClientIP())
+	if err != nil {
+		response.Error(c, http.StatusConflict, 10004, "account recovery case cannot be created")
+		return
+	}
+	response.Created(c, caseView)
+}
+
+// CancelAdminRecoveryCase stops a pending assisted recovery before the Ticket
+// is consumed. The request body is intentionally unnecessary: the command
+// audit records the actor and target without retaining subjective proof text.
+// POST /api/v1/admin/identity/recovery-cases/:id/cancel
+func (h *UserHandler) CancelAdminRecoveryCase(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "account recovery is unavailable")
+		return
+	}
+	actorID, ok := currentRoleActorID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	if err := h.recovery.CancelAdminRecoveryCase(c.Request.Context(), actorID, c.Param("id")); err != nil {
+		response.Error(c, http.StatusConflict, 10004, "account recovery case cannot be cancelled")
+		return
+	}
+	response.Success(c, gin.H{"cancelled": true})
+}
+
+// ListAdminUserSessions returns safe device/session projections only.
+// GET /api/v1/admin/identity/users/:id/sessions
+func (h *UserHandler) ListAdminUserSessions(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		return
+	}
+	userID, ok := numericIdentityID(c.Param("id"))
+	if !ok {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user id")
+		return
+	}
+	items, err := h.recovery.ListUserSessions(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions are unavailable")
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": len(items)})
+}
+
+// RevokeAdminUserSessions invalidates both persisted sessions and existing
+// access JWTs through the user's auth-version.
+// POST /api/v1/admin/identity/users/:id/sessions/revoke-all
+func (h *UserHandler) RevokeAdminUserSessions(c *gin.Context) {
+	if h.recovery == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		return
+	}
+	actorID, actorOK := currentRoleActorID(c)
+	userID, userOK := numericIdentityID(c.Param("id"))
+	if !actorOK {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	if !userOK {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user id")
+		return
+	}
+	if err := h.recovery.RevokeUserSessionsByAdmin(c.Request.Context(), actorID, userID); err != nil {
+		response.Error(c, http.StatusBadRequest, 10009, "sessions could not be revoked")
+		return
+	}
+	response.Success(c, gin.H{"revoked": true})
+}
+
 // Register 用户注册
 // POST /api/v1/auth/register
 func (h *UserHandler) Register(c *gin.Context) {
-	var req domain.CreateUserRequest
+	var req domain.RegistrationRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		return
+	}
+	if strings.TrimSpace(req.ChallengeID) == "" || strings.TrimSpace(req.Ticket) == "" {
+		response.Error(c, http.StatusBadRequest, 10008, "email verification is required before registration")
 		return
 	}
 
-	user, err := h.svc.Register(c.Request.Context(), req)
+	user, err := h.svc.RegisterVerified(c.Request.Context(), req)
 	if err != nil {
+		if errors.Is(err, service.ErrRegistrationVerificationRequired) {
+			response.Error(c, http.StatusBadRequest, 10008, "email verification is required before registration")
+			return
+		}
+		if errors.Is(err, service.ErrRegistrationTicketInvalid) {
+			response.Error(c, http.StatusBadRequest, 10009, "registration verification is invalid or expired")
+			return
+		}
 		response.Error(c, http.StatusConflict, 10004, err.Error())
 		return
 	}
@@ -48,11 +429,23 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, accessToken, refreshToken, err := h.svc.Login(c.Request.Context(), req)
-	if err != nil {
-		response.Error(c, http.StatusUnauthorized, 20001, err.Error())
+	if h.sessions == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
 		return
 	}
+	user, err := h.svc.Authenticate(c.Request.Context(), req)
+	if err != nil {
+		// Login intentionally does not distinguish missing accounts, bad
+		// passwords, inactive accounts, or unverified account state.
+		response.Error(c, http.StatusUnauthorized, 20001, "invalid email or password")
+		return
+	}
+	tokens, err := h.sessions.Issue(c.Request.Context(), user, h.sessionMetadata(c))
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "login session could not be created")
+		return
+	}
+	h.writeSessionCookies(c, tokens)
 
 	// 获取用户角色
 	roles, _ := h.svc.GetUserRoles(c.Request.Context(), user.ID)
@@ -60,11 +453,139 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response.Success(c, domain.LoginResponse{
 		User:         user,
 		Roles:        roles,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: h.compatRefreshToken(tokens.RefreshToken),
 		TokenType:    "Bearer",
-		ExpiresIn:    7200,
+		ExpiresIn:    tokens.ExpiresIn,
 	})
+}
+
+// Refresh exchanges a one-time opaque token for a new session row and short
+// access JWT. Cookie clients must prove same-site intent with double-submit
+// CSRF; an explicitly enabled legacy JSON body remains a temporary bridge.
+// POST /api/v1/auth/refresh
+func (h *UserHandler) Refresh(c *gin.Context) {
+	if h.sessions == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		return
+	}
+	rawRefresh, fromCookie := h.readRefreshCookie(c)
+	if fromCookie && !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	if rawRefresh == "" && h.sessionHTTP.RefreshBodyCompat {
+		var request domain.RefreshRequest
+		if err := decodeOptionalStrictJSON(c, &request); err != nil {
+			response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+			return
+		}
+		rawRefresh = strings.TrimSpace(request.RefreshToken)
+		if rawRefresh != "" {
+			h.sessions.RecordRefreshBodyCompatibility(c.Request.Context())
+		}
+	}
+	if rawRefresh == "" {
+		response.Error(c, http.StatusUnauthorized, 20002, "invalid or expired refresh token")
+		return
+	}
+	tokens, err := h.sessions.Refresh(c.Request.Context(), rawRefresh, h.sessionMetadata(c))
+	if err != nil {
+		// Reuse is intentionally indistinguishable to an attacker. The Session
+		// service has already revoked the family when it returns this branch.
+		h.clearSessionCookies(c)
+		response.Error(c, http.StatusUnauthorized, 20002, "invalid or expired refresh token")
+		return
+	}
+	h.writeSessionCookies(c, tokens)
+	response.Success(c, domain.RefreshResponse{
+		AccessToken: tokens.AccessToken, RefreshToken: h.compatRefreshToken(tokens.RefreshToken),
+		TokenType: "Bearer", ExpiresIn: tokens.ExpiresIn,
+	})
+}
+
+// Logout revokes only the authenticated session and clears browser cookies.
+// POST /api/v1/auth/logout
+func (h *UserHandler) Logout(c *gin.Context) {
+	if h.sessions == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	userID, sessionID, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	if err := h.sessions.RevokeCurrent(c.Request.Context(), userID, sessionID); err != nil {
+		response.Error(c, http.StatusUnauthorized, 20002, "session is no longer active")
+		return
+	}
+	h.clearSessionCookies(c)
+	response.Success(c, gin.H{"revoked": true})
+}
+
+// LogoutAll immediately invalidates every access JWT for the account and
+// revokes all persisted sessions. The current browser cookies are cleared.
+// POST /api/v1/auth/logout-all
+func (h *UserHandler) LogoutAll(c *gin.Context) {
+	if h.sessions == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	userID, _, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	if _, err := h.sessions.RevokeAll(c.Request.Context(), userID, "logout_all", "identity.session.logout_all"); err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions could not be revoked")
+		return
+	}
+	h.clearSessionCookies(c)
+	response.Success(c, gin.H{"revoked": true})
+}
+
+// ListSessions returns only safe session projections for the current account.
+// GET /api/v1/auth/sessions
+func (h *UserHandler) ListSessions(c *gin.Context) {
+	if h.sessions == nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		return
+	}
+	userID, sessionID, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	items, err := h.sessions.List(c.Request.Context(), userID, sessionID)
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions are unavailable")
+		return
+	}
+	response.Success(c, gin.H{"items": items})
+}
+
+// RevokeSession revokes one selected session owned by the authenticated user.
+// DELETE /api/v1/auth/sessions/:id
+func (h *UserHandler) RevokeSession(c *gin.Context) {
+	if h.sessions == nil || !h.requireCSRF(c) {
+		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		return
+	}
+	userID, currentID, ok := currentSession(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	targetID := strings.TrimSpace(c.Param("id"))
+	if err := h.sessions.RevokeSession(c.Request.Context(), userID, targetID); err != nil {
+		response.Error(c, http.StatusNotFound, 30004, "session was not found")
+		return
+	}
+	if targetID == currentID {
+		h.clearSessionCookies(c)
+	}
+	response.Success(c, gin.H{"revoked": true})
 }
 
 // GetMe 获取当前用户信息
@@ -194,4 +715,112 @@ func (h *UserHandler) HealthCheck(c *gin.Context) {
 		"service": "CampusOS",
 		"version": platformversion.Number,
 	})
+}
+
+func (h *UserHandler) sessionMetadata(c *gin.Context) service.SessionMetadata {
+	return service.SessionMetadata{
+		DeviceID: c.GetHeader("X-Device-ID"), DeviceName: c.GetHeader("X-Device-Name"), DeviceType: c.GetHeader("X-Device-Type"),
+		ClientIP: c.ClientIP(), UserAgent: c.GetHeader("User-Agent"),
+	}
+}
+
+func (h *UserHandler) readRefreshCookie(c *gin.Context) (string, bool) {
+	value, err := c.Cookie(refreshCookieName)
+	if err != nil || strings.TrimSpace(value) == "" {
+		return "", false
+	}
+	return value, true
+}
+
+func (h *UserHandler) writeSessionCookies(c *gin.Context, tokens *service.SessionTokens) {
+	if tokens == nil || tokens.Session == nil || tokens.RefreshToken == "" {
+		return
+	}
+	maxAge := int(time.Until(tokens.Session.ExpiresAt).Seconds())
+	if maxAge < 1 {
+		maxAge = 1
+	}
+	csrf, err := auth.NewOpaqueRefreshToken()
+	if err != nil {
+		return
+	}
+	base := http.Cookie{
+		Path: "/api/v1/auth", MaxAge: maxAge, Expires: tokens.Session.ExpiresAt,
+		Secure: h.sessionHTTP.CookieSecure, SameSite: http.SameSiteLaxMode,
+	}
+	refresh := base
+	refresh.Name = refreshCookieName
+	refresh.Value = tokens.RefreshToken
+	refresh.HttpOnly = true
+	http.SetCookie(c.Writer, &refresh)
+	csrfCookie := base
+	csrfCookie.Name = csrfCookieName
+	csrfCookie.Value = csrf
+	// The browser app can live at / while the API cookie is scoped to
+	// /api/v1/auth, so the non-sensitive CSRF cookie needs a readable path.
+	csrfCookie.Path = "/"
+	csrfCookie.HttpOnly = false
+	http.SetCookie(c.Writer, &csrfCookie)
+}
+
+func (h *UserHandler) clearSessionCookies(c *gin.Context) {
+	for _, name := range []string{refreshCookieName, csrfCookieName} {
+		path := "/api/v1/auth"
+		if name == csrfCookieName {
+			path = "/"
+		}
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name: name, Value: "", Path: path, MaxAge: -1, Expires: time.Unix(1, 0),
+			Secure: h.sessionHTTP.CookieSecure, HttpOnly: name == refreshCookieName, SameSite: http.SameSiteLaxMode,
+		})
+	}
+}
+
+func (h *UserHandler) requireCSRF(c *gin.Context) bool {
+	cookie, err := c.Cookie(csrfCookieName)
+	header := strings.TrimSpace(c.GetHeader(csrfHeaderName))
+	if err != nil || cookie == "" || header == "" || len(cookie) != len(header) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(cookie), []byte(header)) == 1
+}
+
+func (h *UserHandler) compatRefreshToken(value string) string {
+	if h.sessionHTTP.RefreshBodyCompat {
+		return value
+	}
+	return ""
+}
+
+func currentSession(c *gin.Context) (string, string, bool) {
+	userID, userExists := c.Get("user_id")
+	sessionID, sessionExists := c.Get("session_id")
+	user, userOK := userID.(string)
+	session, sessionOK := sessionID.(string)
+	return user, session, userExists && sessionExists && userOK && sessionOK && user != "" && session != ""
+}
+
+func numericIdentityID(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	return value, err == nil && parsed > 0
+}
+
+func decodeOptionalStrictJSON(c *gin.Context, value any) error {
+	if c.Request.Body == nil {
+		return nil
+	}
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(value)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("request body contains multiple JSON values")
+	}
+	return nil
 }

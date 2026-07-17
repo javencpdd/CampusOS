@@ -13,7 +13,11 @@
           <el-button type="primary" @click="handleLogin" :loading="loading" style="width: 100%">登录</el-button>
         </el-form-item>
       </el-form>
-      <p class="tip">还没有账号？<router-link to="/register">立即注册</router-link></p>
+      <p class="tip">
+        <router-link to="/reset-password">找回密码</router-link> · 还没有账号？<router-link to="/register"
+          >立即注册</router-link
+        >
+      </p>
     </el-card>
   </div>
 </template>

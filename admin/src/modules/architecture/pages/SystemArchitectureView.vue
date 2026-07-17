@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000027</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000035</el-tag>
     </section>
 
     <el-alert
@@ -341,8 +341,8 @@ const databaseTables: DbTable[] = [
     title: "用户",
     domain: "identity",
     purpose: "系统中的用户主体，社区、个人空间、权限和上传资源的归属起点。",
-    fields: ["id", "username", "email", "status"],
-    migration: "000001 + 000016",
+    fields: ["id", "username", "email", "status", "auth_version"],
+    migration: "000001 + 000016 + 000028",
     relationshipNote:
       "通过受外键约束的 user_id、author_id、created_by、uploader_id 等字段被多个业务表引用。",
   },
@@ -350,19 +350,66 @@ const databaseTables: DbTable[] = [
     name: "accounts",
     title: "登录凭据",
     domain: "identity",
-    purpose: "保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据。",
-    fields: ["id", "user_id", "type", "identifier"],
-    migration: "000001 + 000016",
-    relationshipNote: "一个用户可有多个登录账号；user_id 由外键保护。",
+    purpose: "保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据；邮箱使用规范化标识和显式验证状态。",
+    fields: ["id", "user_id", "type", "identifier_normalized", "verification_state"],
+    migration: "000001 + 000016 + 000028",
+    relationshipNote: "一个用户可有多个登录账号；邮箱账户以规范化标识全局唯一，user_id 由外键保护。",
+  },
+  {
+    name: "identity_legacy_email_placeholders",
+    title: "历史邮箱占位标记",
+    domain: "identity",
+    purpose: "保存历史共享邮箱的迁移标记，不是登录凭据、验证目的地或用户邮箱绑定。",
+    fields: ["id", "user_id", "placeholder_email", "migration_source", "resolved_at"],
+    migration: "000028",
+    relationshipNote: "user_id 由外键指向 users；未解决标记每个用户最多一条，不参与 accounts 登录和找回。",
+  },
+  {
+    name: "identity_reserved_identifiers",
+    title: "保留身份标识",
+    domain: "identity",
+    purpose: "声明不能被新注册、绑定或找回流程使用的规范化身份标识及其原因。",
+    fields: ["identifier_type", "identifier_normalized", "reason", "created_at"],
+    migration: "000028",
+    relationshipNote: "独立策略表；v12 首项用于阻止历史共享邮箱被作为个人邮箱重新注册。",
+  },
+  {
+    name: "identity_email_challenges",
+    title: "邮箱验证挑战",
+    domain: "identity",
+    purpose: "保存验证码的用途、HMAC 重建元数据、尝试次数和一次性 Ticket 摘要；不保存验证码或原始 Ticket。",
+    fields: ["id", "public_id", "purpose", "account_id", "ticket_digest", "expires_at"],
+    migration: "000029",
+    relationshipNote: "account_id 可空外键指向 accounts；Outbox 只保存 challenge_id，邮件正文、验证码和 Secret 不进入该表以外的日志或队列。",
+  },
+  {
+    name: "identity_challenge_rate_limits",
+    title: "验证请求限流窗口",
+    domain: "identity",
+    purpose: "按规范化邮箱或 IP 的 HMAC 摘要保存分钟、日和小时请求计数，跨进程保持一致。",
+    fields: ["scope", "subject_digest", "window_started_at", "request_count", "updated_at"],
+    migration: "000029",
+    relationshipNote: "subject_digest 不是原始邮箱或 IP；与 Challenge 创建在同一事务内更新，没有业务外键。",
+  },
+  {
+    name: "identity_account_recovery_cases",
+    title: "管理员辅助恢复 Case",
+    domain: "identity",
+    purpose:
+      "记录经过线下核验后发起的受控恢复流程；不保存密码、验证码、Ticket 或线下证明原文。",
+    fields: ["id", "public_id", "user_id", "account_id", "challenge_id", "status", "expires_at"],
+    migration: "000031",
+    relationshipNote:
+      "关联用户、原账号、邮件 Challenge 和可选创建人；管理端仅显示脱敏目标邮箱，证明材料只保留非敏感编号。",
   },
   {
     name: "sessions",
     title: "刷新会话",
     domain: "identity",
-    purpose: "保存 refresh token、设备和过期时间。",
-    fields: ["id", "user_id", "refresh_token", "expires_at"],
-    migration: "000001 + 000016",
-    relationshipNote: "一个用户可在多个设备保持会话；user_id 由外键保护。",
+    purpose: "保存不透明 Refresh Token 的摘要、设备、轮换家族和撤销状态，不保存原始凭据。",
+    fields: ["id", "user_id", "refresh_token_digest", "token_family_id", "revoked_at", "expires_at"],
+    migration: "000001 + 000016 + 000030",
+    relationshipNote: "一个用户可在多个设备保持会话；user_id 由外键保护，密码恢复或邮箱绑定会撤销关联会话。",
   },
   {
     name: "roles",
@@ -528,30 +575,64 @@ const databaseTables: DbTable[] = [
     name: "categories",
     title: "版块",
     domain: "community",
-    purpose: "社区内容分区，支持父子版块和默认标签。",
-    fields: ["id", "parent_id", "name", "default_tags"],
-    migration: "000001 + 000012 + 000016",
+    purpose: "社区内容分区；支持根级 group、board、默认标签和可审计的归档状态。",
+    fields: ["id", "parent_id", "node_kind", "lifecycle_status", "version", "color", "default_tags"],
+    migration: "000001 + 000012 + 000016 + 000032",
     relationshipNote:
-      "parent_id、threads.category_id 和 user_space_contents.category_id 由外键保护。",
+      "group 只位于根级，board 只能挂到活动 group；parent_id、threads.category_id 和 user_space_contents.category_id 由约束或外键保护。",
+  },
+  {
+    name: "category_thread_type_policies",
+    title: "板块帖子类型策略",
+    domain: "community",
+    purpose:
+      "限定一个 board 可以新建的固定结构化帖子类型；策略只影响新建，不删除或隐藏已有内容。",
+    fields: ["category_id", "thread_type", "enabled", "updated_at"],
+    migration: "000033",
+    relationshipNote:
+      "category_id 由外键指向 board；数据库触发器拒绝 group、已删除或不存在的板块策略。",
   },
   {
     name: "threads",
     title: "主题 / 文章入口",
     domain: "community",
     purpose:
-      "普通帖子和富文本文章共用的顶层内容实体；v10 以发布、治理和删除三维状态决定可见性。",
+      "普通帖子和富文本文章共用的顶层内容实体；thread_type 表达业务类型，v10 三维状态决定可见性。",
     fields: [
       "id",
       "author_id",
       "category_id",
+      "thread_type",
       "status",
       "publication_status",
       "moderation_status",
       "deletion_status",
     ],
-    migration: "000001 + 000016 + 000023",
+    migration: "000001 + 000016 + 000023 + 000033",
     relationshipNote:
       "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。",
+  },
+  {
+    name: "mutual_aid_details",
+    title: "校园互助详情",
+    domain: "community",
+    purpose:
+      "互助帖的类型、业务状态、截止时间、位置范围和联系约定；不保存身份、支付或完整住宿敏感信息。",
+    fields: ["thread_id", "aid_type", "aid_status", "deadline", "location_scope", "contact_mode", "version", "created_by"],
+    migration: "000034",
+    relationshipNote:
+      "thread_id 一对一关联 mutual_aid 类型主题，created_by 必须匹配主题作者；业务状态不改变 Community 的发布、审核或回收站状态。",
+  },
+  {
+    name: "secondhand_details",
+    title: "校园二手详情",
+    domain: "community",
+    purpose:
+      "二手帖的分价金额、CNY 币种、物品成色、交付方式、交易进度和位置范围；不保存支付、订单或仲裁数据。",
+    fields: ["thread_id", "price_minor", "currency", "item_condition", "trade_method", "trade_status", "location_scope", "version", "created_by"],
+    migration: "000035",
+    relationshipNote:
+      "thread_id 一对一关联 secondhand 类型主题，created_by 必须匹配主题作者；交易业务状态不改变 Community 的发布、审核或回收站状态。",
   },
   {
     name: "content_revisions",
@@ -926,6 +1007,51 @@ const relations: Relation[] = [
     domains: ["identity"],
   },
   {
+    id: "users-legacy-email-placeholders",
+    source: "users",
+    target: "identity_legacy_email_placeholders",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> user_id",
+    domains: ["identity"],
+  },
+  {
+    id: "accounts-email-challenges",
+    source: "accounts",
+    target: "identity_email_challenges",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> account_id (optional)",
+    domains: ["identity"],
+  },
+  {
+    id: "users-recovery-cases",
+    source: "users",
+    target: "identity_account_recovery_cases",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> user_id / created_by",
+    domains: ["identity"],
+  },
+  {
+    id: "accounts-recovery-cases",
+    source: "accounts",
+    target: "identity_account_recovery_cases",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "challenges-recovery-cases",
+    source: "identity_email_challenges",
+    target: "identity_account_recovery_cases",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> challenge_id",
+    domains: ["identity"],
+  },
+  {
     id: "users-sessions",
     source: "users",
     target: "sessions",
@@ -1048,7 +1174,7 @@ const relations: Relation[] = [
     target: "categories",
     sourceCardinality: "1",
     targetCardinality: "N",
-    label: "id -> parent_id",
+    label: "group.id -> board.parent_id",
     domains: ["community"],
   },
   {
@@ -1058,6 +1184,15 @@ const relations: Relation[] = [
     sourceCardinality: "1",
     targetCardinality: "N",
     label: "id -> category_id",
+    domains: ["community"],
+  },
+  {
+    id: "categories-thread-type-policies",
+    source: "categories",
+    target: "category_thread_type_policies",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> category_id (board)",
     domains: ["community"],
   },
   {
@@ -1212,6 +1347,42 @@ const relations: Relation[] = [
     targetCardinality: "0..1",
     label: "id -> thread_id",
     domains: ["community", "space"],
+  },
+  {
+    id: "threads-mutual-aid",
+    source: "threads",
+    target: "mutual_aid_details",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> thread_id",
+    domains: ["community"],
+  },
+  {
+    id: "users-mutual-aid",
+    source: "users",
+    target: "mutual_aid_details",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> created_by",
+    domains: ["identity", "community"],
+  },
+  {
+    id: "threads-secondhand",
+    source: "threads",
+    target: "secondhand_details",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> thread_id",
+    domains: ["community"],
+  },
+  {
+    id: "users-secondhand",
+    source: "users",
+    target: "secondhand_details",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> created_by",
+    domains: ["identity", "community"],
   },
   {
     id: "users-richtext",
@@ -1764,6 +1935,83 @@ const migrations = [
       "permission_definitions",
       "role_permissions",
     ],
+  },
+  {
+    version: "000028",
+    file: "000028_v12_identity_account_state.up.sql",
+    title: "v12 邮箱身份事实与历史账号状态",
+    scope: "身份与账号安全",
+    summary:
+      "将邮箱登录事实收敛到 accounts 的规范化标识和验证状态，保留 users.email 兼容投影，并建立历史共享邮箱占位标记和保留标识策略。",
+    tables: [
+      "users",
+      "accounts",
+      "identity_legacy_email_placeholders",
+      "identity_reserved_identifiers",
+    ],
+  },
+  {
+    version: "000029",
+    file: "000029_v12_identity_challenges.up.sql",
+    title: "v12 邮箱 Challenge、Ticket 与持久限流",
+    scope: "身份与账号安全",
+    summary:
+      "建立 HMAC 验证码重建元数据、一次性 Ticket 摘要和基于 keyed digest 的持久限流窗口；验证码和原始 Ticket 不入库。",
+    tables: ["identity_email_challenges", "identity_challenge_rate_limits"],
+  },
+  {
+    version: "000030",
+    file: "000030_v12_identity_sessions.up.sql",
+    title: "v12 会话权威与 Refresh 轮换",
+    scope: "身份与账号安全",
+    summary:
+      "清除历史原始 Refresh Token，新增摘要、家族、轮换、撤销和 IP 摘要字段；旧会话显式失效。",
+    tables: ["sessions"],
+  },
+  {
+    version: "000031",
+    file: "000031_v12_identity_recovery_cases.up.sql",
+    title: "v12 账号恢复 Case 与细粒度权限",
+    scope: "身份与账号安全",
+    summary:
+      "建立管理员辅助恢复工作流、关联约束和恢复/会话/邮件投递权限；敏感凭据不入库。",
+    tables: ["identity_account_recovery_cases", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000032",
+    file: "000032_v12_category_hierarchy.up.sql",
+    title: "v12 两级板块与可靠管理",
+    scope: "社区与权限",
+    summary:
+      "在既有 categories 表追加 group/board、active/archived、版本与颜色约束，并以触发器保护两级层级和活动父级规则；同时追加细粒度板块管理权限。",
+    tables: ["categories", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000033",
+    file: "000033_v12_structured_threads.up.sql",
+    title: "v12 结构化帖子类型与板块策略",
+    scope: "社区与内容",
+    summary:
+      "为 threads 追加固定业务类型，回填历史 RichText article，并建立 board 类型策略、约束、触发器与配置权限。",
+    tables: ["threads", "category_thread_type_policies", "richtext_article_contents", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000034",
+    file: "000034_v12_mutual_aid.up.sql",
+    title: "v12 校园互助结构化详情",
+    scope: "社区与内容",
+    summary:
+      "建立校园互助业务详情、状态/联系方式/位置约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
+    tables: ["mutual_aid_details", "threads", "users"],
+  },
+  {
+    version: "000035",
+    file: "000035_v12_secondhand.up.sql",
+    title: "v12 校园二手结构化详情",
+    scope: "社区与内容",
+    summary:
+      "建立校园二手的 CNY 分价、物品状态、交付方式、交易状态约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
+    tables: ["secondhand_details", "threads", "users"],
   },
 ];
 

@@ -170,14 +170,18 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.platform-api"
 	case strings.HasPrefix(path, APIPrefix+"/moderation"):
 		return "core.moderation"
-	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
+	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/identity"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
 		return "core.identity"
-	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"):
+	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
 		return "core.community"
 	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
+		return "feature.mutual-aid"
+	case strings.HasPrefix(path, APIPrefix+"/secondhand"):
+		return "feature.secondhand"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "feature.personal-schedule"
 	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
@@ -186,6 +190,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.feature-registry"
 	case strings.HasPrefix(path, APIPrefix+"/platform/reliability"):
 		return "core.reliability"
+	case strings.HasPrefix(path, APIPrefix+"/platform/email-delivery"):
+		return "core.email-delivery"
 	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):
@@ -230,6 +236,10 @@ func featureForRoute(path string) string {
 		return "controlled-richtext-article"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
+		return "mutual-aid"
+	case strings.HasPrefix(path, APIPrefix+"/secondhand"):
+		return "secondhand"
 	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
 		return "appearance"
 	default:
@@ -262,6 +272,28 @@ func applyAuthorization(route *RouteContract, group, method string) {
 	}
 	if method == "GET" && route.Audit == "request-log" {
 		route.Audit = "request-log-read"
+	}
+	if route.Path == APIPrefix+"/auth/refresh" {
+		route.Auth = "refresh-cookie+csrf"
+		route.Ownership = "session-cookie"
+		route.Scope = "current-session"
+		route.Audit = "identity-session-audit"
+	}
+	if strings.HasPrefix(route.Path, APIPrefix+"/auth/password-reset/") || route.Path == APIPrefix+"/auth/recovery/complete" {
+		route.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(route.Path, APIPrefix+"/auth/email-binding/") {
+		route.Auth = "jwt+csrf"
+		route.Ownership = "current-session"
+		route.Scope = "self"
+		route.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(route.Path, APIPrefix+"/identity/") {
+		route.Audit = "identity-recovery-audit"
+	}
+	if route.Path == APIPrefix+"/auth/logout" || route.Path == APIPrefix+"/auth/logout-all" || strings.HasPrefix(route.Path, APIPrefix+"/auth/sessions/") && method != "GET" {
+		route.Auth = "jwt+csrf"
+		route.Audit = "identity-session-audit"
 	}
 }
 
@@ -326,10 +358,15 @@ func OpenAPI(routes []RouteContract) []byte {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
 			if route.Auth != "none" {
-				out.WriteString("      security:\n        - bearerAuth: []\n")
+				if route.Auth == "refresh-cookie+csrf" {
+					out.WriteString("      security:\n        - refreshCookie: []\n")
+				} else {
+					out.WriteString("      security:\n        - bearerAuth: []\n")
+				}
 			}
 			parameters := openAPIPathParameters(path)
-			if len(parameters) > 0 || profile.Paginated {
+			requiresCSRF := strings.Contains(route.Auth, "csrf")
+			if len(parameters) > 0 || profile.Paginated || requiresCSRF {
 				out.WriteString("      parameters:\n")
 				for _, parameter := range parameters {
 					fmt.Fprintf(&out, "        - name: %s\n          in: path\n          required: true\n          schema:\n            type: string\n", parameter)
@@ -337,6 +374,9 @@ func OpenAPI(routes []RouteContract) []byte {
 				if profile.Paginated {
 					out.WriteString("        - name: page\n          in: query\n          schema: { type: integer, minimum: 1, default: 1 }\n")
 					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
+				}
+				if requiresCSRF {
+					out.WriteString("        - name: X-CSRF-Token\n          in: header\n          required: true\n          schema: { type: string }\n")
 				}
 			}
 			if profile.RequestSchema != "" && !profile.NoBody {

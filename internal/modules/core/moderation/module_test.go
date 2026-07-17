@@ -6,6 +6,7 @@ import (
 
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/cache"
@@ -36,7 +37,19 @@ func TestModuleStartsWithIdentityAndCommunityPorts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	identity := identitycore.NewModule(identitycore.Config{JWT: auth.NewJWTManager(auth.JWTConfig{Secret: "test"})})
+	features := platformfeature.NewRegistry(nil)
+	if err := features.Register(platformfeature.Definition{ID: "controlled-richtext-article", Mode: platformfeature.Restart, DefaultEnabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Provide("platform.feature-registry", features); err != nil {
+		t.Fatal(err)
+	}
+	identity := identitycore.NewModule(identitycore.Config{
+		JWT:                   auth.NewJWTManager(auth.JWTConfig{Secret: "test"}),
+		ChallengeActiveKeyID:  "test-v1",
+		ChallengeHMACKeys:     map[string]string{"test-v1": "test-challenge-signing-secret"},
+		ChallengeIPHashSecret: "test-challenge-ip-hash-secret",
+	})
 	if err := identity.Register(app); err != nil {
 		t.Fatal(err)
 	}

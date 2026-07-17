@@ -33,6 +33,7 @@
                     >{{ item.label }}</el-dropdown-item
                   >
                   <el-dropdown-item @click="goPublicSpace">查看主页</el-dropdown-item>
+                  <el-dropdown-item @click="router.push('/account/security')">账号安全</el-dropdown-item>
                   <el-dropdown-item @click="router.push('/plugins')">插件中心</el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu></template
@@ -47,7 +48,14 @@
       </template>
       <template #primary-navigation>
         <div class="primary-nav">
-          <router-link to="/">首页</router-link><router-link to="/threads">全部帖子</router-link>
+          <router-link to="/">首页</router-link>
+          <router-link to="/threads">全部帖子</router-link>
+          <template v-for="node in categoryNavigation" :key="node.key">
+            <span v-if="node.kind === 'group'" class="category-nav-group">{{ node.name }}</span>
+            <router-link v-else :to="{ path: '/threads', query: { category_id: node.id } }">{{
+              node.name
+            }}</router-link>
+          </template>
         </div>
       </template>
       <template v-if="slotSurfaces('hero').length" #hero
@@ -95,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { scheduleApi } from '@/modules/schedule/api'
@@ -112,6 +120,16 @@ const router = useRouter()
 const userStore = useUserStore()
 const themeStore = useWebThemeStore()
 const runtimeStore = useUIRuntimeStore()
+type CategoryNavigationNode = { key: string; id?: string; name: string; kind: 'group' | 'board' }
+type PublicCategory = {
+  id: string
+  name: string
+  node_kind?: 'group' | 'board'
+  lifecycle_status?: 'active' | 'archived'
+  is_closed?: boolean
+  children?: PublicCategory[]
+}
+const categoryNavigation = ref<CategoryNavigationNode[]>([])
 const publicSpacePath = computed(() => (userStore.user?.username ? `/u/${userStore.user.username}` : '/space/settings'))
 const displayAvatar = computed(() => userStore.user?.avatar || '')
 const avatarInitial = computed(() =>
@@ -143,6 +161,33 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+const loadCategoryNavigation = async () => {
+  try {
+    const response: any = await categoryApi.tree()
+    const nodes = (response?.data || []) as PublicCategory[]
+    const navigation: CategoryNavigationNode[] = []
+    for (const node of nodes) {
+      if ((node.lifecycle_status || 'active') !== 'active') continue
+      if ((node.node_kind || 'board') === 'group') {
+        const boards = (node.children || []).filter(
+          (child) =>
+            (child.node_kind || 'board') === 'board' &&
+            !child.is_closed &&
+            (child.lifecycle_status || 'active') === 'active',
+        )
+        if (boards.length) navigation.push({ key: `group:${node.id}`, name: node.name, kind: 'group' })
+        for (const board of boards)
+          navigation.push({ key: `board:${board.id}`, id: board.id, name: board.name, kind: 'board' })
+        continue
+      }
+      if (!node.is_closed) navigation.push({ key: `board:${node.id}`, id: node.id, name: node.name, kind: 'board' })
+    }
+    categoryNavigation.value = navigation
+  } catch {
+    categoryNavigation.value = []
+  }
+}
+
 const resolveThemeQuery = async (method: string, params: Record<string, unknown>) => {
   if (method === 'community.threads.read') {
     const requested = Number(params.limit || 10)
@@ -168,6 +213,7 @@ const resolveThemeQuery = async (method: string, params: Record<string, unknown>
 onMounted(() => {
   void syncSpaceAvatar()
   void runtimeStore.initialize()
+  void loadCategoryNavigation()
 })
 watch(
   () => userStore.user?.id,
@@ -240,6 +286,12 @@ watch(
   text-decoration: none;
   font-size: 14px;
 }
+.category-nav-group {
+  color: var(--campus-muted-color, #4b5563);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 p {
   margin: 0;
 }
@@ -257,6 +309,12 @@ p {
   .brand {
     font-size: 18px;
     padding-top: 6px;
+  }
+  .primary-nav {
+    overflow-x: auto;
+    padding: 8px 12px;
+    gap: 14px;
+    white-space: nowrap;
   }
 }
 </style>

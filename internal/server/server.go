@@ -2,6 +2,7 @@ package server
 
 import (
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
+	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	"github.com/campusos/CampusOS/internal/modules/core/moderation"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
@@ -10,10 +11,12 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
+	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
+	"github.com/campusos/CampusOS/internal/modules/features/secondhand"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	"github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
@@ -35,11 +38,14 @@ type Server struct {
 	appearance     *appearance.Module
 	community      *communitycore.Module
 	identity       *identitycore.Module
+	emailDelivery  *emaildelivery.Module
 	moderation     *moderation.Module
 	storage        *corestorage.Module
 	space          *space.Module
 	richtext       *richtext.Module
 	schedule       *schedule.Module
+	mutualAid      *mutualaid.Module
+	secondhand     *secondhand.Module
 	ai             *ai.Module
 	webhook        *webhook.Module
 	mcp            *mcp.Module

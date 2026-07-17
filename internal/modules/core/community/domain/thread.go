@@ -18,6 +18,7 @@ const (
 // Thread 帖子领域实体
 type Thread struct {
 	ID                string            `json:"id"`
+	ThreadType        ThreadType        `json:"thread_type"`
 	Title             string            `json:"title"`
 	Content           string            `json:"content"`
 	ContentFormat     string            `json:"content_format"`
@@ -66,6 +67,7 @@ type ThreadListFilter struct {
 	CategoryIDs       []string
 	AuthorID          string
 	Status            string
+	ThreadType        ThreadType
 	ContentFormat     string
 	Keyword           string
 	Tag               string

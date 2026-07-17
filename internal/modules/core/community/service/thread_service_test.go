@@ -250,6 +250,14 @@ func (r failingGovernanceRepository) CreateModerationAction(context.Context, *do
 	return errors.New("content governance audit write failed")
 }
 
+type failingRevisionGovernanceRepository struct {
+	*repository.MemoryContentGovernanceRepository
+}
+
+func (r failingRevisionGovernanceRepository) CreateRevision(context.Context, *domain.ContentRevision) error {
+	return errors.New("content revision write failed")
+}
+
 func TestGovernanceCommandRollsBackWhenRequiredEvidenceFails(t *testing.T) {
 	ctx := context.Background()
 	threadRepo := repository.NewMemoryThreadRepository()
@@ -298,6 +306,200 @@ func TestGovernanceDenyAuditSurvivesReliableTransactionRollback(t *testing.T) {
 	}
 	if stored.ModerationStatus != domain.ModerationStatusClear {
 		t.Fatalf("denied command changed thread state: %#v", stored)
+	}
+}
+
+func TestAuthorThreadCommandsRollbackWhenRevisionWriteFails(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := repository.NewMemoryThreadRepository()
+	governance := failingRevisionGovernanceRepository{MemoryContentGovernanceRepository: repository.NewMemoryContentGovernanceRepository()}
+	reliableStore := reliability.NewMemoryStore()
+	svc := NewThreadService(threadRepo, nil)
+	svc.SetGovernanceRepository(governance)
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliableStore))
+
+	if _, err := svc.CreateThread(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "must roll back", Content: "body", CategoryID: "1",
+	}); err == nil {
+		t.Fatal("expected create to fail when its required revision cannot be written")
+	}
+	if threads, total, err := threadRepo.List(ctx, domain.ThreadListFilter{Page: 1, PageSize: 20}); err != nil || total != 0 || len(threads) != 0 {
+		t.Fatalf("failed create left a thread behind: total=%d items=%#v err=%v", total, threads, err)
+	}
+	assertNoReliableEvidence(t, reliableStore)
+
+	seed := &domain.Thread{
+		ID: "atomic-author-thread", Title: "before", Content: "before body", AuthorID: "1001", AuthorName: "alice",
+		CategoryID: "1", Status: domain.ThreadStatusPublished, CurrentRevision: 1,
+	}
+	if err := threadRepo.Create(ctx, seed); err != nil {
+		t.Fatalf("seed thread: %v", err)
+	}
+	if _, err := svc.UpdateThread(ctx, seed.ID, "1001", domain.UpdateThreadRequest{Title: ptrString("after")}); err == nil {
+		t.Fatal("expected update to fail when its required revision cannot be written")
+	}
+	stored, err := threadRepo.GetByID(ctx, seed.ID)
+	if err != nil {
+		t.Fatalf("read seeded thread after failed update: %v", err)
+	}
+	if stored.Title != "before" || stored.CurrentRevision != 1 {
+		t.Fatalf("failed update changed thread state: %#v", stored)
+	}
+	assertNoReliableEvidence(t, reliableStore)
+
+	if err := svc.DeleteThread(ctx, seed.ID, "1001"); err == nil {
+		t.Fatal("expected author trash to fail when its required revision cannot be written")
+	}
+	stored, err = threadRepo.GetByID(ctx, seed.ID)
+	if err != nil {
+		t.Fatalf("read seeded thread after failed trash: %v", err)
+	}
+	if stored.DeletionStatus != domain.DeletionStatusActive || stored.CurrentRevision != 1 {
+		t.Fatalf("failed author trash changed thread state: %#v", stored)
+	}
+	assertNoReliableEvidence(t, reliableStore)
+}
+
+func TestAuthorThreadCommandsWriteOneAuditAndOutboxPerCommittedMutation(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := repository.NewMemoryThreadRepository()
+	governance := repository.NewMemoryContentGovernanceRepository()
+	reliableStore := reliability.NewMemoryStore()
+	svc := NewThreadService(threadRepo, nil)
+	svc.SetGovernanceRepository(governance)
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliableStore))
+
+	thread, err := svc.CreateThread(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "reliable author command", Content: "body", CategoryID: "1",
+	})
+	if err != nil {
+		t.Fatalf("create thread: %v", err)
+	}
+	if _, err := svc.UpdateThread(ctx, thread.ID, "1001", domain.UpdateThreadRequest{Content: ptrString("edited body")}); err != nil {
+		t.Fatalf("update thread: %v", err)
+	}
+	if err := svc.DeleteThread(ctx, thread.ID, "1001"); err != nil {
+		t.Fatalf("trash thread: %v", err)
+	}
+	events, _, err := reliableStore.List(ctx, reliability.EventFilter{}, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatalf("list durable events: %v", err)
+	}
+	audits, _, err := reliableStore.ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatalf("list command audits: %v", err)
+	}
+	if len(events) != 3 || len(audits) != 3 {
+		t.Fatalf("expected one durable event and audit per mutation, events=%d audits=%d", len(events), len(audits))
+	}
+}
+
+type testStructuredParticipant struct {
+	typeValue domain.ThreadType
+	fail      bool
+	threadID  string
+}
+
+func (p *testStructuredParticipant) ThreadType() domain.ThreadType { return p.typeValue }
+func (p *testStructuredParticipant) PersistThreadDetail(_ context.Context, thread *domain.Thread) error {
+	if p.fail {
+		return errors.New("structured detail write failed")
+	}
+	p.threadID = thread.ID
+	return nil
+}
+
+func TestStructuredThreadRequiresFeatureAndCategoryPolicy(t *testing.T) {
+	ctx := context.Background()
+	categoryRepo := repository.NewMemoryCategoryRepository()
+	policyRepo := repository.NewMemoryThreadTypePolicyRepository()
+	categorySvc := NewCategoryService(categoryRepo, nil)
+	categorySvc.SetThreadTypePolicyRepository(policyRepo)
+	category, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Structured board"})
+	if err != nil {
+		t.Fatalf("create category: %v", err)
+	}
+	threadSvc := NewThreadService(repository.NewMemoryThreadRepository(), nil)
+	threadSvc.SetCategoryRepository(categoryRepo)
+	threadSvc.SetThreadTypePolicyRepository(policyRepo)
+	articleEnabled := true
+	threadSvc.SetThreadTypeEnabledChecker(func(threadType domain.ThreadType) bool {
+		return threadType == domain.ThreadTypeDiscussion || (threadType == domain.ThreadTypeArticle && articleEnabled)
+	})
+	participant := &testStructuredParticipant{typeValue: domain.ThreadTypeArticle}
+	thread, err := threadSvc.CreateStructuredThreadWithOptions(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "Article", Content: "body", CategoryID: category.ID,
+	}, CreateThreadOptions{Status: domain.ThreadStatusDraft, ThreadType: domain.ThreadTypeArticle}, participant)
+	if err != nil {
+		t.Fatalf("create allowed article: %v", err)
+	}
+	if thread.ThreadType != domain.ThreadTypeArticle || participant.threadID != thread.ID {
+		t.Fatalf("participant did not receive typed thread: thread=%#v participant=%#v", thread, participant)
+	}
+	if err := policyRepo.Replace(ctx, category.ID, []domain.ThreadType{domain.ThreadTypeDiscussion}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := threadSvc.CreateStructuredThreadWithOptions(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "Denied", Content: "body", CategoryID: category.ID,
+	}, CreateThreadOptions{ThreadType: domain.ThreadTypeArticle}, participant); !errors.Is(err, ErrThreadTypeNotAllowed) {
+		t.Fatalf("expected category policy rejection, got %v", err)
+	}
+	if err := policyRepo.Replace(ctx, category.ID, domain.DefaultCategoryThreadTypes()); err != nil {
+		t.Fatal(err)
+	}
+	articleEnabled = false
+	if _, err := threadSvc.CreateStructuredThreadWithOptions(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "Disabled", Content: "body", CategoryID: category.ID,
+	}, CreateThreadOptions{ThreadType: domain.ThreadTypeArticle}, participant); !errors.Is(err, ErrThreadTypeUnavailable) {
+		t.Fatalf("expected feature rejection, got %v", err)
+	}
+}
+
+func TestStructuredThreadParticipantFailureRollsBackBaseFactsAndEvidence(t *testing.T) {
+	ctx := context.Background()
+	categoryRepo := repository.NewMemoryCategoryRepository()
+	policyRepo := repository.NewMemoryThreadTypePolicyRepository()
+	categorySvc := NewCategoryService(categoryRepo, nil)
+	categorySvc.SetThreadTypePolicyRepository(policyRepo)
+	category, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Atomic structured board"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	threadRepo := repository.NewMemoryThreadRepository()
+	governance := repository.NewMemoryContentGovernanceRepository()
+	reliableStore := reliability.NewMemoryStore()
+	reliable := reliability.NewService(transaction.NewMemory(), reliableStore)
+	threadSvc := NewThreadService(threadRepo, nil)
+	threadSvc.SetCategoryRepository(categoryRepo)
+	threadSvc.SetThreadTypePolicyRepository(policyRepo)
+	threadSvc.SetThreadTypeEnabledChecker(func(domain.ThreadType) bool { return true })
+	threadSvc.SetGovernanceRepository(governance)
+	threadSvc.SetReliability(reliable)
+	participant := &testStructuredParticipant{typeValue: domain.ThreadTypeArticle, fail: true}
+	if _, err := threadSvc.CreateStructuredThreadWithOptions(ctx, "1001", "alice", domain.CreateThreadRequest{
+		Title: "Atomic article", Content: "body", CategoryID: category.ID,
+	}, CreateThreadOptions{ThreadType: domain.ThreadTypeArticle}, participant); err == nil {
+		t.Fatal("expected participant failure")
+	}
+	threads, total, err := threadRepo.List(ctx, domain.ThreadListFilter{Page: 1, PageSize: 20})
+	if err != nil || total != 0 || len(threads) != 0 {
+		t.Fatalf("participant failure left base facts: total=%d items=%#v err=%v", total, threads, err)
+	}
+	assertNoReliableEvidence(t, reliableStore)
+}
+
+func assertNoReliableEvidence(t *testing.T, store *reliability.MemoryStore) {
+	t.Helper()
+	events, _, err := store.List(context.Background(), reliability.EventFilter{}, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatalf("list durable events: %v", err)
+	}
+	audits, _, err := store.ListCommandAudits(context.Background(), reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatalf("list command audits: %v", err)
+	}
+	if len(events) != 0 || len(audits) != 0 {
+		t.Fatalf("failed command left durable evidence: events=%#v audits=%#v", events, audits)
 	}
 }
 

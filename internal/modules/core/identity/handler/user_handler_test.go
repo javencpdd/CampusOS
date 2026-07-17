@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
@@ -103,5 +106,92 @@ func TestHealthCheckUsesApplicationVersion(t *testing.T) {
 	}
 	if payload.Data.Version != platformversion.Number {
 		t.Fatalf("health version=%q want=%q", payload.Data.Version, platformversion.Number)
+	}
+}
+
+func TestVerifiedRegistrationHTTPFlowAndLegacyRequestRejection(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	users := repository.NewMemoryUserRepository()
+	challengesStore := repository.NewMemoryChallengeRepository()
+	challenges, err := service.NewChallengeService(challengesStore, service.ChallengeConfig{
+		ActiveKeyID:  "test-v1",
+		HMACKeys:     map[string]string{"test-v1": "test-registration-hmac-key"},
+		IPHashSecret: "test-registration-ip-hash-key",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reliable := reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore())
+	challenges.SetReliability(reliable)
+	jwtMgr := auth.NewJWTManager(auth.JWTConfig{Secret: "test-secret", AccessTTL: time.Hour, RefreshTTL: time.Hour, Issuer: "test"})
+	usersService := service.NewUserService(users, jwtMgr, users, nil)
+	usersService.SetReliability(reliable)
+	usersService.SetRegistrationTicketConsumer(challenges)
+	handler := NewUserHandler(usersService)
+	handler.SetChallengeService(challenges)
+	router := gin.New()
+	router.POST("/auth/registration/challenge", handler.RequestRegistrationChallenge)
+	router.POST("/auth/registration/verify", handler.VerifyRegistrationChallenge)
+	router.POST("/auth/register", handler.Register)
+
+	request := func(path, body string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+
+	legacy := request("/auth/register", `{"username":"legacy_path","nickname":"Legacy Path","email":"legacy-path@example.test","password":"Secret123"}`)
+	if legacy.Code != http.StatusBadRequest || !strings.Contains(legacy.Body.String(), `"identity.verification_required"`) {
+		t.Fatalf("legacy registration response=%d %s", legacy.Code, legacy.Body.String())
+	}
+	if _, err := users.GetByEmail(context.Background(), "legacy-path@example.test"); !errors.Is(err, repository.ErrUserNotFound) {
+		t.Fatalf("legacy request created a user: %v", err)
+	}
+
+	challengeResponse := request("/auth/registration/challenge", `{"email":"new-user@example.test"}`)
+	if challengeResponse.Code != http.StatusOK {
+		t.Fatalf("challenge status=%d body=%s", challengeResponse.Code, challengeResponse.Body.String())
+	}
+	var challengePayload struct {
+		Data domain.ChallengeReceipt `json:"data"`
+	}
+	if err := json.Unmarshal(challengeResponse.Body.Bytes(), &challengePayload); err != nil {
+		t.Fatal(err)
+	}
+	challenge, err := challengesStore.GetChallenge(context.Background(), challengePayload.Data.PublicID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatch, err := challenges.Dispatch(context.Background(), challenge.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifyResponse := request("/auth/registration/verify", `{"challenge_id":"`+challengePayload.Data.PublicID+`","code":"`+dispatch.Code+`"}`)
+	if verifyResponse.Code != http.StatusOK {
+		t.Fatalf("verify status=%d body=%s", verifyResponse.Code, verifyResponse.Body.String())
+	}
+	var ticketPayload struct {
+		Data domain.ChallengeTicket `json:"data"`
+	}
+	if err := json.Unmarshal(verifyResponse.Body.Bytes(), &ticketPayload); err != nil {
+		t.Fatal(err)
+	}
+	registrationBody := `{"username":"verified_user","nickname":"Verified User","email":"new-user@example.test","password":"Secret123","challenge_id":"` + challengePayload.Data.PublicID + `","ticket":"` + ticketPayload.Data.Ticket + `"}`
+	registered := request("/auth/register", registrationBody)
+	if registered.Code != http.StatusCreated {
+		t.Fatalf("registration status=%d body=%s", registered.Code, registered.Body.String())
+	}
+	user, err := users.GetByEmail(context.Background(), "new-user@example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err := usersService.GetEmailAccount(context.Background(), user.ID)
+	if err != nil || account.VerificationState != domain.VerificationStateVerified {
+		t.Fatalf("verified account=%#v err=%v", account, err)
+	}
+	if reused := request("/auth/register", registrationBody); reused.Code != http.StatusBadRequest || !strings.Contains(reused.Body.String(), `"identity.registration_verification_invalid"`) {
+		t.Fatalf("ticket reuse response=%d %s", reused.Code, reused.Body.String())
 	}
 }

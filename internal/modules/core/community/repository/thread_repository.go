@@ -210,6 +210,9 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 		if filter.ContentFormat != "" && t.ContentFormat != filter.ContentFormat {
 			continue
 		}
+		if filter.ThreadType != "" && t.ThreadType != domain.NormalizeThreadType(filter.ThreadType) {
+			continue
+		}
 		if filter.Tag != "" && !containsTag(t.Tags, filter.Tag) {
 			continue
 		}

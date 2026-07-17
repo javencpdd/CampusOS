@@ -74,6 +74,7 @@ func (t *Thread) NormalizeContentState() {
 	if t == nil {
 		return
 	}
+	t.ThreadType = NormalizeThreadType(t.ThreadType)
 	t.PublicationStatus = t.publication()
 	t.ModerationStatus = t.moderation()
 	t.DeletionStatus = t.deletion()

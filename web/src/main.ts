@@ -5,6 +5,7 @@ import './styles/responsive.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
+import { useUserStore } from './modules/identity/store'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -15,5 +16,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
+const userStore = useUserStore(pinia)
 app.use(router)
-app.mount('#app')
+
+void userStore.restore().finally(() => app.mount('#app'))

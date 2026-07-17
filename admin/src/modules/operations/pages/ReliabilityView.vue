@@ -38,6 +38,11 @@
           formatDate(summary.oldest_pending_at)
         }}</strong>
       </article>
+      <article class="summary-item summary-email" aria-label="邮件投递状态">
+        <span>邮件投递</span>
+        <strong>{{ emailDeliveryLabel }}</strong>
+        <small v-if="emailDelivery.last_error">{{ emailDelivery.last_error }}</small>
+      </article>
     </section>
 
     <el-tabs v-model="activeTab" class="reliability-tabs">
@@ -521,6 +526,7 @@ const startingRetention = ref(false);
 const replayingId = ref("");
 const attemptDialog = ref(false);
 const summary = reactive<any>({});
+const emailDelivery = reactive<any>({});
 const events = ref<any[]>([]);
 const workers = ref<any[]>([]);
 const operations = ref<any[]>([]);
@@ -559,6 +565,12 @@ const summaryCards = computed(() => [
   { key: "dead", label: "失败队列", value: summary.dead || 0 },
   { key: "published", label: "已发布", value: summary.published || 0 },
 ]);
+const emailDeliveryLabel = computed(() => {
+  const provider = emailDelivery.provider || "未加载";
+  const state = emailDelivery.state || "unknown";
+  const stateLabel = state === "healthy" ? "正常" : state === "degraded" ? "降级" : "未知";
+  return `${provider} · ${stateLabel}`;
+});
 
 const payload = (result: any) => result?.data ?? result;
 const pageItems = (result: any, state: { total: number }) => {
@@ -569,6 +581,9 @@ const pageItems = (result: any, state: { total: number }) => {
 
 const loadSummary = async () => {
   Object.assign(summary, payload(await reliabilityApi.summary()) || {});
+};
+const loadEmailDelivery = async () => {
+  Object.assign(emailDelivery, payload(await reliabilityApi.emailDeliveryStatus()) || {});
 };
 const loadEvents = async () => {
   loadingEvents.value = true;
@@ -662,6 +677,7 @@ const loadAll = async () => {
   try {
     await Promise.all([
       loadSummary(),
+      loadEmailDelivery(),
       loadEvents(),
       loadWorkers(),
       loadOperations(),
@@ -828,7 +844,7 @@ onMounted(loadAll);
 }
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
   border: 1px solid #dfe7f1;
   background: #fff;
 }
@@ -861,6 +877,16 @@ onMounted(loadAll);
 .summary-date {
   font-size: 14px !important;
   line-height: 1.35;
+}
+.summary-email strong {
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.summary-email small {
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.3;
 }
 .reliability-tabs {
   background: #fff;
@@ -927,13 +953,19 @@ onMounted(loadAll);
 }
 @media (max-width: 1100px) {
   .summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .summary-item:nth-child(3) {
+  .summary-item {
+    border-bottom: 1px solid #dfe7f1;
+  }
+  .summary-item:nth-child(4n) {
     border-right: 0;
   }
-  .summary-item:nth-child(-n + 3) {
-    border-bottom: 1px solid #dfe7f1;
+  .summary-item:nth-child(n + 5) {
+    border-bottom: 0;
+  }
+  .summary-item:last-child {
+    border-right: 0;
   }
   .two-column {
     grid-template-columns: 1fr;

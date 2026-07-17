@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -22,6 +23,13 @@ func TestMemoryProfileAndModuleExposePortsAndHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := app.Provide(portCache, cache.NewMemoryCache()); err != nil {
+		t.Fatal(err)
+	}
+	features := platformfeature.NewRegistry(nil)
+	if err := features.Register(platformfeature.Definition{ID: "controlled-richtext-article", Mode: platformfeature.Restart, DefaultEnabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Provide("platform.feature-registry", features); err != nil {
 		t.Fatal(err)
 	}
 	module := NewModule()

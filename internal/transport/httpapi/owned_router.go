@@ -164,6 +164,16 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	if strings.HasPrefix(fullPath, "/api/v1/moderation/") {
 		descriptor.Audit = "moderation-audit"
 	}
+	if strings.HasPrefix(fullPath, "/api/v1/auth/password-reset/") || fullPath == "/api/v1/auth/recovery/complete" {
+		descriptor.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(fullPath, "/api/v1/auth/email-binding/") {
+		descriptor.Auth = "jwt+csrf"
+		descriptor.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
+		descriptor.Audit = "identity-recovery-audit"
+	}
 	if err := g.registry.Add(descriptor); err != nil {
 		panic(err)
 	}
@@ -188,6 +198,8 @@ func moduleOwner(handlerName, path string) string {
 		return "core.platform-api"
 	case strings.Contains(handlerName, "/internal/modules/core/identity/"):
 		return "core.identity"
+	case strings.Contains(handlerName, "/internal/modules/core/emaildelivery"), strings.Contains(handlerName, "emaildelivery."):
+		return "core.email-delivery"
 	case strings.Contains(handlerName, "/internal/modules/core/community/"):
 		return "core.community"
 	case strings.Contains(handlerName, "/internal/modules/core/moderation.") || strings.Contains(handlerName, "/internal/modules/core/moderation/"):
@@ -196,6 +208,10 @@ func moduleOwner(handlerName, path string) string {
 		return "feature.personal-space"
 	case strings.Contains(handlerName, "/internal/modules/features/richtext.") || strings.Contains(handlerName, "/internal/modules/features/richtext/"):
 		return "feature.controlled-richtext-article"
+	case strings.Contains(handlerName, "/internal/modules/features/mutualaid.") || strings.Contains(handlerName, "/internal/modules/features/mutualaid/"):
+		return "feature.mutual-aid"
+	case strings.Contains(handlerName, "/internal/modules/features/secondhand.") || strings.Contains(handlerName, "/internal/modules/features/secondhand/"):
+		return "feature.secondhand"
 	case strings.Contains(handlerName, "/internal/modules/features/schedule.") || strings.Contains(handlerName, "/internal/modules/features/schedule/"):
 		return "feature.personal-schedule"
 	case strings.Contains(handlerName, "/internal/modules/features/appearance/homepage.") || strings.Contains(handlerName, "/internal/modules/features/appearance/homepage/"), strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme.") || strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme/"):
@@ -236,6 +252,10 @@ func routeFeature(path string) string {
 		return "controlled-richtext-article"
 	case strings.HasPrefix(path, "/api/v1/schedule"):
 		return "personal-schedule"
+	case strings.HasPrefix(path, "/api/v1/mutual-aid"):
+		return "mutual-aid"
+	case strings.HasPrefix(path, "/api/v1/secondhand"):
+		return "secondhand"
 	case strings.HasPrefix(path, "/api/v1/home"), strings.HasPrefix(path, "/api/v1/web-themes"):
 		return "appearance"
 	default:

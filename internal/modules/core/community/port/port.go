@@ -63,6 +63,7 @@ type ModerationGateway interface {
 // repositories or Community service implementations.
 type ContentGateway interface {
 	CreateThread(context.Context, string, string, domain.CreateThreadRequest, ThreadCreateOptions) (*domain.Thread, error)
+	CreateStructuredThread(context.Context, string, string, domain.CreateThreadRequest, ThreadCreateOptions, StructuredThreadParticipant) (*domain.Thread, error)
 	GetThread(context.Context, string) (*domain.Thread, error)
 	SaveFeatureThread(context.Context, *domain.Thread, string, string) (*domain.Thread, error)
 	TrashThread(context.Context, string, string, string, string) error
@@ -77,4 +78,15 @@ type ContentGateway interface {
 type ThreadCreateOptions struct {
 	Status        domain.ThreadStatus
 	ContentFormat string
+	ThreadType    domain.ThreadType
+	CommandCode   string
+	EventType     string
+}
+
+// StructuredThreadParticipant is deliberately an internal Built-in Feature
+// extension point. It is never exposed through Host API, SDK, MCP, Agent, or
+// external plugin runtime contracts.
+type StructuredThreadParticipant interface {
+	ThreadType() domain.ThreadType
+	PersistThreadDetail(context.Context, *domain.Thread) error
 }

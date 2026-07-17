@@ -7,5 +7,5 @@ description: "Categories, tags, threads, posts, publication state, and public co
 kind: core
 activation_mode: always-on
 default_enabled: true
-dependencies: [core.event-bus, core.identity, core.reliability]
+dependencies: [core.event-bus, core.identity, core.feature-registry, core.reliability]
 implementation: internal/modules/core/community

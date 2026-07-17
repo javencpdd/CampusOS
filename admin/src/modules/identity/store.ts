@@ -1,6 +1,13 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authApi } from './api'
+import {
+  clearAdminSession,
+  getAdminAccessToken,
+  registerAdminSessionRestorer,
+  setAdminAccessToken,
+  setAdminRoleNames,
+} from './session'
 
 interface AdminRole {
   id: number
@@ -19,9 +26,23 @@ interface AdminUser {
 }
 
 export const useAdminStore = defineStore('admin', () => {
-  const user = ref<AdminUser | null>(JSON.parse(localStorage.getItem('admin_user') || 'null'))
-  const token = ref<string | null>(localStorage.getItem('admin_token'))
+  const user = ref<AdminUser | null>(null)
+  const token = ref<string | null>(getAdminAccessToken())
   const isLoggedIn = computed(() => !!token.value)
+  let restorePromise: Promise<boolean> | null = null
+
+  function clearSession() {
+    user.value = null
+    token.value = null
+    clearAdminSession()
+  }
+
+  function applySession(userData: AdminUser, accessToken: string) {
+    user.value = userData
+    token.value = accessToken
+    setAdminAccessToken(accessToken)
+    setAdminRoleNames(userData.roles?.map((role) => role.name) || [])
+  }
 
   async function login(email: string, password: string) {
     const res: any = await authApi.login({ email, password })
@@ -29,28 +50,67 @@ export const useAdminStore = defineStore('admin', () => {
       const roles = res.data.roles || []
       const hasAdminRole = roles.some((role: AdminRole) => role.name === 'admin' || role.name === 'super_admin')
       if (!hasAdminRole) {
-        logout()
+        clearSession()
         return { code: 20004, msg: '管理后台仅允许管理员登录；版主请在用户端管理已分配板块' }
       }
-      const userData = { ...res.data.user, roles }
-      user.value = userData
-      token.value = res.data.access_token
-      localStorage.setItem('admin_user', JSON.stringify(userData))
-      localStorage.setItem('admin_token', res.data.access_token)
+      applySession({ ...res.data.user, roles }, res.data.access_token)
     }
     return res
   }
 
-  function logout() {
-    user.value = null
-    token.value = null
-    localStorage.removeItem('admin_user')
-    localStorage.removeItem('admin_token')
+  async function restore() {
+    if (token.value && user.value) return true
+    if (restorePromise) return restorePromise
+    restorePromise = (async () => {
+      try {
+        const refreshed: any = await authApi.refresh()
+        if (refreshed?.code !== 0 || !refreshed?.data?.access_token) {
+          clearSession()
+          return false
+        }
+        setAdminAccessToken(refreshed.data.access_token)
+        token.value = refreshed.data.access_token
+        const me: any = await authApi.me()
+        const currentUser = me?.data?.user || me?.data
+        if (me?.code !== 0 || !currentUser?.id) {
+          clearSession()
+          return false
+        }
+        const rolesResponse: any = await authApi.roles(currentUser.id)
+        const roles = rolesResponse?.code === 0 && Array.isArray(rolesResponse?.data) ? rolesResponse.data : []
+        const hasAdminRole = roles.some((role: AdminRole) => role.name === 'admin' || role.name === 'super_admin')
+        if (!hasAdminRole) {
+          clearSession()
+          return false
+        }
+        applySession({ ...currentUser, roles }, refreshed.data.access_token)
+        return true
+      } catch {
+        clearSession()
+        return false
+      } finally {
+        restorePromise = null
+      }
+    })()
+    return restorePromise
+  }
+
+  async function logout() {
+    try {
+      if (token.value) await authApi.logout()
+    } catch {
+      // An already-expired server session still needs local cleanup.
+    } finally {
+      clearSession()
+    }
   }
 
   const primaryRole = computed(() => user.value?.roles?.[0]?.name || 'member')
   const roleNames = computed(() => user.value?.roles?.map((role) => role.name) || [])
   const isAdmin = computed(() => roleNames.value.some((role) => role === 'admin' || role === 'super_admin'))
 
-  return { user, token, isLoggedIn, primaryRole, isAdmin, login, logout }
+  registerAdminSessionRestorer(restore)
+  if (typeof window !== 'undefined') window.addEventListener('campusos:admin-session-expired', clearSession)
+
+  return { user, token, isLoggedIn, primaryRole, isAdmin, login, restore, logout }
 })

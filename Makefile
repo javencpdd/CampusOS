@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -58,6 +58,39 @@ outbox-check:
 failure-injection-check:
 	./scripts/check-failure-injection.sh
 
+v12-failure-injection-check:
+	./scripts/check-v12-failure-injection.sh
+
+identity-email-check:
+	./scripts/check-identity-email.sh
+
+identity-challenge-check:
+	./scripts/check-identity-challenge.sh
+
+identity-registration-check:
+	./scripts/check-identity-registration.sh
+
+identity-session-check:
+	./scripts/check-identity-session.sh
+
+identity-recovery-check:
+	./scripts/check-identity-recovery.sh
+
+email-delivery-check:
+	./scripts/check-email-delivery.sh
+
+category-hierarchy-check:
+	./scripts/check-category-hierarchy.sh
+
+structured-thread-check:
+	./scripts/check-structured-thread.sh
+
+mutual-aid-check:
+	./scripts/check-mutual-aid.sh
+
+secondhand-check:
+	./scripts/check-secondhand.sh
+
 frontend-budget:
 	python3 scripts/check-frontend-bundles.py
 
@@ -72,6 +105,14 @@ database-check:
 	./scripts/database-check.sh all
 	./scripts/test-v10-module-separation-migration.sh
 	./scripts/test-v11-reliability-migration.sh
+	./scripts/test-v12-identity-migration.sh
+	./scripts/test-v12-identity-challenge-migration.sh
+	./scripts/test-v12-identity-session-migration.sh
+	./scripts/test-v12-identity-recovery-migration.sh
+	./scripts/test-v12-category-hierarchy-migration.sh
+	./scripts/test-v12-structured-threads-migration.sh
+	./scripts/test-v12-mutual-aid-migration.sh
+	./scripts/test-v12-secondhand-migration.sh
 
 backup:
 	./scripts/backup.sh

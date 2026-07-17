@@ -155,6 +155,74 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/mutual-aid/status",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.mutual_aid.status",
+      "legacy_aliases": [
+        "http.get.api.v1.mutual_aid.status",
+        "httpapi.get.api.v1.mutual_aid.status"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secondhand/status",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.secondhand.status",
+      "legacy_aliases": [
+        "http.get.api.v1.secondhand.status",
+        "httpapi.get.api.v1.secondhand.status"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/registration/challenge",
+      "handler": "userHandler.RequestRegistrationChallenge",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.registration.challenge",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.registration.challenge",
+        "httpapi.post.api.v1.auth.registration.challenge"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/registration/verify",
+      "handler": "userHandler.VerifyRegistrationChallenge",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.registration.verify",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.registration.verify",
+        "httpapi.post.api.v1.auth.registration.verify"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/auth/register",
       "handler": "userHandler.Register",
@@ -189,6 +257,91 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/auth/refresh",
+      "handler": "userHandler.Refresh",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "refresh-cookie+csrf",
+      "operation_code": "http.post.api.v1.auth.refresh",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.refresh",
+        "httpapi.post.api.v1.auth.refresh"
+      ],
+      "ownership": "session-cookie",
+      "scope": "current-session",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password-reset/challenge",
+      "handler": "userHandler.RequestPasswordReset",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.password_reset.challenge",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.password_reset.challenge",
+        "httpapi.post.api.v1.auth.password_reset.challenge"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password-reset/verify",
+      "handler": "userHandler.VerifyPasswordReset",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.password_reset.verify",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.password_reset.verify",
+        "httpapi.post.api.v1.auth.password_reset.verify"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password-reset/complete",
+      "handler": "userHandler.CompletePasswordReset",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.password_reset.complete",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.password_reset.complete",
+        "httpapi.post.api.v1.auth.password_reset.complete"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/recovery/complete",
+      "handler": "userHandler.CompleteAdminRecovery",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.recovery.complete",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.recovery.complete",
+        "httpapi.post.api.v1.auth.recovery.complete"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
       "method": "GET",
       "path": "/api/v1/threads",
       "handler": "threadHandler.ListThreads",
@@ -216,6 +369,74 @@
       "legacy_aliases": [
         "http.get.api.v1.threads.id",
         "httpapi.get.api.v1.threads.id"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/mutual-aid/threads",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.mutual_aid.threads",
+      "legacy_aliases": [
+        "http.get.api.v1.mutual_aid.threads",
+        "httpapi.get.api.v1.mutual_aid.threads"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/mutual-aid/threads/:id",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.mutual_aid.threads.id",
+      "legacy_aliases": [
+        "http.get.api.v1.mutual_aid.threads.id",
+        "httpapi.get.api.v1.mutual_aid.threads.id"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secondhand/threads",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.secondhand.threads",
+      "legacy_aliases": [
+        "http.get.api.v1.secondhand.threads",
+        "httpapi.get.api.v1.secondhand.threads"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secondhand/threads/:id",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.secondhand.threads.id",
+      "legacy_aliases": [
+        "http.get.api.v1.secondhand.threads.id",
+        "httpapi.get.api.v1.secondhand.threads.id"
       ],
       "ownership": "none",
       "scope": "public",
@@ -394,6 +615,23 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/categories/tree",
+      "handler": "categoryHandler.ListTree",
+      "module_owner": "core.community",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.categories.tree",
+      "legacy_aliases": [
+        "http.get.api.v1.categories.tree",
+        "httpapi.get.api.v1.categories.tree"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/categories/:id",
       "handler": "categoryHandler.Get",
       "module_owner": "core.community",
@@ -403,6 +641,23 @@
       "legacy_aliases": [
         "http.get.api.v1.categories.id",
         "httpapi.get.api.v1.categories.id"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:id/thread-types",
+      "handler": "categoryHandler.ListThreadTypePolicies",
+      "module_owner": "core.community",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.categories.id.thread_types",
+      "legacy_aliases": [
+        "http.get.api.v1.categories.id.thread_types",
+        "httpapi.get.api.v1.categories.id.thread_types"
       ],
       "ownership": "none",
       "scope": "public",
@@ -441,6 +696,125 @@
       "ownership": "none",
       "scope": "public",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "handler": "userHandler.Logout",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.logout",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.logout",
+        "httpapi.post.api.v1.auth.logout"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout-all",
+      "handler": "userHandler.LogoutAll",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.logout_all",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.logout_all",
+        "httpapi.post.api.v1.auth.logout_all"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/sessions",
+      "handler": "userHandler.ListSessions",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.auth.sessions",
+      "legacy_aliases": [
+        "http.get.api.v1.auth.sessions",
+        "httpapi.get.api.v1.auth.sessions"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/auth/sessions/:id",
+      "handler": "userHandler.RevokeSession",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.delete.api.v1.auth.sessions.id",
+      "legacy_aliases": [
+        "http.delete.api.v1.auth.sessions.id",
+        "httpapi.delete.api.v1.auth.sessions.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email-binding/challenge",
+      "handler": "userHandler.RequestEmailBinding",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.email_binding.challenge",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.email_binding.challenge",
+        "httpapi.post.api.v1.auth.email_binding.challenge"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email-binding/verify",
+      "handler": "userHandler.VerifyEmailBinding",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.email_binding.verify",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.email_binding.verify",
+        "httpapi.post.api.v1.auth.email_binding.verify"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email-binding/complete",
+      "handler": "userHandler.CompleteEmailBinding",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.email_binding.complete",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.email_binding.complete",
+        "httpapi.post.api.v1.auth.email_binding.complete"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-recovery-audit",
       "stability": "experimental"
     },
     {
@@ -1049,6 +1423,142 @@
       "legacy_aliases": [
         "http.delete.api.v1.richtext.articles.id",
         "httpapi.delete.api.v1.richtext.articles.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/mutual-aid/threads",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.mutual_aid.threads",
+      "legacy_aliases": [
+        "http.post.api.v1.mutual_aid.threads",
+        "httpapi.post.api.v1.mutual_aid.threads"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/mutual-aid/threads/:id/me",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.mutual_aid.threads.id.me",
+      "legacy_aliases": [
+        "http.get.api.v1.mutual_aid.threads.id.me",
+        "httpapi.get.api.v1.mutual_aid.threads.id.me"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/mutual-aid/threads/:id",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.mutual_aid.threads.id",
+      "legacy_aliases": [
+        "http.put.api.v1.mutual_aid.threads.id",
+        "httpapi.put.api.v1.mutual_aid.threads.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/mutual-aid/threads/:id/status",
+      "handler": "d.MutualAid",
+      "module_owner": "feature.mutual-aid",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.mutual_aid.threads.id.status",
+      "legacy_aliases": [
+        "http.post.api.v1.mutual_aid.threads.id.status",
+        "httpapi.post.api.v1.mutual_aid.threads.id.status"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/secondhand/threads",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.secondhand.threads",
+      "legacy_aliases": [
+        "http.post.api.v1.secondhand.threads",
+        "httpapi.post.api.v1.secondhand.threads"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secondhand/threads/:id/me",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.secondhand.threads.id.me",
+      "legacy_aliases": [
+        "http.get.api.v1.secondhand.threads.id.me",
+        "httpapi.get.api.v1.secondhand.threads.id.me"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/secondhand/threads/:id",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.secondhand.threads.id",
+      "legacy_aliases": [
+        "http.put.api.v1.secondhand.threads.id",
+        "httpapi.put.api.v1.secondhand.threads.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/secondhand/threads/:id/status",
+      "handler": "d.Secondhand",
+      "module_owner": "feature.secondhand",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.secondhand.threads.id.status",
+      "legacy_aliases": [
+        "http.post.api.v1.secondhand.threads.id.status",
+        "httpapi.post.api.v1.secondhand.threads.id.status"
       ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
@@ -2097,6 +2607,82 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/admin/categories",
+      "handler": "categoryHandler.ListAdmin",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:read",
+      "permission_code": "community.category.read",
+      "operation_code": "http.community.category.list",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.categories",
+        "httpapi.get.api.v1.admin.categories"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/tree",
+      "handler": "categoryHandler.ListAdminTree",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:read",
+      "permission_code": "community.category.read",
+      "operation_code": "http.community.category.tree",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.categories.tree",
+        "httpapi.get.api.v1.admin.categories.tree"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/:id",
+      "handler": "categoryHandler.GetAdmin",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:read",
+      "permission_code": "community.category.read",
+      "operation_code": "http.community.category.get",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.categories.id",
+        "httpapi.get.api.v1.admin.categories.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/:id/thread-types",
+      "handler": "categoryHandler.ListThreadTypePolicies",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:read",
+      "permission_code": "community.category.read",
+      "operation_code": "http.community.category.thread-types",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.categories.id.thread_types",
+        "httpapi.get.api.v1.admin.categories.id.thread_types"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/categories",
       "handler": "categoryHandler.Create",
@@ -2104,8 +2690,8 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:write",
-      "permission_code": "community.category.write",
-      "operation_code": "http.post.api.v1.categories",
+      "permission_code": "community.category.create",
+      "operation_code": "http.community.category.create",
       "legacy_aliases": [
         "http.post.api.v1.categories",
         "httpapi.post.api.v1.categories"
@@ -2123,11 +2709,106 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:write",
-      "permission_code": "community.category.write",
-      "operation_code": "http.put.api.v1.categories.id",
+      "permission_code": "community.category.update",
+      "operation_code": "http.community.category.update",
       "legacy_aliases": [
         "http.put.api.v1.categories.id",
         "httpapi.put.api.v1.categories.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/categories/:id/thread-types",
+      "handler": "categoryHandler.UpdateThreadTypePolicies",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:write",
+      "permission_code": "community.category.configure_thread_types",
+      "operation_code": "http.community.category.configure_thread_types",
+      "legacy_aliases": [
+        "http.put.api.v1.categories.id.thread_types",
+        "httpapi.put.api.v1.categories.id.thread_types"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/categories/:id/parent",
+      "handler": "categoryHandler.Move",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:write",
+      "permission_code": "community.category.move",
+      "operation_code": "http.community.category.move",
+      "legacy_aliases": [
+        "http.put.api.v1.categories.id.parent",
+        "httpapi.put.api.v1.categories.id.parent"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:id/archive-impact",
+      "handler": "categoryHandler.ArchiveImpact",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:delete",
+      "permission_code": "community.category.archive",
+      "operation_code": "http.community.category.archive-impact",
+      "legacy_aliases": [
+        "http.get.api.v1.categories.id.archive_impact",
+        "httpapi.get.api.v1.categories.id.archive_impact"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories/:id/archive",
+      "handler": "categoryHandler.Archive",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:delete",
+      "permission_code": "community.category.archive",
+      "operation_code": "http.community.category.archive",
+      "legacy_aliases": [
+        "http.post.api.v1.categories.id.archive",
+        "httpapi.post.api.v1.categories.id.archive"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories/:id/restore",
+      "handler": "categoryHandler.Restore",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "category:delete",
+      "permission_code": "community.category.restore",
+      "operation_code": "http.community.category.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.categories.id.restore",
+        "httpapi.post.api.v1.categories.id.restore"
       ],
       "ownership": "none",
       "scope": "global",
@@ -2142,8 +2823,8 @@
       "audience": "admin",
       "auth": "jwt+permission",
       "permission": "category:delete",
-      "permission_code": "community.category.delete",
-      "operation_code": "http.delete.api.v1.categories.id",
+      "permission_code": "community.category.archive",
+      "operation_code": "http.community.category.archive-legacy",
       "legacy_aliases": [
         "http.delete.api.v1.categories.id",
         "httpapi.delete.api.v1.categories.id"
@@ -3329,6 +4010,120 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/email-delivery/status",
+      "handler": "d.EmailDelivery",
+      "module_owner": "core.email-delivery",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.email_delivery.read",
+      "operation_code": "http.core.email_delivery.status",
+      "legacy_aliases": [
+        "http.get.api.v1.platform.email_delivery.status",
+        "httpapi.get.api.v1.platform.email_delivery.status"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/recovery-cases",
+      "handler": "userHandler.ListAdminRecoveryCases",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.account.recovery.override",
+      "operation_code": "http.identity.recovery.cases.list",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.recovery_cases",
+        "httpapi.get.api.v1.identity.recovery_cases"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/identity/recovery-cases",
+      "handler": "userHandler.CreateAdminRecoveryCase",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.account.recovery.override",
+      "operation_code": "http.identity.recovery.cases.create",
+      "legacy_aliases": [
+        "http.post.api.v1.identity.recovery_cases",
+        "httpapi.post.api.v1.identity.recovery_cases"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/identity/recovery-cases/:id/cancel",
+      "handler": "userHandler.CancelAdminRecoveryCase",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.account.recovery.override",
+      "operation_code": "http.identity.recovery.cases.cancel",
+      "legacy_aliases": [
+        "http.post.api.v1.identity.recovery_cases.id.cancel",
+        "httpapi.post.api.v1.identity.recovery_cases.id.cancel"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/users/:id/sessions",
+      "handler": "userHandler.ListAdminUserSessions",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "user:read",
+      "permission_code": "identity.session.read",
+      "operation_code": "http.identity.session.admin_list",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.users.id.sessions",
+        "httpapi.get.api.v1.identity.users.id.sessions"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/identity/users/:id/sessions/revoke-all",
+      "handler": "userHandler.RevokeAdminUserSessions",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.session.revoke",
+      "operation_code": "http.identity.session.admin_revoke_all",
+      "legacy_aliases": [
+        "http.post.api.v1.identity.users.id.sessions.revoke_all",
+        "httpapi.post.api.v1.identity.users.id.sessions.revoke_all"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
       "stability": "experimental"
     },
     {

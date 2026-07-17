@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/internal/plugin"
 	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
@@ -24,10 +25,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch args[0] {
+	case "version":
+		return runVersion(args[1:], stdout, stderr)
 	case "plugin":
 		return runPlugin(args[1:], stdout, stderr)
 	case "resource":
 		return runResource(args[1:], stdout, stderr)
+	case "identity":
+		return runIdentity(args[1:], stdout, stderr, os.Stdin)
 	case "help", "-h", "--help":
 		printUsage(stdout)
 		return 0
@@ -36,6 +41,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 		printUsage(stderr)
 		return 2
 	}
+}
+
+func runVersion(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 1 || (len(args) == 1 && args[0] != "--short") {
+		fmt.Fprintln(stderr, "usage: campusosctl version [--short]")
+		return 2
+	}
+	if len(args) == 1 {
+		fmt.Fprintln(stdout, platformversion.Number)
+		return 0
+	}
+	fmt.Fprintln(stdout, platformversion.Display)
+	return 0
 }
 
 func runPlugin(args []string, stdout, stderr io.Writer) int {
@@ -369,8 +387,10 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "usage: campusosctl <command>")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "commands:")
+	fmt.Fprintln(w, "  version   print the CampusOS application version")
 	fmt.Fprintln(w, "  plugin    plugin scaffolding and inspection")
 	fmt.Fprintln(w, "  resource  resource package adoption and inspection")
+	fmt.Fprintln(w, "  identity  local system-account recovery commands")
 }
 
 func printPluginUsage(w io.Writer) {

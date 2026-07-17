@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/internal/plugin"
 	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
@@ -46,6 +47,29 @@ func TestPluginInitCreatesScaffold(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "README.md")); err != nil {
 		t.Fatalf("expected README: %v", err)
+	}
+}
+
+func TestVersionReadsPlatformVersion(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := run([]string{"version", "--short"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("version command code=%d stderr=%s", code, stderr.String())
+	}
+	if got := strings.TrimSpace(stdout.String()); got != platformversion.Number {
+		t.Fatalf("version output=%q", got)
+	}
+}
+
+func TestIdentityResetPasswordRejectsNonSystemAccountBeforeTerminalRead(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"identity", "reset-password", "--email", "member@example.test"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected system-only recovery command to reject another email")
+	}
+	if !strings.Contains(stderr.String(), "only the system administrator account") {
+		t.Fatalf("unexpected identity command error: %s", stderr.String())
 	}
 }
 

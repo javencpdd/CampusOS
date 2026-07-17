@@ -2,6 +2,12 @@
 
 ## 注册
 
+注册需要先完成邮箱验证：
+
+1. `POST /api/v1/auth/registration/challenge` 请求验证码。
+2. `POST /api/v1/auth/registration/verify` 用六位验证码换取一次性 Ticket。
+3. 下面的 `/auth/register` 请求同时携带 Challenge ID 和 Ticket。
+
 ```http
 POST /api/v1/auth/register
 Content-Type: application/json
@@ -12,11 +18,16 @@ Content-Type: application/json
   "username": "alice",
   "nickname": "Alice",
   "email": "alice@example.edu",
-  "password": "a-strong-password"
+  "password": "a-strong-password",
+  "challenge_id": "opaque-public-id",
+  "ticket": "opaque-one-time-value"
 }
 ```
 
-用户名、昵称、邮箱和密码都有长度或格式校验。邮箱和用户名冲突通常返回 `409`。
+用户名、昵称、邮箱和密码都有长度或格式校验。缺少 Ticket 返回
+`400 identity.verification_required`；失效或已使用 Ticket 返回
+`400 identity.registration_verification_invalid`。邮箱和用户名冲突通常返回 `409`。完整流程见
+[注册邮箱验证](./registration.md)。
 
 ## 登录
 
@@ -45,17 +56,106 @@ GET /api/v1/auth/me
 Authorization: Bearer <access_token>
 ```
 
-## 版块
+## 两级版块
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `GET` | `/categories` | 列出版块。 |
-| `GET` | `/categories/:id` | 获取一个版块。 |
-| `POST` | `/categories` | 管理员创建版块，需要 `category:write`。 |
-| `PUT` | `/categories/:id` | 管理员更新版块，需要 `category:write`。 |
-| `DELETE` | `/categories/:id` | 管理员删除版块，需要 `category:delete`。 |
+CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` 是实际版块，可以位于根级或一个
+活动 group 下。一个 board 是否可发帖由三项服务端事实共同决定：它必须是 `board`、状态为
+`active`、且没有关闭。客户端的下拉框和导航只用于减少误操作，后端仍会重新校验。
+
+| 方法 | 路径 | 认证和权限 | 说明 |
+| --- | --- | --- | --- |
+| `GET` | `/categories`、`/categories/tree`、`/categories/:id` | 无 | 读取公开的活动节点；flat 列表保持旧客户端兼容，tree 用于导航。 |
+| `GET` | `/admin/categories`、`/admin/categories/tree`、`/admin/categories/:id` | 管理员 + `category:read` | 读取包括归档节点的管理视图。 |
+| `POST` | `/categories` | `community.category.create` | 创建根级 group/board 或 group 下的 board。 |
+| `PUT` | `/categories/:id` | `community.category.update` | 更新展示、标签和关闭状态，必须提交当前 `version`。 |
+| `PUT` | `/categories/:id/parent` | `community.category.move` | 移动 board；`parent_id: null` 明确表示移到根级。 |
+| `GET` | `/categories/:id/archive-impact` | `community.category.archive` | 在归档前读取活动子 board 和关联主题数量。 |
+| `POST` | `/categories/:id/archive?version=<n>` | `community.category.archive` | 归档；有活动子 board 的 group 被拒绝。 |
+| `POST` | `/categories/:id/restore?version=<n>` | `community.category.restore` | 恢复；父 group 必须仍是活动状态。 |
+| `DELETE` | `/categories/:id?version=<n>` | `community.category.archive` | 历史兼容入口，实际执行 archive，不物理删除。 |
+
+创建或移动 board 时，父节点必须是活动的 group。移动不会继承或扩大版主权限；版主权限始终只和
+管理员显式分配的 board 绑定。`color` 只能为 `#RRGGBB` 或 `#RRGGBBAA`。更新、移动、归档和恢复
+使用乐观版本控制，返回 `409` 时先重新读取后再处理冲突。
 
 版块可以配置默认标签。用户发帖时，服务会将默认标签和用户标签合并并去重。
+
+## 结构化帖子类型与板块策略
+
+`thread_type` 表示内容的业务类型，`content_format` 只表示正文如何渲染。当前固定类型是：
+
+| 类型 | 入口 | 说明 |
+| --- | --- | --- |
+| `discussion` | `POST /threads` | 标准讨论、提问和普通文本主题。 |
+| `article` | RichText API | 受控富文本图文文章。 |
+| `mutual_aid` | Campus Mutual Aid API | 校园求助、提供、志愿协助与独立业务状态。 |
+| `secondhand` | Campus Secondhand API | CNY 分价、成色、交付方式和交易状态受约束的闲置信息。 |
+
+每个 board 有独立策略。历史 board 默认允许 `discussion`、`article`；管理员可使用下列
+接口启用其他类型：
+
+| 方法 | 路径 | 认证和权限 | 说明 |
+| --- | --- | --- | --- |
+| `GET` | `/categories/:id/thread-types` | 无 | 读取活动 board 的可创建类型。 |
+| `GET` | `/admin/categories/:id/thread-types` | 管理员 + `category:read` | 读取管理视图，包含归档 board。 |
+| `PUT` | `/categories/:id/thread-types` | `community.category.configure_thread_types` | 使用 `allowed_types` 与 `version` 整体更新。 |
+
+```json
+{
+  "allowed_types": ["discussion", "article", "mutual_aid"],
+  "version": 4
+}
+```
+
+服务端在创建时同时校验 board 是否可发帖、类型是否固定、对应 Built-in Feature 是否启用以及该 board
+是否允许该类型。关闭类型只阻止新的创建，不删除已有内容，也不削弱 Community Core 的下架、恢复和审计能力。
+类型化 Detail 只能由编译内 Built-in Feature 在同一可靠事务内写入；External Plugin、MCP、Agent Runner
+和浏览器客户端不能参与宿主数据库事务。
+
+## 校园互助
+
+校园互助是 `feature.mutual-aid` 提供的 Built-in Feature。它只拥有一对一 Detail 中的互助类型、状态、
+截止时间、粗粒度地点和联系渠道类别；Thread、回复、发布可见性和治理仍由 Community Core 拥有。
+
+管理员需先启用 Feature，并在目标 board 的类型策略里允许 `mutual_aid`。两项条件缺一不可。Feature
+停用时，系统拒绝其业务路径而不删除历史 Thread 或 Detail，Community 仍可治理基础内容。只读
+`GET /mutual-aid/status` 会继续返回 `enabled=false`，供客户端显示准确状态。
+
+| 方法 | 路径 | 认证 | 用途 |
+| --- | --- | --- | --- |
+| `GET` | `/mutual-aid/status` | 无 | 查询功能是否启用；停用时仍返回 `enabled=false`。 |
+| `GET` | `/mutual-aid/threads` | 无 | 分页查看公开互助内容。 |
+| `GET` | `/mutual-aid/threads/:id` | 无 | 读取公开互助详情。 |
+| `POST` | `/mutual-aid/threads` | JWT | 创建互助内容。 |
+| `GET` | `/mutual-aid/threads/:id/me` | JWT + 作者 | 读取编辑投影。 |
+| `PUT` | `/mutual-aid/threads/:id` | JWT + 作者 | 编辑正文和 Detail，需版本号。 |
+| `POST` | `/mutual-aid/threads/:id/status` | JWT + 作者 | 修改互助业务状态，需版本号。 |
+
+状态机为 `open -> in_progress/resolved/closed`、`in_progress -> open/resolved/closed`、`resolved -> closed`。
+它不等同于帖子发布或审核状态。状态冲突返回 `409`；客户端应重新读取后再让作者确认。
+
+## 校园二手
+
+校园二手是 `feature.secondhand` 提供的 Built-in Feature。它只拥有一对一 Detail 中的人民币分价、物品成色、
+交付方式、交易状态和地点范围；Thread、回复、发布可见性和治理仍由 Community Core 拥有。
+
+管理员需先启用 Feature，并在目标 board 的类型策略里允许 `secondhand`。Feature 停用时，Path Gate
+拒绝其业务路径，不删除历史 Thread 或 Detail；Community 仍可治理基础内容。只读
+`GET /secondhand/status` 会继续返回 `enabled=false`，供客户端显示准确状态。
+
+| 方法 | 路径 | 认证 | 用途 |
+| --- | --- | --- | --- |
+| `GET` | `/secondhand/status` | 无 | 查询功能是否启用；停用时仍返回 `enabled=false`。 |
+| `GET` | `/secondhand/threads` | 无 | 分页查看公开二手信息。 |
+| `GET` | `/secondhand/threads/:id` | 无 | 读取公开二手详情。 |
+| `POST` | `/secondhand/threads` | JWT | 创建二手信息。 |
+| `GET` | `/secondhand/threads/:id/me` | JWT + 作者 | 读取编辑投影。 |
+| `PUT` | `/secondhand/threads/:id` | JWT + 作者 | 编辑正文和 Detail，需版本号。 |
+| `POST` | `/secondhand/threads/:id/status` | JWT + 作者 | 修改交易业务状态，需版本号。 |
+
+`price_minor` 以分保存，首版只允许 `CNY`。状态机为
+`available -> reserved/sold/closed`、`reserved -> available/sold/closed`；`sold` 和
+`closed` 是终态。它不等同于帖子发布或审核状态，状态冲突返回 `409`。
 
 ## 创建普通帖子
 
@@ -117,12 +217,16 @@ Content-Type: application/json
 
 ## 富文本文章
 
-富文本文章与普通帖子共用 `threads` 作为列表入口，正文和图片元数据使用独立表。主要流程为：
+富文本文章与普通帖子共用 `threads` 作为列表入口，业务类型固定为 `article`，正文和图片元数据使用独立表。主要流程为：
 
 1. `POST /richtext/articles` 创建草稿。
 2. `POST /richtext/assets` 上传图片。
 3. `PUT /richtext/articles/:id` 保存正文。
 4. `POST /richtext/preview` 预览清洗后的 HTML。
 5. `POST /richtext/articles/:id/publish` 发布。
+
+创建、保存、发布、下线和删除图文文章时，基础 Thread、Revision、Article Detail、命令审计和 Outbox
+会在同一个可靠事务中提交。详情保存失败时不会留下回收站 Thread；文件上传仍独立于数据库事务，并受
+User Storage 的路径和配额规则约束。
 
 富文本 HTML 会在后端清洗。客户端不能通过自定义标签、脚本或事件处理器绕过清洗规则。

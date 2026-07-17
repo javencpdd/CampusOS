@@ -22,17 +22,22 @@ var (
 	ErrThreadStateConflict      = errors.New("thread state does not allow this operation")
 	ErrThreadPurged             = errors.New("thread has been permanently removed")
 	ErrModerationReasonRequired = errors.New("moderation reason is required")
+	ErrThreadTypeInvalid        = errors.New("thread type is invalid")
+	ErrThreadTypeUnavailable    = errors.New("thread type feature is disabled")
+	ErrThreadTypeNotAllowed     = errors.New("thread type is not enabled for this category")
 )
 
 // ThreadService 帖子服务
 type ThreadService struct {
 	repo          repository.ThreadRepository
 	categoryRepo  repository.CategoryRepository
+	typePolicies  repository.ThreadTypePolicyRepository
 	governance    repository.ContentGovernanceRepository
 	authorization ContentAuthorization
 	bus           eventbus.EventBus
 	cache         cache.Cache
 	reliable      *reliability.Service
+	typeEnabled   func(domain.ThreadType) bool
 }
 
 // ContentAuthorization is the narrow server-side policy port used for
@@ -68,6 +73,18 @@ func (e *contentAuthorizationFailure) Unwrap() error { return e.err }
 type CreateThreadOptions struct {
 	Status        domain.ThreadStatus
 	ContentFormat string
+	ThreadType    domain.ThreadType
+	CommandCode   string
+	EventType     string
+}
+
+// StructuredThreadParticipant is intentionally an internal application
+// contract. Only compiled-in Built-in Feature modules can import Community's
+// internal package and participate in the same database command. It is not a
+// Host API, Plugin SDK, MCP, or Agent contract.
+type StructuredThreadParticipant interface {
+	ThreadType() domain.ThreadType
+	PersistThreadDetail(context.Context, *domain.Thread) error
 }
 
 // NewThreadService 创建帖子服务
@@ -82,6 +99,19 @@ func (s *ThreadService) SetCache(c cache.Cache) {
 
 func (s *ThreadService) SetCategoryRepository(repo repository.CategoryRepository) {
 	s.categoryRepo = repo
+}
+
+func (s *ThreadService) SetThreadTypePolicyRepository(repo repository.ThreadTypePolicyRepository) {
+	s.typePolicies = repo
+	if s.reliable != nil {
+		if snapshotter, ok := repo.(transaction.Snapshotter); ok {
+			s.reliable.RegisterMemorySnapshotters(snapshotter)
+		}
+	}
+}
+
+func (s *ThreadService) SetThreadTypeEnabledChecker(checker func(domain.ThreadType) bool) {
+	s.typeEnabled = checker
 }
 
 func (s *ThreadService) SetGovernanceRepository(repo repository.ContentGovernanceRepository) {
@@ -108,6 +138,47 @@ func (s *ThreadService) SetReliability(reliable *reliability.Service) {
 	if snapshotter, ok := s.governance.(transaction.Snapshotter); ok {
 		reliable.RegisterMemorySnapshotters(snapshotter)
 	}
+	if snapshotter, ok := s.typePolicies.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+}
+
+// executeAuthorCommand is the reliable boundary for author-originated Thread
+// mutations. Built-in features may call the same service while already inside
+// their own reliable command; in that case the inner write participates in the
+// active transaction and the outer feature command owns the audit and outbox.
+func (s *ThreadService) executeAuthorCommand(ctx context.Context, actorID, code, threadID, eventType string, action func(context.Context) (*domain.Thread, error)) (*domain.Thread, error) {
+	if s.reliable == nil || transaction.Active(ctx) {
+		result, err := action(ctx)
+		if err == nil && !transaction.Active(ctx) {
+			s.invalidateListCache(ctx)
+			s.publishThreadEvent(ctx, eventType, result)
+		}
+		return result, err
+	}
+
+	var result *domain.Thread
+	err := s.reliable.Execute(ctx, reliability.Command{
+		Code:          code,
+		ActorID:       strings.TrimSpace(actorID),
+		ActorType:     "user",
+		ResourceType:  "thread",
+		ResourceID:    threadID,
+		OperationCode: code,
+		EventFactory: func() (reliability.Event, error) {
+			return reliability.NewEvent(eventType, "thread", threadID, result)
+		},
+	}, func(commandCtx context.Context) error {
+		var commandErr error
+		result, commandErr = action(commandCtx)
+		return commandErr
+	})
+	if err == nil {
+		// Cache deletion is an external side effect. The action ran inside the
+		// command transaction, so perform it only after a successful commit.
+		s.invalidateListCache(ctx)
+	}
+	return result, err
 }
 
 func (s *ThreadService) executeGovernanceCommand(ctx context.Context, actorID, code, threadID, eventType string, action func(context.Context) (*domain.Thread, error)) (*domain.Thread, error) {
@@ -172,19 +243,33 @@ func (s *ThreadService) CreateThread(ctx context.Context, authorID, authorName s
 	return s.CreateThreadWithOptions(ctx, authorID, authorName, req, CreateThreadOptions{
 		Status:        domain.ThreadStatusPublished,
 		ContentFormat: "markdown",
+		ThreadType:    domain.ThreadTypeDiscussion,
 	})
 }
 
 func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest, opts CreateThreadOptions) (*domain.Thread, error) {
-	now := time.Now().UTC()
-	defaultTags := []string{}
-	if s.categoryRepo != nil {
-		category, err := s.categoryRepo.GetByID(ctx, req.CategoryID)
-		if err != nil {
-			return nil, fmt.Errorf("get category: %w", err)
-		}
-		defaultTags = category.DefaultTags
+	return s.createThreadWithOptions(ctx, authorID, authorName, req, opts, nil)
+}
+
+// CreateStructuredThreadWithOptions executes the Community base Thread,
+// Revision and a compiled-in feature detail participant as one reliable
+// command. The participant runs after the base facts exist and before the
+// required audit/outbox records are committed.
+func (s *ThreadService) CreateStructuredThreadWithOptions(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest, opts CreateThreadOptions, participant StructuredThreadParticipant) (*domain.Thread, error) {
+	if participant == nil {
+		return nil, errors.New("structured thread participant is required")
 	}
+	if opts.ThreadType == "" {
+		opts.ThreadType = participant.ThreadType()
+	}
+	if domain.NormalizeThreadType(opts.ThreadType) != domain.NormalizeThreadType(participant.ThreadType()) {
+		return nil, fmt.Errorf("%w: participant type mismatch", ErrThreadTypeInvalid)
+	}
+	return s.createThreadWithOptions(ctx, authorID, authorName, req, opts, participant)
+}
+
+func (s *ThreadService) createThreadWithOptions(ctx context.Context, authorID, authorName string, req domain.CreateThreadRequest, opts CreateThreadOptions, participant StructuredThreadParticipant) (*domain.Thread, error) {
+	now := time.Now().UTC()
 	status := opts.Status
 	if status == "" {
 		status = domain.ThreadStatusPublished
@@ -196,8 +281,10 @@ func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, a
 	if contentFormat == "" {
 		contentFormat = "markdown"
 	}
+	threadType := domain.NormalizeThreadType(opts.ThreadType)
 	thread := &domain.Thread{
 		ID:            strconv.FormatInt(idgen.New(), 10),
+		ThreadType:    threadType,
 		Title:         req.Title,
 		Content:       req.Content,
 		ContentFormat: contentFormat,
@@ -205,31 +292,78 @@ func (s *ThreadService) CreateThreadWithOptions(ctx context.Context, authorID, a
 		AuthorName:    authorName,
 		CategoryID:    req.CategoryID,
 		Status:        status,
-		Tags:          mergeTags(defaultTags, req.Tags),
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 	thread.NormalizeContentState()
 	thread.CurrentRevision = 1
 
-	if err := s.repo.Create(ctx, thread); err != nil {
-		return nil, fmt.Errorf("create thread: %w", err)
+	commandCode := strings.TrimSpace(opts.CommandCode)
+	if commandCode == "" {
+		commandCode = "community.thread.create"
 	}
-	if err := s.recordRevision(ctx, thread, authorID, "create", ""); err != nil {
-		return nil, fmt.Errorf("record content revision: %w", err)
+	if participant != nil && commandCode == "community.thread.create" {
+		commandCode = "community.thread.structured_create"
 	}
-
-	// 清除列表缓存
-	s.invalidateListCache(ctx)
-
-	// 发布 thread.created 事件
-	if s.bus != nil && !transaction.Active(ctx) {
-		_ = s.bus.Publish(ctx, eventbus.NewEvent(
-			eventbus.EventThreadCreated, "campusos.community", "thread."+thread.ID, thread,
-		))
+	eventType := strings.TrimSpace(opts.EventType)
+	if eventType == "" {
+		eventType = eventbus.EventThreadCreated
 	}
+	return s.executeAuthorCommand(ctx, authorID, commandCode, thread.ID, eventType, func(commandCtx context.Context) (*domain.Thread, error) {
+		defaultTags := []string{}
+		if s.categoryRepo != nil {
+			category, err := validatePostingCategory(commandCtx, s.categoryRepo, req.CategoryID)
+			if err != nil {
+				return nil, fmt.Errorf("validate posting category: %w", err)
+			}
+			defaultTags = category.DefaultTags
+		}
+		if err := s.validateThreadTypePolicy(commandCtx, thread.CategoryID, thread.ThreadType); err != nil {
+			return nil, err
+		}
+		thread.Tags = mergeTags(defaultTags, req.Tags)
+		if err := s.repo.Create(commandCtx, thread); err != nil {
+			return nil, fmt.Errorf("create thread: %w", err)
+		}
+		if err := s.recordRevision(commandCtx, thread, authorID, "create", ""); err != nil {
+			return nil, fmt.Errorf("record content revision: %w", err)
+		}
+		if participant != nil {
+			if err := participant.PersistThreadDetail(commandCtx, thread); err != nil {
+				return nil, fmt.Errorf("persist structured thread detail: %w", err)
+			}
+		}
+		return thread, nil
+	})
+}
 
-	return thread, nil
+func (s *ThreadService) validateThreadTypePolicy(ctx context.Context, categoryID string, requested domain.ThreadType) error {
+	threadType := domain.NormalizeThreadType(requested)
+	if !domain.IsKnownThreadType(threadType) {
+		return fmt.Errorf("%w: %s", ErrThreadTypeInvalid, requested)
+	}
+	if s.typeEnabled != nil && !s.typeEnabled(threadType) {
+		return fmt.Errorf("%w: %s", ErrThreadTypeUnavailable, threadType)
+	}
+	// Standalone legacy tests can omit the policy adapter. They retain the
+	// conservative historical default only; mutual aid and secondhand require
+	// a real policy repository in production.
+	if s.typePolicies == nil {
+		if threadType == domain.ThreadTypeDiscussion || threadType == domain.ThreadTypeArticle {
+			return nil
+		}
+		return fmt.Errorf("%w: %s", ErrThreadTypeNotAllowed, threadType)
+	}
+	policies, err := s.typePolicies.List(ctx, categoryID)
+	if err != nil {
+		return fmt.Errorf("load category thread type policy: %w", err)
+	}
+	for _, policy := range policies {
+		if policy.Enabled && domain.NormalizeThreadType(policy.ThreadType) == threadType {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: %s", ErrThreadTypeNotAllowed, threadType)
 }
 
 // GetThread 获取帖子详情
@@ -303,13 +437,14 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	}
 
 	// 尝试从缓存获取（仅缓存第一页无筛选条件的查询）
-	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s:%s", filter.Page, filter.PageSize, filter.Status, filter.ContentFormat)
+	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s:%s:%s", filter.Page, filter.PageSize, filter.Status, filter.ContentFormat, filter.ThreadType)
 	cacheablePublicList := filter.Status == string(domain.ThreadStatusPublished) &&
 		filter.Keyword == "" &&
 		filter.CategoryID == "" &&
 		len(filter.CategoryIDs) == 0 &&
 		filter.AuthorID == "" &&
 		filter.ContentFormat == "" &&
+		filter.ThreadType == "" &&
 		filter.Tag == "" &&
 		len(filter.AnyTags) == 0 &&
 		filter.PublicationStatus == string(domain.PublicationStatusPublished) &&
@@ -346,6 +481,12 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 
 // UpdateThread 更新帖子
 func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, req domain.UpdateThreadRequest) (*domain.Thread, error) {
+	return s.executeAuthorCommand(ctx, authorID, "community.thread.author_update", id, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+		return s.updateThread(commandCtx, id, authorID, req)
+	})
+}
+
+func (s *ThreadService) updateThread(ctx context.Context, id, authorID string, req domain.UpdateThreadRequest) (*domain.Thread, error) {
 	thread, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
@@ -371,8 +512,8 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 		thread.Tags = normalizeTags(req.Tags)
 	}
 	if req.Status != nil {
-		if thread.ContentFormat == "richtext_article" {
-			return nil, fmt.Errorf("richtext article status must be managed through richtext article APIs")
+		if thread.ThreadType != domain.ThreadTypeDiscussion {
+			return nil, fmt.Errorf("%s status must be managed through its typed APIs", thread.ThreadType)
 		}
 		switch *req.Status {
 		case domain.ThreadStatusPublished:
@@ -407,12 +548,6 @@ func (s *ThreadService) UpdateThread(ctx context.Context, id, authorID string, r
 	if err != nil {
 		return nil, fmt.Errorf("record content revision: %w", err)
 	}
-
-	// 清除列表缓存
-	s.invalidateListCache(ctx)
-
-	s.publishThreadUpdated(ctx, thread)
-
 	return thread, nil
 }
 
@@ -423,6 +558,12 @@ func (s *ThreadService) SaveFeatureThread(ctx context.Context, candidate *domain
 	if candidate == nil || candidate.ID == "" {
 		return nil, errors.New("thread content is required")
 	}
+	return s.executeAuthorCommand(ctx, actorID, "community.thread.feature_update", candidate.ID, eventbus.EventThreadUpdated, func(commandCtx context.Context) (*domain.Thread, error) {
+		return s.saveFeatureThread(commandCtx, candidate, actorID, action)
+	})
+}
+
+func (s *ThreadService) saveFeatureThread(ctx context.Context, candidate *domain.Thread, actorID, action string) (*domain.Thread, error) {
 	thread, err := s.repo.GetByID(ctx, candidate.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
@@ -469,8 +610,6 @@ func (s *ThreadService) SaveFeatureThread(ctx context.Context, candidate *domain
 	} else if err := s.recordRevision(ctx, thread, actorID, action, ""); err != nil {
 		return nil, fmt.Errorf("record content revision: %w", err)
 	}
-	s.invalidateListCache(ctx)
-	s.publishThreadUpdated(ctx, thread)
 	return thread, nil
 }
 
@@ -536,47 +675,15 @@ func (s *ThreadService) UnlockThread(ctx context.Context, id string) (*domain.Th
 
 // DeleteThread 删除帖子
 func (s *ThreadService) DeleteThread(ctx context.Context, id, authorID string) error {
-	thread, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("get thread: %w", err)
-	}
-
-	if thread.AuthorID != authorID {
-		return fmt.Errorf("permission denied: you can only delete your own threads")
-	}
-
-	if err := s.trashThread(ctx, thread, authorID, "author_delete", "author moved content to trash"); err != nil {
-		return err
-	}
-
-	// 清除列表缓存
-	s.invalidateListCache(ctx)
-
-	// 发布 thread.deleted 事件
-	if s.bus != nil && !transaction.Active(ctx) {
-		_ = s.bus.Publish(ctx, eventbus.NewEvent(
-			eventbus.EventThreadDeleted, "campusos.community", "thread."+id, thread,
-		))
-	}
-
-	return nil
+	return s.TrashThread(ctx, id, authorID, "author_delete", "author moved content to trash")
 }
 
 // TrashThread is the internal command used by built-in content features. It
 // still validates author ownership for author-originated actions; callers that
 // act as moderators must have passed the HTTP/service authorization gate.
 func (s *ThreadService) TrashThread(ctx context.Context, id, actorID, action, reason string) error {
-	thread, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("get thread: %w", err)
-	}
 	if actorID == "" {
 		return errors.New("content trash actor is required")
-	}
-	if strings.HasPrefix(action, "author_") || strings.HasPrefix(action, "richtext_author_") || action == "richtext_create_rollback" {
-		if thread.AuthorID != actorID {
-			return fmt.Errorf("permission denied: you can only delete your own threads")
-		}
 	}
 	if action == "" {
 		action = "content_trash"
@@ -584,16 +691,28 @@ func (s *ThreadService) TrashThread(ctx context.Context, id, actorID, action, re
 	if reason == "" {
 		reason = "content moved to trash"
 	}
-	if err := s.trashThread(ctx, thread, actorID, action, reason); err != nil {
-		return err
+	commandCode := "community.thread.trash"
+	if isAuthorTrashAction(action) {
+		commandCode = "community.thread.author_trash"
 	}
-	s.invalidateListCache(ctx)
-	if s.bus != nil && !transaction.Active(ctx) {
-		_ = s.bus.Publish(ctx, eventbus.NewEvent(
-			eventbus.EventThreadDeleted, "campusos.community", "thread."+id, thread,
-		))
-	}
-	return nil
+	_, err := s.executeAuthorCommand(ctx, actorID, commandCode, id, eventbus.EventThreadDeleted, func(commandCtx context.Context) (*domain.Thread, error) {
+		thread, err := s.repo.GetByID(commandCtx, id)
+		if err != nil {
+			return nil, fmt.Errorf("get thread: %w", err)
+		}
+		if isAuthorTrashAction(action) && thread.AuthorID != actorID {
+			return nil, fmt.Errorf("permission denied: you can only delete your own threads")
+		}
+		if err := s.trashThread(commandCtx, thread, actorID, action, reason); err != nil {
+			return nil, err
+		}
+		return thread, nil
+	})
+	return err
+}
+
+func isAuthorTrashAction(action string) bool {
+	return strings.HasPrefix(action, "author_") || strings.HasPrefix(action, "richtext_author_") || action == "richtext_create_rollback"
 }
 
 func (s *ThreadService) AdminDeleteThread(ctx context.Context, id, actorID string) error {
@@ -1036,13 +1155,17 @@ func (s *ThreadService) recordModerationActionWithCase(ctx context.Context, thre
 	})
 }
 
-func (s *ThreadService) publishThreadUpdated(ctx context.Context, thread *domain.Thread) {
+func (s *ThreadService) publishThreadEvent(ctx context.Context, eventType string, thread *domain.Thread) {
 	if s.bus == nil || thread == nil || transaction.Active(ctx) {
 		return
 	}
 	_ = s.bus.Publish(ctx, eventbus.NewEvent(
-		eventbus.EventThreadUpdated, "campusos.community", "thread."+thread.ID, thread,
+		eventType, "campusos.community", "thread."+thread.ID, thread,
 	))
+}
+
+func (s *ThreadService) publishThreadUpdated(ctx context.Context, thread *domain.Thread) {
+	s.publishThreadEvent(ctx, eventbus.EventThreadUpdated, thread)
 }
 
 func ptrTime(value time.Time) *time.Time { return &value }

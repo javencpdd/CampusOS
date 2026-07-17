@@ -6,6 +6,127 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/admin/categories:
+    get:
+      operationId: categoryHandler_ListAdmin
+      summary: GET /api/v1/admin/categories
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.list
+      x-campusos-permission: community.category.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/categories/tree:
+    get:
+      operationId: categoryHandler_ListAdminTree
+      summary: GET /api/v1/admin/categories/tree
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.tree
+      x-campusos-permission: community.category.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/categories/{id}:
+    get:
+      operationId: categoryHandler_GetAdmin
+      summary: GET /api/v1/admin/categories/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.get
+      x-campusos-permission: community.category.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/categories/{id}/thread-types:
+    get:
+      operationId: categoryHandler_ListThreadTypePolicies
+      summary: GET /api/v1/admin/categories/:id/thread-types
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.thread-types
+      x-campusos-permission: community.category.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CategoryThreadTypePolicies'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/threads:
     get:
       operationId: threadHandler_AdminListThreads
@@ -409,6 +530,132 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/email-binding/challenge:
+    post:
+      operationId: userHandler_RequestEmailBinding
+      summary: POST /api/v1/auth/email-binding/challenge
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.email_binding.challenge
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailBindingChallengeRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengeReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/email-binding/complete:
+    post:
+      operationId: userHandler_CompleteEmailBinding
+      summary: POST /api/v1/auth/email-binding/complete
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.email_binding.complete
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailBindingCompleteRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryCompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/email-binding/verify:
+    post:
+      operationId: userHandler_VerifyEmailBinding
+      summary: POST /api/v1/auth/email-binding/verify
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.email_binding.verify
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailBindingVerifyRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengeTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/auth/login:
     post:
       operationId: userHandler_Login
@@ -440,6 +687,66 @@ paths:
                         $ref: '#/components/schemas/LoginResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/logout:
+    post:
+      operationId: userHandler_Logout
+      summary: POST /api/v1/auth/logout
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.auth.logout
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/logout-all:
+    post:
+      operationId: userHandler_LogoutAll
+      summary: POST /api/v1/auth/logout-all
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.auth.logout_all
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/auth/me:
     get:
       operationId: userHandler_GetMe
@@ -464,6 +771,172 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/password-reset/challenge:
+    post:
+      operationId: userHandler_RequestPasswordReset
+      summary: POST /api/v1/auth/password-reset/challenge
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.password_reset.challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetChallengeRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PasswordResetChallengeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/password-reset/complete:
+    post:
+      operationId: userHandler_CompletePasswordReset
+      summary: POST /api/v1/auth/password-reset/complete
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.password_reset.complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetCompleteRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryCompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/password-reset/verify:
+    post:
+      operationId: userHandler_VerifyPasswordReset
+      summary: POST /api/v1/auth/password-reset/verify
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.password_reset.verify
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengeTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/recovery/complete:
+    post:
+      operationId: userHandler_CompleteAdminRecovery
+      summary: POST /api/v1/auth/recovery/complete
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.recovery.complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryCaseCompleteRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryCompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/refresh:
+    post:
+      operationId: userHandler_Refresh
+      summary: POST /api/v1/auth/refresh
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: session-cookie
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-session
+      x-campusos-operation: http.post.api.v1.auth.refresh
+      security:
+        - refreshCookie: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RefreshResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -501,6 +974,133 @@ paths:
                         $ref: '#/components/schemas/User'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/registration/challenge:
+    post:
+      operationId: userHandler_RequestRegistrationChallenge
+      summary: POST /api/v1/auth/registration/challenge
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.registration.challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationChallengeRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengeReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/registration/verify:
+    post:
+      operationId: userHandler_VerifyRegistrationChallenge
+      summary: POST /api/v1/auth/registration/verify
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.registration.verify
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationChallengeVerifyRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengeTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/sessions:
+    get:
+      operationId: userHandler_ListSessions
+      summary: GET /api/v1/auth/sessions
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.auth.sessions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SessionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/sessions/{id}:
+    delete:
+      operationId: userHandler_RevokeSession
+      summary: DELETE /api/v1/auth/sessions/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.auth.sessions.id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/authorization-audits:
     get:
       operationId: roleHandler_ListAuthorizationAudits
@@ -554,8 +1154,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.categories
-      x-campusos-permission: community.category.write
+      x-campusos-operation: http.community.category.create
+      x-campusos-permission: community.category.create
       security:
         - bearerAuth: []
       requestBody:
@@ -583,6 +1183,25 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/tree:
+    get:
+      operationId: categoryHandler_ListTree
+      summary: GET /api/v1/categories/tree
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.categories.tree
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/categories/{id}:
     delete:
       operationId: categoryHandler_Delete
@@ -592,8 +1211,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.delete.api.v1.categories.id
-      x-campusos-permission: community.category.delete
+      x-campusos-operation: http.community.category.archive-legacy
+      x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
       parameters:
@@ -648,8 +1267,8 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.put.api.v1.categories.id
-      x-campusos-permission: community.category.write
+      x-campusos-operation: http.community.category.update
+      x-campusos-permission: community.category.update
       security:
         - bearerAuth: []
       parameters:
@@ -677,6 +1296,228 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/{id}/archive:
+    post:
+      operationId: categoryHandler_Archive
+      summary: POST /api/v1/categories/:id/archive
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.archive
+      x-campusos-permission: community.category.archive
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/{id}/archive-impact:
+    get:
+      operationId: categoryHandler_ArchiveImpact
+      summary: GET /api/v1/categories/:id/archive-impact
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.archive-impact
+      x-campusos-permission: community.category.archive
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/{id}/parent:
+    put:
+      operationId: categoryHandler_Move
+      summary: PUT /api/v1/categories/:id/parent
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.move
+      x-campusos-permission: community.category.move
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/{id}/restore:
+    post:
+      operationId: categoryHandler_Restore
+      summary: POST /api/v1/categories/:id/restore
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.restore
+      x-campusos-permission: community.category.restore
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/categories/{id}/thread-types:
+    get:
+      operationId: categoryHandler_ListThreadTypePolicies
+      summary: GET /api/v1/categories/:id/thread-types
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.categories.id.thread_types
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CategoryThreadTypePolicies'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      operationId: categoryHandler_UpdateThreadTypePolicies
+      summary: PUT /api/v1/categories/:id/thread-types
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.community
+      x-campusos-scope: global
+      x-campusos-operation: http.community.category.configure_thread_types
+      x-campusos-permission: community.category.configure_thread_types
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryThreadTypePolicyRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CategoryThreadTypePolicyUpdate'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1309,6 +2150,175 @@ paths:
             schema:
               $ref: '#/components/schemas/GenericObject'
       x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/recovery-cases:
+    get:
+      operationId: userHandler_ListAdminRecoveryCases
+      summary: GET /api/v1/identity/recovery-cases
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.recovery.cases.list
+      x-campusos-permission: identity.account.recovery.override
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryCaseListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: userHandler_CreateAdminRecoveryCase
+      summary: POST /api/v1/identity/recovery-cases
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.recovery.cases.create
+      x-campusos-permission: identity.account.recovery.override
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRecoveryCaseCreateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryCase'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/recovery-cases/{id}/cancel:
+    post:
+      operationId: userHandler_CancelAdminRecoveryCase
+      summary: POST /api/v1/identity/recovery-cases/:id/cancel
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.recovery.cases.cancel
+      x-campusos-permission: identity.account.recovery.override
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/users/{id}/sessions:
+    get:
+      operationId: userHandler_ListAdminUserSessions
+      summary: GET /api/v1/identity/users/:id/sessions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.session.admin_list
+      x-campusos-permission: identity.session.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SessionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/users/{id}/sessions/revoke-all:
+    post:
+      operationId: userHandler_RevokeAdminUserSessions
+      summary: POST /api/v1/identity/users/:id/sessions/revoke-all
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.session.admin_revoke_all
+      x-campusos-permission: identity.session.revoke
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Success
@@ -2001,6 +3011,206 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/mutual-aid/status:
+    get:
+      operationId: d_MutualAid
+      summary: GET /api/v1/mutual-aid/status
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.mutual_aid.status
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/mutual-aid/threads:
+    get:
+      operationId: d_MutualAid
+      summary: GET /api/v1/mutual-aid/threads
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.mutual_aid.threads
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: d_MutualAid
+      summary: POST /api/v1/mutual-aid/threads
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.mutual_aid.threads
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/mutual-aid/threads/{id}:
+    get:
+      operationId: d_MutualAid
+      summary: GET /api/v1/mutual-aid/threads/:id
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.mutual_aid.threads.id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      operationId: d_MutualAid
+      summary: PUT /api/v1/mutual-aid/threads/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.mutual_aid.threads.id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/mutual-aid/threads/{id}/me:
+    get:
+      operationId: d_MutualAid
+      summary: GET /api/v1/mutual-aid/threads/:id/me
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.mutual_aid.threads.id.me
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/mutual-aid/threads/{id}/status:
+    post:
+      operationId: d_MutualAid
+      summary: POST /api/v1/mutual-aid/threads/:id/status
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.mutual-aid
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.mutual_aid.threads.id.status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/permissions:
     get:
       operationId: roleHandler_ListPermissionDefinitions
@@ -2012,6 +3222,32 @@ paths:
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.permissions
       x-campusos-permission: identity.role.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/platform/email-delivery/status:
+    get:
+      operationId: d_EmailDelivery
+      summary: GET /api/v1/platform/email-delivery/status
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.email-delivery
+      x-campusos-scope: global
+      x-campusos-operation: http.core.email_delivery.status
+      x-campusos-permission: platform.email_delivery.read
       security:
         - bearerAuth: []
       responses:
@@ -4425,6 +5661,206 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/secondhand/status:
+    get:
+      operationId: d_Secondhand
+      summary: GET /api/v1/secondhand/status
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.secondhand.status
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/secondhand/threads:
+    get:
+      operationId: d_Secondhand
+      summary: GET /api/v1/secondhand/threads
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.secondhand.threads
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: d_Secondhand
+      summary: POST /api/v1/secondhand/threads
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.secondhand.threads
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/secondhand/threads/{id}:
+    get:
+      operationId: d_Secondhand
+      summary: GET /api/v1/secondhand/threads/:id
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.secondhand.threads.id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    put:
+      operationId: d_Secondhand
+      summary: PUT /api/v1/secondhand/threads/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.secondhand.threads.id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/secondhand/threads/{id}/me:
+    get:
+      operationId: d_Secondhand
+      summary: GET /api/v1/secondhand/threads/:id/me
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.secondhand.threads.id.me
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/secondhand/threads/{id}/status:
+    post:
+      operationId: d_Secondhand
+      summary: POST /api/v1/secondhand/threads/:id/status
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.secondhand
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.secondhand.threads.id.status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/space/{user_id}:
     get:
       operationId: d_Space
@@ -6504,6 +7940,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: campusos_refresh
   schemas:
     Envelope:
       type: object
@@ -6567,13 +8007,133 @@ components:
         updated_at: { type: string, format: date-time }
     RegisterRequest:
       type: object
-      required: [username, nickname, email, password]
+      required: [username, nickname, email, password, challenge_id, ticket]
       properties:
         username: { type: string, minLength: 3, maxLength: 32 }
         nickname: { type: string, minLength: 1, maxLength: 64 }
         email: { type: string, format: email }
         password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 32, writeOnly: true }
       additionalProperties: false
+    RegistrationChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    RegistrationChallengeVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    ChallengeReceipt:
+      type: object
+      required: [challenge_id, purpose, expires_at]
+      properties:
+        challenge_id: { type: string }
+        purpose: { type: string, enum: [registration, email_binding, password_reset] }
+        expires_at: { type: string, format: date-time }
+    ChallengeTicket:
+      type: object
+      required: [challenge_id, purpose, ticket, expires_at]
+      properties:
+        challenge_id: { type: string }
+        purpose: { type: string, enum: [registration, email_binding, password_reset] }
+        ticket: { type: string, writeOnly: true }
+        expires_at: { type: string, format: date-time }
+    PasswordResetChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    PasswordResetChallengeResponse:
+      type: object
+      required: [accepted, challenge_id]
+      properties:
+        accepted: { type: boolean }
+        challenge_id: { type: string }
+    PasswordResetVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    PasswordResetCompleteRequest:
+      type: object
+      required: [email, challenge_id, ticket, password]
+      properties:
+        email: { type: string, format: email }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+        password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+      additionalProperties: false
+    EmailBindingChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    EmailBindingVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    EmailBindingCompleteRequest:
+      type: object
+      required: [email, challenge_id, ticket]
+      properties:
+        email: { type: string, format: email }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+      additionalProperties: false
+    RecoveryCaseCompleteRequest:
+      type: object
+      required: [challenge_id, ticket, password]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+        password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+      additionalProperties: false
+    RecoveryCompletionResponse:
+      type: object
+      required: [relogin_required]
+      properties:
+        reset: { type: boolean }
+        bound: { type: boolean }
+        relogin_required: { type: boolean }
+    AdminRecoveryCaseCreateRequest:
+      type: object
+      required: [user_id, email, proof_reference]
+      properties:
+        user_id: { type: string, pattern: '^[0-9]+$' }
+        email: { type: string, format: email }
+        proof_reference: { type: string, minLength: 3, maxLength: 160, writeOnly: true }
+      additionalProperties: false
+    RecoveryCase:
+      type: object
+      required: [id, user_id, target_email_masked, status, expires_at, created_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        target_email_masked: { type: string }
+        status: { type: string, enum: [pending, completed, cancelled, expired] }
+        expires_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+        cancelled_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    RecoveryCaseListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/RecoveryCase' } }
+        total: { type: integer, minimum: 0 }
     LoginRequest:
       type: object
       required: [email, password]
@@ -6590,14 +8150,44 @@ components:
       additionalProperties: false
     LoginResponse:
       type: object
-      required: [user, roles, access_token, refresh_token, token_type, expires_in]
+      required: [user, roles, access_token, token_type, expires_in]
       properties:
         user: { $ref: '#/components/schemas/User' }
         roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
         access_token: { type: string }
-        refresh_token: { type: string }
+        refresh_token: { type: string, deprecated: true, description: Present only when AUTH_REFRESH_BODY_COMPAT=true. }
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token: { type: string, writeOnly: true, deprecated: true }
+      additionalProperties: false
+    RefreshResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string, deprecated: true, description: Present only when AUTH_REFRESH_BODY_COMPAT=true. }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer }
+    Session:
+      type: object
+      required: [id, current, last_active_at, expires_at, created_at]
+      properties:
+        id: { type: string }
+        current: { type: boolean }
+        device_name: { type: string }
+        device_type: { type: string }
+        last_active_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    SessionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Session' } }
     Role:
       type: object
       required: [id, name]
@@ -6610,6 +8200,7 @@ components:
       required: [id, title, content, author_id, category_id, status]
       properties:
         id: { type: string }
+        thread_type: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
         title: { type: string }
         content: { type: string }
         content_format: { type: string }
@@ -6705,6 +8296,37 @@ components:
         sort_order: { type: integer }
         is_closed: { type: boolean }
       additionalProperties: false
+    CategoryThreadTypePolicy:
+      type: object
+      required: [category_id, thread_type, enabled]
+      properties:
+        category_id: { type: string }
+        thread_type: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
+        enabled: { type: boolean }
+        updated_at: { type: string, format: date-time }
+    CategoryThreadTypePolicies:
+      type: object
+      required: [category_id, items]
+      properties:
+        category_id: { type: string }
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryThreadTypePolicy' } }
+    UpdateCategoryThreadTypePolicyRequest:
+      type: object
+      required: [allowed_types, version]
+      properties:
+        allowed_types:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
+        version: { type: integer, minimum: 1 }
+      additionalProperties: false
+    CategoryThreadTypePolicyUpdate:
+      type: object
+      required: [category, items]
+      properties:
+        category: { $ref: '#/components/schemas/Category' }
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryThreadTypePolicy' } }
     UpsertSpaceRequest:
       type: object
       properties:

@@ -13,14 +13,19 @@ import (
 )
 
 func (s *Server) runApplication(infra *infrastructureBootstrap) error {
-	if s.reliability == nil || s.reliability.Service() == nil || s.reliability.Handler() == nil || s.ai == nil || s.ai.Service() == nil || s.webhook == nil || s.webhook.Service() == nil || s.mcp == nil || s.mcp.Service() == nil || s.message == nil || s.message.Service() == nil || s.platformLog == nil || s.platformLog.Service() == nil || s.integration == nil || s.integration.Handler() == nil {
+	if s.reliability == nil || s.reliability.Service() == nil || s.reliability.Handler() == nil || s.emailDelivery == nil || s.emailDelivery.Service() == nil || s.emailDelivery.Handler() == nil || s.ai == nil || s.ai.Service() == nil || s.webhook == nil || s.webhook.Service() == nil || s.mcp == nil || s.mcp.Service() == nil || s.message == nil || s.message.Service() == nil || s.platformLog == nil || s.platformLog.Service() == nil || s.integration == nil || s.integration.Handler() == nil {
 		return fmt.Errorf("integration modules are unavailable")
 	}
 
 	if infra.database == nil {
 		log.Printf("⚠️  PostgreSQL 基础设施不可用，回退到内存模式: %v", infra.databaseErr)
-	} else if err := SeedAdmin(infra.database, s.cfg.Auth.PasswordHashEnabled); err != nil {
-		log.Printf("⚠️  种子数据初始化失败: %v", err)
+	} else if err := SeedAdmin(infra.database, adminSeedOptions{
+		Environment:                  s.cfg.Deployment.Environment,
+		PasswordHashEnabled:          s.cfg.Auth.PasswordHashEnabled,
+		BootstrapAdminSecret:         s.cfg.Auth.BootstrapAdminSecret,
+		AllowDevelopmentDefaultAdmin: s.cfg.Auth.AllowDevelopmentDefaultAdmin,
+	}); err != nil {
+		return fmt.Errorf("initialize bootstrap administrator: %w", err)
 	}
 
 	if s.identity == nil || s.identity.Permissions() == nil {
@@ -32,7 +37,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	if s.moderation == nil || s.moderation.Handler() == nil {
 		return fmt.Errorf("moderation core module is unavailable")
 	}
-	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
+	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
 		return fmt.Errorf("built-in feature modules are unavailable")
 	}
 	pluginHandler, err := s.pluginHTTPHandler()
@@ -41,29 +46,33 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	}
 
 	router := httpapi.Build(httpapi.Dependencies{
-		JWT:           s.identity.JWTManager(),
-		Permissions:   s.identity.Permissions(),
-		Features:      s.features,
-		Feature:       s.featureHandler,
-		ModuleCatalog: s.moduleCatalog,
-		PluginManager: s.manager,
-		Identity:      s.identity.Handlers(),
-		Community:     s.community.Handlers(),
-		Space:         s.space.Handler(),
-		Plugin:        pluginHandler,
-		AI:            s.ai.Handler(),
-		Integration:   s.integration.Handler(),
-		Webhook:       s.webhook.Handler(),
-		MCP:           s.mcp.Handler(),
-		Message:       s.message.Handler(),
-		Homepage:      s.appearance.HomepageHandler(),
-		WebTheme:      s.appearance.WebThemeHandler(),
-		RichText:      s.richtext.Handler(),
-		Schedule:      s.schedule.Handler(),
-		PlatformLog:   s.platformLog.Handler(),
-		Moderation:    s.moderation.Handler(),
-		Reliability:   s.reliability.Handler(),
-		Metrics:       infra.metrics,
+		JWT:             s.identity.JWTManager(),
+		SessionVerifier: s.identity.Sessions(),
+		Permissions:     s.identity.Permissions(),
+		Features:        s.features,
+		Feature:         s.featureHandler,
+		ModuleCatalog:   s.moduleCatalog,
+		PluginManager:   s.manager,
+		Identity:        s.identity.Handlers(),
+		Community:       s.community.Handlers(),
+		Space:           s.space.Handler(),
+		Plugin:          pluginHandler,
+		AI:              s.ai.Handler(),
+		Integration:     s.integration.Handler(),
+		Webhook:         s.webhook.Handler(),
+		MCP:             s.mcp.Handler(),
+		Message:         s.message.Handler(),
+		Homepage:        s.appearance.HomepageHandler(),
+		WebTheme:        s.appearance.WebThemeHandler(),
+		RichText:        s.richtext.Handler(),
+		Schedule:        s.schedule.Handler(),
+		MutualAid:       s.mutualAid.Handler(),
+		Secondhand:      s.secondhand.Handler(),
+		PlatformLog:     s.platformLog.Handler(),
+		Moderation:      s.moderation.Handler(),
+		Reliability:     s.reliability.Handler(),
+		EmailDelivery:   s.emailDelivery.Handler(),
+		Metrics:         infra.metrics,
 	})
 	if err := s.identity.SyncRouteDescriptors(context.Background(), router.RouteDescriptors()); err != nil {
 		// The catalog is additive. Keep a pre-migration deployment readable, but
@@ -117,7 +126,8 @@ func (s *Server) pluginHTTPHandler() (*plugin.Handler, error) {
 func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 	eventTypes := []string{
 		"user.created", "thread.created", "thread.updated", "thread.deleted",
-		"post.created", "category.created",
+		"post.created", "category.created", "category.updated", "category.moved",
+		"category.archived", "category.restored",
 	}
 	for _, eventType := range eventTypes {
 		bus.Subscribe(eventType, func(ctx context.Context, event eventbus.Event) error {

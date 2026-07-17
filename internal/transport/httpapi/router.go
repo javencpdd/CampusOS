@@ -5,8 +5,10 @@ package httpapi
 
 import (
 	"context"
+	"net/http"
 
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
+	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	"github.com/campusos/CampusOS/internal/modules/core/moderation"
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
@@ -15,10 +17,12 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
+	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
+	"github.com/campusos/CampusOS/internal/modules/features/secondhand"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -34,29 +38,33 @@ import (
 // Dependencies are module-owned handlers and the small platform ports needed
 // to expose them through HTTP. No concrete repository is accepted here.
 type Dependencies struct {
-	JWT           *auth.JWTManager
-	Permissions   middleware.PermissionChecker
-	Features      *platformfeature.Registry
-	Feature       *platformfeature.Handler
-	ModuleCatalog *modulecatalog.Catalog
-	PluginManager *plugin.Manager
-	Identity      identitycore.HTTPHandlers
-	Community     communitycore.HTTPHandlers
-	Space         *space.Handler
-	Plugin        *plugin.Handler
-	AI            *ai.Handler
-	Integration   *integration.Handler
-	Webhook       *webhook.Handler
-	MCP           *mcp.Handler
-	Message       *message.Handler
-	Homepage      *homepage.Handler
-	WebTheme      *webtheme.Handler
-	RichText      *richtext.Handler
-	Schedule      *schedule.Handler
-	PlatformLog   *platformlog.Handler
-	Moderation    *moderation.Handler
-	Reliability   *reliability.Handler
-	Metrics       *observability.Collector
+	JWT             *auth.JWTManager
+	SessionVerifier middleware.AccessSessionVerifier
+	Permissions     middleware.PermissionChecker
+	Features        *platformfeature.Registry
+	Feature         *platformfeature.Handler
+	ModuleCatalog   *modulecatalog.Catalog
+	PluginManager   *plugin.Manager
+	Identity        identitycore.HTTPHandlers
+	Community       communitycore.HTTPHandlers
+	Space           *space.Handler
+	Plugin          *plugin.Handler
+	AI              *ai.Handler
+	Integration     *integration.Handler
+	Webhook         *webhook.Handler
+	MCP             *mcp.Handler
+	Message         *message.Handler
+	Homepage        *homepage.Handler
+	WebTheme        *webtheme.Handler
+	RichText        *richtext.Handler
+	Schedule        *schedule.Handler
+	MutualAid       *mutualaid.Handler
+	Secondhand      *secondhand.Handler
+	PlatformLog     *platformlog.Handler
+	Moderation      *moderation.Handler
+	Reliability     *reliability.Handler
+	EmailDelivery   *emaildelivery.Handler
+	Metrics         *observability.Collector
 }
 
 // Build preserves the existing /api/v1 route and authorization contract.
@@ -83,8 +91,22 @@ func Build(d Dependencies) *Router {
 		platformfeature.PathRule{Prefix: "/api/v1/spaces", FeatureID: "personal-space"},
 		platformfeature.PathRule{Prefix: "/api/v1/space", FeatureID: "personal-space"},
 		platformfeature.PathRule{Prefix: "/api/v1/u/", FeatureID: "personal-space"},
-		platformfeature.PathRule{Prefix: "/api/v1/richtext", FeatureID: "controlled-richtext-article"},
-		platformfeature.PathRule{Prefix: "/api/v1/schedule", FeatureID: "personal-schedule"},
+		platformfeature.PathRule{
+			Prefix: "/api/v1/richtext", FeatureID: "controlled-richtext-article",
+			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/richtext/status"}},
+		},
+		platformfeature.PathRule{
+			Prefix: "/api/v1/schedule", FeatureID: "personal-schedule",
+			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/schedule/status"}},
+		},
+		platformfeature.PathRule{
+			Prefix: "/api/v1/mutual-aid", FeatureID: "mutual-aid",
+			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/mutual-aid/status"}},
+		},
+		platformfeature.PathRule{
+			Prefix: "/api/v1/secondhand", FeatureID: "secondhand",
+			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/secondhand/status"}},
+		},
 		platformfeature.PathRule{Prefix: "/api/v1/home", FeatureID: "appearance"},
 		platformfeature.PathRule{Prefix: "/api/v1/web-themes", FeatureID: "appearance"},
 	))
@@ -99,14 +121,27 @@ func Build(d Dependencies) *Router {
 		public.GET("/web-themes", d.WebTheme.Catalog)
 		public.GET("/web-themes/:name", d.WebTheme.Package)
 		public.GET("/web-themes/:name/assets/*path", d.WebTheme.Asset)
-		public.GET("/ui/runtime-manifest", middleware.OptionalJWT(d.JWT), runtimeHTTPHandler.RuntimeManifest)
+		public.GET("/ui/runtime-manifest", middleware.OptionalJWT(d.JWT, d.SessionVerifier), runtimeHTTPHandler.RuntimeManifest)
 		public.GET("/ui/events", runtimeHTTPHandler.Events)
 		public.GET("/richtext/status", d.RichText.Status)
 		public.GET("/schedule/status", d.Schedule.Status)
+		public.GET("/mutual-aid/status", d.MutualAid.Status)
+		public.GET("/secondhand/status", d.Secondhand.Status)
+		public.POST("/auth/registration/challenge", userHandler.RequestRegistrationChallenge)
+		public.POST("/auth/registration/verify", userHandler.VerifyRegistrationChallenge)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
+		public.POST("/auth/refresh", userHandler.Refresh)
+		public.POST("/auth/password-reset/challenge", userHandler.RequestPasswordReset)
+		public.POST("/auth/password-reset/verify", userHandler.VerifyPasswordReset)
+		public.POST("/auth/password-reset/complete", userHandler.CompletePasswordReset)
+		public.POST("/auth/recovery/complete", userHandler.CompleteAdminRecovery)
 		public.GET("/threads", threadHandler.ListThreads)
 		public.GET("/threads/:id", threadHandler.GetThread)
+		public.GET("/mutual-aid/threads", d.MutualAid.ListPublic)
+		public.GET("/mutual-aid/threads/:id", d.MutualAid.GetPublic)
+		public.GET("/secondhand/threads", d.Secondhand.ListPublic)
+		public.GET("/secondhand/threads/:id", d.Secondhand.GetPublic)
 		public.GET("/richtext/articles/:id", d.RichText.GetPublished)
 		public.GET("/richtext/assets/:user_id/:filename", d.RichText.ServeAsset)
 		public.GET("/users", userHandler.ListUsers)
@@ -117,14 +152,23 @@ func Build(d Dependencies) *Router {
 		public.GET("/u/:username/contents", d.Space.ListContentsByUsername)
 		public.GET("/u/:username", d.Space.GetByUsername)
 		public.GET("/categories", categoryHandler.List)
+		public.GET("/categories/tree", categoryHandler.ListTree)
 		public.GET("/categories/:id", categoryHandler.Get)
+		public.GET("/categories/:id/thread-types", categoryHandler.ListThreadTypePolicies)
 		public.GET("/threads/:id/posts", postHandler.ListPosts)
 		public.GET("/events", eventHandler.ListEvents)
 	}
 
 	authenticated := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAuthenticated, d.Permissions)
-	authenticated.Use(middleware.JWTAuth(d.JWT))
+	authenticated.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
+		authenticated.POST("/auth/logout", userHandler.Logout)
+		authenticated.POST("/auth/logout-all", userHandler.LogoutAll)
+		authenticated.GET("/auth/sessions", userHandler.ListSessions)
+		authenticated.DELETE("/auth/sessions/:id", userHandler.RevokeSession)
+		authenticated.POST("/auth/email-binding/challenge", userHandler.RequestEmailBinding)
+		authenticated.POST("/auth/email-binding/verify", userHandler.VerifyEmailBinding)
+		authenticated.POST("/auth/email-binding/complete", userHandler.CompleteEmailBinding)
 		authenticated.GET("/auth/me", userHandler.GetMe)
 		authenticated.PUT("/users/:id", userHandler.UpdateUser)
 		authenticated.GET("/spaces/me", d.Space.GetMe)
@@ -161,6 +205,14 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/richtext/articles/:id/publish", d.RichText.Publish)
 		authenticated.POST("/richtext/articles/:id/offline", d.RichText.Offline)
 		authenticated.DELETE("/richtext/articles/:id", d.RichText.Delete)
+		authenticated.POST("/mutual-aid/threads", d.MutualAid.Create)
+		authenticated.GET("/mutual-aid/threads/:id/me", d.MutualAid.GetMine)
+		authenticated.PUT("/mutual-aid/threads/:id", d.MutualAid.Update)
+		authenticated.POST("/mutual-aid/threads/:id/status", d.MutualAid.UpdateStatus)
+		authenticated.POST("/secondhand/threads", d.Secondhand.Create)
+		authenticated.GET("/secondhand/threads/:id/me", d.Secondhand.GetMine)
+		authenticated.PUT("/secondhand/threads/:id", d.Secondhand.Update)
+		authenticated.POST("/secondhand/threads/:id/status", d.Secondhand.UpdateStatus)
 		authenticated.POST("/threads", threadHandler.CreateThread)
 		authenticated.GET("/threads/:id/me", threadHandler.GetThreadForCurrentUser)
 		authenticated.PUT("/threads/:id", threadHandler.UpdateThread)
@@ -204,7 +256,7 @@ func Build(d Dependencies) *Router {
 	}
 
 	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions)
-	admin.Use(middleware.JWTAuth(d.JWT))
+	admin.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
 		admin.Permission("user", "suspend").POST("/users/:id/suspend", userHandler.SuspendUser)
 		admin.Permission("user", "suspend").POST("/users/:id/activate", userHandler.ActivateUser)
@@ -225,9 +277,18 @@ func Build(d Dependencies) *Router {
 		admin.PermissionCode("community.thread.take_down").Operation("http.community.richtext.take_down").POST("/richtext/articles/:id/admin/offline", d.RichText.AdminOffline)
 		admin.PermissionCode("community.thread.direct_restore").Operation("http.community.richtext.restore").POST("/richtext/articles/:id/admin/restore", d.RichText.AdminRestore)
 		admin.PermissionCode("community.thread.trash").Operation("http.community.richtext.trash").DELETE("/richtext/articles/:id/admin", d.RichText.AdminDelete)
-		admin.Permission("category", "write").POST("/categories", categoryHandler.Create)
-		admin.Permission("category", "write").PUT("/categories/:id", categoryHandler.Update)
-		admin.Permission("category", "delete").DELETE("/categories/:id", categoryHandler.Delete)
+		admin.Permission("category", "read").Operation("http.community.category.list").GET("/admin/categories", categoryHandler.ListAdmin)
+		admin.Permission("category", "read").Operation("http.community.category.tree").GET("/admin/categories/tree", categoryHandler.ListAdminTree)
+		admin.Permission("category", "read").Operation("http.community.category.get").GET("/admin/categories/:id", categoryHandler.GetAdmin)
+		admin.Permission("category", "read").Operation("http.community.category.thread-types").GET("/admin/categories/:id/thread-types", categoryHandler.ListThreadTypePolicies)
+		admin.PermissionCode("community.category.create").Operation("http.community.category.create").POST("/categories", categoryHandler.Create)
+		admin.PermissionCode("community.category.update").Operation("http.community.category.update").PUT("/categories/:id", categoryHandler.Update)
+		admin.PermissionCode("community.category.configure_thread_types").Operation("http.community.category.configure_thread_types").PUT("/categories/:id/thread-types", categoryHandler.UpdateThreadTypePolicies)
+		admin.PermissionCode("community.category.move").Operation("http.community.category.move").PUT("/categories/:id/parent", categoryHandler.Move)
+		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive-impact").GET("/categories/:id/archive-impact", categoryHandler.ArchiveImpact)
+		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive").POST("/categories/:id/archive", categoryHandler.Archive)
+		admin.PermissionCode("community.category.restore").Operation("http.community.category.restore").POST("/categories/:id/restore", categoryHandler.Restore)
+		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive-legacy").DELETE("/categories/:id", categoryHandler.Delete)
 		admin.Permission("plugin", "read").GET("/plugins", d.Plugin.ListPlugins)
 		admin.Permission("plugin", "read").GET("/plugins/:name", d.Plugin.GetPlugin)
 		admin.Permission("plugin", "read").GET("/plugins/:name/logs", d.Plugin.ListPluginLogs)
@@ -290,6 +351,12 @@ func Build(d Dependencies) *Router {
 		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_runs").GET("/platform/reliability/retention-runs", d.Reliability.ListRetentionRuns)
 		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_preview_create").POST("/platform/reliability/retention-runs/preview", d.Reliability.StartRetentionPreview)
 		admin.PermissionCode("platform.reliability.replay").Operation("http.platform.reliability.replay").POST("/platform/reliability/events/:id/replay", d.Reliability.Replay)
+		admin.PermissionCode("platform.email_delivery.read").Operation("http.core.email_delivery.status").GET("/platform/email-delivery/status", d.EmailDelivery.Status)
+		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.list").GET("/identity/recovery-cases", userHandler.ListAdminRecoveryCases)
+		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.create").POST("/identity/recovery-cases", userHandler.CreateAdminRecoveryCase)
+		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.cancel").POST("/identity/recovery-cases/:id/cancel", userHandler.CancelAdminRecoveryCase)
+		admin.PermissionCode("identity.session.read").Operation("http.identity.session.admin_list").GET("/identity/users/:id/sessions", userHandler.ListAdminUserSessions)
+		admin.PermissionCode("identity.session.revoke").Operation("http.identity.session.admin_revoke_all").POST("/identity/users/:id/sessions/revoke-all", userHandler.RevokeAdminUserSessions)
 		admin.Permission("homepage", "configure").POST("/home/style-packs/validate", d.Homepage.ValidateStylePack)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example", d.Homepage.StylePackExample)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example.zip", d.Homepage.StylePackExampleZip)
