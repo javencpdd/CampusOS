@@ -101,7 +101,24 @@ func (g *moduleContentGateway) CreateThread(ctx context.Context, authorID, autho
 	return delegate.threadSvc.CreateThreadWithOptions(ctx, authorID, authorName, request, service.CreateThreadOptions{
 		Status:        options.Status,
 		ContentFormat: options.ContentFormat,
+		ThreadType:    options.ThreadType,
+		CommandCode:   options.CommandCode,
+		EventType:     options.EventType,
 	})
+}
+
+func (g *moduleContentGateway) CreateStructuredThread(ctx context.Context, authorID, authorName string, request domain.CreateThreadRequest, options communityport.ThreadCreateOptions, participant communityport.StructuredThreadParticipant) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	return delegate.threadSvc.CreateStructuredThreadWithOptions(ctx, authorID, authorName, request, service.CreateThreadOptions{
+		Status:        options.Status,
+		ContentFormat: options.ContentFormat,
+		ThreadType:    options.ThreadType,
+		CommandCode:   options.CommandCode,
+		EventType:     options.EventType,
+	}, participant)
 }
 
 func (g *moduleContentGateway) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
@@ -109,7 +126,8 @@ func (g *moduleContentGateway) GetThread(ctx context.Context, id string) (*domai
 	if err != nil {
 		return nil, err
 	}
-	return delegate.threads.GetByID(ctx, id)
+	thread, err := delegate.threads.GetByID(ctx, id)
+	return thread, normalizePublicContentError(err)
 }
 
 func (g *moduleContentGateway) SaveFeatureThread(ctx context.Context, thread *domain.Thread, actorID, action string) (*domain.Thread, error) {
@@ -197,7 +215,8 @@ func (g *moduleContentQuery) GetPublicThread(ctx context.Context, id string) (*d
 	if g == nil || g.module == nil || g.module.threadService == nil {
 		return nil, errors.New("community content query is unavailable")
 	}
-	return g.module.threadService.GetPublicThread(ctx, id)
+	thread, err := g.module.threadService.GetPublicThread(ctx, id)
+	return thread, normalizePublicContentError(err)
 }
 
 func (g *moduleContentQuery) ListAuthorThreads(ctx context.Context, authorID string, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
@@ -240,7 +259,8 @@ func (g *contentQuery) GetPublicThread(ctx context.Context, id string) (*domain.
 	if g == nil || g.threadSvc == nil {
 		return nil, errors.New("community content query is unavailable")
 	}
-	return g.threadSvc.GetPublicThread(ctx, id)
+	thread, err := g.threadSvc.GetPublicThread(ctx, id)
+	return thread, normalizePublicContentError(err)
 }
 
 func (g *contentQuery) ListAuthorThreads(ctx context.Context, authorID string, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
@@ -258,14 +278,35 @@ func (g *contentGateway) CreateThread(ctx context.Context, authorID, authorName 
 	if g == nil || g.threadSvc == nil {
 		return nil, errors.New("community content gateway is unavailable")
 	}
-	return g.threadSvc.CreateThreadWithOptions(ctx, authorID, authorName, request, service.CreateThreadOptions{Status: options.Status, ContentFormat: options.ContentFormat})
+	return g.threadSvc.CreateThreadWithOptions(ctx, authorID, authorName, request, service.CreateThreadOptions{
+		Status: options.Status, ContentFormat: options.ContentFormat, ThreadType: options.ThreadType,
+		CommandCode: options.CommandCode, EventType: options.EventType,
+	})
+}
+
+func (g *contentGateway) CreateStructuredThread(ctx context.Context, authorID, authorName string, request domain.CreateThreadRequest, options communityport.ThreadCreateOptions, participant communityport.StructuredThreadParticipant) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community content gateway is unavailable")
+	}
+	return g.threadSvc.CreateStructuredThreadWithOptions(ctx, authorID, authorName, request, service.CreateThreadOptions{
+		Status: options.Status, ContentFormat: options.ContentFormat, ThreadType: options.ThreadType,
+		CommandCode: options.CommandCode, EventType: options.EventType,
+	}, participant)
 }
 
 func (g *contentGateway) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
 	if g == nil || g.threads == nil {
 		return nil, errors.New("community content gateway is unavailable")
 	}
-	return g.threads.GetByID(ctx, id)
+	thread, err := g.threads.GetByID(ctx, id)
+	return thread, normalizePublicContentError(err)
+}
+
+func normalizePublicContentError(err error) error {
+	if errors.Is(err, repository.ErrThreadNotFound) {
+		return communityport.ErrThreadNotFound
+	}
+	return err
 }
 
 func (g *contentGateway) SaveFeatureThread(ctx context.Context, thread *domain.Thread, actorID, action string) (*domain.Thread, error) {

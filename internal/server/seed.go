@@ -2,11 +2,14 @@ package server
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,55 +22,61 @@ const (
 	defaultAdminRoleMapID = int64(1000000000000000003)
 )
 
-// SeedAdmin 确保默认管理员账号存在。
-// passwordHashEnabled=false 仅用于本地开发调试，会把默认管理员凭据保存为明文。
-func SeedAdmin(pool *pgxpool.Pool, passwordHashEnabled bool) error {
+// adminSeedOptions separates the local compatibility path from the deployment
+// bootstrap secret. It is intentionally process-only configuration: neither
+// value is persisted outside the password credential hash.
+type adminSeedOptions struct {
+	Environment                  string
+	PasswordHashEnabled          bool
+	BootstrapAdminSecret         string
+	AllowDevelopmentDefaultAdmin bool
+}
+
+func (o adminSeedOptions) developmentMode() bool {
+	return strings.EqualFold(strings.TrimSpace(o.Environment), "development")
+}
+
+func (o adminSeedOptions) credentialForBootstrap() (credential, source string, err error) {
+	secret := strings.TrimSpace(o.BootstrapAdminSecret)
+	if secret != "" {
+		credential, err = o.storedCredential(secret)
+		return credential, "configured bootstrap secret", err
+	}
+	if o.developmentMode() && o.AllowDevelopmentDefaultAdmin {
+		credential, err = o.storedCredential(defaultAdminPassword)
+		return credential, "development compatibility credential", err
+	}
+	return "", "", errors.New("bootstrap administrator needs AUTH_BOOTSTRAP_ADMIN_SECRET; the legacy default credential is disabled outside explicit development mode")
+}
+
+func (o adminSeedOptions) storedCredential(value string) (string, error) {
+	if !o.PasswordHashEnabled {
+		return value, nil
+	}
+	return auth.HashPassword(value)
+}
+
+// SeedAdmin ensures that a bootstrap administrator and the default board exist.
+// It never logs a password, secret, hash, or account recovery value. A changed
+// administrator credential is preserved even when a bootstrap secret is set.
+func SeedAdmin(pool *pgxpool.Pool, options adminSeedOptions) error {
+	if pool == nil {
+		return errors.New("database pool is required for administrator bootstrap")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := ensureDefaultCategory(ctx, pool); err != nil {
-		return err
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin administrator bootstrap: %w", err)
 	}
+	defer func() { _ = tx.Rollback(ctx) }()
 
-	credential := defaultAdminPassword
-	if passwordHashEnabled {
-		hashedPwd, err := auth.HashPassword(defaultAdminPassword)
-		if err != nil {
-			return err
-		}
-		credential = hashedPwd
-	}
-
-	_, err := pool.Exec(ctx, `
-		INSERT INTO users (id, username, nickname, email, avatar, bio, status, created_at, updated_at)
-		VALUES ($1, 'admin', '系统管理员', 'admin@campusos.local', '', 'CampusOS 系统管理员', 'active', NOW(), NOW())
-		ON CONFLICT (username) WHERE deleted_at IS NULL DO NOTHING`,
-		defaultAdminUserID)
+	userID, outcome, err := ensureAdminAccount(ctx, tx, options)
 	if err != nil {
 		return err
 	}
-
-	adminUserID := defaultAdminUserID
-	if err := pool.QueryRow(ctx,
-		`SELECT id FROM users WHERE username = 'admin' AND deleted_at IS NULL`,
-	).Scan(&adminUserID); err != nil {
-		return err
-	}
-
-	_, err = pool.Exec(ctx, `
-		INSERT INTO accounts (id, user_id, type, identifier, credential, verified, created_at, updated_at)
-		VALUES ($1, $2, 'email', 'admin@campusos.local', $3, TRUE, NOW(), NOW())
-		ON CONFLICT (type, identifier) WHERE deleted_at IS NULL DO NOTHING`,
-		defaultAdminAccountID, adminUserID, credential)
-	if err != nil {
-		return err
-	}
-
-	if err := syncDefaultAdminCredential(ctx, pool, credential, passwordHashEnabled); err != nil {
-		return err
-	}
-
-	_, err = pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_roles (id, user_id, role_id, scope_type, created_at)
 		SELECT $1, $2, 1, 'global', NOW()
 		WHERE NOT EXISTS (
@@ -80,47 +89,86 @@ func SeedAdmin(pool *pgxpool.Pool, passwordHashEnabled bool) error {
 			  AND deleted_at IS NULL
 		)
 		ON CONFLICT (id) DO NOTHING`,
-		defaultAdminRoleMapID, adminUserID)
-	if err != nil {
-		return err
+		defaultAdminRoleMapID, userID,
+	); err != nil {
+		return fmt.Errorf("ensure administrator role: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit administrator bootstrap: %w", err)
 	}
 
-	log.Printf("✅ 默认管理员账号已就绪")
-	log.Printf("   邮箱: %s", defaultAdminEmail)
-	log.Printf("   默认密码: %s", defaultAdminPassword)
-	log.Printf("   角色: admin")
+	if err := ensureDefaultCategory(ctx, pool); err != nil {
+		return err
+	}
+	log.Printf("bootstrap administrator ready (%s); credentials were not logged", outcome)
 	return nil
 }
 
-func syncDefaultAdminCredential(ctx context.Context, pool *pgxpool.Pool, desiredCredential string, passwordHashEnabled bool) error {
-	var credential string
-	err := pool.QueryRow(ctx, `
-		SELECT credential FROM accounts
-		WHERE type = 'email' AND identifier = $1 AND deleted_at IS NULL`,
-		defaultAdminEmail,
-	).Scan(&credential)
+func ensureAdminAccount(ctx context.Context, tx pgx.Tx, options adminSeedOptions) (int64, string, error) {
+	var accountUserID int64
+	var existingCredential string
+	err := tx.QueryRow(ctx, `
+		SELECT user_id, credential
+		FROM accounts
+		WHERE type = 'email' AND identifier = $1 AND deleted_at IS NULL
+		FOR UPDATE`, defaultAdminEmail,
+	).Scan(&accountUserID, &existingCredential)
+	if err == nil {
+		var username string
+		if err := tx.QueryRow(ctx, `SELECT username FROM users WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`, accountUserID).Scan(&username); err != nil {
+			return 0, "", fmt.Errorf("read bootstrap administrator user: %w", err)
+		}
+		if username != "admin" {
+			return 0, "", fmt.Errorf("bootstrap administrator email belongs to unexpected username %q", username)
+		}
+		if !isDefaultAdminCredential(existingCredential) {
+			return accountUserID, "existing non-default credential preserved", nil
+		}
+		if options.developmentMode() && options.AllowDevelopmentDefaultAdmin && strings.TrimSpace(options.BootstrapAdminSecret) == "" {
+			return accountUserID, "development compatibility credential remains active", nil
+		}
+		credential, source, err := options.credentialForBootstrap()
+		if err != nil {
+			return 0, "", err
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE accounts
+			SET credential = $1, verified = TRUE, updated_at = NOW()
+			WHERE type = 'email' AND identifier = $2 AND deleted_at IS NULL`,
+			credential, defaultAdminEmail,
+		); err != nil {
+			return 0, "", fmt.Errorf("rotate bootstrap administrator credential: %w", err)
+		}
+		return accountUserID, "legacy credential rotated using " + source, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, "", fmt.Errorf("read bootstrap administrator account: %w", err)
+	}
+
+	credential, source, err := options.credentialForBootstrap()
 	if err != nil {
-		return err
+		return 0, "", err
 	}
-
-	if !isDefaultAdminCredential(credential) {
-		return nil
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO users (id, username, nickname, email, avatar, bio, status, created_at, updated_at)
+		VALUES ($1, 'admin', '系统管理员', $2, '', 'CampusOS 系统管理员', 'active', NOW(), NOW())
+		ON CONFLICT (username) WHERE deleted_at IS NULL DO NOTHING`,
+		defaultAdminUserID, defaultAdminEmail,
+	); err != nil {
+		return 0, "", fmt.Errorf("create bootstrap administrator user: %w", err)
 	}
-
-	if passwordHashEnabled && auth.CheckPassword(defaultAdminPassword, credential) {
-		return nil
+	userID := defaultAdminUserID
+	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE username = 'admin' AND deleted_at IS NULL FOR UPDATE`).Scan(&userID); err != nil {
+		return 0, "", fmt.Errorf("read bootstrap administrator user: %w", err)
 	}
-	if !passwordHashEnabled && strings.TrimSpace(credential) == defaultAdminPassword {
-		return nil
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO accounts (id, user_id, type, identifier, credential, verified, created_at, updated_at)
+		VALUES ($1, $2, 'email', $3, $4, TRUE, NOW(), NOW())`,
+		defaultAdminAccountID, userID, defaultAdminEmail, credential,
+	); err != nil {
+		return 0, "", fmt.Errorf("create bootstrap administrator account: %w", err)
 	}
-
-	_, err = pool.Exec(ctx, `
-		UPDATE accounts
-		SET credential = $1, verified = TRUE, updated_at = NOW()
-		WHERE type = 'email' AND identifier = $2 AND deleted_at IS NULL`,
-		desiredCredential, defaultAdminEmail,
-	)
-	return err
+	return userID, "administrator created using " + source, nil
 }
 
 func isDefaultAdminCredential(credential string) bool {
@@ -138,9 +186,9 @@ func ensureDefaultCategory(ctx context.Context, pool *pgxpool.Pool) error {
 		ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING`,
 		int64(1000000000000000004))
 	if err != nil {
-		return err
+		return fmt.Errorf("ensure default category: %w", err)
 	}
 
-	log.Printf("✅ 默认版块已就绪")
+	log.Printf("default category ready")
 	return nil
 }

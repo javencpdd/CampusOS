@@ -185,7 +185,16 @@ const previewVisible = ref(false)
 const previewHtml = ref('')
 const coverInput = ref<HTMLInputElement | null>(null)
 const bodyImageInput = ref<HTMLInputElement | null>(null)
-const categories = ref<Array<{ id: string; name: string; default_tags?: string[] }>>([])
+const categories = ref<
+  Array<{
+    id: string
+    name: string
+    default_tags?: string[]
+    node_kind?: string
+    lifecycle_status?: string
+    is_closed?: boolean
+  }>
+>([])
 const plainDefaults = ref<string[]>([])
 const articleDefaults = ref<string[]>([])
 const articleDirty = ref(false)
@@ -245,7 +254,12 @@ const loadCategories = async () => {
   try {
     const res: any = await categoryApi.list()
     if (res.code === 0) {
-      categories.value = res.data || []
+      categories.value = (res.data || []).filter(
+        (category: any) =>
+          (category.node_kind || 'board') === 'board' &&
+          (category.lifecycle_status || 'active') === 'active' &&
+          !category.is_closed,
+      )
       if (!plainForm.category_id && categories.value.length > 0) plainForm.category_id = categories.value[0].id
       if (!articleForm.category_id && categories.value.length > 0) articleForm.category_id = categories.value[0].id
       applyPlainDefaultTags()

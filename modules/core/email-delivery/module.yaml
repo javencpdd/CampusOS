@@ -1,0 +1,11 @@
+schema: campusos.module/v1
+id: core.email-delivery
+name: email-delivery
+display_name: "Email Delivery"
+version: "0.12.0-dev"
+description: "Always-on SMTP/Fake provider boundary for durable identity challenge delivery."
+kind: core
+activation_mode: always-on
+default_enabled: true
+dependencies: [core.identity, core.reliability]
+implementation: internal/modules/core/emaildelivery

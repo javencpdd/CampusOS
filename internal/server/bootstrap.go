@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
+	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	"github.com/campusos/CampusOS/internal/modules/core/moderation"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
@@ -15,10 +17,12 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
+	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
+	"github.com/campusos/CampusOS/internal/modules/features/secondhand"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
@@ -79,7 +83,34 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
 	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore)
-	identityModule := identitycore.NewModule(identitycore.Config{JWT: s.newJWTManager(), PasswordHashEnabled: s.cfg.Auth.PasswordHashEnabled})
+	identityModule := identitycore.NewModule(identitycore.Config{
+		JWT:                   s.newJWTManager(),
+		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,
+		ChallengeActiveKeyID:  s.cfg.Auth.ChallengeActiveKeyID,
+		ChallengeHMACKeys:     s.cfg.Auth.ChallengeHMACKeys,
+		ChallengeIPHashSecret: s.cfg.Auth.ChallengeIPHashSecret,
+		SessionIPHashSecret:   s.cfg.Auth.SessionIPHashSecret,
+		RefreshBodyCompat:     s.cfg.Auth.RefreshBodyCompat,
+		CookieSecure:          s.cfg.Deployment.Environment == "production",
+	})
+	emailTimeout, err := time.ParseDuration(s.cfg.Email.SMTPTimeout)
+	if err != nil {
+		if pool != nil {
+			pool.Close()
+		}
+		return nil, fmt.Errorf("parse EMAIL_SMTP_TIMEOUT: %w", err)
+	}
+	emailDeliveryModule := emaildelivery.NewModule(emaildelivery.Config{
+		Environment:  s.cfg.Deployment.Environment,
+		Provider:     s.cfg.Email.Provider,
+		SMTPHost:     s.cfg.Email.SMTPHost,
+		SMTPPort:     s.cfg.Email.SMTPPort,
+		SMTPUsername: s.cfg.Email.SMTPUsername,
+		SMTPPassword: s.cfg.Email.SMTPPassword,
+		SMTPFrom:     s.cfg.Email.SMTPFrom,
+		SMTPTimeout:  emailTimeout,
+		SMTPStartTLS: s.cfg.Email.SMTPStartTLS,
+	})
 	communityModule := communitycore.NewModule()
 	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: 10 * 1024 * 1024})
 	appearanceModule := appearance.NewModule(appearance.ModuleConfig{FeatureRegistry: features.Registry})
@@ -103,6 +134,12 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-schedule") },
 	})
+	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
+		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(mutualaid.FeatureID) },
+	})
+	secondhandModule := secondhand.NewModule(secondhand.ModuleConfig{
+		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(secondhand.FeatureID) },
+	})
 	aiModule := ai.NewModule(s.cfg.AI)
 	webhookModule := webhook.NewModule(metricsCollector, webhook.Config{EgressPolicy: webhook.EgressPolicy{
 		AllowedHosts:        s.cfg.Webhook.AllowedHosts,
@@ -115,12 +152,15 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	moderationSettings := moderation.NewFeatureSettings(func() map[string]interface{} { return features.Registry().Config("moderation") })
 	moderationModule := moderation.NewModule(moderation.ModuleConfig{ConfigProvider: moderationSettings.Current})
 	s.identity = identityModule
+	s.emailDelivery = emailDeliveryModule
 	s.community = communityModule
 	s.moderation = moderationModule
 	s.storage = storageModule
 	s.space = spaceModule
 	s.richtext = richtextModule
 	s.schedule = scheduleModule
+	s.mutualAid = mutualAidModule
+	s.secondhand = secondhandModule
 	s.appearance = appearanceModule
 	s.ai = aiModule
 	s.webhook = webhookModule
@@ -134,6 +174,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: reliabilityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: features, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: emailDeliveryModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: moderationModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: storageModule, Kind: platformmodule.KindCore, Enabled: true},
@@ -141,6 +182,8 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: spaceModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: richtextModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: scheduleModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
+		{Module: mutualAidModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
+		{Module: secondhandModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: appearanceModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: aiModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: webhookModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
@@ -176,6 +219,12 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				if err := richtext.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
+				if err := mutualaid.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
+				if err := secondhand.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
 				if err := ai.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
@@ -203,6 +252,12 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				return err
 			}
 			if err := richtext.BindMemoryAdapter(app); err != nil {
+				return err
+			}
+			if err := mutualaid.BindMemoryAdapter(app); err != nil {
+				return err
+			}
+			if err := secondhand.BindMemoryAdapter(app); err != nil {
 				return err
 			}
 			if err := ai.BindMemoryAdapter(app); err != nil {

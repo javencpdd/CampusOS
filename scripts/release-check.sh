@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}"
+VERSION="$(go run ./cmd/campusosctl version)"
+
 cleanup() {
   rm -f examples/plugins/grpc-example/plugin
   rm -f examples/plugins/campus-welcome/plugin
@@ -22,6 +25,17 @@ make architecture-check
 make reliability-check
 make outbox-check
 make failure-injection-check
+make v12-failure-injection-check
+make identity-email-check
+make identity-challenge-check
+make identity-registration-check
+make identity-session-check
+make identity-recovery-check
+make email-delivery-check
+make category-hierarchy-check
+make structured-thread-check
+make mutual-aid-check
+make secondhand-check
 
 echo "==> data and generated file governance"
 make data-governance-check
@@ -79,4 +93,4 @@ if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   ./scripts/smoke/browser-smoke.sh
 fi
 
-echo "CampusOS v0.11 release check passed"
+echo "CampusOS ${VERSION} release check passed"

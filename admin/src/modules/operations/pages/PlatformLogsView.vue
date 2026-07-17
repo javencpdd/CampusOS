@@ -64,6 +64,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Delete, Refresh, VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { platformLogApi } from '@/modules/operations/api'
+import { getAdminAccessToken } from '@/modules/identity/session'
 
 interface LogSource {
   key: string
@@ -108,7 +109,7 @@ const loadSources = async () => {
 
 const startStream = async () => {
   stopStream()
-  const token = localStorage.getItem('admin_token')
+  const token = getAdminAccessToken()
   if (!token) {
     ElMessage.error('管理员登录已失效')
     return

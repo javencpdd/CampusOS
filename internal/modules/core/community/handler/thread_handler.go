@@ -131,6 +131,7 @@ func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilte
 		AuthorID:          c.Query("author_id"),
 		Status:            c.Query("status"),
 		ContentFormat:     c.Query("content_format"),
+		ThreadType:        domain.ThreadType(c.Query("thread_type")),
 		Keyword:           c.Query("keyword"),
 		Tag:               c.Query("tag"),
 		PublicationStatus: c.Query("publication_status"),

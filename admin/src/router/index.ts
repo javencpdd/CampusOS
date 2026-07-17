@@ -7,6 +7,7 @@ import { identityRoutes } from '../modules/identity/routes'
 import { integrationRoutes } from '../modules/integrations/routes'
 import { operationRoutes } from '../modules/operations/routes'
 import { pluginRoutes } from '../modules/plugins/routes'
+import { clearAdminSession, ensureAdminAccessToken, getAdminAccessToken, getAdminRoleNames } from '../modules/identity/session'
 
 const legacyRedirects = [
   '/admin', '/admin/users', '/admin/moderators', '/admin/threads', '/admin/categories', '/admin/docs', '/admin/architecture',
@@ -36,27 +37,19 @@ const router = createRouter({
   ],
 })
 
-export const adminAuthGuard: NavigationGuard = (to, _from, next) => {
-  const token = localStorage.getItem('admin_token')
-  const user = JSON.parse(localStorage.getItem('admin_user') || 'null')
-  if (to.meta.requiresAuth && !token) {
-    next({ path: '/login', query: { redirect: to.fullPath } })
-    return
+export const adminAuthGuard: NavigationGuard = async (to) => {
+  if (to.meta.requiresAuth && !(await ensureAdminAccessToken())) {
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if (to.path === '/login' && token) {
-    next({ path: '/' })
-    return
-  }
-  if (to.meta.adminOnly && user) {
-    const roles = user.roles?.map((item: { name?: string }) => item.name).filter(Boolean) || []
-    if (!roles.some((role: string) => role === 'admin' || role === 'super_admin')) {
-      localStorage.removeItem('admin_user')
-      localStorage.removeItem('admin_token')
-      next({ path: '/login', query: { redirect: to.fullPath } })
-      return
+  if (to.path === '/login' && getAdminAccessToken()) return { path: '/' }
+  if (to.meta.adminOnly) {
+    const roles = getAdminRoleNames()
+    if (!roles.some((role) => role === 'admin' || role === 'super_admin')) {
+      clearAdminSession()
+      return { path: '/login', query: { redirect: to.fullPath } }
     }
   }
-  next()
+  return true
 }
 
 router.beforeEach(adminAuthGuard)

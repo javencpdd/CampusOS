@@ -38,6 +38,7 @@
             <el-menu-item v-if="adminStore.isAdmin" index="/permissions"
               >角色与权限</el-menu-item
             >
+			<el-menu-item v-if="adminStore.isAdmin" index="/account-recovery">账号恢复</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="content">
             <template #title
@@ -151,6 +152,7 @@ const currentPageTitle = computed(() => {
     "/users": "用户管理",
     "/moderators": "版主管理",
     "/permissions": "角色与权限",
+	"/account-recovery": "账号恢复",
     "/threads": "帖子治理",
     "/categories": "版块管理",
     "/docs": "相关资料",

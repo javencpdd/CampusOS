@@ -1,0 +1,77 @@
+# v12 会话与 Token 安全流程
+
+> 阶段：A6 Session 与 Token 轮换  
+> 状态：已实施，等待阶段总体验收  
+> 权威 schema：[openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)
+
+## 1. 安全模型
+
+从 v0.12 起，登录不再签发可长期使用的 Refresh JWT。服务端创建一条 `sessions` 记录，只把
+256 位随机 Refresh Token 的 SHA-256 摘要写入数据库；浏览器持有的原始 Token 位于
+`HttpOnly` Cookie。短期 Access Token 是包含 `session_id`、`auth_version` 和 `typ=access`
+的 JWT。每次受保护请求都同时校验签名、Session 状态、用户状态和 `auth_version`。
+
+这意味着旧 JWT、没有 Session ID 的 JWT、Refresh 凭据和已撤销 Session 对应的 Access Token
+都不能作为 API 登录凭据。v12 上线会要求现有用户重新登录。
+
+## 2. 端点
+
+| 方法 | 路径 | 认证与 CSRF | 用途 |
+| --- | --- | --- | --- |
+| `POST` | `/auth/login` | 无 | 校验账号密码，创建 Session，设置 Refresh/CSRF Cookie，响应短期 Access Token。 |
+| `POST` | `/auth/refresh` | Refresh Cookie + `X-CSRF-Token` | 原子轮换 Refresh Token 并获得新的 Access Token。 |
+| `POST` | `/auth/logout` | Access JWT + `X-CSRF-Token` | 撤销当前 Session，清除 Cookie。 |
+| `POST` | `/auth/logout-all` | Access JWT + `X-CSRF-Token` | 增加 `auth_version` 并撤销账户全部 Session。 |
+| `GET` | `/auth/sessions` | Access JWT | 返回不含凭据的设备/时间/当前 Session 列表。 |
+| `DELETE` | `/auth/sessions/:id` | Access JWT + `X-CSRF-Token` | 撤销当前账户拥有的一个指定 Session。 |
+
+所有请求和响应仍使用 CampusOS 标准 `{ code, msg, data, request_id }` 包络。Refresh 失败、过期、
+不存在、已经轮换或被盗用后的重放都返回同样的 `401` 语义，避免向攻击者泄露 Session 状态。
+
+## 3. 浏览器客户端流程
+
+1. `POST /auth/login` 后，把响应中的 Access Token 只放在页面内存，不写入 `localStorage`、
+   `sessionStorage`、URL 或日志。
+2. 浏览器接收 `campusos_refresh`（`HttpOnly`、`SameSite=Lax`）和 `campusos_csrf` Cookie。
+3. 页面加载或 Access Token 过期时，读取可见的 CSRF Cookie，并向 `/auth/refresh` 发送同值的
+   `X-CSRF-Token`。浏览器自动附带 Refresh Cookie。
+4. 收到新的 Access Token 后替换内存值。任何 `401` 都清空内存身份并跳转登录，而不是重试旧
+   Refresh Token。
+5. 注销或设备管理写操作也必须带 CSRF Header。前端已经在 `web/` 和 `admin/` 的 API Client
+   中统一处理此规则。
+
+只有过渡配置 `AUTH_REFRESH_BODY_COMPAT=true` 时，`/auth/refresh` 才接受 JSON 中的
+`refresh_token`；该模式会记录兼容遥测，不能作为新客户端实现。默认关闭，且计划在兼容窗口后
+删除。
+
+## 4. 刷新轮换和重放处理
+
+一次正常 Refresh 在同一可靠命令中执行：锁定旧摘要、确认未撤销和未过期、创建新摘要 Session、
+标记旧 Session 为 `rotated`、记录审计/Outbox。旧 Token 再次出现说明可能泄露，系统会在提交后
+撤销整个 `token_family_id`，包括刚创建的 Token，并向请求方返回通用失败。数据库从不保存原始
+Refresh Token。
+
+`logout-all`、密码重置和邮箱绑定会原子增加用户的 `auth_version`。因此即使某个服务短暂缓存了
+Session，旧 Access JWT 的 Claim 版本也立即不再匹配。
+
+## 5. 部署配置与运维
+
+| 配置 | 说明 |
+| --- | --- |
+| `JWT_ACCESS_TTL` | Access JWT 生命周期，默认 15 分钟。 |
+| `JWT_REFRESH_TTL` | Refresh Session 生命周期，默认 30 天。 |
+| `AUTH_SESSION_IP_HASH_SECRET` | 用于 HMAC 化客户端 IP；生产环境必须设置且不得写入日志。 |
+| `AUTH_REFRESH_BODY_COMPAT` | 仅短期兼容旧 JSON Refresh 客户端，默认 `false`。 |
+| `APP_ENV` | 非 development 环境使用 Secure Cookie，并拒绝缺少 Session IP Hash Secret 的启动。 |
+
+执行 `make identity-session-check` 验证 Token 形状、Cookie/CSRF、轮换和 family revoke；执行
+`./scripts/test-v12-identity-session-migration.sh` 演练 `000030` 的 up/down/up。生产数据库只采用
+forward-fix，down migration 只用于隔离演练，因为原始 Refresh Token 不会也不能恢复。
+
+## 6. 禁止事项
+
+- 不得向 External Plugin、MCP、Agent 或日志暴露 Refresh Token、Session Repository 或 JWT Secret。
+- 不得以 Cookie 是否存在作为认证结论；业务 API 仍必须验证短期 Access JWT 和 Session。
+- 不得把任何 Token 放入本地存储、页面 URL、错误提示、Outbox payload 或管理端列表。
+- 不得把 v11 JWT 重新解释为 v12 Session；升级后需要重新登录。
+

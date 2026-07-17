@@ -8,13 +8,17 @@ import (
 
 // 预定义事件类型常量
 const (
-	EventUserCreated     = "user.created"
-	EventUserUpdated     = "user.updated"
-	EventThreadCreated   = "thread.created"
-	EventThreadUpdated   = "thread.updated"
-	EventThreadDeleted   = "thread.deleted"
-	EventPostCreated     = "post.created"
-	EventCategoryCreated = "category.created"
+	EventUserCreated      = "user.created"
+	EventUserUpdated      = "user.updated"
+	EventThreadCreated    = "thread.created"
+	EventThreadUpdated    = "thread.updated"
+	EventThreadDeleted    = "thread.deleted"
+	EventPostCreated      = "post.created"
+	EventCategoryCreated  = "category.created"
+	EventCategoryUpdated  = "category.updated"
+	EventCategoryMoved    = "category.moved"
+	EventCategoryArchived = "category.archived"
+	EventCategoryRestored = "category.restored"
 )
 
 // NewEvent 创建标准事件

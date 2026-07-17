@@ -15,6 +15,7 @@ type Config struct {
 	NATS       NATSConfig
 	JWT        JWTConfig
 	Auth       AuthConfig
+	Email      EmailConfig
 	Plugin     PluginConfig
 	Deployment DeploymentConfig
 	AI         AIConfig
@@ -54,7 +55,28 @@ type JWTConfig struct {
 }
 
 type AuthConfig struct {
-	PasswordHashEnabled bool
+	PasswordHashEnabled          bool
+	BootstrapAdminSecret         string
+	AllowDevelopmentDefaultAdmin bool
+	ChallengeActiveKeyID         string
+	ChallengeHMACKeys            map[string]string
+	ChallengeIPHashSecret        string
+	SessionIPHashSecret          string
+	RefreshBodyCompat            bool
+}
+
+// EmailConfig contains process-only email delivery settings. It is never
+// returned by an HTTP endpoint; the Admin surface exposes only provider health
+// and a redacted generic delivery error.
+type EmailConfig struct {
+	Provider     string
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPTimeout  string
+	SMTPStartTLS bool
 }
 
 type PluginConfig struct {
@@ -65,6 +87,7 @@ type PluginConfig struct {
 // writer because User Storage and the legacy plugin KV adapter are local.
 type DeploymentConfig struct {
 	InstanceMode string
+	Environment  string
 }
 
 type AIConfig struct {
@@ -120,18 +143,36 @@ func Load() *Config {
 		},
 		JWT: JWTConfig{
 			Secret:     get("JWT_SECRET", "campusos-dev-secret-key-change-in-production"),
-			AccessTTL:  get("JWT_ACCESS_TTL", "2h"),
+			AccessTTL:  get("JWT_ACCESS_TTL", "15m"),
 			RefreshTTL: get("JWT_REFRESH_TTL", "720h"),
 			Issuer:     get("JWT_ISSUER", "campusos"),
 		},
 		Auth: AuthConfig{
-			PasswordHashEnabled: getBool("AUTH_PASSWORD_HASH_ENABLED", true),
+			PasswordHashEnabled:          getBool("AUTH_PASSWORD_HASH_ENABLED", true),
+			BootstrapAdminSecret:         strings.TrimSpace(get("AUTH_BOOTSTRAP_ADMIN_SECRET", "")),
+			AllowDevelopmentDefaultAdmin: getBool("AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN", strings.EqualFold(strings.TrimSpace(get("CAMPUSOS_ENV", "development")), "development")),
+			ChallengeActiveKeyID:         strings.TrimSpace(get("AUTH_CHALLENGE_ACTIVE_KEY_ID", "development-v1")),
+			ChallengeHMACKeys:            parseKeyedSecrets(get("AUTH_CHALLENGE_HMAC_KEYS", "development-v1:campusos-development-challenge-key-change-before-production")),
+			ChallengeIPHashSecret:        strings.TrimSpace(get("AUTH_CHALLENGE_IP_HASH_SECRET", "campusos-development-ip-hash-key-change-before-production")),
+			SessionIPHashSecret:          strings.TrimSpace(get("AUTH_SESSION_IP_HASH_SECRET", "campusos-development-session-ip-hash-key-change-before-production")),
+			RefreshBodyCompat:            getBool("AUTH_REFRESH_BODY_COMPAT", false),
+		},
+		Email: EmailConfig{
+			Provider:     strings.ToLower(strings.TrimSpace(get("EMAIL_PROVIDER", "fake"))),
+			SMTPHost:     strings.TrimSpace(get("EMAIL_SMTP_HOST", "")),
+			SMTPPort:     getInt("EMAIL_SMTP_PORT", 587),
+			SMTPUsername: strings.TrimSpace(get("EMAIL_SMTP_USERNAME", "")),
+			SMTPPassword: get("EMAIL_SMTP_PASSWORD", ""),
+			SMTPFrom:     strings.TrimSpace(get("EMAIL_SMTP_FROM", "")),
+			SMTPTimeout:  strings.TrimSpace(get("EMAIL_SMTP_TIMEOUT", "10s")),
+			SMTPStartTLS: getBool("EMAIL_SMTP_STARTTLS", true),
 		},
 		Plugin: PluginConfig{
 			DataDir: get("PLUGIN_DATA_DIR", "data/plugin_data"),
 		},
 		Deployment: DeploymentConfig{
 			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),
+			Environment:  strings.ToLower(strings.TrimSpace(get("CAMPUSOS_ENV", "development"))),
 		},
 		AI: AIConfig{
 			Enabled:              get("AI_ENABLED", "false") == "true",
@@ -159,6 +200,27 @@ func splitCSV(value string) []string {
 		}
 	}
 	return items
+}
+
+// parseKeyedSecrets accepts key_id:secret pairs separated by commas. It is
+// intentionally local to config loading: callers receive a map but never a
+// serialized configuration endpoint. A malformed pair is ignored and is
+// rejected by deployment validation when it is selected as the active key.
+func parseKeyedSecrets(value string) map[string]string {
+	result := make(map[string]string)
+	for _, item := range strings.Split(value, ",") {
+		parts := strings.SplitN(strings.TrimSpace(item), ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		keyID := strings.TrimSpace(parts[0])
+		secret := strings.TrimSpace(parts[1])
+		if keyID == "" || secret == "" {
+			continue
+		}
+		result[keyID] = secret
+	}
+	return result
 }
 
 func (s *ServerConfig) Addr() string {

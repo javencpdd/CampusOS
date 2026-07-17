@@ -136,3 +136,63 @@ func TestLoadAuthPasswordHashEnabledDefaultsToTrue(t *testing.T) {
 		t.Fatalf("expected password hashing to be enabled by default")
 	}
 }
+
+func TestLoadBootstrapConfiguration(t *testing.T) {
+	t.Setenv("CAMPUSOS_ENV", "production")
+	t.Setenv("AUTH_BOOTSTRAP_ADMIN_SECRET", "bootstrap-secret")
+	t.Setenv("AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN", "false")
+
+	cfg := Load()
+	if cfg.Deployment.Environment != "production" {
+		t.Fatalf("environment=%q want production", cfg.Deployment.Environment)
+	}
+	if cfg.Auth.BootstrapAdminSecret != "bootstrap-secret" {
+		t.Fatalf("bootstrap secret was not loaded")
+	}
+	if cfg.Auth.AllowDevelopmentDefaultAdmin {
+		t.Fatal("development compatibility administrator should be disabled")
+	}
+}
+
+func TestLoadChallengeSecretRing(t *testing.T) {
+	t.Setenv("AUTH_CHALLENGE_ACTIVE_KEY_ID", "rotation-v2")
+	t.Setenv("AUTH_CHALLENGE_HMAC_KEYS", "retired-v1:old-secret,rotation-v2:new-secret")
+	t.Setenv("AUTH_CHALLENGE_IP_HASH_SECRET", "ip-hash-secret")
+	t.Setenv("AUTH_SESSION_IP_HASH_SECRET", "session-ip-hash-secret")
+	t.Setenv("AUTH_REFRESH_BODY_COMPAT", "true")
+
+	cfg := Load()
+	if cfg.Auth.ChallengeActiveKeyID != "rotation-v2" {
+		t.Fatalf("active challenge key=%q", cfg.Auth.ChallengeActiveKeyID)
+	}
+	if got := cfg.Auth.ChallengeHMACKeys["rotation-v2"]; got != "new-secret" {
+		t.Fatalf("active challenge secret=%q", got)
+	}
+	if got := cfg.Auth.ChallengeHMACKeys["retired-v1"]; got != "old-secret" {
+		t.Fatalf("retired challenge secret=%q", got)
+	}
+	if cfg.Auth.ChallengeIPHashSecret != "ip-hash-secret" {
+		t.Fatal("IP hash secret was not loaded")
+	}
+	if cfg.Auth.SessionIPHashSecret != "session-ip-hash-secret" || !cfg.Auth.RefreshBodyCompat {
+		t.Fatalf("session configuration was not loaded: %#v", cfg.Auth)
+	}
+}
+
+func TestLoadEmailDeliveryConfiguration(t *testing.T) {
+	t.Setenv("EMAIL_PROVIDER", "smtp")
+	t.Setenv("EMAIL_SMTP_HOST", "smtp.example.test")
+	t.Setenv("EMAIL_SMTP_PORT", "2525")
+	t.Setenv("EMAIL_SMTP_USERNAME", "mailer")
+	t.Setenv("EMAIL_SMTP_PASSWORD", "mail-secret")
+	t.Setenv("EMAIL_SMTP_FROM", "CampusOS <noreply@example.test>")
+	t.Setenv("EMAIL_SMTP_TIMEOUT", "12s")
+	t.Setenv("EMAIL_SMTP_STARTTLS", "false")
+
+	cfg := Load()
+	if cfg.Email.Provider != "smtp" || cfg.Email.SMTPHost != "smtp.example.test" || cfg.Email.SMTPPort != 2525 ||
+		cfg.Email.SMTPUsername != "mailer" || cfg.Email.SMTPPassword != "mail-secret" || cfg.Email.SMTPFrom != "CampusOS <noreply@example.test>" ||
+		cfg.Email.SMTPTimeout != "12s" || cfg.Email.SMTPStartTLS {
+		t.Fatalf("unexpected email configuration: %#v", cfg.Email)
+	}
+}

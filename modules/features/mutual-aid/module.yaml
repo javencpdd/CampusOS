@@ -1,0 +1,35 @@
+schema: campusos.module/v1
+id: feature.mutual-aid
+feature_id: mutual-aid
+name: mutual-aid
+display_name: "Campus Mutual Aid"
+version: "0.12.0"
+description: "Structured campus help, requests, offers, volunteering, and resource-sharing posts."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.community, core.feature-registry, core.reliability]
+implementation: internal/modules/features/mutualaid
+config: {}
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: module.mutual-aid.page.list
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: feature.mutual-aid
+      regions: [filters, list, status]
+  routes:
+    - id: module.mutual-aid.route.list
+      path: /mutual-aid
+      surface_id: module.mutual-aid.page.list
+      title: "校园互助"
+      requires_auth: false
+  navigation:
+    - id: module.mutual-aid.navigation.main
+      label: "校园互助"
+      route_id: module.mutual-aid.route.list
+      location: header
+      order: 35

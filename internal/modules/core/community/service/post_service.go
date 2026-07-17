@@ -14,10 +14,11 @@ import (
 )
 
 type PostService struct {
-	repo       repository.PostRepository
-	threadRepo repository.ThreadRepository
-	bus        eventbus.EventBus
-	cache      cache.Cache
+	repo         repository.PostRepository
+	threadRepo   repository.ThreadRepository
+	categoryRepo repository.CategoryRepository
+	bus          eventbus.EventBus
+	cache        cache.Cache
 }
 
 func NewPostService(repo repository.PostRepository, bus eventbus.EventBus) *PostService {
@@ -26,6 +27,10 @@ func NewPostService(repo repository.PostRepository, bus eventbus.EventBus) *Post
 
 func (s *PostService) SetThreadRepository(repo repository.ThreadRepository) {
 	s.threadRepo = repo
+}
+
+func (s *PostService) SetCategoryRepository(repo repository.CategoryRepository) {
+	s.categoryRepo = repo
 }
 
 func (s *PostService) SetCache(c cache.Cache) {
@@ -43,6 +48,11 @@ func (s *PostService) CreatePost(ctx context.Context, threadID, authorID, author
 		}
 		if thread.Status != domain.ThreadStatusPublished && thread.AuthorID != authorID {
 			return nil, repository.ErrThreadNotFound
+		}
+		if s.categoryRepo != nil {
+			if _, err := validatePostingCategory(ctx, s.categoryRepo, thread.CategoryID); err != nil {
+				return nil, fmt.Errorf("validate posting category: %w", err)
+			}
 		}
 	}
 

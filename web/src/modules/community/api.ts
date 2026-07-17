@@ -6,6 +6,7 @@ export const threadApi = {
     page_size?: number
     category_id?: string
     content_format?: string
+    thread_type?: 'discussion' | 'article' | 'mutual_aid' | 'secondhand'
     keyword?: string
   }) => api.get('/threads', { params }),
   get: (id: string) => api.get(`/threads/${id}`),
@@ -43,4 +44,6 @@ export const moderationApi = {
 
 export const categoryApi = {
   list: () => api.get('/categories'),
+  tree: () => api.get('/categories/tree'),
+  threadTypes: (id: string) => api.get(`/categories/${id}/thread-types`),
 }

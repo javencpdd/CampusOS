@@ -2,7 +2,10 @@ import api from '../../shared/api/client'
 
 export const authApi = {
   login: (data: { email: string; password: string }) => api.post('/auth/login', data),
+  refresh: () => api.post('/auth/refresh'),
+  logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
+  roles: (userID: string) => api.get(`/users/${userID}/roles`),
 }
 
 export const userApi = {
@@ -30,4 +33,12 @@ export const moderationApi = {
   get: (userId: string) => api.get(`/moderation/admin/moderators/${userId}`),
   update: (userId: string, categoryIds: string[]) => api.put(`/moderation/admin/moderators/${userId}`, { category_ids: categoryIds }),
   status: () => api.get('/moderation/status'),
+}
+
+export const identityRecoveryApi = {
+  cases: (limit = 100) => api.get('/identity/recovery-cases', { params: { limit } }),
+  createCase: (data: { user_id: string; email: string; proof_reference: string }) => api.post('/identity/recovery-cases', data),
+  cancelCase: (id: string) => api.post(`/identity/recovery-cases/${encodeURIComponent(id)}/cancel`),
+  sessions: (userId: string) => api.get(`/identity/users/${encodeURIComponent(userId)}/sessions`),
+  revokeAllSessions: (userId: string) => api.post(`/identity/users/${encodeURIComponent(userId)}/sessions/revoke-all`),
 }

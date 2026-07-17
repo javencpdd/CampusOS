@@ -11,47 +11,63 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
-	"userHandler.Register":                  {RequestSchema: "RegisterRequest", ResponseSchema: "User", SuccessStatus: "201"},
-	"userHandler.Login":                     {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse"},
-	"userHandler.UpdateUser":                {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
-	"userHandler.ListUsers":                 {ResponseSchema: "UserListData", Paginated: true},
-	"userHandler.GetUser":                   {ResponseSchema: "PublicUser"},
-	"userHandler.GetMe":                     {ResponseSchema: "User"},
-	"threadHandler.CreateThread":            {RequestSchema: "CreateThreadRequest", ResponseSchema: "Thread", SuccessStatus: "201"},
-	"threadHandler.UpdateThread":            {RequestSchema: "UpdateThreadRequest", ResponseSchema: "Thread"},
-	"threadHandler.ListThreads":             {ResponseSchema: "ThreadListData", Paginated: true},
-	"threadHandler.AdminListThreads":        {ResponseSchema: "ThreadListData", Paginated: true},
-	"threadHandler.GetThread":               {ResponseSchema: "Thread"},
-	"threadHandler.GetThreadForCurrentUser": {ResponseSchema: "Thread"},
-	"postHandler.CreatePost":                {RequestSchema: "CreatePostRequest", ResponseSchema: "Post", SuccessStatus: "201"},
-	"postHandler.UpdatePost":                {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
-	"postHandler.ListPosts":                 {ResponseSchema: "PostListData", Paginated: true},
-	"postHandler.ListPostsForCurrentUser":   {ResponseSchema: "PostListData", Paginated: true},
-	"categoryHandler.Create":                {RequestSchema: "CreateCategoryRequest", ResponseSchema: "Category", SuccessStatus: "201"},
-	"categoryHandler.Update":                {RequestSchema: "UpdateCategoryRequest", ResponseSchema: "Category"},
-	"categoryHandler.Get":                   {ResponseSchema: "Category"},
-	"spaceHandler.UpdateMe":                 {RequestSchema: "UpsertSpaceRequest", ResponseSchema: "Space"},
-	"spaceHandler.ListContentsByUserID":     {Paginated: true},
-	"spaceHandler.ListContentsByUsername":   {Paginated: true},
-	"scheduleHandler.ActivateTerm":          {RequestSchema: "ActivateTermRequest"},
-	"scheduleHandler.SaveMe":                {RequestSchema: "ScheduleUpsertRequest"},
-	"richTextHandler.CreateDraft":           {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle", SuccessStatus: "201"},
-	"richTextHandler.UpdateDraft":           {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle"},
-	"richTextHandler.Preview":               {RequestSchema: "RichtextSaveRequest"},
-	"roleHandler.AssignRole":                {RequestSchema: "RoleAssignmentRequest"},
-	"roleHandler.RevokeRole":                {RequestSchema: "RoleRevokeRequest"},
-	"moderationHandler.SetModerator":        {RequestSchema: "ModeratorAssignmentRequest"},
-	"pluginHandler.RollbackVersionSnapshot": {RequestSchema: "PluginRollbackRequest"},
-	"pluginHandler.UpdatePluginConfig":      {RequestSchema: "GenericObject"},
-	"webhookHandler.CreateEndpoint":         {RequestSchema: "GenericObject"},
-	"mcpHandler.CallTool":                   {RequestSchema: "GenericObject"},
-	"mcpHandler.UpdateSettings":             {RequestSchema: "GenericObject"},
-	"messageHandler.ReceiveLocal":           {RequestSchema: "GenericObject"},
-	"messageHandler.CreateBinding":          {RequestSchema: "GenericObject"},
-	"spaceHandler.ApplySourceStylePack":     {RequestSchema: "StylePackSourceRequest"},
-	"homepageHandler.ApplySourceStylePack":  {RequestSchema: "StylePackSourceRequest"},
-	"spaceHandler.ExportStylePackage":       {RequestSchema: "StyleExportRequest", RequestOptional: true},
-	"spaceHandler.DisableSpace":             {RequestSchema: "DisableSpaceRequest", RequestOptional: true},
+	"userHandler.RequestRegistrationChallenge": {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt"},
+	"userHandler.VerifyRegistrationChallenge":  {RequestSchema: "RegistrationChallengeVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.Register":                     {RequestSchema: "RegisterRequest", ResponseSchema: "User", SuccessStatus: "201"},
+	"userHandler.Login":                        {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse"},
+	"userHandler.Refresh":                      {RequestSchema: "RefreshRequest", ResponseSchema: "RefreshResponse", RequestOptional: true},
+	"userHandler.ListSessions":                 {ResponseSchema: "SessionListResponse"},
+	"userHandler.RequestPasswordReset":         {RequestSchema: "PasswordResetChallengeRequest", ResponseSchema: "PasswordResetChallengeResponse"},
+	"userHandler.VerifyPasswordReset":          {RequestSchema: "PasswordResetVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.CompletePasswordReset":        {RequestSchema: "PasswordResetCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.RequestEmailBinding":          {RequestSchema: "EmailBindingChallengeRequest", ResponseSchema: "ChallengeReceipt"},
+	"userHandler.VerifyEmailBinding":           {RequestSchema: "EmailBindingVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.CompleteEmailBinding":         {RequestSchema: "EmailBindingCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.CompleteAdminRecovery":        {RequestSchema: "RecoveryCaseCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.ListAdminRecoveryCases":       {ResponseSchema: "RecoveryCaseListResponse"},
+	"userHandler.CreateAdminRecoveryCase":      {RequestSchema: "AdminRecoveryCaseCreateRequest", ResponseSchema: "RecoveryCase", SuccessStatus: "201"},
+	"userHandler.ListAdminUserSessions":        {ResponseSchema: "SessionListResponse"},
+	"userHandler.UpdateUser":                   {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
+	"userHandler.ListUsers":                    {ResponseSchema: "UserListData", Paginated: true},
+	"userHandler.GetUser":                      {ResponseSchema: "PublicUser"},
+	"userHandler.GetMe":                        {ResponseSchema: "User"},
+	"threadHandler.CreateThread":               {RequestSchema: "CreateThreadRequest", ResponseSchema: "Thread", SuccessStatus: "201"},
+	"threadHandler.UpdateThread":               {RequestSchema: "UpdateThreadRequest", ResponseSchema: "Thread"},
+	"threadHandler.ListThreads":                {ResponseSchema: "ThreadListData", Paginated: true},
+	"threadHandler.AdminListThreads":           {ResponseSchema: "ThreadListData", Paginated: true},
+	"threadHandler.GetThread":                  {ResponseSchema: "Thread"},
+	"threadHandler.GetThreadForCurrentUser":    {ResponseSchema: "Thread"},
+	"postHandler.CreatePost":                   {RequestSchema: "CreatePostRequest", ResponseSchema: "Post", SuccessStatus: "201"},
+	"postHandler.UpdatePost":                   {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
+	"postHandler.ListPosts":                    {ResponseSchema: "PostListData", Paginated: true},
+	"postHandler.ListPostsForCurrentUser":      {ResponseSchema: "PostListData", Paginated: true},
+	"categoryHandler.Create":                   {RequestSchema: "CreateCategoryRequest", ResponseSchema: "Category", SuccessStatus: "201"},
+	"categoryHandler.Update":                   {RequestSchema: "UpdateCategoryRequest", ResponseSchema: "Category"},
+	"categoryHandler.Get":                      {ResponseSchema: "Category"},
+	"categoryHandler.ListThreadTypePolicies":   {ResponseSchema: "CategoryThreadTypePolicies"},
+	"categoryHandler.UpdateThreadTypePolicies": {RequestSchema: "UpdateCategoryThreadTypePolicyRequest", ResponseSchema: "CategoryThreadTypePolicyUpdate"},
+	"spaceHandler.UpdateMe":                    {RequestSchema: "UpsertSpaceRequest", ResponseSchema: "Space"},
+	"spaceHandler.ListContentsByUserID":        {Paginated: true},
+	"spaceHandler.ListContentsByUsername":      {Paginated: true},
+	"scheduleHandler.ActivateTerm":             {RequestSchema: "ActivateTermRequest"},
+	"scheduleHandler.SaveMe":                   {RequestSchema: "ScheduleUpsertRequest"},
+	"richTextHandler.CreateDraft":              {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle", SuccessStatus: "201"},
+	"richTextHandler.UpdateDraft":              {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle"},
+	"richTextHandler.Preview":                  {RequestSchema: "RichtextSaveRequest"},
+	"roleHandler.AssignRole":                   {RequestSchema: "RoleAssignmentRequest"},
+	"roleHandler.RevokeRole":                   {RequestSchema: "RoleRevokeRequest"},
+	"moderationHandler.SetModerator":           {RequestSchema: "ModeratorAssignmentRequest"},
+	"pluginHandler.RollbackVersionSnapshot":    {RequestSchema: "PluginRollbackRequest"},
+	"pluginHandler.UpdatePluginConfig":         {RequestSchema: "GenericObject"},
+	"webhookHandler.CreateEndpoint":            {RequestSchema: "GenericObject"},
+	"mcpHandler.CallTool":                      {RequestSchema: "GenericObject"},
+	"mcpHandler.UpdateSettings":                {RequestSchema: "GenericObject"},
+	"messageHandler.ReceiveLocal":              {RequestSchema: "GenericObject"},
+	"messageHandler.CreateBinding":             {RequestSchema: "GenericObject"},
+	"spaceHandler.ApplySourceStylePack":        {RequestSchema: "StylePackSourceRequest"},
+	"homepageHandler.ApplySourceStylePack":     {RequestSchema: "StylePackSourceRequest"},
+	"spaceHandler.ExportStylePackage":          {RequestSchema: "StyleExportRequest", RequestOptional: true},
+	"spaceHandler.DisableSpace":                {RequestSchema: "DisableSpaceRequest", RequestOptional: true},
 }
 
 var multipartHandlers = map[string]bool{
@@ -67,30 +83,35 @@ var multipartHandlers = map[string]bool{
 }
 
 var noBodyHandlers = map[string]bool{
-	"spaceHandler.RollbackStyle":        true,
-	"spaceHandler.RestoreDefaultStyle":  true,
-	"richTextHandler.Publish":           true,
-	"richTextHandler.Offline":           true,
-	"moderationHandler.Pin":             true,
-	"moderationHandler.Unpin":           true,
-	"moderationHandler.Lock":            true,
-	"moderationHandler.Unlock":          true,
-	"userHandler.SuspendUser":           true,
-	"userHandler.ActivateUser":          true,
-	"threadHandler.PinThread":           true,
-	"threadHandler.UnpinThread":         true,
-	"threadHandler.LockThread":          true,
-	"threadHandler.UnlockThread":        true,
-	"richTextHandler.AdminOffline":      true,
-	"richTextHandler.AdminRestore":      true,
-	"pluginHandler.EnablePlugin":        true,
-	"pluginHandler.DisablePlugin":       true,
-	"pluginHandler.ReloadUserPlugin":    true,
-	"spaceHandler.EnableSpace":          true,
-	"webhookHandler.TestEndpoint":       true,
-	"webhookHandler.EnableEndpoint":     true,
-	"webhookHandler.DisableEndpoint":    true,
-	"homepageHandler.RollbackStylePack": true,
+	"spaceHandler.RollbackStyle":          true,
+	"spaceHandler.RestoreDefaultStyle":    true,
+	"richTextHandler.Publish":             true,
+	"richTextHandler.Offline":             true,
+	"moderationHandler.Pin":               true,
+	"moderationHandler.Unpin":             true,
+	"moderationHandler.Lock":              true,
+	"moderationHandler.Unlock":            true,
+	"userHandler.SuspendUser":             true,
+	"userHandler.ActivateUser":            true,
+	"threadHandler.PinThread":             true,
+	"threadHandler.UnpinThread":           true,
+	"threadHandler.LockThread":            true,
+	"threadHandler.UnlockThread":          true,
+	"richTextHandler.AdminOffline":        true,
+	"richTextHandler.AdminRestore":        true,
+	"pluginHandler.EnablePlugin":          true,
+	"pluginHandler.DisablePlugin":         true,
+	"pluginHandler.ReloadUserPlugin":      true,
+	"spaceHandler.EnableSpace":            true,
+	"webhookHandler.TestEndpoint":         true,
+	"webhookHandler.EnableEndpoint":       true,
+	"webhookHandler.DisableEndpoint":      true,
+	"homepageHandler.RollbackStylePack":   true,
+	"userHandler.Logout":                  true,
+	"userHandler.LogoutAll":               true,
+	"userHandler.RevokeSession":           true,
+	"userHandler.CancelAdminRecoveryCase": true,
+	"userHandler.RevokeAdminUserSessions": true,
 }
 
 var noContentHandlers = map[string]bool{
@@ -136,6 +157,10 @@ func openAPIComponents() string {
       type: http
       scheme: bearer
       bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: campusos_refresh
   schemas:
     Envelope:
       type: object
@@ -199,13 +224,133 @@ func openAPIComponents() string {
         updated_at: { type: string, format: date-time }
     RegisterRequest:
       type: object
-      required: [username, nickname, email, password]
+      required: [username, nickname, email, password, challenge_id, ticket]
       properties:
         username: { type: string, minLength: 3, maxLength: 32 }
         nickname: { type: string, minLength: 1, maxLength: 64 }
         email: { type: string, format: email }
         password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 32, writeOnly: true }
       additionalProperties: false
+    RegistrationChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    RegistrationChallengeVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    ChallengeReceipt:
+      type: object
+      required: [challenge_id, purpose, expires_at]
+      properties:
+        challenge_id: { type: string }
+        purpose: { type: string, enum: [registration, email_binding, password_reset] }
+        expires_at: { type: string, format: date-time }
+    ChallengeTicket:
+      type: object
+      required: [challenge_id, purpose, ticket, expires_at]
+      properties:
+        challenge_id: { type: string }
+        purpose: { type: string, enum: [registration, email_binding, password_reset] }
+        ticket: { type: string, writeOnly: true }
+        expires_at: { type: string, format: date-time }
+    PasswordResetChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    PasswordResetChallengeResponse:
+      type: object
+      required: [accepted, challenge_id]
+      properties:
+        accepted: { type: boolean }
+        challenge_id: { type: string }
+    PasswordResetVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    PasswordResetCompleteRequest:
+      type: object
+      required: [email, challenge_id, ticket, password]
+      properties:
+        email: { type: string, format: email }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+        password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+      additionalProperties: false
+    EmailBindingChallengeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+      additionalProperties: false
+    EmailBindingVerifyRequest:
+      type: object
+      required: [challenge_id, code]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$', writeOnly: true }
+      additionalProperties: false
+    EmailBindingCompleteRequest:
+      type: object
+      required: [email, challenge_id, ticket]
+      properties:
+        email: { type: string, format: email }
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+      additionalProperties: false
+    RecoveryCaseCompleteRequest:
+      type: object
+      required: [challenge_id, ticket, password]
+      properties:
+        challenge_id: { type: string, minLength: 16, maxLength: 256 }
+        ticket: { type: string, minLength: 16, maxLength: 256, writeOnly: true }
+        password: { type: string, minLength: 6, maxLength: 64, writeOnly: true }
+      additionalProperties: false
+    RecoveryCompletionResponse:
+      type: object
+      required: [relogin_required]
+      properties:
+        reset: { type: boolean }
+        bound: { type: boolean }
+        relogin_required: { type: boolean }
+    AdminRecoveryCaseCreateRequest:
+      type: object
+      required: [user_id, email, proof_reference]
+      properties:
+        user_id: { type: string, pattern: '^[0-9]+$' }
+        email: { type: string, format: email }
+        proof_reference: { type: string, minLength: 3, maxLength: 160, writeOnly: true }
+      additionalProperties: false
+    RecoveryCase:
+      type: object
+      required: [id, user_id, target_email_masked, status, expires_at, created_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        target_email_masked: { type: string }
+        status: { type: string, enum: [pending, completed, cancelled, expired] }
+        expires_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+        cancelled_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    RecoveryCaseListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/RecoveryCase' } }
+        total: { type: integer, minimum: 0 }
     LoginRequest:
       type: object
       required: [email, password]
@@ -222,14 +367,44 @@ func openAPIComponents() string {
       additionalProperties: false
     LoginResponse:
       type: object
-      required: [user, roles, access_token, refresh_token, token_type, expires_in]
+      required: [user, roles, access_token, token_type, expires_in]
       properties:
         user: { $ref: '#/components/schemas/User' }
         roles: { type: array, items: { $ref: '#/components/schemas/Role' } }
         access_token: { type: string }
-        refresh_token: { type: string }
+        refresh_token: { type: string, deprecated: true, description: Present only when AUTH_REFRESH_BODY_COMPAT=true. }
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token: { type: string, writeOnly: true, deprecated: true }
+      additionalProperties: false
+    RefreshResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string, deprecated: true, description: Present only when AUTH_REFRESH_BODY_COMPAT=true. }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer }
+    Session:
+      type: object
+      required: [id, current, last_active_at, expires_at, created_at]
+      properties:
+        id: { type: string }
+        current: { type: boolean }
+        device_name: { type: string }
+        device_type: { type: string }
+        last_active_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    SessionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Session' } }
     Role:
       type: object
       required: [id, name]
@@ -242,6 +417,7 @@ func openAPIComponents() string {
       required: [id, title, content, author_id, category_id, status]
       properties:
         id: { type: string }
+        thread_type: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
         title: { type: string }
         content: { type: string }
         content_format: { type: string }
@@ -337,6 +513,37 @@ func openAPIComponents() string {
         sort_order: { type: integer }
         is_closed: { type: boolean }
       additionalProperties: false
+    CategoryThreadTypePolicy:
+      type: object
+      required: [category_id, thread_type, enabled]
+      properties:
+        category_id: { type: string }
+        thread_type: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
+        enabled: { type: boolean }
+        updated_at: { type: string, format: date-time }
+    CategoryThreadTypePolicies:
+      type: object
+      required: [category_id, items]
+      properties:
+        category_id: { type: string }
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryThreadTypePolicy' } }
+    UpdateCategoryThreadTypePolicyRequest:
+      type: object
+      required: [allowed_types, version]
+      properties:
+        allowed_types:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, enum: [discussion, article, mutual_aid, secondhand] }
+        version: { type: integer, minimum: 1 }
+      additionalProperties: false
+    CategoryThreadTypePolicyUpdate:
+      type: object
+      required: [category, items]
+      properties:
+        category: { $ref: '#/components/schemas/Category' }
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryThreadTypePolicy' } }
     UpsertSpaceRequest:
       type: object
       properties:

@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	log.Printf("CampusOS %s starting on %s", platformversion.Display, cfg.Server.Addr())
+	log.Printf("CampusOS %s starting on %s (environment=%s)", platformversion.Display, cfg.Server.Addr(), cfg.Deployment.Environment)
 	log.Printf("📖 API docs: http://%s/api/v1/health", cfg.Server.Addr())
 
 	srv := server.New(cfg)

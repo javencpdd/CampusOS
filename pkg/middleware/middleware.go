@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/campusos/CampusOS/pkg/response"
@@ -26,9 +28,18 @@ func TraceID() gin.HandlerFunc {
 // CORS 跨域资源共享
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := strings.TrimSpace(c.GetHeader("Origin"))
+		if isLocalDevelopmentOrigin(origin) {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Vary", "Origin")
+		} else if origin == "" {
+			// Same-origin API calls need no CORS response. Keep the legacy
+			// wildcard only for credential-free tools without an Origin header.
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Trace-ID")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-Trace-ID, X-CSRF-Token, X-Device-ID, X-Device-Name, X-Device-Type")
 		c.Header("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
@@ -37,6 +48,15 @@ func CORS() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func isLocalDevelopmentOrigin(value string) bool {
+	parsed, err := url.Parse(value)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 // Logger 请求日志

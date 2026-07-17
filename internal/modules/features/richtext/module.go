@@ -8,6 +8,7 @@ import (
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 )
 
 const ModuleID = "feature.controlled-richtext-article"
@@ -24,6 +25,7 @@ type ModuleConfig struct {
 // boundary, never by a Plugin Manager dependency inside the feature.
 type Module struct {
 	config    ModuleConfig
+	app       *platformmodule.AppContext
 	store     Store
 	community communityport.ContentGateway
 	storage   corestorage.Port
@@ -36,7 +38,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.user-storage", "core.feature-registry"}
+	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -67,15 +69,24 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
 	}
-	m.store, m.community, m.storage = store, community, storage
+	m.app, m.store, m.community, m.storage = app, store, community, storage
 	return nil
 }
 
 func (m *Module) Start(context.Context) error {
-	if m.store == nil || m.community == nil || m.storage == nil {
+	if m.app == nil || m.store == nil || m.community == nil || m.storage == nil {
 		return errors.New("richtext module is not registered")
 	}
+	reliabilityValue, ok := m.app.Lookup("platform.reliability.service")
+	if !ok {
+		return errors.New("reliability service port is unavailable")
+	}
+	reliable, ok := reliabilityValue.(*reliability.Service)
+	if !ok || reliable == nil {
+		return fmt.Errorf("reliability service port has incompatible type %T", reliabilityValue)
+	}
 	svc := NewService(m.store, m.community)
+	svc.SetReliability(reliable)
 	svc.SetEnabledChecker(m.enabled)
 	config := AssetStoreConfig{}
 	if m.config.AssetStoreConfig != nil {

@@ -41,6 +41,13 @@ export default defineConfig({
         items: [
           { text: '开发环境', link: '/deployment/development' },
           { text: '配置与端口', link: '/deployment/configuration' },
+          { text: '初始管理员安全', link: '/deployment/bootstrap-security' },
+          { text: '邮箱账号升级', link: '/deployment/identity-account-migration' },
+          { text: '验证码与 Ticket 安全', link: '/deployment/email-challenge-security' },
+          { text: '邮件投递与 SMTP', link: '/deployment/email-delivery' },
+          { text: '会话与 Token 安全', link: '/api/session-security' },
+          { text: '注册邮箱验证', link: '/api/registration' },
+	          { text: '账号恢复与邮箱绑定', link: '/api/account-recovery' },
           { text: '构建与发布', link: '/deployment/release' },
         ],
       },
@@ -48,6 +55,9 @@ export default defineConfig({
         text: 'HTTP API',
         items: [
           { text: '接口约定', link: '/api/overview' },
+          { text: '注册邮箱验证', link: '/api/registration' },
+          { text: '会话与 Token 安全', link: '/api/session-security' },
+	          { text: '账号恢复与邮箱绑定', link: '/api/account-recovery' },
           { text: '认证与社区', link: '/api/community' },
           { text: '版主管理', link: '/api/moderation' },
           { text: '当前契约与兼容', link: '/api/contracts' },

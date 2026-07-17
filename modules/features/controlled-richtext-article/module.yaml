@@ -8,7 +8,7 @@ description: "Draft, publish, sanitize, preview, asset, and template support for
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.community, core.user-storage, core.feature-registry]
+dependencies: [core.community, core.user-storage, core.feature-registry, core.reliability]
 implementation: internal/modules/features/richtext
 compatibility_aliases:
   - name: controlled-richtext-article

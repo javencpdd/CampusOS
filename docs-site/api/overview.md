@@ -92,7 +92,7 @@ Content-Type: application/json
 
 | 分组 | 常见路径 | 认证 |
 | --- | --- | --- |
-| 认证 | `/auth/register`、`/auth/login`、`/auth/me` | 注册登录公开，`me` 需要 JWT。 |
+| 认证 | `/auth/registration/*`、`/auth/register`、`/auth/login`、`/auth/me` | 注册 Challenge/校验/创建公开；`me` 需要 JWT。 |
 | 用户 | `/users/*` | 公开读取与受保护管理接口并存。 |
 | 社区 | `/categories`、`/threads`、`/posts` | 公开读取，写入需要 JWT。 |
 | 版主 | `/moderation/*` | JWT + 动作权限 + category scope。 |

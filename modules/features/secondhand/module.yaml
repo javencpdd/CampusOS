@@ -1,0 +1,35 @@
+schema: campusos.module/v1
+id: feature.secondhand
+feature_id: secondhand
+name: secondhand
+display_name: "Campus Secondhand"
+version: "0.12.0"
+description: "Structured campus secondhand listings with CNY price, condition, delivery method, and trade status."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.community, core.feature-registry, core.reliability]
+implementation: internal/modules/features/secondhand
+config: {}
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: module.secondhand.page.list
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: feature.secondhand
+      regions: [filters, list, status]
+  routes:
+    - id: module.secondhand.route.list
+      path: /secondhand
+      surface_id: module.secondhand.page.list
+      title: "校园二手"
+      requires_auth: false
+  navigation:
+    - id: module.secondhand.navigation.main
+      label: "校园二手"
+      route_id: module.secondhand.route.list
+      location: header
+      order: 36

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -27,9 +28,13 @@ func NewPgStore(pool *pgxpool.Pool) *PgStore {
 	return &PgStore{pool: pool}
 }
 
+func (s *PgStore) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, s.pool)
+}
+
 func (s *PgStore) CreateArticle(ctx context.Context, article *Article) error {
 	contentJSON := normalizeJSON(article.ContentJSON)
-	_, err := s.pool.Exec(ctx, `INSERT INTO richtext_article_contents (
+	_, err := s.db(ctx).Exec(ctx, `INSERT INTO richtext_article_contents (
 			id, thread_id, title, summary, cover_url, content_html, content_json, sanitized_html,
 			status, created_by, updated_by, published_at, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, NULLIF($11, '')::bigint, $12, $13, $14)`,
@@ -41,7 +46,7 @@ func (s *PgStore) CreateArticle(ctx context.Context, article *Article) error {
 
 func (s *PgStore) UpdateArticle(ctx context.Context, article *Article) error {
 	contentJSON := normalizeJSON(article.ContentJSON)
-	tag, err := s.pool.Exec(ctx, `UPDATE richtext_article_contents SET
+	tag, err := s.db(ctx).Exec(ctx, `UPDATE richtext_article_contents SET
 			title=$1,
 			summary=$2,
 			cover_url=$3,
@@ -66,7 +71,7 @@ func (s *PgStore) UpdateArticle(ctx context.Context, article *Article) error {
 }
 
 func (s *PgStore) GetArticleByThreadID(ctx context.Context, threadID string) (*Article, error) {
-	row := s.pool.QueryRow(ctx, `SELECT id, thread_id, title, summary, cover_url, content_html, content_json,
+	row := s.db(ctx).QueryRow(ctx, `SELECT id, thread_id, title, summary, cover_url, content_html, content_json,
 			sanitized_html, status, created_by, COALESCE(updated_by::text, ''), published_at, created_at, updated_at
 		FROM richtext_article_contents
 		WHERE thread_id=$1 AND deleted_at IS NULL`, threadID)
@@ -87,7 +92,7 @@ func (s *PgStore) GetArticleByThreadID(ctx context.Context, threadID string) (*A
 }
 
 func (s *PgStore) SaveAsset(ctx context.Context, asset *Asset) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO richtext_article_assets (
+	_, err := s.db(ctx).Exec(ctx, `INSERT INTO richtext_article_assets (
 			id, thread_id, article_content_id, uploader_id, file_url, file_name, file_size, mime_type, width, height, created_at
 		) VALUES ($1, NULLIF($2, '')::bigint, NULLIF($3, '')::bigint, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		asset.ID, asset.ThreadID, asset.ArticleContentID, asset.UploaderID, asset.FileURL,
@@ -96,7 +101,7 @@ func (s *PgStore) SaveAsset(ctx context.Context, asset *Asset) error {
 }
 
 func (s *PgStore) ListAssets(ctx context.Context, threadID string) ([]*Asset, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, COALESCE(thread_id::text, ''), COALESCE(article_content_id::text, ''),
+	rows, err := s.db(ctx).Query(ctx, `SELECT id, COALESCE(thread_id::text, ''), COALESCE(article_content_id::text, ''),
 			uploader_id, file_url, file_name, file_size, mime_type, width, height, created_at
 		FROM richtext_article_assets
 		WHERE thread_id=$1
@@ -124,11 +129,49 @@ type MemoryStore struct {
 	assets   map[string]*Asset
 }
 
+type memoryStoreSnapshot struct {
+	Articles map[string]*Article `json:"articles"`
+	Assets   map[string]*Asset   `json:"assets"`
+}
+
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		articles: make(map[string]*Article),
 		assets:   make(map[string]*Asset),
 	}
+}
+
+// Snapshot and Restore let the local profile exercise the same rollback
+// contract as PostgreSQL when a RichText command fails after a Thread write.
+func (s *MemoryStore) Snapshot() any {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	payload, err := json.Marshal(memoryStoreSnapshot{Articles: s.articles, Assets: s.assets})
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), payload...)
+}
+
+func (s *MemoryStore) Restore(value any) {
+	payload, ok := value.([]byte)
+	if !ok || len(payload) == 0 {
+		return
+	}
+	snapshot := memoryStoreSnapshot{}
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		return
+	}
+	if snapshot.Articles == nil {
+		snapshot.Articles = make(map[string]*Article)
+	}
+	if snapshot.Assets == nil {
+		snapshot.Assets = make(map[string]*Asset)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.articles = snapshot.Articles
+	s.assets = snapshot.Assets
 }
 
 func (s *MemoryStore) CreateArticle(_ context.Context, article *Article) error {
