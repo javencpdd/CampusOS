@@ -47,6 +47,7 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
 echo "==> database"
 ./scripts/migrate.sh up
 ./scripts/database-check.sh all
+make v12-migration-check
 python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 echo "==> plugin templates"

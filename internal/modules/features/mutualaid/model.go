@@ -49,6 +49,7 @@ var (
 	ErrInvalidInput      = errors.New("mutual aid request is invalid")
 	ErrVersionConflict   = errors.New("mutual aid detail version conflict")
 	ErrInvalidTransition = errors.New("mutual aid status transition is invalid")
+	ErrThreadNotEditable = errors.New("mutual aid thread is no longer editable")
 )
 
 type Detail struct {

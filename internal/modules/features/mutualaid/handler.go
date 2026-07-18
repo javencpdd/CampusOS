@@ -2,6 +2,7 @@ package mutualaid
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -150,9 +151,10 @@ func writeError(c *gin.Context, err error) {
 		response.Error(c, http.StatusForbidden, 20003, err.Error())
 	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidTransition):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
-	case errors.Is(err, ErrVersionConflict):
+	case errors.Is(err, ErrVersionConflict), errors.Is(err, ErrThreadNotEditable):
 		response.Error(c, http.StatusConflict, 40009, err.Error())
 	default:
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		log.Printf("mutual aid unexpected error: trace_id=%s err=%v", c.GetString("trace_id"), err)
+		response.Error(c, http.StatusInternalServerError, 10006, "internal server error")
 	}
 }
