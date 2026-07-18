@@ -98,10 +98,26 @@ func (s *PostgreSQLStore) Claim(ctx context.Context, owner string, limit int, le
 	if lease <= 0 {
 		lease = 30 * time.Second
 	}
-	rows, err := s.db(ctx).Query(ctx, `WITH candidates AS (
+	rows, err := s.db(ctx).Query(ctx, `WITH exhausted AS (
+		UPDATE platform_outbox AS outbox
+		SET status = 'dead', lease_owner = NULL, lease_until = NULL,
+			last_error = COALESCE(NULLIF(last_error, ''), $4),
+			dead_lettered_at = COALESCE(dead_lettered_at, NOW()), updated_at = NOW()
+		WHERE outbox.id IN (
+			SELECT id
+			FROM platform_outbox
+			WHERE attempts >= max_attempts
+			  AND (
+				status IN ('pending', 'retry')
+				OR (status = 'processing' AND (lease_until IS NULL OR lease_until < NOW()))
+			  )
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING outbox.id
+	), candidates AS (
 		SELECT id
 		FROM platform_outbox
-		WHERE (
+		WHERE attempts < max_attempts AND (
 				(status IN ('pending', 'retry') AND available_at <= NOW())
 				OR (status = 'processing' AND lease_until < NOW())
 		  )
@@ -120,7 +136,7 @@ func (s *PostgreSQLStore) Claim(ctx context.Context, owner string, limit int, le
 		outbox.payload, outbox.headers, outbox.status, COALESCE(outbox.idempotency_key, ''),
 		outbox.attempts, outbox.max_attempts, outbox.available_at, COALESCE(outbox.lease_owner, ''),
 		outbox.lease_until, outbox.lease_generation, COALESCE(outbox.last_error, ''),
-		outbox.dead_lettered_at, outbox.created_at, outbox.updated_at`, owner, limit, lease.String())
+		outbox.dead_lettered_at, outbox.created_at, outbox.updated_at`, owner, limit, lease.String(), maxAttemptsExhaustedMessage)
 	if err != nil {
 		return nil, fmt.Errorf("claim durable events: %w", err)
 	}
@@ -154,10 +170,10 @@ func (s *PostgreSQLStore) DeadLetter(ctx context.Context, id, owner string, gene
 
 func (s *PostgreSQLStore) finish(ctx context.Context, id, owner string, generation int64, status string, availableAt time.Time, message string) error {
 	query := `UPDATE platform_outbox
-	SET status = $4, lease_owner = NULL, lease_until = NULL,
-		available_at = CASE WHEN $4 = 'retry' THEN $5 ELSE available_at END,
-		last_error = NULLIF($6, ''),
-		dead_lettered_at = CASE WHEN $4 = 'dead' THEN NOW() ELSE dead_lettered_at END,
+	SET status = $4::varchar, lease_owner = NULL, lease_until = NULL,
+		available_at = CASE WHEN $4::varchar = 'retry' THEN $5::timestamp ELSE available_at END,
+		last_error = NULLIF($6::text, ''),
+		dead_lettered_at = CASE WHEN $4::varchar = 'dead' THEN NOW() ELSE dead_lettered_at END,
 		updated_at = NOW()
 	WHERE id = $1 AND status = 'processing' AND lease_owner = $2 AND lease_generation = $3`
 	tag, err := s.db(ctx).Exec(ctx, query, id, owner, generation, status, availableAt, message)
@@ -165,7 +181,7 @@ func (s *PostgreSQLStore) finish(ctx context.Context, id, owner string, generati
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("event %s lease is no longer owned by %s", id, owner)
+		return fmt.Errorf("%w: event %s is no longer owned by %s at generation %d", ErrLeaseLost, id, owner, generation)
 	}
 	return nil
 }

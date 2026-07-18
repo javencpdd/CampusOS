@@ -28,6 +28,7 @@
 | `POST` | `/api/v1/auth/recovery/complete` | `http.post.api.v1.auth.recovery.complete` | `core.identity` | `userHandler.CompleteAdminRecovery` | `none` | `-` | `none` | `public` | `identity-recovery-audit` |
 | `GET` | `/api/v1/threads` | `http.get.api.v1.threads` | `core.community` | `threadHandler.ListThreads` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/threads/:id` | `http.get.api.v1.threads.id` | `core.community` | `threadHandler.GetThread` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/content/assets/images/:user_id/:filename` | `http.get.api.v1.content.assets.images.user_id.filename` | `core.user-storage` | `userStorageHandler.ServeContentImage` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/mutual-aid/threads` | `http.get.api.v1.mutual_aid.threads` | `feature.mutual-aid` | `d.MutualAid` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/mutual-aid/threads/:id` | `http.get.api.v1.mutual_aid.threads.id` | `feature.mutual-aid` | `d.MutualAid` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/secondhand/threads` | `http.get.api.v1.secondhand.threads` | `feature.secondhand` | `d.Secondhand` | `none` | `-` | `none` | `public` | `request-log-read` |
@@ -83,6 +84,8 @@
 | `PUT` | `/api/v1/schedule/me` | `http.put.api.v1.schedule.me` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/schedule/me/import` | `http.post.api.v1.schedule.me.import` | `feature.personal-schedule` | `d.Schedule` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/richtext/articles` | `http.post.api.v1.richtext.articles` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/content/preview` | `http.post.api.v1.content.preview` | `core.community` | `threadHandler.PreviewContent` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/content/assets/images` | `http.post.api.v1.content.assets.images` | `core.user-storage` | `userStorageHandler.UploadContentImage` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/richtext/articles/:id/me` | `http.get.api.v1.richtext.articles.id.me` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
 | `PUT` | `/api/v1/richtext/articles/:id` | `http.put.api.v1.richtext.articles.id` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/richtext/preview` | `http.post.api.v1.richtext.preview` | `feature.controlled-richtext-article` | `d.RichText` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
@@ -160,15 +163,15 @@
 | `GET` | `/api/v1/admin/categories` | `http.community.category.list` | `core.community` | `categoryHandler.ListAdmin` | `jwt+permission` | `community.category.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/admin/categories/tree` | `http.community.category.tree` | `core.community` | `categoryHandler.ListAdminTree` | `jwt+permission` | `community.category.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/admin/categories/:id` | `http.community.category.get` | `core.community` | `categoryHandler.GetAdmin` | `jwt+permission` | `community.category.read` | `none` | `global` | `request-log-read` |
-| `GET` | `/api/v1/admin/categories/:id/thread-types` | `http.community.category.thread-types` | `core.community` | `categoryHandler.ListThreadTypePolicies` | `jwt+permission` | `community.category.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/admin/categories/:id/thread-types` | `http.community.category.thread_types` | `core.community` | `categoryHandler.ListThreadTypePolicies` | `jwt+permission` | `community.category.read` | `none` | `global` | `request-log-read` |
 | `POST` | `/api/v1/categories` | `http.community.category.create` | `core.community` | `categoryHandler.Create` | `jwt+permission` | `community.category.create` | `none` | `global` | `request-log` |
 | `PUT` | `/api/v1/categories/:id` | `http.community.category.update` | `core.community` | `categoryHandler.Update` | `jwt+permission` | `community.category.update` | `none` | `global` | `request-log` |
 | `PUT` | `/api/v1/categories/:id/thread-types` | `http.community.category.configure_thread_types` | `core.community` | `categoryHandler.UpdateThreadTypePolicies` | `jwt+permission` | `community.category.configure_thread_types` | `none` | `global` | `request-log` |
 | `PUT` | `/api/v1/categories/:id/parent` | `http.community.category.move` | `core.community` | `categoryHandler.Move` | `jwt+permission` | `community.category.move` | `none` | `global` | `request-log` |
-| `GET` | `/api/v1/categories/:id/archive-impact` | `http.community.category.archive-impact` | `core.community` | `categoryHandler.ArchiveImpact` | `jwt+permission` | `community.category.archive` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/categories/:id/archive-impact` | `http.community.category.archive_impact` | `core.community` | `categoryHandler.ArchiveImpact` | `jwt+permission` | `community.category.archive` | `none` | `global` | `request-log-read` |
 | `POST` | `/api/v1/categories/:id/archive` | `http.community.category.archive` | `core.community` | `categoryHandler.Archive` | `jwt+permission` | `community.category.archive` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/categories/:id/restore` | `http.community.category.restore` | `core.community` | `categoryHandler.Restore` | `jwt+permission` | `community.category.restore` | `none` | `global` | `request-log` |
-| `DELETE` | `/api/v1/categories/:id` | `http.community.category.archive-legacy` | `core.community` | `categoryHandler.Delete` | `jwt+permission` | `community.category.archive` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/categories/:id` | `http.community.category.archive_legacy` | `core.community` | `categoryHandler.Delete` | `jwt+permission` | `community.category.archive` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/plugins` | `http.get.api.v1.plugins` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/plugins/:name` | `http.get.api.v1.plugins.name` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/plugins/:name/logs` | `http.get.api.v1.plugins.name.logs` | `core.plugin-platform` | `d.Plugin` | `jwt+permission` | `plugin.plugin.read` | `none` | `global` | `request-log-read` |
@@ -232,6 +235,8 @@
 | `POST` | `/api/v1/platform/reliability/retention-runs/preview` | `http.platform.reliability.retention_preview_create` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.retention.preview` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/platform/reliability/events/:id/replay` | `http.platform.reliability.replay` | `core.reliability` | `d.Reliability` | `jwt+permission` | `platform.reliability.replay` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/platform/email-delivery/status` | `http.core.email_delivery.status` | `core.email-delivery` | `d.EmailDelivery` | `jwt+permission` | `platform.email_delivery.read` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/identity/challenge-policy` | `http.identity.challenge_policy.get` | `core.identity` | `challengePolicyHandler.Get` | `jwt+permission` | `identity.challenge_policy.read` | `none` | `global` | `identity-recovery-audit` |
+| `PUT` | `/api/v1/identity/challenge-policy` | `http.identity.challenge_policy.update` | `core.identity` | `challengePolicyHandler.Update` | `jwt+permission` | `identity.challenge_policy.update` | `none` | `global` | `identity-recovery-audit` |
 | `GET` | `/api/v1/identity/recovery-cases` | `http.identity.recovery.cases.list` | `core.identity` | `userHandler.ListAdminRecoveryCases` | `jwt+permission` | `identity.account.recovery.override` | `none` | `global` | `identity-recovery-audit` |
 | `POST` | `/api/v1/identity/recovery-cases` | `http.identity.recovery.cases.create` | `core.identity` | `userHandler.CreateAdminRecoveryCase` | `jwt+permission` | `identity.account.recovery.override` | `none` | `global` | `identity-recovery-audit` |
 | `POST` | `/api/v1/identity/recovery-cases/:id/cancel` | `http.identity.recovery.cases.cancel` | `core.identity` | `userHandler.CancelAdminRecoveryCase` | `jwt+permission` | `identity.account.recovery.override` | `none` | `global` | `identity-recovery-audit` |

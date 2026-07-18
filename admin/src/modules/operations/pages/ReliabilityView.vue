@@ -109,6 +109,21 @@
               >{{ row.attempts }}/{{ row.max_attempts }}</template
             >
           </el-table-column>
+          <el-table-column label="诊断" min-width="178">
+            <template #default="{ row }">
+              <div v-if="eventDiagnostics(row).length" class="diagnostic-list">
+                <el-tag
+                  v-for="diagnostic in eventDiagnostics(row)"
+                  :key="diagnostic.label"
+                  :type="diagnostic.type"
+                  size="small"
+                  effect="plain"
+                  >{{ diagnostic.label }}</el-tag
+                >
+              </div>
+              <span v-else class="muted-value">正常</span>
+            </template>
+          </el-table-column>
           <el-table-column
             prop="last_error"
             label="最近错误"
@@ -444,6 +459,45 @@
       title="消费尝试"
       width="min(860px, calc(100vw - 32px))"
     >
+      <el-descriptions
+        v-if="selectedEvent"
+        :column="3"
+        border
+        size="small"
+        class="event-diagnostics"
+      >
+        <el-descriptions-item label="状态">{{
+          eventStatusLabel(selectedEvent.status)
+        }}</el-descriptions-item>
+        <el-descriptions-item label="尝试次数"
+          >{{ selectedEvent.attempts }}/{{ selectedEvent.max_attempts }}</el-descriptions-item
+        >
+        <el-descriptions-item label="租约代次">{{
+          selectedEvent.lease_generation
+        }}</el-descriptions-item>
+        <el-descriptions-item label="租约持有者">{{
+          selectedEvent.lease_owner || "无"
+        }}</el-descriptions-item>
+        <el-descriptions-item label="租约到期">{{
+          formatDate(selectedEvent.lease_until)
+        }}</el-descriptions-item>
+        <el-descriptions-item label="下次可用">{{
+          formatDate(selectedEvent.available_at)
+        }}</el-descriptions-item>
+        <el-descriptions-item label="失败队列时间">{{
+          formatDate(selectedEvent.dead_lettered_at)
+        }}</el-descriptions-item>
+      </el-descriptions>
+      <div v-if="selectedEventWarnings.length" class="event-warning-list">
+        <el-alert
+          v-for="warning in selectedEventWarnings"
+          :key="warning"
+          :title="warning"
+          type="warning"
+          :closable="false"
+          show-icon
+        />
+      </div>
       <el-table
         v-loading="loadingAttempts"
         :data="attempts"
@@ -536,6 +590,7 @@ const attempts = ref<any[]>([]);
 const retentionRuns = ref<any[]>([]);
 const retentionPreview = ref<any | null>(null);
 const selectedEventID = ref("");
+const selectedEvent = ref<any | null>(null);
 const eventFilters = reactive({ status: "", type: "" });
 const retention = reactive({ target: "outbox", before: "" });
 const pageSize = 20;
@@ -570,6 +625,26 @@ const emailDeliveryLabel = computed(() => {
   const state = emailDelivery.state || "unknown";
   const stateLabel = state === "healthy" ? "正常" : state === "degraded" ? "降级" : "未知";
   return `${provider} · ${stateLabel}`;
+});
+const finalizationPending = computed(() => {
+  if (selectedEvent.value?.status !== "processing" || attempts.value.length === 0)
+    return false;
+  const latestAttempt = Math.max(...attempts.value.map((item) => Number(item.attempt) || 0));
+  const latest = attempts.value.filter(
+    (item) => Number(item.attempt) === latestAttempt,
+  );
+  const finalize = latest.find(
+    (item) => item.consumer_name === "system:outbox-finalize",
+  );
+  return finalize?.status === "failed";
+});
+const selectedEventWarnings = computed(() => {
+  const warnings: string[] = [];
+  if (selectedEvent.value?.attempts_overflow) warnings.push("尝试次数越界");
+  if (selectedEvent.value?.lease_expired) warnings.push("处理租约已过期");
+  if (finalizationPending.value)
+    warnings.push("已记录消费者均完成，事件尚未最终化");
+  return warnings;
 });
 
 const payload = (result: any) => result?.data ?? result;
@@ -694,6 +769,7 @@ const loadAll = async () => {
 
 const openAttempts = async (event: any) => {
   attemptDialog.value = true;
+  selectedEvent.value = event;
   selectedEventID.value = event.id;
   pages.attempts.page = 1;
   await loadAttempts();
@@ -789,6 +865,14 @@ const eventStatusType = (status: string) =>
     published: "success",
     dead: "danger",
   })[status] || "info") as any;
+const eventDiagnostics = (event: any) => {
+  const diagnostics: Array<{ label: string; type: "warning" | "danger" }> = [];
+  if (event?.attempts_overflow)
+    diagnostics.push({ label: "尝试次数越界", type: "danger" });
+  if (event?.lease_expired)
+    diagnostics.push({ label: "处理租约已过期", type: "warning" });
+  return diagnostics;
+};
 const operationStatusType = (status: string) =>
   (({
     succeeded: "success",
@@ -802,6 +886,7 @@ const attemptStatusType = (status: string) =>
     skipped: "info",
     retry: "warning",
     dead: "danger",
+    failed: "danger",
   })[status] || "primary") as any;
 
 onMounted(loadAll);
@@ -902,6 +987,23 @@ onMounted(loadAll);
 }
 .data-table {
   width: 100%;
+}
+.diagnostic-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.muted-value {
+  color: #64748b;
+  font-size: 13px;
+}
+.event-diagnostics {
+  margin-bottom: 12px;
+}
+.event-warning-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .two-column {
   display: grid;

@@ -25,9 +25,13 @@ Content-Type: application/json
 }
 ```
 
-服务会异步投递邮件。请求成功表示 Challenge 已可靠提交，不承诺邮件已经到达。每个邮箱每分钟
-只能申请一次、每天最多五次；同一 IP 每小时最多十次。达到限制时返回 `429` 和
+服务会异步投递邮件。请求成功表示 Challenge 已可靠提交，不承诺邮件已经到达。默认每个邮箱任意
+连续十分钟最多申请五次，同一 IP 任意连续六十分钟最多十次；管理员可在安全范围内热更新。达到限制时返回 `429` 和
 `identity.registration_verification_rate_limited`。
+
+非法 JSON 或邮箱格式返回 `400 request.invalid`，保留地址等语义拒绝返回
+`400 identity.registration_verification_invalid`；策略存储、事务或可靠队列暂不可用时返回可重试的
+`503 internal.error`。服务端只用 `request_id` 关联内部诊断，不把邮箱、验证码或数据库错误返回给浏览器。
 
 ## 2. 校验验证码
 

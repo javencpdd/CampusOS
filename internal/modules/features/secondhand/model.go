@@ -5,15 +5,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/community/contentbody"
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 )
 
 const (
-	ModuleID       = "feature.secondhand"
-	FeatureID      = "secondhand"
-	ContentFormat  = "markdown"
-	maxLocationLen = 160
-	currencyCNY    = "CNY"
+	ModuleID              = "feature.secondhand"
+	FeatureID             = "secondhand"
+	ContentFormat         = contentbody.FormatPlainText
+	ContentFormatSafeHTML = contentbody.FormatSafeHTML
+	maxLocationLen        = 160
+	currencyCNY           = "CNY"
 )
 
 type ItemCondition string
@@ -69,6 +71,7 @@ type Detail struct {
 type CreateRequest struct {
 	Title         string        `json:"title" binding:"required,min=1,max=255"`
 	Content       string        `json:"content" binding:"required,min=1"`
+	ContentFormat string        `json:"content_format,omitempty"`
 	CategoryID    string        `json:"category_id" binding:"required"`
 	Tags          []string      `json:"tags,omitempty"`
 	PriceMinor    int64         `json:"price_minor" binding:"min=0"`
@@ -83,6 +86,7 @@ type CreateRequest struct {
 type UpdateRequest struct {
 	Title         string        `json:"title" binding:"required,min=1,max=255"`
 	Content       string        `json:"content" binding:"required,min=1"`
+	ContentFormat string        `json:"content_format,omitempty"`
 	Tags          []string      `json:"tags,omitempty"`
 	PriceMinor    int64         `json:"price_minor" binding:"min=0"`
 	Currency      string        `json:"currency,omitempty"`

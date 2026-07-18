@@ -3,6 +3,7 @@ package secondhand
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	community "github.com/campusos/CampusOS/internal/modules/core/community"
@@ -94,6 +95,27 @@ func TestCreateAndStatusTransitionKeepsCommunityGovernanceIndependent(t *testing
 		Version:     updated.Detail.Version,
 	}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("expected invalid status transition, got %v", err)
+	}
+}
+
+func TestSecondhandAcceptsSanitizedImageTextAndRejectsUnknownFormat(t *testing.T) {
+	ctx := context.Background()
+	service, _, _ := newTestService(t, true)
+	request := validCreateRequest()
+	request.ContentFormat = ContentFormatSafeHTML
+	request.Content = `<p>台灯实拍</p><img src="/api/v1/content/assets/images/1001/a.png" onload="bad()"><iframe src="https://bad.test"></iframe>`
+	created, err := service.Create(ctx, "1001", "alice", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Thread.ContentFormat != ContentFormatSafeHTML || strings.Contains(created.Thread.Content, "onload") || strings.Contains(created.Thread.Content, "iframe") {
+		t.Fatalf("unsafe image-text content persisted: %#v", created.Thread)
+	}
+
+	request = validCreateRequest()
+	request.ContentFormat = "richtext_article"
+	if _, err := service.Create(ctx, "1001", "alice", request); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected unknown format rejection, got %v", err)
 	}
 }
 

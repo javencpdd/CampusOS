@@ -26,6 +26,15 @@ func TestCatalogSeparatesModulesFromPlugins(t *testing.T) {
 	if catalog.IsReservedExtensionName("campus-welcome") {
 		t.Fatal("external plugin name was reserved")
 	}
+	for _, id := range []string{"mutual-aid", "secondhand"} {
+		child, ok := catalog.Resolve(id)
+		if !ok || child.Descriptor.PresentationParent != "controlled-richtext-article" {
+			t.Fatalf("%s is not grouped under the image-text capability: %#v", id, child)
+		}
+		if child.Descriptor.Dependencies[1] != "core.user-storage" {
+			t.Fatalf("%s does not declare user storage: %#v", id, child.Descriptor.Dependencies)
+		}
+	}
 }
 
 func TestNormalizeConfigPreservesAppearanceSiblingSection(t *testing.T) {

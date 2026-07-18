@@ -1000,6 +1000,8 @@ func (r *MemoryRoleRepository) seedAuthorizationCatalog() {
 		{"identity.account.recovery.override", "user", "suspend", []string{"admin"}},
 		{"identity.session.read", "user", "read", []string{"admin"}},
 		{"identity.session.revoke", "user", "suspend", []string{"admin"}},
+		{"identity.challenge_policy.read", "metrics", "read", []string{"admin"}},
+		{"identity.challenge_policy.update", "role", "manage", []string{"admin"}},
 		{"platform.email_delivery.read", "metrics", "read", []string{"admin"}},
 		{"platform.reliability.read", "metrics", "read", []string{"admin"}},
 		{"platform.reliability.replay", "plugin", "configure", []string{"admin"}},

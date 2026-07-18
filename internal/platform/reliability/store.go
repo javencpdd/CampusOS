@@ -12,6 +12,9 @@ import (
 var ErrEventNotFound = errors.New("durable event not found")
 var ErrEventNotReplayable = errors.New("durable event is not in the dead-letter queue")
 var ErrOperationNotFound = errors.New("reliable operation not found")
+var ErrLeaseLost = errors.New("durable event lease lost")
+
+const maxAttemptsExhaustedMessage = "maximum attempts exhausted before terminal completion"
 
 // Store is the persistence port for the transactional outbox, command audit,
 // durable operations, and compatibility telemetry. Implementations must honor
@@ -120,11 +123,28 @@ func (s *MemoryStore) Claim(_ context.Context, owner string, limit int, lease ti
 	now := time.Now().UTC()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for id, event := range s.events {
+		if !eventExhaustedForClaim(event, now) {
+			continue
+		}
+		event.Status = StatusDead
+		event.LeaseOwner = ""
+		event.LeaseUntil = nil
+		if event.LastError == "" {
+			event.LastError = maxAttemptsExhaustedMessage
+		}
+		if event.DeadLetteredAt == nil {
+			deadLetteredAt := now
+			event.DeadLetteredAt = &deadLetteredAt
+		}
+		event.UpdatedAt = now
+		s.events[id] = event
+	}
 	items := make([]Event, 0, limit)
 	for _, event := range s.events {
 		ready := (event.Status == StatusPending || event.Status == StatusRetry) && !event.AvailableAt.After(now)
 		abandoned := event.Status == StatusProcessing && event.LeaseUntil != nil && event.LeaseUntil.Before(now)
-		if !ready && !abandoned {
+		if event.Attempts >= event.MaxAttempts || (!ready && !abandoned) {
 			continue
 		}
 		items = append(items, event)
@@ -176,7 +196,7 @@ func (s *MemoryStore) finish(id, owner string, generation int64, status string, 
 		return ErrEventNotFound
 	}
 	if event.Status != StatusProcessing || event.LeaseOwner != owner || event.LeaseGeneration != generation {
-		return fmt.Errorf("event %s lease is no longer owned by %s", id, owner)
+		return fmt.Errorf("%w: event %s is no longer owned by %s at generation %d", ErrLeaseLost, id, owner, generation)
 	}
 	now := time.Now().UTC()
 	event.Status = status
@@ -192,6 +212,16 @@ func (s *MemoryStore) finish(id, owner string, generation int64, status string, 
 	}
 	s.events[id] = event
 	return nil
+}
+
+func eventExhaustedForClaim(event Event, now time.Time) bool {
+	if event.Attempts < event.MaxAttempts {
+		return false
+	}
+	if event.Status == StatusPending || event.Status == StatusRetry {
+		return true
+	}
+	return event.Status == StatusProcessing && (event.LeaseUntil == nil || event.LeaseUntil.Before(now))
 }
 
 func (s *MemoryStore) List(_ context.Context, filter EventFilter, page PageRequest) ([]Event, int64, error) {

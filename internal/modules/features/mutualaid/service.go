@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/community/contentbody"
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -59,6 +60,10 @@ func (s *Service) Create(ctx context.Context, authorID, authorName string, req C
 	if err := validateCreateRequest(&req); err != nil {
 		return nil, err
 	}
+	content, err := normalizeContent(req.Content, req.ContentFormat)
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
 	detail := &Detail{
 		AidType:       normalizeAidType(req.AidType),
@@ -73,12 +78,12 @@ func (s *Service) Create(ctx context.Context, authorID, authorName string, req C
 	}
 	thread, err := s.community.CreateStructuredThread(ctx, authorID, authorName, domain.CreateThreadRequest{
 		Title:      strings.TrimSpace(req.Title),
-		Content:    strings.TrimSpace(req.Content),
+		Content:    content.Content,
 		CategoryID: strings.TrimSpace(req.CategoryID),
 		Tags:       req.Tags,
 	}, communityport.ThreadCreateOptions{
 		Status:        domain.ThreadStatusPublished,
-		ContentFormat: ContentFormat,
+		ContentFormat: content.Format,
 		ThreadType:    domain.ThreadTypeMutualAid,
 		CommandCode:   "feature.mutual_aid.create",
 		EventType:     "mutual_aid.created",
@@ -161,10 +166,18 @@ func (s *Service) Update(ctx context.Context, threadID, userID string, req Updat
 		if detail.Version != req.Version {
 			return ErrVersionConflict
 		}
+		requestedFormat := strings.TrimSpace(req.ContentFormat)
+		if requestedFormat == "" {
+			requestedFormat = thread.ContentFormat
+		}
+		content, commandErr := normalizeContent(req.Content, requestedFormat)
+		if commandErr != nil {
+			return commandErr
+		}
 		thread.Title = strings.TrimSpace(req.Title)
-		thread.Content = strings.TrimSpace(req.Content)
+		thread.Content = content.Content
 		thread.Tags = append([]string(nil), req.Tags...)
-		thread.ContentFormat = ContentFormat
+		thread.ContentFormat = content.Format
 		savedThread, commandErr := s.community.SaveFeatureThread(commandCtx, thread, userID, "mutual_aid_update")
 		if commandErr != nil {
 			return normalizeCommunityError(commandErr)
@@ -304,6 +317,14 @@ func validateCreateRequest(req *CreateRequest) error {
 		return fmt.Errorf("%w: title, content and category_id are required", ErrInvalidInput)
 	}
 	return validateDetailInput(req.AidType, req.Deadline, req.LocationScope, req.ContactMode)
+}
+
+func normalizeContent(value, format string) (contentbody.Normalized, error) {
+	content, err := contentbody.Normalize(value, format)
+	if err != nil {
+		return contentbody.Normalized{}, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	return content, nil
 }
 
 func validateUpdateRequest(req *UpdateRequest) error {

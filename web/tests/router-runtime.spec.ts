@@ -3,20 +3,30 @@ import type { Router } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RuntimeRegistry } from '../src/campus-ui/runtimeRegistry'
 import type { UIRuntimeManifest } from '../src/campus-ui/contracts'
+import { clearAccessToken, setAccessToken } from '../src/modules/identity/session'
 import { webAuthGuard } from '../src/router'
 
 describe('Web navigation and runtime gates', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    clearAccessToken()
+  })
 
-  it('redirects protected routes to login and preserves the target', () => {
-    const next = vi.fn()
-    webAuthGuard({ meta: { requiresAuth: true }, fullPath: '/plugins' } as never, {} as never, next)
-    expect(next).toHaveBeenCalledWith({ path: '/login', query: { redirect: '/plugins' } })
+  it('redirects protected routes to login and preserves the target', async () => {
+    const redirect = await webAuthGuard(
+      { meta: { requiresAuth: true }, fullPath: '/plugins' } as never,
+      {} as never,
+      vi.fn(),
+    )
+    expect(redirect).toEqual({ path: '/login', query: { redirect: '/plugins' } })
 
-    localStorage.setItem('access_token', 'test-token')
-    next.mockClear()
-    webAuthGuard({ meta: { requiresAuth: true }, fullPath: '/plugins' } as never, {} as never, next)
-    expect(next).toHaveBeenCalledWith()
+    setAccessToken('test-token')
+    const allowed = await webAuthGuard(
+      { meta: { requiresAuth: true }, fullPath: '/plugins' } as never,
+      {} as never,
+      vi.fn(),
+    )
+    expect(allowed).toBe(true)
   })
 
   it('removes routes and navigation when a plugin disappears from the runtime manifest', () => {

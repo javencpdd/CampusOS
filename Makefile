@@ -112,6 +112,8 @@ v12-migration-check:
 	./scripts/test-v12-structured-threads-migration.sh
 	./scripts/test-v12-mutual-aid-migration.sh
 	./scripts/test-v12-secondhand-migration.sh
+	./scripts/test-v12-identity-challenge-policy-migration.sh
+	./scripts/test-v12-reliability-worker-convergence-migration.sh
 
 database-check:
 	./scripts/database-check.sh all

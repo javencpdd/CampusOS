@@ -41,7 +41,7 @@
             <el-tag v-for="tag in item.thread.tags || []" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
           </div>
           <router-link class="aid-title" :to="`/mutual-aid/${item.thread.id}`">{{ item.thread.title }}</router-link>
-          <p>{{ item.thread.content }}</p>
+          <p>{{ contentExcerpt(item.thread.content, item.thread.content_format) }}</p>
           <div class="meta-row">
             <span>{{ item.thread.author_name || '校园用户' }}</span>
             <span>{{ formatTime(item.thread.created_at) }}</span>
@@ -70,6 +70,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/modules/identity/store'
 import { categoryApi } from '@/modules/community/api'
+import { contentExcerpt } from '@/modules/community/content'
 import { mutualAidApi, type AidStatus, type AidType, type MutualAidResult } from '../api'
 
 const userStore = useUserStore()

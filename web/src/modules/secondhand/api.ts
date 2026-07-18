@@ -26,6 +26,7 @@ export type SecondhandResult = {
 export type SecondhandRequest = {
   title: string
   content: string
+  content_format: 'markdown' | 'safe_html'
   category_id?: string
   tags?: string[]
   price_minor: number

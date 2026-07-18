@@ -11,6 +11,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	"github.com/campusos/CampusOS/internal/modules/core/moderation"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/homepage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/webtheme"
@@ -47,6 +48,7 @@ type Dependencies struct {
 	PluginManager   *plugin.Manager
 	Identity        identitycore.HTTPHandlers
 	Community       communitycore.HTTPHandlers
+	UserStorage     *corestorage.Handler
 	Space           *space.Handler
 	Plugin          *plugin.Handler
 	AI              *ai.Handler
@@ -73,10 +75,12 @@ func Build(d Dependencies) *Router {
 	routeRegistry := platformroute.NewRegistry()
 	userHandler := d.Identity.User
 	roleHandler := d.Identity.Role
+	challengePolicyHandler := d.Identity.ChallengePolicy
 	threadHandler := d.Community.Thread
 	categoryHandler := d.Community.Category
 	postHandler := d.Community.Post
 	eventHandler := d.Community.Event
+	userStorageHandler := d.UserStorage
 	runtimeHTTPHandler := plugin.NewRuntimeHTTPHandler(d.PluginManager, func(ctx context.Context, userID, resource, action string) (bool, error) {
 		return d.Permissions.Check(ctx, userID, resource, action)
 	}, d.Features)
@@ -138,6 +142,7 @@ func Build(d Dependencies) *Router {
 		public.POST("/auth/recovery/complete", userHandler.CompleteAdminRecovery)
 		public.GET("/threads", threadHandler.ListThreads)
 		public.GET("/threads/:id", threadHandler.GetThread)
+		public.GET("/content/assets/images/:user_id/:filename", userStorageHandler.ServeContentImage)
 		public.GET("/mutual-aid/threads", d.MutualAid.ListPublic)
 		public.GET("/mutual-aid/threads/:id", d.MutualAid.GetPublic)
 		public.GET("/secondhand/threads", d.Secondhand.ListPublic)
@@ -198,6 +203,8 @@ func Build(d Dependencies) *Router {
 		authenticated.PUT("/schedule/me", d.Schedule.SaveMe)
 		authenticated.POST("/schedule/me/import", d.Schedule.ImportMe)
 		authenticated.POST("/richtext/articles", d.RichText.CreateDraft)
+		authenticated.POST("/content/preview", threadHandler.PreviewContent)
+		authenticated.POST("/content/assets/images", userStorageHandler.UploadContentImage)
 		authenticated.GET("/richtext/articles/:id/me", d.RichText.GetMine)
 		authenticated.PUT("/richtext/articles/:id", d.RichText.UpdateDraft)
 		authenticated.POST("/richtext/preview", d.RichText.Preview)
@@ -280,15 +287,15 @@ func Build(d Dependencies) *Router {
 		admin.Permission("category", "read").Operation("http.community.category.list").GET("/admin/categories", categoryHandler.ListAdmin)
 		admin.Permission("category", "read").Operation("http.community.category.tree").GET("/admin/categories/tree", categoryHandler.ListAdminTree)
 		admin.Permission("category", "read").Operation("http.community.category.get").GET("/admin/categories/:id", categoryHandler.GetAdmin)
-		admin.Permission("category", "read").Operation("http.community.category.thread-types").GET("/admin/categories/:id/thread-types", categoryHandler.ListThreadTypePolicies)
+		admin.Permission("category", "read").Operation("http.community.category.thread_types").LegacyOperationAlias("http.community.category.thread-types").GET("/admin/categories/:id/thread-types", categoryHandler.ListThreadTypePolicies)
 		admin.PermissionCode("community.category.create").Operation("http.community.category.create").POST("/categories", categoryHandler.Create)
 		admin.PermissionCode("community.category.update").Operation("http.community.category.update").PUT("/categories/:id", categoryHandler.Update)
 		admin.PermissionCode("community.category.configure_thread_types").Operation("http.community.category.configure_thread_types").PUT("/categories/:id/thread-types", categoryHandler.UpdateThreadTypePolicies)
 		admin.PermissionCode("community.category.move").Operation("http.community.category.move").PUT("/categories/:id/parent", categoryHandler.Move)
-		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive-impact").GET("/categories/:id/archive-impact", categoryHandler.ArchiveImpact)
+		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive_impact").LegacyOperationAlias("http.community.category.archive-impact").GET("/categories/:id/archive-impact", categoryHandler.ArchiveImpact)
 		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive").POST("/categories/:id/archive", categoryHandler.Archive)
 		admin.PermissionCode("community.category.restore").Operation("http.community.category.restore").POST("/categories/:id/restore", categoryHandler.Restore)
-		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive-legacy").DELETE("/categories/:id", categoryHandler.Delete)
+		admin.PermissionCode("community.category.archive").Operation("http.community.category.archive_legacy").LegacyOperationAlias("http.community.category.archive-legacy").DELETE("/categories/:id", categoryHandler.Delete)
 		admin.Permission("plugin", "read").GET("/plugins", d.Plugin.ListPlugins)
 		admin.Permission("plugin", "read").GET("/plugins/:name", d.Plugin.GetPlugin)
 		admin.Permission("plugin", "read").GET("/plugins/:name/logs", d.Plugin.ListPluginLogs)
@@ -352,6 +359,8 @@ func Build(d Dependencies) *Router {
 		admin.PermissionCode("platform.retention.preview").Operation("http.platform.reliability.retention_preview_create").POST("/platform/reliability/retention-runs/preview", d.Reliability.StartRetentionPreview)
 		admin.PermissionCode("platform.reliability.replay").Operation("http.platform.reliability.replay").POST("/platform/reliability/events/:id/replay", d.Reliability.Replay)
 		admin.PermissionCode("platform.email_delivery.read").Operation("http.core.email_delivery.status").GET("/platform/email-delivery/status", d.EmailDelivery.Status)
+		admin.PermissionCode("identity.challenge_policy.read").Operation("http.identity.challenge_policy.get").GET("/identity/challenge-policy", challengePolicyHandler.Get)
+		admin.PermissionCode("identity.challenge_policy.update").Operation("http.identity.challenge_policy.update").PUT("/identity/challenge-policy", challengePolicyHandler.Update)
 		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.list").GET("/identity/recovery-cases", userHandler.ListAdminRecoveryCases)
 		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.create").POST("/identity/recovery-cases", userHandler.CreateAdminRecoveryCase)
 		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.cancel").POST("/identity/recovery-cases/:id/cancel", userHandler.CancelAdminRecoveryCase)

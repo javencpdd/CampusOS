@@ -3,6 +3,7 @@ export interface FeatureRow {
   label: string
   description: string
   representative: string
+  parentId?: string
   configSources: Array<{ name: string; label: string }>
   state?: Record<string, any>
 }
@@ -21,6 +22,22 @@ export const builtinFeatureDefinitions: FeatureRow[] = [
     description: '文章草稿、发布、清洗、资产和模板。',
     representative: 'controlled-richtext-article',
     configSources: [{ name: 'controlled-richtext-article', label: '文章配置' }],
+  },
+  {
+    id: 'mutual-aid',
+    label: '校园互助',
+    description: '复用安全图文正文和用户图片资产，保留独立的互助类型与状态。',
+    representative: 'mutual-aid',
+    parentId: 'controlled-richtext-article',
+    configSources: [],
+  },
+  {
+    id: 'secondhand',
+    label: '校园二手',
+    description: '复用安全图文正文和用户图片资产，保留独立的价格与交易状态。',
+    representative: 'secondhand',
+    parentId: 'controlled-richtext-article',
+    configSources: [],
   },
   {
     id: 'personal-schedule',
@@ -53,6 +70,7 @@ export const mapBuiltinFeatures = (items: any[]): FeatureRow[] => {
     const state = aliases.map((identifier) => byIdentifier.get(identifier)).find(Boolean)
     return {
       ...definition,
+      parentId: state?.presentation_parent || definition.parentId,
       configSources: (state?.config_sources || definition.configSources).map((source: any) => ({
         name: source.id || source.name,
         label: source.label,

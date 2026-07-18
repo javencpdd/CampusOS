@@ -26,7 +26,12 @@
     <section v-if="result" class="detail-grid">
       <article class="content-panel">
         <h3>物品说明</h3>
-        <p class="content">{{ thread.content }}</p>
+        <article
+          v-if="thread.content_format === 'safe_html'"
+          class="content content-rich"
+          v-html="thread.content"
+        ></article>
+        <p v-else class="content">{{ thread.content }}</p>
         <div v-if="thread.tags?.length" class="tag-row">
           <el-tag v-for="tag in thread.tags" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
         </div>
@@ -214,6 +219,23 @@ onMounted(load)
   white-space: pre-wrap;
   line-height: 1.75;
   color: var(--campus-text-color, #303133);
+}
+.content-rich {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.content-rich :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 16px auto;
+  border-radius: 6px;
+}
+.content-rich :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid var(--el-border-color);
+  background: var(--el-fill-color-light);
 }
 .content + .tag-row {
   margin-top: 16px;

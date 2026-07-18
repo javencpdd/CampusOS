@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000035</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000037</el-tag>
     </section>
 
     <el-alert
@@ -386,10 +386,19 @@ const databaseTables: DbTable[] = [
     name: "identity_challenge_rate_limits",
     title: "验证请求限流窗口",
     domain: "identity",
-    purpose: "按规范化邮箱或 IP 的 HMAC 摘要保存分钟、日和小时请求计数，跨进程保持一致。",
+    purpose: "按规范化邮箱或 IP 的 HMAC 摘要保存滑动窗口请求计数，跨进程保持一致。",
     fields: ["scope", "subject_digest", "window_started_at", "request_count", "updated_at"],
-    migration: "000029",
-    relationshipNote: "subject_digest 不是原始邮箱或 IP；与 Challenge 创建在同一事务内更新，没有业务外键。",
+    migration: "000029 + 000036",
+    relationshipNote: "subject_digest 不是原始邮箱或 IP；通过事务级锁与 Challenge 创建在同一事务内更新，没有业务外键。",
+  },
+  {
+    name: "identity_challenge_policies",
+    title: "验证码频率策略",
+    domain: "identity",
+    purpose: "保存不可关闭、可由管理员热更新的邮箱与 IP 滑动窗口和次数上限。",
+    fields: ["id", "email_window_minutes", "email_max_requests", "ip_window_minutes", "ip_max_requests", "version"],
+    migration: "000036",
+    relationshipNote: "updated_by 可空外键指向 users；策略更新使用版本检查、required audit 和非敏感 Outbox 事件。",
   },
   {
     name: "identity_account_recovery_cases",
@@ -521,10 +530,10 @@ const databaseTables: DbTable[] = [
     name: "platform_outbox_attempts",
     title: "事件消费尝试",
     domain: "system",
-    purpose: "记录每个 Worker 消费尝试、lease generation、结果和错误，供 dead-letter 重放审查。",
+    purpose: "记录每个 Worker 消费尝试、lease generation、消费者结果和系统最终化证据，供 dead-letter 重放审查。",
     fields: ["event_id", "consumer_name", "worker_id", "attempt", "status"],
-    migration: "000027",
-    relationshipNote: "event_id 由外键指向 platform_outbox；不复制业务 payload。",
+    migration: "000027 + 000037",
+    relationshipNote: "event_id 由外键指向 platform_outbox；system:outbox-finalize 可记录 failed 状态，但不复制业务 payload。",
   },
   {
     name: "platform_command_audits",
@@ -1022,6 +1031,15 @@ const relations: Relation[] = [
     sourceCardinality: "1",
     targetCardinality: "N",
     label: "id -> account_id (optional)",
+    domains: ["identity"],
+  },
+  {
+    id: "users-challenge-policies",
+    source: "users",
+    target: "identity_challenge_policies",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> updated_by (optional)",
     domains: ["identity"],
   },
   {
@@ -2012,6 +2030,24 @@ const migrations = [
     summary:
       "建立校园二手的 CNY 分价、物品状态、交付方式、交易状态约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
     tables: ["secondhand_details", "threads", "users"],
+  },
+  {
+    version: "000036",
+    file: "000036_v12_identity_challenge_policy.up.sql",
+    title: "v12 验证码频率策略",
+    scope: "身份与账号安全",
+    summary:
+      "将邮箱和 IP 请求限制改为有边界、可审计、可热更新的滑动窗口策略，同时保留旧计数 Scope 兼容读取。",
+    tables: ["identity_challenge_policies", "identity_challenge_rate_limits", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000037",
+    file: "000037_v12_outbox_worker_convergence.up.sql",
+    title: "v12 可靠事件 Worker 收敛",
+    scope: "平台可靠性",
+    summary:
+      "为系统最终化阶段增加 failed 尝试证据；Worker 与 Store 同步收紧最大领取次数，并让耗尽的非终态事件收敛到 dead。",
+    tables: ["platform_outbox", "platform_outbox_attempts", "outbox_consumer_receipts"],
   },
 ];
 

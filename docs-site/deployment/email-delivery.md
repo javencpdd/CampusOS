@@ -38,3 +38,5 @@ SMTP 失败后任务会以 at-least-once 语义重试。修复网络或 Provider
 
 仓库内的完整排障说明见
 `docs/help/系统设计相关/v12邮件投递与SMTP部署说明.md`。
+验证码是否允许创建由 Identity Core 的独立安全策略决定；默认每邮箱 10 分钟 5 次。管理端配置见
+[验证码策略配置](/guide/challenge-policy)。该策略不会替代 SMTP 配置。

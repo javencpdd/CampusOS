@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
@@ -25,26 +28,75 @@ func (r *PgChallengeRepository) db(ctx context.Context) transaction.Executor {
 }
 
 func (r *PgChallengeRepository) TryConsumeRate(ctx context.Context, windows []domain.ChallengeRateWindow) (bool, error) {
+	if tx, ok := transaction.FromContext(ctx); ok {
+		return r.tryConsumeRate(ctx, tx, windows)
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("begin challenge rate transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	consumed, err := r.tryConsumeRate(ctx, tx, windows)
+	if err != nil || !consumed {
+		return consumed, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("commit challenge rate transaction: %w", err)
+	}
+	return true, nil
+}
+
+func (r *PgChallengeRepository) tryConsumeRate(ctx context.Context, db transaction.Executor, windows []domain.ChallengeRateWindow) (bool, error) {
+	lockKeys := make([]string, 0, len(windows))
 	for _, window := range windows {
-		if window.Limit <= 0 || window.Scope == "" || window.SubjectDigest == "" || window.WindowStart.IsZero() {
+		if window.Limit <= 0 || window.Scope == "" || window.SubjectDigest == "" || window.ObservedAt.IsZero() || window.Duration <= 0 {
 			return false, errors.New("invalid challenge rate window")
 		}
+		lockKeys = append(lockKeys, challengeRateLockKey(window))
+	}
+	sort.Strings(lockKeys)
+	lastLock := ""
+	for _, lockKey := range lockKeys {
+		if lockKey == lastLock {
+			continue
+		}
+		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey); err != nil {
+			return false, fmt.Errorf("lock challenge rate subject: %w", err)
+		}
+		lastLock = lockKey
+	}
+	for _, window := range windows {
 		var count int
-		err := r.db(ctx).QueryRow(ctx, `INSERT INTO identity_challenge_rate_limits
+		err := db.QueryRow(ctx, `SELECT COALESCE(SUM(request_count), 0)
+			FROM identity_challenge_rate_limits
+			WHERE scope=$1 AND subject_digest=$2 AND window_started_at > $3 AND window_started_at <= $4`,
+			window.Scope, window.SubjectDigest, window.ObservedAt.Add(-window.Duration).UTC(), window.ObservedAt.UTC()).Scan(&count)
+		if err != nil {
+			return false, fmt.Errorf("read challenge rate limit: %w", err)
+		}
+		if count >= window.Limit {
+			return false, nil
+		}
+	}
+	for _, window := range windows {
+		bucket := window.ObservedAt.UTC().Truncate(time.Second)
+		_, err := db.Exec(ctx, `INSERT INTO identity_challenge_rate_limits
 			(scope, subject_digest, window_started_at, request_count, updated_at)
 			VALUES ($1, $2, $3, 1, NOW())
 			ON CONFLICT (scope, subject_digest, window_started_at)
-			DO UPDATE SET request_count = identity_challenge_rate_limits.request_count + 1, updated_at = NOW()
-			WHERE identity_challenge_rate_limits.request_count < $4
-			RETURNING request_count`, window.Scope, window.SubjectDigest, window.WindowStart.UTC(), window.Limit).Scan(&count)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
+			DO UPDATE SET request_count=identity_challenge_rate_limits.request_count+1, updated_at=NOW()`,
+			window.Scope, window.SubjectDigest, bucket)
 		if err != nil {
 			return false, fmt.Errorf("consume challenge rate limit: %w", err)
 		}
 	}
 	return true, nil
+}
+
+// PostgreSQL text values cannot contain NUL. Hash the unambiguous internal
+// tuple before passing it to hashtextextended for the advisory lock.
+func challengeRateLockKey(window domain.ChallengeRateWindow) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(window.Scope+"\x00"+window.SubjectDigest)))
 }
 
 func (r *PgChallengeRepository) CreateChallenge(ctx context.Context, challenge *domain.EmailChallenge) error {

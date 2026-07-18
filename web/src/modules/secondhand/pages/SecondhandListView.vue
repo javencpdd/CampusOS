@@ -41,7 +41,7 @@
             <router-link class="listing-title" :to="'/secondhand/' + item.thread.id">{{
               item.thread.title
             }}</router-link>
-            <p>{{ item.thread.content }}</p>
+            <p>{{ contentExcerpt(item.thread.content, item.thread.content_format) }}</p>
             <div class="meta-row">
               <span>{{ item.thread.author_name || '校园用户' }}</span>
               <span>{{ item.detail.location_scope || '未说明地点' }}</span>
@@ -72,6 +72,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/modules/identity/store'
 import { categoryApi } from '@/modules/community/api'
+import { contentExcerpt } from '@/modules/community/content'
 import { secondhandApi, type ItemCondition, type SecondhandResult, type TradeStatus } from '../api'
 
 const userStore = useUserStore()

@@ -32,7 +32,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.feature-registry", reliability.ModuleID}
+	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {

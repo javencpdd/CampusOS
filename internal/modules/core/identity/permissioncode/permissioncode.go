@@ -62,6 +62,8 @@ func LegacyForCode(code string) (resource, action string, ok bool) {
 		"identity.account.recovery.override":        {"user", "suspend"},
 		"identity.session.read":                     {"user", "read"},
 		"identity.session.revoke":                   {"user", "suspend"},
+		"identity.challenge_policy.read":            {"metrics", "read"},
+		"identity.challenge_policy.update":          {"role", "manage"},
 		"platform.email_delivery.read":              {"metrics", "read"},
 		"platform.reliability.read":                 {"metrics", "read"},
 		"platform.reliability.replay":               {"plugin", "configure"},

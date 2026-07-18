@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	portUserRepository         = "identity.adapter.user-repository"
-	portRoleRepository         = "identity.adapter.role-repository"
-	portChallengeRepository    = "identity.adapter.challenge-repository"
-	portSessionRepository      = "identity.adapter.session-repository"
-	portRecoveryCaseRepository = "identity.adapter.recovery-case-repository"
+	portUserRepository            = "identity.adapter.user-repository"
+	portRoleRepository            = "identity.adapter.role-repository"
+	portChallengeRepository       = "identity.adapter.challenge-repository"
+	portChallengePolicyRepository = "identity.adapter.challenge-policy-repository"
+	portSessionRepository         = "identity.adapter.session-repository"
+	portRecoveryCaseRepository    = "identity.adapter.recovery-case-repository"
 )
 
 // BindPostgreSQLAdapters binds only Identity's repository adapters. It is
@@ -27,6 +28,7 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 		repository.NewPgUserRepository(pool),
 		repository.NewPgRoleRepository(pool),
 		repository.NewPgChallengeRepository(pool),
+		repository.NewPgChallengePolicyRepository(pool),
 		repository.NewPgSessionRepository(pool),
 		repository.NewPgRecoveryCaseRepository(pool),
 	)
@@ -40,6 +42,7 @@ func BindMemoryAdapters(app *platformmodule.AppContext) error {
 		repository.NewMemoryUserRepository(),
 		repository.NewMemoryRoleRepository(),
 		repository.NewMemoryChallengeRepository(),
+		repository.NewMemoryChallengePolicyRepository(),
 		repository.NewMemorySessionRepository(),
 		repository.NewMemoryRecoveryCaseRepository(),
 	)
@@ -50,6 +53,7 @@ func bindAdapters(
 	users repository.UserRepository,
 	roles repository.RoleRepository,
 	challenges repository.ChallengeRepository,
+	challengePolicies repository.ChallengePolicyRepository,
 	sessions repository.SessionRepository,
 	recoveryCases repository.RecoveryCaseRepository,
 ) error {
@@ -60,6 +64,9 @@ func bindAdapters(
 		return err
 	}
 	if err := app.Provide(portChallengeRepository, challenges); err != nil {
+		return err
+	}
+	if err := app.Provide(portChallengePolicyRepository, challengePolicies); err != nil {
 		return err
 	}
 	if err := app.Provide(portSessionRepository, sessions); err != nil {

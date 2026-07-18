@@ -58,4 +58,29 @@ describe('Built-in Feature compatibility projection', () => {
       'homepage-customizer',
     ])
   })
+
+  it('groups mutual aid and secondhand under image-text without coupling their lifecycle state', () => {
+    const features = mapBuiltinFeatures([
+      { id: 'controlled-richtext-article', status: 'stopped', desired_enabled: false },
+      {
+        id: 'mutual-aid',
+        status: 'running',
+        desired_enabled: true,
+        presentation_parent: 'controlled-richtext-article',
+      },
+      {
+        id: 'secondhand',
+        status: 'running',
+        desired_enabled: true,
+        presentation_parent: 'controlled-richtext-article',
+      },
+    ])
+
+    const mutualAid = features.find((feature) => feature.id === 'mutual-aid')
+    const secondhand = features.find((feature) => feature.id === 'secondhand')
+    expect(mutualAid?.parentId).toBe('controlled-richtext-article')
+    expect(secondhand?.parentId).toBe('controlled-richtext-article')
+    expect(mutualAid?.state?.status).toBe('running')
+    expect(secondhand?.state?.status).toBe('running')
+  })
 })

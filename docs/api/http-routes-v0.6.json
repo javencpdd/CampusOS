@@ -377,6 +377,23 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/content/assets/images/:user_id/:filename",
+      "handler": "userStorageHandler.ServeContentImage",
+      "module_owner": "core.user-storage",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.content.assets.images.user_id.filename",
+      "legacy_aliases": [
+        "http.get.api.v1.content.assets.images.user_id.filename",
+        "httpapi.get.api.v1.content.assets.images.user_id.filename"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/mutual-aid/threads",
       "handler": "d.MutualAid",
       "module_owner": "feature.mutual-aid",
@@ -1304,6 +1321,40 @@
       "legacy_aliases": [
         "http.post.api.v1.richtext.articles",
         "httpapi.post.api.v1.richtext.articles"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/content/preview",
+      "handler": "threadHandler.PreviewContent",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.content.preview",
+      "legacy_aliases": [
+        "http.post.api.v1.content.preview",
+        "httpapi.post.api.v1.content.preview"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/content/assets/images",
+      "handler": "userStorageHandler.UploadContentImage",
+      "module_owner": "core.user-storage",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.content.assets.images",
+      "legacy_aliases": [
+        "http.post.api.v1.content.assets.images",
+        "httpapi.post.api.v1.content.assets.images"
       ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
@@ -2672,10 +2723,11 @@
       "auth": "jwt+permission",
       "permission": "category:read",
       "permission_code": "community.category.read",
-      "operation_code": "http.community.category.thread-types",
+      "operation_code": "http.community.category.thread_types",
       "legacy_aliases": [
         "http.get.api.v1.admin.categories.id.thread_types",
-        "httpapi.get.api.v1.admin.categories.id.thread_types"
+        "httpapi.get.api.v1.admin.categories.id.thread_types",
+        "http.community.category.thread-types"
       ],
       "ownership": "none",
       "scope": "global",
@@ -2767,10 +2819,11 @@
       "auth": "jwt+permission",
       "permission": "category:delete",
       "permission_code": "community.category.archive",
-      "operation_code": "http.community.category.archive-impact",
+      "operation_code": "http.community.category.archive_impact",
       "legacy_aliases": [
         "http.get.api.v1.categories.id.archive_impact",
-        "httpapi.get.api.v1.categories.id.archive_impact"
+        "httpapi.get.api.v1.categories.id.archive_impact",
+        "http.community.category.archive-impact"
       ],
       "ownership": "none",
       "scope": "global",
@@ -2824,10 +2877,11 @@
       "auth": "jwt+permission",
       "permission": "category:delete",
       "permission_code": "community.category.archive",
-      "operation_code": "http.community.category.archive-legacy",
+      "operation_code": "http.community.category.archive_legacy",
       "legacy_aliases": [
         "http.delete.api.v1.categories.id",
-        "httpapi.delete.api.v1.categories.id"
+        "httpapi.delete.api.v1.categories.id",
+        "http.community.category.archive-legacy"
       ],
       "ownership": "none",
       "scope": "global",
@@ -4029,6 +4083,44 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/challenge-policy",
+      "handler": "challengePolicyHandler.Get",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "metrics:read",
+      "permission_code": "identity.challenge_policy.read",
+      "operation_code": "http.identity.challenge_policy.get",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.challenge_policy",
+        "httpapi.get.api.v1.identity.challenge_policy"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/identity/challenge-policy",
+      "handler": "challengePolicyHandler.Update",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+permission",
+      "permission": "role:manage",
+      "permission_code": "identity.challenge_policy.update",
+      "operation_code": "http.identity.challenge_policy.update",
+      "legacy_aliases": [
+        "http.put.api.v1.identity.challenge_policy",
+        "httpapi.put.api.v1.identity.challenge_policy"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
       "stability": "experimental"
     },
     {

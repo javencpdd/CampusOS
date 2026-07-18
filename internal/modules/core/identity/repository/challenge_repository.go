@@ -29,14 +29,14 @@ type MemoryChallengeRepository struct {
 	mu         sync.RWMutex
 	challenges map[string]domain.EmailChallenge
 	byPublicID map[string]string
-	rates      map[string]int
+	rates      map[string][]time.Time
 }
 
 func NewMemoryChallengeRepository() *MemoryChallengeRepository {
 	return &MemoryChallengeRepository{
 		challenges: make(map[string]domain.EmailChallenge),
 		byPublicID: make(map[string]string),
-		rates:      make(map[string]int),
+		rates:      make(map[string][]time.Time),
 	}
 }
 
@@ -44,15 +44,23 @@ func (r *MemoryChallengeRepository) TryConsumeRate(_ context.Context, windows []
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, window := range windows {
-		if window.Limit <= 0 || window.Scope == "" || window.SubjectDigest == "" || window.WindowStart.IsZero() {
+		if window.Limit <= 0 || window.Scope == "" || window.SubjectDigest == "" || window.ObservedAt.IsZero() || window.Duration <= 0 {
 			return false, errors.New("invalid challenge rate window")
 		}
-		if r.rates[rateKey(window)] >= window.Limit {
+		cutoff := window.ObservedAt.Add(-window.Duration)
+		count := 0
+		for _, observedAt := range r.rates[rateKey(window)] {
+			if observedAt.After(cutoff) && !observedAt.After(window.ObservedAt) {
+				count++
+			}
+		}
+		if count >= window.Limit {
 			return false, nil
 		}
 	}
 	for _, window := range windows {
-		r.rates[rateKey(window)]++
+		key := rateKey(window)
+		r.rates[key] = append(r.rates[key], window.ObservedAt.UTC())
 	}
 	return true, nil
 }
@@ -123,7 +131,7 @@ func (r *MemoryChallengeRepository) Snapshot() any {
 	state := memoryChallengeSnapshot{
 		challenges: make(map[string]domain.EmailChallenge, len(r.challenges)),
 		byPublicID: make(map[string]string, len(r.byPublicID)),
-		rates:      make(map[string]int, len(r.rates)),
+		rates:      make(map[string][]time.Time, len(r.rates)),
 	}
 	for id, challenge := range r.challenges {
 		state.challenges[id] = cloneChallenge(challenge)
@@ -132,7 +140,7 @@ func (r *MemoryChallengeRepository) Snapshot() any {
 		state.byPublicID[key] = value
 	}
 	for key, value := range r.rates {
-		state.rates[key] = value
+		state.rates[key] = append([]time.Time(nil), value...)
 	}
 	return state
 }
@@ -152,11 +160,11 @@ func (r *MemoryChallengeRepository) Restore(value any) {
 type memoryChallengeSnapshot struct {
 	challenges map[string]domain.EmailChallenge
 	byPublicID map[string]string
-	rates      map[string]int
+	rates      map[string][]time.Time
 }
 
 func rateKey(window domain.ChallengeRateWindow) string {
-	return window.Scope + "\x00" + window.SubjectDigest + "\x00" + window.WindowStart.UTC().Format(time.RFC3339Nano)
+	return window.Scope + "\x00" + window.SubjectDigest
 }
 
 func cloneChallenge(value domain.EmailChallenge) domain.EmailChallenge {
@@ -186,8 +194,8 @@ func (r *MemoryChallengeRepository) ChallengeRateSnapshot() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	keys := make([]string, 0, len(r.rates))
-	for key := range r.rates {
-		keys = append(keys, key)
+	for key, observations := range r.rates {
+		keys = append(keys, fmt.Sprintf("%s\x00%d", key, len(observations)))
 	}
 	sort.Strings(keys)
 	return keys

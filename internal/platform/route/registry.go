@@ -5,12 +5,15 @@ package route
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 )
+
+var operationCodePattern = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+){2,}$`)
 
 type Audience string
 
@@ -61,6 +64,9 @@ func (d Descriptor) Validate() error {
 	}
 	if strings.TrimSpace(d.OperationCode) == "" {
 		return fmt.Errorf("route %q requires an operation code", d.ID)
+	}
+	if !operationCodePattern.MatchString(strings.TrimSpace(d.OperationCode)) {
+		return fmt.Errorf("route %q has invalid operation code %q", d.ID, d.OperationCode)
 	}
 	return nil
 }

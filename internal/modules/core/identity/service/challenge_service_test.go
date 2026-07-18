@@ -78,7 +78,7 @@ func TestChallengeLifecycleUsesOpaqueOutboxAndOneTimeTicket(t *testing.T) {
 }
 
 func TestChallengePurposeAttemptsAndRateLimitsAreEnforced(t *testing.T) {
-	service, store, _, advance := newTestChallengeService(t)
+	service, store, _, _ := newTestChallengeService(t)
 	ctx := context.Background()
 	receipt, err := service.Request(ctx, domain.ChallengeRequest{
 		Purpose:  domain.ChallengePurposeRegistration,
@@ -88,12 +88,19 @@ func TestChallengePurposeAttemptsAndRateLimitsAreEnforced(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request challenge: %v", err)
 	}
+	for index := 1; index < 5; index++ {
+		if _, err := service.Request(ctx, domain.ChallengeRequest{
+			Purpose:  domain.ChallengePurposeRegistration,
+			Email:    "learner@example.test",
+			ClientIP: "203.0.113.11",
+		}); err != nil {
+			t.Fatalf("request %d inside default policy: %v", index+1, err)
+		}
+	}
 	if _, err := service.Request(ctx, domain.ChallengeRequest{
-		Purpose:  domain.ChallengePurposeRegistration,
-		Email:    "learner@example.test",
-		ClientIP: "203.0.113.11",
+		Purpose: domain.ChallengePurposeRegistration, Email: "learner@example.test", ClientIP: "203.0.113.11",
 	}); !errors.Is(err, ErrChallengeRateLimited) {
-		t.Fatalf("immediate resend error=%v, want rate limit", err)
+		t.Fatalf("sixth request error=%v, want rate limit", err)
 	}
 
 	challenge, err := store.GetChallenge(ctx, receipt.PublicID)
@@ -128,23 +135,36 @@ func TestChallengePurposeAttemptsAndRateLimitsAreEnforced(t *testing.T) {
 		t.Fatalf("exhausted challenge error=%v, want invalid", err)
 	}
 
-	advance(time.Minute)
-	for index := 0; index < 4; index++ {
-		if _, err := service.Request(ctx, domain.ChallengeRequest{
-			Purpose:  domain.ChallengePurposeRegistration,
-			Email:    "learner@example.test",
-			ClientIP: "203.0.113.11",
-		}); err != nil {
-			t.Fatalf("daily request %d: %v", index, err)
-		}
-		advance(time.Minute)
+}
+
+func TestChallengeRatePolicyUpdatesAreHotAndSliding(t *testing.T) {
+	challengeService, _, _, advance := newTestChallengeService(t)
+	policyStore := repository.NewMemoryChallengePolicyRepository()
+	policyService, err := NewChallengePolicyService(policyStore)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := service.Request(ctx, domain.ChallengeRequest{
-		Purpose:  domain.ChallengePurposeRegistration,
-		Email:    "learner@example.test",
-		ClientIP: "203.0.113.11",
-	}); !errors.Is(err, ErrChallengeRateLimited) {
-		t.Fatalf("daily limit error=%v, want rate limited", err)
+	updated, err := policyService.UpdateChallengePolicy(context.Background(), "9001", domain.UpdateChallengePolicyRequest{
+		EmailWindowMinutes: 5, EmailMaxRequests: 2, IPWindowMinutes: 60, IPMaxRequests: 100, ExpectedVersion: 1,
+	})
+	if err != nil || updated.Version != 2 {
+		t.Fatalf("update policy: policy=%#v err=%v", updated, err)
+	}
+	challengeService.SetPolicyReader(policyService)
+	request := domain.ChallengeRequest{
+		Purpose: domain.ChallengePurposePasswordReset, Email: "reset@example.test", ClientIP: "203.0.113.40",
+	}
+	for index := 0; index < 2; index++ {
+		if _, err := challengeService.Request(context.Background(), request); err != nil {
+			t.Fatalf("allowed request %d: %v", index+1, err)
+		}
+	}
+	if _, err := challengeService.Request(context.Background(), request); !errors.Is(err, ErrChallengeRateLimited) {
+		t.Fatalf("third request error=%v, want rate limited", err)
+	}
+	advance(5*time.Minute + time.Second)
+	if _, err := challengeService.Request(context.Background(), request); err != nil {
+		t.Fatalf("request after sliding window: %v", err)
 	}
 }
 

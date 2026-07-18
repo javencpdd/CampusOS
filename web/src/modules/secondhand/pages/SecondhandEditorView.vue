@@ -34,13 +34,11 @@
         <p v-if="policyHint" :class="{ invalid: !categoryAllowed }" class="field-hint">{{ policyHint }}</p>
       </el-form-item>
       <el-form-item label="物品说明" required>
-        <el-input
+        <SafeContentEditor
           v-model="form.content"
-          type="textarea"
-          :rows="10"
-          maxlength="5000"
-          show-word-limit
-          placeholder="说明品牌、使用情况、配件、瑕疵和交易注意事项。"
+          v-model:content-format="form.content_format"
+          plain-placeholder="说明品牌、使用情况、配件、瑕疵和交易注意事项。"
+          html-placeholder="<p>说明品牌、使用情况、配件、瑕疵和交易注意事项。</p>"
         />
       </el-form-item>
       <div class="field-grid">
@@ -95,6 +93,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { categoryApi } from '@/modules/community/api'
+import SafeContentEditor from '@/modules/community/components/SafeContentEditor.vue'
+import { hasMeaningfulContent } from '@/modules/community/content'
 import { secondhandApi, type SecondhandRequest } from '../api'
 
 const route = useRoute()
@@ -110,6 +110,7 @@ const editing = computed(() => Boolean(route.params.id))
 const form = reactive<SecondhandRequest>({
   title: '',
   content: '',
+  content_format: 'safe_html',
   category_id: '',
   tags: [],
   price_minor: 0,
@@ -152,6 +153,7 @@ const loadExisting = async () => {
     if (!thread || !detail) throw new Error('missing secondhand detail')
     form.title = thread.title || ''
     form.content = thread.content || ''
+    form.content_format = thread.content_format === 'safe_html' ? 'safe_html' : 'markdown'
     form.category_id = thread.category_id || ''
     form.tags = thread.tags || []
     form.price_minor = detail.price_minor || 0
@@ -171,7 +173,11 @@ const loadExisting = async () => {
 }
 
 const submit = async () => {
-  if (!form.title.trim() || !form.content.trim() || (!editing.value && !form.category_id)) {
+  if (
+    !form.title.trim() ||
+    !hasMeaningfulContent(form.content, form.content_format) ||
+    (!editing.value && !form.category_id)
+  ) {
     ElMessage.warning('请填写标题、物品说明和发布板块')
     return
   }

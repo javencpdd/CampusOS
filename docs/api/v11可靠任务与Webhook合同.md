@@ -29,7 +29,36 @@
 `payload`、`headers`、`idempotency_key`，也不返回 Webhook Secret、Token、operation
 `details`、compatibility `detail` 或 command audit `details`。
 
-## 1. 只读接口
+## 1. Worker 状态与证据语义
+
+`attempts` 表示事件被 Worker 成功 Claim 的次数，不是消费者数量。领取前 Store 会先把
+`attempts >= max_attempts` 的 pending、retry 或租约已过期 processing 原子收敛到 `dead`；
+`7/8` 可以领取最后一次并变为 `8/8`，`8/8` 不能再领取第 9 次。历史 `103/8` 会保留
+103 这一事实并进入 `dead`，不会被改写成 8。
+
+每个消费者成功后会保存 Consumer Receipt。后续因 Complete 前崩溃而重新领取时，已有
+Receipt 的消费者记录为 `skipped`，含义是“该消费者已经确认”，不是消费者失败，也不会
+再次发送邮件、Webhook 或 EventBus 副作用。平台仍保持 at-least-once 合同，外部接收方必须
+按事件 ID 保持幂等，不能把 Receipt 解释为全局 exactly-once 承诺。
+
+所有消费者成功或 skipped 后，Worker 以 `system:outbox-finalize` Attempt 记录主事件最终化：
+
+| 状态 | 含义 |
+| --- | --- |
+| `succeeded` | Complete 已在当前 lease owner/generation 下把事件改为 `published`。 |
+| `retry` | Complete 失败，但当前 Worker 成功把事件改为 retry。 |
+| `dead` | Complete 失败且已达上限或错误不可重试，事件成功进入 dead。 |
+| `failed` | Retry/DeadLetter 等状态转换也失败；需要结合 lease 和结构化日志排查。 |
+
+Complete、Retry、DeadLetter 始终保留 `status=processing + lease_owner + lease_generation`
+fencing 条件。租约丢失时不会覆盖新 Worker；`ProcessOnce` 会返回安全错误，并写不含 payload、
+邮箱、验证码、Token、Secret 或幂等键的结构化日志。
+
+事件 DTO 可安全返回 `lease_owner`、`lease_until`、`lease_generation`、`available_at`、
+`attempts`、`max_attempts`、`dead_lettered_at`、`attempts_overflow` 和 `lease_expired`。
+`last_error` 与 Attempt `error` 经过 allowlist 脱敏，历史任意错误不会原样进入浏览器。
+
+## 2. 只读接口
 
 | 方法 | 路径 | Permission Code | 说明 |
 | --- | --- | --- | --- |
@@ -43,7 +72,7 @@
 | `GET` | `/platform/reliability/retention-preview` | `platform.retention.preview` | 支持 `target`、RFC3339 `before`；只计算候选数。 |
 | `GET` | `/platform/reliability/retention-runs` | `platform.retention.preview` | 支持分页；返回已经保存的 dry-run。 |
 
-## 2. 高风险写接口
+## 3. 高风险写接口
 
 | 方法 | 路径 | Permission Code | 要求 |
 | --- | --- | --- | --- |
@@ -63,7 +92,12 @@ curl -fsS -X POST \
 返回 `409`；没有认证 actor 返回 `401`。客户端不应把 `409` 当成可无条件重试。成功
 响应同样只返回事件元数据，不返回被重放事件的 payload、headers 或幂等键。
 
-## 3. Webhook 合同补充
+历史异常恢复必须先等待耗尽事件进入 dead，再由管理员逐条审查和 Replay。Replay 重置事件
+attempts，但保留 Consumer Receipt，因此已确认消费者会 skipped。不得通过 SQL 删除 Receipt、
+把 processing 直接改成 published，或批量重置 Outbox。操作步骤见
+[v12 可靠事件异常诊断与安全恢复](../help/系统设计相关/v12可靠事件异常诊断与安全恢复.md)。
+
+## 4. Webhook 合同补充
 
 既有 `/webhooks/*` 接口保持兼容。endpoint 响应新增或可包含：
 

@@ -25,6 +25,7 @@ var (
 	legacyRoutePermissionPattern = regexp.MustCompile(`\.Permission\("([^"]+)",\s*"([^"]+)"\)`)
 	permissionCodePattern        = regexp.MustCompile(`\.PermissionCode\("([^"]+)"\)`)
 	operationPattern             = regexp.MustCompile(`\.Operation\("([^"]+)"\)`)
+	legacyOperationAliasPattern  = regexp.MustCompile(`\.LegacyOperationAlias\("([^"]+)"\)`)
 	permissionPattern            = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
 	selectorPattern              = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
 )
@@ -110,6 +111,11 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 			"http." + strings.ToLower(method) + "." + routeID(route.Path),
 			"httpapi." + strings.ToLower(method) + "." + routeID(route.Path),
 		}
+		for _, alias := range legacyOperationAliasPattern.FindAllStringSubmatch(prefix, -1) {
+			if len(alias) > 1 && !containsRouteAlias(route.LegacyAliases, alias[1]) {
+				route.LegacyAliases = append(route.LegacyAliases, alias[1])
+			}
+		}
 		routes = append(routes, route)
 	}
 	if err := scanner.Err(); err != nil {
@@ -122,6 +128,15 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		return nil, err
 	}
 	return routes, nil
+}
+
+func containsRouteAlias(values []string, candidate string) bool {
+	for _, value := range values {
+		if value == candidate {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateRouteDescriptors registers the source-derived transport contract in
@@ -174,6 +189,10 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.identity"
 	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
 		return "core.community"
+	case path == APIPrefix+"/content/preview":
+		return "core.community"
+	case strings.HasPrefix(path, APIPrefix+"/content/assets"):
+		return "core.user-storage"
 	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
@@ -402,6 +421,14 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 			}
 			out.WriteString("        '400':\n          $ref: '#/components/responses/BadRequest'\n")
+			for _, status := range profile.AdditionalErrors {
+				switch status {
+				case "429":
+					out.WriteString("        '429':\n          $ref: '#/components/responses/TooManyRequests'\n")
+				case "503":
+					out.WriteString("        '503':\n          $ref: '#/components/responses/ServiceUnavailable'\n")
+				}
+			}
 			if route.Auth != "none" {
 				out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
 			}
