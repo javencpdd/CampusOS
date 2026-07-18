@@ -39,27 +39,30 @@ type Config struct {
 }
 
 type HTTPHandlers struct {
-	User *handler.UserHandler
-	Role *handler.RoleHandler
+	User            *handler.UserHandler
+	Role            *handler.RoleHandler
+	ChallengePolicy *handler.ChallengePolicyHandler
 }
 
 // Module owns Identity application composition. Its Profile adapters are
 // supplied before lifecycle registration; other modules consume public ports.
 type Module struct {
-	config        Config
-	app           *platformmodule.AppContext
-	users         repository.UserRepository
-	roles         repository.RoleRepository
-	challenges    repository.ChallengeRepository
-	sessions      repository.SessionRepository
-	recoveryCases repository.RecoveryCaseRepository
+	config            Config
+	app               *platformmodule.AppContext
+	users             repository.UserRepository
+	roles             repository.RoleRepository
+	challenges        repository.ChallengeRepository
+	challengePolicies repository.ChallengePolicyRepository
+	sessions          repository.SessionRepository
+	recoveryCases     repository.RecoveryCaseRepository
 
-	userService       *service.UserService
-	challengeService  *service.ChallengeService
-	sessionService    *service.SessionService
-	recoveryService   *service.RecoveryService
-	permissionService *service.PermissionService
-	handlers          HTTPHandlers
+	userService            *service.UserService
+	challengeService       *service.ChallengeService
+	challengePolicyService *service.ChallengePolicyService
+	sessionService         *service.SessionService
+	recoveryService        *service.RecoveryService
+	permissionService      *service.PermissionService
+	handlers               HTTPHandlers
 }
 
 func NewModule(config Config) *Module {
@@ -101,6 +104,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("identity challenge repository adapter has incompatible type %T", challengeValue)
 	}
+	challengePolicyValue, ok := app.Lookup(portChallengePolicyRepository)
+	if !ok {
+		return errors.New("identity challenge policy repository adapter is not bound by profile")
+	}
+	challengePolicyRepository, ok := challengePolicyValue.(repository.ChallengePolicyRepository)
+	if !ok {
+		return fmt.Errorf("identity challenge policy repository adapter has incompatible type %T", challengePolicyValue)
+	}
 	sessionValue, ok := app.Lookup(portSessionRepository)
 	if !ok {
 		return errors.New("identity session repository adapter is not bound by profile")
@@ -121,6 +132,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.users = userRepository
 	m.roles = roleRepository
 	m.challenges = challengeRepository
+	m.challengePolicies = challengePolicyRepository
 	m.sessions = sessionRepository
 	m.recoveryCases = recoveryCases
 	m.permissionService = service.NewPermissionService(m.roles, m.users)
@@ -131,7 +143,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 }
 
 func (m *Module) Start(context.Context) error {
-	if m.app == nil || m.users == nil || m.roles == nil || m.challenges == nil || m.sessions == nil || m.recoveryCases == nil {
+	if m.app == nil || m.users == nil || m.roles == nil || m.challenges == nil || m.challengePolicies == nil || m.sessions == nil || m.recoveryCases == nil {
 		return errors.New("identity module is not registered")
 	}
 	value, ok := m.app.Lookup(portEventBus)
@@ -161,6 +173,10 @@ func (m *Module) Start(context.Context) error {
 	users := service.NewUserService(m.users, m.config.JWT, credentials, bus)
 	users.SetPasswordHashEnabled(m.config.PasswordHashEnabled)
 	users.SetRoleRepository(m.roles)
+	challengePolicies, err := service.NewChallengePolicyService(m.challengePolicies)
+	if err != nil {
+		return fmt.Errorf("initialize identity challenge policy service: %w", err)
+	}
 	challenges, err := service.NewChallengeService(m.challenges, service.ChallengeConfig{
 		ActiveKeyID:  m.config.ChallengeActiveKeyID,
 		HMACKeys:     m.config.ChallengeHMACKeys,
@@ -169,6 +185,7 @@ func (m *Module) Start(context.Context) error {
 	if err != nil {
 		return fmt.Errorf("initialize identity challenge service: %w", err)
 	}
+	challenges.SetPolicyReader(challengePolicies)
 	sessionHashSecret := m.config.SessionIPHashSecret
 	if sessionHashSecret == "" {
 		// Explicit config is always supplied by production bootstrap. This fallback
@@ -188,12 +205,14 @@ func (m *Module) Start(context.Context) error {
 	if reliable != nil {
 		users.SetReliability(reliable)
 		permissions.SetReliability(reliable)
+		challengePolicies.SetReliability(reliable)
 		challenges.SetReliability(reliable)
 		sessions.SetReliability(reliable)
 		recovery.SetReliability(reliable)
 	}
 	m.userService = users
 	m.challengeService = challenges
+	m.challengePolicyService = challengePolicies
 	m.sessionService = sessions
 	m.recoveryService = recovery
 	users.SetRegistrationTicketConsumer(challenges)
@@ -201,7 +220,11 @@ func (m *Module) Start(context.Context) error {
 	userHandler.SetChallengeService(challenges)
 	userHandler.SetSessionService(sessions, handler.SessionHTTPConfig{RefreshBodyCompat: m.config.RefreshBodyCompat, CookieSecure: m.config.CookieSecure})
 	userHandler.SetRecoveryService(recovery)
-	m.handlers = HTTPHandlers{User: userHandler, Role: handler.NewRoleHandler(permissions)}
+	m.handlers = HTTPHandlers{
+		User:            userHandler,
+		Role:            handler.NewRoleHandler(permissions),
+		ChallengePolicy: handler.NewChallengePolicyHandler(challengePolicies),
+	}
 	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityport.NewServiceAccountReader(users))); err != nil {
 		return err
 	}
@@ -220,7 +243,7 @@ func (m *Module) Start(context.Context) error {
 func (m *Module) Stop(context.Context) error { return nil }
 
 func (m *Module) Health(context.Context) platformmodule.Health {
-	if m.userService == nil || m.challengeService == nil || m.sessionService == nil || m.recoveryService == nil || m.permissionService == nil {
+	if m.userService == nil || m.challengeService == nil || m.challengePolicyService == nil || m.sessionService == nil || m.recoveryService == nil || m.permissionService == nil {
 		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "identity services are not started"}
 	}
 	return platformmodule.Health{Status: platformmodule.HealthHealthy}
@@ -231,6 +254,8 @@ func (m *Module) UserRepository() repository.UserRepository { return m.users }
 func (m *Module) Permissions() *service.PermissionService { return m.permissionService }
 
 func (m *Module) Challenges() *service.ChallengeService { return m.challengeService }
+
+func (m *Module) ChallengePolicies() *service.ChallengePolicyService { return m.challengePolicyService }
 
 func (m *Module) Sessions() *service.SessionService { return m.sessionService }
 

@@ -43,22 +43,37 @@ type commandAuditResponse struct {
 }
 
 type eventResponse struct {
+	ID               string     `json:"id"`
+	Type             string     `json:"type"`
+	SchemaVersion    string     `json:"schema_version"`
+	AggregateType    string     `json:"aggregate_type,omitempty"`
+	AggregateID      string     `json:"aggregate_id,omitempty"`
+	Status           string     `json:"status"`
+	Attempts         int        `json:"attempts"`
+	MaxAttempts      int        `json:"max_attempts"`
+	AvailableAt      time.Time  `json:"available_at"`
+	LeaseOwner       string     `json:"lease_owner,omitempty"`
+	LeaseUntil       *time.Time `json:"lease_until,omitempty"`
+	LeaseGeneration  int64      `json:"lease_generation"`
+	LastError        string     `json:"last_error,omitempty"`
+	DeadLetteredAt   *time.Time `json:"dead_lettered_at,omitempty"`
+	AttemptsOverflow bool       `json:"attempts_overflow"`
+	LeaseExpired     bool       `json:"lease_expired"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
+type attemptResponse struct {
 	ID              string     `json:"id"`
-	Type            string     `json:"type"`
-	SchemaVersion   string     `json:"schema_version"`
-	AggregateType   string     `json:"aggregate_type,omitempty"`
-	AggregateID     string     `json:"aggregate_id,omitempty"`
-	Status          string     `json:"status"`
-	Attempts        int        `json:"attempts"`
-	MaxAttempts     int        `json:"max_attempts"`
-	AvailableAt     time.Time  `json:"available_at"`
-	LeaseOwner      string     `json:"lease_owner,omitempty"`
-	LeaseUntil      *time.Time `json:"lease_until,omitempty"`
+	EventID         string     `json:"event_id"`
+	ConsumerName    string     `json:"consumer_name"`
+	WorkerID        string     `json:"worker_id"`
 	LeaseGeneration int64      `json:"lease_generation"`
-	LastError       string     `json:"last_error,omitempty"`
-	DeadLetteredAt  *time.Time `json:"dead_lettered_at,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	Attempt         int        `json:"attempt"`
+	Status          string     `json:"status"`
+	Error           string     `json:"error,omitempty"`
+	StartedAt       time.Time  `json:"started_at"`
+	FinishedAt      *time.Time `json:"finished_at,omitempty"`
 }
 
 type operationResponse struct {
@@ -129,7 +144,15 @@ func (h *Handler) ListAttempts(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, 89111, err.Error())
 		return
 	}
-	respondReliabilityList(c, items, total, page)
+	result := make([]attemptResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, attemptResponse{
+			ID: item.ID, EventID: item.EventID, ConsumerName: item.ConsumerName, WorkerID: item.WorkerID,
+			LeaseGeneration: item.LeaseGeneration, Attempt: item.Attempt, Status: item.Status,
+			Error: safeReliabilityMessage(item.Error), StartedAt: item.StartedAt, FinishedAt: item.FinishedAt,
+		})
+	}
+	respondReliabilityList(c, result, total, page)
 }
 
 func (h *Handler) Replay(c *gin.Context) {
@@ -356,12 +379,37 @@ func respondReliabilityList(c *gin.Context, items any, total int64, page PageReq
 }
 
 func safeEventResponse(item Event) eventResponse {
+	now := time.Now().UTC()
+	leaseExpired := item.Status == StatusProcessing && item.LeaseUntil != nil && item.LeaseUntil.Before(now)
 	return eventResponse{
 		ID: item.ID, Type: item.Type, SchemaVersion: item.SchemaVersion,
 		AggregateType: item.AggregateType, AggregateID: item.AggregateID, Status: item.Status,
 		Attempts: item.Attempts, MaxAttempts: item.MaxAttempts, AvailableAt: item.AvailableAt,
 		LeaseOwner: item.LeaseOwner, LeaseUntil: item.LeaseUntil, LeaseGeneration: item.LeaseGeneration,
-		LastError: item.LastError, DeadLetteredAt: item.DeadLetteredAt,
+		LastError: safeReliabilityMessage(item.LastError), DeadLetteredAt: item.DeadLetteredAt,
+		AttemptsOverflow: item.Attempts > item.MaxAttempts, LeaseExpired: leaseExpired,
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt,
+	}
+}
+
+func safeReliabilityMessage(message string) string {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return ""
+	}
+	switch message {
+	case maxAttemptsExhaustedMessage,
+		completeFailureMessage,
+		stateTransitionFailure,
+		consumerFailureMessage,
+		receiptReadFailureMessage,
+		receiptRecordFailureMessage,
+		attemptStartFailureMessage,
+		attemptFinishFailureMessage,
+		"no registered durable event handler",
+		"consumer receipt already exists":
+		return message
+	default:
+		return "durable event processing failed"
 	}
 }

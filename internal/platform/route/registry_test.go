@@ -22,6 +22,13 @@ func TestDescriptorRequiresAdminPermission(t *testing.T) {
 	}
 }
 
+func TestDescriptorRejectsOperationCodeOutsideDatabaseContract(t *testing.T) {
+	descriptor := Descriptor{ID: "community.archive", OperationCode: "http.community.archive-impact", Owner: "core.community", Method: "GET", Path: "/api/v1/categories/:id/archive-impact", Audience: AudienceAuthenticated, Auth: "jwt"}
+	if err := descriptor.Validate(); err == nil {
+		t.Fatal("expected operation code with a hyphen to fail before database synchronization")
+	}
+}
+
 func TestRegistryOrdersDescriptorsDeterministically(t *testing.T) {
 	registry := NewRegistry()
 	for _, descriptor := range []Descriptor{

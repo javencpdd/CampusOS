@@ -25,6 +25,7 @@ export type MutualAidResult = {
 export type MutualAidRequest = {
   title: string
   content: string
+  content_format: 'markdown' | 'safe_html'
   category_id?: string
   tags?: string[]
   aid_type: AidType

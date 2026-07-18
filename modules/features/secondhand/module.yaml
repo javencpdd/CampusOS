@@ -3,12 +3,13 @@ id: feature.secondhand
 feature_id: secondhand
 name: secondhand
 display_name: "Campus Secondhand"
-version: "0.12.0"
+version: "0.12.1"
 description: "Structured campus secondhand listings with CNY price, condition, delivery method, and trade status."
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.community, core.feature-registry, core.reliability]
+dependencies: [core.community, core.user-storage, core.feature-registry, core.reliability]
+presentation_parent: controlled-richtext-article
 implementation: internal/modules/features/secondhand
 config: {}
 ui:

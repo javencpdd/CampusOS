@@ -34,6 +34,9 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	if s.community == nil || s.community.ThreadService() == nil {
 		return fmt.Errorf("community core module is unavailable")
 	}
+	if s.storage == nil || s.storage.Handler() == nil {
+		return fmt.Errorf("user storage core module is unavailable")
+	}
 	if s.moderation == nil || s.moderation.Handler() == nil {
 		return fmt.Errorf("moderation core module is unavailable")
 	}
@@ -55,6 +58,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		PluginManager:   s.manager,
 		Identity:        s.identity.Handlers(),
 		Community:       s.community.Handlers(),
+		UserStorage:     s.storage.Handler(),
 		Space:           s.space.Handler(),
 		Plugin:          pluginHandler,
 		AI:              s.ai.Handler(),

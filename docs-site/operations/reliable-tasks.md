@@ -48,6 +48,18 @@ CampusOS v0.11 将高风险数据库命令的业务写入、必要审计和事�
 | `published` | 所有已注册消费者已确认。 |
 | `dead` | 永久失败或超过最大尝试次数，等待人工修复和决定是否重放。 |
 
+`attempts` 是事件被 Claim 的次数，不是消费者数量。`7/8` 还允许最后一次领取，`8/8`
+不会继续到第 9 次；历史越界值会保留原次数并收敛到 `dead`。消费尝试中的 `skipped`
+表示 Consumer Receipt 已存在，因此不会再次发送邮件、Webhook 或 EventBus 副作用。
+
+`system:outbox-finalize` 是所有消费者结束后的系统阶段：`succeeded` 表示主事件已经
+published，`retry`/`dead` 表示 Complete 失败后已安全转换状态，`failed` 表示状态转换本身
+没有保存成功。此时应检查 lease owner/generation 和后端脱敏日志，不能直接修改数据库状态。
+
+页面诊断栏会提示“尝试次数越界”和“处理租约已过期”；消费尝试详情还能提示“已记录
+消费者均完成，事件尚未最终化”。浏览器只收到 lease、次数、时间和 allowlist 错误，不会收到
+payload、headers、幂等键、邮箱、验证码、Token 或 Secret。
+
 ## 重放失败队列
 
 重放可能再次产生外部副作用。只在以下条件都满足时操作：
@@ -59,6 +71,10 @@ CampusOS v0.11 将高风险数据库命令的业务写入、必要审计和事�
 
 CampusOS 只允许重放 `dead` 事件，并自动使用 `Idempotency-Key` 防止同一重放请求
 重复重置队列。不要用 SQL 修改事件状态，也不要以反复点击 Webhook 测试代替重放。
+
+修复旧的 `97/8` 或 `103/8` 事件时，先等待新 Worker 将其自动收敛为 dead，再逐条检查
+Receipt 和 Attempt 后使用后台 Replay。Replay 会重置 attempts，但保留 Receipt；已有消费者
+会 skipped，最终化成功后事件进入 published。禁止删除 Receipt 或批量重置 Outbox。
 
 ## Webhook 安全边界
 

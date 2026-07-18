@@ -43,6 +43,7 @@ type Descriptor struct {
 	ActivationMode       string                   `yaml:"activation_mode" json:"activation_mode"`
 	DefaultEnabled       bool                     `yaml:"default_enabled" json:"default_enabled"`
 	Dependencies         []string                 `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
+	PresentationParent   string                   `yaml:"presentation_parent,omitempty" json:"presentation_parent,omitempty"`
 	Implementation       string                   `yaml:"implementation" json:"implementation"`
 	CompatibilityAliases []CompatibilityAlias     `yaml:"compatibility_aliases,omitempty" json:"compatibility_aliases,omitempty"`
 	Config               map[string]interface{}   `yaml:"config,omitempty" json:"config,omitempty"`
@@ -258,6 +259,14 @@ func (c *Catalog) validateDependencies() error {
 		for _, dependency := range descriptor.Dependencies {
 			if _, ok := c.byID[dependency]; !ok {
 				return fmt.Errorf("module %q depends on unknown module %q", descriptor.ID, dependency)
+			}
+		}
+		if descriptor.PresentationParent != "" {
+			if descriptor.PresentationParent == descriptor.FeatureID {
+				return fmt.Errorf("module %q cannot be its own presentation parent", descriptor.ID)
+			}
+			if _, ok := c.byFeature[descriptor.PresentationParent]; !ok {
+				return fmt.Errorf("module %q references unknown presentation parent %q", descriptor.ID, descriptor.PresentationParent)
 			}
 		}
 	}

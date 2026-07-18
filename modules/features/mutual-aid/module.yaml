@@ -3,12 +3,13 @@ id: feature.mutual-aid
 feature_id: mutual-aid
 name: mutual-aid
 display_name: "Campus Mutual Aid"
-version: "0.12.0"
+version: "0.12.1"
 description: "Structured campus help, requests, offers, volunteering, and resource-sharing posts."
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.community, core.feature-registry, core.reliability]
+dependencies: [core.community, core.user-storage, core.feature-registry, core.reliability]
+presentation_parent: controlled-richtext-article
 implementation: internal/modules/features/mutualaid
 config: {}
 ui:

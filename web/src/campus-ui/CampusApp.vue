@@ -51,7 +51,19 @@
           <router-link to="/">首页</router-link>
           <router-link to="/threads">全部帖子</router-link>
           <template v-for="node in categoryNavigation" :key="node.key">
-            <span v-if="node.kind === 'group'" class="category-nav-group">{{ node.name }}</span>
+            <el-dropdown v-if="node.kind === 'group'" trigger="click" @command="openCategoryBoard">
+              <button type="button" class="category-nav-group" :aria-label="`打开${node.name}下的板块`">
+                <span>{{ node.name }}</span>
+                <el-icon aria-hidden="true"><ArrowDown /></el-icon>
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="board in node.children" :key="board.key" :command="board.id">
+                    {{ board.name }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <router-link v-else :to="{ path: '/threads', query: { category_id: node.id } }">{{
               node.name
             }}</router-link>
@@ -105,6 +117,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { scheduleApi } from '@/modules/schedule/api'
 import { spaceApi } from '@/modules/space/api'
@@ -115,20 +128,12 @@ import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import AppShell from './AppShell.vue'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import ThemeRoot from './ThemeRoot.vue'
+import { buildCategoryNavigation, type CategoryNavigationNode, type PublicCategory } from './categoryNavigation'
 
 const router = useRouter()
 const userStore = useUserStore()
 const themeStore = useWebThemeStore()
 const runtimeStore = useUIRuntimeStore()
-type CategoryNavigationNode = { key: string; id?: string; name: string; kind: 'group' | 'board' }
-type PublicCategory = {
-  id: string
-  name: string
-  node_kind?: 'group' | 'board'
-  lifecycle_status?: 'active' | 'archived'
-  is_closed?: boolean
-  children?: PublicCategory[]
-}
 const categoryNavigation = ref<CategoryNavigationNode[]>([])
 const publicSpacePath = computed(() => (userStore.user?.username ? `/u/${userStore.user.username}` : '/space/settings'))
 const displayAvatar = computed(() => userStore.user?.avatar || '')
@@ -156,6 +161,7 @@ const syncSpaceAvatar = async () => {
   }
 }
 const goPublicSpace = () => router.push(publicSpacePath.value)
+const openCategoryBoard = (categoryID: string) => router.push({ path: '/threads', query: { category_id: categoryID } })
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
@@ -165,24 +171,7 @@ const loadCategoryNavigation = async () => {
   try {
     const response: any = await categoryApi.tree()
     const nodes = (response?.data || []) as PublicCategory[]
-    const navigation: CategoryNavigationNode[] = []
-    for (const node of nodes) {
-      if ((node.lifecycle_status || 'active') !== 'active') continue
-      if ((node.node_kind || 'board') === 'group') {
-        const boards = (node.children || []).filter(
-          (child) =>
-            (child.node_kind || 'board') === 'board' &&
-            !child.is_closed &&
-            (child.lifecycle_status || 'active') === 'active',
-        )
-        if (boards.length) navigation.push({ key: `group:${node.id}`, name: node.name, kind: 'group' })
-        for (const board of boards)
-          navigation.push({ key: `board:${board.id}`, id: board.id, name: board.name, kind: 'board' })
-        continue
-      }
-      if (!node.is_closed) navigation.push({ key: `board:${node.id}`, id: node.id, name: node.name, kind: 'board' })
-    }
-    categoryNavigation.value = navigation
+    categoryNavigation.value = buildCategoryNavigation(nodes)
   } catch {
     categoryNavigation.value = []
   }
@@ -288,9 +277,24 @@ watch(
 }
 .category-nav-group {
   color: var(--campus-muted-color, #4b5563);
-  font-size: 12px;
-  font-weight: 700;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
   white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.category-nav-group:hover,
+.category-nav-group:focus-visible {
+  color: var(--campus-brand-color, #174ea6);
+}
+.category-nav-group:focus-visible {
+  outline: 2px solid var(--campus-brand-color, #174ea6);
+  outline-offset: 4px;
 }
 p {
   margin: 0;

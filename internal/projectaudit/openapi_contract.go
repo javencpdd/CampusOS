@@ -1,17 +1,18 @@
 package projectaudit
 
 type operationProfile struct {
-	RequestSchema   string
-	ResponseSchema  string
-	ContentType     string
-	SuccessStatus   string
-	NoBody          bool
-	Paginated       bool
-	RequestOptional bool
+	RequestSchema    string
+	ResponseSchema   string
+	ContentType      string
+	SuccessStatus    string
+	AdditionalErrors []string
+	NoBody           bool
+	Paginated        bool
+	RequestOptional  bool
 }
 
 var operationProfiles = map[string]operationProfile{
-	"userHandler.RequestRegistrationChallenge": {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt"},
+	"userHandler.RequestRegistrationChallenge": {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt", AdditionalErrors: []string{"429", "503"}},
 	"userHandler.VerifyRegistrationChallenge":  {RequestSchema: "RegistrationChallengeVerifyRequest", ResponseSchema: "ChallengeTicket"},
 	"userHandler.Register":                     {RequestSchema: "RegisterRequest", ResponseSchema: "User", SuccessStatus: "201"},
 	"userHandler.Login":                        {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse"},
@@ -27,6 +28,8 @@ var operationProfiles = map[string]operationProfile{
 	"userHandler.ListAdminRecoveryCases":       {ResponseSchema: "RecoveryCaseListResponse"},
 	"userHandler.CreateAdminRecoveryCase":      {RequestSchema: "AdminRecoveryCaseCreateRequest", ResponseSchema: "RecoveryCase", SuccessStatus: "201"},
 	"userHandler.ListAdminUserSessions":        {ResponseSchema: "SessionListResponse"},
+	"challengePolicyHandler.Get":               {ResponseSchema: "ChallengePolicy"},
+	"challengePolicyHandler.Update":            {RequestSchema: "ChallengePolicyUpdateRequest", ResponseSchema: "ChallengePolicy"},
 	"userHandler.UpdateUser":                   {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
 	"userHandler.ListUsers":                    {ResponseSchema: "UserListData", Paginated: true},
 	"userHandler.GetUser":                      {ResponseSchema: "PublicUser"},
@@ -37,6 +40,8 @@ var operationProfiles = map[string]operationProfile{
 	"threadHandler.AdminListThreads":           {ResponseSchema: "ThreadListData", Paginated: true},
 	"threadHandler.GetThread":                  {ResponseSchema: "Thread"},
 	"threadHandler.GetThreadForCurrentUser":    {ResponseSchema: "Thread"},
+	"threadHandler.PreviewContent":             {RequestSchema: "ContentPreviewRequest", ResponseSchema: "ContentPreviewResponse"},
+	"userStorageHandler.UploadContentImage":    {ResponseSchema: "ContentImage"},
 	"postHandler.CreatePost":                   {RequestSchema: "CreatePostRequest", ResponseSchema: "Post", SuccessStatus: "201"},
 	"postHandler.UpdatePost":                   {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
 	"postHandler.ListPosts":                    {ResponseSchema: "PostListData", Paginated: true},
@@ -71,15 +76,16 @@ var operationProfiles = map[string]operationProfile{
 }
 
 var multipartHandlers = map[string]bool{
-	"spaceHandler.UploadAvatar":           true,
-	"spaceHandler.ValidateStylePackZip":   true,
-	"spaceHandler.ApplyStylePackZip":      true,
-	"scheduleHandler.ImportMe":            true,
-	"richTextHandler.UploadAsset":         true,
-	"pluginHandler.ImportPluginPackage":   true,
-	"pluginHandler.PrecheckPluginPackage": true,
-	"homepageHandler.ValidateStylePack":   true,
-	"homepageHandler.ApplyStylePack":      true,
+	"spaceHandler.UploadAvatar":             true,
+	"spaceHandler.ValidateStylePackZip":     true,
+	"spaceHandler.ApplyStylePackZip":        true,
+	"scheduleHandler.ImportMe":              true,
+	"richTextHandler.UploadAsset":           true,
+	"userStorageHandler.UploadContentImage": true,
+	"pluginHandler.ImportPluginPackage":     true,
+	"pluginHandler.PrecheckPluginPackage":   true,
+	"homepageHandler.ValidateStylePack":     true,
+	"homepageHandler.ApplyStylePack":        true,
 }
 
 var noBodyHandlers = map[string]bool{
@@ -351,6 +357,28 @@ func openAPIComponents() string {
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/RecoveryCase' } }
         total: { type: integer, minimum: 0 }
+    ChallengePolicy:
+      type: object
+      required: [id, email_window_minutes, email_max_requests, ip_window_minutes, ip_max_requests, version, updated_at]
+      properties:
+        id: { type: string, enum: [email_verification] }
+        email_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        email_max_requests: { type: integer, minimum: 1, maximum: 100 }
+        ip_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        ip_max_requests: { type: integer, minimum: 1, maximum: 1000 }
+        version: { type: integer, minimum: 1 }
+        updated_by: { type: string }
+        updated_at: { type: string, format: date-time }
+    ChallengePolicyUpdateRequest:
+      type: object
+      required: [email_window_minutes, email_max_requests, ip_window_minutes, ip_max_requests, expected_version]
+      properties:
+        email_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        email_max_requests: { type: integer, minimum: 1, maximum: 100 }
+        ip_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        ip_max_requests: { type: integer, minimum: 1, maximum: 1000 }
+        expected_version: { type: integer, minimum: 1 }
+      additionalProperties: false
     LoginRequest:
       type: object
       required: [email, password]
@@ -590,6 +618,29 @@ func openAPIComponents() string {
         tags: { type: array, items: { type: string } }
       additionalProperties: false
     RichtextArticle: { type: object, additionalProperties: true }
+    ContentPreviewRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 100000 }
+      additionalProperties: false
+    ContentPreviewResponse:
+      type: object
+      required: [sanitized_html, text]
+      properties:
+        sanitized_html: { type: string }
+        text: { type: string }
+        warnings: { type: array, items: { type: string } }
+    ContentImage:
+      type: object
+      required: [file_url, file_name, file_size, mime_type]
+      properties:
+        file_url: { type: string }
+        file_name: { type: string }
+        file_size: { type: integer, format: int64 }
+        mime_type: { type: string, enum: [image/jpeg, image/png, image/gif, image/webp] }
+        width: { type: integer }
+        height: { type: integer }
     RoleAssignmentRequest:
       type: object
       required: [role_id]
@@ -663,6 +714,16 @@ func openAPIComponents() string {
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     BadRequest:
       description: Invalid request parameters or body
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    TooManyRequests:
+      description: Request frequency exceeded the active bounded policy
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ServiceUnavailable:
+      description: A required internal dependency is temporarily unavailable
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }

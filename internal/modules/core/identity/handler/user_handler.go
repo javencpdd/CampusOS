@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -82,8 +83,13 @@ func (h *UserHandler) RequestRegistrationChallenge(c *gin.Context) {
 		response.Error(c, http.StatusTooManyRequests, 10010, "verification request is temporarily limited")
 		return
 	}
-	if err != nil {
+	if errors.Is(err, service.ErrChallengeInvalid) {
 		response.Error(c, http.StatusBadRequest, 10009, "registration verification request was not accepted")
+		return
+	}
+	if err != nil {
+		log.Printf("[IDENTITY] registration challenge request failed request_id=%s: %v", c.GetString("trace_id"), err)
+		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is temporarily unavailable")
 		return
 	}
 	response.Success(c, receipt)

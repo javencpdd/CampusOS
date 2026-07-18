@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/campusos/CampusOS/internal/modules/core/community/contentbody"
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
@@ -21,6 +22,31 @@ type ThreadHandler struct {
 // NewThreadHandler 创建帖子处理器
 func NewThreadHandler(svc *service.ThreadService) *ThreadHandler {
 	return &ThreadHandler{svc: svc}
+}
+
+type contentPreviewRequest struct {
+	Content string `json:"content" binding:"required,min=1"`
+}
+
+// PreviewContent applies the same Core sanitizer used before structured
+// content is persisted. It is intentionally independent from RichText's
+// feature lifecycle so Mutual Aid and Secondhand can preview safely.
+func (h *ThreadHandler) PreviewContent(c *gin.Context) {
+	var req contentPreviewRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+	result, err := contentbody.Sanitize(req.Content)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"sanitized_html": result.HTML,
+		"text":           result.Text,
+		"warnings":       result.Warnings,
+	})
 }
 
 // CreateThread 创建帖子

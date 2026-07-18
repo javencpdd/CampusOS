@@ -19,7 +19,8 @@ Challenge ID 不是验证码。Ticket 也不是登录 Token，不能用于访问
 1. Code 有 10 分钟有效期，最多尝试 5 次。
 2. Ticket 默认 15 分钟有效，消费后立即失效。
 3. Code 的用途严格隔离。注册 Code 不能用来重置密码，反过来也不行。
-4. 每个邮箱一分钟只能申请一次、每天最多五次；同一个 IP 每小时最多十次。
+4. 默认任意连续 10 分钟内每个邮箱最多申请 5 次；任意连续 60 分钟内同一个 IP 最多申请
+   10 次。管理员可以在受约束范围内热更新窗口和次数，但不能关闭限流。
 5. 共享历史邮箱和保留身份标识不能申请 Challenge。
 6. 服务日志、数据库、Outbox、管理端页面和导出文件都不应包含 Code、原始 Ticket、SMTP
    Secret、密码 hash 或原始 IP。
@@ -58,6 +59,10 @@ make database-check
 
 如果迁移或限流异常，保留 Challenge ID、时间和请求 ID，使用受控日志排查。不要直接增加
 `request_count`、清空 Ticket digest 或把 Challenge 改成已验证。
+
+管理端“用户与权限 -> 验证码策略”使用 `identity.challenge_policy.read` 和
+`identity.challenge_policy.update`。策略由 Identity Core 始终执行，不属于可卸载插件，也不会因为
+Built-in Feature 停用而失效。完整操作见[验证码频率策略配置说明](v12验证码频率策略配置说明.md)。
 
 ## 5. 给开发者的边界
 

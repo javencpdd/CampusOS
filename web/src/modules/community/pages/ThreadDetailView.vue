@@ -11,6 +11,7 @@
               <span>浏览：{{ thread.view_count }}</span>
               <span>回复：{{ thread.reply_count }}</span>
               <el-tag v-if="thread.content_format === 'richtext_article'" type="success" size="small">图文</el-tag>
+              <el-tag v-if="thread.content_format === 'safe_html'" type="success" size="small">图文</el-tag>
               <el-tag v-if="publicationStatus === 'private'" type="warning" size="small">私密</el-tag>
               <el-tag v-if="moderationStatus === 'pending'" type="warning" size="small">待审核</el-tag>
               <el-tag v-if="moderationStatus === 'taken_down'" type="danger" size="small">已下架</el-tag>
@@ -56,6 +57,9 @@
                 :loading="articleOperating"
                 >删除</el-button
               >
+            </template>
+            <template v-else-if="structuredEditPath">
+              <el-button v-if="!isTrashed" size="small" @click="$router.push(structuredEditPath)">编辑</el-button>
             </template>
             <template v-else-if="canManagePlainThread">
               <el-button v-if="!isTrashed" size="small" @click="$router.push(`/threads/${thread.id}/edit`)"
@@ -103,6 +107,11 @@
         <p v-if="article.summary" class="article-summary">{{ article.summary }}</p>
         <article class="article-content" v-html="article.sanitized_html"></article>
       </template>
+      <article
+        v-else-if="thread.content_format === 'safe_html'"
+        class="content safe-html-content"
+        v-html="thread.content"
+      ></article>
       <div v-else class="content">{{ thread.content }}</div>
     </el-card>
 
@@ -262,9 +271,16 @@ const canManagePlainThread = computed(() =>
   Boolean(
     !article.value &&
     thread.value?.content_format !== 'richtext_article' &&
+    (thread.value?.thread_type || 'discussion') === 'discussion' &&
     userStore.user?.id === thread.value?.author_id,
   ),
 )
+const structuredEditPath = computed(() => {
+  if (!isOwnThread.value) return ''
+  if (thread.value?.thread_type === 'mutual_aid') return `/mutual-aid/${thread.value.id}/edit`
+  if (thread.value?.thread_type === 'secondhand') return `/secondhand/${thread.value.id}/edit`
+  return ''
+})
 
 const threadID = () => route.params.id as string
 
@@ -550,6 +566,25 @@ onMounted(async () => {
 .content {
   line-height: 1.8;
   white-space: pre-wrap;
+}
+.safe-html-content {
+  max-width: 760px;
+  margin: 0 auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.safe-html-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 16px auto;
+  border-radius: 6px;
+}
+.safe-html-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: var(--el-fill-color-light);
+  border-left: 4px solid var(--el-border-color);
 }
 .article-cover {
   width: 100%;

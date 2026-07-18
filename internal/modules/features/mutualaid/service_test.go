@@ -3,6 +3,7 @@ package mutualaid
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,6 +96,30 @@ func TestCreateAndStatusTransitionKeepsCommunityGovernanceIndependent(t *testing
 		Version:   updated.Detail.Version,
 	}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("expected invalid status transition, got %v", err)
+	}
+}
+
+func TestMutualAidAcceptsSanitizedImageTextAndKeepsLegacyDefault(t *testing.T) {
+	ctx := context.Background()
+	service, _, _ := newTestService(t, true)
+	request := validCreateRequest()
+	request.ContentFormat = ContentFormatSafeHTML
+	request.Content = `<h2>可提供帮助</h2><img src="/api/v1/content/assets/images/1001/a.png" onerror="bad()"><script>bad()</script>`
+	created, err := service.Create(ctx, "1001", "alice", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Thread.ContentFormat != ContentFormatSafeHTML || strings.Contains(created.Thread.Content, "script") || strings.Contains(created.Thread.Content, "onerror") {
+		t.Fatalf("unsafe image-text content persisted: %#v", created.Thread)
+	}
+
+	legacy := validCreateRequest()
+	plain, err := service.Create(ctx, "1002", "bob", legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.Thread.ContentFormat != ContentFormat {
+		t.Fatalf("legacy request format changed: %#v", plain.Thread)
 	}
 }
 

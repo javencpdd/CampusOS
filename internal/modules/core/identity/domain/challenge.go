@@ -103,6 +103,7 @@ type ChallengeDispatch struct {
 type ChallengeRateWindow struct {
 	Scope         string
 	SubjectDigest string
-	WindowStart   time.Time
+	ObservedAt    time.Time
+	Duration      time.Duration
 	Limit         int
 }

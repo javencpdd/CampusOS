@@ -16,6 +16,12 @@
       title="Feature Store 是启停和配置的唯一权威状态；restart 功能在 API 重启后生效，停用不会删除数据。"
     />
 
+    <el-alert
+      type="info"
+      :closable="false"
+      title="校园互助和校园二手归入图文内容能力组；分组只表达界面与能力复用关系，各功能仍有独立开关和数据生命周期。"
+    />
+
     <section class="core-band">
       <div>
         <strong>core.moderation</strong>
@@ -30,8 +36,14 @@
     <el-table :data="features" v-loading="loading" border stripe>
       <el-table-column prop="label" label="功能" min-width="210">
         <template #default="{ row }">
-          <strong>{{ row.label }}</strong>
-          <small>{{ row.id }}</small>
+          <div :class="['feature-name', { 'is-child': row.parentId }]">
+            <span v-if="row.parentId" class="child-line" aria-hidden="true"></span>
+            <div>
+              <strong>{{ row.label }}</strong>
+              <small>{{ row.id }}</small>
+            </div>
+            <el-tag v-if="row.parentId" size="small" type="info" effect="plain">图文子功能</el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="description" label="职责" min-width="280" />
@@ -194,6 +206,9 @@ onMounted(load)
 .core-band, .appearance-band { padding: 18px; background: #fff; border: 1px solid #e4e7ed; }
 .row-actions { justify-content: flex-start; flex-wrap: wrap; }
 strong + small { display: block; margin-top: 4px; color: #909399; }
+.feature-name { display: flex; align-items: center; gap: 8px; }
+.feature-name.is-child { padding-left: 20px; }
+.child-line { width: 12px; height: 16px; border-left: 1px solid #c0c4cc; border-bottom: 1px solid #c0c4cc; }
 .field-help { margin: 6px 0 0; color: #909399; font-size: 12px; }
 @media (max-width: 760px) {
   .page-header, .section-heading, .core-band { align-items: stretch; flex-direction: column; }

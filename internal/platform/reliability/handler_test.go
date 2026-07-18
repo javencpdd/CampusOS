@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,6 +69,69 @@ func TestListEventsPaginatesAndDoesNotExposePayload(t *testing.T) {
 	for _, forbidden := range []string{"payload", "headers", "idempotency_key"} {
 		if _, exists := envelope.Data.Items[0][forbidden]; exists {
 			t.Fatalf("event response exposed %s", forbidden)
+		}
+	}
+}
+
+func TestReliabilityResponsesExposeDiagnosticsWithoutSecrets(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	store := NewMemoryStore()
+	service := NewService(transaction.NewMemory(), store)
+	now := time.Now().UTC()
+	event := Event{
+		ID: "diagnostic-event", Type: "identity.email.challenge.requested.v1",
+		Payload: json.RawMessage(`{"email":"secret@example.test","code":"123456"}`),
+		Headers: json.RawMessage(`{"Authorization":"Bearer raw-token"}`),
+		Status:  StatusProcessing, Attempts: 9, MaxAttempts: 8,
+		LeaseOwner: "worker-old", LeaseUntil: timePointer(now.Add(-time.Minute)), LeaseGeneration: 9,
+		LastError: "smtp failed for secret@example.test token=raw-token",
+	}
+	if _, err := service.Enqueue(t.Context(), event); err != nil {
+		t.Fatal(err)
+	}
+	attempt, err := store.StartAttempt(t.Context(), DeliveryAttempt{
+		ID: "diagnostic-attempt", EventID: event.ID, ConsumerName: finalizeConsumerName,
+		WorkerID: "worker-old", LeaseGeneration: 9, Attempt: 9,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt.Status = "failed"
+	attempt.Error = "finalize failed for secret@example.test token=raw-token"
+	if err := store.FinishAttempt(t.Context(), *attempt); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewHandler(service)
+	router := gin.New()
+	router.GET("/events", func(c *gin.Context) {
+		c.Set("user_id", "admin-events")
+		handler.ListEvents(c)
+	})
+	router.GET("/attempts", func(c *gin.Context) {
+		c.Set("user_id", "admin-attempts")
+		handler.ListAttempts(c)
+	})
+
+	eventsRecorder := httptest.NewRecorder()
+	router.ServeHTTP(eventsRecorder, httptest.NewRequest(http.MethodGet, "/events", nil))
+	if eventsRecorder.Code != http.StatusOK {
+		t.Fatalf("events status=%d body=%s", eventsRecorder.Code, eventsRecorder.Body.String())
+	}
+	attemptsRecorder := httptest.NewRecorder()
+	router.ServeHTTP(attemptsRecorder, httptest.NewRequest(http.MethodGet, "/attempts?event_id=diagnostic-event", nil))
+	if attemptsRecorder.Code != http.StatusOK {
+		t.Fatalf("attempts status=%d body=%s", attemptsRecorder.Code, attemptsRecorder.Body.String())
+	}
+	combined := eventsRecorder.Body.String() + attemptsRecorder.Body.String()
+	for _, forbidden := range []string{"secret@example.test", "123456", "raw-token", "Authorization", "payload", "headers", "idempotency_key"} {
+		if strings.Contains(combined, forbidden) {
+			t.Fatalf("reliability response leaked %q: %s", forbidden, combined)
+		}
+	}
+	for _, expected := range []string{`"attempts_overflow":true`, `"lease_expired":true`, `"lease_owner":"worker-old"`, `"consumer_name":"system:outbox-finalize"`, `"error":"durable event processing failed"`} {
+		if !strings.Contains(combined, expected) {
+			t.Fatalf("reliability diagnostic missing %s: %s", expected, combined)
 		}
 	}
 }

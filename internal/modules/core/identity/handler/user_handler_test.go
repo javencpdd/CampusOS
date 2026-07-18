@@ -195,3 +195,41 @@ func TestVerifiedRegistrationHTTPFlowAndLegacyRequestRejection(t *testing.T) {
 		t.Fatalf("ticket reuse response=%d %s", reused.Code, reused.Body.String())
 	}
 }
+
+func TestRegistrationChallengeInfrastructureFailureIsRetryableAndRedacted(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	challenges, err := service.NewChallengeService(repository.NewMemoryChallengeRepository(), service.ChallengeConfig{
+		ActiveKeyID:  "test-v1",
+		HMACKeys:     map[string]string{"test-v1": "test-registration-hmac-key"},
+		IPHashSecret: "test-registration-ip-hash-key",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	challenges.SetPolicyReader(failingChallengePolicyReader{})
+	handler := NewUserHandler(nil)
+	handler.SetChallengeService(challenges)
+	router := gin.New()
+	router.Use(middleware.TraceID())
+	router.POST("/auth/registration/challenge", handler.RequestRegistrationChallenge)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/auth/registration/challenge", strings.NewReader(`{"email":"student@example.test"}`))
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("infrastructure failure status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"retryable":true`) || !strings.Contains(recorder.Body.String(), `"internal.error"`) {
+		t.Fatalf("infrastructure failure is not safely retryable: %s", recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), "policy storage failure") || strings.Contains(recorder.Body.String(), "student@example.test") {
+		t.Fatalf("infrastructure failure leaked internal or recipient data: %s", recorder.Body.String())
+	}
+}
+
+type failingChallengePolicyReader struct{}
+
+func (failingChallengePolicyReader) GetChallengePolicy(context.Context) (*domain.ChallengePolicy, error) {
+	return nil, errors.New("policy storage failure")
+}

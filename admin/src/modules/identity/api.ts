@@ -42,3 +42,25 @@ export const identityRecoveryApi = {
   sessions: (userId: string) => api.get(`/identity/users/${encodeURIComponent(userId)}/sessions`),
   revokeAllSessions: (userId: string) => api.post(`/identity/users/${encodeURIComponent(userId)}/sessions/revoke-all`),
 }
+
+export type ChallengePolicy = {
+  id: string
+  email_window_minutes: number
+  email_max_requests: number
+  ip_window_minutes: number
+  ip_max_requests: number
+  version: number
+  updated_by?: string
+  updated_at: string
+}
+
+export const challengePolicyApi = {
+  get: () => api.get('/identity/challenge-policy'),
+  update: (data: {
+    email_window_minutes: number
+    email_max_requests: number
+    ip_window_minutes: number
+    ip_max_requests: number
+    expected_version: number
+  }) => api.put('/identity/challenge-policy', data),
+}

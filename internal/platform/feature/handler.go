@@ -140,6 +140,7 @@ func (h *Handler) payload(resolved modulecatalog.Resolved, detail bool) gin.H {
 		"pending_restart":          state.PendingRestart,
 		"status":                   status,
 		"dependencies":             descriptor.Dependencies,
+		"presentation_parent":      descriptor.PresentationParent,
 		"config_sources":           configSources(descriptor),
 		"capability_class":         descriptor.Kind,
 	}

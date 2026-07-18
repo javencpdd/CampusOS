@@ -33,6 +33,52 @@ func TestServerRoutesHaveAuthorizationContracts(t *testing.T) {
 	}
 }
 
+func TestCategoryOperationCodesMatchDatabaseContractAndKeepLegacyAliases(t *testing.T) {
+	root, err := FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type operationContract struct {
+		operation string
+		legacy    string
+	}
+	wanted := map[string]operationContract{
+		"GET /api/v1/admin/categories/:id/thread-types": {
+			operation: "http.community.category.thread_types",
+			legacy:    "http.community.category.thread-types",
+		},
+		"GET /api/v1/categories/:id/archive-impact": {
+			operation: "http.community.category.archive_impact",
+			legacy:    "http.community.category.archive-impact",
+		},
+		"DELETE /api/v1/categories/:id": {
+			operation: "http.community.category.archive_legacy",
+			legacy:    "http.community.category.archive-legacy",
+		},
+	}
+	for _, route := range routes {
+		key := route.Method + " " + route.Path
+		contract, ok := wanted[key]
+		if !ok {
+			continue
+		}
+		if route.OperationCode != contract.operation {
+			t.Fatalf("operation code does not match database contract: got %s want %s", route.OperationCode, contract.operation)
+		}
+		if !containsRouteAlias(route.LegacyAliases, contract.legacy) {
+			t.Fatalf("route %s lost legacy operation alias %s", key, contract.legacy)
+		}
+		delete(wanted, key)
+	}
+	if len(wanted) != 0 {
+		t.Fatalf("missing category operation routes: %#v", wanted)
+	}
+}
+
 func TestOpenAPIIsValidYAMLWithCoreFieldContracts(t *testing.T) {
 	root, err := FindRepositoryRoot(".")
 	if err != nil {
@@ -78,6 +124,23 @@ func TestOpenAPICombinesPathAndPaginationParameters(t *testing.T) {
 	for _, expected := range []string{"- name: id", "- name: page", "- name: page_size"} {
 		if !strings.Contains(operation, expected) {
 			t.Fatalf("OpenAPI is missing %q:\n%s", expected, operation)
+		}
+	}
+}
+
+func TestRegistrationChallengeOpenAPIDocumentsRateAndDependencyFailures(t *testing.T) {
+	document := string(OpenAPI([]RouteContract{{
+		Method: "POST", Path: "/api/v1/auth/registration/challenge", Handler: "userHandler.RequestRegistrationChallenge",
+		Audience: "public", Auth: "none", Ownership: "none", Scope: "public", Stability: "experimental",
+	}}))
+	operation := document[:strings.Index(document, "components:")]
+	for _, expected := range []string{
+		"'400':\n          $ref: '#/components/responses/BadRequest'",
+		"'429':\n          $ref: '#/components/responses/TooManyRequests'",
+		"'503':\n          $ref: '#/components/responses/ServiceUnavailable'",
+	} {
+		if !strings.Contains(operation, expected) {
+			t.Fatalf("registration Challenge OpenAPI is missing %q:\n%s", expected, operation)
 		}
 	}
 }

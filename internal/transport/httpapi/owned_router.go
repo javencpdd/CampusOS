@@ -31,14 +31,15 @@ func (r *Router) RouteDescriptors() []platformroute.Descriptor {
 }
 
 type ownedGroup struct {
-	group          *gin.RouterGroup
-	registry       *platformroute.Registry
-	audience       platformroute.Audience
-	permissions    middleware.PermissionChecker
-	permission     string
-	permissionCode string
-	operation      string
-	scopeType      string
+	group            *gin.RouterGroup
+	registry         *platformroute.Registry
+	audience         platformroute.Audience
+	permissions      middleware.PermissionChecker
+	permission       string
+	permissionCode   string
+	operation        string
+	legacyOperations []string
+	scopeType        string
 }
 
 func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, audience platformroute.Audience, permissions middleware.PermissionChecker) *ownedGroup {
@@ -72,6 +73,14 @@ func (g *ownedGroup) PermissionCode(code string) *ownedGroup {
 func (g *ownedGroup) Operation(code string) *ownedGroup {
 	copy := *g
 	copy.operation = strings.TrimSpace(code)
+	return &copy
+}
+
+// LegacyOperationAlias records a previously published transport operation
+// without using that value as the authoritative database key.
+func (g *ownedGroup) LegacyOperationAlias(code string) *ownedGroup {
+	copy := *g
+	copy.legacyOperations = append(append([]string(nil), g.legacyOperations...), strings.TrimSpace(code))
 	return &copy
 }
 
@@ -138,10 +147,18 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 		}
 		handlers = append([]gin.HandlerFunc{permissionMiddleware}, handlers...)
 	}
+	legacyAliases := []string{routeDescriptorID(method, fullPath), "httpapi." + strings.TrimPrefix(routeDescriptorID(method, fullPath), "http.")}
+	for _, alias := range g.legacyOperations {
+		alias = strings.TrimSpace(alias)
+		if alias == "" || alias == operation || containsString(legacyAliases, alias) {
+			continue
+		}
+		legacyAliases = append(legacyAliases, alias)
+	}
 	descriptor := platformroute.Descriptor{
 		ID:             routeDescriptorID(method, fullPath),
 		OperationCode:  operation,
-		LegacyAliases:  []string{routeDescriptorID(method, fullPath), "httpapi." + strings.TrimPrefix(routeDescriptorID(method, fullPath), "http.")},
+		LegacyAliases:  legacyAliases,
 		Owner:          owner,
 		Method:         method,
 		Path:           fullPath,
@@ -180,6 +197,15 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	g.group.Handle(method, path, handlers...)
 }
 
+func containsString(values []string, candidate string) bool {
+	for _, value := range values {
+		if value == candidate {
+			return true
+		}
+	}
+	return false
+}
+
 func runtimeFunctionName(handler gin.HandlerFunc) string {
 	value := reflect.ValueOf(handler)
 	if !value.IsValid() {
@@ -204,6 +230,8 @@ func moduleOwner(handlerName, path string) string {
 		return "core.community"
 	case strings.Contains(handlerName, "/internal/modules/core/moderation.") || strings.Contains(handlerName, "/internal/modules/core/moderation/"):
 		return "core.moderation"
+	case strings.Contains(handlerName, "/internal/modules/core/userstorage.") || strings.Contains(handlerName, "/internal/modules/core/userstorage/"):
+		return "core.user-storage"
 	case strings.Contains(handlerName, "/internal/modules/features/personalspace.") || strings.Contains(handlerName, "/internal/modules/features/personalspace/"):
 		return "feature.personal-space"
 	case strings.Contains(handlerName, "/internal/modules/features/richtext.") || strings.Contains(handlerName, "/internal/modules/features/richtext/"):

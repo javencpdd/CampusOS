@@ -43,8 +43,8 @@ func TestWorkerRetriesThenPublishes(t *testing.T) {
 	if _, err := service.Enqueue(context.Background(), event); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.ProcessOnce(context.Background()); err != nil {
-		t.Fatal(err)
+	if _, err := service.ProcessOnce(context.Background()); err == nil {
+		t.Fatal("expected observable consumer retry error")
 	}
 	items, err := service.List(context.Background(), EventFilter{Type: "test.retry"})
 	if err != nil || len(items) != 1 {
@@ -73,8 +73,8 @@ func TestWorkerDeadLettersPermanentFailure(t *testing.T) {
 	if _, err := service.Enqueue(context.Background(), event); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.ProcessOnce(context.Background()); err != nil {
-		t.Fatal(err)
+	if _, err := service.ProcessOnce(context.Background()); err == nil {
+		t.Fatal("expected observable permanent consumer error")
 	}
 	summary, err := service.Summary(context.Background())
 	if err != nil {
@@ -141,8 +141,8 @@ func TestStaleLeaseCannotCompleteAfterRecovery(t *testing.T) {
 	if err != nil || len(second) != 1 {
 		t.Fatalf("recovery claim: events=%d err=%v", len(second), err)
 	}
-	if err := store.Complete(context.Background(), first[0].ID, "worker-a", first[0].LeaseGeneration); err == nil {
-		t.Fatal("stale worker completed a fenced event")
+	if err := store.Complete(context.Background(), first[0].ID, "worker-a", first[0].LeaseGeneration); !errors.Is(err, ErrLeaseLost) {
+		t.Fatalf("stale worker completion error=%v, want ErrLeaseLost", err)
 	}
 	if err := store.Complete(context.Background(), second[0].ID, "worker-b", second[0].LeaseGeneration); err != nil {
 		t.Fatalf("current worker completion failed: %v", err)
@@ -171,7 +171,7 @@ func TestConsumerReceiptSkipsRepeatedExternalDelivery(t *testing.T) {
 		t.Fatalf("consumer ran despite receipt: %d", called)
 	}
 	attempts, err := service.ListAttempts(context.Background(), event.ID, 10)
-	if err != nil || len(attempts) != 1 || attempts[0].Status != "skipped" {
+	if err != nil || len(attempts) != 2 || !hasAttempt(attempts, "event:test.receipt", "skipped") || !hasAttempt(attempts, finalizeConsumerName, "succeeded") {
 		t.Fatalf("expected skipped attempt evidence, attempts=%+v err=%v", attempts, err)
 	}
 }
@@ -199,13 +199,22 @@ func TestWorkerFanoutAcknowledgesConsumersIndependently(t *testing.T) {
 		t.Fatalf("fanout calls primary=%d secondary=%d", primaryCalls, secondaryCalls)
 	}
 	attempts, err := service.ListAttempts(context.Background(), event.ID, 10)
-	if err != nil || len(attempts) != 2 {
+	if err != nil || len(attempts) != 3 || !hasAttempt(attempts, finalizeConsumerName, "succeeded") {
 		t.Fatalf("fanout attempt evidence=%+v err=%v", attempts, err)
 	}
 	items, _ := service.List(context.Background(), EventFilter{Type: "test.fanout"})
 	if len(items) != 1 || items[0].Status != StatusPublished {
 		t.Fatalf("fanout event was not completed: %+v", items)
 	}
+}
+
+func hasAttempt(items []DeliveryAttempt, consumer, status string) bool {
+	for _, item := range items {
+		if item.ConsumerName == consumer && item.Status == status {
+			return true
+		}
+	}
+	return false
 }
 
 func TestRetentionPreviewRecordsDryRunOnly(t *testing.T) {

@@ -15,15 +15,23 @@
         <el-form-item v-if="mode === 'password'" label="邮箱">
           <el-input v-model.trim="email" type="email" autocomplete="email" />
         </el-form-item>
-        <el-form-item label="请求编号">
+        <el-form-item v-if="mode === 'assisted'" label="请求编号">
           <el-input v-model.trim="challengeID" autocomplete="off" />
         </el-form-item>
         <el-form-item label="验证码">
-          <el-input v-model.trim="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+          <el-input
+            v-model.trim="code"
+            inputmode="numeric"
+            maxlength="6"
+            autocomplete="one-time-code"
+            :disabled="mode === 'password' && !challengeID"
+          />
         </el-form-item>
         <div class="form-actions">
-          <el-button v-if="mode === 'password'" plain :loading="sending" @click="requestCode">发送验证码</el-button>
-          <el-button type="primary" native-type="submit" :loading="verifying">继续</el-button>
+          <el-button v-if="mode === 'password'" plain :loading="sending" :disabled="!email" @click="requestCode"
+            >发送验证码</el-button
+          >
+          <el-button type="primary" native-type="submit" :loading="verifying" :disabled="!canVerify">继续</el-button>
         </div>
       </el-form>
 
@@ -58,6 +66,7 @@ const modeOptions = [
   { label: '辅助恢复', value: 'assisted' },
 ]
 const email = ref('')
+const requestedEmail = ref('')
 const challengeID = ref('')
 const code = ref('')
 const ticket = ref('')
@@ -68,11 +77,21 @@ const sending = ref(false)
 const verifying = ref(false)
 const saving = ref(false)
 
-const canVerify = computed(
-  () => challengeID.value && code.value.length === 6 && (mode.value === 'assisted' || email.value),
+const canVerify = computed(() =>
+  Boolean(challengeID.value && code.value.length === 6 && (mode.value === 'assisted' || requestedEmail.value)),
 )
 
 watch(mode, () => {
+  challengeID.value = ''
+  requestedEmail.value = ''
+  code.value = ''
+  ticket.value = ''
+  step.value = 0
+})
+
+watch(email, (value) => {
+  if (!requestedEmail.value || value.trim().toLowerCase() === requestedEmail.value) return
+  requestedEmail.value = ''
   challengeID.value = ''
   code.value = ''
   ticket.value = ''
@@ -86,7 +105,11 @@ const requestCode = async () => {
   sending.value = true
   try {
     const response: any = await authApi.requestPasswordReset({ email: email.value })
-    if (response?.data?.challenge_id) challengeID.value = response.data.challenge_id
+    if (!response?.data?.challenge_id) throw new Error('验证码请求暂时不可用')
+    challengeID.value = response.data.challenge_id
+    requestedEmail.value = email.value.trim().toLowerCase()
+    code.value = ''
+    ticket.value = ''
     ElMessage.success('如账号符合条件，验证码将发送至邮箱')
   } catch (error: any) {
     ElMessage.error(messageOf(error, '验证码请求暂时不可用'))
@@ -124,7 +147,7 @@ const complete = async () => {
       })
     } else {
       await authApi.completePasswordReset({
-        email: email.value,
+        email: requestedEmail.value,
         challenge_id: challengeID.value,
         ticket: ticket.value,
         password: password.value,

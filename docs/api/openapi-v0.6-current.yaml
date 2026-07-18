@@ -99,7 +99,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.community.category.thread-types
+      x-campusos-operation: http.community.category.thread_types
       x-campusos-permission: community.category.read
       security:
         - bearerAuth: []
@@ -1005,6 +1005,10 @@ paths:
                         $ref: '#/components/schemas/ChallengeReceipt'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/auth/registration/verify:
     post:
       operationId: userHandler_VerifyRegistrationChallenge
@@ -1211,7 +1215,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.community.category.archive-legacy
+      x-campusos-operation: http.community.category.archive_legacy
       x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
@@ -1350,7 +1354,7 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.community
       x-campusos-scope: global
-      x-campusos-operation: http.community.category.archive-impact
+      x-campusos-operation: http.community.category.archive_impact
       x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
@@ -1518,6 +1522,110 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/CategoryThreadTypePolicyUpdate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/content/assets/images:
+    post:
+      operationId: userStorageHandler_UploadContentImage
+      summary: POST /api/v1/content/assets/images
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.user-storage
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.content.assets.images
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MultipartRequest'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ContentImage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/content/assets/images/{user_id}/{filename}:
+    get:
+      operationId: userStorageHandler_ServeContentImage
+      summary: GET /api/v1/content/assets/images/:user_id/:filename
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.user-storage
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.content.assets.images.user_id.filename
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/content/preview:
+    post:
+      operationId: threadHandler_PreviewContent
+      summary: POST /api/v1/content/preview
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.content.preview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentPreviewRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ContentPreviewResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2157,6 +2265,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/challenge-policy:
+    get:
+      operationId: challengePolicyHandler_Get
+      summary: GET /api/v1/identity/challenge-policy
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.challenge_policy.get
+      x-campusos-permission: identity.challenge_policy.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengePolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: challengePolicyHandler_Update
+      summary: PUT /api/v1/identity/challenge-policy
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.challenge_policy.update
+      x-campusos-permission: identity.challenge_policy.update
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengePolicyUpdateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChallengePolicy'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -8134,6 +8310,28 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/RecoveryCase' } }
         total: { type: integer, minimum: 0 }
+    ChallengePolicy:
+      type: object
+      required: [id, email_window_minutes, email_max_requests, ip_window_minutes, ip_max_requests, version, updated_at]
+      properties:
+        id: { type: string, enum: [email_verification] }
+        email_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        email_max_requests: { type: integer, minimum: 1, maximum: 100 }
+        ip_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        ip_max_requests: { type: integer, minimum: 1, maximum: 1000 }
+        version: { type: integer, minimum: 1 }
+        updated_by: { type: string }
+        updated_at: { type: string, format: date-time }
+    ChallengePolicyUpdateRequest:
+      type: object
+      required: [email_window_minutes, email_max_requests, ip_window_minutes, ip_max_requests, expected_version]
+      properties:
+        email_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        email_max_requests: { type: integer, minimum: 1, maximum: 100 }
+        ip_window_minutes: { type: integer, minimum: 1, maximum: 1440 }
+        ip_max_requests: { type: integer, minimum: 1, maximum: 1000 }
+        expected_version: { type: integer, minimum: 1 }
+      additionalProperties: false
     LoginRequest:
       type: object
       required: [email, password]
@@ -8373,6 +8571,29 @@ components:
         tags: { type: array, items: { type: string } }
       additionalProperties: false
     RichtextArticle: { type: object, additionalProperties: true }
+    ContentPreviewRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 100000 }
+      additionalProperties: false
+    ContentPreviewResponse:
+      type: object
+      required: [sanitized_html, text]
+      properties:
+        sanitized_html: { type: string }
+        text: { type: string }
+        warnings: { type: array, items: { type: string } }
+    ContentImage:
+      type: object
+      required: [file_url, file_name, file_size, mime_type]
+      properties:
+        file_url: { type: string }
+        file_name: { type: string }
+        file_size: { type: integer, format: int64 }
+        mime_type: { type: string, enum: [image/jpeg, image/png, image/gif, image/webp] }
+        width: { type: integer }
+        height: { type: integer }
     RoleAssignmentRequest:
       type: object
       required: [role_id]
@@ -8446,6 +8667,16 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     BadRequest:
       description: Invalid request parameters or body
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    TooManyRequests:
+      description: Request frequency exceeded the active bounded policy
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ServiceUnavailable:
+      description: A required internal dependency is temporarily unavailable
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }

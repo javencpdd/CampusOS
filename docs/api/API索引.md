@@ -1,7 +1,7 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现基线：`v0.12-dev`（A0-A7、B1-B3、C0-C2 已验收，C3 已实现并等待迁移演练验收）
+> 当前实现基线：`v0.12-dev`（A0-A7、B1-B3、C0-C3 及后续结构化图文加固已验收，Final 环境验收待完成）
 
 ## 1. 契约状态
 
@@ -23,6 +23,7 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 | 个人空间 | `/spaces/me/*`、`/u/:username` | 主页设置、内容同步、头像、风格包和公开主页。 |
 | 个人课表 | `/schedule/me/*` | 当前或指定学期课表、已保存课表列表、选择/新建、保存和导入。 |
 | 富文本文章 | `/richtext/articles/*` | 草稿、上传、预览、发布、详情、作者操作和管理端治理。 |
+| 通用图文内容 | `/content/preview`、`/content/assets/images/*` | Community 安全预览与 User Storage 正文图片；不受单个 Feature 开关联动。 |
 | 校园互助 | `/mutual-aid/*` | 结构化求助、提供、志愿协助与资源分享；独立业务状态不覆盖 Community 治理。 |
 | 校园二手 | `/secondhand/*` | 结构化闲置物品信息；CNY 分价与交易状态不覆盖 Community 治理。 |
 | 插件 | `/plugins/*`、`/plugin-packages/*` | 列表、配置、生命周期、插件包预检/导入/导出和审计。 |
@@ -86,6 +87,11 @@ Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，Exter
 不会获得事务参与能力。详细说明见
 [v12 结构化帖子类型与板块策略](../help/系统设计相关/v12结构化帖子类型与板块策略.md)。
 
+互助与二手正文可以使用兼容 `markdown` 纯文本或 `safe_html` 图文格式。`safe_html` 保存前由 Community
+Core 清洗，正文图片经 `POST /content/assets/images` 保存到当前用户的 User Storage；
+`POST /content/preview` 使用相同清洗规则。完整图文文章仍使用 `richtext_article` 和独立 Article Detail。
+详见 [v12 分组导航与结构化图文发布](../help/系统设计相关/v12分组导航与结构化图文发布.md)。
+
 ## 5. 校园互助 API
 
 `feature.mutual-aid` 仅管理互助 Detail 和业务状态；基础 Thread、回复、可见性与治理仍由 Community Core
@@ -105,7 +111,8 @@ Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，Exter
 `resolved -> closed` 转换。发生 `409` 时客户端必须重新读取后再提交，不能用旧版本覆盖新修改。详情字段和
 安全边界见 [v12 校园互助发布与状态管理](../help/系统设计相关/v12校园互助发布与状态管理.md)。
 编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
-互助状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。
+互助状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。创建和编辑请求可附带
+`content_format: "safe_html"`；省略时继续按历史纯文本处理。
 
 ## 6. 校园二手 API
 
@@ -128,7 +135,8 @@ Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，Exter
 `closed` 是终态。详情和安全边界见
 [v12 校园二手发布与交易状态管理](../help/系统设计相关/v12校园二手发布与交易状态管理.md)。
 编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
-交易状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。
+交易状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。创建和编辑请求可附带
+`content_format: "safe_html"`；省略时继续按历史纯文本处理。
 
 ## 7. Session 与设备 API
 
@@ -175,6 +183,8 @@ v10 使用稳定 Permission Code。旧的 `resource:action` 仍作为兼容映�
 | `GET` | `/users/:id/roles` | `identity.role.read` | 读取目标用户有效角色，包含隐式基础 `member`。 |
 | `POST` | `/users/:id/roles` | `identity.role.assign` | 分配额外全局角色；`moderator` 必须通过版主管理指定板块。 |
 | `DELETE` | `/users/:id/roles` | `identity.role.revoke` | 撤销额外角色；拒绝自我操作并以原子门禁保留至少一个全局管理员。 |
+| `GET` | `/identity/challenge-policy` | `identity.challenge_policy.read` | 读取始终启用的验证码窗口与次数策略。 |
+| `PUT` | `/identity/challenge-policy` | `identity.challenge_policy.update` | 使用 `expected_version` 热更新策略并写 required audit。 |
 
 HTTP Handler 缺少已认证操作者上下文时直接返回 `401`，不会回退到受信任内部调用。`member`、`guest` 是保护角色；系统角色矩阵只读，版主只能使用 category 作用域。完整设计见 [v10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)。
 

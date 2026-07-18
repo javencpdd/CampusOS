@@ -47,6 +47,20 @@
 | `published` | 所有已注册消费者已确认 | 无需操作。 |
 | `dead` | 达到最大次数或永久失败 | 修复原因后才考虑一次重放。 |
 
+`attempts` 是事件 Claim 次数，不是消费者数。`7/8` 表示还可以进行第 8 次领取；`8/8`
+不会被领取第 9 次。消费尝试中的 `skipped` 表示对应 Consumer Receipt 已存在，真实副作用
+不会再执行；它不是错误。`system:outbox-finalize` 用于说明所有消费者结束后，主 Outbox
+记录是否成功转为 published。
+
+页面会直接标记三类异常：
+
+- “尝试次数越界”：历史 attempts 大于 max，部署修复后会在下一次 Claim 维护阶段进入 dead。
+- “处理租约已过期”：processing 的 lease 已失效，可由下一 Worker 在未耗尽时安全领取。
+- “已记录消费者均完成，事件尚未最终化”：消费者已有成功/跳过证据，但 Complete 尚未成功。
+
+详情只显示 lease、次数、时间和脱敏错误，不显示 payload、headers、幂等键、邮箱、验证码、
+Token、Secret 或 operation details 原文。
+
 ## 3. 正确处理 dead-letter
 
 重放不是“再试一次”按钮，而是可能再次触发外部副作用的高风险动作。按以下步骤操作：
@@ -64,6 +78,12 @@
 只能重放 `dead` 事件。`pending`、`processing`、`retry` 和 `published` 返回冲突是
 正常安全限制。不要通过 SQL 把状态改成 `pending`，这会绕过 command audit、lease 和
 幂等记录。
+
+对于旧版本产生的 `97/8`、`103/8` 一类事件，先部署修复并让 Worker 完成一次 Claim 周期，
+确认事件自动进入 dead 且 attempts 原值保留。随后按事件逐条核对 Receipt 和 Attempt，再使用
+后台 Replay。Replay 不删除 Receipt，已成功的邮件和 EventBus 消费者会 skipped，修复后的
+finalize 会把事件转为 published。完整安全查询见
+[v12 可靠事件异常诊断与安全恢复](v12可靠事件异常诊断与安全恢复.md)。
 
 ## 4. 配置 Webhook
 
@@ -105,6 +125,7 @@ make reliability-check
 make outbox-check
 make failure-injection-check
 make database-check
+./scripts/test-v12-reliability-worker-convergence-migration.sh
 ```
 
 `make database-check` 已包含 `scripts/test-v11-reliability-migration.sh`。该脚本在隔离
@@ -115,6 +136,7 @@ make database-check
 | --- | --- | --- |
 | queue 持续积压 | Worker 心跳、migration `000027`、数据库连接、应用日志 | 不要清空 Outbox。 |
 | 单事件持续 retry | attempt 记录、接收方状态、`Retry-After`、endpoint 限制 | 不要反复点击测试替代重放。 |
+| 消费者 skipped 但 processing 反复出现 | finalize Attempt、lease generation、部署版本和状态转换日志 | 不要删除 Receipt 或直接写 published。 |
 | 被拒绝的 URL | 域名、DNS 解析、redirect、`WEBHOOK_ALLOWED_HOSTS` | 不要全局打开私网访问。 |
 | 插件/风格包操作 failed | 操作记录、staging、版本 snapshot 和磁盘权限 | 不要直接覆盖正式目录。 |
 | 需回退部署 | 先停止新 producer，等待/冻结 lease，保留 Outbox 和审计 | 不要将 `processing` 直接写成成功。 |

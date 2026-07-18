@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,7 @@ type WorkerConfig struct {
 	PollInterval  time.Duration
 	LeaseDuration time.Duration
 	BatchSize     int
+	Logger        *log.Logger
 }
 
 // Worker is intentionally small. It has no domain knowledge; feature modules
@@ -70,12 +72,44 @@ type Worker struct {
 	fallback handlerRegistration
 	cancel   context.CancelFunc
 	done     chan struct{}
+	logger   *log.Logger
 }
 
 type handlerRegistration struct {
 	consumer  string
 	handler   EventHandler
 	exclusive bool
+}
+
+const (
+	finalizeConsumerName        = "system:outbox-finalize"
+	completeFailureMessage      = "complete durable event failed"
+	stateTransitionFailure      = "outbox state transition failed"
+	consumerFailureMessage      = "durable event consumer failed"
+	receiptReadFailureMessage   = "read consumer receipt failed"
+	receiptRecordFailureMessage = "record consumer receipt failed"
+	attemptStartFailureMessage  = "start delivery attempt failed"
+	attemptFinishFailureMessage = "finish delivery attempt failed"
+)
+
+type workerOperationError struct {
+	operation string
+	message   string
+	cause     error
+}
+
+func (e *workerOperationError) Error() string {
+	if e == nil {
+		return "durable event worker failed"
+	}
+	return e.operation + ": " + e.message
+}
+
+func (e *workerOperationError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
 }
 
 func NewWorker(store Store, cfg WorkerConfig) *Worker {
@@ -91,7 +125,11 @@ func NewWorker(store Store, cfg WorkerConfig) *Worker {
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 16
 	}
-	return &Worker{store: store, cfg: cfg, handlers: make(map[string][]handlerRegistration)}
+	logger := cfg.Logger
+	if logger == nil {
+		logger = log.Default()
+	}
+	return &Worker{store: store, cfg: cfg, handlers: make(map[string][]handlerRegistration), logger: logger}
 }
 
 // RegisterHandler keeps the original one-handler dispatch behavior. An
@@ -168,7 +206,9 @@ func (w *Worker) Start(parent context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_, _ = w.ProcessOnce(ctx)
+				if _, err := w.ProcessOnce(ctx); err != nil {
+					w.logCycleFailure("process_once", "worker cycle completed with errors")
+				}
 			}
 		}
 	}()
@@ -198,19 +238,22 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 		return 0, errors.New("durable event store is unavailable")
 	}
 	if err := w.store.Heartbeat(ctx, w.cfg.ID, time.Now().UTC()); err != nil {
-		return 0, fmt.Errorf("outbox worker heartbeat: %w", err)
+		return 0, w.observe(Event{}, "heartbeat", "worker heartbeat failed", err)
 	}
 	events, err := w.store.Claim(ctx, w.cfg.ID, w.cfg.BatchSize, w.cfg.LeaseDuration)
 	if err != nil {
-		return 0, err
+		return 0, w.observe(Event{}, "claim", "claim durable events failed", err)
 	}
+	processErrors := make([]error, 0)
 	for _, event := range events {
-		w.process(ctx, event)
+		if err := w.process(ctx, event); err != nil {
+			processErrors = append(processErrors, err)
+		}
 	}
-	return len(events), nil
+	return len(events), errors.Join(processErrors...)
 }
 
-func (w *Worker) process(ctx context.Context, event Event) {
+func (w *Worker) process(ctx context.Context, event Event) error {
 	w.mu.RLock()
 	registered := append([]handlerRegistration(nil), w.handlers[event.Type]...)
 	includeFallback := w.fallback.handler != nil
@@ -226,66 +269,91 @@ func (w *Worker) process(ctx context.Context, event Event) {
 	w.mu.RUnlock()
 
 	if len(registered) == 0 {
-		attempt := w.startAttempt(ctx, event, "event:no-handler")
-		w.fail(ctx, event, errors.New("no registered durable event handler"), attempt)
-		return
+		attempt, attemptErr := w.startAttempt(ctx, event, "event:no-handler")
+		observed := make([]error, 0, 3)
+		if attemptErr != nil {
+			observed = append(observed, w.observe(event, "start_attempt", attemptStartFailureMessage, attemptErr))
+		}
+		deliveryErr := errors.New("no registered durable event handler")
+		observed = append(observed, w.observe(event, "dispatch", "no registered durable event handler", deliveryErr))
+		observed = append(observed, w.fail(ctx, event, deliveryErr, "no registered durable event handler", attempt))
+		return errors.Join(observed...)
 	}
+	evidenceErrors := make([]error, 0)
 	for _, item := range registered {
 		consumer := item.consumer
 		if consumer == "" {
 			consumer = "event:" + event.Type
 		}
-		attempt := w.startAttempt(ctx, event, consumer)
-		if attempt == nil {
-			w.fail(ctx, event, errors.New("record delivery attempt: attempt store unavailable"), nil)
-			return
+		attempt, attemptErr := w.startAttempt(ctx, event, consumer)
+		if attemptErr != nil {
+			evidenceErrors = append(evidenceErrors, w.observe(event, "start_attempt", attemptStartFailureMessage, attemptErr))
 		}
 		acknowledged, err := w.store.HasConsumerReceipt(ctx, consumer, event.ID)
 		if err != nil {
-			w.fail(ctx, event, fmt.Errorf("read consumer receipt: %w", err), attempt)
-			return
+			failure := w.observe(event, "read_receipt", receiptReadFailureMessage, err)
+			transitionErr := w.fail(ctx, event, err, receiptReadFailureMessage, attempt)
+			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
 		if acknowledged {
-			w.finishAttempt(ctx, attempt, "skipped", "consumer receipt already exists")
+			if err := w.finishAttempt(ctx, attempt, "skipped", "consumer receipt already exists"); err != nil {
+				evidenceErrors = append(evidenceErrors, w.observe(event, "finish_attempt", attemptFinishFailureMessage, err))
+			}
 			continue
 		}
 		if handlerErr := item.handler(ctx, event); handlerErr != nil {
-			w.fail(ctx, event, handlerErr, attempt)
-			return
+			failure := w.observe(event, "consume", consumerFailureMessage, handlerErr)
+			transitionErr := w.fail(ctx, event, handlerErr, consumerFailureMessage, attempt)
+			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
 		if receiptErr := w.store.RecordConsumerReceipt(ctx, ConsumerReceipt{
 			ConsumerName: consumer, EventID: event.ID, Attempt: event.Attempts,
 		}); receiptErr != nil {
-			w.fail(ctx, event, fmt.Errorf("record consumer receipt: %w", receiptErr), attempt)
-			return
+			failure := w.observe(event, "record_receipt", receiptRecordFailureMessage, receiptErr)
+			transitionErr := w.fail(ctx, event, receiptErr, receiptRecordFailureMessage, attempt)
+			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
-		w.finishAttempt(ctx, attempt, "succeeded", "")
+		if err := w.finishAttempt(ctx, attempt, "succeeded", ""); err != nil {
+			evidenceErrors = append(evidenceErrors, w.observe(event, "finish_attempt", attemptFinishFailureMessage, err))
+		}
 	}
-	_ = w.store.Complete(ctx, event.ID, w.cfg.ID, event.LeaseGeneration)
+	finalizeAttempt, attemptErr := w.startAttempt(ctx, event, finalizeConsumerName)
+	if attemptErr != nil {
+		evidenceErrors = append(evidenceErrors, w.observe(event, "start_finalize_attempt", attemptStartFailureMessage, attemptErr))
+	}
+	if err := w.store.Complete(ctx, event.ID, w.cfg.ID, event.LeaseGeneration); err != nil {
+		failure := w.observe(event, "complete", completeFailureMessage, err)
+		transitionErr := w.fail(ctx, event, err, completeFailureMessage, finalizeAttempt)
+		return errors.Join(append(evidenceErrors, failure, transitionErr)...)
+	}
+	if err := w.finishAttempt(ctx, finalizeAttempt, "succeeded", ""); err != nil {
+		evidenceErrors = append(evidenceErrors, w.observe(event, "finish_finalize_attempt", attemptFinishFailureMessage, err))
+	}
+	return errors.Join(evidenceErrors...)
 }
 
-func (w *Worker) startAttempt(ctx context.Context, event Event, consumer string) *DeliveryAttempt {
+func (w *Worker) startAttempt(ctx context.Context, event Event, consumer string) (*DeliveryAttempt, error) {
 	attempt, err := w.store.StartAttempt(ctx, DeliveryAttempt{
 		EventID: event.ID, ConsumerName: consumer, WorkerID: w.cfg.ID,
 		LeaseGeneration: event.LeaseGeneration, Attempt: event.Attempts,
 	})
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return attempt
+	return attempt, nil
 }
 
-func (w *Worker) finishAttempt(ctx context.Context, attempt *DeliveryAttempt, status, message string) {
+func (w *Worker) finishAttempt(ctx context.Context, attempt *DeliveryAttempt, status, message string) error {
 	if attempt == nil {
-		return
+		return nil
 	}
 	copyAttempt := *attempt
 	copyAttempt.Status = status
 	copyAttempt.Error = message
-	_ = w.store.FinishAttempt(ctx, copyAttempt)
+	return w.store.FinishAttempt(ctx, copyAttempt)
 }
 
-func (w *Worker) fail(ctx context.Context, event Event, err error, attempt *DeliveryAttempt) {
+func (w *Worker) fail(ctx context.Context, event Event, err error, message string, attempt *DeliveryAttempt) error {
 	var deliveryErr *DeliveryError
 	retryable := true
 	retryAfter := retryDelay(event.Attempts, event.ID)
@@ -295,13 +363,46 @@ func (w *Worker) fail(ctx context.Context, event Event, err error, attempt *Deli
 			retryAfter = deliveryErr.RetryAfter
 		}
 	}
+	targetStatus := "retry"
+	operation := "retry"
+	var transitionErr error
 	if !retryable || event.Attempts >= event.MaxAttempts {
-		w.finishAttempt(ctx, attempt, "dead", err.Error())
-		_ = w.store.DeadLetter(ctx, event.ID, w.cfg.ID, event.LeaseGeneration, err.Error())
-		return
+		targetStatus = "dead"
+		operation = "dead_letter"
+		transitionErr = w.store.DeadLetter(ctx, event.ID, w.cfg.ID, event.LeaseGeneration, message)
+	} else {
+		transitionErr = w.store.Retry(ctx, event.ID, w.cfg.ID, event.LeaseGeneration, time.Now().UTC().Add(retryAfter), message)
 	}
-	w.finishAttempt(ctx, attempt, "retry", err.Error())
-	_ = w.store.Retry(ctx, event.ID, w.cfg.ID, event.LeaseGeneration, time.Now().UTC().Add(retryAfter), err.Error())
+	if transitionErr != nil {
+		observed := w.observe(event, operation, stateTransitionFailure, transitionErr)
+		finishErr := w.finishAttempt(ctx, attempt, "failed", stateTransitionFailure)
+		if finishErr != nil {
+			finishErr = w.observe(event, "finish_attempt", attemptFinishFailureMessage, finishErr)
+		}
+		return errors.Join(observed, finishErr)
+	}
+	if finishErr := w.finishAttempt(ctx, attempt, targetStatus, message); finishErr != nil {
+		return w.observe(event, "finish_attempt", attemptFinishFailureMessage, finishErr)
+	}
+	return nil
+}
+
+func (w *Worker) observe(event Event, operation, message string, cause error) error {
+	if errors.Is(cause, ErrLeaseLost) {
+		message = "lease lost while updating durable event"
+	}
+	w.logger.Printf(
+		"component=reliability_worker level=error event_id=%q event_type=%q worker_id=%q lease_generation=%d attempts=%d max_attempts=%d operation=%q error=%q",
+		event.ID, event.Type, w.cfg.ID, event.LeaseGeneration, event.Attempts, event.MaxAttempts, operation, message,
+	)
+	return &workerOperationError{operation: operation, message: message, cause: cause}
+}
+
+func (w *Worker) logCycleFailure(operation, message string) {
+	w.logger.Printf(
+		"component=reliability_worker level=error event_id=%q event_type=%q worker_id=%q lease_generation=%d attempts=%d max_attempts=%d operation=%q error=%q",
+		"", "", w.cfg.ID, 0, 0, 0, operation, message,
+	)
 }
 
 func retryDelay(attempt int, seed string) time.Duration {

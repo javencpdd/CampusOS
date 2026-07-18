@@ -7,7 +7,7 @@
 | 角色 | 建议入口 |
 | --- | --- |
 | 新贡献者 | [官方文档完整入门路径](../docs-site/guide/getting-started.md)、[开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md)、[当前架构概览](architecture/当前架构概览.md) |
-| 平台管理员 | [官方文档权限配置入门](../docs-site/guide/permission-configuration.md)、[初始管理员安全](help/系统设计相关/v12部署与初始管理员安全.md)、[账号身份与历史迁移](help/系统设计相关/v12账号身份与历史迁移说明.md)、[账号恢复与邮箱绑定](help/系统设计相关/v12账号恢复与邮箱绑定说明.md)、[注册邮箱验证](../docs-site/api/registration.md)、[邮件投递与 SMTP](help/系统设计相关/v12邮件投递与SMTP部署说明.md)、[v11 权限与可靠审计设计](help/系统设计相关/v11权限管理与可靠审计设计入门.md)、[可靠任务与 Webhook 运维](help/系统设计相关/v11可靠任务与Webhook安全运维.md)、[备份恢复说明](help/系统设计相关/备份恢复说明.md) |
+| 平台管理员 | [官方文档权限配置入门](../docs-site/guide/permission-configuration.md)、[分组导航与结构化图文发布](help/系统设计相关/v12分组导航与结构化图文发布.md)、[验证码频率策略](help/系统设计相关/v12验证码频率策略配置说明.md)、[初始管理员安全](help/系统设计相关/v12部署与初始管理员安全.md)、[账号身份与历史迁移](help/系统设计相关/v12账号身份与历史迁移说明.md)、[账号恢复与邮箱绑定](help/系统设计相关/v12账号恢复与邮箱绑定说明.md)、[注册邮箱验证](../docs-site/api/registration.md)、[邮件投递与 SMTP](help/系统设计相关/v12邮件投递与SMTP部署说明.md)、[v11 权限与可靠审计设计](help/系统设计相关/v11权限管理与可靠审计设计入门.md)、[可靠任务与 Webhook 运维](help/系统设计相关/v11可靠任务与Webhook安全运维.md)、[可靠事件异常恢复](help/系统设计相关/v12可靠事件异常诊断与安全恢复.md)、[备份恢复说明](help/系统设计相关/备份恢复说明.md) |
 | 插件开发者 | [课表插件完整教程](../docs-site/plugins/schedule-plugin-tutorial.md)、[插件开发与工具链](help/插件相关/插件开发与工具链v0.6.md)、[Host API v2 受管数据合同](api/Host-API-v2受管数据合同.md)、[插件市场与受管数据](help/插件相关/插件市场与受管数据-v0.9.md) |
 | API 调用方 | [API 索引](api/API索引.md)、[注册邮箱验证合同](api/v12注册邮箱验证流程.md)、[会话与 Token 安全流程](api/v12会话与Token安全流程.md)、[账号恢复与邮箱绑定流程](api/v12账号恢复与邮箱绑定流程.md)、[当前 OpenAPI](api/openapi-v0.6-current.yaml)、[HTTP 路由与授权矩阵](api/HTTP路由与授权矩阵-v0.6.md) |
 | 风格包开发者 | [app-style-pack.v2 开发说明](help/系统设计相关/app-style-pack-v2开发说明.md)、[风格包能力边界与 CampusStyleSDK](help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
@@ -21,10 +21,11 @@
 | 主题 | 当前文档 |
 | --- | --- |
 | v11 实施与验收 | [正式计划书](项目计划v11/00-v11版本计划书.md)、[实施回顾与 v12 进入条件](项目计划v11/01-v11实施回顾与v12进入条件.md)、[Final 进度证据](进度/v0.11-dev/v0.11.12-dev.md) |
-| 可靠命令、事件与 Webhook | [可靠命令与数据所有权](architecture/v11可靠命令事件与数据所有权.md)、[Webhook 安全模型](architecture/v11Webhook可靠投递与安全模型.md)、[运维入门](help/系统设计相关/v11可靠任务与Webhook安全运维.md) |
+| 可靠命令、事件与 Webhook | [可靠命令与数据所有权](architecture/v11可靠命令事件与数据所有权.md)、[Webhook 安全模型](architecture/v11Webhook可靠投递与安全模型.md)、[运维入门](help/系统设计相关/v11可靠任务与Webhook安全运维.md)、[异常诊断与安全恢复](help/系统设计相关/v12可靠事件异常诊断与安全恢复.md) |
 | 数据、目录和迁移归属 | [v10 模块/插件/资源物理隔离](architecture/v10模块插件资源物理隔离.md)、[v11 可靠性数据所有权](architecture/v11可靠命令事件与数据所有权.md) |
 | 权限、作用域和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[v11 权限管理与可靠审计设计](help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
 | v12 进行中 | [正式计划书](项目计划v12/00-v12版本计划书.md)、[测试与发布验收矩阵](项目计划v12/08-v12测试与发布验收矩阵.md)、[风险登记与回滚方案](项目计划v12/09-v12风险登记与回滚方案.md)、[C3.5 健壮性加固](进度/v0.12-dev/v0.12.17-dev.md)、[Final 静态审计](进度/v0.12-dev/v0.12.16-dev.md) |
+| 板块与结构化图文 | [结构化帖子类型与板块策略](help/系统设计相关/v12结构化帖子类型与板块策略.md)、[分组导航与结构化图文发布](help/系统设计相关/v12分组导航与结构化图文发布.md) |
 | 历史封版与后续 | [v10 最终审计与后续路线](项目计划v10/03-v10最终全方位审计与后续路线.md)、[v12 进入条件](项目计划v11/01-v11实施回顾与v12进入条件.md) |
 
 `openapi-v0.6-current.yaml`、`http-routes-v0.6.json` 等文件名为兼容已有链接而保留；文件内容和 `version` 字段由当前 v11 路由代码生成。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实第三方消息生产 Adapter 和远程公共插件市场仍属于后续版本。

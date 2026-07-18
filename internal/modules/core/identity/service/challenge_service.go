@@ -43,6 +43,7 @@ type ChallengeConfig struct {
 
 type ChallengeService struct {
 	store       repository.ChallengeRepository
+	policy      ChallengePolicyReader
 	reliable    *reliability.Service
 	activeKey   string
 	keys        map[string][]byte
@@ -52,6 +53,10 @@ type ChallengeService struct {
 	maxAttempts int
 	clock       func() time.Time
 	random      io.Reader
+}
+
+type ChallengePolicyReader interface {
+	GetChallengePolicy(context.Context) (*domain.ChallengePolicy, error)
 }
 
 func NewChallengeService(store repository.ChallengeRepository, config ChallengeConfig) (*ChallengeService, error) {
@@ -114,6 +119,10 @@ func (s *ChallengeService) SetReliability(reliable *reliability.Service) {
 			reliable.RegisterMemorySnapshotters(snapshotter)
 		}
 	}
+}
+
+func (s *ChallengeService) SetPolicyReader(policy ChallengePolicyReader) {
+	s.policy = policy
 }
 
 // Request records a rate-limited challenge and a durable event containing
@@ -194,7 +203,11 @@ func (s *ChallengeService) requestForCommand(ctx context.Context, request domain
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
-	ok, err := s.store.TryConsumeRate(ctx, s.rateWindows(now, email, request.ClientIP))
+	windows, err := s.rateWindows(ctx, now, email, request.ClientIP)
+	if err != nil {
+		return nil, reliability.Event{}, err
+	}
+	ok, err := s.store.TryConsumeRate(ctx, windows)
 	if err != nil {
 		return nil, reliability.Event{}, err
 	}
@@ -445,17 +458,25 @@ func (s *ChallengeService) codeFor(challenge *domain.EmailChallenge) (string, er
 	return fmt.Sprintf("%06d", value%1_000_000), nil
 }
 
-func (s *ChallengeService) rateWindows(now time.Time, email, clientIP string) []domain.ChallengeRateWindow {
-	minute := now.UTC().Truncate(time.Minute)
-	day := time.Date(now.UTC().Year(), now.UTC().Month(), now.UTC().Day(), 0, 0, 0, 0, time.UTC)
-	hour := now.UTC().Truncate(time.Hour)
+func (s *ChallengeService) rateWindows(ctx context.Context, now time.Time, email, clientIP string) ([]domain.ChallengeRateWindow, error) {
+	policy := domain.DefaultChallengePolicy()
+	if s.policy != nil {
+		configured, err := s.policy.GetChallengePolicy(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("load challenge policy: %w", err)
+		}
+		if err := ValidateChallengePolicy(configured); err != nil {
+			return nil, fmt.Errorf("load challenge policy: %w", err)
+		}
+		policy = *configured
+	}
+	observedAt := now.UTC().Truncate(time.Second)
 	emailDigest := s.keyedDigest("email:\x00" + email)
 	ipDigest := s.keyedDigest("ip:\x00" + strings.TrimSpace(clientIP))
 	return []domain.ChallengeRateWindow{
-		{Scope: "email_minute", SubjectDigest: emailDigest, WindowStart: minute, Limit: 1},
-		{Scope: "email_day", SubjectDigest: emailDigest, WindowStart: day, Limit: 5},
-		{Scope: "ip_hour", SubjectDigest: ipDigest, WindowStart: hour, Limit: 10},
-	}
+		{Scope: "email_window", SubjectDigest: emailDigest, ObservedAt: observedAt, Duration: time.Duration(policy.EmailWindowMinutes) * time.Minute, Limit: policy.EmailMaxRequests},
+		{Scope: "ip_window", SubjectDigest: ipDigest, ObservedAt: observedAt, Duration: time.Duration(policy.IPWindowMinutes) * time.Minute, Limit: policy.IPMaxRequests},
+	}, nil
 }
 
 func (s *ChallengeService) keyedDigest(value string) string {

@@ -42,13 +42,11 @@
         <p v-if="policyHint" :class="{ invalid: !categoryAllowed }" class="field-hint">{{ policyHint }}</p>
       </el-form-item>
       <el-form-item label="正文" required>
-        <el-input
+        <SafeContentEditor
           v-model="form.content"
-          type="textarea"
-          :rows="10"
-          maxlength="5000"
-          show-word-limit
-          placeholder="说明时间、需求、可提供的帮助和必要的注意事项。"
+          v-model:content-format="form.content_format"
+          plain-placeholder="说明时间、需求、可提供的帮助和必要的注意事项。"
+          html-placeholder="<p>说明时间、需求、可提供的帮助和必要的注意事项。</p>"
         />
       </el-form-item>
       <div class="field-grid">
@@ -101,6 +99,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { categoryApi } from '@/modules/community/api'
+import SafeContentEditor from '@/modules/community/components/SafeContentEditor.vue'
+import { hasMeaningfulContent } from '@/modules/community/content'
 import { mutualAidApi, type MutualAidRequest } from '../api'
 
 const route = useRoute()
@@ -116,6 +116,7 @@ const editing = computed(() => Boolean(route.params.id))
 const form = reactive<MutualAidRequest>({
   title: '',
   content: '',
+  content_format: 'safe_html',
   category_id: '',
   tags: [],
   aid_type: 'request',
@@ -156,6 +157,7 @@ const loadExisting = async () => {
     if (!thread || !detail) throw new Error('missing mutual aid detail')
     form.title = thread.title || ''
     form.content = thread.content || ''
+    form.content_format = thread.content_format === 'safe_html' ? 'safe_html' : 'markdown'
     form.category_id = thread.category_id || ''
     form.tags = thread.tags || []
     form.aid_type = detail.aid_type
@@ -173,7 +175,11 @@ const loadExisting = async () => {
 }
 
 const submit = async () => {
-  if (!form.title.trim() || !form.content.trim() || (!editing.value && !form.category_id)) {
+  if (
+    !form.title.trim() ||
+    !hasMeaningfulContent(form.content, form.content_format) ||
+    (!editing.value && !form.category_id)
+  ) {
     ElMessage.warning('请填写标题、正文和发布板块')
     return
   }

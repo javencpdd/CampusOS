@@ -34,7 +34,7 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	if err := module.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if module.Handlers().User == nil || module.Handlers().Role == nil || module.Permissions() == nil {
+	if module.Handlers().User == nil || module.Handlers().Role == nil || module.Handlers().ChallengePolicy == nil || module.Permissions() == nil || module.ChallengePolicies() == nil {
 		t.Fatal("identity module did not construct its HTTP/application components")
 	}
 	value, ok := app.Lookup(portUserReader)
