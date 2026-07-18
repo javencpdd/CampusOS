@@ -25,6 +25,25 @@ EMAIL_SMTP_STARTTLS=true
 `development` 和 `test` 可以使用 `EMAIL_PROVIDER=fake`。Fake Provider 不会打印验证码或提供
 可公开访问的测试邮箱；需要手工验收时请使用隔离的 SMTP 测试服务。
 
+### QQ 邮箱与 Foxmail 地址
+
+CampusOS 当前支持 STARTTLS，因此 QQ/Foxmail 账号使用 `smtp.qq.com:587`，不要使用需要隐式 TLS 的
+465 端口。用户名和发件人都填写完整邮箱地址，密码填写新生成的 QQ 邮箱授权码：
+
+```dotenv
+EMAIL_PROVIDER=smtp
+EMAIL_SMTP_HOST=smtp.qq.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USERNAME=your-account@foxmail.com
+EMAIL_SMTP_PASSWORD=<仅存本地或Secret管理器的新授权码>
+EMAIL_SMTP_FROM=your-account@foxmail.com
+EMAIL_SMTP_STARTTLS=true
+```
+
+授权码不得进入文档、Git、Issue、聊天记录或截图。配置后重启服务并重新申请验证码；已经由 Fake Provider
+标记为 `published` 的旧事件不会自动补发。完整步骤和错误排查见仓库文档
+`docs/help/系统设计相关/v12邮件投递与SMTP部署说明.md`。
+
 ## 运维状态
 
 管理员在“可靠任务”查看 Provider 健康，也可使用受权限保护的接口：

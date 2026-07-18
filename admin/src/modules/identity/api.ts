@@ -1,7 +1,7 @@
 import api from '../../shared/api/client'
 
 export const authApi = {
-  login: (data: { email: string; password: string }) => api.post('/auth/login', data),
+  login: (data: { email: string; password: string }) => api.post('/auth/admin/login', data),
   refresh: () => api.post('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),

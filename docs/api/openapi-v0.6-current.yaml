@@ -16,6 +16,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.list
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.read
       security:
         - bearerAuth: []
@@ -42,6 +43,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.tree
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.read
       security:
         - bearerAuth: []
@@ -68,6 +70,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.get
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.read
       security:
         - bearerAuth: []
@@ -100,6 +103,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.thread_types
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.read
       security:
         - bearerAuth: []
@@ -137,6 +141,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.admin.threads
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
@@ -175,6 +180,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.admin.threads.trash
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
@@ -201,6 +207,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.thread.trash
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.trash
       security:
         - bearerAuth: []
@@ -229,6 +236,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.thread.direct_restore
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.direct_restore
       security:
         - bearerAuth: []
@@ -268,6 +276,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.admin.threads.id.moderation_actions
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
@@ -300,6 +309,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.thread.purge
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.purge
       security:
         - bearerAuth: []
@@ -328,10 +338,11 @@ paths:
       summary: POST /api/v1/admin/threads/:id/review/approve
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: category-membership
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
+      x-campusos-scope: assigned-category-or-global-admin
       x-campusos-operation: http.community.thread.review_approve
+      x-campusos-auth: jwt+admin-account-or-scope+permission
       x-campusos-permission: community.thread.review
       security:
         - bearerAuth: []
@@ -367,10 +378,11 @@ paths:
       summary: POST /api/v1/admin/threads/:id/review/reject
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: category-membership
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
+      x-campusos-scope: assigned-category-or-global-admin
       x-campusos-operation: http.community.thread.review_reject
+      x-campusos-auth: jwt+admin-account-or-scope+permission
       x-campusos-permission: community.thread.review
       security:
         - bearerAuth: []
@@ -406,10 +418,11 @@ paths:
       summary: POST /api/v1/admin/threads/:id/take-down
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: category-membership
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
+      x-campusos-scope: assigned-category-or-global-admin
       x-campusos-operation: http.community.thread.take_down
+      x-campusos-auth: jwt+admin-account-or-scope+permission
       x-campusos-permission: community.thread.take_down
       security:
         - bearerAuth: []
@@ -449,6 +462,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.thread.restore_trash
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.restore
       security:
         - bearerAuth: []
@@ -488,6 +502,7 @@ paths:
       x-campusos-module-owner: feature.ai-gateway
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.ai.logs
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
@@ -514,6 +529,7 @@ paths:
       x-campusos-module-owner: feature.ai-gateway
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.ai.status
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
@@ -530,6 +546,41 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/admin/login:
+    post:
+      operationId: userHandler_AdminLogin
+      summary: POST /api/v1/auth/admin/login
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: public
+      x-campusos-operation: http.post.api.v1.auth.admin.login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/auth/email-binding/challenge:
     post:
       operationId: userHandler_RequestEmailBinding
@@ -687,6 +738,10 @@ paths:
                         $ref: '#/components/schemas/LoginResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/auth/logout:
     post:
       operationId: userHandler_Logout
@@ -1115,6 +1170,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.role.authorization_audits
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read_audit
       security:
         - bearerAuth: []
@@ -1159,6 +1215,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.create
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.create
       security:
         - bearerAuth: []
@@ -1216,6 +1273,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.archive_legacy
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
@@ -1272,6 +1330,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.update
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.update
       security:
         - bearerAuth: []
@@ -1316,6 +1375,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.archive
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
@@ -1355,6 +1415,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.archive_impact
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.archive
       security:
         - bearerAuth: []
@@ -1387,6 +1448,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.move
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.move
       security:
         - bearerAuth: []
@@ -1426,6 +1488,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.restore
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.restore
       security:
         - bearerAuth: []
@@ -1494,6 +1557,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.community.category.configure_thread_types
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.category.configure_thread_types
       security:
         - bearerAuth: []
@@ -1858,6 +1922,7 @@ paths:
       x-campusos-module-owner: core.feature-registry
       x-campusos-scope: global
       x-campusos-operation: http.platform.feature.list
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.feature.read
       security:
         - bearerAuth: []
@@ -1884,6 +1949,7 @@ paths:
       x-campusos-module-owner: core.feature-registry
       x-campusos-scope: global
       x-campusos-operation: http.platform.feature.get
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.feature.read
       security:
         - bearerAuth: []
@@ -1916,6 +1982,7 @@ paths:
       x-campusos-module-owner: core.feature-registry
       x-campusos-scope: global
       x-campusos-operation: http.platform.feature.configure
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.feature.configure
       security:
         - bearerAuth: []
@@ -1955,6 +2022,7 @@ paths:
       x-campusos-module-owner: core.feature-registry
       x-campusos-scope: global
       x-campusos-operation: http.platform.feature.disable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.feature.lifecycle
       security:
         - bearerAuth: []
@@ -1994,6 +2062,7 @@ paths:
       x-campusos-module-owner: core.feature-registry
       x-campusos-scope: global
       x-campusos-operation: http.platform.feature.enable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.feature.lifecycle
       security:
         - bearerAuth: []
@@ -2071,6 +2140,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.home.style_packs.apply
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2104,6 +2174,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.home.style_packs.apply_source
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2137,6 +2208,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.home.style_packs.example
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2163,6 +2235,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.home.style_packs.example.zip
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2189,6 +2262,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.home.style_packs.rollback
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2222,6 +2296,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.home.style_packs.sources
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2248,6 +2323,7 @@ paths:
       x-campusos-module-owner: feature.appearance
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.home.style_packs.validate
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: appearance.homepage.configure
       security:
         - bearerAuth: []
@@ -2281,6 +2357,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.challenge_policy.get
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.challenge_policy.read
       security:
         - bearerAuth: []
@@ -2311,6 +2388,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.challenge_policy.update
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.challenge_policy.update
       security:
         - bearerAuth: []
@@ -2349,6 +2427,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.recovery.cases.list
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.account.recovery.override
       security:
         - bearerAuth: []
@@ -2379,6 +2458,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.recovery.cases.create
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.account.recovery.override
       security:
         - bearerAuth: []
@@ -2417,6 +2497,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.recovery.cases.cancel
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.account.recovery.override
       security:
         - bearerAuth: []
@@ -2449,6 +2530,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.session.admin_list
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.session.read
       security:
         - bearerAuth: []
@@ -2486,6 +2568,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.session.admin_revoke_all
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.session.revoke
       security:
         - bearerAuth: []
@@ -2518,6 +2601,7 @@ paths:
       x-campusos-module-owner: feature.integration-overview
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.integrations.overview
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.integration.read
       security:
         - bearerAuth: []
@@ -2544,6 +2628,7 @@ paths:
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.mcp.audit
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
@@ -2570,6 +2655,7 @@ paths:
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.mcp.settings
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
@@ -2595,6 +2681,7 @@ paths:
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
       x-campusos-operation: http.put.api.v1.mcp.settings
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.mcp.configure
       security:
         - bearerAuth: []
@@ -2628,6 +2715,7 @@ paths:
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.mcp.tools
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.mcp.read
       security:
         - bearerAuth: []
@@ -2654,6 +2742,7 @@ paths:
       x-campusos-module-owner: feature.mcp
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.mcp.tools.name.call
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.mcp.call
       security:
         - bearerAuth: []
@@ -2693,6 +2782,7 @@ paths:
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.messages.adapters
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
@@ -2719,6 +2809,7 @@ paths:
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.messages.bindings
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.message.write
       security:
         - bearerAuth: []
@@ -2752,6 +2843,7 @@ paths:
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.messages.local.inbound
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.message.write
       security:
         - bearerAuth: []
@@ -2785,6 +2877,7 @@ paths:
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.messages.logs
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
@@ -2811,6 +2904,7 @@ paths:
       x-campusos-module-owner: feature.message
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.messages.summary
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.message.read
       security:
         - bearerAuth: []
@@ -2837,6 +2931,7 @@ paths:
       x-campusos-module-owner: feature.integration-overview
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.metrics.summary
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.metrics.read
       security:
         - bearerAuth: []
@@ -2863,6 +2958,7 @@ paths:
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.moderation.admin.moderators
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -2889,6 +2985,7 @@ paths:
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.moderation.admin.moderators.id
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -2920,6 +3017,7 @@ paths:
       x-campusos-module-owner: core.moderation
       x-campusos-scope: global
       x-campusos-operation: http.put.api.v1.moderation.admin.moderators.id
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.assign
       security:
         - bearerAuth: []
@@ -3397,6 +3495,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.permissions
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -3423,6 +3522,7 @@ paths:
       x-campusos-module-owner: core.email-delivery
       x-campusos-scope: global
       x-campusos-operation: http.core.email_delivery.status
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.email_delivery.read
       security:
         - bearerAuth: []
@@ -3449,6 +3549,7 @@ paths:
       x-campusos-module-owner: feature.platform-log
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.platform.logs.sources
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.platform_log.read
       security:
         - bearerAuth: []
@@ -3475,6 +3576,7 @@ paths:
       x-campusos-module-owner: feature.platform-log
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.platform.logs.stream
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.platform_log.read
       security:
         - bearerAuth: []
@@ -3501,6 +3603,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.attempts
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3527,6 +3630,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.command_audits
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3553,6 +3657,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.compatibility
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3579,6 +3684,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.events
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3605,6 +3711,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.replay
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.replay
       security:
         - bearerAuth: []
@@ -3644,6 +3751,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.operations
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3670,6 +3778,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.retention_preview
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.retention.preview
       security:
         - bearerAuth: []
@@ -3696,6 +3805,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.retention_runs
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.retention.preview
       security:
         - bearerAuth: []
@@ -3722,6 +3832,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.retention_preview_create
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.retention.preview
       security:
         - bearerAuth: []
@@ -3755,6 +3866,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.summary
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3781,6 +3893,7 @@ paths:
       x-campusos-module-owner: core.reliability
       x-campusos-scope: global
       x-campusos-operation: http.platform.reliability.workers
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: platform.reliability.read
       security:
         - bearerAuth: []
@@ -3832,6 +3945,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugin_market.admin.audits
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -3858,6 +3972,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.put.api.v1.plugin_market.admin.catalog.name
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
@@ -3897,6 +4012,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugin_market.admin.overview
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -3923,6 +4039,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugin_market.admin.releases.name
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -3954,6 +4071,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugin_market.admin.releases.name
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
@@ -3993,6 +4111,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugin_market.admin.requests
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -4019,6 +4138,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugin_market.admin.requests.id.review
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
@@ -4655,6 +4775,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugin_packages.import
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
@@ -4688,6 +4809,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugin_packages.precheck
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
@@ -4721,6 +4843,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugins
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -4747,6 +4870,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.delete.api.v1.plugins.name
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.uninstall
       security:
         - bearerAuth: []
@@ -4778,6 +4902,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugins.name
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -4810,6 +4935,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.put.api.v1.plugins.name.config
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.configure
       security:
         - bearerAuth: []
@@ -4849,6 +4975,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugins.name.disable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
@@ -4888,6 +5015,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugins.name.enable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
@@ -4927,6 +5055,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugins.name.export
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -4959,6 +5088,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugins.name.logs
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -4991,6 +5121,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugins.name.reload
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.lifecycle
       security:
         - bearerAuth: []
@@ -5030,6 +5161,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.plugins.name.rollback
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
@@ -5069,6 +5201,7 @@ paths:
       x-campusos-module-owner: core.plugin-platform
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.plugins.name.snapshots
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: plugin.plugin.read
       security:
         - bearerAuth: []
@@ -5225,6 +5358,7 @@ paths:
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
       x-campusos-operation: http.community.richtext.trash
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.trash
       security:
         - bearerAuth: []
@@ -5257,6 +5391,7 @@ paths:
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
       x-campusos-operation: http.community.richtext.take_down
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.take_down
       security:
         - bearerAuth: []
@@ -5296,6 +5431,7 @@ paths:
       x-campusos-module-owner: feature.controlled-richtext-article
       x-campusos-scope: global
       x-campusos-operation: http.community.richtext.restore
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.direct_restore
       security:
         - bearerAuth: []
@@ -5555,6 +5691,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.roles
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -5580,6 +5717,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.role.create
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.create
       security:
         - bearerAuth: []
@@ -5613,6 +5751,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.roles.id.permissions
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -5644,6 +5783,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.identity.role.update_permissions
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.update_permissions
       security:
         - bearerAuth: []
@@ -6097,6 +6237,7 @@ paths:
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.spaces.admin.summary
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -6768,6 +6909,7 @@ paths:
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.spaces.user_id.disable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -6807,6 +6949,7 @@ paths:
       x-campusos-module-owner: feature.personal-space
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.spaces.user_id.enable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -7011,6 +7154,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.threads.id.lock
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.lock
       security:
         - bearerAuth: []
@@ -7079,6 +7223,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.threads.id.pin
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.pin
       security:
         - bearerAuth: []
@@ -7386,6 +7531,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.threads.id.unlock
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.lock
       security:
         - bearerAuth: []
@@ -7418,6 +7564,7 @@ paths:
       x-campusos-module-owner: core.community
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.threads.id.unpin
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: community.thread.pin
       security:
         - bearerAuth: []
@@ -7641,6 +7788,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.users.id.activate
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.user.suspend
       security:
         - bearerAuth: []
@@ -7673,6 +7821,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.delete.api.v1.users.id.roles
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.revoke
       security:
         - bearerAuth: []
@@ -7711,6 +7860,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.users.id.roles
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.read
       security:
         - bearerAuth: []
@@ -7742,6 +7892,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.users.id.roles
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.role.assign
       security:
         - bearerAuth: []
@@ -7781,6 +7932,7 @@ paths:
       x-campusos-module-owner: core.identity
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.users.id.suspend
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: identity.user.suspend
       security:
         - bearerAuth: []
@@ -7887,6 +8039,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.webhooks
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
@@ -7912,6 +8065,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.webhooks
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
@@ -7945,6 +8099,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.webhooks.summary
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
@@ -7971,6 +8126,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.get.api.v1.webhooks.id.deliveries
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.read
       security:
         - bearerAuth: []
@@ -8003,6 +8159,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.webhooks.id.disable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
@@ -8042,6 +8199,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.webhooks.id.enable
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.write
       security:
         - bearerAuth: []
@@ -8081,6 +8239,7 @@ paths:
       x-campusos-module-owner: feature.webhook
       x-campusos-scope: global
       x-campusos-operation: http.post.api.v1.webhooks.id.test
+      x-campusos-auth: jwt+admin-account+permission
       x-campusos-permission: integration.webhook.execute
       security:
         - bearerAuth: []

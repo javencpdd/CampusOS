@@ -35,6 +35,7 @@ type ownedGroup struct {
 	registry         *platformroute.Registry
 	audience         platformroute.Audience
 	permissions      middleware.PermissionChecker
+	adminAccess      middleware.AdminAccessChecker
 	permission       string
 	permissionCode   string
 	operation        string
@@ -42,8 +43,12 @@ type ownedGroup struct {
 	scopeType        string
 }
 
-func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, audience platformroute.Audience, permissions middleware.PermissionChecker) *ownedGroup {
-	return &ownedGroup{group: group, registry: registry, audience: audience, permissions: permissions}
+func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, audience platformroute.Audience, permissions middleware.PermissionChecker, adminAccess ...middleware.AdminAccessChecker) *ownedGroup {
+	var admission middleware.AdminAccessChecker
+	if len(adminAccess) > 0 {
+		admission = adminAccess[0]
+	}
+	return &ownedGroup{group: group, registry: registry, audience: audience, permissions: permissions, adminAccess: admission}
 }
 
 func (g *ownedGroup) Use(handlers ...gin.HandlerFunc) { g.group.Use(handlers...) }
@@ -142,10 +147,12 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 			panic(fmt.Sprintf("admin route %s %s requires permission code metadata", method, path))
 		}
 		permissionMiddleware := middleware.RequirePermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation)
+		admissionMiddleware := middleware.RequireAdminAccess(g.adminAccess)
 		if g.scopeType != "" {
 			permissionMiddleware = middleware.RequireScopedPermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation, g.scopeType)
+			admissionMiddleware = middleware.RequireAdminAccessOrScopedPermission(g.adminAccess, g.permissions, permissionCode, g.scopeType)
 		}
-		handlers = append([]gin.HandlerFunc{permissionMiddleware}, handlers...)
+		handlers = append([]gin.HandlerFunc{admissionMiddleware, permissionMiddleware}, handlers...)
 	}
 	legacyAliases := []string{routeDescriptorID(method, fullPath), "httpapi." + strings.TrimPrefix(routeDescriptorID(method, fullPath), "http.")}
 	for _, alias := range g.legacyOperations {
@@ -175,7 +182,11 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 		descriptor.Auth = "jwt"
 		descriptor.Audit = "request-log"
 	case platformroute.AudienceAdmin:
-		descriptor.Auth = "jwt+permission"
+		if g.scopeType == "" {
+			descriptor.Auth = "jwt+admin-account+permission"
+		} else {
+			descriptor.Auth = "jwt+admin-account-or-scope+permission"
+		}
 		descriptor.Audit = "request-log"
 	}
 	if strings.HasPrefix(fullPath, "/api/v1/moderation/") {

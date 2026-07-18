@@ -26,6 +26,7 @@ var (
 	permissionCodePattern        = regexp.MustCompile(`\.PermissionCode\("([^"]+)"\)`)
 	operationPattern             = regexp.MustCompile(`\.Operation\("([^"]+)"\)`)
 	legacyOperationAliasPattern  = regexp.MustCompile(`\.LegacyOperationAlias\("([^"]+)"\)`)
+	scopedPattern                = regexp.MustCompile(`\.Scoped\("([^"]+)"\)`)
 	permissionPattern            = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
 	selectorPattern              = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
 )
@@ -82,6 +83,11 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 			SourceLine:  lineNumber,
 		}
 		applyAuthorization(&route, group, method)
+		if scope := scopedPattern.FindStringSubmatch(prefix); group == "admin" && len(scope) > 0 {
+			route.Auth = "jwt+admin-account-or-scope+permission"
+			route.Ownership = scope[1] + "-membership"
+			route.Scope = "assigned-" + scope[1] + "-or-global-admin"
+		}
 		if permission := legacyRoutePermissionPattern.FindStringSubmatch(prefix); len(permission) > 0 {
 			route.Permission = permission[1] + ":" + permission[2]
 			route.PermissionCode = permissionCodeFor(route.Permission)
@@ -284,7 +290,7 @@ func applyAuthorization(route *RouteContract, group, method string) {
 			route.Audit = "moderation-audit"
 		}
 	case "admin":
-		route.Auth = "jwt+permission"
+		route.Auth = "jwt+admin-account+permission"
 		route.Ownership = "none"
 		route.Scope = "global"
 		route.Audit = "request-log"
@@ -373,6 +379,9 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
+			if strings.Contains(route.Auth, "admin-account") {
+				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
+			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
@@ -423,6 +432,8 @@ func OpenAPI(routes []RouteContract) []byte {
 			out.WriteString("        '400':\n          $ref: '#/components/responses/BadRequest'\n")
 			for _, status := range profile.AdditionalErrors {
 				switch status {
+				case "401":
+					out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
 				case "429":
 					out.WriteString("        '429':\n          $ref: '#/components/responses/TooManyRequests'\n")
 				case "503":

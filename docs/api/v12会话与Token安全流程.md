@@ -19,6 +19,7 @@
 | 方法 | 路径 | 认证与 CSRF | 用途 |
 | --- | --- | --- | --- |
 | `POST` | `/auth/login` | 无 | 校验账号密码，创建 Session，设置 Refresh/CSRF Cookie，响应短期 Access Token。 |
+| `POST` | `/auth/admin/login` | 无 | 校验账号密码和独立管理员准入状态，通过后创建同一安全模型下的 Session。 |
 | `POST` | `/auth/refresh` | Refresh Cookie + `X-CSRF-Token` | 原子轮换 Refresh Token 并获得新的 Access Token。 |
 | `POST` | `/auth/logout` | Access JWT + `X-CSRF-Token` | 撤销当前 Session，清除 Cookie。 |
 | `POST` | `/auth/logout-all` | Access JWT + `X-CSRF-Token` | 增加 `auth_version` 并撤销账户全部 Session。 |
@@ -30,7 +31,7 @@
 
 ## 3. 浏览器客户端流程
 
-1. `POST /auth/login` 后，把响应中的 Access Token 只放在页面内存，不写入 `localStorage`、
+1. Web 使用 `POST /auth/login`，Admin 使用 `POST /auth/admin/login`；成功后把响应中的 Access Token 只放在页面内存，不写入 `localStorage`、
    `sessionStorage`、URL 或日志。
 2. 浏览器接收 `campusos_refresh`（`HttpOnly`、`SameSite=Lax`）和 `campusos_csrf` Cookie。
 3. 页面加载或 Access Token 过期时，读取可见的 CSRF Cookie，并向 `/auth/refresh` 发送同值的
@@ -75,3 +76,6 @@ forward-fix，down migration 只用于隔离演练，因为原始 Refresh Token 
 - 不得把任何 Token 放入本地存储、页面 URL、错误提示、Outbox payload 或管理端列表。
 - 不得把 v11 JWT 重新解释为 v12 Session；升级后需要重新登录。
 
+管理员专用入口不会建立第二套密码或 Token。凭据仍由 `accounts` 验证，随后还必须通过
+`identity_admin_accounts` 管理平面准入检查；每个 Admin API 再校验 Session、准入状态和 Permission Code。
+详见 [v12 管理员账号与管理平面准入说明](../help/系统设计相关/v12管理员账号与管理平面准入说明.md)。

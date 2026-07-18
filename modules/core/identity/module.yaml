@@ -3,7 +3,7 @@ id: core.identity
 name: identity
 display_name: "Identity and Authorization"
 version: "0.11.0"
-description: "Users, sessions, roles, permissions, scopes, and authorization decisions."
+description: "Users, credentials, administrator admission, sessions, roles, permissions, scopes, and authorization decisions."
 kind: core
 activation_mode: always-on
 default_enabled: true

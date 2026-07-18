@@ -93,6 +93,24 @@ func SeedAdmin(pool *pgxpool.Pool, options adminSeedOptions) error {
 	); err != nil {
 		return fmt.Errorf("ensure administrator role: %w", err)
 	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO identity_admin_accounts (
+			id, user_id, credential_account_id, status, activation_source,
+			activated_at, version, created_at, updated_at
+		)
+		SELECT ur.id, ur.user_id, a.id, 'active', 'bootstrap_seed',
+		       COALESCE(ur.created_at, NOW()), 1, COALESCE(ur.created_at, NOW()), NOW()
+		FROM user_roles ur
+		INNER JOIN accounts a
+			ON a.user_id=ur.user_id AND a.type='email' AND a.deleted_at IS NULL
+		WHERE ur.user_id=$1
+		  AND ur.role_id=1
+		  AND ur.scope_type='global'
+		  AND ur.scope_id IS NULL
+		  AND ur.deleted_at IS NULL
+		ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
+		return fmt.Errorf("ensure administrator management account: %w", err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit administrator bootstrap: %w", err)
 	}

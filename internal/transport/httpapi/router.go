@@ -42,6 +42,7 @@ type Dependencies struct {
 	JWT             *auth.JWTManager
 	SessionVerifier middleware.AccessSessionVerifier
 	Permissions     middleware.PermissionChecker
+	AdminAccess     middleware.AdminAccessChecker
 	Features        *platformfeature.Registry
 	Feature         *platformfeature.Handler
 	ModuleCatalog   *modulecatalog.Catalog
@@ -135,6 +136,7 @@ func Build(d Dependencies) *Router {
 		public.POST("/auth/registration/verify", userHandler.VerifyRegistrationChallenge)
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
+		public.POST("/auth/admin/login", userHandler.AdminLogin)
 		public.POST("/auth/refresh", userHandler.Refresh)
 		public.POST("/auth/password-reset/challenge", userHandler.RequestPasswordReset)
 		public.POST("/auth/password-reset/verify", userHandler.VerifyPasswordReset)
@@ -262,7 +264,7 @@ func Build(d Dependencies) *Router {
 		authenticated.DELETE("/extensions/:plugin/*path", runtimeHTTPHandler.Extension)
 	}
 
-	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions)
+	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions, d.AdminAccess)
 	admin.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
 		admin.Permission("user", "suspend").POST("/users/:id/suspend", userHandler.SuspendUser)

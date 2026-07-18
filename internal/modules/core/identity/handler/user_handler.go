@@ -26,6 +26,7 @@ type UserHandler struct {
 	challenges  *service.ChallengeService
 	sessions    *service.SessionService
 	recovery    *service.RecoveryService
+	adminAccess *service.AdminAccessService
 	sessionHTTP SessionHTTPConfig
 }
 
@@ -58,6 +59,10 @@ func (h *UserHandler) SetSessionService(sessions *service.SessionService, config
 
 func (h *UserHandler) SetRecoveryService(recovery *service.RecoveryService) {
 	h.recovery = recovery
+}
+
+func (h *UserHandler) SetAdminAccessService(adminAccess *service.AdminAccessService) {
+	h.adminAccess = adminAccess
 }
 
 // RequestRegistrationChallenge begins the verified registration flow without
@@ -429,6 +434,18 @@ func (h *UserHandler) Register(c *gin.Context) {
 // Login 用户登录
 // POST /api/v1/auth/login
 func (h *UserHandler) Login(c *gin.Context) {
+	h.login(c, false)
+}
+
+// AdminLogin uses the same credential and session authority as the user
+// surface, then requires an independent active management-plane account before
+// issuing tokens to the Admin client.
+// POST /api/v1/auth/admin/login
+func (h *UserHandler) AdminLogin(c *gin.Context) {
+	h.login(c, true)
+}
+
+func (h *UserHandler) login(c *gin.Context, requireAdmin bool) {
 	var req domain.LoginRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
@@ -445,6 +462,18 @@ func (h *UserHandler) Login(c *gin.Context) {
 		// passwords, inactive accounts, or unverified account state.
 		response.Error(c, http.StatusUnauthorized, 20001, "invalid email or password")
 		return
+	}
+	if requireAdmin {
+		if h.adminAccess == nil {
+			response.Error(c, http.StatusServiceUnavailable, 10006, "administrator login is unavailable")
+			return
+		}
+		if err := h.adminAccess.RecordAuthentication(c.Request.Context(), user.ID); err != nil {
+			// Do not reveal whether a valid user credential lacks management-plane
+			// admission or whether an administrator account is suspended.
+			response.Error(c, http.StatusUnauthorized, 20001, "invalid administrator email or password")
+			return
+		}
 	}
 	tokens, err := h.sessions.Issue(c.Request.Context(), user, h.sessionMetadata(c))
 	if err != nil {

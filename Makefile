@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -48,6 +48,7 @@ architecture-check:
 	python3 scripts/check-architecture-boundaries.py
 	python3 scripts/check-frontend-boundaries.py
 	python3 scripts/test-architecture-checks.py
+	python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 reliability-check:
 	python3 scripts/check-reliability-boundaries.py
@@ -75,6 +76,9 @@ identity-session-check:
 
 identity-recovery-check:
 	./scripts/check-identity-recovery.sh
+
+identity-admin-account-check:
+	./scripts/test-v12-admin-account-migration.sh
 
 email-delivery-check:
 	./scripts/check-email-delivery.sh
@@ -114,6 +118,7 @@ v12-migration-check:
 	./scripts/test-v12-secondhand-migration.sh
 	./scripts/test-v12-identity-challenge-policy-migration.sh
 	./scripts/test-v12-reliability-worker-convergence-migration.sh
+	./scripts/test-v12-admin-account-migration.sh
 
 database-check:
 	./scripts/database-check.sh all

@@ -6,6 +6,33 @@ CREATE TEMP TABLE campusos_audit_results (
 
 INSERT INTO campusos_audit_results VALUES
 ('accounts.user_id orphan', 'orphan', (SELECT count(*) FROM accounts a LEFT JOIN users u ON u.id = a.user_id WHERE u.id IS NULL)),
+('admin account user orphan', 'orphan', (SELECT count(*) FROM identity_admin_accounts aa LEFT JOIN users u ON u.id = aa.user_id WHERE u.id IS NULL)),
+('admin account credential orphan', 'orphan', (SELECT count(*) FROM identity_admin_accounts aa LEFT JOIN accounts a ON a.id = aa.credential_account_id WHERE a.id IS NULL)),
+('admin account credential owner mismatch', 'identity', (SELECT count(*) FROM identity_admin_accounts aa INNER JOIN accounts a ON a.id = aa.credential_account_id WHERE a.user_id <> aa.user_id)),
+('invalid admin account state', 'identity', (SELECT count(*) FROM identity_admin_accounts WHERE status NOT IN ('active', 'suspended', 'revoked') OR version < 1 OR ((status = 'revoked') <> (revoked_at IS NOT NULL)))),
+('global admin role missing admin account record', 'identity', (
+    SELECT count(*)
+    FROM user_roles ur
+    INNER JOIN roles r ON r.id=ur.role_id AND r.name='admin' AND r.deleted_at IS NULL
+    LEFT JOIN identity_admin_accounts aa ON aa.user_id=ur.user_id
+    WHERE ur.scope_type='global' AND ur.scope_id IS NULL AND ur.deleted_at IS NULL AND aa.user_id IS NULL
+)),
+('active admin account missing global admin role', 'identity', (
+    SELECT count(*)
+    FROM identity_admin_accounts aa
+    WHERE aa.status='active' AND NOT EXISTS (
+        SELECT 1 FROM user_roles ur
+        INNER JOIN roles r ON r.id=ur.role_id AND r.name='admin' AND r.deleted_at IS NULL
+        WHERE ur.user_id=aa.user_id AND ur.scope_type='global' AND ur.scope_id IS NULL AND ur.deleted_at IS NULL
+    )
+)),
+('active admin account has inactive identity', 'identity', (
+    SELECT count(*)
+    FROM identity_admin_accounts aa
+    LEFT JOIN users u ON u.id=aa.user_id
+    LEFT JOIN accounts a ON a.id=aa.credential_account_id AND a.user_id=aa.user_id
+    WHERE aa.status='active' AND (u.id IS NULL OR u.deleted_at IS NOT NULL OR u.status <> 'active' OR a.id IS NULL OR a.deleted_at IS NOT NULL)
+)),
 ('sessions.user_id orphan', 'orphan', (SELECT count(*) FROM sessions s LEFT JOIN users u ON u.id = s.user_id WHERE u.id IS NULL)),
 ('active session missing refresh digest', 'identity', (SELECT count(*) FROM sessions WHERE deleted_at IS NULL AND revoked_at IS NULL AND (refresh_token_digest IS NULL OR refresh_token_digest !~ '^[0-9a-f]{64}$'))),
 ('session stores raw refresh token', 'identity', (SELECT count(*) FROM sessions WHERE refresh_token IS NOT NULL)),

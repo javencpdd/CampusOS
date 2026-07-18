@@ -5,7 +5,8 @@ v0.12 使用短期 Access Token 和服务端可撤销 Session。浏览器不会�
 
 ## 登录后的内容
 
-`POST /api/v1/auth/login` 成功后：
+用户前台通过 `POST /api/v1/auth/login` 登录；管理端通过 `POST /api/v1/auth/admin/login` 登录。管理端入口在
+相同凭据校验后还会检查独立的 `identity_admin_accounts` 准入记录，普通用户凭据不能登录 Admin。成功后：
 
 - 响应中的 `access_token` 只在当前页面内存中使用；
 - `campusos_refresh` 是 `HttpOnly`、`SameSite=Lax` Cookie，JavaScript 不能读取；
@@ -45,4 +46,5 @@ Access Token。一个已经轮换的 Refresh Token 再次出现时，系统会�
 
 详细接口、兼容窗口和迁移演练见仓库的
 [v12 会话与 Token 安全流程](https://github.com/javencpdd/CampusOS/blob/main/docs/api/v12%E4%BC%9A%E8%AF%9D%E4%B8%8EToken%E5%AE%89%E5%85%A8%E6%B5%81%E7%A8%8B.md)。
-
+管理员账号的数据边界见
+[v12 管理员账号与管理平面准入说明](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v12%E7%AE%A1%E7%90%86%E5%91%98%E8%B4%A6%E5%8F%B7%E4%B8%8E%E7%AE%A1%E7%90%86%E5%B9%B3%E9%9D%A2%E5%87%86%E5%85%A5%E8%AF%B4%E6%98%8E.md)。

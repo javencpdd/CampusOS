@@ -4,7 +4,7 @@ DECLARE
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
-        'users', 'accounts', 'sessions', 'roles', 'user_roles', 'permissions',
+        'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles', 'permissions',
         'identity_legacy_email_placeholders', 'identity_reserved_identifiers',
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
@@ -24,6 +24,8 @@ BEGIN
     FROM unnest(ARRAY[
         'users.id', 'users.status', 'users.auth_version', 'users.must_change_password',
         'accounts.identifier_normalized', 'accounts.verification_state', 'accounts.credential_version',
+        'identity_admin_accounts.user_id', 'identity_admin_accounts.credential_account_id',
+        'identity_admin_accounts.status', 'identity_admin_accounts.version',
         'identity_email_challenges.public_id', 'identity_email_challenges.purpose',
         'identity_email_challenges.ticket_digest', 'identity_challenge_rate_limits.scope',
         'identity_challenge_policies.email_window_minutes', 'identity_challenge_policies.email_max_requests',
@@ -69,6 +71,8 @@ BEGIN
     FROM unnest(ARRAY[
         'chk_users_status', 'chk_users_auth_version', 'chk_accounts_identifier_normalized',
         'chk_accounts_verification_state', 'chk_accounts_credential_version',
+        'chk_identity_admin_account_status', 'chk_identity_admin_account_version',
+        'chk_identity_admin_account_revocation',
         'chk_identity_email_challenge_purpose', 'chk_identity_email_challenge_email_normalized',
         'chk_identity_email_challenge_attempts', 'chk_identity_email_challenge_ticket_state',
         'chk_identity_challenge_rate_scope', 'chk_identity_challenge_rate_count',
@@ -98,7 +102,8 @@ BEGIN
         'chk_platform_outbox_status', 'chk_platform_outbox_attempts', 'chk_platform_outbox_attempt_status', 'chk_platform_operation_status',
         'chk_platform_retention_run_mode', 'chk_platform_retention_run_status',
         'chk_webhook_endpoint_max_concurrent', 'chk_webhook_endpoint_rate_limit',
-        'fk_accounts_user', 'fk_identity_email_challenge_account', 'fk_identity_challenge_policy_updated_by', 'fk_identity_recovery_case_user',
+        'fk_accounts_user', 'fk_identity_admin_account_user', 'fk_identity_admin_account_credential',
+        'fk_identity_email_challenge_account', 'fk_identity_challenge_policy_updated_by', 'fk_identity_recovery_case_user',
         'fk_identity_recovery_case_account', 'fk_identity_recovery_case_challenge',
         'fk_identity_recovery_case_created_by', 'fk_threads_author', 'fk_threads_category',
         'fk_posts_thread', 'fk_posts_author', 'fk_user_roles_user', 'fk_user_roles_role',
@@ -117,6 +122,7 @@ BEGIN
     SELECT string_agg(expected, ', ' ORDER BY expected) INTO missing
     FROM unnest(ARRAY[
         'uk_users_username', 'uk_users_email', 'uk_accounts_email_normalized',
+        'uk_identity_admin_accounts_user', 'uk_identity_admin_accounts_credential', 'idx_identity_admin_accounts_status',
         'idx_accounts_user_email_active', 'idx_accounts_verification_state',
         'uk_identity_email_challenge_public_id', 'idx_identity_email_challenge_email_purpose_created',
         'idx_identity_challenge_rate_expiry',
@@ -141,7 +147,7 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v0.12-structured-content-v1',
+    'schema_contract', 'v0.12-admin-plane-v2',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'
