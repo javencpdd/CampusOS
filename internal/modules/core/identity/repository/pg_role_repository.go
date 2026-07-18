@@ -135,10 +135,14 @@ func (r *PgRoleRepository) GetUserRoles(ctx context.Context, userID string) ([]*
 					SELECT 1 FROM users u
 					WHERE u.id = $1 AND u.deleted_at IS NULL
 				)
-				OR EXISTS (
-					SELECT 1 FROM user_roles ur
-					WHERE ur.user_id = $1 AND ur.role_id = r.id AND ur.deleted_at IS NULL
-				)
+					OR EXISTS (
+						SELECT 1 FROM user_roles ur
+						WHERE ur.user_id = $1 AND ur.role_id = r.id AND ur.deleted_at IS NULL
+						  AND (r.name <> 'admin' OR EXISTS (
+							SELECT 1 FROM identity_admin_accounts aa
+							WHERE aa.user_id=ur.user_id AND aa.status='active'
+						  ))
+					)
 			  )
 		ORDER BY r.id ASC`
 	rows, err := r.db(ctx).Query(ctx, query, userID)
@@ -280,12 +284,24 @@ func (r *PgRoleRepository) RevokeRoleUnlessLastGlobal(ctx context.Context, userI
 		if !assigned {
 			return nil
 		}
-		var count int
-		if err := db.QueryRow(ctx, `SELECT count(*) FROM user_roles
-			WHERE role_id=$1 AND scope_type='global' AND scope_id IS NULL AND deleted_at IS NULL`, roleID).Scan(&count); err != nil {
+		var targetActive bool
+		if err := db.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM identity_admin_accounts aa
+			INNER JOIN users u ON u.id=aa.user_id AND u.deleted_at IS NULL AND u.status='active'
+			INNER JOIN accounts a ON a.id=aa.credential_account_id AND a.user_id=aa.user_id AND a.deleted_at IS NULL
+			WHERE aa.user_id=$1 AND aa.status='active'
+		)`, userID).Scan(&targetActive); err != nil {
 			return err
 		}
-		if count <= 1 {
+		var count int
+		if err := db.QueryRow(ctx, `SELECT count(*) FROM user_roles ur
+			INNER JOIN identity_admin_accounts aa ON aa.user_id=ur.user_id AND aa.status='active'
+			INNER JOIN users u ON u.id=aa.user_id AND u.deleted_at IS NULL AND u.status='active'
+			INNER JOIN accounts a ON a.id=aa.credential_account_id AND a.user_id=aa.user_id AND a.deleted_at IS NULL
+			WHERE ur.role_id=$1 AND ur.scope_type='global' AND ur.scope_id IS NULL AND ur.deleted_at IS NULL`, roleID).Scan(&count); err != nil {
+			return err
+		}
+		if targetActive && count <= 1 {
 			return ErrLastGlobalRoleAssignment
 		}
 		tag, err := db.Exec(ctx, `UPDATE user_roles SET deleted_at=NOW()
@@ -316,9 +332,13 @@ func (r *PgRoleRepository) HasPermission(ctx context.Context, userID string, res
 					WHERE ur.user_id = $1
 					  AND ur.role_id = r.id
 					  AND ur.scope_type = 'global'
-					  AND ur.scope_id IS NULL
-					  AND ur.deleted_at IS NULL
-				)
+						  AND ur.scope_id IS NULL
+						  AND ur.deleted_at IS NULL
+						  AND (r.name <> 'admin' OR EXISTS (
+							SELECT 1 FROM identity_admin_accounts aa
+							WHERE aa.user_id=ur.user_id AND aa.status='active'
+						  ))
+					)
 			  )
 	)`
 	var allowed bool
@@ -339,10 +359,14 @@ func (r *PgRoleRepository) HasScopedPermission(ctx context.Context, userID strin
 		  AND p.resource = $2
 		  AND p.action = $3
 		  AND p.deleted_at IS NULL
-		  AND (
-				(ur.scope_type = 'global' AND ur.scope_id IS NULL)
-				OR (ur.scope_type = $4 AND ur.scope_id = $5)
-			  )
+			  AND (
+					(ur.scope_type = 'global' AND ur.scope_id IS NULL)
+					OR (ur.scope_type = $4 AND ur.scope_id = $5)
+				  )
+			  AND (r.name <> 'admin' OR EXISTS (
+				SELECT 1 FROM identity_admin_accounts aa
+				WHERE aa.user_id=ur.user_id AND aa.status='active'
+			  ))
 	)`
 	var allowed bool
 	if err := r.db(ctx).QueryRow(ctx, query, userID, resource, action, scopeType, scopeID).Scan(&allowed); err != nil {
@@ -484,7 +508,11 @@ func (r *PgRoleRepository) HasPermissionCode(ctx context.Context, userID, code s
 		INNER JOIN roles r ON r.id=rp.role_id AND r.deleted_at IS NULL
 		WHERE rp.deleted_at IS NULL AND pd.code=$2 AND (
 			(r.name='member' AND EXISTS (SELECT 1 FROM users u WHERE u.id=$1 AND u.deleted_at IS NULL))
-			OR EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id=$1 AND ur.role_id=r.id AND ur.scope_type='global' AND ur.scope_id IS NULL AND ur.deleted_at IS NULL)
+				OR EXISTS (SELECT 1 FROM user_roles ur
+					WHERE ur.user_id=$1 AND ur.role_id=r.id AND ur.scope_type='global' AND ur.scope_id IS NULL AND ur.deleted_at IS NULL
+					  AND (r.name<>'admin' OR EXISTS (
+						SELECT 1 FROM identity_admin_accounts aa WHERE aa.user_id=ur.user_id AND aa.status='active'
+					  )))
 		)
 	)`, userID, code).Scan(&allowed)
 	return allowed, err
@@ -498,10 +526,13 @@ func (r *PgRoleRepository) HasScopedPermissionCode(ctx context.Context, userID, 
 		INNER JOIN permission_definitions pd ON pd.id=rp.permission_id AND pd.deprecated_at IS NULL
 		INNER JOIN roles r ON r.id=rp.role_id AND r.deleted_at IS NULL
 		INNER JOIN user_roles ur ON ur.role_id=r.id AND ur.deleted_at IS NULL
-		WHERE rp.deleted_at IS NULL AND ur.user_id=$1 AND pd.code=$2 AND (
-			(ur.scope_type='global' AND ur.scope_id IS NULL)
-			OR (ur.scope_type=$3 AND ur.scope_id=$4)
-		)
+			WHERE rp.deleted_at IS NULL AND ur.user_id=$1 AND pd.code=$2 AND (
+				(ur.scope_type='global' AND ur.scope_id IS NULL)
+				OR (ur.scope_type=$3 AND ur.scope_id=$4)
+			)
+			AND (r.name<>'admin' OR EXISTS (
+				SELECT 1 FROM identity_admin_accounts aa WHERE aa.user_id=ur.user_id AND aa.status='active'
+			))
 	)`, userID, code, scopeType, scopeID).Scan(&allowed)
 	return allowed, err
 }
@@ -518,10 +549,13 @@ func (r *PgRoleRepository) HasAnyScopedPermissionCode(ctx context.Context, userI
 		INNER JOIN permission_definitions pd ON pd.id=rp.permission_id AND pd.deprecated_at IS NULL
 		INNER JOIN roles r ON r.id=rp.role_id AND r.deleted_at IS NULL
 		INNER JOIN user_roles ur ON ur.role_id=r.id AND ur.deleted_at IS NULL
-		WHERE rp.deleted_at IS NULL AND ur.user_id=$1 AND pd.code=$2 AND (
-			(ur.scope_type='global' AND ur.scope_id IS NULL)
-			OR (ur.scope_type=$3 AND ur.scope_id IS NOT NULL)
-		)
+			WHERE rp.deleted_at IS NULL AND ur.user_id=$1 AND pd.code=$2 AND (
+				(ur.scope_type='global' AND ur.scope_id IS NULL)
+				OR (ur.scope_type=$3 AND ur.scope_id IS NOT NULL)
+			)
+			AND (r.name<>'admin' OR EXISTS (
+				SELECT 1 FROM identity_admin_accounts aa WHERE aa.user_id=ur.user_id AND aa.status='active'
+			))
 	)`, userID, code, scopeType).Scan(&allowed)
 	return allowed, err
 }

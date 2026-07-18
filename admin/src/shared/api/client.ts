@@ -25,7 +25,10 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const requestPath = String(error.config?.url || '')
-    const isBootstrapAuthRequest = requestPath.includes('/auth/login') || requestPath.includes('/auth/refresh')
+    const isBootstrapAuthRequest =
+      requestPath.includes('/auth/login') ||
+      requestPath.includes('/auth/admin/login') ||
+      requestPath.includes('/auth/refresh')
     if (error.response?.status === 401 && !isBootstrapAuthRequest) {
       clearAdminSession()
       window.dispatchEvent(new Event('campusos:admin-session-expired'))

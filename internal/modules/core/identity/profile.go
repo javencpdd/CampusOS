@@ -15,6 +15,7 @@ const (
 	portChallengePolicyRepository = "identity.adapter.challenge-policy-repository"
 	portSessionRepository         = "identity.adapter.session-repository"
 	portRecoveryCaseRepository    = "identity.adapter.recovery-case-repository"
+	portAdminAccountRepository    = "identity.adapter.admin-account-repository"
 )
 
 // BindPostgreSQLAdapters binds only Identity's repository adapters. It is
@@ -27,6 +28,7 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 		app,
 		repository.NewPgUserRepository(pool),
 		repository.NewPgRoleRepository(pool),
+		repository.NewPgAdminAccountRepository(pool),
 		repository.NewPgChallengeRepository(pool),
 		repository.NewPgChallengePolicyRepository(pool),
 		repository.NewPgSessionRepository(pool),
@@ -37,10 +39,12 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 // BindMemoryAdapters keeps the Memory profile behavior compatible with the
 // existing local-development fallback.
 func BindMemoryAdapters(app *platformmodule.AppContext) error {
+	adminAccounts := repository.NewMemoryAdminAccountRepository()
 	return bindAdapters(
 		app,
 		repository.NewMemoryUserRepository(),
 		repository.NewMemoryRoleRepository(),
+		adminAccounts,
 		repository.NewMemoryChallengeRepository(),
 		repository.NewMemoryChallengePolicyRepository(),
 		repository.NewMemorySessionRepository(),
@@ -52,6 +56,7 @@ func bindAdapters(
 	app *platformmodule.AppContext,
 	users repository.UserRepository,
 	roles repository.RoleRepository,
+	adminAccounts repository.AdminAccountRepository,
 	challenges repository.ChallengeRepository,
 	challengePolicies repository.ChallengePolicyRepository,
 	sessions repository.SessionRepository,
@@ -61,6 +66,9 @@ func bindAdapters(
 		return err
 	}
 	if err := app.Provide(portRoleRepository, roles); err != nil {
+		return err
+	}
+	if err := app.Provide(portAdminAccountRepository, adminAccounts); err != nil {
 		return err
 	}
 	if err := app.Provide(portChallengeRepository, challenges); err != nil {

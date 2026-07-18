@@ -124,6 +124,64 @@ func TestSessionHTTPFlowUsesCookieCSRFAndRejectsReuse(t *testing.T) {
 	}
 }
 
+func TestAdminLoginRequiresIndependentAdminAccount(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx := context.Background()
+	users := repository.NewMemoryUserRepository()
+	user := &domain.User{ID: "33002", Username: "admin_login", Nickname: "Admin Login", Email: "admin-login@example.test", Status: domain.UserStatusActive, AuthVersion: 1, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}
+	if err := users.Create(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := auth.HashPassword("Secret123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.CreateVerifiedAccount(ctx, user.ID, user.Email, hash); err != nil {
+		t.Fatal(err)
+	}
+	roles := repository.NewMemoryRoleRepository()
+	adminAccounts := repository.NewMemoryAdminAccountRepository()
+	jwtManager := auth.NewJWTManager(auth.JWTConfig{Secret: "admin-session-handler-secret", AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, Issuer: "test"})
+	userService := service.NewUserService(users, jwtManager, users, nil)
+	userService.SetRoleRepository(roles)
+	sessions, err := service.NewSessionService(repository.NewMemorySessionRepository(), users, jwtManager, service.SessionConfig{IPHashSecret: "admin-session-handler-ip-hash-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewUserHandler(userService)
+	handler.SetSessionService(sessions, SessionHTTPConfig{})
+	handler.SetAdminAccessService(service.NewAdminAccessService(adminAccounts))
+	router := gin.New()
+	router.POST("/auth/admin/login", handler.AdminLogin)
+
+	requestLogin := func() *httptest.ResponseRecorder {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/auth/admin/login", bytes.NewBufferString(`{"email":"admin-login@example.test","password":"Secret123"}`))
+		request.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(response, request)
+		return response
+	}
+
+	if response := requestLogin(); response.Code != http.StatusUnauthorized {
+		t.Fatalf("role-free user entered Admin: status=%d body=%s", response.Code, response.Body.String())
+	}
+	if assigned, err := roles.AssignRole(ctx, user.ID, 1, "global", nil); err != nil || !assigned {
+		t.Fatalf("assign role fixture: assigned=%v err=%v", assigned, err)
+	}
+	if active, err := adminAccounts.EnsureActive(ctx, user.ID, "test"); err != nil || !active {
+		t.Fatalf("provision admin fixture: active=%v err=%v", active, err)
+	}
+	if response := requestLogin(); response.Code != http.StatusOK {
+		t.Fatalf("active administrator login status=%d body=%s", response.Code, response.Body.String())
+	}
+	if revoked, err := adminAccounts.Revoke(ctx, user.ID); err != nil || !revoked {
+		t.Fatalf("revoke admin fixture: revoked=%v err=%v", revoked, err)
+	}
+	if response := requestLogin(); response.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked administrator entered Admin: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
 func cookieByName(t *testing.T, cookies []*http.Cookie, name string) *http.Cookie {
 	t.Helper()
 	for _, cookie := range cookies {

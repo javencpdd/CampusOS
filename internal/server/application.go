@@ -52,6 +52,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		JWT:             s.identity.JWTManager(),
 		SessionVerifier: s.identity.Sessions(),
 		Permissions:     s.identity.Permissions(),
+		AdminAccess:     s.identity.AdminAccess(),
 		Features:        s.features,
 		Feature:         s.featureHandler,
 		ModuleCatalog:   s.moduleCatalog,

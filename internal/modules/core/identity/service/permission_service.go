@@ -30,13 +30,18 @@ type UserLookup interface {
 
 // PermissionService manages role permission checks and global role assignments.
 type PermissionService struct {
-	roleRepo repository.RoleRepository
-	userRepo UserLookup
-	reliable *reliability.Service
+	roleRepo      repository.RoleRepository
+	userRepo      UserLookup
+	adminAccounts repository.AdminAccountRepository
+	reliable      *reliability.Service
 }
 
 func NewPermissionService(roleRepo repository.RoleRepository, userRepo UserLookup) *PermissionService {
 	return &PermissionService{roleRepo: roleRepo, userRepo: userRepo}
+}
+
+func (s *PermissionService) SetAdminAccountRepository(adminAccounts repository.AdminAccountRepository) {
+	s.adminAccounts = adminAccounts
 }
 
 func (s *PermissionService) SetReliability(reliable *reliability.Service) {
@@ -45,6 +50,9 @@ func (s *PermissionService) SetReliability(reliable *reliability.Service) {
 		return
 	}
 	if snapshotter, ok := s.roleRepo.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+	if snapshotter, ok := s.adminAccounts.(transaction.Snapshotter); ok {
 		reliable.RegisterMemorySnapshotters(snapshotter)
 	}
 }
@@ -237,7 +245,14 @@ func (s *PermissionService) AssignRole(ctx context.Context, userID string, roleI
 	if role.Name == "moderator" {
 		return false, ErrRoleRequiresScope
 	}
-	return s.roleRepo.AssignRole(ctx, userID, roleID, "global", nil)
+	assigned, err := s.roleRepo.AssignRole(ctx, userID, roleID, "global", nil)
+	if err != nil || !assigned || role.Name != "admin" || s.adminAccounts == nil {
+		return assigned, err
+	}
+	if _, err := s.adminAccounts.EnsureActive(ctx, userID, "role_assignment"); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // RevokeRole revokes every active explicit assignment for the role from a user.
@@ -263,6 +278,11 @@ func (s *PermissionService) RevokeRole(ctx context.Context, userID string, roleI
 	}
 	if !revoked {
 		return false, ErrRoleAssignmentNotFound
+	}
+	if role.Name == "admin" && s.adminAccounts != nil {
+		if _, err := s.adminAccounts.Revoke(ctx, userID); err != nil {
+			return false, err
+		}
 	}
 	return true, nil
 }
@@ -377,6 +397,11 @@ func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, user
 	}
 	if !revoked {
 		return false, ErrRoleAssignmentNotFound
+	}
+	if role.Name == "admin" && s.adminAccounts != nil {
+		if _, err := s.adminAccounts.Revoke(ctx, userID); err != nil {
+			return false, err
+		}
 	}
 	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
 		ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",

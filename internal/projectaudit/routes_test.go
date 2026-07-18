@@ -33,6 +33,42 @@ func TestServerRoutesHaveAuthorizationContracts(t *testing.T) {
 	}
 }
 
+func TestAdminRouteContractsIncludeManagementPlaneAdmission(t *testing.T) {
+	root, err := FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wanted := map[string]struct {
+		auth  string
+		scope string
+	}{
+		"GET /api/v1/roles": {
+			auth: "jwt+admin-account+permission", scope: "global",
+		},
+		"POST /api/v1/admin/threads/:id/take-down": {
+			auth: "jwt+admin-account-or-scope+permission", scope: "assigned-category-or-global-admin",
+		},
+	}
+	for _, route := range routes {
+		key := route.Method + " " + route.Path
+		expected, ok := wanted[key]
+		if !ok {
+			continue
+		}
+		if route.Auth != expected.auth || route.Scope != expected.scope {
+			t.Fatalf("route %s admission contract = %s/%s, want %s/%s", key, route.Auth, route.Scope, expected.auth, expected.scope)
+		}
+		delete(wanted, key)
+	}
+	if len(wanted) != 0 {
+		t.Fatalf("missing management-plane route contracts: %#v", wanted)
+	}
+}
+
 func TestCategoryOperationCodesMatchDatabaseContractAndKeepLegacyAliases(t *testing.T) {
 	root, err := FindRepositoryRoot(".")
 	if err != nil {
@@ -145,6 +181,24 @@ func TestRegistrationChallengeOpenAPIDocumentsRateAndDependencyFailures(t *testi
 	}
 }
 
+func TestAdminLoginOpenAPIDocumentsCredentialAndAdmissionFailures(t *testing.T) {
+	document := string(OpenAPI([]RouteContract{{
+		Method: "POST", Path: "/api/v1/auth/admin/login", Handler: "userHandler.AdminLogin",
+		Audience: "public", Auth: "none", Ownership: "none", Scope: "public", Stability: "experimental",
+	}}))
+	operation := document[:strings.Index(document, "components:")]
+	for _, expected := range []string{
+		"$ref: '#/components/schemas/LoginRequest'",
+		"$ref: '#/components/schemas/LoginResponse'",
+		"'401':\n          $ref: '#/components/responses/Unauthorized'",
+		"'503':\n          $ref: '#/components/responses/ServiceUnavailable'",
+	} {
+		if !strings.Contains(operation, expected) {
+			t.Fatalf("administrator login OpenAPI is missing %q:\n%s", expected, operation)
+		}
+	}
+}
+
 func TestRouteDescriptorsRejectDuplicateTransportRoutes(t *testing.T) {
 	routes := []RouteContract{
 		{Method: "GET", Path: "/api/v1/health", Audience: "public", Auth: "none", Audit: "request-log"},
@@ -174,9 +228,9 @@ func TestEveryFrozenRouteHasBusinessModuleOwner(t *testing.T) {
 func TestOpenAPIRepresentsOptionalJSONBodies(t *testing.T) {
 	document := string(OpenAPI([]RouteContract{{
 		Method: "POST", Path: "/api/v1/spaces/:user_id/disable", Handler: "spaceHandler.DisableSpace",
-		Audience: "admin", Auth: "jwt+permission", Permission: "space:manage", Ownership: "none", Scope: "global", Stability: "experimental",
+		Audience: "admin", Auth: "jwt+admin-account+permission", Permission: "space:manage", Ownership: "none", Scope: "global", Stability: "experimental",
 	}}))
-	for _, expected := range []string{"requestBody:", "required: false", "$ref: '#/components/schemas/DisableSpaceRequest'"} {
+	for _, expected := range []string{"x-campusos-auth: jwt+admin-account+permission", "requestBody:", "required: false", "$ref: '#/components/schemas/DisableSpaceRequest'"} {
 		if !strings.Contains(document, expected) {
 			t.Fatalf("optional body contract is missing %q:\n%s", expected, document)
 		}

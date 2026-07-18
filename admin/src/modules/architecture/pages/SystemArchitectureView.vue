@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000037</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000038</el-tag>
     </section>
 
     <el-alert
@@ -18,7 +18,7 @@
       :closable="false"
       show-icon
     >
-      PostgreSQL 已对核心身份、社区、个人空间、富文本和 Webhook
+      PostgreSQL 已对核心身份、管理员准入、社区、个人空间、富文本和 Webhook
       关系启用外键；其余连线表示代码与字段可追踪的逻辑关系。本页不会读取或展示真实业务记录。
     </el-alert>
 
@@ -354,6 +354,24 @@ const databaseTables: DbTable[] = [
     fields: ["id", "user_id", "type", "identifier_normalized", "verification_state"],
     migration: "000001 + 000016 + 000028",
     relationshipNote: "一个用户可有多个登录账号；邮箱账户以规范化标识全局唯一，user_id 由外键保护。",
+  },
+  {
+    name: "identity_admin_accounts",
+    title: "管理员准入账号",
+    domain: "identity",
+    purpose:
+      "独立保存管理平面的准入状态、凭据引用和最近认证时间；管理员角色负责授权，本表负责是否允许进入 Admin。",
+    fields: [
+      "id",
+      "user_id",
+      "credential_account_id",
+      "status",
+      "last_authenticated_at",
+      "version",
+    ],
+    migration: "000038",
+    relationshipNote:
+      "user_id 与 credential_account_id 均由外键保护；全局 admin 角色变更通过数据库触发器同步 active/revoked，suspended 不会被普通角色刷新静默恢复。",
   },
   {
     name: "identity_legacy_email_placeholders",
@@ -1007,6 +1025,24 @@ const databaseTables: DbTable[] = [
 
 const relations: Relation[] = [
   {
+    id: "users-admin-accounts",
+    source: "users",
+    target: "identity_admin_accounts",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> user_id",
+    domains: ["identity"],
+  },
+  {
+    id: "accounts-admin-accounts",
+    source: "accounts",
+    target: "identity_admin_accounts",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> credential_account_id",
+    domains: ["identity"],
+  },
+  {
     id: "users-accounts",
     source: "users",
     target: "accounts",
@@ -1573,7 +1609,7 @@ const storageRows = [
     type: "primary",
     purpose: "系统主数据和需要查询、筛选、审计的元数据。",
     contents: [
-      "用户、账号、会话、角色与权限",
+      "用户、登录凭据、管理员准入账号、会话、角色与权限",
       "版块、主题、回复、标签、通知和审计",
       "插件元数据、Webhook、Message、AI 调用与样式快照",
     ],
@@ -2048,6 +2084,15 @@ const migrations = [
     summary:
       "为系统最终化阶段增加 failed 尝试证据；Worker 与 Store 同步收紧最大领取次数，并让耗尽的非终态事件收敛到 dead。",
     tables: ["platform_outbox", "platform_outbox_attempts", "outbox_consumer_receipts"],
+  },
+  {
+    version: "000038",
+    file: "000038_v12_admin_accounts.up.sql",
+    title: "v12 管理员账号与管理平面准入",
+    scope: "身份与后台安全",
+    summary:
+      "建立独立管理员准入账号表，将管理平面准入与普通用户主体、登录凭据及 RBAC 授权分层，并以触发器同步全局 admin 角色生命周期。",
+    tables: ["identity_admin_accounts", "users", "accounts", "user_roles", "roles"],
   },
 ];
 
