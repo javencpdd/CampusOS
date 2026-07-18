@@ -7,6 +7,8 @@ cd "$repo_root"
 rg -q 'feature.secondhand' modules/features/secondhand/module.yaml
 rg -q 'secondhand_details' migrations/000035_v12_secondhand.up.sql
 rg -q 'CreateStructuredThread' internal/modules/features/secondhand/service.go
+rg -q 'ErrThreadNotEditable' internal/modules/features/secondhand/service.go
+rg -q '"internal server error"' internal/modules/features/secondhand/handler.go
 rg -Uq 'Prefix: "/api/v1/secondhand",\s*FeatureID: "secondhand"' internal/transport/httpapi/router.go
 
 if rg -n 'NewPg(Thread|Category|Post)Repository|pgxpool' internal/modules/features/secondhand/service.go; then

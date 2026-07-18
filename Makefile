@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -101,8 +101,7 @@ data-governance-check:
 generated-files-check:
 	python3 scripts/check-generated-files.py
 
-database-check:
-	./scripts/database-check.sh all
+v12-migration-check:
 	./scripts/test-v10-module-separation-migration.sh
 	./scripts/test-v11-reliability-migration.sh
 	./scripts/test-v12-identity-migration.sh
@@ -113,6 +112,10 @@ database-check:
 	./scripts/test-v12-structured-threads-migration.sh
 	./scripts/test-v12-mutual-aid-migration.sh
 	./scripts/test-v12-secondhand-migration.sh
+
+database-check:
+	./scripts/database-check.sh all
+	$(MAKE) v12-migration-check
 
 backup:
 	./scripts/backup.sh

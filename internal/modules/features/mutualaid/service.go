@@ -155,6 +155,9 @@ func (s *Service) Update(ctx context.Context, threadID, userID string, req Updat
 		if commandErr != nil {
 			return commandErr
 		}
+		if !thread.IsActive() {
+			return ErrThreadNotEditable
+		}
 		if detail.Version != req.Version {
 			return ErrVersionConflict
 		}
@@ -198,6 +201,9 @@ func (s *Service) UpdateStatus(ctx context.Context, threadID, userID string, req
 		thread, detail, commandErr := s.authorThread(commandCtx, threadID, userID)
 		if commandErr != nil {
 			return commandErr
+		}
+		if !thread.IsActive() {
+			return ErrThreadNotEditable
 		}
 		if detail.Version != req.Version {
 			return ErrVersionConflict

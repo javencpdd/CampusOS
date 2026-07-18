@@ -133,6 +133,9 @@ CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` �
 
 状态机为 `open -> in_progress/resolved/closed`、`in_progress -> open/resolved/closed`、`resolved -> closed`。
 它不等同于帖子发布或审核状态。状态冲突返回 `409`；客户端应重新读取后再让作者确认。
+编辑和状态更新只接受仍处于 active（未回收）状态的基础 Thread；作者已回收的内容返回 `409 / 40009`，且不会
+新增互助状态、审计或 Outbox 事件。未分类内部故障统一返回 `500 / 10006` 与通用错误文案，不会暴露数据库、
+查询或用户内部信息。
 
 ## 校园二手
 
@@ -156,6 +159,9 @@ CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` �
 `price_minor` 以分保存，首版只允许 `CNY`。状态机为
 `available -> reserved/sold/closed`、`reserved -> available/sold/closed`；`sold` 和
 `closed` 是终态。它不等同于帖子发布或审核状态，状态冲突返回 `409`。
+编辑和状态更新只接受仍处于 active（未回收）状态的基础 Thread；作者已回收的内容返回 `409 / 40009`，且不会
+新增交易状态、审计或 Outbox 事件。未分类内部故障统一返回 `500 / 10006` 与通用错误文案，不会暴露数据库、
+查询或用户内部信息。
 
 ## 创建普通帖子
 

@@ -104,6 +104,8 @@ Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，Exter
 状态只能按 `open -> in_progress/resolved/closed`、`in_progress -> open/resolved/closed`、
 `resolved -> closed` 转换。发生 `409` 时客户端必须重新读取后再提交，不能用旧版本覆盖新修改。详情字段和
 安全边界见 [v12 校园互助发布与状态管理](../help/系统设计相关/v12校园互助发布与状态管理.md)。
+编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
+互助状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。
 
 ## 6. 校园二手 API
 
@@ -125,6 +127,8 @@ Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，Exter
 `available -> reserved/sold/closed`、`reserved -> available/sold/closed` 转换，`sold` 和
 `closed` 是终态。详情和安全边界见
 [v12 校园二手发布与交易状态管理](../help/系统设计相关/v12校园二手发布与交易状态管理.md)。
+编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
+交易状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。
 
 ## 7. Session 与设备 API
 

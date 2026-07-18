@@ -123,6 +123,7 @@ func TestDisabledMutualAidDoesNotBlockPlainThreads(t *testing.T) {
 type failingStore struct {
 	*MemoryStore
 	failCreate bool
+	failUpdate bool
 }
 
 func (s *failingStore) Create(ctx context.Context, detail *Detail) error {
@@ -130,6 +131,13 @@ func (s *failingStore) Create(ctx context.Context, detail *Detail) error {
 		return errors.New("mutual aid detail write failed")
 	}
 	return s.MemoryStore.Create(ctx, detail)
+}
+
+func (s *failingStore) Update(ctx context.Context, detail *Detail, expectedVersion int64) error {
+	if s.failUpdate {
+		return errors.New("mutual aid detail update failed")
+	}
+	return s.MemoryStore.Update(ctx, detail, expectedVersion)
 }
 
 func TestCreateRollsBackThreadAndReliableEvidenceWhenDetailWriteFails(t *testing.T) {
@@ -168,5 +176,104 @@ func TestCreateRollsBackThreadAndReliableEvidenceWhenDetailWriteFails(t *testing
 	}
 	if len(events) != 0 || len(audits) != 0 {
 		t.Fatalf("failed command left reliable evidence: events=%#v audits=%#v", events, audits)
+	}
+}
+
+func TestUpdateRollsBackThreadDetailAndReliableEvidenceWhenDetailWriteFails(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := communityrepo.NewMemoryThreadRepository()
+	threadSvc := communitysvc.NewThreadService(threadRepo, nil)
+	policies := communityrepo.NewMemoryThreadTypePolicyRepository()
+	if err := policies.Replace(ctx, "1", []communitydomain.ThreadType{communitydomain.ThreadTypeMutualAid}); err != nil {
+		t.Fatal(err)
+	}
+	threadSvc.SetThreadTypePolicyRepository(policies)
+	reliableStore := reliability.NewMemoryStore()
+	reliable := reliability.NewService(transaction.NewMemory(), reliableStore)
+	threadSvc.SetReliability(reliable)
+
+	store := &failingStore{MemoryStore: NewMemoryStore()}
+	service := NewService(store, community.NewContentGateway(threadRepo, threadSvc), community.NewContentQuery(threadSvc))
+	service.SetReliability(reliable)
+	created, err := service.Create(ctx, "1001", "alice", validCreateRequest())
+	if err != nil {
+		t.Fatalf("create mutual aid: %v", err)
+	}
+
+	deadline := time.Now().UTC().Add(48 * time.Hour)
+	store.failUpdate = true
+	if _, err := service.Update(ctx, created.Thread.ID, "1001", UpdateRequest{
+		Title:         "Updated study partner request",
+		Content:       "Updated mutual-aid content.",
+		Tags:          []string{"study", "updated"},
+		AidType:       AidTypeOffer,
+		Deadline:      &deadline,
+		LocationScope: "Teaching building",
+		ContactMode:   ContactModeInApp,
+		Version:       created.Detail.Version,
+	}); err == nil {
+		t.Fatal("expected mutual-aid update to fail when detail persistence fails")
+	}
+
+	thread, err := threadRepo.GetByID(ctx, created.Thread.ID)
+	if err != nil {
+		t.Fatalf("read thread after failed update: %v", err)
+	}
+	if thread.Title != created.Thread.Title || thread.Content != created.Thread.Content || thread.CurrentRevision != 1 {
+		t.Fatalf("failed mutual-aid update changed thread: %#v", thread)
+	}
+	detail, err := store.Get(ctx, created.Thread.ID)
+	if err != nil {
+		t.Fatalf("read detail after failed update: %v", err)
+	}
+	if detail.AidType != created.Detail.AidType || detail.ContactMode != created.Detail.ContactMode || detail.Version != 1 {
+		t.Fatalf("failed mutual-aid update changed detail: %#v", detail)
+	}
+	events, _, err := reliableStore.List(ctx, reliability.EventFilter{}, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audits, _, err := reliableStore.ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || len(audits) != 1 {
+		t.Fatalf("failed update should not add outbox/audit records: events=%d audits=%d", len(events), len(audits))
+	}
+}
+
+func TestStatusUpdateRejectsTrashedThreadWithoutNewReliableEvidence(t *testing.T) {
+	ctx := context.Background()
+	service, threads, reliableStore := newTestService(t, true)
+	created, err := service.Create(ctx, "1001", "alice", validCreateRequest())
+	if err != nil {
+		t.Fatalf("create mutual aid: %v", err)
+	}
+	if err := threads.Delete(ctx, created.Thread.ID); err != nil {
+		t.Fatalf("trash thread: %v", err)
+	}
+	if _, err := service.UpdateStatus(ctx, created.Thread.ID, "1001", UpdateStatusRequest{
+		AidStatus: AidStatusInProgress,
+		Version:   created.Detail.Version,
+	}); !errors.Is(err, ErrThreadNotEditable) {
+		t.Fatalf("trashed mutual-aid thread accepted status update: %v", err)
+	}
+	current, err := service.GetMine(ctx, created.Thread.ID, "1001")
+	if err != nil {
+		t.Fatalf("read trashed mutual-aid detail as owner: %v", err)
+	}
+	if current.Detail.AidStatus != AidStatusOpen || current.Detail.Version != 1 {
+		t.Fatalf("trashed mutual-aid detail changed: %#v", current.Detail)
+	}
+	events, _, err := reliableStore.List(ctx, reliability.EventFilter{}, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	audits, _, err := reliableStore.ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || len(audits) != 1 {
+		t.Fatalf("rejected status update added reliable evidence: events=%d audits=%d", len(events), len(audits))
 	}
 }

@@ -49,6 +49,7 @@ var (
 	ErrInvalidInput      = errors.New("secondhand request is invalid")
 	ErrVersionConflict   = errors.New("secondhand detail version conflict")
 	ErrInvalidTransition = errors.New("secondhand status transition is invalid")
+	ErrThreadNotEditable = errors.New("secondhand thread is no longer editable")
 )
 
 type Detail struct {
