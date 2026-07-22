@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearAccessToken, csrfToken, getAccessToken } from '../../modules/identity/session'
+import { parseAPIError } from './error'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -25,13 +26,16 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const requestPath = String(error.config?.url || '')
-    const isBootstrapAuthRequest = requestPath.includes('/auth/login') || requestPath.includes('/auth/refresh')
+    const isBootstrapAuthRequest =
+      requestPath.includes('/auth/login') ||
+      requestPath.includes('/auth/mfa/login/complete') ||
+      requestPath.includes('/auth/refresh')
     if (error.response?.status === 401 && !isBootstrapAuthRequest) {
       clearAccessToken()
       window.dispatchEvent(new Event('campusos:identity-session-expired'))
       if (window.location.pathname !== '/login') window.location.assign('/login')
     }
-    return Promise.reject(error.response?.data || error)
+    return Promise.reject(parseAPIError(error.response?.data || error, error.response?.status))
   },
 )
 

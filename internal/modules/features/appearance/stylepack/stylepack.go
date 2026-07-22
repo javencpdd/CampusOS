@@ -3,6 +3,7 @@ package stylepack
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,9 +23,20 @@ import (
 const (
 	SchemaVersion    = "page-style-pack.v1"
 	AppSchemaVersion = "campusos.app-style-pack.v2"
+	// DeliveryContractV1 is required for newly imported or selected appearance
+	// packages. Older source packages remain readable as legacy-readonly until
+	// their maintainers add the contract and dual viewport previews.
+	DeliveryContractV1 = "campusos.appearance-delivery/v1"
 
-	MaxFiles        = 80
-	MaxPackageBytes = 8 * 1024 * 1024
+	DeliveryStatusValid          = "valid"
+	DeliveryStatusLegacyReadOnly = "legacy-readonly"
+	DeliveryStatusInvalid        = "invalid"
+
+	MaxFiles = 80
+	// Dual viewport previews are part of the delivery contract. 16 MiB keeps
+	// packaged theme assets bounded while allowing a desktop and mobile preview
+	// beside a single high-quality background image.
+	MaxPackageBytes = 16 * 1024 * 1024
 	MaxFileBytes    = 4 * 1024 * 1024
 	MaxCSSBytes     = 20000
 )
@@ -47,6 +59,8 @@ type Manifest struct {
 	Templates          []Template        `json:"templates,omitempty" yaml:"templates,omitempty"`
 	Styles             []string          `json:"styles,omitempty" yaml:"styles,omitempty"`
 	PreviewImage       string            `json:"preview_image,omitempty" yaml:"preview_image,omitempty"`
+	DeliveryContract   string            `json:"delivery_contract,omitempty" yaml:"delivery_contract,omitempty"`
+	PreviewImages      *PreviewImages    `json:"preview_images,omitempty" yaml:"preview_images,omitempty"`
 	ConfigSchema       string            `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
 	Tokens             map[string]string `json:"tokens,omitempty" yaml:"tokens,omitempty"`
 	Assets             []Asset           `json:"assets,omitempty" yaml:"assets,omitempty"`
@@ -55,6 +69,14 @@ type Manifest struct {
 	Layout             *AppLayout        `json:"layout,omitempty" yaml:"layout,omitempty"`
 	SurfaceOverrides   []SurfaceOverride `json:"surface_overrides,omitempty" yaml:"surface_overrides,omitempty"`
 	ViewportSupport    *ViewportSupport  `json:"viewport_support,omitempty" yaml:"viewport_support,omitempty"`
+}
+
+// PreviewImages declares the evidence used by the package selector for the
+// required desktop and mobile delivery targets. preview_image remains the
+// backwards-compatible generic thumbnail field.
+type PreviewImages struct {
+	Desktop string `json:"desktop" yaml:"desktop"`
+	Mobile  string `json:"mobile" yaml:"mobile"`
 }
 
 type ViewportSupport struct {
@@ -117,9 +139,20 @@ type Package struct {
 }
 
 type ValidationResult struct {
-	Valid    bool     `json:"valid"`
-	Errors   []string `json:"errors,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
+	Valid          bool              `json:"valid"`
+	DeliveryStatus string            `json:"delivery_status,omitempty"`
+	Errors         []string          `json:"errors,omitempty"`
+	Warnings       []string          `json:"warnings,omitempty"`
+	Issues         []ValidationIssue `json:"issues,omitempty"`
+}
+
+// ValidationIssue is deliberately safe to return from APIs: it identifies a
+// package-relative file and contract rule, never the host filesystem path.
+type ValidationIssue struct {
+	Code     string `json:"code"`
+	Message  string `json:"message"`
+	File     string `json:"file,omitempty"`
+	Viewport string `json:"viewport,omitempty"`
 }
 
 type FileBundle struct {
@@ -135,6 +168,8 @@ type SourcePackInfo struct {
 	Version     string           `json:"version,omitempty"`
 	DisplayName string           `json:"display_name,omitempty"`
 	Description string           `json:"description,omitempty"`
+	Checksum    string           `json:"checksum,omitempty"`
+	Previews    *PreviewImages   `json:"previews,omitempty"`
 	Manifest    *Manifest        `json:"manifest,omitempty"`
 	Validation  ValidationResult `json:"validation"`
 }
@@ -144,6 +179,16 @@ type SourcePackList struct {
 }
 
 func LoadDir(root string) (*Package, ValidationResult) {
+	return loadDir(root, false)
+}
+
+// LoadDirStrict validates a package for a new import, re-selection or publish.
+// It rejects legacy packages that do not yet meet the delivery contract.
+func LoadDirStrict(root string) (*Package, ValidationResult) {
+	return loadDir(root, true)
+}
+
+func loadDir(root string, strictDelivery bool) (*Package, ValidationResult) {
 	files := map[string][]byte{}
 	var total int64
 	var result ValidationResult
@@ -198,10 +243,19 @@ func LoadDir(root string) (*Package, ValidationResult) {
 	if len(result.Errors) > 0 {
 		return nil, result.finish()
 	}
-	return buildPackage(files)
+	return buildPackage(files, strictDelivery)
 }
 
 func LoadZip(reader io.ReaderAt, size int64) (*Package, ValidationResult) {
+	return loadZip(reader, size, false)
+}
+
+// LoadZipStrict is the mandatory validator for user supplied style packages.
+func LoadZipStrict(reader io.ReaderAt, size int64) (*Package, ValidationResult) {
+	return loadZip(reader, size, true)
+}
+
+func loadZip(reader io.ReaderAt, size int64, strictDelivery bool) (*Package, ValidationResult) {
 	var result ValidationResult
 	if size > MaxPackageBytes {
 		result.addError(fmt.Sprintf("style pack zip must not exceed %d bytes", MaxPackageBytes))
@@ -254,10 +308,21 @@ func LoadZip(reader io.ReaderAt, size int64) (*Package, ValidationResult) {
 	if len(result.Errors) > 0 {
 		return nil, result.finish()
 	}
-	return buildPackage(stripArchiveRoot(raw))
+	return buildPackage(stripArchiveRoot(raw), strictDelivery)
 }
 
 func ListSourcePacks(pluginName string) ([]SourcePackInfo, error) {
+	return listSourcePacks(pluginName, false)
+}
+
+// ListSourcePacksStrict marks legacy packages as non-applicable. It is used by
+// selectors and import screens, while ListSourcePacks remains available to
+// administrator migration tooling that needs to inspect legacy sources.
+func ListSourcePacksStrict(pluginName string) ([]SourcePackInfo, error) {
+	return listSourcePacks(pluginName, true)
+}
+
+func listSourcePacks(pluginName string, strictDelivery bool) ([]SourcePackInfo, error) {
 	root := SourceRoot(pluginName)
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -287,7 +352,7 @@ func ListSourcePacks(pluginName string) ([]SourcePackInfo, error) {
 			items = append(items, item)
 			continue
 		}
-		pack, validation := LoadDir(fullPath)
+		pack, validation := loadDir(fullPath, strictDelivery)
 		if pack != nil {
 			manifest := pack.Manifest
 			item.Manifest = &manifest
@@ -295,6 +360,8 @@ func ListSourcePacks(pluginName string) ([]SourcePackInfo, error) {
 			item.Version = manifest.Version
 			item.DisplayName = manifest.DisplayName
 			item.Description = manifest.Description
+			item.Previews = clonePreviewImages(manifest.PreviewImages)
+			item.Checksum = packageChecksum(pack.RawFiles)
 			if item.DisplayName == "" {
 				item.DisplayName = manifest.Name
 			}
@@ -390,8 +457,13 @@ This folder follows the page-style-pack.v1 source package layout:
 - templates/card.html
 - styles/theme.css
 - assets/
-- preview.png
+- preview.png (legacy thumbnail)
+- preview-desktop.png
+- preview-mobile.png
 - config.schema.json
+
+New packages declare campusos.appearance-delivery/v1 and must pass the
+desktop/mobile delivery checks before import or application.
 `, displayName),
 		"style.yaml": fmt.Sprintf(`schema_version: %s
 target: %s
@@ -402,6 +474,7 @@ author: CampusOS
 description: Generated example style pack.
 compatible_campusos:
   - ">=0.5.0"
+delivery_contract: %s
 viewport_support:
   desktop: true
   mobile: true
@@ -415,6 +488,9 @@ templates:
 styles:
   - styles/theme.css
 preview_image: preview.png
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 config_schema: config.schema.json
 tokens:
   color.primary: %q
@@ -429,7 +505,7 @@ assets:
   - name: avatar-frame
     path: assets/avatar-frame.png
     type: image/png
-`, SchemaVersion, target, name, displayName, primary, background, surface),
+`, SchemaVersion, target, name, displayName, DeliveryContractV1, primary, background, surface),
 		"templates/page.html": fmt.Sprintf(`<section class="cstyle-page">
   <header class="cstyle-hero">
     <div>
@@ -479,11 +555,13 @@ assets:
 }
 `, title, subtitle, primary),
 		"preview.png":             "CampusOS style pack preview placeholder.\n",
+		"preview-desktop.png":     "CampusOS desktop style pack preview placeholder.\n",
+		"preview-mobile.png":      "CampusOS mobile style pack preview placeholder.\n",
 		"assets/cover.webp":       "CampusOS style pack cover placeholder.\n",
 		"assets/avatar-frame.png": "CampusOS avatar frame placeholder.\n",
 		"styles/theme.css":        exampleCSS,
 	}
-	pkg, result := BuildFromFiles(files)
+	pkg, result := BuildFromFilesStrict(files)
 	if !result.Valid || pkg == nil {
 		pkg = &Package{}
 	}
@@ -495,11 +573,21 @@ assets:
 }
 
 func BuildFromFiles(textFiles map[string]string) (*Package, ValidationResult) {
+	return buildFromFiles(textFiles, false)
+}
+
+// BuildFromFilesStrict validates generated or edited source content using the
+// same rules as archive import and source selection.
+func BuildFromFilesStrict(textFiles map[string]string) (*Package, ValidationResult) {
+	return buildFromFiles(textFiles, true)
+}
+
+func buildFromFiles(textFiles map[string]string, strictDelivery bool) (*Package, ValidationResult) {
 	files := make(map[string][]byte, len(textFiles))
 	for name, content := range textFiles {
 		files[name] = []byte(content)
 	}
-	return buildPackage(files)
+	return buildPackage(files, strictDelivery)
 }
 
 func ZipBundle(bundle FileBundle) ([]byte, error) {
@@ -568,7 +656,7 @@ func ValidateCSS(input string) ValidationResult {
 	return result.finish()
 }
 
-func buildPackage(files map[string][]byte) (*Package, ValidationResult) {
+func buildPackage(files map[string][]byte, strictDelivery bool) (*Package, ValidationResult) {
 	var result ValidationResult
 	manifestData, ok := files["style.yaml"]
 	if !ok {
@@ -593,9 +681,9 @@ func buildPackage(files map[string][]byte) (*Package, ValidationResult) {
 	}
 	sort.Slice(pkg.Files, func(i, j int) bool { return pkg.Files[i].Path < pkg.Files[j].Path })
 
-	validateManifest(pkg, files, &result)
+	validateManifest(pkg, files, strictDelivery, &result)
 	if result.Valid = len(result.Errors) == 0; !result.Valid {
-		return pkg, result
+		return pkg, result.finish()
 	}
 	pkg.HTML = strings.TrimSpace(string(files[manifest.Entry]))
 	var cssParts []string
@@ -622,6 +710,11 @@ func NormalizeManifest(manifest Manifest) Manifest {
 	manifest.Description = strings.TrimSpace(manifest.Description)
 	manifest.Entry = cleanPackPath(manifest.Entry)
 	manifest.PreviewImage = cleanPackPath(manifest.PreviewImage)
+	manifest.DeliveryContract = strings.TrimSpace(manifest.DeliveryContract)
+	if manifest.PreviewImages != nil {
+		manifest.PreviewImages.Desktop = cleanPackPath(manifest.PreviewImages.Desktop)
+		manifest.PreviewImages.Mobile = cleanPackPath(manifest.PreviewImages.Mobile)
+	}
 	manifest.ConfigSchema = cleanPackPath(manifest.ConfigSchema)
 	manifest.CompatibleCampusOS = normalizeList(manifest.CompatibleCampusOS, 10)
 	manifest.Templates = normalizeTemplates(manifest.Templates, 20)
@@ -641,8 +734,13 @@ func NormalizeManifest(manifest Manifest) Manifest {
 	return manifest
 }
 
-func validateManifest(pkg *Package, files map[string][]byte, result *ValidationResult) {
+func validateManifest(pkg *Package, files map[string][]byte, strictDelivery bool, result *ValidationResult) {
 	manifest := pkg.Manifest
+	if manifest.PreviewImage == "" {
+		if manifest.PreviewImages != nil && manifest.PreviewImages.Desktop != "" {
+			manifest.PreviewImage = manifest.PreviewImages.Desktop
+		}
+	}
 	if manifest.PreviewImage == "" {
 		for _, candidate := range []string{"preview.png", "preview.jpg", "preview.jpeg", "preview.webp"} {
 			if _, ok := files[candidate]; ok {
@@ -718,8 +816,10 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 	}
 	validateEffect(manifest.Target, manifest.Effect, files, result)
 	validateCapabilities(manifest, result)
-	validateViewportSupport(manifest, combinedStyles(manifest, files), result)
+	css := combinedStyles(manifest, files)
+	validateViewportSupport(manifest, css, result)
 	validateTokenContrast(manifest.Tokens, result)
+	validateDeliveryContract(manifest, files, css, strictDelivery, result)
 	for name := range files {
 		if err := validateFilePath(name); err != nil {
 			result.addError("file path: " + err.Error())
@@ -732,6 +832,69 @@ func validateManifest(pkg *Package, files map[string][]byte, result *ValidationR
 		result.addWarning("compatible_campusos is empty")
 	}
 	addRecommendedStructureWarnings(manifest, files, result)
+}
+
+func validateDeliveryContract(manifest Manifest, files map[string][]byte, css string, strict bool, result *ValidationResult) {
+	if manifest.DeliveryContract == "" {
+		if strict {
+			result.addDeliveryError("appearance.delivery_contract_required", "", "", "appearance delivery contract v1 is required for import or application")
+			return
+		}
+		result.DeliveryStatus = DeliveryStatusLegacyReadOnly
+		result.addDeliveryWarning("appearance.legacy_readonly", "", "", "legacy style package is read-only until it declares appearance-delivery/v1")
+		return
+	}
+	if manifest.DeliveryContract != DeliveryContractV1 {
+		result.addDeliveryError("appearance.delivery_contract_unsupported", "style.yaml", "", "appearance delivery contract is unsupported")
+		return
+	}
+
+	if manifest.ViewportSupport == nil || !manifest.ViewportSupport.Desktop {
+		result.addDeliveryError("appearance.desktop_required", "style.yaml", "desktop", "appearance delivery requires desktop viewport support")
+	}
+	if manifest.ViewportSupport == nil || !manifest.ViewportSupport.Mobile {
+		result.addDeliveryError("appearance.mobile_required", "style.yaml", "mobile", "appearance delivery requires mobile viewport support")
+	}
+	if manifest.PreviewImages == nil {
+		result.addDeliveryError("appearance.dual_previews_required", "style.yaml", "", "appearance delivery requires desktop and mobile preview images")
+	} else {
+		validateDeliveryPreview("desktop", manifest.PreviewImages.Desktop, files, result)
+		validateDeliveryPreview("mobile", manifest.PreviewImages.Mobile, files, result)
+	}
+
+	breakpoint := ""
+	if manifest.ViewportSupport != nil {
+		breakpoint = manifest.ViewportSupport.MobileBreakpoint
+	}
+	if breakpoint != "" && !responsiveBreakpointRule(breakpoint).MatchString(css) {
+		result.addDeliveryError("appearance.responsive_rule_required", "styles/", "mobile", "appearance delivery requires a responsive rule for the declared mobile breakpoint")
+	}
+	if manifest.Effect != nil && !hasReducedMotionFallback(css) {
+		result.addDeliveryError("appearance.reduced_motion_required", "styles/", "", "appearance delivery with effects requires a prefers-reduced-motion fallback")
+	}
+}
+
+func validateDeliveryPreview(viewport, value string, files map[string][]byte, result *ValidationResult) {
+	if value == "" {
+		result.addDeliveryError("appearance.preview_"+viewport+"_required", "style.yaml", viewport, "appearance delivery requires a "+viewport+" preview image")
+		return
+	}
+	if err := validateFilePath(value); err != nil || !allowedImageExtension(value) {
+		result.addDeliveryError("appearance.preview_"+viewport+"_invalid", value, viewport, "appearance delivery preview must be a package-relative png, jpg, jpeg or webp image")
+		return
+	}
+	if _, ok := files[value]; !ok {
+		result.addDeliveryError("appearance.preview_"+viewport+"_missing", value, viewport, "appearance delivery preview image is missing")
+	}
+}
+
+func responsiveBreakpointRule(breakpoint string) *regexp.Regexp {
+	quoted := regexp.QuoteMeta(strings.TrimSpace(breakpoint))
+	return regexp.MustCompile(`(?is)@media\s*\([^)]*max-width\s*:\s*` + quoted + `\s*\)`)
+}
+
+func hasReducedMotionFallback(css string) bool {
+	return regexp.MustCompile(`(?is)@media\s*\([^)]*prefers-reduced-motion\s*:\s*reduce[^)]*\)`).MatchString(css)
 }
 
 func validateAppLayout(manifest Manifest, files map[string][]byte, result *ValidationResult) {
@@ -1415,11 +1578,19 @@ func fileType(name string) string {
 
 func (r *ValidationResult) finish() ValidationResult {
 	r.Valid = len(r.Errors) == 0
+	if !r.Valid {
+		r.DeliveryStatus = DeliveryStatusInvalid
+	} else if r.DeliveryStatus == "" {
+		r.DeliveryStatus = DeliveryStatusValid
+	}
 	if r.Errors == nil {
 		r.Errors = []string{}
 	}
 	if r.Warnings == nil {
 		r.Warnings = []string{}
+	}
+	if r.Issues == nil {
+		r.Issues = []ValidationIssue{}
 	}
 	return *r
 }
@@ -1430,6 +1601,16 @@ func (r *ValidationResult) addError(message string) {
 
 func (r *ValidationResult) addWarning(message string) {
 	r.Warnings = append(r.Warnings, message)
+}
+
+func (r *ValidationResult) addDeliveryError(code, file, viewport, message string) {
+	r.addError(message)
+	r.Issues = append(r.Issues, ValidationIssue{Code: code, Message: message, File: file, Viewport: viewport})
+}
+
+func (r *ValidationResult) addDeliveryWarning(code, file, viewport, message string) {
+	r.addWarning(message)
+	r.Issues = append(r.Issues, ValidationIssue{Code: code, Message: message, File: file, Viewport: viewport})
 }
 
 func (r *ValidationResult) addSafeHTMLPrefixed(prefix string, result safehtml.ValidationResult) {
@@ -1453,4 +1634,34 @@ func (r *ValidationResult) addPrefixed(prefix string, result ValidationResult) {
 func escapeHTML(value string) string {
 	replacer := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&#34;", "'", "&#39;")
 	return replacer.Replace(value)
+}
+
+func clonePreviewImages(value *PreviewImages) *PreviewImages {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
+// packageChecksum gives catalog consumers stable package evidence without
+// exposing an absolute source directory. It deliberately excludes no files:
+// a preview, manifest or source asset change all changes the checksum.
+func packageChecksum(files map[string]string) string {
+	if len(files) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	hash := sha256.New()
+	for _, name := range names {
+		_, _ = hash.Write([]byte(name))
+		_, _ = hash.Write([]byte{0})
+		_, _ = hash.Write([]byte(files[name]))
+		_, _ = hash.Write([]byte{0})
+	}
+	return fmt.Sprintf("sha256:%x", hash.Sum(nil))
 }

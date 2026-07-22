@@ -1,0 +1,453 @@
+{
+  "contract_version": "campusos.errors/v1",
+  "errors": [
+    {
+      "owner": "identity",
+      "machine_code": "auth.invalid_token",
+      "legacy_code": 20002,
+      "http_status": 401,
+      "message": "invalid or expired token",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "auth.required",
+      "legacy_code": 20001,
+      "http_status": 401,
+      "message": "unauthorized",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.admin_admission.invalid",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "administrator admission request is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.admin_admission.invalid_transition",
+      "legacy_code": 10004,
+      "http_status": 409,
+      "message": "administrator admission status transition is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.admin_admission.last_active",
+      "legacy_code": 10004,
+      "http_status": 409,
+      "message": "cannot suspend the last active administrator",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.admin_admission.not_found",
+      "legacy_code": 30004,
+      "http_status": 404,
+      "message": "administrator admission record was not found",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.admin_admission.version_conflict",
+      "legacy_code": 10004,
+      "http_status": 409,
+      "message": "administrator admission version conflict",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.enrollment_required",
+      "legacy_code": 10014,
+      "http_status": 403,
+      "message": "multi-factor authentication enrollment is required",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.factor_invalid",
+      "legacy_code": 10013,
+      "http_status": 400,
+      "message": "multi-factor authentication factor is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.invalid",
+      "legacy_code": 10011,
+      "http_status": 400,
+      "message": "multi-factor authentication request is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.not_enabled",
+      "legacy_code": 10016,
+      "http_status": 409,
+      "message": "multi-factor authentication is not enabled",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.policy_invalid",
+      "legacy_code": 10017,
+      "http_status": 400,
+      "message": "multi-factor authentication policy is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.policy_safety",
+      "legacy_code": 10018,
+      "http_status": 409,
+      "message": "multi-factor authentication policy safety requirements are not met",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.replay",
+      "legacy_code": 10015,
+      "http_status": 409,
+      "message": "multi-factor authentication code was already used",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.step_up_required",
+      "legacy_code": 10019,
+      "http_status": 403,
+      "message": "recent multi-factor authentication is required",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.ticket_invalid",
+      "legacy_code": 10012,
+      "http_status": 401,
+      "message": "multi-factor authentication ticket is invalid or expired",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.mfa.unavailable",
+      "legacy_code": 10020,
+      "http_status": 503,
+      "message": "multi-factor authentication is temporarily unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.registration_verification_invalid",
+      "legacy_code": 10009,
+      "http_status": 400,
+      "message": "registration verification is invalid or expired",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.registration_verification_rate_limited",
+      "legacy_code": 10010,
+      "http_status": 429,
+      "message": "verification request is temporarily limited",
+      "retryable": true
+    },
+    {
+      "owner": "identity",
+      "machine_code": "identity.verification_required",
+      "legacy_code": 10008,
+      "http_status": 400,
+      "message": "email verification is required before registration",
+      "retryable": false
+    },
+    {
+      "owner": "platform",
+      "machine_code": "internal.error",
+      "legacy_code": 10006,
+      "http_status": 500,
+      "message": "internal server error",
+      "retryable": true
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.feature_disabled",
+      "legacy_code": 50301,
+      "http_status": 503,
+      "message": "mutual aid feature is disabled",
+      "retryable": true
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.forbidden",
+      "legacy_code": 20003,
+      "http_status": 403,
+      "message": "mutual aid thread belongs to another user",
+      "retryable": false
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.invalid_input",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "mutual aid request is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.invalid_transition",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "mutual aid status transition is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.not_editable",
+      "legacy_code": 40009,
+      "http_status": 409,
+      "message": "mutual aid thread is no longer editable",
+      "retryable": false
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.not_found",
+      "legacy_code": 40003,
+      "http_status": 404,
+      "message": "mutual aid thread not found",
+      "retryable": false
+    },
+    {
+      "owner": "mutual-aid",
+      "machine_code": "mutual_aid.version_conflict",
+      "legacy_code": 40009,
+      "http_status": 409,
+      "message": "mutual aid detail version conflict",
+      "retryable": false
+    },
+    {
+      "owner": "identity",
+      "machine_code": "permission.denied",
+      "legacy_code": 20004,
+      "http_status": 403,
+      "message": "permission denied",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.attempts.unavailable",
+      "legacy_code": 89111,
+      "http_status": 500,
+      "message": "delivery attempts are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.audits.unavailable",
+      "legacy_code": 89112,
+      "http_status": 500,
+      "message": "reliability command audits are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.compatibility.unavailable",
+      "legacy_code": 89105,
+      "http_status": 500,
+      "message": "compatibility usage is unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.event.not_found",
+      "legacy_code": 89103,
+      "http_status": 404,
+      "message": "reliable event was not found",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.event.not_replayable",
+      "legacy_code": 89103,
+      "http_status": 409,
+      "message": "reliable event is not in the dead-letter queue",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.events.unavailable",
+      "legacy_code": 89102,
+      "http_status": 500,
+      "message": "reliable events are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.operations.unavailable",
+      "legacy_code": 89108,
+      "http_status": 500,
+      "message": "reliable operations are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.query.rate_limited",
+      "legacy_code": 89113,
+      "http_status": 429,
+      "message": "reliability query rate limit exceeded",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.replay.actor_required",
+      "legacy_code": 89103,
+      "http_status": 401,
+      "message": "replay actor is required",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.replay.already_requested",
+      "legacy_code": 89103,
+      "http_status": 409,
+      "message": "dead-letter replay was already requested",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.replay.idempotency_key_required",
+      "legacy_code": 89103,
+      "http_status": 409,
+      "message": "Idempotency-Key is required for dead-letter replay",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.replay.unavailable",
+      "legacy_code": 89103,
+      "http_status": 500,
+      "message": "reliable event replay failed",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.retention.invalid",
+      "legacy_code": 89106,
+      "http_status": 400,
+      "message": "retention preview request is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.retention.runs_unavailable",
+      "legacy_code": 89110,
+      "http_status": 500,
+      "message": "retention runs are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.retention.start_invalid",
+      "legacy_code": 89109,
+      "http_status": 400,
+      "message": "retention preview could not be started",
+      "retryable": false
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.summary.unavailable",
+      "legacy_code": 89101,
+      "http_status": 500,
+      "message": "reliability summary is unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "reliability",
+      "machine_code": "reliability.workers.unavailable",
+      "legacy_code": 89107,
+      "http_status": 500,
+      "message": "reliability workers are unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "platform",
+      "machine_code": "request.invalid",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "invalid request",
+      "retryable": false
+    },
+    {
+      "owner": "platform",
+      "machine_code": "resource.conflict",
+      "legacy_code": 10004,
+      "http_status": 409,
+      "message": "resource conflict",
+      "retryable": false
+    },
+    {
+      "owner": "platform",
+      "machine_code": "resource.not_found",
+      "legacy_code": 30004,
+      "http_status": 404,
+      "message": "resource not found",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.feature_disabled",
+      "legacy_code": 50301,
+      "http_status": 503,
+      "message": "secondhand feature is disabled",
+      "retryable": true
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.forbidden",
+      "legacy_code": 20003,
+      "http_status": 403,
+      "message": "secondhand thread belongs to another user",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.invalid_input",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "secondhand request is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.invalid_transition",
+      "legacy_code": 10001,
+      "http_status": 400,
+      "message": "secondhand status transition is invalid",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.not_editable",
+      "legacy_code": 40009,
+      "http_status": 409,
+      "message": "secondhand thread is no longer editable",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.not_found",
+      "legacy_code": 40003,
+      "http_status": 404,
+      "message": "secondhand thread not found",
+      "retryable": false
+    },
+    {
+      "owner": "secondhand",
+      "machine_code": "secondhand.version_conflict",
+      "legacy_code": 40009,
+      "http_status": 409,
+      "message": "secondhand detail version conflict",
+      "retryable": false
+    }
+  ]
+}

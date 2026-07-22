@@ -7,6 +7,7 @@ author: "CampusOS Team"
 description: "Folder-based personal space style pack example following the source package standard."
 compatible_campusos:
   - ">=0.5.0"
+delivery_contract: campusos.appearance-delivery/v1
 viewport_support:
   desktop: true
   mobile: true
@@ -20,6 +21,9 @@ templates:
 styles:
   - styles/theme.css
 preview_image: preview.png
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 config_schema: config.schema.json
 tokens:
   color.primary: "#2563eb"

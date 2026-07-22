@@ -382,6 +382,18 @@ func (h *Handler) ListSourceStylePacks(c *gin.Context) {
 	response.Success(c, result)
 }
 
+func (h *Handler) ServeSourceStylePackAsset(c *gin.Context) {
+	data, contentType, err := h.svc.SourceStylePackAsset(c.Request.Context(), c.Param("name"), c.Param("asset_path"))
+	if err != nil {
+		// Resource previews are intentionally indistinguishable from a missing
+		// package or undeclared file, so this endpoint cannot reveal source paths.
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=300")
+	c.Data(http.StatusOK, contentType, data)
+}
+
 func (h *Handler) ApplyStylePackZip(c *gin.Context) {
 	userID, ok := currentUserID(c)
 	if !ok {

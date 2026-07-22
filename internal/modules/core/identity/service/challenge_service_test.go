@@ -11,10 +11,13 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 func TestChallengeLifecycleUsesOpaqueOutboxAndOneTimeTicket(t *testing.T) {
 	service, store, reliable, _ := newTestChallengeService(t)
+	collector := observability.NewCollector()
+	service.SetMeter(collector)
 	ctx := context.Background()
 	receipt, err := service.Request(ctx, domain.ChallengeRequest{
 		Purpose:  domain.ChallengePurposeRegistration,
@@ -74,6 +77,22 @@ func TestChallengeLifecycleUsesOpaqueOutboxAndOneTimeTicket(t *testing.T) {
 		Email:    "student@example.test",
 	}); !errors.Is(err, ErrChallengeTicket) {
 		t.Fatalf("second consume error=%v, want one-time ticket rejection", err)
+	}
+	metrics := collector.PrometheusText()
+	for _, expected := range []string{
+		`campusos_identity_challenges_total{operation="request",result="success"} 1`,
+		`campusos_identity_challenges_total{operation="verify",result="success"} 1`,
+		`campusos_identity_challenges_total{operation="consume",result="success"} 1`,
+		`campusos_identity_challenges_total{operation="consume",result="invalid"} 1`,
+	} {
+		if !strings.Contains(metrics, expected) {
+			t.Fatalf("challenge metrics missing %q:\n%s", expected, metrics)
+		}
+	}
+	for _, forbidden := range []string{"student@example.test", dispatch.Code, ticket.Ticket} {
+		if strings.Contains(metrics, forbidden) {
+			t.Fatalf("challenge metrics leaked transient value %q", forbidden)
+		}
 	}
 }
 

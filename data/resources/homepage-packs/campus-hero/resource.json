@@ -3,8 +3,8 @@
   "id": "campus-hero",
   "type": "homepage-pack",
   "version": "0.1.0",
-  "compatibility": "\u003e=0.10.0 \u003c0.11.0",
+  "compatibility": "\u003e=0.13.0 \u003c0.14.0",
   "entry": "style.yaml",
-  "checksum": "46e3c1763ff1b9c16a4ece53454337f4537d92828e8e281f2527ae7727e75247",
+  "checksum": "31dd9f40b286237efd646927d753e290f9da15d09aa56d6e61f3b3b6cdb393de",
   "source": "campusos-builtin"
 }

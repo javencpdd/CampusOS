@@ -1,4 +1,4 @@
-# CampusOS HTTP 路由与授权矩阵 v0.11
+# CampusOS HTTP 路由与授权矩阵 v0.13
 
 > 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。
 
@@ -22,6 +22,7 @@
 | `POST` | `/api/v1/auth/register` | `http.post.api.v1.auth.register` | `core.identity` | `userHandler.Register` | `none` | `-` | `none` | `public` | `request-log` |
 | `POST` | `/api/v1/auth/login` | `http.post.api.v1.auth.login` | `core.identity` | `userHandler.Login` | `none` | `-` | `none` | `public` | `request-log` |
 | `POST` | `/api/v1/auth/admin/login` | `http.post.api.v1.auth.admin.login` | `core.identity` | `userHandler.AdminLogin` | `none` | `-` | `none` | `public` | `request-log` |
+| `POST` | `/api/v1/auth/mfa/login/complete` | `http.post.api.v1.auth.mfa.login.complete` | `core.identity` | `userHandler.CompleteMFALogin` | `none` | `-` | `mfa-ticket` | `single-use-ticket` | `identity-session-audit` |
 | `POST` | `/api/v1/auth/refresh` | `http.post.api.v1.auth.refresh` | `core.identity` | `userHandler.Refresh` | `refresh-cookie+csrf` | `-` | `session-cookie` | `current-session` | `identity-session-audit` |
 | `POST` | `/api/v1/auth/password-reset/challenge` | `http.post.api.v1.auth.password_reset.challenge` | `core.identity` | `userHandler.RequestPasswordReset` | `none` | `-` | `none` | `public` | `identity-recovery-audit` |
 | `POST` | `/api/v1/auth/password-reset/verify` | `http.post.api.v1.auth.password_reset.verify` | `core.identity` | `userHandler.VerifyPasswordReset` | `none` | `-` | `none` | `public` | `identity-recovery-audit` |
@@ -43,6 +44,7 @@
 | `GET` | `/api/v1/spaces/files/:user_id/avatars/:filename` | `http.get.api.v1.spaces.files.user_id.avatars.filename` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/u/:username/contents` | `http.get.api.v1.u.username.contents` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/u/:username` | `http.get.api.v1.u.username` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/appearance/space-style-packs/:name/assets/*asset_path` | `http.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path` | `feature.personal-space` | `d.Space` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/categories` | `http.get.api.v1.categories` | `core.community` | `categoryHandler.List` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/categories/tree` | `http.get.api.v1.categories.tree` | `core.community` | `categoryHandler.ListTree` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/categories/:id` | `http.get.api.v1.categories.id` | `core.community` | `categoryHandler.Get` | `none` | `-` | `none` | `public` | `request-log-read` |
@@ -53,6 +55,12 @@
 | `POST` | `/api/v1/auth/logout-all` | `http.post.api.v1.auth.logout_all` | `core.identity` | `userHandler.LogoutAll` | `jwt+csrf` | `-` | `handler-enforced` | `self-or-resource-owner` | `identity-session-audit` |
 | `GET` | `/api/v1/auth/sessions` | `http.get.api.v1.auth.sessions` | `core.identity` | `userHandler.ListSessions` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
 | `DELETE` | `/api/v1/auth/sessions/:id` | `http.delete.api.v1.auth.sessions.id` | `core.identity` | `userHandler.RevokeSession` | `jwt+csrf` | `-` | `handler-enforced` | `self-or-resource-owner` | `identity-session-audit` |
+| `GET` | `/api/v1/auth/mfa` | `http.get.api.v1.auth.mfa` | `core.identity` | `userHandler.GetMFAStatus` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/auth/mfa/totp/enrollment` | `http.post.api.v1.auth.mfa.totp.enrollment` | `core.identity` | `userHandler.StartMFAEnrollment` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-session-audit` |
+| `POST` | `/api/v1/auth/mfa/totp/confirm` | `http.post.api.v1.auth.mfa.totp.confirm` | `core.identity` | `userHandler.ConfirmMFAEnrollment` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-session-audit` |
+| `DELETE` | `/api/v1/auth/mfa/totp` | `http.delete.api.v1.auth.mfa.totp` | `core.identity` | `userHandler.DisableMFA` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-session-audit` |
+| `POST` | `/api/v1/auth/mfa/recovery-codes/rotate` | `http.post.api.v1.auth.mfa.recovery_codes.rotate` | `core.identity` | `userHandler.RotateMFARecoveryCodes` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-session-audit` |
+| `POST` | `/api/v1/auth/mfa/step-up` | `http.post.api.v1.auth.mfa.step_up` | `core.identity` | `userHandler.StepUpMFA` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-session-audit` |
 | `POST` | `/api/v1/auth/email-binding/challenge` | `http.post.api.v1.auth.email_binding.challenge` | `core.identity` | `userHandler.RequestEmailBinding` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-recovery-audit` |
 | `POST` | `/api/v1/auth/email-binding/verify` | `http.post.api.v1.auth.email_binding.verify` | `core.identity` | `userHandler.VerifyEmailBinding` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-recovery-audit` |
 | `POST` | `/api/v1/auth/email-binding/complete` | `http.post.api.v1.auth.email_binding.complete` | `core.identity` | `userHandler.CompleteEmailBinding` | `jwt+csrf` | `-` | `current-session` | `self` | `identity-recovery-audit` |
@@ -243,6 +251,13 @@
 | `POST` | `/api/v1/identity/recovery-cases/:id/cancel` | `http.identity.recovery.cases.cancel` | `core.identity` | `userHandler.CancelAdminRecoveryCase` | `jwt+admin-account+permission` | `identity.account.recovery.override` | `none` | `global` | `identity-recovery-audit` |
 | `GET` | `/api/v1/identity/users/:id/sessions` | `http.identity.session.admin_list` | `core.identity` | `userHandler.ListAdminUserSessions` | `jwt+admin-account+permission` | `identity.session.read` | `none` | `global` | `identity-recovery-audit` |
 | `POST` | `/api/v1/identity/users/:id/sessions/revoke-all` | `http.identity.session.admin_revoke_all` | `core.identity` | `userHandler.RevokeAdminUserSessions` | `jwt+admin-account+permission` | `identity.session.revoke` | `none` | `global` | `identity-recovery-audit` |
+| `GET` | `/api/v1/identity/admin-accounts` | `http.identity.admin_account.list` | `core.identity` | `adminAdmissionHandler.List` | `jwt+admin-account+permission` | `identity.admin_account.read` | `none` | `global` | `identity-recovery-audit` |
+| `GET` | `/api/v1/identity/admin-accounts/audits` | `http.identity.admin_account.audits` | `core.identity` | `adminAdmissionHandler.ListAudits` | `jwt+admin-account+permission` | `identity.admin_account.read_audit` | `none` | `global` | `identity-recovery-audit` |
+| `GET` | `/api/v1/identity/admin-accounts/:id` | `http.identity.admin_account.get` | `core.identity` | `adminAdmissionHandler.Get` | `jwt+admin-account+permission` | `identity.admin_account.read` | `none` | `global` | `identity-recovery-audit` |
+| `POST` | `/api/v1/identity/admin-accounts/:id/suspend` | `http.identity.admin_account.suspend` | `core.identity` | `adminAdmissionHandler.Suspend` | `jwt+admin-account+permission` | `identity.admin_account.suspend` | `none` | `global` | `identity-recovery-audit` |
+| `POST` | `/api/v1/identity/admin-accounts/:id/restore` | `http.identity.admin_account.restore` | `core.identity` | `adminAdmissionHandler.Restore` | `jwt+admin-account+permission` | `identity.admin_account.restore` | `none` | `global` | `identity-recovery-audit` |
+| `GET` | `/api/v1/identity/mfa-policy` | `http.identity.mfa_policy.get` | `core.identity` | `userHandler.GetMFAAdminPolicy` | `jwt+admin-account+permission` | `identity.mfa_policy.read` | `none` | `global` | `identity-recovery-audit` |
+| `PUT` | `/api/v1/identity/mfa-policy` | `http.identity.mfa_policy.update` | `core.identity` | `userHandler.UpdateMFAAdminPolicy` | `jwt+admin-account+permission` | `identity.mfa_policy.update` | `none` | `global` | `identity-recovery-audit` |
 | `POST` | `/api/v1/home/style-packs/validate` | `http.post.api.v1.home.style_packs.validate` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/home/style-packs/example` | `http.get.api.v1.home.style_packs.example` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/home/style-packs/example.zip` | `http.get.api.v1.home.style_packs.example.zip` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |

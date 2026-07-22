@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"strings"
 	"time"
 
@@ -298,7 +299,7 @@ func (s *Service) ValidateStylePackZip(ctx context.Context, userID string, reade
 	if _, err := s.users.GetByID(ctx, userID); err != nil {
 		return nil, fmt.Errorf("get owner: %w", err)
 	}
-	pack, validation := stylepack.LoadZip(reader, size)
+	pack, validation := stylepack.LoadZipStrict(reader, size)
 	if validation.Valid {
 		targetValidation := ensureStylePackTarget(pack, "personal-space")
 		if !targetValidation.Valid {
@@ -330,6 +331,41 @@ func (s *Service) ListSourceStylePacks(ctx context.Context, userID string) (*sty
 	return listPersonalSourceStylePacks()
 }
 
+// SourceStylePackAsset serves only assets declared by a strict, built-in
+// resource package. It never resolves an arbitrary file path and is public
+// because the package catalog itself is administrator-provided public UI data.
+func (s *Service) SourceStylePackAsset(ctx context.Context, name, assetPath string) ([]byte, string, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, "", err
+	}
+	pack, validation := loadPersonalSourceStylePack(name)
+	if !validation.Valid || pack == nil {
+		return nil, "", ErrInvalidStyleExport
+	}
+	assetPath = strings.TrimPrefix(strings.TrimSpace(assetPath), "/")
+	if !sourceStylePackDeclaredAsset(pack.Manifest, assetPath) {
+		return nil, "", ErrInvalidStyleExport
+	}
+	data, ok := pack.RawFiles[assetPath]
+	if !ok {
+		return nil, "", ErrInvalidStyleExport
+	}
+	return []byte(data), sourceStylePackAssetType(assetPath), nil
+}
+
+func sourceStylePackAssetType(assetPath string) string {
+	switch strings.ToLower(path.Ext(assetPath)) {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	default:
+		return "application/octet-stream"
+	}
+}
+
 func (s *Service) ApplyStylePackZip(ctx context.Context, userID string, reader io.ReaderAt, size int64) (*StyleApplyResult, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
@@ -338,7 +374,7 @@ func (s *Service) ApplyStylePackZip(ctx context.Context, userID string, reader i
 	if err != nil {
 		return nil, err
 	}
-	pack, validation := stylepack.LoadZip(reader, size)
+	pack, validation := stylepack.LoadZipStrict(reader, size)
 	if validation.Valid {
 		targetValidation := ensureStylePackTarget(pack, "personal-space")
 		if !targetValidation.Valid {

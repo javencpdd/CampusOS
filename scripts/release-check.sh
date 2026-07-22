@@ -14,6 +14,12 @@ trap cleanup EXIT
 
 echo "==> contracts"
 go run ./cmd/campusos-contracts --check
+make error-contract-check
+make observability-check
+make v13-reliability-observability-check
+make v13-baseline-check
+make v13-capacity-check
+make appearance-delivery-check
 make version-check
 
 echo "==> documentation links"
@@ -48,7 +54,13 @@ echo "==> database"
 ./scripts/migrate.sh up
 ./scripts/database-check.sh all
 make v12-migration-check
+make v13-migration-check
 python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
+
+if [[ "${RUN_V13_CAPACITY_DRILL:-true}" == "true" ]]; then
+  echo "==> isolated v13 capacity drill"
+  make v13-capacity-drill
+fi
 
 echo "==> plugin templates"
 go test ./modules -count=1
@@ -60,16 +72,6 @@ go run ./cmd/campusosctl plugin dev examples/plugins/schedule-helper --json
 go run ./cmd/campusosctl plugin dev examples/plugins/v2-managed-example --json
 (cd examples/plugins/v2-managed-example && go test ./... -count=1)
 go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
-
-echo "==> resource packages"
-for resource in \
-  data/resources/homepage-packs/campus-hero \
-  data/resources/space-style-packs/clean-blog \
-  data/resources/space-style-packs/kinetic-journal \
-  data/resources/themes/aurora-campus \
-  data/resources/themes/campus-canvas; do
-  go run ./cmd/campusosctl resource inspect "$resource" >/dev/null
-done
 
 echo "==> frontend builds"
 (cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)

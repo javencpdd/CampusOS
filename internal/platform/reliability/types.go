@@ -151,12 +151,16 @@ func (p PageRequest) offset() int {
 }
 
 type Summary struct {
-	Pending       int64      `json:"pending"`
-	Processing    int64      `json:"processing"`
-	Published     int64      `json:"published"`
-	Retry         int64      `json:"retry"`
-	Dead          int64      `json:"dead"`
-	OldestPending *time.Time `json:"oldest_pending_at,omitempty"`
+	Pending                   int64      `json:"pending"`
+	Processing                int64      `json:"processing"`
+	Published                 int64      `json:"published"`
+	Retry                     int64      `json:"retry"`
+	Dead                      int64      `json:"dead"`
+	OldestPending             *time.Time `json:"oldest_pending_at,omitempty"`
+	OldestPendingAgeSeconds   float64    `json:"oldest_pending_age_seconds"`
+	FailedAttemptsLastHour    int64      `json:"failed_attempts_1h"`
+	FailedAttemptsLast24Hours int64      `json:"failed_attempts_24h"`
+	Health                    string     `json:"health"`
 }
 
 // WorkerLease is a read-only heartbeat record. It deliberately contains no

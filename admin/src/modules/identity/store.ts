@@ -44,16 +44,35 @@ export const useAdminStore = defineStore('admin', () => {
     setAdminRoleNames(userData.roles?.map((role) => role.name) || [])
   }
 
+  function applyLoginResponse(data: any) {
+    const roles = data?.roles || []
+    const hasAdminRole = roles.some((role: AdminRole) => role.name === 'admin' || role.name === 'super_admin')
+    if (!data?.user || !data?.access_token || !hasAdminRole) {
+      clearSession()
+      return false
+    }
+    applySession({ ...data.user, roles }, data.access_token)
+    return true
+  }
+
+  function updateAccessToken(accessToken: string) {
+    if (!accessToken) return
+    token.value = accessToken
+    setAdminAccessToken(accessToken)
+  }
+
   async function login(email: string, password: string) {
     const res: any = await authApi.login({ email, password })
-    if (res.code === 0) {
-      const roles = res.data.roles || []
-      const hasAdminRole = roles.some((role: AdminRole) => role.name === 'admin' || role.name === 'super_admin')
-      if (!hasAdminRole) {
-        clearSession()
-        return { code: 20004, msg: '管理后台仅允许管理员登录；版主请在用户端管理已分配板块' }
-      }
-      applySession({ ...res.data.user, roles }, res.data.access_token)
+    if (res.code === 0 && !res?.data?.mfa_required && !applyLoginResponse(res.data)) {
+      return { code: 20004, msg: '管理后台仅允许管理员登录；版主请在用户端管理已分配板块' }
+    }
+    return res
+  }
+
+  async function completeMFA(ticket: string, code: string) {
+    const res: any = await authApi.completeMFALogin({ mfa_ticket: ticket, code })
+    if (res.code === 0 && !applyLoginResponse(res.data)) {
+      return { code: 20004, msg: '管理后台仅允许管理员登录；版主请在用户端管理已分配板块' }
     }
     return res
   }
@@ -112,5 +131,5 @@ export const useAdminStore = defineStore('admin', () => {
   registerAdminSessionRestorer(restore)
   if (typeof window !== 'undefined') window.addEventListener('campusos:admin-session-expired', clearSession)
 
-  return { user, token, isLoggedIn, primaryRole, isAdmin, login, restore, logout }
+  return { user, token, isLoggedIn, primaryRole, isAdmin, login, completeMFA, updateAccessToken, restore, logout }
 })

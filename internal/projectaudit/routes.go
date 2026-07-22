@@ -199,7 +199,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.community"
 	case strings.HasPrefix(path, APIPrefix+"/content/assets"):
 		return "core.user-storage"
-	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
+	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"), strings.HasPrefix(path, APIPrefix+"/appearance/space-style-packs"):
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "feature.controlled-richtext-article"
@@ -255,7 +255,7 @@ func routeID(path string) string {
 
 func featureForRoute(path string) string {
 	switch {
-	case strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"):
+	case strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"), strings.HasPrefix(path, APIPrefix+"/appearance/space-style-packs"):
 		return "personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "controlled-richtext-article"
@@ -313,6 +313,17 @@ func applyAuthorization(route *RouteContract, group, method string) {
 		route.Scope = "self"
 		route.Audit = "identity-recovery-audit"
 	}
+	if strings.HasPrefix(route.Path, APIPrefix+"/auth/mfa/") {
+		route.Audit = "identity-session-audit"
+		if route.Path == APIPrefix+"/auth/mfa/login/complete" {
+			route.Ownership = "mfa-ticket"
+			route.Scope = "single-use-ticket"
+		} else if method != "GET" {
+			route.Auth = "jwt+csrf"
+			route.Ownership = "current-session"
+			route.Scope = "self"
+		}
+	}
 	if strings.HasPrefix(route.Path, APIPrefix+"/identity/") {
 		route.Audit = "identity-recovery-audit"
 	}
@@ -326,7 +337,7 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 	payload := struct {
 		Version string          `json:"version"`
 		Routes  []RouteContract `json:"routes"`
-	}{Version: "v0.11", Routes: routes}
+	}{Version: routeContractVersion(), Routes: routes}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return nil, err
@@ -336,7 +347,7 @@ func RoutesJSON(routes []RouteContract) ([]byte, error) {
 
 func RoutesMarkdown(routes []RouteContract) []byte {
 	var out strings.Builder
-	out.WriteString("# CampusOS HTTP 路由与授权矩阵 v0.11\n\n")
+	fmt.Fprintf(&out, "# CampusOS HTTP 路由与授权矩阵 %s\n\n", routeContractVersion())
 	out.WriteString("> 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。\n\n")
 	out.WriteString("当前接口均标记为 `experimental`；进入 stable 前不得承诺无弃用期的兼容性。`handler-enforced` 表示资源归属和字段过滤由对应 handler/service 负责。\n\n")
 	out.WriteString("| Method | Path | Operation | Module | Handler | Auth | Permission Code | Ownership | Scope | Audit |\n")
@@ -350,6 +361,14 @@ func RoutesMarkdown(routes []RouteContract) []byte {
 			route.Method, route.Path, route.OperationCode, route.ModuleOwner, route.Handler, route.Auth, permission, route.Ownership, route.Scope, route.Audit)
 	}
 	return []byte(out.String())
+}
+
+func routeContractVersion() string {
+	parts := strings.Split(platformversion.Number, ".")
+	if len(parts) < 2 {
+		return "v" + platformversion.Number
+	}
+	return "v" + parts[0] + "." + parts[1]
 }
 
 func OpenAPI(routes []RouteContract) []byte {

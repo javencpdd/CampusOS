@@ -306,6 +306,18 @@ func (s *MemoryStore) Summary(_ context.Context) (Summary, error) {
 			}
 		}
 	}
+	now := time.Now().UTC()
+	for _, attempt := range s.attempts {
+		if attempt.Status != "retry" && attempt.Status != "dead" && attempt.Status != "failed" {
+			continue
+		}
+		if !attempt.StartedAt.Before(now.Add(-24 * time.Hour)) {
+			result.FailedAttemptsLast24Hours++
+		}
+		if !attempt.StartedAt.Before(now.Add(-time.Hour)) {
+			result.FailedAttemptsLastHour++
+		}
+	}
 	return result, nil
 }
 

@@ -110,7 +110,7 @@ func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
 }
 
 func (s *Service) ValidateStylePackZip(reader io.ReaderAt, size int64) (*StylePackResult, error) {
-	pack, validation := stylepack.LoadZip(reader, size)
+	pack, validation := stylepack.LoadZipStrict(reader, size)
 	if validation.Valid {
 		validation = ensureHomepageStylePackTarget(pack)
 	}
@@ -139,7 +139,7 @@ func (s *Service) ListSourceStylePacks(ctx context.Context) (*stylepack.SourcePa
 	if _, err := s.PublicConfig(ctx); err != nil {
 		return nil, err
 	}
-	items, err := stylepack.ListSourcePacks("homepage-customizer")
+	items, err := stylepack.ListSourcePacksStrict("homepage-customizer")
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (s *Service) ListSourceStylePacks(ctx context.Context) (*stylepack.SourcePa
 }
 
 func (s *Service) ApplyStylePackZip(ctx context.Context, reader io.ReaderAt, size int64) (*Config, error) {
-	pack, validation := stylepack.LoadZip(reader, size)
+	pack, validation := stylepack.LoadZipStrict(reader, size)
 	if validation.Valid {
 		validation = ensureHomepageStylePackTarget(pack)
 	}
@@ -165,7 +165,7 @@ func (s *Service) ApplySourceStylePack(ctx context.Context, name string) (*Confi
 	if !safeSourceStylePackName(name) {
 		return nil, fmt.Errorf("%w: source style pack name must use lowercase letters, numbers and hyphens", ErrStylePackInvalid)
 	}
-	pack, validation := stylepack.LoadDir(stylepack.SourceDir("homepage-customizer", name))
+	pack, validation := stylepack.LoadDirStrict(stylepack.SourceDir("homepage-customizer", name))
 	if validation.Valid {
 		validation = ensureHomepageStylePackTarget(pack)
 	}

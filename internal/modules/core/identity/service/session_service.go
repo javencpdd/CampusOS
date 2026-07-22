@@ -16,6 +16,7 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 var (
@@ -59,6 +60,13 @@ type SessionService struct {
 	reliable     *reliability.Service
 	ipHashKey    []byte
 	clock        func() time.Time
+	meter        observability.Meter
+}
+
+func (s *SessionService) SetMeter(meter observability.Meter) {
+	if s != nil {
+		s.meter = meter
+	}
 }
 
 func NewSessionService(sessions repository.SessionRepository, users repository.UserRepository, jwtManager *auth.JWTManager, config SessionConfig) (*SessionService, error) {
@@ -92,12 +100,28 @@ func (s *SessionService) SetReliability(reliable *reliability.Service) {
 }
 
 func (s *SessionService) Issue(ctx context.Context, user *domain.User, metadata SessionMetadata) (*SessionTokens, error) {
+	return s.IssueWithAuthentication(ctx, user, metadata, domain.MFAAuthenticationPassword, nil)
+}
+
+// IssueWithAuthentication persists the verified authentication strength with
+// the server-side Session. MFA is asserted only after MFAService has consumed
+// a valid one-time ticket; callers cannot synthesize it from a JWT claim.
+func (s *SessionService) IssueWithAuthentication(ctx context.Context, user *domain.User, metadata SessionMetadata, strength domain.MFAAuthenticationStrength, mfaVerifiedAt *time.Time) (*SessionTokens, error) {
 	if user == nil || user.ID == "" || user.Status != domain.UserStatusActive || user.AuthVersion < 1 {
+		s.observeSession("issue", "invalid")
 		return nil, ErrSessionInvalid
 	}
 	now := s.now()
+	if strength != domain.MFAAuthenticationTOTP {
+		strength = domain.MFAAuthenticationPassword
+		mfaVerifiedAt = nil
+	} else if mfaVerifiedAt == nil {
+		stamp := now
+		mfaVerifiedAt = &stamp
+	}
 	rawRefresh, err := auth.NewOpaqueRefreshToken()
 	if err != nil {
+		s.observeSession("issue", "error")
 		return nil, err
 	}
 	sessionID := fmt.Sprintf("%d", idgen.New())
@@ -105,10 +129,12 @@ func (s *SessionService) Issue(ctx context.Context, user *domain.User, metadata 
 		ID: sessionID, UserID: user.ID, RefreshTokenDigest: refreshDigest(rawRefresh), TokenFamilyID: fmt.Sprintf("%d", idgen.New()),
 		DeviceID: clip(metadata.DeviceID, 128), DeviceName: defaultDeviceName(metadata.DeviceName), DeviceType: defaultDeviceType(metadata.DeviceType),
 		IPHash: s.ipHash(metadata.ClientIP), UserAgent: clip(metadata.UserAgent, 512),
+		AuthenticationStrength: strength, MFAAuthenticatedAt: cloneSessionServiceTime(mfaVerifiedAt),
 		LastActiveAt: now, ExpiresAt: now.Add(s.jwt.RefreshTTL()), CreatedAt: now, UpdatedAt: now,
 	}
 	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: session.ID, AuthVersion: user.AuthVersion})
 	if err != nil {
+		s.observeSession("issue", "error")
 		return nil, fmt.Errorf("generate session access token: %w", err)
 	}
 	if err := s.execute(ctx, reliability.Command{
@@ -117,8 +143,10 @@ func (s *SessionService) Issue(ctx context.Context, user *domain.User, metadata 
 	}, func(commandCtx context.Context) error {
 		return s.sessions.Create(commandCtx, session)
 	}); err != nil {
+		s.observeSession("issue", "error")
 		return nil, err
 	}
+	s.observeSession("issue", "success")
 	return &SessionTokens{AccessToken: accessToken, RefreshToken: rawRefresh, Session: session, ExpiresIn: durationSeconds(s.jwt.AccessTTL())}, nil
 }
 
@@ -127,10 +155,12 @@ func (s *SessionService) Issue(ctx context.Context, user *domain.User, metadata 
 // returns ErrRefreshTokenReuse to the caller.
 func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadata SessionMetadata) (*SessionTokens, error) {
 	if strings.TrimSpace(rawRefresh) == "" {
+		s.observeSession("refresh", "invalid")
 		return nil, ErrRefreshTokenInvalid
 	}
 	newRawRefresh, err := auth.NewOpaqueRefreshToken()
 	if err != nil {
+		s.observeSession("refresh", "error")
 		return nil, err
 	}
 	now := s.now()
@@ -192,6 +222,7 @@ func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadat
 			TokenFamilyID: current.TokenFamilyID, RotatedFromID: current.ID,
 			DeviceID: clip(metadata.DeviceID, 128), DeviceName: defaultDeviceName(metadata.DeviceName), DeviceType: defaultDeviceType(metadata.DeviceType),
 			IPHash: s.ipHash(metadata.ClientIP), UserAgent: clip(metadata.UserAgent, 512),
+			AuthenticationStrength: current.AuthenticationStrength, MFAAuthenticatedAt: cloneSessionServiceTime(current.MFAAuthenticatedAt),
 			LastActiveAt: now, ExpiresAt: now.Add(s.jwt.RefreshTTL()), CreatedAt: now, UpdatedAt: now,
 		}
 		if issued.DeviceID == "" {
@@ -202,6 +233,10 @@ func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadat
 		}
 		if metadata.DeviceType == "" {
 			issued.DeviceType = current.DeviceType
+		}
+		if issued.AuthenticationStrength != domain.MFAAuthenticationTOTP {
+			issued.AuthenticationStrength = domain.MFAAuthenticationPassword
+			issued.MFAAuthenticatedAt = nil
 		}
 		stamp := now
 		current.RevokedAt = &stamp
@@ -215,18 +250,27 @@ func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadat
 		return s.sessions.Create(commandCtx, issued)
 	})
 	if err != nil {
+		s.observeSession("refresh", "error")
 		return nil, err
 	}
 	if resultErr != nil {
+		if errors.Is(resultErr, ErrRefreshTokenReuse) {
+			s.observeSession("refresh", "reuse")
+		} else {
+			s.observeSession("refresh", "invalid")
+		}
 		return nil, resultErr
 	}
 	if issued == nil || user == nil {
+		s.observeSession("refresh", "invalid")
 		return nil, ErrRefreshTokenInvalid
 	}
 	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: issued.ID, AuthVersion: user.AuthVersion})
 	if err != nil {
+		s.observeSession("refresh", "error")
 		return nil, fmt.Errorf("generate refreshed access token: %w", err)
 	}
+	s.observeSession("refresh", "success")
 	return &SessionTokens{AccessToken: accessToken, RefreshToken: newRawRefresh, Session: issued, ExpiresIn: durationSeconds(s.jwt.AccessTTL())}, nil
 }
 
@@ -234,17 +278,83 @@ func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadat
 // middleware depend on the Identity module.
 func (s *SessionService) VerifyAccess(ctx context.Context, claims *auth.JWTClaims) error {
 	if claims == nil || claims.TokenType != auth.AccessTokenType || claims.SessionID == "" || claims.AuthVersion < 1 || claims.UserID == "" {
+		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
 	session, err := s.sessions.GetByID(ctx, claims.SessionID)
 	if err != nil || session.UserID != claims.UserID || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
+		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
 	user, err := s.users.GetByID(ctx, claims.UserID)
 	if err != nil || user.Status != domain.UserStatusActive || user.AuthVersion != claims.AuthVersion {
+		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
+	s.observeSession("verify", "success")
 	return nil
+}
+
+// MarkMFA records a successful current-session step-up and returns a fresh
+// Access Token bound to the same server-side session. The Refresh credential
+// remains HttpOnly and is not returned or rotated by this operation.
+func (s *SessionService) MarkMFA(ctx context.Context, userID, sessionID string) (*SessionTokens, error) {
+	if s == nil || strings.TrimSpace(userID) == "" || strings.TrimSpace(sessionID) == "" {
+		return nil, ErrSessionInvalid
+	}
+	var updated *domain.Session
+	var user *domain.User
+	err := s.execute(ctx, reliability.Command{
+		Code: "identity.session.mfa_step_up", ActorID: userID, ResourceType: "identity_session", ResourceID: sessionID,
+		OperationCode: "identity.session.mfa_step_up", IdempotencyKey: "identity.session.mfa_step_up:" + userID + ":" + sessionID + ":" + fmt.Sprintf("%d", s.now().UnixNano()),
+	}, func(commandCtx context.Context) error {
+		current, lookupErr := s.sessions.GetByIDForUpdate(commandCtx, sessionID)
+		if lookupErr != nil || current.UserID != userID || current.RevokedAt != nil || !s.now().Before(current.ExpiresAt) {
+			return ErrSessionInvalid
+		}
+		user, lookupErr = s.users.GetByID(commandCtx, userID)
+		if lookupErr != nil || user.Status != domain.UserStatusActive || user.AuthVersion < 1 {
+			return ErrSessionInvalid
+		}
+		now := s.now()
+		current.AuthenticationStrength = domain.MFAAuthenticationTOTP
+		current.MFAAuthenticatedAt = &now
+		current.LastActiveAt = now
+		current.UpdatedAt = now
+		if updateErr := s.sessions.Update(commandCtx, current); updateErr != nil {
+			return updateErr
+		}
+		updated = current
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil || user == nil {
+		return nil, ErrSessionInvalid
+	}
+	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: updated.ID, AuthVersion: user.AuthVersion})
+	if err != nil {
+		return nil, fmt.Errorf("generate MFA step-up access token: %w", err)
+	}
+	s.observeSession("mfa_step_up", "success")
+	return &SessionTokens{AccessToken: accessToken, Session: updated, ExpiresIn: durationSeconds(s.jwt.AccessTTL())}, nil
+}
+
+// HasRecentMFA is a narrow Port for future high-risk command guards. It reads
+// authoritative session state rather than trusting client-side timestamps.
+func (s *SessionService) HasRecentMFA(ctx context.Context, userID, sessionID string, maximumAge time.Duration) (bool, error) {
+	if s == nil || maximumAge <= 0 {
+		return false, ErrSessionInvalid
+	}
+	session, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		return false, err
+	}
+	if session.UserID != userID || session.RevokedAt != nil || session.AuthenticationStrength != domain.MFAAuthenticationTOTP || session.MFAAuthenticatedAt == nil {
+		return false, nil
+	}
+	return s.now().Sub(session.MFAAuthenticatedAt.UTC()) <= maximumAge, nil
 }
 
 func (s *SessionService) List(ctx context.Context, userID, currentSessionID string) ([]domain.SessionView, error) {
@@ -318,20 +428,36 @@ func (s *SessionService) RevokeAll(ctx context.Context, userID, reason, commandC
 		Code: commandCode, ActorID: userID, ResourceType: "user", ResourceID: userID, OperationCode: commandCode,
 		IdempotencyKey: commandCode + ":" + userID + ":" + fmt.Sprintf("%d", s.now().UnixNano()),
 	}, func(commandCtx context.Context) error {
-		user, err := s.authVersions.BumpAuthVersion(commandCtx, userID)
-		if err != nil {
-			return err
-		}
-		if _, err := s.sessions.RevokeByUser(commandCtx, userID, reason, s.now()); err != nil {
-			return err
-		}
-		updated = user
-		return nil
+		var revokeErr error
+		updated, revokeErr = s.revokeAll(commandCtx, userID, reason)
+		return revokeErr
 	})
 	if err != nil {
 		return nil, err
 	}
 	return updated, nil
+}
+
+// RevokeAllForCommand joins a caller-owned reliable command. It is intentionally
+// narrow: only Identity application services use it to preserve one atomic
+// state transition, command audit, and outbox event. Calling it outside an
+// active command would make its transaction boundary ambiguous, so it fails.
+func (s *SessionService) RevokeAllForCommand(ctx context.Context, userID, reason string) (*domain.User, error) {
+	if s == nil || userID == "" || !transaction.Active(ctx) {
+		return nil, ErrSessionConfiguration
+	}
+	return s.revokeAll(ctx, userID, reason)
+}
+
+func (s *SessionService) revokeAll(ctx context.Context, userID, reason string) (*domain.User, error) {
+	user, err := s.authVersions.BumpAuthVersion(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.sessions.RevokeByUser(ctx, userID, reason, s.now()); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // RecordRefreshBodyCompatibility leaves deprecation evidence without logging
@@ -346,6 +472,16 @@ func (s *SessionService) RecordRefreshBodyCompatibility(ctx context.Context) {
 }
 
 func (s *SessionService) now() time.Time { return s.clock().UTC() }
+
+func (s *SessionService) observeSession(operation, result string) {
+	if s == nil || s.meter == nil {
+		return
+	}
+	_ = s.meter.AddCounter("campusos_identity_sessions_total", observability.Labels{
+		"operation": operation,
+		"result":    result,
+	}, 1)
+}
 
 func (s *SessionService) execute(ctx context.Context, command reliability.Command, action func(context.Context) error) error {
 	if s.reliable != nil {
@@ -393,4 +529,12 @@ func defaultDeviceType(value string) string {
 		return value
 	}
 	return "web"
+}
+
+func cloneSessionServiceTime(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	copy := value.UTC()
+	return &copy
 }

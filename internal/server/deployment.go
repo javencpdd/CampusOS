@@ -53,6 +53,15 @@ func validateDeployment(cfg *config.Config) error {
 		if len(sessionIPHashSecret) < 16 || sessionIPHashSecret == "campusos-development-session-ip-hash-key-change-before-production" {
 			return fmt.Errorf("a non-development AUTH_SESSION_IP_HASH_SECRET is required when CAMPUSOS_ENV=production")
 		}
+		if activeMFAKey := strings.TrimSpace(cfg.Auth.MFAActiveKeyID); activeMFAKey != "" || len(cfg.Auth.MFAEncryptionKeys) > 0 {
+			mfaSecret := ""
+			if cfg.Auth.MFAEncryptionKeys != nil {
+				mfaSecret = strings.TrimSpace(cfg.Auth.MFAEncryptionKeys[activeMFAKey])
+			}
+			if activeMFAKey == "" || len(mfaSecret) < 16 || mfaSecret == "campusos-development-mfa-encryption-key-change-before-production" {
+				return fmt.Errorf("AUTH_MFA_ACTIVE_KEY_ID and a non-development AUTH_MFA_ENCRYPTION_KEYS secret must be configured together when MFA encryption is enabled in production")
+			}
+		}
 	}
 	provider := strings.ToLower(strings.TrimSpace(cfg.Email.Provider))
 	if provider == "" {

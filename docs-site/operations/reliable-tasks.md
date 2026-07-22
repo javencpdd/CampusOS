@@ -60,6 +60,10 @@ published，`retry`/`dead` 表示 Complete 失败后已安全转换状态，`fai
 消费者均完成，事件尚未最终化”。浏览器只收到 lease、次数、时间和 allowlist 错误，不会收到
 payload、headers、幂等键、邮箱、验证码、Token 或 Secret。
 
+v0.13 起，页面顶部还会显示队列健康、积压年龄、近 1 小时失败趋势和近 24 小时失败数。
+“进入诊断”只会打开 dead/retry 的只读筛选，不会自动重放或删除任务。可选 Prometheus exporter
+默认关闭，开启时使用独立 loopback 监听；指标标签只包含固定操作、结果、Provider 和 Consumer ID。
+
 ## 重放失败队列
 
 重放可能再次产生外部副作用。只在以下条件都满足时操作：
@@ -93,5 +97,6 @@ WEBHOOK_ALLOW_PRIVATE_NETWORK=false
 ```
 
 仓库内的 `docs/help/系统设计相关/v11可靠任务与Webhook安全运维.md`、
-`docs/architecture/v11Webhook可靠投递与安全模型.md` 记录了面向维护者的完整恢复和
-安全设计；此文档站页面保留日常操作所需的公开说明。
+`docs/architecture/v11Webhook可靠投递与安全模型.md` 和
+`docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md` 记录了面向维护者的完整恢复、
+Prometheus 规则和故障演练；此文档站页面保留日常操作所需的公开说明。

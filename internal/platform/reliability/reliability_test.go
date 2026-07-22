@@ -3,10 +3,12 @@ package reliability
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/platform/transaction"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 type failingAuditStore struct{ *MemoryStore }
@@ -60,6 +62,115 @@ func TestWorkerRetriesThenPublishes(t *testing.T) {
 	items, _ = service.List(context.Background(), EventFilter{Type: "test.retry"})
 	if items[0].Status != StatusPublished || attempts != 2 {
 		t.Fatalf("event was not published after retry: status=%s attempts=%d", items[0].Status, attempts)
+	}
+}
+
+func TestWorkerMetricsPreserveReceiptsAndConverge(t *testing.T) {
+	store := NewMemoryStore()
+	service := NewService(transaction.NewMemory(), store)
+	collector := observability.NewCollector()
+	service.SetMeter(collector)
+
+	deliveries := 0
+	service.RegisterConsumer("test.metrics", "consumer:metrics", func(_ context.Context, _ Event) error {
+		deliveries++
+		if deliveries == 1 {
+			return Retryable(errors.New("temporary provider failure"), time.Millisecond)
+		}
+		return nil
+	})
+	event, err := NewEvent("test.metrics", "test", "metric-1", map[string]string{"email": "secret@example.test", "token": "raw-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Enqueue(t.Context(), event); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ProcessOnce(t.Context()); err == nil {
+		t.Fatal("first delivery should request a retry")
+	}
+	time.Sleep(3 * time.Millisecond)
+	if _, err := service.ProcessOnce(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := service.Summary(t.Context())
+	if err != nil || summary.Published != 1 || summary.FailedAttemptsLastHour != 1 || summary.Health != "healthy" {
+		t.Fatalf("summary=%+v err=%v", summary, err)
+	}
+	if deliveries != 2 {
+		t.Fatalf("deliveries=%d want=2", deliveries)
+	}
+	output := collector.PrometheusText()
+	for _, expected := range []string{
+		`campusos_reliability_operations_total{operation="claim",result="success"} 2`,
+		`campusos_reliability_operations_total{operation="retry",result="success"} 1`,
+		`campusos_reliability_operations_total{operation="receipt",result="recorded"} 1`,
+		`campusos_reliability_operations_total{operation="finalize",result="success"} 1`,
+		`campusos_reliability_queue_events{status="published"} 1`,
+		`campusos_reliability_consumer_duration_seconds_count{consumer="consumer:metrics",result="retry"} 1`,
+		`campusos_reliability_consumer_duration_seconds_count{consumer="consumer:metrics",result="success"} 1`,
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("metrics missing %q:\n%s", expected, output)
+		}
+	}
+	for _, forbidden := range []string{"secret@example.test", "raw-token", "metric-1"} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("metrics leaked %q", forbidden)
+		}
+	}
+}
+
+func TestStoppedWorkerBacklogIsVisibleAndRecovers(t *testing.T) {
+	store := NewMemoryStore()
+	service := NewService(transaction.NewMemory(), store)
+	collector := observability.NewCollector()
+	service.SetMeter(collector)
+	service.RegisterHandler("test.backlog", func(context.Context, Event) error { return nil })
+	event, _ := NewEvent("test.backlog", "test", "backlog-1", map[string]string{})
+	event.CreatedAt = time.Now().UTC().Add(-10 * time.Minute)
+	event.AvailableAt = event.CreatedAt
+	if _, err := service.Enqueue(t.Context(), event); err != nil {
+		t.Fatal(err)
+	}
+	backlog, err := service.Summary(t.Context())
+	if err != nil || backlog.Health != "degraded" || backlog.OldestPendingAgeSeconds < 590 {
+		t.Fatalf("stopped-worker backlog summary=%+v err=%v", backlog, err)
+	}
+	if _, err := service.ProcessOnce(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := service.Summary(t.Context())
+	if err != nil || recovered.Health != "healthy" || recovered.Published != 1 || recovered.OldestPendingAgeSeconds != 0 {
+		t.Fatalf("recovered summary=%+v err=%v", recovered, err)
+	}
+}
+
+func TestDeadLetterGrowthIsObservable(t *testing.T) {
+	service := NewService(transaction.NewMemory(), NewMemoryStore())
+	collector := observability.NewCollector()
+	service.SetMeter(collector)
+	service.RegisterHandler("test.dead.metric", func(context.Context, Event) error {
+		return Permanent(errors.New("invalid payload"))
+	})
+	event, _ := NewEvent("test.dead.metric", "test", "dead-1", map[string]string{})
+	if _, err := service.Enqueue(t.Context(), event); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ProcessOnce(t.Context()); err == nil {
+		t.Fatal("permanent failure should remain observable")
+	}
+	if _, err := service.Summary(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	output := collector.PrometheusText()
+	for _, expected := range []string{
+		`campusos_reliability_operations_total{operation="dead_letter",result="success"} 1`,
+		`campusos_reliability_queue_events{status="dead"} 1`,
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("dead-letter metrics missing %q:\n%s", expected, output)
+		}
 	}
 }
 

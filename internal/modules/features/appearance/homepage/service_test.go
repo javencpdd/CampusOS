@@ -109,12 +109,22 @@ func TestApplyStylePackZipUpdatesHomepageConfig(t *testing.T) {
 target: homepage
 name: home-folder
 version: 0.1.0
+delivery_contract: campusos.appearance-delivery/v1
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 entry: templates/page.html
 styles:
   - styles/theme.css
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Home Folder</h2></section>`,
-		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; }`,
+		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; } @media (max-width: 720px) { .home[data-campusos-home] .cstyle-page { padding: 12px; } }`,
+		"preview-desktop.png": "desktop preview",
+		"preview-mobile.png":  "mobile preview",
 	})
 
 	cfg, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data)))
@@ -144,12 +154,22 @@ func TestRollbackStylePackRestoresPreviousHomepageConfig(t *testing.T) {
 target: homepage
 name: rollback-pack
 version: 0.1.0
+delivery_contract: campusos.appearance-delivery/v1
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 entry: templates/page.html
 styles:
   - styles/theme.css
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Changed</h2></section>`,
-		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; }`,
+		"styles/theme.css":    `.home[data-campusos-home] .cstyle-page { padding: 16px; color: #2563eb; } @media (max-width: 720px) { .home[data-campusos-home] .cstyle-page { padding: 12px; } }`,
+		"preview-desktop.png": "desktop preview",
+		"preview-mobile.png":  "mobile preview",
 	})
 	if _, err := svc.ApplyStylePackZip(context.Background(), bytes.NewReader(data), int64(len(data))); err != nil {
 		t.Fatalf("apply homepage style pack: %v", err)

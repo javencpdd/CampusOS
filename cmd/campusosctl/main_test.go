@@ -39,7 +39,7 @@ func TestPluginInitCreatesScaffold(t *testing.T) {
 	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
 		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
 	}
-	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.12.0" {
+	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.14.0" {
 		t.Fatalf("unexpected CampusOS compatibility range: %q", manifest.Compatibility.CampusOS)
 	}
 	if manifest.Compatibility.SDKGo != campusossdk.SDKVersion {
@@ -69,6 +69,31 @@ func TestIdentityResetPasswordRejectsNonSystemAccountBeforeTerminalRead(t *testi
 		t.Fatal("expected system-only recovery command to reject another email")
 	}
 	if !strings.Contains(stderr.String(), "only the system administrator account") {
+		t.Fatalf("unexpected identity command error: %s", stderr.String())
+	}
+}
+
+func TestIdentityRestoreAdminAdmissionRejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"identity", "restore-admin-admission", "--user-id", "0", "--reason", "operator review"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected administrator admission recovery command to reject an invalid user ID")
+	}
+	if !strings.Contains(stderr.String(), "positive --user-id") {
+		t.Fatalf("unexpected identity command error: %s", stderr.String())
+	}
+}
+
+func TestIdentityResetMFARejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := run([]string{"identity", "reset-mfa", "--user-id", "0", "--reason", "lost device"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected local MFA recovery command to reject an invalid user ID")
+	}
+	if !strings.Contains(stderr.String(), "positive --user-id") {
 		t.Fatalf("unexpected identity command error: %s", stderr.String())
 	}
 }
@@ -119,11 +144,70 @@ func TestResourceAdoptAcceptsDocumentedDirectoryFirstSyntax(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	if code := run([]string{"resource", "adopt", directory, "--type", "theme"}, &stdout, &stderr); code != 0 {
+	if code := run([]string{"resource", "adopt", directory, "--type", "skill"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("resource adopt failed: code=%d stderr=%s", code, stderr.String())
 	}
 	if code := run([]string{"resource", "inspect", directory}, &stdout, &stderr); code != 0 {
 		t.Fatalf("resource inspect failed: code=%d stderr=%s", code, stderr.String())
+	}
+}
+
+func TestResourceLegacyAdoptionPreservesButDoesNotPublishAppearancePack(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(directory, "templates"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(directory, "styles"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "style.yaml"), []byte(`schema_version: page-style-pack.v1
+target: personal-space
+name: legacy-space
+version: 1.0.0
+entry: templates/page.html
+styles: [styles/theme.css]
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "templates", "page.html"), []byte(`<section class="cstyle-page">Legacy</section>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "styles", "theme.css"), []byte(`.public-space[data-campusos-space] .cstyle-page { color: #111827; background: #ffffff; }`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := run([]string{"resource", "adopt", directory, "--type", "space-style-pack"}, &stdout, &stderr); code == 0 {
+		t.Fatalf("strict resource adoption accepted an old appearance package: stdout=%s", stdout.String())
+	}
+	if _, err := os.Stat(filepath.Join(directory, "resource.json")); err == nil {
+		t.Fatal("strict resource adoption wrote a manifest for a legacy package")
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"resource", "adopt-legacy", directory, "--type", "space-style-pack"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("legacy layout adoption failed: code=%d stderr=%s", code, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"resource", "inspect", directory}, &stdout, &stderr); code != 0 {
+		t.Fatalf("compatibility inspection failed: code=%d stderr=%s", code, stderr.String())
+	}
+	var inspection map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &inspection); err != nil {
+		t.Fatalf("decode inspection: %v", err)
+	}
+	if inspection["delivery_status"] != "legacy-readonly" {
+		t.Fatalf("unexpected delivery status: %#v", inspection)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"resource", "inspect", directory, "--strict"}, &stdout, &stderr); code == 0 {
+		t.Fatal("strict inspection accepted a legacy-only appearance package")
 	}
 }
 

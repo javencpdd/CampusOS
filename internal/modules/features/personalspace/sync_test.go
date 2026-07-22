@@ -179,6 +179,13 @@ func TestSyncThreadNormalizesNilTags(t *testing.T) {
 	}
 }
 
+func TestExcerptUsesReadableTextForRichTextContent(t *testing.T) {
+	got := excerpt(`<p>CampusOS <strong>rich text</strong></p><blockquote>keeps profile cards readable</blockquote><img src="/asset.png" alt="cover">`, 240)
+	if got != "CampusOS rich text keeps profile cards readable" {
+		t.Fatalf("expected readable rich-text excerpt, got %q", got)
+	}
+}
+
 func TestListOwnContentsUsesAuthorFactAndKeepsGovernanceDetailsPrivate(t *testing.T) {
 	user := &identitydomain.User{ID: "1001", Username: "alice", Nickname: "Alice"}
 	query := &capturingContentQuery{authorThreads: []*communitydomain.Thread{{

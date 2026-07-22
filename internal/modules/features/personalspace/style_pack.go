@@ -89,11 +89,11 @@ func loadPersonalSourceStylePack(name string) (*stylepack.Package, stylepack.Val
 			Errors: []string{"source style pack name must use lowercase letters, numbers and hyphens"},
 		}
 	}
-	return stylepack.LoadDir(stylepack.SourceDir("personal-space", name))
+	return stylepack.LoadDirStrict(stylepack.SourceDir("personal-space", name))
 }
 
 func listPersonalSourceStylePacks() (*stylepack.SourcePackList, error) {
-	items, err := stylepack.ListSourcePacks("personal-space")
+	items, err := stylepack.ListSourcePacksStrict("personal-space")
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +128,21 @@ func ensureSourcePackInfoTarget(info *stylepack.SourcePackInfo, target string) {
 	if info.Validation.Warnings == nil {
 		info.Validation.Warnings = []string{}
 	}
+}
+
+func sourceStylePackDeclaredAsset(manifest stylepack.Manifest, assetPath string) bool {
+	if assetPath == manifest.PreviewImage {
+		return true
+	}
+	if manifest.PreviewImages != nil && (assetPath == manifest.PreviewImages.Desktop || assetPath == manifest.PreviewImages.Mobile) {
+		return true
+	}
+	for _, asset := range manifest.Assets {
+		if asset.Path == assetPath {
+			return true
+		}
+	}
+	return false
 }
 
 func stylePackToken(tokens map[string]string, key, fallback string) string {

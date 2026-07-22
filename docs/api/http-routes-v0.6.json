@@ -1,5 +1,5 @@
 {
-  "version": "v0.11",
+  "version": "v0.13",
   "routes": [
     {
       "method": "GET",
@@ -271,6 +271,23 @@
       "ownership": "none",
       "scope": "public",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/login/complete",
+      "handler": "userHandler.CompleteMFALogin",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.auth.mfa.login.complete",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.mfa.login.complete",
+        "httpapi.post.api.v1.auth.mfa.login.complete"
+      ],
+      "ownership": "mfa-ticket",
+      "scope": "single-use-ticket",
+      "audit": "identity-session-audit",
       "stability": "experimental"
     },
     {
@@ -632,6 +649,23 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/appearance/space-style-packs/:name/assets/*asset_path",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path",
+      "legacy_aliases": [
+        "http.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path",
+        "httpapi.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/categories",
       "handler": "categoryHandler.List",
       "module_owner": "core.community",
@@ -797,6 +831,108 @@
       ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/mfa",
+      "handler": "userHandler.GetMFAStatus",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.auth.mfa",
+      "legacy_aliases": [
+        "http.get.api.v1.auth.mfa",
+        "httpapi.get.api.v1.auth.mfa"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/totp/enrollment",
+      "handler": "userHandler.StartMFAEnrollment",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.mfa.totp.enrollment",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.mfa.totp.enrollment",
+        "httpapi.post.api.v1.auth.mfa.totp.enrollment"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/totp/confirm",
+      "handler": "userHandler.ConfirmMFAEnrollment",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.mfa.totp.confirm",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.mfa.totp.confirm",
+        "httpapi.post.api.v1.auth.mfa.totp.confirm"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/auth/mfa/totp",
+      "handler": "userHandler.DisableMFA",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.delete.api.v1.auth.mfa.totp",
+      "legacy_aliases": [
+        "http.delete.api.v1.auth.mfa.totp",
+        "httpapi.delete.api.v1.auth.mfa.totp"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/recovery-codes/rotate",
+      "handler": "userHandler.RotateMFARecoveryCodes",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.mfa.recovery_codes.rotate",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.mfa.recovery_codes.rotate",
+        "httpapi.post.api.v1.auth.mfa.recovery_codes.rotate"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
+      "audit": "identity-session-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/step-up",
+      "handler": "userHandler.StepUpMFA",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+csrf",
+      "operation_code": "http.post.api.v1.auth.mfa.step_up",
+      "legacy_aliases": [
+        "http.post.api.v1.auth.mfa.step_up",
+        "httpapi.post.api.v1.auth.mfa.step_up"
+      ],
+      "ownership": "current-session",
+      "scope": "self",
       "audit": "identity-session-audit",
       "stability": "experimental"
     },
@@ -4229,6 +4365,139 @@
       "legacy_aliases": [
         "http.post.api.v1.identity.users.id.sessions.revoke_all",
         "httpapi.post.api.v1.identity.users.id.sessions.revoke_all"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/admin-accounts",
+      "handler": "adminAdmissionHandler.List",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:read",
+      "permission_code": "identity.admin_account.read",
+      "operation_code": "http.identity.admin_account.list",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.admin_accounts",
+        "httpapi.get.api.v1.identity.admin_accounts"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/admin-accounts/audits",
+      "handler": "adminAdmissionHandler.ListAudits",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:read",
+      "permission_code": "identity.admin_account.read_audit",
+      "operation_code": "http.identity.admin_account.audits",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.admin_accounts.audits",
+        "httpapi.get.api.v1.identity.admin_accounts.audits"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/admin-accounts/:id",
+      "handler": "adminAdmissionHandler.Get",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:read",
+      "permission_code": "identity.admin_account.read",
+      "operation_code": "http.identity.admin_account.get",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.admin_accounts.id",
+        "httpapi.get.api.v1.identity.admin_accounts.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/identity/admin-accounts/:id/suspend",
+      "handler": "adminAdmissionHandler.Suspend",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.admin_account.suspend",
+      "operation_code": "http.identity.admin_account.suspend",
+      "legacy_aliases": [
+        "http.post.api.v1.identity.admin_accounts.id.suspend",
+        "httpapi.post.api.v1.identity.admin_accounts.id.suspend"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/identity/admin-accounts/:id/restore",
+      "handler": "adminAdmissionHandler.Restore",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:suspend",
+      "permission_code": "identity.admin_account.restore",
+      "operation_code": "http.identity.admin_account.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.identity.admin_accounts.id.restore",
+        "httpapi.post.api.v1.identity.admin_accounts.id.restore"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/identity/mfa-policy",
+      "handler": "userHandler.GetMFAAdminPolicy",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "role:read",
+      "permission_code": "identity.mfa_policy.read",
+      "operation_code": "http.identity.mfa_policy.get",
+      "legacy_aliases": [
+        "http.get.api.v1.identity.mfa_policy",
+        "httpapi.get.api.v1.identity.mfa_policy"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "identity-recovery-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/identity/mfa-policy",
+      "handler": "userHandler.UpdateMFAAdminPolicy",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "role:manage",
+      "permission_code": "identity.mfa_policy.update",
+      "operation_code": "http.identity.mfa_policy.update",
+      "legacy_aliases": [
+        "http.put.api.v1.identity.mfa_policy",
+        "httpapi.put.api.v1.identity.mfa_policy"
       ],
       "ownership": "none",
       "scope": "global",

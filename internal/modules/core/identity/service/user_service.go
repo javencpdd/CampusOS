@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
@@ -48,6 +49,7 @@ type RegistrationTicketConsumer interface {
 var (
 	ErrRegistrationVerificationRequired = errors.New("registration email verification is required")
 	ErrRegistrationTicketInvalid        = errors.New("registration verification ticket is invalid")
+	ErrRegistrationConflict             = errors.New("registration identity conflict")
 )
 
 type RoleQuerier interface {
@@ -142,10 +144,10 @@ func (s *UserService) RegisterVerified(ctx context.Context, req domain.Registrat
 		}
 		if err := s.repo.Create(commandCtx, user); err != nil {
 			if errors.Is(err, repository.ErrUsernameExists) {
-				return fmt.Errorf("username '%s' already taken", userRequest.Username)
+				return fmt.Errorf("%w: username already taken", ErrRegistrationConflict)
 			}
 			if errors.Is(err, repository.ErrEmailExists) {
-				return fmt.Errorf("email '%s' already registered", userRequest.Email)
+				return fmt.Errorf("%w: email already registered", ErrRegistrationConflict)
 			}
 			return fmt.Errorf("create user: %w", err)
 		}
@@ -223,6 +225,28 @@ func (s *UserService) Authenticate(ctx context.Context, req domain.LoginRequest)
 		return nil, fmt.Errorf("account authentication state is invalid")
 	}
 	return user, nil
+}
+
+// VerifyCurrentPassword is a narrow reauthentication check for self-service
+// security changes. It deliberately returns the same opaque error for a
+// missing account, mismatched user, disabled credential, or bad password.
+func (s *UserService) VerifyCurrentPassword(ctx context.Context, userID, password string) error {
+	if s == nil || s.pgRepo == nil || strings.TrimSpace(userID) == "" || strings.TrimSpace(password) == "" {
+		return errors.New("current password was not accepted")
+	}
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil || user == nil || user.Status != domain.UserStatusActive {
+		return errors.New("current password was not accepted")
+	}
+	credentialUserID, credential, err := s.pgRepo.GetCredentialByEmail(ctx, user.Email)
+	if err != nil || credentialUserID != userID || !s.checkPassword(password, credential) {
+		return errors.New("current password was not accepted")
+	}
+	account, err := s.pgRepo.GetEmailAccount(ctx, userID)
+	if err != nil || !loginAllowed(account.VerificationState) {
+		return errors.New("current password was not accepted")
+	}
+	return nil
 }
 
 // Login remains source compatible for narrow in-process callers while no

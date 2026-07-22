@@ -2,10 +2,37 @@ import api from '../../shared/api/client'
 
 export const authApi = {
   login: (data: { email: string; password: string }) => api.post('/auth/admin/login', data),
+  completeMFALogin: (data: { mfa_ticket: string; code: string }) => api.post('/auth/mfa/login/complete', data),
+  stepUpMFA: (data: { code: string }) => api.post('/auth/mfa/step-up', data),
   refresh: () => api.post('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
   roles: (userID: string) => api.get(`/users/${userID}/roles`),
+}
+
+export type MFAAdminPolicy = {
+  id: string
+  mode: 'off' | 'enrollment_grace' | 'required'
+  grace_ends_at?: string
+  version: number
+  updated_by?: string
+  updated_at: string
+}
+
+export type MFAAdminPolicyStatus = {
+  policy: MFAAdminPolicy
+  coverage: {
+    active_administrators: number
+    mfa_enrolled_administrators: number
+    local_recovery_available: boolean
+  }
+  available: boolean
+}
+
+export const mfaPolicyApi = {
+  get: () => api.get('/identity/mfa-policy'),
+  update: (data: { mode: MFAAdminPolicy['mode']; grace_ends_at?: string; expected_version: number }) =>
+    api.put('/identity/mfa-policy', data),
 }
 
 export const userApi = {
@@ -41,6 +68,41 @@ export const identityRecoveryApi = {
   cancelCase: (id: string) => api.post(`/identity/recovery-cases/${encodeURIComponent(id)}/cancel`),
   sessions: (userId: string) => api.get(`/identity/users/${encodeURIComponent(userId)}/sessions`),
   revokeAllSessions: (userId: string) => api.post(`/identity/users/${encodeURIComponent(userId)}/sessions/revoke-all`),
+}
+
+export type AdminAdmissionAccount = {
+  id: string
+  user_id: string
+  credential_account_id: string
+  status: 'active' | 'suspended' | 'revoked'
+  activation_source: string
+  activated_at?: string
+  revoked_at?: string
+  last_authenticated_at?: string
+  status_reason?: string
+  status_changed_by?: string
+  status_changed_at?: string
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export type AdminAdmissionRecord = {
+  account: AdminAdmissionAccount
+  username?: string
+  nickname?: string
+  email?: string
+  user_status?: string
+}
+
+export const adminAdmissionApi = {
+  list: (params?: { status?: string; page?: number; page_size?: number }) => api.get('/identity/admin-accounts', { params }),
+  get: (userId: string) => api.get(`/identity/admin-accounts/${encodeURIComponent(userId)}`),
+  suspend: (userId: string, data: { expected_version: number; reason: string }) =>
+    api.post(`/identity/admin-accounts/${encodeURIComponent(userId)}/suspend`, data),
+  restore: (userId: string, data: { expected_version: number; reason: string }) =>
+    api.post(`/identity/admin-accounts/${encodeURIComponent(userId)}/restore`, data),
+  audits: (limit = 100) => api.get('/identity/admin-accounts/audits', { params: { limit } }),
 }
 
 export type ChallengePolicy = {

@@ -38,7 +38,9 @@
             <el-menu-item v-if="adminStore.isAdmin" index="/permissions"
               >角色与权限</el-menu-item
             >
-			<el-menu-item v-if="adminStore.isAdmin" index="/account-recovery">账号恢复</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/admin-admission">管理员准入</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/mfa-policy">管理员 MFA 策略</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/account-recovery">账号恢复</el-menu-item>
             <el-menu-item v-if="adminStore.isAdmin" index="/challenge-policy">验证码策略</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="content">
@@ -112,13 +114,38 @@
         </el-main>
       </el-container>
     </el-container>
+    <el-dialog
+      v-model="mfaStepUpOpen"
+      title="确认管理员身份"
+      width="min(420px, calc(100% - 24px))"
+      :close-on-click-modal="false"
+      @closed="mfaStepUpCode = ''"
+    >
+      <el-form label-position="top" @submit.prevent="completeMFAStepUp">
+        <el-form-item label="认证器验证码">
+          <el-input
+            v-model.trim="mfaStepUpCode"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="mfaStepUpOpen = false">取消</el-button>
+        <el-button type="primary" :loading="mfaStepUpLoading" @click="completeMFAStepUp">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import { useAdminStore } from "@/modules/identity/store";
+import { authApi } from "@/modules/identity/api";
 import { useLayoutCapability } from "@/shared/layout/useLayoutCapability";
 import {
   DataAnalysis,
@@ -137,6 +164,9 @@ const adminStore = useAdminStore();
 const { mode: layoutMode, isCompact } = useLayoutCapability();
 const isMobile = computed(() => isCompact.value);
 const mobileNavOpen = ref(false);
+const mfaStepUpOpen = ref(false);
+const mfaStepUpCode = ref("");
+const mfaStepUpLoading = ref(false);
 const closeMobileNav = () => {
   if (isMobile.value) mobileNavOpen.value = false;
 };
@@ -153,7 +183,9 @@ const currentPageTitle = computed(() => {
     "/users": "用户管理",
     "/moderators": "版主管理",
     "/permissions": "角色与权限",
-	"/account-recovery": "账号恢复",
+    "/admin-admission": "管理员准入",
+    "/mfa-policy": "管理员 MFA 策略",
+    "/account-recovery": "账号恢复",
     "/challenge-policy": "验证码策略",
     "/threads": "帖子治理",
     "/categories": "版块管理",
@@ -177,6 +209,37 @@ const handleLogout = () => {
   adminStore.logout();
   router.push("/login");
 };
+
+const openMFAStepUp = () => {
+  mfaStepUpOpen.value = true;
+};
+
+const completeMFAStepUp = async () => {
+  if (!/^\d{6}$/.test(mfaStepUpCode.value)) {
+    ElMessage.warning("请输入 6 位认证器验证码");
+    return;
+  }
+  mfaStepUpLoading.value = true;
+  try {
+    const result: any = await authApi.stepUpMFA({ code: mfaStepUpCode.value });
+    if (!result?.data?.access_token) throw new Error("身份确认结果不可用");
+    adminStore.updateAccessToken(result.data.access_token);
+    ElMessage.success("身份确认完成");
+    mfaStepUpOpen.value = false;
+    router.go(0);
+  } catch (error: any) {
+    if (error?.machineCode === "identity.mfa.not_enabled") {
+      ElMessage.warning("当前账号尚未启用认证器，请先在用户端的账号安全页面完成配置。");
+    } else {
+      ElMessage.error(error?.msg || error?.message || "认证器验证码无效或已使用");
+    }
+  } finally {
+    mfaStepUpLoading.value = false;
+  }
+};
+
+onMounted(() => window.addEventListener("campusos:admin-mfa-step-up-required", openMFAStepUp));
+onBeforeUnmount(() => window.removeEventListener("campusos:admin-mfa-step-up-required", openMFAStepUp));
 </script>
 
 <style scoped>

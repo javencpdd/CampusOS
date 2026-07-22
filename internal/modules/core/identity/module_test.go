@@ -34,7 +34,7 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	if err := module.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if module.Handlers().User == nil || module.Handlers().Role == nil || module.Handlers().ChallengePolicy == nil || module.Permissions() == nil || module.AdminAccess() == nil || module.ChallengePolicies() == nil {
+	if module.Handlers().User == nil || module.Handlers().Role == nil || module.Handlers().ChallengePolicy == nil || module.Handlers().AdminAdmission == nil || module.Permissions() == nil || module.AdminAccess() == nil || module.AdminAdmissions() == nil || module.ChallengePolicies() == nil {
 		t.Fatal("identity module did not construct its HTTP/application components")
 	}
 	value, ok := app.Lookup(portUserReader)
@@ -68,5 +68,13 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	value, ok = app.Lookup(portAdminAccess)
 	if !ok || value != module.AdminAccess() {
 		t.Fatalf("identity administrator access port is missing or inconsistent: %T", value)
+	}
+	value, ok = app.Lookup(portAdminAdmission)
+	if !ok || value != module.AdminAdmissions() {
+		t.Fatalf("identity administrator admission port is missing or inconsistent: %T", value)
+	}
+	value, ok = app.Lookup(portMFA)
+	if !ok || value == nil {
+		t.Fatalf("identity MFA port is missing: %T", value)
 	}
 }

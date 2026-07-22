@@ -15,20 +15,30 @@ import (
 
 const (
 	DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
-	SDKVersion            = "v0.11"
+	SDKVersion            = "v0.13"
 	HostAPIVersion        = "v2"
 )
 
 var ErrPermissionDenied = errors.New("campusos host api permission denied")
 
 type HostAPIError struct {
-	Method     string
-	StatusCode int
-	Body       string
+	Method      string
+	StatusCode  int
+	Body        string
+	LegacyCode  int
+	MachineCode string
+	Message     string
+	RequestID   string
+	Retryable   bool
+	Details     json.RawMessage
 }
 
 func (e *HostAPIError) Error() string {
-	return fmt.Sprintf("host api %s failed: status=%d body=%s", e.Method, e.StatusCode, e.Body)
+	message := strings.TrimSpace(e.Message)
+	if message == "" {
+		message = http.StatusText(e.StatusCode)
+	}
+	return fmt.Sprintf("host api %s failed: status=%d code=%s message=%s request_id=%s", e.Method, e.StatusCode, e.MachineCode, message, e.RequestID)
 }
 
 func (e *HostAPIError) Unwrap() error {
@@ -122,7 +132,7 @@ func (c *HostClient) Call(ctx context.Context, method string, request interface{
 		return fmt.Errorf("read host api response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &HostAPIError{Method: method, StatusCode: resp.StatusCode, Body: string(respBody)}
+		return parseHostAPIError(method, resp.StatusCode, respBody)
 	}
 	if response == nil || len(respBody) == 0 {
 		return nil
@@ -131,6 +141,55 @@ func (c *HostClient) Call(ctx context.Context, method string, request interface{
 		return fmt.Errorf("decode host api response: %w", err)
 	}
 	return nil
+}
+
+func parseHostAPIError(method string, status int, body []byte) *HostAPIError {
+	result := &HostAPIError{
+		Method: method, StatusCode: status, Body: string(body), MachineCode: "request.failed",
+		Message: http.StatusText(status), Retryable: status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable || status >= 500,
+	}
+	var envelope struct {
+		Code      int             `json:"code"`
+		Msg       string          `json:"msg"`
+		Error     json.RawMessage `json:"error"`
+		RequestID string          `json:"request_id"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return result
+	}
+	result.LegacyCode = envelope.Code
+	result.RequestID = strings.TrimSpace(envelope.RequestID)
+	if message := strings.TrimSpace(envelope.Msg); message != "" {
+		result.Message = message
+	}
+	var detail struct {
+		Code      string          `json:"code"`
+		Message   string          `json:"message"`
+		Details   json.RawMessage `json:"details"`
+		RequestID string          `json:"request_id"`
+		Retryable *bool           `json:"retryable"`
+	}
+	if len(bytes.TrimSpace(envelope.Error)) > 0 && json.Unmarshal(envelope.Error, &detail) == nil {
+		if value := strings.TrimSpace(detail.Code); value != "" {
+			result.MachineCode = value
+		}
+		if value := strings.TrimSpace(detail.Message); value != "" {
+			result.Message = value
+		}
+		if value := strings.TrimSpace(detail.RequestID); value != "" {
+			result.RequestID = value
+		}
+		if detail.Retryable != nil {
+			result.Retryable = *detail.Retryable
+		}
+		result.Details = append(json.RawMessage(nil), detail.Details...)
+		return result
+	}
+	var legacyMessage string
+	if json.Unmarshal(envelope.Error, &legacyMessage) == nil && strings.TrimSpace(legacyMessage) != "" {
+		result.Message = strings.TrimSpace(legacyMessage)
+	}
+	return result
 }
 
 type GetConfigRequest struct {

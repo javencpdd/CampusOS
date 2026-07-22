@@ -14,14 +14,21 @@ const browser = await chromium.launch({ executablePath: chrome, headless: true, 
 let threadID = ''
 let accessToken = ''
 
-async function login(page, baseURL, emailPlaceholder, passwordPlaceholder) {
+async function login(page, baseURL, emailPlaceholder, passwordPlaceholder, endpoint = '/auth/login') {
   await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(emailPlaceholder).fill(email)
   await page.getByPlaceholder(passwordPlaceholder).fill(password)
+  const responsePromise = page.waitForResponse(
+    (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(endpoint),
+    { timeout: 15_000 },
+  )
   await Promise.all([
     page.waitForURL((url) => url.pathname === '/', { timeout: 15_000 }),
     page.locator('form').getByRole('button', { name: '登录', exact: true }).click(),
   ])
+  const response = await responsePromise
+  if (!response.ok()) throw new Error(`${endpoint} returned ${response.status()}`)
+  return response.json()
 }
 
 async function selectPlainText(page) {
@@ -47,13 +54,22 @@ async function ensureCategorySelected(page) {
 try {
   const webContext = await browser.newContext()
   const page = await webContext.newPage()
-  await login(page, webURL, '请输入邮箱', '请输入密码')
-  accessToken = await page.evaluate(() => localStorage.getItem('access_token') || '')
-  if (!accessToken) throw new Error('Web login did not persist access_token')
+  const loginPayload = await login(page, webURL, '请输入邮箱', '请输入密码')
+  const browserAccessToken = String(loginPayload?.data?.access_token || '')
+  if (!browserAccessToken) throw new Error('Web login response did not include access_token')
+  const persistedToken = await page.evaluate(
+    () => localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '',
+  )
+  if (persistedToken) throw new Error('Web login persisted access_token in browser storage')
 
   await page.goto(`${webURL}/space/settings`, { waitUntil: 'domcontentloaded' })
   await page.getByRole('heading', { name: '个人主页' }).waitFor()
   await page.getByText('主页配置', { exact: true }).waitFor()
+
+  await page.goto(`${webURL}/account/security`, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('heading', { name: '账号安全' }).waitFor()
+  await page.getByText('多因素认证', { exact: true }).click()
+  await page.getByText('管理员策略', { exact: true }).waitFor()
 
   const stamp = Date.now()
   const originalTitle = `v0.6 browser smoke ${stamp}`
@@ -88,6 +104,14 @@ try {
   await page.getByText('私密', { exact: true }).waitFor()
   await page.getByRole('button', { name: '设为公开', exact: true }).click()
   await page.getByRole('button', { name: '设为私密', exact: true }).waitFor()
+
+  const bootstrapAPI = await request.newContext({ baseURL: apiURL })
+  const apiLoginResponse = await bootstrapAPI.post(`${apiURL}/auth/login`, { data: { email, password } })
+  if (!apiLoginResponse.ok()) throw new Error(`API login failed: ${apiLoginResponse.status()}`)
+  const apiLoginPayload = await apiLoginResponse.json()
+  accessToken = String(apiLoginPayload?.data?.access_token || '')
+  await bootstrapAPI.dispose()
+  if (!accessToken) throw new Error('API login response did not include access_token')
 
   const authenticatedAPI = await request.newContext({
     baseURL: apiURL,
@@ -128,7 +152,7 @@ try {
 
   const adminContext = await browser.newContext()
   const adminPage = await adminContext.newPage()
-  await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码')
+  await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码', '/auth/admin/login')
   await adminPage.getByText('用户总数', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/plugins`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('main').getByText('外部插件', { exact: true }).first().waitFor()
@@ -143,6 +167,12 @@ try {
   await adminPage.getByText('主页所有者选择', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/architecture`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '系统数据架构' }).waitFor()
+  await adminPage.goto(`${adminURL}/admin-admission`, { waitUntil: 'domcontentloaded' })
+  await adminPage.getByRole('heading', { name: '管理员准入' }).waitFor()
+  await adminPage.getByText('管理平面账号', { exact: true }).waitFor()
+  await adminPage.goto(`${adminURL}/mfa-policy`, { waitUntil: 'domcontentloaded' })
+  await adminPage.getByRole('heading', { name: '管理员 MFA 策略' }).waitFor()
+  await adminPage.getByText('覆盖率', { exact: true }).waitFor()
   await adminContext.close()
 
   const docsContext = await browser.newContext()
@@ -160,7 +190,7 @@ try {
   await docsPage.getByRole('heading', { name: /以课表为例编写 CampusOS 插件/ }).waitFor()
   await docsContext.close()
   console.log(
-    'browser workflow passed: auth, thread CRUD, reply, privacy, space, permissions, admin plugins/features/appearance, architecture, onboarding and permission docs',
+    'browser workflow passed: auth, thread CRUD, reply, privacy, account security, permissions, admin plugins/features/appearance/admission/MFA policy, architecture, onboarding and permission docs',
   )
 } finally {
   if (threadID && accessToken) {
@@ -169,6 +199,7 @@ try {
       extraHTTPHeaders: { Authorization: `Bearer ${accessToken}` },
     })
     await cleanup.delete(`${apiURL}/threads/${threadID}`).catch(() => {})
+    await cleanup.post(`${apiURL}/auth/logout`).catch(() => {})
     await cleanup.dispose()
   }
   await browser.close()

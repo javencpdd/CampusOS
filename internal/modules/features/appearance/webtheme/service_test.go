@@ -24,12 +24,22 @@ target: web
 name: test-web
 version: 0.1.0
 display_name: Test Web
+delivery_contract: campusos.appearance-delivery/v1
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 entry: templates/page.html
 styles:
   - styles/theme.css
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 `)
 	writeTestFile(t, filepath.Join(packRoot, "templates/page.html"), `<section><h2>Test</h2></section>`)
-	writeTestFile(t, filepath.Join(packRoot, "styles/theme.css"), `.app-container[data-campusos-web] .app-main { padding: 20px; }`)
+	writeTestFile(t, filepath.Join(packRoot, "styles/theme.css"), `.app-container[data-campusos-web] .app-main { padding: 20px; } @media (max-width: 720px) { .app-container[data-campusos-web] .app-main { padding: 12px; } }`)
+	writeTestFile(t, filepath.Join(packRoot, "preview-desktop.png"), "desktop preview")
+	writeTestFile(t, filepath.Join(packRoot, "preview-mobile.png"), "mobile preview")
 
 	source := fakeConfigSource{enabled: true, config: map[string]interface{}{
 		"default_style_pack": "test-web",

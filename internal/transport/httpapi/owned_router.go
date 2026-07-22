@@ -9,6 +9,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/middleware"
+	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,6 +37,7 @@ type ownedGroup struct {
 	audience         platformroute.Audience
 	permissions      middleware.PermissionChecker
 	adminAccess      middleware.AdminAccessChecker
+	adminMFA         middleware.AdminMFAChecker
 	permission       string
 	permissionCode   string
 	operation        string
@@ -52,6 +54,12 @@ func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, aud
 }
 
 func (g *ownedGroup) Use(handlers ...gin.HandlerFunc) { g.group.Use(handlers...) }
+
+func (g *ownedGroup) SetAdminMFA(checker middleware.AdminMFAChecker) {
+	if g != nil {
+		g.adminMFA = checker
+	}
+}
 
 func (g *ownedGroup) Permission(resource, action string) *ownedGroup {
 	copy := *g
@@ -147,10 +155,10 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 			panic(fmt.Sprintf("admin route %s %s requires permission code metadata", method, path))
 		}
 		permissionMiddleware := middleware.RequirePermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation)
-		admissionMiddleware := middleware.RequireAdminAccess(g.adminAccess)
+		admissionMiddleware := middleware.RequireAdminAccess(g.adminAccess, g.adminMFA)
 		if g.scopeType != "" {
 			permissionMiddleware = middleware.RequireScopedPermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation, g.scopeType)
-			admissionMiddleware = middleware.RequireAdminAccessOrScopedPermission(g.adminAccess, g.permissions, permissionCode, g.scopeType)
+			admissionMiddleware = middleware.RequireAdminAccessOrScopedPermission(g.adminAccess, g.permissions, permissionCode, g.scopeType, g.adminMFA)
 		}
 		handlers = append([]gin.HandlerFunc{admissionMiddleware, permissionMiddleware}, handlers...)
 	}
@@ -199,12 +207,23 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 		descriptor.Auth = "jwt+csrf"
 		descriptor.Audit = "identity-recovery-audit"
 	}
+	if strings.HasPrefix(fullPath, "/api/v1/auth/mfa/") {
+		descriptor.Audit = "identity-session-audit"
+		if fullPath != "/api/v1/auth/mfa/login/complete" && method != "GET" {
+			descriptor.Auth = "jwt+csrf"
+		}
+	}
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
 	}
 	if err := g.registry.Add(descriptor); err != nil {
 		panic(err)
 	}
+	operationContext := func(c *gin.Context) {
+		c.Set(observability.RouteOperationContextKey, operation)
+		c.Next()
+	}
+	handlers = append([]gin.HandlerFunc{operationContext}, handlers...)
 	g.group.Handle(method, path, handlers...)
 }
 
@@ -285,7 +304,7 @@ func routeDescriptorID(method, path string) string {
 
 func routeFeature(path string) string {
 	switch {
-	case strings.HasPrefix(path, "/api/v1/spaces"), strings.HasPrefix(path, "/api/v1/space"), strings.HasPrefix(path, "/api/v1/u/"):
+	case strings.HasPrefix(path, "/api/v1/spaces"), strings.HasPrefix(path, "/api/v1/space"), strings.HasPrefix(path, "/api/v1/u/"), strings.HasPrefix(path, "/api/v1/appearance/space-style-packs"):
 		return "personal-space"
 	case strings.HasPrefix(path, "/api/v1/richtext"):
 		return "controlled-richtext-article"

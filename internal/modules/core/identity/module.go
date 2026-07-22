@@ -10,10 +10,12 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/eventbus"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const (
@@ -25,6 +27,8 @@ const (
 	portSessionVerifier         = "identity.session-verifier"
 	portAuthorization           = "identity.authorization"
 	portAdminAccess             = "identity.admin-access"
+	portAdminAdmission          = "identity.admin-admission"
+	portMFA                     = "identity.mfa"
 	portModeration              = "identity.moderation-policy"
 )
 
@@ -35,6 +39,10 @@ type Config struct {
 	ChallengeHMACKeys     map[string]string
 	ChallengeIPHashSecret string
 	SessionIPHashSecret   string
+	MFAActiveKeyID        string
+	MFAEncryptionKeys     map[string]string
+	MFAIssuer             string
+	BootstrapAdminSecret  string
 	RefreshBodyCompat     bool
 	CookieSecure          bool
 }
@@ -43,6 +51,7 @@ type HTTPHandlers struct {
 	User            *handler.UserHandler
 	Role            *handler.RoleHandler
 	ChallengePolicy *handler.ChallengePolicyHandler
+	AdminAdmission  *handler.AdminAdmissionHandler
 }
 
 // Module owns Identity application composition. Its Profile adapters are
@@ -57,6 +66,7 @@ type Module struct {
 	challengePolicies repository.ChallengePolicyRepository
 	sessions          repository.SessionRepository
 	recoveryCases     repository.RecoveryCaseRepository
+	mfa               repository.MFARepository
 
 	userService            *service.UserService
 	challengeService       *service.ChallengeService
@@ -65,6 +75,8 @@ type Module struct {
 	recoveryService        *service.RecoveryService
 	permissionService      *service.PermissionService
 	adminAccessService     *service.AdminAccessService
+	adminAdmissionService  *service.AdminAdmissionService
+	mfaService             *service.MFAService
 	handlers               HTTPHandlers
 }
 
@@ -74,7 +86,9 @@ func NewModule(config Config) *Module {
 
 func (m *Module) ID() string { return ModuleID }
 
-func (m *Module) Dependencies() []string { return []string{"core.event-bus", reliability.ModuleID} }
+func (m *Module) Dependencies() []string {
+	return []string{"core.event-bus", reliability.ModuleID, platformobservability.ModuleID}
+}
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -139,6 +153,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("identity recovery case repository adapter has incompatible type %T", recoveryValue)
 	}
+	mfaValue, ok := app.Lookup(portMFARepository)
+	if !ok {
+		return errors.New("identity MFA repository adapter is not bound by profile")
+	}
+	mfaRepository, ok := mfaValue.(repository.MFARepository)
+	if !ok {
+		return fmt.Errorf("identity MFA repository adapter has incompatible type %T", mfaValue)
+	}
 	m.app = app
 	m.users = userRepository
 	m.roles = roleRepository
@@ -147,6 +169,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.challengePolicies = challengePolicyRepository
 	m.sessions = sessionRepository
 	m.recoveryCases = recoveryCases
+	m.mfa = mfaRepository
 	m.permissionService = service.NewPermissionService(m.roles, m.users)
 	m.permissionService.SetAdminAccountRepository(m.adminAccounts)
 	m.adminAccessService = service.NewAdminAccessService(m.adminAccounts)
@@ -157,7 +180,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 }
 
 func (m *Module) Start(context.Context) error {
-	if m.app == nil || m.users == nil || m.roles == nil || m.adminAccounts == nil || m.challenges == nil || m.challengePolicies == nil || m.sessions == nil || m.recoveryCases == nil {
+	if m.app == nil || m.users == nil || m.roles == nil || m.adminAccounts == nil || m.challenges == nil || m.challengePolicies == nil || m.sessions == nil || m.recoveryCases == nil || m.mfa == nil {
 		return errors.New("identity module is not registered")
 	}
 	value, ok := m.app.Lookup(portEventBus)
@@ -177,6 +200,14 @@ func (m *Module) Start(context.Context) error {
 		reliable, compatible = reliabilityValue.(*reliability.Service)
 		if !compatible || reliable == nil {
 			return fmt.Errorf("identity reliability port has incompatible type %T", reliabilityValue)
+		}
+	}
+	var meter observability.Meter
+	if meterValue, exists := m.app.Lookup(platformobservability.PortMeter); exists {
+		var compatible bool
+		meter, compatible = meterValue.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("identity observability meter has incompatible type %T", meterValue)
 		}
 	}
 	permissions := m.permissionService
@@ -224,21 +255,47 @@ func (m *Module) Start(context.Context) error {
 		sessions.SetReliability(reliable)
 		recovery.SetReliability(reliable)
 	}
+	var authorizationCatalog repository.AuthorizationRepository
+	if catalog, ok := m.roles.(repository.AuthorizationRepository); ok {
+		authorizationCatalog = catalog
+	}
+	adminAdmissions, err := service.NewAdminAdmissionService(m.adminAccounts, m.users, permissions, sessions, authorizationCatalog)
+	if err != nil {
+		return fmt.Errorf("initialize administrator admission service: %w", err)
+	}
+	adminAdmissions.SetReliability(reliable)
+	mfa, err := service.NewMFAService(m.mfa, m.users, permissions, authorizationCatalog, service.MFAConfig{
+		ActiveKeyID: m.config.MFAActiveKeyID, EncryptionKeys: m.config.MFAEncryptionKeys, Issuer: m.config.MFAIssuer,
+		LocalRecoveryAvailable: len(m.config.BootstrapAdminSecret) >= 16,
+	})
+	if err != nil {
+		return fmt.Errorf("initialize identity MFA service: %w", err)
+	}
+	mfa.SetReliability(reliable)
+	mfa.SetMeter(meter)
+	mfa.SetSessionRevoker(sessions)
+	mfa.SetSessionStrengthReader(sessions)
+	challenges.SetMeter(meter)
+	sessions.SetMeter(meter)
 	m.userService = users
 	m.challengeService = challenges
 	m.challengePolicyService = challengePolicies
 	m.sessionService = sessions
 	m.recoveryService = recovery
+	m.adminAdmissionService = adminAdmissions
+	m.mfaService = mfa
 	users.SetRegistrationTicketConsumer(challenges)
 	userHandler := handler.NewUserHandler(users)
 	userHandler.SetChallengeService(challenges)
 	userHandler.SetSessionService(sessions, handler.SessionHTTPConfig{RefreshBodyCompat: m.config.RefreshBodyCompat, CookieSecure: m.config.CookieSecure})
 	userHandler.SetRecoveryService(recovery)
 	userHandler.SetAdminAccessService(m.adminAccessService)
+	userHandler.SetMFAService(mfa)
 	m.handlers = HTTPHandlers{
 		User:            userHandler,
 		Role:            handler.NewRoleHandler(permissions),
 		ChallengePolicy: handler.NewChallengePolicyHandler(challengePolicies),
+		AdminAdmission:  handler.NewAdminAdmissionHandler(adminAdmissions),
 	}
 	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityport.NewServiceAccountReader(users))); err != nil {
 		return err
@@ -255,13 +312,16 @@ func (m *Module) Start(context.Context) error {
 	if err := m.app.Provide(portAdminAccess, m.adminAccessService); err != nil {
 		return err
 	}
-	return nil
+	if err := m.app.Provide(portAdminAdmission, m.adminAdmissionService); err != nil {
+		return err
+	}
+	return m.app.Provide(portMFA, m.mfaService)
 }
 
 func (m *Module) Stop(context.Context) error { return nil }
 
 func (m *Module) Health(context.Context) platformmodule.Health {
-	if m.userService == nil || m.challengeService == nil || m.challengePolicyService == nil || m.sessionService == nil || m.recoveryService == nil || m.permissionService == nil || m.adminAccessService == nil {
+	if m.userService == nil || m.challengeService == nil || m.challengePolicyService == nil || m.sessionService == nil || m.recoveryService == nil || m.permissionService == nil || m.adminAccessService == nil || m.adminAdmissionService == nil || m.mfaService == nil {
 		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "identity services are not started"}
 	}
 	return platformmodule.Health{Status: platformmodule.HealthHealthy}
@@ -273,11 +333,15 @@ func (m *Module) Permissions() *service.PermissionService { return m.permissionS
 
 func (m *Module) AdminAccess() *service.AdminAccessService { return m.adminAccessService }
 
+func (m *Module) AdminAdmissions() *service.AdminAdmissionService { return m.adminAdmissionService }
+
 func (m *Module) Challenges() *service.ChallengeService { return m.challengeService }
 
 func (m *Module) ChallengePolicies() *service.ChallengePolicyService { return m.challengePolicyService }
 
 func (m *Module) Sessions() *service.SessionService { return m.sessionService }
+
+func (m *Module) MFA() *service.MFAService { return m.mfaService }
 
 func (m *Module) Recovery() *service.RecoveryService { return m.recoveryService }
 

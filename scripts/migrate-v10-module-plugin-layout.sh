@@ -67,7 +67,13 @@ adopt_resource() {
     (cd "$CODE_ROOT" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusosctl resource inspect "$directory" >/dev/null)
     return
   fi
-  (cd "$CODE_ROOT" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusosctl resource adopt "$directory" --type "$kind" --entry style.yaml >/dev/null)
+  local command=(resource adopt "$directory" --type "$kind" --entry style.yaml)
+  if ! rg -q '^delivery_contract:[[:space:]]*campusos\.appearance-delivery/v1[[:space:]]*$' "$directory/style.yaml"; then
+    # Layout migration preserves safe old packages as legacy-readonly. New
+    # imports still use the strict `resource adopt` path and cannot apply them.
+    command=(resource adopt-legacy "$directory" --type "$kind" --entry style.yaml)
+  fi
+  (cd "$CODE_ROOT" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusosctl "${command[@]}" >/dev/null)
   log "adopted resource manifest for ${directory#$ROOT_DIR/}"
 }
 

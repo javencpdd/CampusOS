@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -33,6 +33,26 @@ contracts:
 
 contracts-check:
 	go run ./cmd/campusos-contracts --check
+
+error-contract-check:
+	go test ./pkg/apperror ./pkg/response ./pkg/middleware -count=1
+	python3 scripts/check-error-contracts.py
+
+observability-check:
+	go test ./pkg/observability ./internal/platform/observability -count=1
+	go run ./cmd/campusos-contracts --check
+
+v13-reliability-observability-check:
+	bash scripts/check-v13-reliability-observability.sh
+
+v13-capacity-check:
+	bash scripts/check-v13-capacity-gate.sh
+
+v13-capacity-drill:
+	bash scripts/v13-capacity-drill.sh
+
+appearance-delivery-check:
+	bash scripts/check-v13-appearance-delivery.sh
 
 docs-links:
 	python3 scripts/check-doc-links.py
@@ -120,9 +140,17 @@ v12-migration-check:
 	./scripts/test-v12-reliability-worker-convergence-migration.sh
 	./scripts/test-v12-admin-account-migration.sh
 
+v13-migration-check:
+	./scripts/test-v13-identity-security-migrations.sh
+
+v13-baseline-check:
+	go test ./cmd/campusos-baseline -count=1
+	go run ./cmd/campusos-baseline --root . >/dev/null
+
 database-check:
 	./scripts/database-check.sh all
 	$(MAKE) v12-migration-check
+	$(MAKE) v13-migration-check
 
 backup:
 	./scripts/backup.sh

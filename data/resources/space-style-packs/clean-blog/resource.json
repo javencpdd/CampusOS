@@ -3,8 +3,8 @@
   "id": "clean-blog",
   "type": "space-style-pack",
   "version": "0.1.0",
-  "compatibility": "\u003e=0.10.0 \u003c0.11.0",
+  "compatibility": "\u003e=0.13.0 \u003c0.14.0",
   "entry": "style.yaml",
-  "checksum": "1f5596f932c5d275d012db7ee3860bf50f43a3735d835d99b9bf6e0840f1f101",
+  "checksum": "77b5f9d6de3c33fb036a556ab21b3f7fb02686e2eaaf043f130a75237f488bb8",
   "source": "campusos-builtin"
 }

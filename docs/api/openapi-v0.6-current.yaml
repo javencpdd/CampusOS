@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CampusOS Current HTTP API
-  version: 0.11.0-experimental
+  version: 0.13.0-experimental
   description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.
 servers:
   - url: http://localhost:8080
@@ -546,6 +546,36 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/appearance/space-style-packs/{name}/assets/{asset_path}:
+    get:
+      operationId: d_Space
+      summary: GET /api/v1/appearance/space-style-packs/:name/assets/*asset_path
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: asset_path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/auth/admin/login:
     post:
       operationId: userHandler_AdminLogin
@@ -826,6 +856,235 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa:
+    get:
+      operationId: userHandler_GetMFAStatus
+      summary: GET /api/v1/auth/mfa
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.auth.mfa
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa/login/complete:
+    post:
+      operationId: userHandler_CompleteMFALogin
+      summary: POST /api/v1/auth/mfa/login/complete
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: mfa-ticket
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: single-use-ticket
+      x-campusos-operation: http.post.api.v1.auth.mfa.login.complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/mfa/recovery-codes/rotate:
+    post:
+      operationId: userHandler_RotateMFARecoveryCodes
+      summary: POST /api/v1/auth/mfa/recovery-codes/rotate
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.mfa.recovery_codes.rotate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa/step-up:
+    post:
+      operationId: userHandler_StepUpMFA
+      summary: POST /api/v1/auth/mfa/step-up
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.mfa.step_up
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa/totp:
+    delete:
+      operationId: userHandler_DisableMFA
+      summary: DELETE /api/v1/auth/mfa/totp
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.delete.api.v1.auth.mfa.totp
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa/totp/confirm:
+    post:
+      operationId: userHandler_ConfirmMFAEnrollment
+      summary: POST /api/v1/auth/mfa/totp/confirm
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.mfa.totp.confirm
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/auth/mfa/totp/enrollment:
+    post:
+      operationId: userHandler_StartMFAEnrollment
+      summary: POST /api/v1/auth/mfa/totp/enrollment
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-session
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: self
+      x-campusos-operation: http.post.api.v1.auth.mfa.totp.enrollment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-CSRF-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2347,6 +2606,173 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/admin-accounts:
+    get:
+      operationId: adminAdmissionHandler_List
+      summary: GET /api/v1/identity/admin-accounts
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.admin_account.list
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.admin_account.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/admin-accounts/audits:
+    get:
+      operationId: adminAdmissionHandler_ListAudits
+      summary: GET /api/v1/identity/admin-accounts/audits
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.admin_account.audits
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.admin_account.read_audit
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/admin-accounts/{id}:
+    get:
+      operationId: adminAdmissionHandler_Get
+      summary: GET /api/v1/identity/admin-accounts/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.admin_account.get
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.admin_account.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/admin-accounts/{id}/restore:
+    post:
+      operationId: adminAdmissionHandler_Restore
+      summary: POST /api/v1/identity/admin-accounts/:id/restore
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.admin_account.restore
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.admin_account.restore
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/admin-accounts/{id}/suspend:
+    post:
+      operationId: adminAdmissionHandler_Suspend
+      summary: POST /api/v1/identity/admin-accounts/:id/suspend
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.admin_account.suspend
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.admin_account.suspend
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/identity/challenge-policy:
     get:
       operationId: challengePolicyHandler_Get
@@ -2411,6 +2837,66 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/ChallengePolicy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/identity/mfa-policy:
+    get:
+      operationId: userHandler_GetMFAAdminPolicy
+      summary: GET /api/v1/identity/mfa-policy
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.mfa_policy.get
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.mfa_policy.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: userHandler_UpdateMFAAdminPolicy
+      summary: PUT /api/v1/identity/mfa-policy
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.mfa_policy.update
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.mfa_policy.update
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

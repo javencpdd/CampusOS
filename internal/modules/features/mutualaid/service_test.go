@@ -151,6 +151,64 @@ type failingStore struct {
 	failUpdate bool
 }
 
+type countingStore struct {
+	*MemoryStore
+	getCalls     int
+	getManyCalls int
+	dropID       string
+}
+
+func (s *countingStore) Get(ctx context.Context, threadID string) (*Detail, error) {
+	s.getCalls++
+	return s.MemoryStore.Get(ctx, threadID)
+}
+
+func (s *countingStore) GetMany(ctx context.Context, threadIDs []string) (map[string]*Detail, error) {
+	s.getManyCalls++
+	details, err := s.MemoryStore.GetMany(ctx, threadIDs)
+	delete(details, s.dropID)
+	return details, err
+}
+
+func TestListPublicUsesOneBatchAndPreservesIntegrityFailure(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := communityrepo.NewMemoryThreadRepository()
+	threadSvc := communitysvc.NewThreadService(threadRepo, nil)
+	policies := communityrepo.NewMemoryThreadTypePolicyRepository()
+	if err := policies.Replace(ctx, "1", []communitydomain.ThreadType{communitydomain.ThreadTypeMutualAid}); err != nil {
+		t.Fatal(err)
+	}
+	threadSvc.SetThreadTypePolicyRepository(policies)
+	store := &countingStore{MemoryStore: NewMemoryStore()}
+	service := NewService(store, community.NewContentGateway(threadRepo, threadSvc), community.NewContentQuery(threadSvc))
+
+	createdIDs := map[string]bool{}
+	for index := 0; index < 5; index++ {
+		created, err := service.Create(ctx, "1001", "alice", validCreateRequest())
+		if err != nil {
+			t.Fatal(err)
+		}
+		createdIDs[created.Thread.ID] = true
+	}
+	items, total, err := service.ListPublic(ctx, communitydomain.ThreadListFilter{Page: 1, PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 5 || len(items) != 5 || store.getManyCalls != 1 || store.getCalls != 0 {
+		t.Fatalf("unexpected batch result: total=%d items=%d getMany=%d get=%d", total, len(items), store.getManyCalls, store.getCalls)
+	}
+	for _, item := range items {
+		if item.Detail == nil || item.Detail.ThreadID != item.Thread.ID || !createdIDs[item.Thread.ID] {
+			t.Fatalf("thread/detail order or identity changed: %#v", item)
+		}
+	}
+
+	store.dropID = items[0].Thread.ID
+	if _, _, err := service.ListPublic(ctx, communitydomain.ThreadListFilter{Page: 1, PageSize: 100}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing detail did not fail the whole page: %v", err)
+	}
+}
+
 func (s *failingStore) Create(ctx context.Context, detail *Detail) error {
 	if s.failCreate {
 		return errors.New("mutual aid detail write failed")

@@ -8,7 +8,9 @@ import (
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const ModuleID = "core.email-delivery"
@@ -26,7 +28,7 @@ func NewModule(config Config) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{identitycore.ModuleID, reliability.ModuleID}
+	return []string{identitycore.ModuleID, reliability.ModuleID, platformobservability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -49,6 +51,14 @@ func (m *Module) Start(context.Context) error {
 	if !ok {
 		return fmt.Errorf("identity challenge dispatch reader port has incompatible type %T", dispatchValue)
 	}
+	accountValue, ok := m.app.Lookup("identity.account-reader")
+	if !ok {
+		return errors.New("identity account reader port is unavailable")
+	}
+	accounts, ok := accountValue.(identityport.AccountReader)
+	if !ok {
+		return fmt.Errorf("identity account reader port has incompatible type %T", accountValue)
+	}
 	reliabilityValue, ok := m.app.Lookup("platform.reliability.service")
 	if !ok {
 		return errors.New("reliability service port is unavailable")
@@ -61,11 +71,19 @@ func (m *Module) Start(context.Context) error {
 	if err != nil {
 		return fmt.Errorf("initialize email provider: %w", err)
 	}
-	service, err := NewService(dispatch, reliable, sender)
+	service, err := NewService(dispatch, accounts, reliable, sender)
 	if err != nil {
 		return err
 	}
+	if meterValue, exists := m.app.Lookup(platformobservability.PortMeter); exists {
+		meter, compatible := meterValue.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("email delivery observability meter has incompatible type %T", meterValue)
+		}
+		service.SetMeter(meter)
+	}
 	reliable.RegisterConsumer(ChallengeRequestedEvent, ChallengeConsumer, service.DeliverChallenge)
+	reliable.RegisterConsumer(MFALocalRecoveryEvent, MFALocalRecoveryConsumer, service.DeliverMFALocalRecovery)
 	m.reliable = reliable
 	m.service = service
 	m.handler = NewHandler(service)
@@ -75,6 +93,7 @@ func (m *Module) Start(context.Context) error {
 func (m *Module) Stop(context.Context) error {
 	if m.reliable != nil {
 		m.reliable.RegisterConsumer(ChallengeRequestedEvent, ChallengeConsumer, nil)
+		m.reliable.RegisterConsumer(MFALocalRecoveryEvent, MFALocalRecoveryConsumer, nil)
 	}
 	return nil
 }

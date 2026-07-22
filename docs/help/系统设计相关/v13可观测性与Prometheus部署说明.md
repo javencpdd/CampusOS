@@ -1,0 +1,86 @@
+# CampusOS v13 可观测性与 Prometheus 部署说明
+
+## 1. 两个入口分别做什么
+
+CampusOS 的指标采集始终开启，但导出分成两个入口：
+
+| 入口 | 用途 | 访问控制 |
+| --- | --- | --- |
+| `GET /api/v1/metrics/summary` | 管理后台读取有界 JSON 摘要 | Admin 登录、独立管理员准入和 `platform.metrics.read` 权限 |
+| 独立 Prometheus 监听器 | Prometheus 定时抓取文本指标 | 默认关闭；开启后只能绑定明确的 loopback 地址 |
+
+Prometheus 端点不属于公开 `/api/v1`，也不能借助 CORS、用户 JWT 或插件 Token 暴露到公网。
+
+## 2. 默认配置
+
+`.env` 中不写任何配置时，采集正常工作，但不会打开额外监听端口：
+
+```dotenv
+OBSERVABILITY_PROMETHEUS_ENABLED=false
+OBSERVABILITY_PROMETHEUS_ADDR=127.0.0.1:9091
+OBSERVABILITY_PROMETHEUS_PATH=/metrics
+```
+
+需要本机 Prometheus 抓取时，显式改为：
+
+```dotenv
+OBSERVABILITY_PROMETHEUS_ENABLED=true
+OBSERVABILITY_PROMETHEUS_ADDR=127.0.0.1:9091
+OBSERVABILITY_PROMETHEUS_PATH=/metrics
+```
+
+修改后重启 API。`0.0.0.0`、空主机和非 loopback IP 会导致 Observability Core 启动失败，这是安全保护，
+不能通过反向代理直接绕过。跨主机采集应在部署层使用受认证的 sidecar、SSH tunnel 或私有监控代理。
+
+## 3. Prometheus 抓取示例
+
+与 CampusOS 运行在同一台机器的 Prometheus 可使用：
+
+```yaml
+scrape_configs:
+  - job_name: campusos
+    static_configs:
+      - targets: ['127.0.0.1:9091']
+```
+
+本机检查：
+
+```bash
+curl -fsS http://127.0.0.1:9091/metrics
+```
+
+## 4. 指标与标签规则
+
+完整机器可读目录见 `docs/api/metrics-catalog-v0.13.json`，阅读版见
+`docs/api/v13可观测性指标目录.md`。首批覆盖 HTTP 请求数、延迟、并发、响应大小、panic、PostgreSQL pool、
+外部集成和模块操作。
+
+标签只能使用目录声明的固定键。禁止把以下内容作为标签：
+
+- 用户 ID、邮箱、IP、帖子 ID、文件名或插件记录键；
+- 完整 URL、SQL、原始错误文本或第三方 endpoint；
+- Access Token、Refresh Token、Session、验证码、Ticket、Secret 或配置值。
+
+Collector 会拒绝未登记指标、额外标签、不安全标签值和超过 series 上限的新序列。External Plugin 不能直接取得
+Meter 或注册 Prometheus Collector；未来若开放，只能通过有配额的 Host API 固定描述符。
+
+## 5. 兼容与排障
+
+旧 `/api/v1/metrics/summary` 字段 `request_total`、`error_total`、`status_counts`、`route_counts`、
+`last_latency_ms` 和 `external_counters` 保留，新 DB/Histogram 字段是加法。
+
+常见问题：
+
+| 现象 | 检查 |
+| --- | --- |
+| 没有 9091 端口 | 确认 `OBSERVABILITY_PROMETHEUS_ENABLED=true` 并重启 API。默认关闭是正常状态。 |
+| API 启动时报 loopback 错误 | 将地址改为 `127.0.0.1:<port>` 或 `[::1]:<port>`。 |
+| 指标没有某个请求 | 确认请求到达注册路由；未匹配路由统一记为 `unmatched`，不会记录原始路径。 |
+| 新模块指标被拒绝 | 先在指标目录声明名称、类型、单位、标签白名单和 series 上限，再更新生成合同。 |
+
+变更指标后执行：
+
+```bash
+GOCACHE=/tmp/campusos-go-cache make observability-check
+GOCACHE=/tmp/campusos-go-cache go test -race ./pkg/observability ./internal/platform/observability -count=1
+```

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 // EventHandler consumes one durable event. A successful return is the consumer's
@@ -67,12 +69,13 @@ type Worker struct {
 	store Store
 	cfg   WorkerConfig
 
-	mu       sync.RWMutex
-	handlers map[string][]handlerRegistration
-	fallback handlerRegistration
-	cancel   context.CancelFunc
-	done     chan struct{}
-	logger   *log.Logger
+	mu        sync.RWMutex
+	handlers  map[string][]handlerRegistration
+	fallback  handlerRegistration
+	cancel    context.CancelFunc
+	done      chan struct{}
+	logger    *log.Logger
+	telemetry telemetry
 }
 
 type handlerRegistration struct {
@@ -130,6 +133,15 @@ func NewWorker(store Store, cfg WorkerConfig) *Worker {
 		logger = log.Default()
 	}
 	return &Worker{store: store, cfg: cfg, handlers: make(map[string][]handlerRegistration), logger: logger}
+}
+
+func (w *Worker) SetMeter(meter observability.Meter) {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	w.telemetry.meter = meter
+	w.mu.Unlock()
 }
 
 // RegisterHandler keeps the original one-handler dispatch behavior. An
@@ -242,8 +254,10 @@ func (w *Worker) ProcessOnce(ctx context.Context) (int, error) {
 	}
 	events, err := w.store.Claim(ctx, w.cfg.ID, w.cfg.BatchSize, w.cfg.LeaseDuration)
 	if err != nil {
+		w.telemetry.operation("claim", "error")
 		return 0, w.observe(Event{}, "claim", "claim durable events failed", err)
 	}
+	w.telemetry.operation("claim", "success")
 	processErrors := make([]error, 0)
 	for _, event := range events {
 		if err := w.process(ctx, event); err != nil {
@@ -291,28 +305,35 @@ func (w *Worker) process(ctx context.Context, event Event) error {
 		}
 		acknowledged, err := w.store.HasConsumerReceipt(ctx, consumer, event.ID)
 		if err != nil {
+			w.telemetry.operation("receipt", "error")
 			failure := w.observe(event, "read_receipt", receiptReadFailureMessage, err)
 			transitionErr := w.fail(ctx, event, err, receiptReadFailureMessage, attempt)
 			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
 		if acknowledged {
+			w.telemetry.operation("receipt", "existing")
 			if err := w.finishAttempt(ctx, attempt, "skipped", "consumer receipt already exists"); err != nil {
 				evidenceErrors = append(evidenceErrors, w.observe(event, "finish_attempt", attemptFinishFailureMessage, err))
 			}
 			continue
 		}
+		consumerStarted := time.Now()
 		if handlerErr := item.handler(ctx, event); handlerErr != nil {
+			w.telemetry.consumer(consumer, deliveryResult(event, handlerErr), time.Since(consumerStarted))
 			failure := w.observe(event, "consume", consumerFailureMessage, handlerErr)
 			transitionErr := w.fail(ctx, event, handlerErr, consumerFailureMessage, attempt)
 			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
+		w.telemetry.consumer(consumer, "success", time.Since(consumerStarted))
 		if receiptErr := w.store.RecordConsumerReceipt(ctx, ConsumerReceipt{
 			ConsumerName: consumer, EventID: event.ID, Attempt: event.Attempts,
 		}); receiptErr != nil {
+			w.telemetry.operation("receipt", "error")
 			failure := w.observe(event, "record_receipt", receiptRecordFailureMessage, receiptErr)
 			transitionErr := w.fail(ctx, event, receiptErr, receiptRecordFailureMessage, attempt)
 			return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 		}
+		w.telemetry.operation("receipt", "recorded")
 		if err := w.finishAttempt(ctx, attempt, "succeeded", ""); err != nil {
 			evidenceErrors = append(evidenceErrors, w.observe(event, "finish_attempt", attemptFinishFailureMessage, err))
 		}
@@ -322,12 +343,17 @@ func (w *Worker) process(ctx context.Context, event Event) error {
 		evidenceErrors = append(evidenceErrors, w.observe(event, "start_finalize_attempt", attemptStartFailureMessage, attemptErr))
 	}
 	if err := w.store.Complete(ctx, event.ID, w.cfg.ID, event.LeaseGeneration); err != nil {
+		w.telemetry.operation("complete", "error")
 		failure := w.observe(event, "complete", completeFailureMessage, err)
 		transitionErr := w.fail(ctx, event, err, completeFailureMessage, finalizeAttempt)
 		return errors.Join(append(evidenceErrors, failure, transitionErr)...)
 	}
+	w.telemetry.operation("complete", "success")
 	if err := w.finishAttempt(ctx, finalizeAttempt, "succeeded", ""); err != nil {
+		w.telemetry.operation("finalize", "error")
 		evidenceErrors = append(evidenceErrors, w.observe(event, "finish_finalize_attempt", attemptFinishFailureMessage, err))
+	} else {
+		w.telemetry.operation("finalize", "success")
 	}
 	return errors.Join(evidenceErrors...)
 }
@@ -374,6 +400,7 @@ func (w *Worker) fail(ctx context.Context, event Event, err error, message strin
 		transitionErr = w.store.Retry(ctx, event.ID, w.cfg.ID, event.LeaseGeneration, time.Now().UTC().Add(retryAfter), message)
 	}
 	if transitionErr != nil {
+		w.telemetry.operation(operation, "error")
 		observed := w.observe(event, operation, stateTransitionFailure, transitionErr)
 		finishErr := w.finishAttempt(ctx, attempt, "failed", stateTransitionFailure)
 		if finishErr != nil {
@@ -381,6 +408,7 @@ func (w *Worker) fail(ctx context.Context, event Event, err error, message strin
 		}
 		return errors.Join(observed, finishErr)
 	}
+	w.telemetry.operation(operation, "success")
 	if finishErr := w.finishAttempt(ctx, attempt, targetStatus, message); finishErr != nil {
 		return w.observe(event, "finish_attempt", attemptFinishFailureMessage, finishErr)
 	}
@@ -390,12 +418,24 @@ func (w *Worker) fail(ctx context.Context, event Event, err error, message strin
 func (w *Worker) observe(event Event, operation, message string, cause error) error {
 	if errors.Is(cause, ErrLeaseLost) {
 		message = "lease lost while updating durable event"
+		w.telemetry.operation("lease_conflict", "error")
 	}
 	w.logger.Printf(
 		"component=reliability_worker level=error event_id=%q event_type=%q worker_id=%q lease_generation=%d attempts=%d max_attempts=%d operation=%q error=%q",
 		event.ID, event.Type, w.cfg.ID, event.LeaseGeneration, event.Attempts, event.MaxAttempts, operation, message,
 	)
 	return &workerOperationError{operation: operation, message: message, cause: cause}
+}
+
+func deliveryResult(event Event, err error) string {
+	var deliveryErr *DeliveryError
+	if errors.As(err, &deliveryErr) && !deliveryErr.Retryable {
+		return "dead"
+	}
+	if event.Attempts >= event.MaxAttempts {
+		return "dead"
+	}
+	return "retry"
 }
 
 func (w *Worker) logCycleFailure(operation, message string) {

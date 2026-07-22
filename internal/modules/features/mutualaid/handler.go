@@ -1,12 +1,10 @@
 package mutualaid
 
 import (
-	"errors"
-	"log"
-	"net/http"
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/pkg/apperror"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -59,12 +57,12 @@ func (h *Handler) GetPublic(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	userID, username, ok := currentUser(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	var req CreateRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 	result, err := h.service.Create(c.Request.Context(), userID, username, req)
@@ -78,7 +76,7 @@ func (h *Handler) Create(c *gin.Context) {
 func (h *Handler) GetMine(c *gin.Context) {
 	userID, _, ok := currentUser(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	result, err := h.service.GetMine(c.Request.Context(), c.Param("id"), userID)
@@ -92,12 +90,12 @@ func (h *Handler) GetMine(c *gin.Context) {
 func (h *Handler) Update(c *gin.Context) {
 	userID, _, ok := currentUser(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	var req UpdateRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 	result, err := h.service.Update(c.Request.Context(), c.Param("id"), userID, req)
@@ -111,12 +109,12 @@ func (h *Handler) Update(c *gin.Context) {
 func (h *Handler) UpdateStatus(c *gin.Context) {
 	userID, _, ok := currentUser(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	var req UpdateStatusRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 	result, err := h.service.UpdateStatus(c.Request.Context(), c.Param("id"), userID, req)
@@ -142,19 +140,5 @@ func currentUser(c *gin.Context) (string, string, bool) {
 }
 
 func writeError(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, ErrFeatureDisabled):
-		response.Error(c, http.StatusServiceUnavailable, 50301, err.Error())
-	case errors.Is(err, ErrNotFound):
-		response.Error(c, http.StatusNotFound, 40003, err.Error())
-	case errors.Is(err, ErrForbidden):
-		response.Error(c, http.StatusForbidden, 20003, err.Error())
-	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrInvalidTransition):
-		response.Error(c, http.StatusBadRequest, 10001, err.Error())
-	case errors.Is(err, ErrVersionConflict), errors.Is(err, ErrThreadNotEditable):
-		response.Error(c, http.StatusConflict, 40009, err.Error())
-	default:
-		log.Printf("mutual aid unexpected error: trace_id=%s err=%v", c.GetString("trace_id"), err)
-		response.Error(c, http.StatusInternalServerError, 10006, "internal server error")
-	}
+	response.WriteError(c, errorTranslator.Translate(err))
 }

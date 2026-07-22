@@ -1,9 +1,12 @@
 package response
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
+	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/gin-gonic/gin"
 )
 
@@ -76,6 +79,55 @@ func ErrorWithDetails(c *gin.Context, httpStatus int, code int, msg string, deta
 			Details:   details,
 			RequestID: id,
 			Retryable: httpStatus == http.StatusTooManyRequests || httpStatus == http.StatusServiceUnavailable || httpStatus >= 500,
+		},
+		RequestID: id,
+	})
+}
+
+// WriteError serializes a registered AppError. Unknown, malformed, or
+// unregistered errors are logged with the request ID and reduced to the safe
+// internal.error contract.
+func WriteError(c *gin.Context, err error) {
+	var public *apperror.AppError
+	if err == nil || !errors.As(err, &public) || !apperror.IsRegistered(public.Descriptor()) {
+		log.Printf("[ERROR] request_id=%s machine_code=%s err=%v", requestID(c), apperror.InternalError.MachineCode, err)
+		writeDescriptor(c, apperror.InternalError, nil)
+		return
+	}
+	descriptor := public.Descriptor()
+	httpStatus := public.HTTPStatus()
+	if httpStatus >= http.StatusInternalServerError {
+		log.Printf("[ERROR] request_id=%s machine_code=%s err=%v", requestID(c), descriptor.MachineCode, err)
+	}
+	writeDescriptorWithStatus(c, descriptor, httpStatus, public.Details())
+}
+
+// ErrorDescriptor writes a registered public descriptor without exposing a
+// server-side cause. Prefer WriteError when translating a domain error.
+func ErrorDescriptor(c *gin.Context, descriptor apperror.Descriptor, details interface{}) {
+	if !apperror.IsRegistered(descriptor) {
+		log.Printf("[ERROR] request_id=%s unregistered_machine_code=%s", requestID(c), descriptor.MachineCode)
+		descriptor = apperror.InternalError
+		details = nil
+	}
+	writeDescriptor(c, descriptor, details)
+}
+
+func writeDescriptor(c *gin.Context, descriptor apperror.Descriptor, details interface{}) {
+	writeDescriptorWithStatus(c, descriptor, descriptor.HTTPStatus, details)
+}
+
+func writeDescriptorWithStatus(c *gin.Context, descriptor apperror.Descriptor, httpStatus int, details interface{}) {
+	id := requestID(c)
+	c.JSON(httpStatus, Response{
+		Code: descriptor.LegacyCode,
+		Msg:  descriptor.Message,
+		Error: &ErrorInfo{
+			Code:      descriptor.MachineCode,
+			Message:   descriptor.Message,
+			Details:   details,
+			RequestID: id,
+			Retryable: descriptor.Retryable,
 		},
 		RequestID: id,
 	})

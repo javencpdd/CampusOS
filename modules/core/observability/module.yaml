@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: core.observability
+name: observability
+display_name: "Observability Core"
+version: "0.13.0"
+description: "Bounded metrics, database pool snapshots, Admin summary, and optional loopback Prometheus export."
+kind: core
+activation_mode: always-on
+default_enabled: true
+implementation: internal/platform/observability

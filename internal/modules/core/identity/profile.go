@@ -16,6 +16,7 @@ const (
 	portSessionRepository         = "identity.adapter.session-repository"
 	portRecoveryCaseRepository    = "identity.adapter.recovery-case-repository"
 	portAdminAccountRepository    = "identity.adapter.admin-account-repository"
+	portMFARepository             = "identity.adapter.mfa-repository"
 )
 
 // BindPostgreSQLAdapters binds only Identity's repository adapters. It is
@@ -33,6 +34,7 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 		repository.NewPgChallengePolicyRepository(pool),
 		repository.NewPgSessionRepository(pool),
 		repository.NewPgRecoveryCaseRepository(pool),
+		repository.NewPgMFARepository(pool),
 	)
 }
 
@@ -49,6 +51,7 @@ func BindMemoryAdapters(app *platformmodule.AppContext) error {
 		repository.NewMemoryChallengePolicyRepository(),
 		repository.NewMemorySessionRepository(),
 		repository.NewMemoryRecoveryCaseRepository(),
+		repository.NewMemoryMFARepository(),
 	)
 }
 
@@ -61,6 +64,7 @@ func bindAdapters(
 	challengePolicies repository.ChallengePolicyRepository,
 	sessions repository.SessionRepository,
 	recoveryCases repository.RecoveryCaseRepository,
+	mfa repository.MFARepository,
 ) error {
 	if err := app.Provide(portUserRepository, users); err != nil {
 		return err
@@ -80,5 +84,8 @@ func bindAdapters(
 	if err := app.Provide(portSessionRepository, sessions); err != nil {
 		return err
 	}
-	return app.Provide(portRecoveryCaseRepository, recoveryCases)
+	if err := app.Provide(portRecoveryCaseRepository, recoveryCases); err != nil {
+		return err
+	}
+	return app.Provide(portMFARepository, mfa)
 }

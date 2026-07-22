@@ -140,6 +140,7 @@ def validate_modules(errors: list[str]) -> None:
         platform_kernel_locations = {
             "internal/server/platform_modules.go",
             "internal/platform/feature",
+            "internal/platform/observability",
             "internal/platform/reliability",
             "internal/plugin",
         }

@@ -1,0 +1,305 @@
+{
+  "contract_version": "campusos.metrics/v1",
+  "metrics": [
+    {
+      "name": "campusos_db_pool_acquire_duration_seconds_total",
+      "help": "Cumulative PostgreSQL pool acquire duration.",
+      "type": "counter",
+      "unit": "seconds",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_db_pool_acquire_errors_total",
+      "help": "Cumulative PostgreSQL pool acquire failures.",
+      "type": "counter",
+      "unit": "errors",
+      "label_names": [
+        "kind"
+      ],
+      "maximum_series": 4
+    },
+    {
+      "name": "campusos_db_pool_acquire_total",
+      "help": "Cumulative PostgreSQL pool acquires.",
+      "type": "counter",
+      "unit": "acquires",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_db_pool_connections",
+      "help": "Current PostgreSQL pool connections.",
+      "type": "gauge",
+      "unit": "connections",
+      "label_names": [
+        "state"
+      ],
+      "maximum_series": 8
+    },
+    {
+      "name": "campusos_db_pool_empty_wait_seconds_total",
+      "help": "Cumulative wait while the PostgreSQL pool was empty.",
+      "type": "counter",
+      "unit": "seconds",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_email_delivery_duration_seconds",
+      "help": "Email provider delivery duration.",
+      "type": "histogram",
+      "unit": "seconds",
+      "label_names": [
+        "provider",
+        "result"
+      ],
+      "buckets": [
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10,
+        30
+      ],
+      "maximum_series": 32
+    },
+    {
+      "name": "campusos_email_delivery_total",
+      "help": "Total email delivery outcomes.",
+      "type": "counter",
+      "unit": "deliveries",
+      "label_names": [
+        "provider",
+        "result"
+      ],
+      "maximum_series": 32
+    },
+    {
+      "name": "campusos_external_requests_total",
+      "help": "Total bounded external integration requests.",
+      "type": "counter",
+      "unit": "requests",
+      "label_names": [
+        "integration",
+        "result"
+      ],
+      "maximum_series": 128
+    },
+    {
+      "name": "campusos_http_in_flight",
+      "help": "Current CampusOS HTTP requests in flight.",
+      "type": "gauge",
+      "unit": "requests",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_http_panics_total",
+      "help": "Total recovered CampusOS HTTP panics.",
+      "type": "counter",
+      "unit": "panics",
+      "label_names": [
+        "operation"
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_http_request_duration_seconds",
+      "help": "CampusOS HTTP request duration.",
+      "type": "histogram",
+      "unit": "seconds",
+      "label_names": [
+        "method",
+        "operation",
+        "status_class"
+      ],
+      "buckets": [
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_http_requests_total",
+      "help": "Total CampusOS HTTP requests.",
+      "type": "counter",
+      "unit": "requests",
+      "label_names": [
+        "method",
+        "operation",
+        "status_class"
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_http_response_size_bytes",
+      "help": "CampusOS HTTP response body size.",
+      "type": "histogram",
+      "unit": "bytes",
+      "label_names": [
+        "method",
+        "operation",
+        "status_class"
+      ],
+      "buckets": [
+        256,
+        1024,
+        4096,
+        16384,
+        65536,
+        262144,
+        1048576
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_identity_challenges_total",
+      "help": "Total Identity challenge outcomes.",
+      "type": "counter",
+      "unit": "challenges",
+      "label_names": [
+        "operation",
+        "result"
+      ],
+      "maximum_series": 32
+    },
+    {
+      "name": "campusos_identity_mfa_total",
+      "help": "Total Identity multi-factor authentication outcomes.",
+      "type": "counter",
+      "unit": "operations",
+      "label_names": [
+        "operation",
+        "result"
+      ],
+      "maximum_series": 48
+    },
+    {
+      "name": "campusos_identity_sessions_total",
+      "help": "Total Identity session outcomes.",
+      "type": "counter",
+      "unit": "sessions",
+      "label_names": [
+        "operation",
+        "result"
+      ],
+      "maximum_series": 48
+    },
+    {
+      "name": "campusos_module_operation_duration_seconds",
+      "help": "CampusOS module operation duration.",
+      "type": "histogram",
+      "unit": "seconds",
+      "label_names": [
+        "module",
+        "operation",
+        "result"
+      ],
+      "buckets": [
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_module_operations_total",
+      "help": "Total bounded module operations.",
+      "type": "counter",
+      "unit": "operations",
+      "label_names": [
+        "module",
+        "operation",
+        "result"
+      ],
+      "maximum_series": 512
+    },
+    {
+      "name": "campusos_reliability_consumer_duration_seconds",
+      "help": "Durable-event consumer execution duration.",
+      "type": "histogram",
+      "unit": "seconds",
+      "label_names": [
+        "consumer",
+        "result"
+      ],
+      "buckets": [
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10,
+        30
+      ],
+      "maximum_series": 256
+    },
+    {
+      "name": "campusos_reliability_oldest_pending_age_seconds",
+      "help": "Age of the oldest pending or retryable durable event.",
+      "type": "gauge",
+      "unit": "seconds",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_reliability_operations_total",
+      "help": "Total durable-event worker operations.",
+      "type": "counter",
+      "unit": "operations",
+      "label_names": [
+        "operation",
+        "result"
+      ],
+      "maximum_series": 64
+    },
+    {
+      "name": "campusos_reliability_queue_events",
+      "help": "Current durable events by queue status.",
+      "type": "gauge",
+      "unit": "events",
+      "label_names": [
+        "status"
+      ],
+      "maximum_series": 8
+    },
+    {
+      "name": "campusos_runtime_goroutines",
+      "help": "Current Go runtime goroutine count.",
+      "type": "gauge",
+      "unit": "goroutines",
+      "maximum_series": 1
+    },
+    {
+      "name": "campusos_runtime_heap_alloc_bytes",
+      "help": "Current Go runtime allocated heap bytes.",
+      "type": "gauge",
+      "unit": "bytes",
+      "maximum_series": 1
+    }
+  ]
+}
