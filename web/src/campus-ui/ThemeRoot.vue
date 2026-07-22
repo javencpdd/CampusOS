@@ -1,6 +1,6 @@
 <template>
   <div
-    class="campus-theme-root"
+    class="app-container campus-theme-root"
     data-campusos-theme-root
     data-campusos-web
     :data-web-theme="themeStore.activeName || 'default'"
@@ -80,6 +80,12 @@ const rootStyle = computed(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .campus-theme-root[data-animation-preset='reveal'] :deep(.campus-shell-main > *) {
+    animation: none !important;
+    transform: none !important;
   }
 }
 </style>

@@ -7,16 +7,19 @@
         @click="mobileNavOpen = false"
       />
       <el-aside
-        width="220px"
+        :width="asideWidth"
         class="admin-aside"
-        :class="{ 'is-open': mobileNavOpen }"
+        :class="{ 'is-open': mobileNavOpen, 'is-collapsed': menuCollapsed }"
       >
         <div class="admin-logo">
-          <h2>🔧 管理后台</h2>
+          <el-icon aria-hidden="true"><Tools /></el-icon>
+          <strong v-if="!menuCollapsed">管理后台</strong>
         </div>
         <el-menu
           :default-active="activeMenu"
           :default-openeds="['identity', 'content', 'extensions', 'operations']"
+          :collapse="menuCollapsed"
+          :collapse-transition="false"
           router
           background-color="#304156"
           text-color="#bfcbd9"
@@ -38,10 +41,18 @@
             <el-menu-item v-if="adminStore.isAdmin" index="/permissions"
               >角色与权限</el-menu-item
             >
-            <el-menu-item v-if="adminStore.isAdmin" index="/admin-admission">管理员准入</el-menu-item>
-            <el-menu-item v-if="adminStore.isAdmin" index="/mfa-policy">管理员 MFA 策略</el-menu-item>
-            <el-menu-item v-if="adminStore.isAdmin" index="/account-recovery">账号恢复</el-menu-item>
-            <el-menu-item v-if="adminStore.isAdmin" index="/challenge-policy">验证码策略</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/admin-admission"
+              >管理员准入</el-menu-item
+            >
+            <el-menu-item v-if="adminStore.isAdmin" index="/mfa-policy"
+              >管理员 MFA 策略</el-menu-item
+            >
+            <el-menu-item v-if="adminStore.isAdmin" index="/account-recovery"
+              >账号恢复</el-menu-item
+            >
+            <el-menu-item v-if="adminStore.isAdmin" index="/challenge-policy"
+              >验证码策略</el-menu-item
+            >
           </el-sub-menu>
           <el-sub-menu index="content">
             <template #title
@@ -70,7 +81,9 @@
             <el-menu-item index="/architecture">数据架构</el-menu-item>
             <el-menu-item index="/events">事件日志</el-menu-item>
             <el-menu-item index="/platform-logs">平台日志</el-menu-item>
-            <el-menu-item v-if="adminStore.isAdmin" index="/reliability">可靠任务</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/reliability"
+              >可靠任务</el-menu-item
+            >
             <el-menu-item index="/docs">相关资料</el-menu-item>
           </el-sub-menu>
         </el-menu>
@@ -86,6 +99,22 @@
             >
               <el-icon><Menu /></el-icon>
             </el-button>
+            <el-tooltip
+              v-else
+              :content="menuCollapsed ? '展开侧边栏' : '收起侧边栏'"
+              placement="bottom"
+            >
+              <el-button
+                text
+                circle
+                :aria-label="menuCollapsed ? '展开侧边栏' : '收起侧边栏'"
+                @click="toggleDesktopSidebar"
+              >
+                <el-icon
+                  ><Expand v-if="menuCollapsed" /><Fold v-else
+                /></el-icon>
+              </el-button>
+            </el-tooltip>
             <span v-if="isMobile" class="mobile-page-title">{{
               currentPageTitle || "管理后台"
             }}</span>
@@ -134,7 +163,12 @@
       </el-form>
       <template #footer>
         <el-button @click="mfaStepUpOpen = false">取消</el-button>
-        <el-button type="primary" :loading="mfaStepUpLoading" @click="completeMFAStepUp">确认</el-button>
+        <el-button
+          type="primary"
+          :loading="mfaStepUpLoading"
+          @click="completeMFAStepUp"
+          >确认</el-button
+        >
       </template>
     </el-dialog>
   </div>
@@ -153,9 +187,12 @@ import {
   UserFilled,
   Document,
   Connection,
+  Expand,
+  Fold,
   SetUp,
   Menu,
   SwitchButton,
+  Tools,
 } from "@element-plus/icons-vue";
 
 const route = useRoute();
@@ -164,6 +201,13 @@ const adminStore = useAdminStore();
 const { mode: layoutMode, isCompact } = useLayoutCapability();
 const isMobile = computed(() => isCompact.value);
 const mobileNavOpen = ref(false);
+const desktopNavCollapsed = ref(false);
+const menuCollapsed = computed(
+  () => !isMobile.value && desktopNavCollapsed.value,
+);
+const asideWidth = computed(() =>
+  isMobile.value ? "220px" : menuCollapsed.value ? "64px" : "220px",
+);
 const mfaStepUpOpen = ref(false);
 const mfaStepUpCode = ref("");
 const mfaStepUpLoading = ref(false);
@@ -173,6 +217,14 @@ const closeMobileNav = () => {
 watch(isMobile, (mobile) => {
   if (!mobile) mobileNavOpen.value = false;
 });
+
+const toggleDesktopSidebar = () => {
+  desktopNavCollapsed.value = !desktopNavCollapsed.value;
+  window.localStorage.setItem(
+    "campusos.admin.sidebar-collapsed",
+    String(desktopNavCollapsed.value),
+  );
+};
 
 const activeMenu = computed(() => route.path);
 
@@ -229,23 +281,39 @@ const completeMFAStepUp = async () => {
     router.go(0);
   } catch (error: any) {
     if (error?.machineCode === "identity.mfa.not_enabled") {
-      ElMessage.warning("当前账号尚未启用认证器，请先在用户端的账号安全页面完成配置。");
+      ElMessage.warning(
+        "当前账号尚未启用认证器，请先在用户端的账号安全页面完成配置。",
+      );
     } else {
-      ElMessage.error(error?.msg || error?.message || "认证器验证码无效或已使用");
+      ElMessage.error(
+        error?.msg || error?.message || "认证器验证码无效或已使用",
+      );
     }
   } finally {
     mfaStepUpLoading.value = false;
   }
 };
 
-onMounted(() => window.addEventListener("campusos:admin-mfa-step-up-required", openMFAStepUp));
-onBeforeUnmount(() => window.removeEventListener("campusos:admin-mfa-step-up-required", openMFAStepUp));
+onMounted(() => {
+  desktopNavCollapsed.value =
+    window.localStorage.getItem("campusos.admin.sidebar-collapsed") === "true";
+  window.addEventListener("campusos:admin-mfa-step-up-required", openMFAStepUp);
+});
+onBeforeUnmount(() =>
+  window.removeEventListener(
+    "campusos:admin-mfa-step-up-required",
+    openMFAStepUp,
+  ),
+);
 </script>
 
 <style scoped>
 .admin-aside {
   background-color: #304156;
   overflow-y: auto;
+  transition:
+    width 160ms ease,
+    transform 160ms ease;
 }
 
 .nav-scrim {
@@ -257,15 +325,32 @@ onBeforeUnmount(() => window.removeEventListener("campusos:admin-mfa-step-up-req
 }
 
 .admin-logo {
-  padding: 16px;
-  text-align: center;
+  min-height: 60px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.admin-logo h2 {
-  margin: 0;
+.admin-logo strong {
   font-size: 18px;
+  white-space: nowrap;
+}
+
+.admin-logo .el-icon {
+  flex: 0 0 auto;
+  font-size: 20px;
+}
+
+.admin-aside :deep(.el-menu) {
+  border-right: 0;
+}
+
+.admin-aside.is-collapsed .admin-logo {
+  padding: 0;
 }
 
 .admin-header {

@@ -45,7 +45,7 @@
             v-model="termDraft.term_year"
             :min="2000"
             :max="2200"
-            controls-position="right"
+            :controls-position="isCompact ? '' : 'right'"
             aria-label="课表年份"
           />
         </el-tooltip>
@@ -61,13 +61,16 @@
         <el-tooltip content="为当前选中的学期设置第一周开始日期" placement="top">
           <el-button @click="openFirstWeekDialog">设置第一周</el-button>
         </el-tooltip>
-        <el-input-number
-          v-model="schedule.settings.periods_per_day"
-          :min="1"
-          :max="24"
-          controls-position="right"
-          @change="markDirty"
-        />
+        <el-tooltip content="设置每天显示的课程节数" placement="top">
+          <el-input-number
+            v-model="schedule.settings.periods_per_day"
+            :min="1"
+            :max="24"
+            :controls-position="isCompact ? '' : 'right'"
+            aria-label="每日课程节数"
+            @change="markDirty"
+          />
+        </el-tooltip>
         <el-switch
           v-model="schedule.settings.show_weekend"
           active-text="显示周末"
@@ -193,28 +196,42 @@
           <el-input v-model="courseForm.name" maxlength="120" />
         </el-form-item>
         <el-row :gutter="12">
-          <el-col :span="12">
+          <el-col :span="isCompact ? 24 : 12">
             <el-form-item label="星期" required>
               <el-select v-model="courseForm.weekday" class="field-full">
                 <el-option v-for="day in allWeekdays" :key="day.value" :label="day.label" :value="day.value" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="isCompact ? 24 : 12">
             <el-form-item label="颜色">
               <el-color-picker v-model="courseForm.color" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="12">
-          <el-col :span="12">
+          <el-col :span="isCompact ? 24 : 12">
             <el-form-item label="开始节" required>
-              <el-input-number v-model="courseForm.start_period" :min="1" :max="24" class="field-full" />
+              <el-input-number
+                v-model="courseForm.start_period"
+                :min="1"
+                :max="24"
+                :controls-position="isCompact ? '' : 'right'"
+                aria-label="课程开始节次"
+                class="field-full"
+              />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="isCompact ? 24 : 12">
             <el-form-item label="结束节" required>
-              <el-input-number v-model="courseForm.end_period" :min="1" :max="24" class="field-full" />
+              <el-input-number
+                v-model="courseForm.end_period"
+                :min="1"
+                :max="24"
+                :controls-position="isCompact ? '' : 'right'"
+                aria-label="课程结束节次"
+                class="field-full"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1044,7 +1061,7 @@ onBeforeUnmount(() => {
 .json-editor {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 540px) and (max-width: 1000px) {
   .schedule-header {
     align-items: flex-start;
     flex-direction: column;
@@ -1075,6 +1092,24 @@ onBeforeUnmount(() => {
   }
   .toolbar :deep(.el-radio-button__inner) {
     width: 100%;
+  }
+  .schedule-view[data-layout-mode^='compact'] :deep(.el-input-number),
+  .schedule-view[data-layout-mode^='compact'] :deep(.el-input-number .el-input__wrapper) {
+    min-height: var(--campus-touch-target, 44px);
+  }
+  .schedule-view[data-layout-mode^='compact'] :deep(.el-input-number__decrease),
+  .schedule-view[data-layout-mode^='compact'] :deep(.el-input-number__increase) {
+    top: 0;
+    bottom: 0;
+    width: var(--campus-touch-target, 44px);
+    height: var(--campus-touch-target, 44px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .schedule-view[data-layout-mode^='compact'] :deep(.el-input-number .el-input__wrapper) {
+    padding-right: calc(var(--campus-touch-target, 44px) + 4px);
+    padding-left: calc(var(--campus-touch-target, 44px) + 4px);
   }
   .schedule-tabs :deep(.el-tabs__nav) {
     width: 100%;

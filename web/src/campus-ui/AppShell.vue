@@ -112,4 +112,10 @@ withDefaults(defineProps<{ health?: string }>(), { health: 'healthy' })
     display: none;
   }
 }
+@media (max-width: 760px), (max-height: 540px) and (max-width: 1000px) {
+  .campus-shell-primary-nav {
+    min-height: 48px;
+    border-bottom: 1px solid var(--campus-border-color, #dfe3e8);
+  }
+}
 </style>
