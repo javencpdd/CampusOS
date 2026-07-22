@@ -150,10 +150,47 @@ try {
   const webPaths = ['/', '/threads', '/appearance', '/space/settings', '/account/security', '/schedule', '/plugins']
   for (const viewport of viewports) {
     await webPage.setViewportSize(viewport)
+    const compactWeb = viewport.width <= 760 || (viewport.height <= 540 && viewport.width <= 1000)
     for (const route of webPaths) {
       await navigate(webPage, `${webURL}${route}`)
       await webPage.evaluate(() => window.scrollTo(0, 0))
       await waitForSettledPage(webPage)
+      if (route === '/threads') {
+        if (compactWeb) {
+          await webPage.locator('[aria-label="移动端帖子列表"]').waitFor()
+          await webPage.getByRole('button', { name: '打开主导航' }).click()
+          await webPage.locator('.mobile-navigation-list').waitFor()
+          await webPage.getByRole('navigation', { name: '移动端站点导航' }).waitFor()
+          await webPage.keyboard.press('Escape')
+          await webPage.locator('.mobile-navigation-list').waitFor({ state: 'hidden' })
+        } else {
+          await webPage.locator('.primary-nav[aria-label="站点主导航"]').waitFor()
+          if (await webPage.getByRole('button', { name: '打开主导航' }).count()) {
+            throw new Error(`web desktop navigation exposed the compact trigger at ${viewport.name}`)
+          }
+        }
+      }
+      if (route === '/schedule') {
+        const untranslatedControls = await webPage
+          .locator('[aria-label="decrease number"], [aria-label="increase number"]')
+          .count()
+        if (untranslatedControls) {
+          throw new Error(`schedule exposed ${untranslatedControls} untranslated number controls at ${viewport.name}`)
+        }
+        if (compactWeb) {
+          const controls = webPage.locator('[aria-label="减少数值"], [aria-label="增加数值"]')
+          const count = await controls.count()
+          if (count < 4) throw new Error(`schedule compact number controls are missing at ${viewport.name}`)
+          for (let index = 0; index < count; index += 1) {
+            const box = await controls.nth(index).boundingBox()
+            if (box && (box.width < 42 || box.height < 42)) {
+              throw new Error(
+                `schedule number control ${index} is ${Math.round(box.width)}x${Math.round(box.height)} at ${viewport.name}`,
+              )
+            }
+          }
+        }
+      }
       await assertNoOverflow(webPage, `web ${route} at ${viewport.name}`)
       await assertRenderedMedia(webPage, `web ${route} at ${viewport.name}`)
       await webPage.screenshot({
@@ -190,11 +227,12 @@ try {
   ]
   for (const viewport of viewports) {
     await adminPage.setViewportSize(viewport)
+    const compactAdmin = viewport.width <= 800 || (viewport.height <= 540 && viewport.width <= 1000)
     for (const route of adminPaths) {
       await navigate(adminPage, `${adminURL}${route}`)
       await adminPage.evaluate(() => window.scrollTo(0, 0))
       await waitForSettledPage(adminPage)
-      if ((viewport.width <= 800 || viewport.height <= 480) && route === '/extensions') {
+      if (compactAdmin && route === '/extensions') {
         await adminPage.getByRole('button', { name: '打开导航' }).click()
         await adminPage.getByRole('menuitem', { name: '扩展与集成', exact: true }).waitFor()
         const scrim = adminPage.locator('.nav-scrim')
@@ -208,6 +246,22 @@ try {
         })
         await adminPage.waitForFunction(() => !document.querySelector('.admin-aside')?.classList.contains('is-open'))
         await adminPage.waitForTimeout(220)
+      }
+      if (!compactAdmin && route === '/extensions') {
+        await adminPage.getByRole('button', { name: '收起侧边栏' }).click()
+        await adminPage.waitForFunction(() => {
+          const aside = document.querySelector('.admin-aside')
+          return aside?.classList.contains('is-collapsed') && aside.getBoundingClientRect().width <= 66
+        })
+        const collapsedBox = await adminPage.locator('.admin-aside').boundingBox()
+        if (!collapsedBox || collapsedBox.width > 66) {
+          throw new Error(`admin sidebar did not collapse at ${viewport.name}: ${JSON.stringify(collapsedBox)}`)
+        }
+        await adminPage.getByRole('button', { name: '展开侧边栏' }).click()
+        await adminPage.waitForFunction(() => {
+          const aside = document.querySelector('.admin-aside')
+          return aside && !aside.classList.contains('is-collapsed') && aside.getBoundingClientRect().width >= 218
+        })
       }
       await assertNoOverflow(adminPage, `admin ${route} at ${viewport.name}`)
       await assertRenderedMedia(adminPage, `admin ${route} at ${viewport.name}`)

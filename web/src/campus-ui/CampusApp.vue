@@ -10,14 +10,24 @@
         <div class="header-content">
           <router-link to="/" class="brand logo"><h2>CampusOS</h2></router-link>
           <div class="header-actions">
-            <router-link to="/threads"><el-button text>帖子</el-button></router-link>
-            <router-link v-for="item in headerNavigation" :key="`${item.plugin}:${item.id}`" :to="item.path"
-              ><el-button text>{{ item.label }}</el-button></router-link
-            >
+            <template v-if="!isCompact">
+              <router-link to="/threads"><el-button text>帖子</el-button></router-link>
+              <router-link v-for="item in headerNavigation" :key="`${item.plugin}:${item.id}`" :to="item.path"
+                ><el-button text>{{ item.label }}</el-button></router-link
+              >
+            </template>
             <router-link v-if="userStore.isLoggedIn" to="/threads/create"
-              ><el-button type="primary" size="small">发帖</el-button></router-link
+              ><el-button
+                type="primary"
+                size="small"
+                :circle="isCompact"
+                :aria-label="isCompact ? '发布帖子' : undefined"
+              >
+                <el-icon v-if="isCompact"><EditPen /></el-icon>
+                <span v-else>发帖</span>
+              </el-button></router-link
             >
-            <router-link v-if="userStore.isLoggedIn" :to="publicSpacePath"
+            <router-link v-if="userStore.isLoggedIn && !isCompact" :to="publicSpacePath"
               ><el-button text>个人主页</el-button></router-link
             >
             <el-dropdown v-if="userStore.isLoggedIn" trigger="click">
@@ -47,7 +57,7 @@
         </div>
       </template>
       <template #primary-navigation>
-        <div class="primary-nav">
+        <div v-if="!isCompact" class="primary-nav" aria-label="站点主导航">
           <router-link to="/">首页</router-link>
           <router-link to="/threads">全部帖子</router-link>
           <template v-for="node in categoryNavigation" :key="node.key">
@@ -69,6 +79,68 @@
             }}</router-link>
           </template>
         </div>
+        <div v-else class="mobile-primary-nav">
+          <strong>{{ mobileNavigationLabel }}</strong>
+          <el-button text :icon="Menu" aria-label="打开主导航" @click="mobileNavigationOpen = true"> 导航 </el-button>
+        </div>
+        <el-drawer
+          v-model="mobileNavigationOpen"
+          class="mobile-navigation-drawer"
+          title="站点导航"
+          direction="ltr"
+          size="min(88vw, 340px)"
+          append-to-body
+        >
+          <nav class="mobile-navigation-list" aria-label="移动端站点导航">
+            <router-link class="mobile-navigation-link" to="/" @click="closeMobileNavigation">首页</router-link>
+            <router-link class="mobile-navigation-link" to="/threads" @click="closeMobileNavigation"
+              >全部帖子</router-link
+            >
+            <template v-for="node in categoryNavigation" :key="`mobile:${node.key}`">
+              <section v-if="node.kind === 'group'" class="mobile-navigation-group">
+                <h3>{{ node.name }}</h3>
+                <router-link
+                  v-for="board in node.children"
+                  :key="`mobile:${board.key}`"
+                  class="mobile-navigation-link is-child"
+                  :to="{ path: '/threads', query: { category_id: board.id } }"
+                  @click="closeMobileNavigation"
+                >
+                  {{ board.name }}
+                </router-link>
+              </section>
+              <router-link
+                v-else
+                class="mobile-navigation-link"
+                :to="{ path: '/threads', query: { category_id: node.id } }"
+                @click="closeMobileNavigation"
+              >
+                {{ node.name }}
+              </router-link>
+            </template>
+            <section v-if="headerNavigation.length" class="mobile-navigation-group">
+              <h3>校园功能</h3>
+              <router-link
+                v-for="item in headerNavigation"
+                :key="`mobile:${item.plugin}:${item.id}`"
+                class="mobile-navigation-link is-child"
+                :to="item.path"
+                @click="closeMobileNavigation"
+              >
+                {{ item.label }}
+              </router-link>
+            </section>
+            <section v-if="userStore.isLoggedIn" class="mobile-navigation-group">
+              <h3>我的</h3>
+              <router-link class="mobile-navigation-link is-child" to="/threads/create" @click="closeMobileNavigation"
+                >发布帖子</router-link
+              >
+              <router-link class="mobile-navigation-link is-child" :to="publicSpacePath" @click="closeMobileNavigation"
+                >个人主页</router-link
+              >
+            </section>
+          </nav>
+        </el-drawer>
       </template>
       <template v-if="slotSurfaces('hero').length" #hero
         ><DeclarativeRenderer
@@ -116,8 +188,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowDown, EditPen, Menu } from '@element-plus/icons-vue'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { scheduleApi } from '@/modules/schedule/api'
 import { spaceApi } from '@/modules/space/api'
@@ -125,15 +197,19 @@ import StyleEffectLayer from '@/components/StyleEffectLayer.vue'
 import { useUserStore } from '@/modules/identity/store'
 import { useWebThemeStore } from '@/modules/appearance/store'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
+import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
 import AppShell from './AppShell.vue'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import ThemeRoot from './ThemeRoot.vue'
 import { buildCategoryNavigation, type CategoryNavigationNode, type PublicCategory } from './categoryNavigation'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const themeStore = useWebThemeStore()
 const runtimeStore = useUIRuntimeStore()
+const { isCompact } = useLayoutCapability()
+const mobileNavigationOpen = ref(false)
 const categoryNavigation = ref<CategoryNavigationNode[]>([])
 const publicSpacePath = computed(() => (userStore.user?.username ? `/u/${userStore.user.username}` : '/space/settings'))
 const displayAvatar = computed(() => userStore.user?.avatar || '')
@@ -147,6 +223,21 @@ const headerNavigation = computed(() =>
   visibleNavigation.value.filter((item) => !item.location || item.location === 'header'),
 )
 const userNavigation = computed(() => visibleNavigation.value.filter((item) => item.location === 'user-menu'))
+const mobileNavigationLabel = computed(() => {
+  if (route.path === '/') return '首页'
+  if (route.path === '/threads') {
+    const selectedCategory = String(route.query.category_id || '')
+    for (const node of categoryNavigation.value) {
+      if (node.kind === 'board' && node.id === selectedCategory) return node.name
+      if (node.kind === 'group') {
+        const board = node.children.find((item) => item.id === selectedCategory)
+        if (board) return board.name
+      }
+    }
+    return '全部帖子'
+  }
+  return typeof route.meta.title === 'string' ? route.meta.title : '校园功能'
+})
 const slotSurfaces = (name: string) =>
   (runtimeStore.slots.get(name) || []).filter((surface) => surface.renderer === 'schema' && surface.schema)
 
@@ -161,6 +252,9 @@ const syncSpaceAvatar = async () => {
   }
 }
 const goPublicSpace = () => router.push(publicSpacePath.value)
+const closeMobileNavigation = () => {
+  mobileNavigationOpen.value = false
+}
 const openCategoryBoard = (categoryID: string) => router.push({ path: '/threads', query: { category_id: categoryID } })
 const handleLogout = () => {
   userStore.logout()
@@ -221,6 +315,13 @@ watch(
     if (loggedIn) void syncSpaceAvatar()
   },
 )
+watch(
+  () => route.fullPath,
+  () => closeMobileNavigation(),
+)
+watch(isCompact, (compact) => {
+  if (!compact) closeMobileNavigation()
+})
 </script>
 
 <style scoped>
@@ -275,6 +376,61 @@ watch(
   text-decoration: none;
   font-size: 14px;
 }
+.mobile-primary-nav {
+  width: min(var(--campus-content-width, 1200px), 100%);
+  min-height: 48px;
+  margin: 0 auto;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--campus-muted-color, #4b5563);
+  box-sizing: border-box;
+}
+.mobile-primary-nav strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobile-navigation-list {
+  display: grid;
+  gap: 4px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0));
+}
+.mobile-navigation-link {
+  min-height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--campus-text-color, #1f2937);
+  text-decoration: none;
+}
+.mobile-navigation-link:hover,
+.mobile-navigation-link:focus-visible,
+.mobile-navigation-link.router-link-active {
+  color: var(--campus-brand-color, #174ea6);
+  background: var(--campus-surface-background, #f3f6f9);
+}
+.mobile-navigation-link.is-child {
+  padding-left: 24px;
+}
+.mobile-navigation-group {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--campus-border-color, #dfe3e8);
+}
+.mobile-navigation-group h3 {
+  margin: 0;
+  padding: 8px 12px 4px;
+  color: var(--campus-muted-color, #4b5563);
+  font-size: 12px;
+  font-weight: 700;
+}
 .category-nav-group {
   color: var(--campus-muted-color, #4b5563);
   border: 0;
@@ -299,26 +455,22 @@ watch(
 p {
   margin: 0;
 }
-@media (max-width: 720px) {
+@media (max-width: 760px), (max-height: 540px) and (max-width: 1000px) {
   .header-content {
-    padding: 10px 12px;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    min-height: 64px;
+    padding: 8px 12px;
+    align-items: center;
+    flex-wrap: nowrap;
   }
   .header-actions {
     gap: 4px;
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
   }
   .brand {
     font-size: 18px;
-    padding-top: 6px;
-  }
-  .primary-nav {
-    overflow-x: auto;
-    padding: 8px 12px;
-    gap: 14px;
-    white-space: nowrap;
   }
 }
 </style>
