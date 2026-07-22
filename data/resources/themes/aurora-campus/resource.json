@@ -3,8 +3,8 @@
   "id": "aurora-campus",
   "type": "theme",
   "version": "0.2.0",
-  "compatibility": ">=0.10.0 <0.11.0",
+  "compatibility": "\u003e=0.13.0 \u003c0.14.0",
   "entry": "style.yaml",
-  "checksum": "63dd750f340de2fbf677ed379b81b17bd9eee4919f9c77198eb77aaec0c27da5",
+  "checksum": "a755a336846eabf5bc18e7a52f12b254c2ed560df5a5176a26d3f305065f9a9a",
   "source": "campusos-builtin"
 }

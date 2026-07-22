@@ -32,14 +32,14 @@ func (r *PgSessionRepository) Create(ctx context.Context, session *domain.Sessio
 	_, err := r.db(ctx).Exec(ctx, `INSERT INTO sessions (
 		id, user_id, refresh_token, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_address, ip_hash, user_agent, last_active_at, expires_at,
+		ip_address, ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at,
 		revoked_at, revoke_reason, created_at, updated_at
 	) VALUES (
 		$1, $2, NULL, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9,
-		'', $10, $11, $12, $13, $14, $15, $16, $17
+		'', $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 	)`, session.ID, session.UserID, session.RefreshTokenDigest, session.TokenFamilyID,
 		session.RotatedFromID, session.RotatedToID, session.DeviceID, session.DeviceName, session.DeviceType,
-		session.IPHash, session.UserAgent, session.LastActiveAt, session.ExpiresAt,
+		session.IPHash, session.UserAgent, session.AuthenticationStrength, session.MFAAuthenticatedAt, session.LastActiveAt, session.ExpiresAt,
 		session.RevokedAt, session.RevokeReason, session.CreatedAt, session.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("insert identity session: %w", err)
@@ -50,21 +50,21 @@ func (r *PgSessionRepository) Create(ctx context.Context, session *domain.Sessio
 func (r *PgSessionRepository) GetByID(ctx context.Context, id string) (*domain.Session, error) {
 	return r.querySession(ctx, `SELECT id, user_id, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_hash, user_agent, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
+		ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
 		FROM sessions WHERE id=$1 AND deleted_at IS NULL`, id)
 }
 
 func (r *PgSessionRepository) GetByIDForUpdate(ctx context.Context, id string) (*domain.Session, error) {
 	return r.querySession(ctx, `SELECT id, user_id, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_hash, user_agent, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
+		ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
 		FROM sessions WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, id)
 }
 
 func (r *PgSessionRepository) GetByRefreshDigestForUpdate(ctx context.Context, digest string) (*domain.Session, error) {
 	return r.querySession(ctx, `SELECT id, user_id, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_hash, user_agent, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
+		ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
 		FROM sessions WHERE refresh_token_digest=$1 AND deleted_at IS NULL FOR UPDATE`, digest)
 }
 
@@ -75,7 +75,7 @@ func (r *PgSessionRepository) querySession(ctx context.Context, query string, va
 	err := r.db(ctx).QueryRow(ctx, query, value).Scan(
 		&session.ID, &session.UserID, &session.RefreshTokenDigest, &session.TokenFamilyID,
 		&rotatedFromID, &rotatedToID, &session.DeviceID, &session.DeviceName, &session.DeviceType,
-		&session.IPHash, &session.UserAgent, &session.LastActiveAt, &session.ExpiresAt, &revokedAt,
+		&session.IPHash, &session.UserAgent, &session.AuthenticationStrength, &session.MFAAuthenticatedAt, &session.LastActiveAt, &session.ExpiresAt, &revokedAt,
 		&session.RevokeReason, &session.CreatedAt, &session.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -101,11 +101,11 @@ func (r *PgSessionRepository) Update(ctx context.Context, session *domain.Sessio
 	tag, err := r.db(ctx).Exec(ctx, `UPDATE sessions SET
 		refresh_token_digest=$1, token_family_id=$2, rotated_from_id=NULLIF($3, ''), rotated_to_id=NULLIF($4, ''),
 		device_id=$5, device_name=$6, device_type=$7, ip_address='', ip_hash=$8, user_agent=$9,
-		last_active_at=$10, expires_at=$11, revoked_at=$12, revoke_reason=$13, updated_at=$14
-		WHERE id=$15 AND deleted_at IS NULL`,
+		authentication_strength=$10, mfa_authenticated_at=$11, last_active_at=$12, expires_at=$13, revoked_at=$14, revoke_reason=$15, updated_at=$16
+		WHERE id=$17 AND deleted_at IS NULL`,
 		session.RefreshTokenDigest, session.TokenFamilyID, session.RotatedFromID, session.RotatedToID,
 		session.DeviceID, session.DeviceName, session.DeviceType, session.IPHash, session.UserAgent,
-		session.LastActiveAt, session.ExpiresAt, session.RevokedAt, session.RevokeReason, session.UpdatedAt, session.ID)
+		session.AuthenticationStrength, session.MFAAuthenticatedAt, session.LastActiveAt, session.ExpiresAt, session.RevokedAt, session.RevokeReason, session.UpdatedAt, session.ID)
 	if err != nil {
 		return fmt.Errorf("update identity session: %w", err)
 	}
@@ -118,7 +118,7 @@ func (r *PgSessionRepository) Update(ctx context.Context, session *domain.Sessio
 func (r *PgSessionRepository) ListByUser(ctx context.Context, userID string) ([]*domain.Session, error) {
 	rows, err := r.db(ctx).Query(ctx, `SELECT id, user_id, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_hash, user_agent, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
+		ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at, revoked_at, revoke_reason, created_at, updated_at
 		FROM sessions WHERE user_id=$1 AND deleted_at IS NULL ORDER BY last_active_at DESC, id DESC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list identity sessions: %w", err)
@@ -131,7 +131,7 @@ func (r *PgSessionRepository) ListByUser(ctx context.Context, userID string) ([]
 		var revokedAt *time.Time
 		if err := rows.Scan(&session.ID, &session.UserID, &session.RefreshTokenDigest, &session.TokenFamilyID,
 			&fromID, &toID, &session.DeviceID, &session.DeviceName, &session.DeviceType, &session.IPHash,
-			&session.UserAgent, &session.LastActiveAt, &session.ExpiresAt, &revokedAt, &session.RevokeReason,
+			&session.UserAgent, &session.AuthenticationStrength, &session.MFAAuthenticatedAt, &session.LastActiveAt, &session.ExpiresAt, &revokedAt, &session.RevokeReason,
 			&session.CreatedAt, &session.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan identity session: %w", err)
 		}

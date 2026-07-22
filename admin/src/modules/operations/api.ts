@@ -22,8 +22,8 @@ export const healthApi = {
 type PageParams = { page?: number; page_size?: number; limit?: number };
 
 export const reliabilityApi = {
-	summary: () => api.get("/platform/reliability/summary"),
-	emailDeliveryStatus: () => api.get("/platform/email-delivery/status"),
+  summary: () => api.get("/platform/reliability/summary"),
+  emailDeliveryStatus: () => api.get("/platform/email-delivery/status"),
   events: (params?: PageParams & { status?: string; type?: string }) =>
     api.get("/platform/reliability/events", { params }),
   attempts: (params?: PageParams & { event_id?: string }) =>

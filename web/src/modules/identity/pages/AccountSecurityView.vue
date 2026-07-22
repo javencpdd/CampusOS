@@ -4,12 +4,21 @@
     <el-tabs v-model="tab" class="security-tabs">
       <el-tab-pane label="登录设备" name="sessions">
         <section class="section-toolbar">
-          <el-button :icon="Refresh" circle aria-label="刷新登录设备" @click="loadSessions" />
+          <el-tooltip content="刷新登录设备" placement="top"
+            ><el-button :icon="Refresh" circle aria-label="刷新登录设备" @click="loadSessions"
+          /></el-tooltip>
           <el-button type="danger" plain :loading="loggingOut" @click="logoutAll">退出全部设备</el-button>
         </section>
         <el-table :data="sessions" v-loading="loadingSessions" class="session-table">
           <el-table-column prop="device_name" label="设备" min-width="150" />
           <el-table-column prop="device_type" label="类型" width="110" />
+          <el-table-column label="认证" width="108"
+            ><template #default="{ row }"
+              ><el-tag :type="row.authentication_strength === 'mfa' ? 'success' : 'info'">{{
+                row.authentication_strength === 'mfa' ? '已验证 MFA' : '密码'
+              }}</el-tag></template
+            ></el-table-column
+          >
           <el-table-column label="最近活动" min-width="170"
             ><template #default="{ row }">{{ formatTime(row.last_active_at) }}</template></el-table-column
           >
@@ -29,6 +38,47 @@
           >
         </el-table>
       </el-tab-pane>
+
+      <el-tab-pane label="多因素认证" name="mfa">
+        <section v-loading="loadingMFA" class="mfa-panel">
+          <el-alert
+            v-if="!mfaStatus.mfa_available"
+            title="当前部署未配置 MFA 加密密钥，不能启用认证器。"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+          <div class="mfa-summary">
+            <div>
+              <span>认证器</span><strong>{{ mfaStatus.enabled ? '已启用' : '未启用' }}</strong>
+            </div>
+            <div>
+              <span>恢复码</span
+              ><strong>{{ mfaStatus.enabled ? `${mfaStatus.recovery_codes_remaining} 个可用` : '—' }}</strong>
+            </div>
+            <div>
+              <span>管理员策略</span><strong>{{ policyLabel(mfaStatus.policy_mode) }}</strong>
+            </div>
+          </div>
+          <div class="mfa-actions">
+            <el-button
+              v-if="!mfaStatus.enabled"
+              type="primary"
+              :disabled="!mfaStatus.mfa_available"
+              @click="openEnrollment"
+              >启用认证器</el-button
+            >
+            <template v-else>
+              <el-button @click="openRotateRecovery">更新恢复码</el-button>
+              <el-button type="danger" plain @click="openDisable">关闭认证器</el-button>
+            </template>
+            <el-tooltip content="刷新多因素认证状态" placement="top"
+              ><el-button :icon="Refresh" circle aria-label="刷新多因素认证状态" @click="loadMFA"
+            /></el-tooltip>
+          </div>
+        </section>
+      </el-tab-pane>
+
       <el-tab-pane label="绑定邮箱" name="email">
         <section class="binding-form">
           <el-steps :active="bindingStep" finish-status="success" simple
@@ -54,15 +104,120 @@
         </section>
       </el-tab-pane>
     </el-tabs>
+
+    <el-dialog
+      v-model="enrollmentOpen"
+      title="启用认证器"
+      width="min(560px, calc(100% - 24px))"
+      :close-on-click-modal="false"
+      @closed="resetEnrollment"
+    >
+      <el-form v-if="!enrollment" label-position="top" @submit.prevent="startEnrollment">
+        <el-form-item label="当前密码"
+          ><el-input v-model="enrollmentPassword" type="password" autocomplete="current-password" show-password
+        /></el-form-item>
+        <div class="dialog-actions">
+          <el-button @click="enrollmentOpen = false">取消</el-button
+          ><el-button type="primary" native-type="submit" :loading="mfaActionLoading">继续</el-button>
+        </div>
+      </el-form>
+      <el-form v-else label-position="top" @submit.prevent="confirmEnrollment">
+        <div class="qr-block">
+          <img v-if="qrDataURL" :src="qrDataURL" width="220" height="220" alt="认证器配置二维码" /><el-skeleton
+            v-else
+            :rows="4"
+            animated
+          />
+        </div>
+        <el-form-item label="手工密钥"
+          ><el-input :model-value="enrollment.manual_key" readonly
+            ><template #append><el-button @click="copyManualKey">复制</el-button></template></el-input
+          ></el-form-item
+        >
+        <el-form-item label="认证器验证码"
+          ><el-input
+            v-model.trim="enrollmentCode"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
+        /></el-form-item>
+        <div class="dialog-actions">
+          <el-button @click="enrollmentOpen = false">稍后继续</el-button
+          ><el-button type="primary" native-type="submit" :loading="mfaActionLoading">确认启用</el-button>
+        </div>
+      </el-form>
+    </el-dialog>
+
+    <el-dialog
+      v-model="recoveryOpen"
+      title="保存恢复码"
+      width="min(560px, calc(100% - 24px))"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="recoveryAcknowledged"
+    >
+      <p class="recovery-note">这些恢复码只显示这一次。每个恢复码仅可使用一次。</p>
+      <div class="recovery-codes">
+        <code v-for="code in recoveryCodes" :key="code">{{ code }}</code>
+      </div>
+      <el-checkbox v-model="recoveryAcknowledged">我已安全保存这些恢复码</el-checkbox>
+      <template #footer
+        ><el-button type="primary" :disabled="!recoveryAcknowledged" @click="closeRecoveryCodes"
+          >完成</el-button
+        ></template
+      >
+    </el-dialog>
+
+    <el-dialog v-model="rotateOpen" title="更新恢复码" width="min(500px, calc(100% - 24px))" @closed="resetFactorProof">
+      <el-form label-position="top" @submit.prevent="rotateRecoveryCodes">
+        <el-radio-group v-model="factorProofType"
+          ><el-radio label="code">认证器验证码</el-radio
+          ><el-radio label="recovery">现有恢复码</el-radio></el-radio-group
+        >
+        <el-form-item :label="factorProofType === 'code' ? '认证器验证码' : '恢复码'" class="proof-input"
+          ><el-input
+            v-model.trim="factorProof"
+            :inputmode="factorProofType === 'code' ? 'numeric' : 'text'"
+            autocomplete="one-time-code"
+        /></el-form-item>
+        <div class="dialog-actions">
+          <el-button @click="rotateOpen = false">取消</el-button
+          ><el-button type="primary" native-type="submit" :loading="mfaActionLoading">生成新恢复码</el-button>
+        </div>
+      </el-form>
+    </el-dialog>
+
+    <el-dialog v-model="disableOpen" title="关闭认证器" width="min(500px, calc(100% - 24px))" @closed="resetDisable">
+      <el-form label-position="top" @submit.prevent="disableMFA">
+        <el-form-item label="当前密码"
+          ><el-input v-model="disablePassword" type="password" autocomplete="current-password" show-password
+        /></el-form-item>
+        <el-radio-group v-model="disableProofType"
+          ><el-radio label="code">认证器验证码</el-radio><el-radio label="recovery">恢复码</el-radio></el-radio-group
+        >
+        <el-form-item :label="disableProofType === 'code' ? '认证器验证码' : '恢复码'" class="proof-input"
+          ><el-input
+            v-model.trim="disableProof"
+            :inputmode="disableProofType === 'code' ? 'numeric' : 'text'"
+            autocomplete="one-time-code"
+        /></el-form-item>
+        <div class="dialog-actions">
+          <el-button @click="disableOpen = false">取消</el-button
+          ><el-button type="danger" native-type="submit" :loading="mfaActionLoading">关闭并退出全部设备</el-button>
+        </div>
+      </el-form>
+    </el-dialog>
   </main>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import QRCode from 'qrcode'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import { authApi } from '@/modules/identity/api'
+import { authApi, type MFAEnrollment, type MFAStatus } from '@/modules/identity/api'
 import { useUserStore } from '@/modules/identity/store'
 
 const router = useRouter()
@@ -77,8 +232,35 @@ const bindingChallengeID = ref('')
 const bindingTicket = ref('')
 const bindingStep = ref(0)
 const bindingLoading = ref(false)
+const loadingMFA = ref(false)
+const mfaActionLoading = ref(false)
+const mfaStatus = reactive<MFAStatus>({
+  enabled: false,
+  pending_enrollment: false,
+  recovery_codes_remaining: 0,
+  mfa_available: false,
+  policy_mode: 'off',
+  step_up_required_after_seconds: 0,
+})
+const enrollmentOpen = ref(false)
+const enrollmentPassword = ref('')
+const enrollment = ref<MFAEnrollment | null>(null)
+const enrollmentCode = ref('')
+const qrDataURL = ref('')
+const recoveryOpen = ref(false)
+const recoveryCodes = ref<string[]>([])
+const recoveryAcknowledged = ref(false)
+const rotateOpen = ref(false)
+const factorProofType = ref<'code' | 'recovery'>('code')
+const factorProof = ref('')
+const disableOpen = ref(false)
+const disablePassword = ref('')
+const disableProofType = ref<'code' | 'recovery'>('code')
+const disableProof = ref('')
 const messageOf = (error: any, fallback: string) => error?.msg || error?.message || fallback
 const formatTime = (value?: string) => (value ? new Date(value).toLocaleString() : '—')
+const policyLabel = (mode: string) =>
+  ({ off: '未强制', enrollment_grace: '注册宽限期', required: '已强制' })[mode] || mode
 
 const loadSessions = async () => {
   loadingSessions.value = true
@@ -111,6 +293,137 @@ const logoutAll = async () => {
     if (error !== 'cancel') ElMessage.error(messageOf(error, '退出失败'))
   } finally {
     loggingOut.value = false
+  }
+}
+const loadMFA = async () => {
+  loadingMFA.value = true
+  try {
+    const response: any = await authApi.mfaStatus()
+    Object.assign(mfaStatus, response?.data || {})
+  } catch (error: any) {
+    ElMessage.error(messageOf(error, '多因素认证状态加载失败'))
+  } finally {
+    loadingMFA.value = false
+  }
+}
+const openEnrollment = () => {
+  enrollmentOpen.value = true
+}
+const startEnrollment = async () => {
+  if (!enrollmentPassword.value) return ElMessage.warning('请输入当前密码')
+  mfaActionLoading.value = true
+  try {
+    const response: any = await authApi.startMFAEnrollment({ password: enrollmentPassword.value })
+    const value = response?.data as MFAEnrollment | undefined
+    if (!value?.manual_key || !value.otpauth_uri) throw new Error('认证器配置不可用')
+    enrollment.value = value
+    qrDataURL.value = await QRCode.toDataURL(value.otpauth_uri, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 220,
+      color: { dark: '#141b24', light: '#ffffff' },
+    })
+    enrollmentPassword.value = ''
+  } catch (error: any) {
+    ElMessage.error(messageOf(error, '无法开始认证器配置'))
+  } finally {
+    mfaActionLoading.value = false
+  }
+}
+const copyManualKey = async () => {
+  if (!enrollment.value?.manual_key || !navigator.clipboard) return ElMessage.warning('请手工选择并复制密钥')
+  try {
+    await navigator.clipboard.writeText(enrollment.value.manual_key)
+    ElMessage.success('手工密钥已复制')
+  } catch {
+    ElMessage.warning('请手工选择并复制密钥')
+  }
+}
+const confirmEnrollment = async () => {
+  if (!/^\d{6}$/.test(enrollmentCode.value)) return ElMessage.warning('请输入 6 位认证器验证码')
+  mfaActionLoading.value = true
+  try {
+    const response: any = await authApi.confirmMFAEnrollment({ code: enrollmentCode.value })
+    if (response?.data?.access_token) userStore.updateAccessToken(response.data.access_token)
+    recoveryCodes.value = response?.data?.recovery_codes || []
+    if (recoveryCodes.value.length === 0) throw new Error('恢复码未生成')
+    enrollmentOpen.value = false
+    recoveryAcknowledged.value = false
+    recoveryOpen.value = true
+    await loadMFA()
+  } catch (error: any) {
+    ElMessage.error(messageOf(error, '认证器验证码无效或已过期'))
+  } finally {
+    mfaActionLoading.value = false
+  }
+}
+const resetEnrollment = () => {
+  enrollmentPassword.value = ''
+  enrollment.value = null
+  enrollmentCode.value = ''
+  qrDataURL.value = ''
+}
+const closeRecoveryCodes = () => {
+  recoveryOpen.value = false
+  recoveryCodes.value = []
+  recoveryAcknowledged.value = false
+}
+const openRotateRecovery = () => {
+  factorProofType.value = 'code'
+  factorProof.value = ''
+  rotateOpen.value = true
+}
+const resetFactorProof = () => {
+  factorProof.value = ''
+  factorProofType.value = 'code'
+}
+const rotateRecoveryCodes = async () => {
+  if (!factorProof.value) return ElMessage.warning('请输入认证证明')
+  mfaActionLoading.value = true
+  try {
+    const response: any = await authApi.rotateMFARecoveryCodes(
+      factorProofType.value === 'code' ? { code: factorProof.value } : { recovery_code: factorProof.value },
+    )
+    recoveryCodes.value = response?.data?.recovery_codes || []
+    if (recoveryCodes.value.length === 0) throw new Error('恢复码未生成')
+    rotateOpen.value = false
+    recoveryAcknowledged.value = false
+    recoveryOpen.value = true
+    await loadMFA()
+  } catch (error: any) {
+    ElMessage.error(messageOf(error, '认证证明无效'))
+  } finally {
+    mfaActionLoading.value = false
+  }
+}
+const openDisable = () => {
+  disablePassword.value = ''
+  disableProof.value = ''
+  disableProofType.value = 'code'
+  disableOpen.value = true
+}
+const resetDisable = () => {
+  disablePassword.value = ''
+  disableProof.value = ''
+  disableProofType.value = 'code'
+}
+const disableMFA = async () => {
+  if (!disablePassword.value || !disableProof.value) return ElMessage.warning('请完成当前密码和认证证明')
+  mfaActionLoading.value = true
+  try {
+    await authApi.disableMFA(
+      disableProofType.value === 'code'
+        ? { password: disablePassword.value, code: disableProof.value }
+        : { password: disablePassword.value, recovery_code: disableProof.value },
+    )
+    disableOpen.value = false
+    ElMessage.success('认证器已关闭，请重新登录')
+    await userStore.logout()
+    router.replace('/login')
+  } catch (error: any) {
+    ElMessage.error(messageOf(error, '无法关闭认证器'))
+  } finally {
+    mfaActionLoading.value = false
   }
 }
 const requestBinding = async () => {
@@ -152,15 +465,18 @@ const completeBinding = async () => {
     bindingLoading.value = false
   }
 }
-onMounted(loadSessions)
+onMounted(() => {
+  void loadSessions()
+  void loadMFA()
+})
 </script>
 
 <style scoped>
 .security-page {
+  box-sizing: border-box;
   width: min(100%, 980px);
   margin: 0 auto;
   padding: 24px 16px 40px;
-  box-sizing: border-box;
 }
 .page-heading {
   margin-bottom: 12px;
@@ -169,11 +485,20 @@ onMounted(loadSessions)
   margin: 0;
   font-size: 24px;
 }
-.section-toolbar {
+.section-toolbar,
+.mfa-actions,
+.form-actions,
+.dialog-actions {
   display: flex;
+  gap: 10px;
+}
+.section-toolbar {
   justify-content: flex-end;
-  gap: 8px;
   margin: 0 0 14px;
+}
+.form-actions,
+.dialog-actions {
+  justify-content: flex-end;
 }
 .binding-form {
   width: min(100%, 520px);
@@ -182,13 +507,67 @@ onMounted(loadSessions)
 .binding-form .el-steps {
   margin: 0 0 24px;
 }
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
 .session-table {
   width: 100%;
+}
+.mfa-panel {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 680px);
+  padding: 12px 0;
+}
+.mfa-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.mfa-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+}
+.mfa-summary span {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.mfa-summary strong {
+  overflow-wrap: anywhere;
+}
+.mfa-actions {
+  flex-wrap: wrap;
+}
+.qr-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  margin: 0 0 16px;
+}
+.qr-block img {
+  max-width: 100%;
+  border: 1px solid var(--el-border-color-lighter);
+}
+.recovery-note {
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+}
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+.recovery-codes code {
+  padding: 9px;
+  overflow-wrap: anywhere;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+}
+.proof-input {
+  margin-top: 16px;
 }
 @media (max-width: 640px) {
   .security-page {
@@ -197,12 +576,20 @@ onMounted(loadSessions)
   .section-toolbar {
     justify-content: space-between;
   }
-  .form-actions {
+  .form-actions,
+  .dialog-actions {
     flex-direction: column-reverse;
   }
-  .form-actions .el-button {
+  .form-actions .el-button,
+  .dialog-actions .el-button {
     width: 100%;
     margin: 0;
+  }
+  .mfa-summary {
+    grid-template-columns: 1fr;
+  }
+  .recovery-codes {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 func newSessionServiceForTest(t *testing.T) (*SessionService, *repository.MemoryUserRepository, *auth.JWTManager) {
@@ -35,6 +37,8 @@ func newSessionServiceForTest(t *testing.T) (*SessionService, *repository.Memory
 
 func TestSessionRefreshRotationRejectsReuseAndRevokesFamily(t *testing.T) {
 	service, _, jwtManager := newSessionServiceForTest(t)
+	collector := observability.NewCollector()
+	service.SetMeter(collector)
 	ctx := context.Background()
 	user, err := service.users.GetByID(ctx, "22001")
 	if err != nil {
@@ -67,6 +71,22 @@ func TestSessionRefreshRotationRejectsReuseAndRevokesFamily(t *testing.T) {
 	}
 	if _, err := service.Refresh(ctx, rotated.RefreshToken, SessionMetadata{}); !errors.Is(err, ErrRefreshTokenInvalid) {
 		t.Fatalf("family token remained usable after reuse detection: %v", err)
+	}
+	metrics := collector.PrometheusText()
+	for _, expected := range []string{
+		`campusos_identity_sessions_total{operation="issue",result="success"} 1`,
+		`campusos_identity_sessions_total{operation="refresh",result="success"} 1`,
+		`campusos_identity_sessions_total{operation="refresh",result="reuse"} 1`,
+		`campusos_identity_sessions_total{operation="refresh",result="invalid"} 1`,
+	} {
+		if !strings.Contains(metrics, expected) {
+			t.Fatalf("session metrics missing %q:\n%s", expected, metrics)
+		}
+	}
+	for _, forbidden := range []string{issued.RefreshToken, rotated.RefreshToken, "session@example.test"} {
+		if strings.Contains(metrics, forbidden) {
+			t.Fatalf("session metrics leaked transient value")
+		}
 	}
 }
 

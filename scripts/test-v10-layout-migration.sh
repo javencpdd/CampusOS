@@ -29,12 +29,18 @@ name: example-external
 runtime: wasm
 EOF
 cat >"$fixture/data/plugin_data/personal-space/style-packs/custom-space/style.yaml" <<'EOF'
-schema: page-style-pack.v1
+schema_version: page-style-pack.v1
 name: custom-space
 target: personal-space
 version: 1.0.0
+entry: templates/page.html
+styles:
+  - styles/theme.css
 EOF
-printf ':root { color: #111; }\n' >"$fixture/data/plugin_data/personal-space/style-packs/custom-space/theme.css"
+mkdir -p "$fixture/data/plugin_data/personal-space/style-packs/custom-space/templates"
+mkdir -p "$fixture/data/plugin_data/personal-space/style-packs/custom-space/styles"
+printf '<section class="cstyle-page">Legacy style</section>\n' >"$fixture/data/plugin_data/personal-space/style-packs/custom-space/templates/page.html"
+printf '.public-space[data-campusos-space] .cstyle-page { color: #111827; background: #ffffff; }\n' >"$fixture/data/plugin_data/personal-space/style-packs/custom-space/styles/theme.css"
 printf '{"name":"legacy-style"}\n' >"$fixture/data/plugin_data/personal-space/styles/legacy.space-style.json"
 
 CAMPUSOS_ROOT="$fixture" "$repo_root/scripts/migrate-v10-module-plugin-layout.sh" apply "$backup" >/dev/null
@@ -42,6 +48,8 @@ test -f "$fixture/data/resources/space-style-packs/custom-space/resource.json"
 test -f "$fixture/data/module_data/personal-space/styles/legacy.space-style.json"
 test -f "$backup/legacy-plugin-descriptors/personal-space/plugin.yaml"
 test ! -e "$fixture/data/plugins/personal-space"
+inspection="$(cd "$repo_root" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusosctl resource inspect "$fixture/data/resources/space-style-packs/custom-space")"
+printf '%s\n' "$inspection" | rg -q '"delivery_status": "legacy-readonly"'
 CAMPUSOS_GOVERNANCE_ROOT="$fixture" python3 "$repo_root/scripts/check-data-governance.py" >/dev/null
 
 CAMPUSOS_ROOT="$fixture" "$repo_root/scripts/migrate-v10-module-plugin-layout.sh" rollback "$backup" >/dev/null

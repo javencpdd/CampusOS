@@ -26,6 +26,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	platformruntime "github.com/campusos/CampusOS/internal/platform/runtime"
 	"github.com/campusos/CampusOS/internal/plugin"
@@ -69,6 +70,23 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	}
 	appCache := cache.NewCache(cache.CacheConfig{Enabled: s.cfg.Redis.Enabled && addr != "", Host: host, Port: port, Password: s.cfg.Redis.Password, DB: s.cfg.Redis.DB})
 	metricsCollector := observability.NewCollector()
+	if pool != nil {
+		metricsCollector.SetDatabaseStatsProvider(func() observability.DatabaseSnapshot {
+			stats := pool.Stat()
+			return observability.DatabaseSnapshot{
+				AcquiredConnections: stats.AcquiredConns(), IdleConnections: stats.IdleConns(),
+				TotalConnections: stats.TotalConns(), MaximumConnections: stats.MaxConns(),
+				AcquireCount: stats.AcquireCount(), AcquireDurationSeconds: stats.AcquireDuration().Seconds(),
+				CanceledAcquireCount: stats.CanceledAcquireCount(), EmptyAcquireCount: stats.EmptyAcquireCount(),
+				EmptyAcquireWaitSeconds: stats.EmptyAcquireWaitTime().Seconds(),
+			}
+		})
+	}
+	observabilityModule := platformobservability.NewModule(metricsCollector, platformobservability.Config{
+		PrometheusEnabled: s.cfg.Observability.PrometheusEnabled,
+		PrometheusAddr:    s.cfg.Observability.PrometheusAddr,
+		PrometheusPath:    s.cfg.Observability.PrometheusPath,
+	})
 	featureStore := platformfeature.Store(platformfeature.NewMemoryStore())
 	if pool != nil {
 		featureStore = platformfeature.NewPostgreSQLStore(pool)
@@ -90,6 +108,10 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		ChallengeHMACKeys:     s.cfg.Auth.ChallengeHMACKeys,
 		ChallengeIPHashSecret: s.cfg.Auth.ChallengeIPHashSecret,
 		SessionIPHashSecret:   s.cfg.Auth.SessionIPHashSecret,
+		MFAActiveKeyID:        s.cfg.Auth.MFAActiveKeyID,
+		MFAEncryptionKeys:     s.cfg.Auth.MFAEncryptionKeys,
+		MFAIssuer:             s.cfg.Auth.MFAIssuer,
+		BootstrapAdminSecret:  s.cfg.Auth.BootstrapAdminSecret,
 		RefreshBodyCompat:     s.cfg.Auth.RefreshBodyCompat,
 		CookieSecure:          s.cfg.Deployment.Environment == "production",
 	})
@@ -170,6 +192,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.integration = integrationModule
 	s.reliability = reliabilityModule
 	entries := []platformruntime.Registration{
+		{Module: observabilityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: events, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: reliabilityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: features, Kind: platformmodule.KindCore, Enabled: true},

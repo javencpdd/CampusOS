@@ -196,3 +196,21 @@ func TestLoadEmailDeliveryConfiguration(t *testing.T) {
 		t.Fatalf("unexpected email configuration: %#v", cfg.Email)
 	}
 }
+
+func TestLoadObservabilityDefaultsAndExplicitExporter(t *testing.T) {
+	t.Setenv("OBSERVABILITY_PROMETHEUS_ENABLED", "")
+	t.Setenv("OBSERVABILITY_PROMETHEUS_ADDR", "")
+	t.Setenv("OBSERVABILITY_PROMETHEUS_PATH", "")
+	defaults := Load().Observability
+	if defaults.PrometheusEnabled || defaults.PrometheusAddr != "127.0.0.1:9091" || defaults.PrometheusPath != "/metrics" {
+		t.Fatalf("unexpected observability defaults: %#v", defaults)
+	}
+
+	t.Setenv("OBSERVABILITY_PROMETHEUS_ENABLED", "true")
+	t.Setenv("OBSERVABILITY_PROMETHEUS_ADDR", "127.0.0.1:19091")
+	t.Setenv("OBSERVABILITY_PROMETHEUS_PATH", "/internal/metrics")
+	explicit := Load().Observability
+	if !explicit.PrometheusEnabled || explicit.PrometheusAddr != "127.0.0.1:19091" || explicit.PrometheusPath != "/internal/metrics" {
+		t.Fatalf("unexpected explicit observability config: %#v", explicit)
+	}
+}

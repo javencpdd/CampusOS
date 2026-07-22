@@ -1,4 +1,31 @@
 export declare const UI_CONTRACT_VERSION: "campusos.ui/v1";
+export interface CampusOSErrorDetail {
+    code: string;
+    message: string;
+    details?: unknown;
+    request_id?: string;
+    retryable: boolean;
+}
+export declare class CampusOSError extends Error {
+    readonly status: number;
+    readonly code: number;
+    readonly machineCode: string;
+    readonly msg: string;
+    readonly requestId?: string;
+    readonly retryable: boolean;
+    readonly details?: unknown;
+    readonly error: CampusOSErrorDetail;
+    constructor(input: {
+        status: number;
+        legacyCode: number;
+        machineCode: string;
+        message: string;
+        requestId?: string;
+        retryable: boolean;
+        details?: unknown;
+    });
+}
+export declare function parseCampusOSError(payload: unknown, status?: number, fallback?: string): CampusOSError;
 export type ActivationMode = 'restart' | 'plugin-restart' | 'hot';
 export type BackendState = 'installed' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'pending_restart' | 'error';
 export type FrontendState = 'unloaded' | 'loading' | 'loaded' | 'incompatible' | 'error';

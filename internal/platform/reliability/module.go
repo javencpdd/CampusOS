@@ -7,8 +7,10 @@ import (
 	"log"
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/eventbus"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const ModuleID = "core.reliability"
@@ -28,9 +30,11 @@ type Module struct {
 	handler *Handler
 }
 
-func NewModule() *Module                 { return &Module{} }
-func (m *Module) ID() string             { return ModuleID }
-func (m *Module) Dependencies() []string { return []string{"core.event-bus"} }
+func NewModule() *Module     { return &Module{} }
+func (m *Module) ID() string { return ModuleID }
+func (m *Module) Dependencies() []string {
+	return []string{"core.event-bus", platformobservability.ModuleID}
+}
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -54,6 +58,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}
 	m.app = app
 	m.service = NewService(transactions, store)
+	if meterValue, exists := app.Lookup(platformobservability.PortMeter); exists {
+		meter, compatible := meterValue.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("reliability observability meter has incompatible type %T", meterValue)
+		}
+		m.service.SetMeter(meter)
+	}
 	m.handler = NewHandler(m.service)
 	if err := m.app.Provide(portService, m.service); err != nil {
 		return err

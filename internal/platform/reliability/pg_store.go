@@ -252,9 +252,14 @@ func (s *PostgreSQLStore) Summary(ctx context.Context) (Summary, error) {
 		COUNT(*) FILTER (WHERE status = 'published'),
 		COUNT(*) FILTER (WHERE status = 'retry'),
 		COUNT(*) FILTER (WHERE status = 'dead'),
-		MIN(created_at) FILTER (WHERE status IN ('pending', 'retry'))
+		MIN(created_at) FILTER (WHERE status IN ('pending', 'retry')),
+		(SELECT COUNT(*) FROM platform_outbox_attempts
+		 WHERE status IN ('retry', 'dead', 'failed') AND started_at >= NOW() - INTERVAL '1 hour'),
+		(SELECT COUNT(*) FROM platform_outbox_attempts
+		 WHERE status IN ('retry', 'dead', 'failed') AND started_at >= NOW() - INTERVAL '24 hours')
 		FROM platform_outbox`).Scan(&result.Pending, &result.Processing, &result.Published,
-		&result.Retry, &result.Dead, &result.OldestPending)
+		&result.Retry, &result.Dead, &result.OldestPending,
+		&result.FailedAttemptsLastHour, &result.FailedAttemptsLast24Hours)
 	return result, err
 }
 

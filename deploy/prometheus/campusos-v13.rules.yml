@@ -1,0 +1,59 @@
+groups:
+  - name: campusos-reliability-recording
+    interval: 30s
+    rules:
+      - record: campusos:reliability_backlog_events
+        expr: sum(campusos_reliability_queue_events{status=~"pending|retry"})
+      - record: campusos:reliability_claim_rate5m
+        expr: sum(rate(campusos_reliability_operations_total{operation="claim",result="success"}[5m])) or vector(0)
+      - record: campusos:reliability_failure_rate5m
+        expr: sum(rate(campusos_reliability_operations_total{operation=~"retry|dead_letter",result="success"}[5m])) or vector(0)
+      - record: campusos:email_delivery_failure_ratio5m
+        expr: >-
+          (sum(rate(campusos_email_delivery_total{result="unavailable"}[5m])) or vector(0))
+          /
+          clamp_min(sum(rate(campusos_email_delivery_total[5m])) or vector(0), 0.000001)
+
+  - name: campusos-reliability-alerts
+    interval: 30s
+    rules:
+      - alert: CampusOSReliabilityWorkerStopped
+        expr: campusos:reliability_backlog_events > 0 and on() campusos:reliability_claim_rate5m == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: CampusOS reliable-event worker is not claiming queued events
+          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+      - alert: CampusOSReliabilityBacklogOld
+        expr: campusos_reliability_oldest_pending_age_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: CampusOS reliable-event backlog is older than five minutes
+          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+      - alert: CampusOSReliabilityDeadLetterGrowth
+        expr: increase(campusos_reliability_operations_total{operation="dead_letter",result="success"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: CampusOS dead-letter events are increasing
+          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+      - alert: CampusOSEmailDeliveryDegraded
+        expr: increase(campusos_email_delivery_total{result="unavailable"}[5m]) >= 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: CampusOS email delivery has repeated transient failures
+          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+      - alert: CampusOSRefreshTokenReuseDetected
+        expr: increase(campusos_identity_sessions_total{operation="refresh",result="reuse"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: CampusOS detected refresh-token reuse
+          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md

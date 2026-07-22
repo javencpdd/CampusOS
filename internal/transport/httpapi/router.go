@@ -43,6 +43,7 @@ type Dependencies struct {
 	SessionVerifier middleware.AccessSessionVerifier
 	Permissions     middleware.PermissionChecker
 	AdminAccess     middleware.AdminAccessChecker
+	AdminMFA        middleware.AdminMFAChecker
 	Features        *platformfeature.Registry
 	Feature         *platformfeature.Handler
 	ModuleCatalog   *modulecatalog.Catalog
@@ -77,6 +78,7 @@ func Build(d Dependencies) *Router {
 	userHandler := d.Identity.User
 	roleHandler := d.Identity.Role
 	challengePolicyHandler := d.Identity.ChallengePolicy
+	adminAdmissionHandler := d.Identity.AdminAdmission
 	threadHandler := d.Community.Thread
 	categoryHandler := d.Community.Category
 	postHandler := d.Community.Post
@@ -87,14 +89,15 @@ func Build(d Dependencies) *Router {
 	}, d.Features)
 	runtimeHTTPHandler.SetModuleCatalog(d.ModuleCatalog)
 
-	r.Use(middleware.Recovery())
+	r.Use(observability.Middleware(d.Metrics))
+	r.Use(middleware.Recovery(d.Metrics))
 	r.Use(middleware.CORS())
 	r.Use(middleware.TraceID())
 	r.Use(middleware.Logger())
-	r.Use(observability.Middleware(d.Metrics))
 	r.Use(platformfeature.PathGate(d.Features,
 		platformfeature.PathRule{Prefix: "/api/v1/spaces", FeatureID: "personal-space"},
 		platformfeature.PathRule{Prefix: "/api/v1/space", FeatureID: "personal-space"},
+		platformfeature.PathRule{Prefix: "/api/v1/appearance/space-style-packs", FeatureID: "personal-space"},
 		platformfeature.PathRule{Prefix: "/api/v1/u/", FeatureID: "personal-space"},
 		platformfeature.PathRule{
 			Prefix: "/api/v1/richtext", FeatureID: "controlled-richtext-article",
@@ -137,6 +140,7 @@ func Build(d Dependencies) *Router {
 		public.POST("/auth/register", userHandler.Register)
 		public.POST("/auth/login", userHandler.Login)
 		public.POST("/auth/admin/login", userHandler.AdminLogin)
+		public.POST("/auth/mfa/login/complete", userHandler.CompleteMFALogin)
 		public.POST("/auth/refresh", userHandler.Refresh)
 		public.POST("/auth/password-reset/challenge", userHandler.RequestPasswordReset)
 		public.POST("/auth/password-reset/verify", userHandler.VerifyPasswordReset)
@@ -158,6 +162,7 @@ func Build(d Dependencies) *Router {
 		public.GET("/spaces/files/:user_id/avatars/:filename", d.Space.ServeAvatarFile)
 		public.GET("/u/:username/contents", d.Space.ListContentsByUsername)
 		public.GET("/u/:username", d.Space.GetByUsername)
+		public.GET("/appearance/space-style-packs/:name/assets/*asset_path", d.Space.ServeSourceStylePackAsset)
 		public.GET("/categories", categoryHandler.List)
 		public.GET("/categories/tree", categoryHandler.ListTree)
 		public.GET("/categories/:id", categoryHandler.Get)
@@ -173,6 +178,12 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/auth/logout-all", userHandler.LogoutAll)
 		authenticated.GET("/auth/sessions", userHandler.ListSessions)
 		authenticated.DELETE("/auth/sessions/:id", userHandler.RevokeSession)
+		authenticated.GET("/auth/mfa", userHandler.GetMFAStatus)
+		authenticated.POST("/auth/mfa/totp/enrollment", userHandler.StartMFAEnrollment)
+		authenticated.POST("/auth/mfa/totp/confirm", userHandler.ConfirmMFAEnrollment)
+		authenticated.DELETE("/auth/mfa/totp", userHandler.DisableMFA)
+		authenticated.POST("/auth/mfa/recovery-codes/rotate", userHandler.RotateMFARecoveryCodes)
+		authenticated.POST("/auth/mfa/step-up", userHandler.StepUpMFA)
 		authenticated.POST("/auth/email-binding/challenge", userHandler.RequestEmailBinding)
 		authenticated.POST("/auth/email-binding/verify", userHandler.VerifyEmailBinding)
 		authenticated.POST("/auth/email-binding/complete", userHandler.CompleteEmailBinding)
@@ -265,6 +276,7 @@ func Build(d Dependencies) *Router {
 	}
 
 	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions, d.AdminAccess)
+	admin.SetAdminMFA(d.AdminMFA)
 	admin.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
 		admin.Permission("user", "suspend").POST("/users/:id/suspend", userHandler.SuspendUser)
@@ -368,6 +380,13 @@ func Build(d Dependencies) *Router {
 		admin.PermissionCode("identity.account.recovery.override").Operation("http.identity.recovery.cases.cancel").POST("/identity/recovery-cases/:id/cancel", userHandler.CancelAdminRecoveryCase)
 		admin.PermissionCode("identity.session.read").Operation("http.identity.session.admin_list").GET("/identity/users/:id/sessions", userHandler.ListAdminUserSessions)
 		admin.PermissionCode("identity.session.revoke").Operation("http.identity.session.admin_revoke_all").POST("/identity/users/:id/sessions/revoke-all", userHandler.RevokeAdminUserSessions)
+		admin.PermissionCode("identity.admin_account.read").Operation("http.identity.admin_account.list").GET("/identity/admin-accounts", adminAdmissionHandler.List)
+		admin.PermissionCode("identity.admin_account.read_audit").Operation("http.identity.admin_account.audits").GET("/identity/admin-accounts/audits", adminAdmissionHandler.ListAudits)
+		admin.PermissionCode("identity.admin_account.read").Operation("http.identity.admin_account.get").GET("/identity/admin-accounts/:id", adminAdmissionHandler.Get)
+		admin.PermissionCode("identity.admin_account.suspend").Operation("http.identity.admin_account.suspend").POST("/identity/admin-accounts/:id/suspend", adminAdmissionHandler.Suspend)
+		admin.PermissionCode("identity.admin_account.restore").Operation("http.identity.admin_account.restore").POST("/identity/admin-accounts/:id/restore", adminAdmissionHandler.Restore)
+		admin.PermissionCode("identity.mfa_policy.read").Operation("http.identity.mfa_policy.get").GET("/identity/mfa-policy", userHandler.GetMFAAdminPolicy)
+		admin.PermissionCode("identity.mfa_policy.update").Operation("http.identity.mfa_policy.update").PUT("/identity/mfa-policy", userHandler.UpdateMFAAdminPolicy)
 		admin.Permission("homepage", "configure").POST("/home/style-packs/validate", d.Homepage.ValidateStylePack)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example", d.Homepage.StylePackExample)
 		admin.Permission("homepage", "configure").GET("/home/style-packs/example.zip", d.Homepage.StylePackExampleZip)

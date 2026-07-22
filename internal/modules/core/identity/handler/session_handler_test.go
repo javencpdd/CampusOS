@@ -3,9 +3,14 @@ package handler
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base32"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,6 +185,108 @@ func TestAdminLoginRequiresIndependentAdminAccount(t *testing.T) {
 	if response := requestLogin(); response.Code != http.StatusUnauthorized {
 		t.Fatalf("revoked administrator entered Admin: status=%d body=%s", response.Code, response.Body.String())
 	}
+}
+
+func TestMFAHTTPLoginUsesOneTimeTicketBeforeIssuingSession(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx := context.Background()
+	now := time.Date(2026, time.July, 22, 11, 0, 0, 0, time.UTC)
+	users := repository.NewMemoryUserRepository()
+	user := &domain.User{ID: "33003", Username: "mfa_http", Nickname: "MFA HTTP", Email: "mfa-http@example.test", Status: domain.UserStatusActive, AuthVersion: 1, CreatedAt: now, UpdatedAt: now}
+	if err := users.Create(ctx, user); err != nil {
+		t.Fatal(err)
+	}
+	hash, err := auth.HashPassword("Secret123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := users.CreateVerifiedAccount(ctx, user.ID, user.Email, hash); err != nil {
+		t.Fatal(err)
+	}
+	jwtManager := auth.NewJWTManager(auth.JWTConfig{Secret: "mfa-http-session-secret", AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, Issuer: "test"})
+	userService := service.NewUserService(users, jwtManager, users, nil)
+	sessions, err := service.NewSessionService(repository.NewMemorySessionRepository(), users, jwtManager, service.SessionConfig{IPHashSecret: "mfa-http-ip-hash-secret", Clock: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reliable := reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore())
+	sessions.SetReliability(reliable)
+	roles := repository.NewMemoryRoleRepository()
+	permissions := service.NewPermissionService(roles, users)
+	mfa, err := service.NewMFAService(repository.NewMemoryMFARepository(), users, permissions, roles, service.MFAConfig{
+		ActiveKeyID: "v1", EncryptionKeys: map[string]string{"v1": "mfa-http-encryption-key-material"}, Issuer: "CampusOS Test", Clock: func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mfa.SetReliability(reliable)
+	mfa.SetSessionRevoker(sessions)
+	enrollment, err := mfa.StartEnrollment(ctx, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(enrollment.ManualKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mfa.ConfirmEnrollment(ctx, user.ID, handlerTOTPCode(secret, now.Unix()/30)); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(30 * time.Second)
+
+	handler := NewUserHandler(userService)
+	handler.SetSessionService(sessions, SessionHTTPConfig{})
+	handler.SetMFAService(mfa)
+	router := gin.New()
+	router.POST("/auth/login", handler.Login)
+	router.POST("/auth/mfa/login/complete", handler.CompleteMFALogin)
+
+	login := httptest.NewRecorder()
+	loginRequest := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"mfa-http@example.test","password":"Secret123"}`))
+	loginRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(login, loginRequest)
+	if login.Code != http.StatusOK || strings.Contains(login.Body.String(), "access_token") || strings.Contains(login.Body.String(), "refresh_token") {
+		t.Fatalf("first-factor response issued a session: status=%d body=%s", login.Code, login.Body.String())
+	}
+	var challenge struct {
+		Data service.MFARequirement `json:"data"`
+	}
+	if err := json.Unmarshal(login.Body.Bytes(), &challenge); err != nil {
+		t.Fatal(err)
+	}
+	if !challenge.Data.Required || challenge.Data.Ticket == "" {
+		t.Fatalf("missing MFA challenge ticket: %#v", challenge.Data)
+	}
+
+	complete := httptest.NewRecorder()
+	completeRequest := httptest.NewRequest(http.MethodPost, "/auth/mfa/login/complete", bytes.NewBufferString(`{"mfa_ticket":"`+challenge.Data.Ticket+`","code":"`+handlerTOTPCode(secret, now.Unix()/30)+`"}`))
+	completeRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(complete, completeRequest)
+	if complete.Code != http.StatusOK || !strings.Contains(complete.Body.String(), "access_token") {
+		t.Fatalf("MFA completion did not issue session: status=%d body=%s", complete.Code, complete.Body.String())
+	}
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodPost, "/auth/mfa/login/complete", bytes.NewBufferString(`{"mfa_ticket":"`+challenge.Data.Ticket+`","code":"`+handlerTOTPCode(secret, now.Unix()/30)+`"}`))
+	replayRequest.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(replay, replayRequest)
+	if replay.Code != http.StatusUnauthorized || !strings.Contains(replay.Body.String(), "identity.mfa.ticket_invalid") {
+		t.Fatalf("MFA ticket replay response=%d body=%s", replay.Code, replay.Body.String())
+	}
+}
+
+func handlerTOTPCode(secret []byte, step int64) string {
+	message := make([]byte, 8)
+	for index := 7; index >= 0; index-- {
+		message[index] = byte(step)
+		step >>= 8
+	}
+	mac := hmac.New(sha1.New, secret)
+	_, _ = mac.Write(message)
+	digest := mac.Sum(nil)
+	offset := int(digest[len(digest)-1] & 0x0f)
+	value := (int(digest[offset])&0x7f)<<24 | int(digest[offset+1])<<16 | int(digest[offset+2])<<8 | int(digest[offset+3])
+	return fmt.Sprintf("%06d", value%1000000)
 }
 
 func cookieByName(t *testing.T, cookies []*http.Cookie, name string) *http.Cookie {

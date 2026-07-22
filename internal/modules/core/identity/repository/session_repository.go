@@ -189,6 +189,10 @@ func cloneSession(session *domain.Session) *domain.Session {
 		return nil
 	}
 	copy := *session
+	if session.MFAAuthenticatedAt != nil {
+		stamp := *session.MFAAuthenticatedAt
+		copy.MFAAuthenticatedAt = &stamp
+	}
 	if session.RevokedAt != nil {
 		stamp := *session.RevokedAt
 		copy.RevokedAt = &stamp

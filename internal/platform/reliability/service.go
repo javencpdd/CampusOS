@@ -12,6 +12,7 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 // Service is the public platform port used by Core and Built-in Feature
@@ -20,6 +21,7 @@ type Service struct {
 	transactions transaction.Manager
 	store        Store
 	worker       *Worker
+	telemetry    telemetry
 }
 
 func NewService(transactions transaction.Manager, store Store) *Service {
@@ -32,6 +34,16 @@ func NewService(transactions transaction.Manager, store Store) *Service {
 		}
 	}
 	return &Service{transactions: transactions, store: store, worker: NewWorker(store, WorkerConfig{})}
+}
+
+func (s *Service) SetMeter(meter observability.Meter) {
+	if s == nil {
+		return
+	}
+	s.telemetry.meter = meter
+	if s.worker != nil {
+		s.worker.SetMeter(meter)
+	}
 }
 
 func (s *Service) Store() Store { return s.store }
@@ -160,7 +172,24 @@ func (s *Service) ProcessOnce(ctx context.Context) (int, error) {
 	return s.worker.ProcessOnce(ctx)
 }
 
-func (s *Service) Summary(ctx context.Context) (Summary, error) { return s.store.Summary(ctx) }
+func (s *Service) Summary(ctx context.Context) (Summary, error) {
+	summary, err := s.store.Summary(ctx)
+	if err != nil {
+		return Summary{}, err
+	}
+	if summary.OldestPending != nil {
+		summary.OldestPendingAgeSeconds = time.Since(summary.OldestPending.UTC()).Seconds()
+		if summary.OldestPendingAgeSeconds < 0 {
+			summary.OldestPendingAgeSeconds = 0
+		}
+	}
+	summary.Health = "healthy"
+	if summary.Dead > 0 || summary.OldestPendingAgeSeconds >= 300 {
+		summary.Health = "degraded"
+	}
+	s.telemetry.queue(summary)
+	return summary, nil
+}
 func (s *Service) List(ctx context.Context, filter EventFilter) ([]Event, error) {
 	pageSize := filter.Limit
 	if pageSize <= 0 {
@@ -194,6 +223,7 @@ type ReplayRequest struct {
 
 var ErrReplayIdempotencyKeyRequired = errors.New("Idempotency-Key is required for dead-letter replay")
 var ErrReplayAlreadyRequested = errors.New("dead-letter replay with this idempotency key has already been requested")
+var ErrReplayActorRequired = errors.New("replay actor is required")
 
 // ReplayCommand transitions a dead-letter event back to pending together with
 // its required command audit. A repeated request with the same actor/event/key
@@ -209,7 +239,7 @@ func (s *Service) ReplayCommand(ctx context.Context, id string, request ReplayRe
 		return nil, ErrEventNotFound
 	}
 	if request.ActorID == "" {
-		return nil, errors.New("replay actor is required")
+		return nil, ErrReplayActorRequired
 	}
 	if request.IdempotencyKey == "" {
 		return nil, ErrReplayIdempotencyKeyRequired

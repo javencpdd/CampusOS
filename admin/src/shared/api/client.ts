@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { adminCSRFToken, clearAdminSession, getAdminAccessToken } from '../../modules/identity/session'
+import { parseAPIError } from './error'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -28,13 +29,19 @@ api.interceptors.response.use(
     const isBootstrapAuthRequest =
       requestPath.includes('/auth/login') ||
       requestPath.includes('/auth/admin/login') ||
+      requestPath.includes('/auth/mfa/login/complete') ||
       requestPath.includes('/auth/refresh')
+	const requiresStepUp =
+	  error.response?.data?.error?.code === 'identity.mfa.step_up_required' &&
+	  !requestPath.includes('/auth/mfa/step-up') &&
+	  !requestPath.includes('/identity/mfa-policy')
+	if (requiresStepUp) window.dispatchEvent(new Event('campusos:admin-mfa-step-up-required'))
     if (error.response?.status === 401 && !isBootstrapAuthRequest) {
       clearAdminSession()
       window.dispatchEvent(new Event('campusos:admin-session-expired'))
       if (window.location.pathname !== '/login') window.location.assign('/login')
     }
-    return Promise.reject(error.response?.data || error)
+    return Promise.reject(parseAPIError(error.response?.data || error, error.response?.status))
   },
 )
 

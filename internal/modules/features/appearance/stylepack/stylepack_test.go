@@ -47,6 +47,58 @@ assets:
 	}
 }
 
+func TestLoadZipStrictRejectsLegacyPackageAndCompatibilityReadMarksItReadOnly(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: homepage
+name: legacy-home
+version: 0.1.0
+entry: templates/page.html
+`,
+		"templates/page.html": `<section>Legacy</section>`,
+	})
+
+	_, compatible := LoadZip(bytes.NewReader(data), int64(len(data)))
+	if !compatible.Valid || compatible.DeliveryStatus != DeliveryStatusLegacyReadOnly {
+		t.Fatalf("expected compatible legacy-readonly result, got %#v", compatible)
+	}
+	_, strict := LoadZipStrict(bytes.NewReader(data), int64(len(data)))
+	if strict.Valid || strict.DeliveryStatus != DeliveryStatusInvalid || !hasIssue(strict, "appearance.delivery_contract_required") {
+		t.Fatalf("expected strict delivery rejection, got %#v", strict)
+	}
+}
+
+func TestLoadZipStrictRequiresDualPreviewsAndReducedMotion(t *testing.T) {
+	data := zipFiles(t, map[string]string{
+		"style.yaml": `schema_version: page-style-pack.v1
+target: web
+name: incomplete-delivery
+version: 0.1.0
+delivery_contract: campusos.appearance-delivery/v1
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
+entry: templates/page.html
+styles: [styles/theme.css]
+preview_images:
+  desktop: preview-desktop.png
+effect:
+  runtime: sandbox-worker.v1
+  entry: effects/main.js
+`,
+		"templates/page.html":     `<section class="cstyle-page">Incomplete</section>`,
+		"styles/theme.css":        `.app-container[data-campusos-web] .cstyle-page { animation: rise 1s ease; } @media (max-width: 720px) { .app-container[data-campusos-web] .cstyle-page { padding: 12px; } }`,
+		"preview-desktop.png":     "desktop preview",
+		"effects/main.js":         `CampusEffect.register({ frame(api) { api.clear(); } });`,
+	})
+
+	_, result := LoadZipStrict(bytes.NewReader(data), int64(len(data)))
+	if result.Valid || !hasIssue(result, "appearance.preview_mobile_required") || !hasIssue(result, "appearance.reduced_motion_required") {
+		t.Fatalf("expected strict preview and reduced motion failures, got %#v", result)
+	}
+}
+
 func TestAuroraCampusReferencePackIsValid(t *testing.T) {
 	t.Setenv("RESOURCE_DIR", "../../../../../data/resources")
 	pack, result := LoadDir(SourceDir("web-theme", "aurora-campus"))
@@ -334,7 +386,7 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		pkg, result := LoadDir(tc.root)
+		pkg, result := LoadDirStrict(tc.root)
 		if !result.Valid {
 			t.Fatalf("expected %s to be valid, got %#v", tc.root, result.Errors)
 		}
@@ -345,6 +397,15 @@ func TestBuiltInSourceStylePacksAreValid(t *testing.T) {
 			t.Fatalf("expected desktop and mobile support for %s", tc.root)
 		}
 	}
+}
+
+func hasIssue(result ValidationResult, code string) bool {
+	for _, issue := range result.Issues {
+		if issue.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListSourcePacksIncludesBuiltInExamples(t *testing.T) {

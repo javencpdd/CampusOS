@@ -11,7 +11,7 @@ import { clearAdminSession, ensureAdminAccessToken, getAdminAccessToken, getAdmi
 
 const legacyRedirects = [
   '/admin', '/admin/users', '/admin/moderators', '/admin/threads', '/admin/categories', '/admin/docs', '/admin/architecture',
-  '/admin/plugins', '/admin/plugin-center', '/admin/features', '/admin/appearance', '/admin/extensions', '/admin/permissions', '/admin/integrations', '/admin/reviews', '/admin/events', '/admin/platform-logs', '/admin/challenge-policy',
+  '/admin/plugins', '/admin/plugin-center', '/admin/features', '/admin/appearance', '/admin/extensions', '/admin/permissions', '/admin/admin-admission', '/admin/integrations', '/admin/reviews', '/admin/events', '/admin/platform-logs', '/admin/challenge-policy',
 ]
 
 const router = createRouter({

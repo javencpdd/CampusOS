@@ -15,13 +15,18 @@
     <el-empty v-else-if="themeStore.catalog.items.length === 0" description="管理员尚未提供可用风格包" />
 
     <section v-else class="theme-list" aria-label="系统风格包">
+      <div class="preview-mode-control">
+        <span>交付预览</span>
+        <el-segmented v-model="previewViewport" :options="previewViewportOptions" aria-label="风格包预览设备" />
+      </div>
       <article
         v-for="item in themeStore.catalog.items"
         :key="item.name"
         class="theme-item"
         :class="{ active: item.name === themeStore.activeName }"
+        :data-style-pack-name="item.name"
       >
-        <img v-if="item.preview_url" :src="item.preview_url" :alt="`${item.display_name} 预览`" />
+        <img v-if="previewURL(item)" :src="previewURL(item)" :alt="`${item.display_name} ${previewViewport} 预览`" />
         <div v-else class="theme-preview-placeholder">
           <el-icon><Picture /></el-icon>
         </div>
@@ -130,6 +135,11 @@ const userStore = useUserStore()
 const themeStore = useWebThemeStore()
 const configurationVisible = ref(false)
 const configurationDraft = ref<Record<string, string | number | boolean>>({})
+const previewViewport = ref<'desktop' | 'mobile'>('desktop')
+const previewViewportOptions = [
+  { label: '桌面端', value: 'desktop' },
+  { label: '移动端', value: 'mobile' },
+]
 
 const userID = () => userStore.user?.id
 const capabilityLabel = (capability: string) =>
@@ -144,6 +154,11 @@ const colorTokens = (item: WebThemeItem) =>
     .filter(([key, value]) => key.startsWith('color.') && /^#[0-9a-f]{6}$/i.test(value))
     .slice(0, 5)
     .map(([key, value]) => ({ key, value }))
+
+const previewURL = (item: WebThemeItem) =>
+  previewViewport.value === 'mobile'
+    ? item.mobile_preview_url || item.preview_url
+    : item.desktop_preview_url || item.preview_url
 
 const selectTheme = async (item: WebThemeItem) => {
   const grants: string[] = []
@@ -266,6 +281,16 @@ const resetConfiguration = () => {
   gap: 14px;
 }
 
+.preview-mode-control {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--campus-muted-color, var(--campus-color-muted, #606266));
+  font-size: 13px;
+}
+
 .theme-item {
   display: grid;
   grid-template-rows: 190px minmax(0, 1fr);
@@ -382,6 +407,11 @@ const resetConfiguration = () => {
 
   .theme-list {
     grid-template-columns: 1fr;
+  }
+
+  .preview-mode-control {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

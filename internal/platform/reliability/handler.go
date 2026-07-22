@@ -1,12 +1,11 @@
 package reliability
 
 import (
-	"errors"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -102,7 +101,7 @@ func (h *Handler) Summary(c *gin.Context) {
 	}
 	summary, err := h.service.Summary(c.Request.Context())
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89101, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilitySummaryUnavailable, nil))
 		return
 	}
 	response.Success(c, summary)
@@ -121,7 +120,7 @@ func (h *Handler) ListEvents(c *gin.Context) {
 		Type:   strings.TrimSpace(c.Query("type")),
 	}, page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89102, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityEventsUnavailable, nil))
 		return
 	}
 	result := make([]eventResponse, 0, len(items))
@@ -141,7 +140,7 @@ func (h *Handler) ListAttempts(c *gin.Context) {
 	}
 	items, total, err := h.service.ListAttemptsPage(c.Request.Context(), strings.TrimSpace(c.Query("event_id")), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89111, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityAttemptsUnavailable, nil))
 		return
 	}
 	result := make([]attemptResponse, 0, len(items))
@@ -164,16 +163,7 @@ func (h *Handler) Replay(c *gin.Context) {
 		ActorID: actorID, RequestID: requestID, IdempotencyKey: c.GetHeader("Idempotency-Key"),
 	})
 	if err != nil {
-		status := http.StatusInternalServerError
-		switch {
-		case errors.Is(err, ErrEventNotFound):
-			status = http.StatusNotFound
-		case errors.Is(err, ErrEventNotReplayable), errors.Is(err, ErrReplayIdempotencyKeyRequired), errors.Is(err, ErrReplayAlreadyRequested):
-			status = http.StatusConflict
-		case strings.Contains(err.Error(), "replay actor is required"):
-			status = http.StatusUnauthorized
-		}
-		response.Error(c, status, 89103, err.Error())
+		response.WriteError(c, replayErrorTranslator.Translate(err))
 		return
 	}
 	response.Success(c, safeEventResponse(*event))
@@ -189,7 +179,7 @@ func (h *Handler) ListWorkers(c *gin.Context) {
 	}
 	items, total, err := h.service.ListWorkersPage(c.Request.Context(), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89107, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityWorkersUnavailable, nil))
 		return
 	}
 	respondReliabilityList(c, items, total, page)
@@ -205,7 +195,7 @@ func (h *Handler) ListOperations(c *gin.Context) {
 	}
 	items, total, err := h.service.ListOperationsPage(c.Request.Context(), strings.TrimSpace(c.Query("kind")), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89108, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityOperationsUnavailable, nil))
 		return
 	}
 	result := make([]operationResponse, 0, len(items))
@@ -229,7 +219,7 @@ func (h *Handler) ListCommandAudits(c *gin.Context) {
 	}
 	items, total, err := h.service.ListCommandAuditsPage(c.Request.Context(), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89112, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityAuditsUnavailable, nil))
 		return
 	}
 	result := make([]commandAuditResponse, 0, len(items))
@@ -255,7 +245,7 @@ func (h *Handler) ListCompatibility(c *gin.Context) {
 	}
 	items, total, err := h.service.ListCompatibilityPage(c.Request.Context(), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89105, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityCompatibilityUnavailable, nil))
 		return
 	}
 	result := make([]compatibilityResponse, 0, len(items))
@@ -276,14 +266,14 @@ func (h *Handler) PreviewRetention(c *gin.Context) {
 	if raw := strings.TrimSpace(c.Query("before")); raw != "" {
 		parsed, err := time.Parse(time.RFC3339, raw)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, 89106, "before must use RFC3339")
+			response.ErrorDescriptor(c, apperror.ReliabilityRetentionInvalid, nil)
 			return
 		}
 		before = parsed
 	}
 	preview, err := h.service.PreviewRetention(c.Request.Context(), target, before)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 89106, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityRetentionInvalid, nil))
 		return
 	}
 	response.Success(c, preview)
@@ -295,14 +285,14 @@ func (h *Handler) StartRetentionPreview(c *gin.Context) {
 	if raw := strings.TrimSpace(c.Query("before")); raw != "" {
 		parsed, err := time.Parse(time.RFC3339, raw)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, 89109, "before must use RFC3339")
+			response.ErrorDescriptor(c, apperror.ReliabilityRetentionStartInvalid, nil)
 			return
 		}
 		before = parsed
 	}
 	run, err := h.service.StartRetentionPreview(c.Request.Context(), target, before)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 89109, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityRetentionStartInvalid, nil))
 		return
 	}
 	response.Created(c, run)
@@ -318,7 +308,7 @@ func (h *Handler) ListRetentionRuns(c *gin.Context) {
 	}
 	items, total, err := h.service.ListRetentionRunsPage(c.Request.Context(), page)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 89110, err.Error())
+		response.WriteError(c, apperror.Wrap(err, apperror.ReliabilityRetentionRunsUnavailable, nil))
 		return
 	}
 	respondReliabilityList(c, items, total, page)
@@ -340,7 +330,7 @@ func (h *Handler) allowQuery(c *gin.Context) bool {
 		seconds = 1
 	}
 	c.Header("Retry-After", strconv.Itoa(seconds))
-	response.Error(c, http.StatusTooManyRequests, 89113, "reliability query rate limit exceeded")
+	response.ErrorDescriptor(c, apperror.ReliabilityRateLimited, nil)
 	return false
 }
 
@@ -356,7 +346,7 @@ func parseReliabilityPage(c *gin.Context, defaultSize, maximumSize int) (PageReq
 	page, pageErr := strconv.Atoi(pageRaw)
 	pageSize, pageSizeErr := strconv.Atoi(pageSizeRaw)
 	if pageErr != nil || page < 1 || pageSizeErr != nil || pageSize < 1 || pageSize > maximumSize || page > 1_000_000 {
-		response.ErrorWithDetails(c, http.StatusBadRequest, 10001, "page and page_size must be bounded positive integers", gin.H{
+		response.ErrorDescriptor(c, apperror.RequestInvalid, gin.H{
 			"page_minimum": 1, "page_maximum": 1_000_000, "page_size_minimum": 1, "page_size_maximum": maximumSize,
 		})
 		return PageRequest{}, false

@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.capacity-budget/v1",
+  "max_p95_regression_ratio": 0.2,
+  "max_p95_absolute_regression_ms": 8,
+  "max_goroutine_growth_ratio": 0.2,
+  "max_heap_alloc_growth_ratio": 0.5,
+  "max_db_empty_wait_seconds": 1,
+  "max_queue_age_seconds": 300,
+  "require_successful_requests": true
+}

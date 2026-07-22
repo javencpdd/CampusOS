@@ -305,6 +305,12 @@
           <div class="source-pack-panel">
             <div class="source-pack-header">
               <strong>源码目录风格包</strong>
+              <el-segmented
+                v-model="sourcePreviewViewport"
+                :options="sourcePreviewViewportOptions"
+                size="small"
+                aria-label="个人主页风格包预览设备"
+              />
               <el-button
                 text
                 type="primary"
@@ -322,9 +328,16 @@
                 type="button"
                 class="source-pack-option"
                 :class="{ active: selectedSourceStylePackName === pack.name, invalid: !pack.validation.valid }"
+                :data-source-style-pack-name="pack.name"
                 :disabled="!pack.validation.valid"
                 @click="selectedSourceStylePackName = pack.name"
               >
+                <img
+                  v-if="sourcePackPreviewURL(pack)"
+                  class="source-pack-preview"
+                  :src="sourcePackPreviewURL(pack)"
+                  :alt="`${pack.display_name || pack.name} ${sourcePreviewViewport} 预览`"
+                />
                 <span>
                   <strong>{{ pack.display_name || pack.name }}</strong>
                   <small>{{ pack.name }} · {{ pack.version || 'unknown' }}</small>
@@ -416,6 +429,7 @@ interface PublicSpacePayload {
 
 interface StyleValidationResult {
   valid: boolean
+  delivery_status?: 'valid' | 'legacy-readonly' | 'invalid'
   errors?: string[]
   warnings?: string[]
 }
@@ -464,6 +478,11 @@ interface SourceStylePack {
   version?: string
   display_name?: string
   description?: string
+  checksum?: string
+  previews?: {
+    desktop?: string
+    mobile?: string
+  }
   validation: StyleValidationResult
 }
 
@@ -532,6 +551,11 @@ const stylePackInput = ref<HTMLInputElement | null>(null)
 const stylePackFile = ref<File | null>(null)
 const sourceStylePacks = ref<SourceStylePack[]>([])
 const selectedSourceStylePackName = ref('')
+const sourcePreviewViewport = ref<'desktop' | 'mobile'>('desktop')
+const sourcePreviewViewportOptions = [
+  { label: '桌面端', value: 'desktop' },
+  { label: '移动端', value: 'mobile' },
+]
 const selectedStyleName = ref(styleExamples[0].manifest.name)
 const styleText = ref(JSON.stringify(styleExamples[0], null, 2))
 const htmlText = ref('')
@@ -553,6 +577,12 @@ const activeComponents = computed(() => activeManifest.value?.components || [])
 const selectedSourceStylePack = computed(
   () => sourceStylePacks.value.find((pack) => pack.name === selectedSourceStylePackName.value) || null,
 )
+const sourcePackPreviewURL = (pack: SourceStylePack) => {
+  const asset = pack.previews?.[sourcePreviewViewport.value]
+  if (!asset) return ''
+  const encodedPath = asset.split('/').map(encodeURIComponent).join('/')
+  return `/api/v1/appearance/space-style-packs/${encodeURIComponent(pack.name)}/assets/${encodedPath}`
+}
 const avatarInitial = computed(() => {
   const name = owner.value?.nickname || owner.value?.username || 'U'
   return name.slice(0, 1).toUpperCase()
@@ -1097,6 +1127,9 @@ onMounted(loadSpace)
   gap: 12px;
   margin-bottom: 12px;
 }
+.source-pack-header > strong {
+  margin-right: auto;
+}
 .source-pack-grid {
   display: grid;
   gap: 10px;
@@ -1115,6 +1148,14 @@ onMounted(loadSpace)
   background: #fff;
   text-align: left;
   cursor: pointer;
+}
+.source-pack-preview {
+  width: 76px;
+  height: 48px;
+  flex: 0 0 76px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  object-fit: cover;
 }
 .source-pack-option.active {
   border-color: #409eff;

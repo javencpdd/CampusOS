@@ -69,6 +69,46 @@ func TestAdminRouteContractsIncludeManagementPlaneAdmission(t *testing.T) {
 	}
 }
 
+func TestMFARouteContractsBindTicketsCSRFAndPolicyPermission(t *testing.T) {
+	root, err := FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type expected struct {
+		auth       string
+		ownership  string
+		permission string
+	}
+	wanted := map[string]expected{
+		"POST /api/v1/auth/mfa/login/complete":                              {auth: "none", ownership: "mfa-ticket"},
+		"POST /api/v1/auth/mfa/totp/enrollment":                             {auth: "jwt+csrf", ownership: "current-session"},
+		"POST /api/v1/auth/mfa/step-up":                                     {auth: "jwt+csrf", ownership: "current-session"},
+		"PUT /api/v1/identity/mfa-policy":                                   {auth: "jwt+admin-account+permission", ownership: "none", permission: "identity.mfa_policy.update"},
+		"GET /api/v1/appearance/space-style-packs/:name/assets/*asset_path": {auth: "none", ownership: "none"},
+	}
+	for _, route := range routes {
+		key := route.Method + " " + route.Path
+		expectation, ok := wanted[key]
+		if !ok {
+			continue
+		}
+		if route.Auth != expectation.auth || route.Ownership != expectation.ownership || route.PermissionCode != expectation.permission {
+			t.Fatalf("route %s contract = auth=%s ownership=%s permission=%s", key, route.Auth, route.Ownership, route.PermissionCode)
+		}
+		if key == "GET /api/v1/appearance/space-style-packs/:name/assets/*asset_path" && route.ModuleOwner != "feature.personal-space" {
+			t.Fatalf("space style asset owner = %s", route.ModuleOwner)
+		}
+		delete(wanted, key)
+	}
+	if len(wanted) != 0 {
+		t.Fatalf("missing MFA/resource route contracts: %#v", wanted)
+	}
+}
+
 func TestCategoryOperationCodesMatchDatabaseContractAndKeepLegacyAliases(t *testing.T) {
 	root, err := FindRepositoryRoot(".")
 	if err != nil {

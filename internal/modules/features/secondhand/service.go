@@ -133,13 +133,21 @@ func (s *Service) ListPublic(ctx context.Context, filter domain.ThreadListFilter
 	if err != nil {
 		return nil, 0, normalizeCommunityError(err)
 	}
+	threadIDs := make([]string, 0, len(threads))
+	for _, thread := range threads {
+		threadIDs = append(threadIDs, thread.ID)
+	}
+	details, err := s.store.GetMany(ctx, threadIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("load secondhand details: %w", normalizeStoreError(err))
+	}
 	results := make([]*Result, 0, len(threads))
 	for _, thread := range threads {
-		detail, detailErr := s.store.Get(ctx, thread.ID)
-		if detailErr != nil {
+		detail, ok := details[thread.ID]
+		if !ok || detail == nil {
 			// A visible typed thread without its feature detail violates the
 			// migration contract. Do not leak a partial record to callers.
-			return nil, 0, fmt.Errorf("load secondhand detail for thread %s: %w", thread.ID, normalizeStoreError(detailErr))
+			return nil, 0, fmt.Errorf("load secondhand detail for thread %s: %w", thread.ID, ErrNotFound)
 		}
 		results = append(results, &Result{Thread: thread, Detail: detail})
 	}

@@ -2,7 +2,9 @@ package campusos
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -140,6 +142,40 @@ func TestHostClientReturnsHTTPErrorBody(t *testing.T) {
 
 	if _, _, err := client.GetConfig(t.Context(), "entrypoint"); err == nil {
 		t.Fatalf("expected error")
+	} else if !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("permission sentinel was not preserved: %v", err)
+	}
+}
+
+func TestHostClientParsesStructuredCampusOSError(t *testing.T) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"code":10010,"msg":"legacy","error":{"code":"identity.registration_verification_rate_limited","message":"verification request is temporarily limited","request_id":"request-1","retryable":true,"details":{"retry_after":60}},"request_id":"request-1"}`))
+	}))
+
+	_, _, err := client.GetConfig(t.Context(), "entrypoint")
+	var hostError *HostAPIError
+	if !errors.As(err, &hostError) {
+		t.Fatalf("error type = %T, want HostAPIError", err)
+	}
+	if hostError.LegacyCode != 10010 || hostError.MachineCode != "identity.registration_verification_rate_limited" || hostError.RequestID != "request-1" || !hostError.Retryable {
+		t.Fatalf("structured error was not parsed: %#v", hostError)
+	}
+	if strings.Contains(hostError.Error(), "retry_after") || strings.Contains(hostError.Error(), hostError.Body) {
+		t.Fatalf("raw response leaked through Error(): %s", hostError.Error())
+	}
+}
+
+func TestHostClientFallsBackToLegacyErrorEnvelope(t *testing.T) {
+	client := newTestHostClient("sdk-plugin", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":10001,"msg":"legacy invalid request"}`))
+	}))
+
+	_, _, err := client.GetConfig(t.Context(), "entrypoint")
+	var hostError *HostAPIError
+	if !errors.As(err, &hostError) || hostError.LegacyCode != 10001 || hostError.Message != "legacy invalid request" || hostError.MachineCode != "request.failed" {
+		t.Fatalf("legacy error was not parsed: %#v err=%v", hostError, err)
 	}
 }
 

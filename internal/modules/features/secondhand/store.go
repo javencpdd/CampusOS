@@ -16,6 +16,7 @@ import (
 type Store interface {
 	Create(context.Context, *Detail) error
 	Get(context.Context, string) (*Detail, error)
+	GetMany(context.Context, []string) (map[string]*Detail, error)
 	Update(context.Context, *Detail, int64) error
 }
 
@@ -61,6 +62,37 @@ func (s *PgStore) Get(ctx context.Context, threadID string) (*Detail, error) {
 		return nil, err
 	}
 	return detail, nil
+}
+
+func (s *PgStore) GetMany(ctx context.Context, threadIDs []string) (map[string]*Detail, error) {
+	result := make(map[string]*Detail, len(threadIDs))
+	if len(threadIDs) == 0 {
+		return result, nil
+	}
+	rows, err := s.db(ctx).Query(ctx, `SELECT
+		thread_id, price_minor, currency, item_condition, trade_method, trade_status,
+		location_scope, version, created_by, created_at, updated_at
+		FROM secondhand_details
+		WHERE thread_id = ANY($1)`, threadIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		detail := &Detail{}
+		if err := rows.Scan(
+			&detail.ThreadID, &detail.PriceMinor, &detail.Currency, &detail.ItemCondition,
+			&detail.TradeMethod, &detail.TradeStatus, &detail.LocationScope, &detail.Version,
+			&detail.CreatedBy, &detail.CreatedAt, &detail.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		result[detail.ThreadID] = detail
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (s *PgStore) Update(ctx context.Context, detail *Detail, expectedVersion int64) error {
@@ -142,6 +174,18 @@ func (s *MemoryStore) Get(_ context.Context, threadID string) (*Detail, error) {
 		return nil, ErrNotFound
 	}
 	return cloneDetail(detail), nil
+}
+
+func (s *MemoryStore) GetMany(_ context.Context, threadIDs []string) (map[string]*Detail, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make(map[string]*Detail, len(threadIDs))
+	for _, threadID := range threadIDs {
+		if detail, ok := s.details[threadID]; ok {
+			result[threadID] = cloneDetail(detail)
+		}
+	}
+	return result, nil
 }
 
 func (s *MemoryStore) Update(_ context.Context, detail *Detail, expectedVersion int64) error {

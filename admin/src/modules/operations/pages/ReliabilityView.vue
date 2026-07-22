@@ -41,8 +41,41 @@
       <article class="summary-item summary-email" aria-label="邮件投递状态">
         <span>邮件投递</span>
         <strong>{{ emailDeliveryLabel }}</strong>
-        <small v-if="emailDelivery.last_error">{{ emailDelivery.last_error }}</small>
+        <small v-if="emailDelivery.last_error">{{
+          emailDelivery.last_error
+        }}</small>
       </article>
+    </section>
+
+    <section class="operations-health" aria-label="可靠任务健康诊断">
+      <div
+        class="health-state"
+        :class="`health-${summary.health || 'unknown'}`"
+      >
+        <span class="health-dot" aria-hidden="true"></span>
+        <div>
+          <small>队列健康</small>
+          <strong>{{ summaryHealthLabel }}</strong>
+        </div>
+      </div>
+      <div class="health-stat">
+        <small>积压年龄</small>
+        <strong>{{ oldestPendingAgeLabel }}</strong>
+      </div>
+      <div class="health-stat">
+        <small>失败趋势</small>
+        <strong>{{ failureTrendLabel }}</strong>
+      </div>
+      <div class="health-stat">
+        <small>近 24 小时失败</small>
+        <strong>{{ summary.failed_attempts_24h || 0 }}</strong>
+      </div>
+      <el-tooltip content="按失败队列或重试状态打开事件诊断">
+        <el-button type="warning" plain @click="openDiagnostics">
+          <el-icon><DocumentChecked /></el-icon>
+          进入诊断
+        </el-button>
+      </el-tooltip>
     </section>
 
     <el-tabs v-model="activeTab" class="reliability-tabs">
@@ -470,7 +503,9 @@
           eventStatusLabel(selectedEvent.status)
         }}</el-descriptions-item>
         <el-descriptions-item label="尝试次数"
-          >{{ selectedEvent.attempts }}/{{ selectedEvent.max_attempts }}</el-descriptions-item
+          >{{ selectedEvent.attempts }}/{{
+            selectedEvent.max_attempts
+          }}</el-descriptions-item
         >
         <el-descriptions-item label="租约代次">{{
           selectedEvent.lease_generation
@@ -623,13 +658,40 @@ const summaryCards = computed(() => [
 const emailDeliveryLabel = computed(() => {
   const provider = emailDelivery.provider || "未加载";
   const state = emailDelivery.state || "unknown";
-  const stateLabel = state === "healthy" ? "正常" : state === "degraded" ? "降级" : "未知";
+  const stateLabel =
+    state === "healthy" ? "正常" : state === "degraded" ? "降级" : "未知";
   return `${provider} · ${stateLabel}`;
 });
+const summaryHealthLabel = computed(() =>
+  summary.health === "healthy"
+    ? "正常"
+    : summary.health === "degraded"
+      ? "需关注"
+      : "未知",
+);
+const oldestPendingAgeLabel = computed(() => {
+  const seconds = Math.max(0, Number(summary.oldest_pending_age_seconds) || 0);
+  if (seconds < 1) return "无积压";
+  if (seconds < 60) return `${Math.round(seconds)} 秒`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} 分钟`;
+  return `${(seconds / 3600).toFixed(1)} 小时`;
+});
+const failureTrendLabel = computed(() => {
+  const recent = Number(summary.failed_attempts_1h) || 0;
+  const dailyAverage = (Number(summary.failed_attempts_24h) || 0) / 24;
+  if (recent === 0) return "近 1 小时无失败";
+  if (recent > Math.max(1, dailyAverage * 2)) return `上升 · ${recent} 次/小时`;
+  return `平稳 · ${recent} 次/小时`;
+});
 const finalizationPending = computed(() => {
-  if (selectedEvent.value?.status !== "processing" || attempts.value.length === 0)
+  if (
+    selectedEvent.value?.status !== "processing" ||
+    attempts.value.length === 0
+  )
     return false;
-  const latestAttempt = Math.max(...attempts.value.map((item) => Number(item.attempt) || 0));
+  const latestAttempt = Math.max(
+    ...attempts.value.map((item) => Number(item.attempt) || 0),
+  );
   const latest = attempts.value.filter(
     (item) => Number(item.attempt) === latestAttempt,
   );
@@ -658,7 +720,10 @@ const loadSummary = async () => {
   Object.assign(summary, payload(await reliabilityApi.summary()) || {});
 };
 const loadEmailDelivery = async () => {
-  Object.assign(emailDelivery, payload(await reliabilityApi.emailDeliveryStatus()) || {});
+  Object.assign(
+    emailDelivery,
+    payload(await reliabilityApi.emailDeliveryStatus()) || {},
+  );
 };
 const loadEvents = async () => {
   loadingEvents.value = true;
@@ -676,6 +741,12 @@ const loadEvents = async () => {
 const filterEvents = () => {
   pages.events.page = 1;
   return loadEvents();
+};
+const openDiagnostics = async () => {
+  activeTab.value = "events";
+  eventFilters.status =
+    summary.dead > 0 ? "dead" : summary.retry > 0 ? "retry" : "";
+  await filterEvents();
 };
 const loadWorkers = async () => {
   loadingWorkers.value = true;
@@ -973,6 +1044,53 @@ onMounted(loadAll);
   font-size: 12px;
   line-height: 1.3;
 }
+.operations-health {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) repeat(
+      3,
+      minmax(130px, 1fr)
+    ) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 14px;
+  border: 1px solid #dfe7f1;
+  background: #f8fafc;
+}
+.health-state,
+.health-stat {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.health-state > div,
+.health-stat {
+  display: grid;
+  gap: 2px;
+}
+.health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: #94a3b8;
+}
+.health-healthy .health-dot {
+  background: #15803d;
+}
+.health-degraded .health-dot {
+  background: #c2410c;
+}
+.operations-health small {
+  color: #64748b;
+  font-size: 12px;
+}
+.operations-health strong {
+  color: #273449;
+  font-size: 14px;
+  line-height: 1.35;
+}
 .reliability-tabs {
   background: #fff;
   border: 1px solid #dfe7f1;
@@ -1072,6 +1190,12 @@ onMounted(loadAll);
   .two-column {
     grid-template-columns: 1fr;
   }
+  .operations-health {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .operations-health :deep(.el-button) {
+    justify-self: start;
+  }
 }
 @media (max-width: 640px) {
   .page-header {
@@ -1095,6 +1219,9 @@ onMounted(loadAll);
   }
   .reliability-tabs {
     padding: 0 10px 12px;
+  }
+  .operations-health {
+    grid-template-columns: 1fr;
   }
   .toolbar-band :deep(.el-input),
   .toolbar-band :deep(.el-select),

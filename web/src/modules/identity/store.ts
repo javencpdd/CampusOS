@@ -25,13 +25,29 @@ export const useUserStore = defineStore('user', () => {
     clearAccessToken()
   }
 
+  function applyLoginResponse(data: any) {
+    if (!data?.user || !data?.access_token) return false
+    user.value = data.user
+    token.value = data.access_token
+    setAccessToken(data.access_token)
+    return true
+  }
+
+  function updateAccessToken(accessToken: string) {
+    if (!accessToken) return
+    token.value = accessToken
+    setAccessToken(accessToken)
+  }
+
   async function login(email: string, password: string) {
     const res: any = await authApi.login({ email, password })
-    if (res.code === 0) {
-      user.value = res.data.user
-      token.value = res.data.access_token
-      setAccessToken(res.data.access_token)
-    }
+    if (res.code === 0 && !res?.data?.mfa_required) applyLoginResponse(res.data)
+    return res
+  }
+
+  async function completeMFA(ticket: string, code: string) {
+    const res: any = await authApi.completeMFALogin({ mfa_ticket: ticket, code })
+    if (res.code === 0) applyLoginResponse(res.data)
     return res
   }
 
@@ -106,6 +122,8 @@ export const useUserStore = defineStore('user', () => {
     token,
     isLoggedIn,
     login,
+    completeMFA,
+    updateAccessToken,
     restore,
     requestRegistrationChallenge,
     verifyRegistrationChallenge,

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +19,7 @@ func TestAPIIndexNegotiatesJSONAndHTML(t *testing.T) {
 	jsonRequest.Header.Set("Accept", "application/json")
 	jsonRecorder := httptest.NewRecorder()
 	r.ServeHTTP(jsonRecorder, jsonRequest)
-	if jsonRecorder.Code != http.StatusOK || !strings.Contains(jsonRecorder.Body.String(), `"version":"v1"`) || !strings.Contains(jsonRecorder.Body.String(), `"application_version":"v0.11.0"`) {
+	if jsonRecorder.Code != http.StatusOK || !strings.Contains(jsonRecorder.Body.String(), `"version":"v1"`) || !strings.Contains(jsonRecorder.Body.String(), `"application_version":"`+platformversion.Display+`"`) {
 		t.Fatalf("expected JSON API index, status=%d body=%s", jsonRecorder.Code, jsonRecorder.Body.String())
 	}
 

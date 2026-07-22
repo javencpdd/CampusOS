@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000038</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000040</el-tag>
     </section>
 
     <el-alert
@@ -360,16 +360,19 @@ const databaseTables: DbTable[] = [
     title: "管理员准入账号",
     domain: "identity",
     purpose:
-      "独立保存管理平面的准入状态、凭据引用和最近认证时间；管理员角色负责授权，本表负责是否允许进入 Admin。",
+      "独立保存管理平面的准入状态、凭据引用、最近认证和变更原因；管理员角色负责授权，本表负责是否允许进入 Admin。",
     fields: [
       "id",
       "user_id",
       "credential_account_id",
       "status",
+      "status_reason",
+      "status_changed_by",
+      "status_changed_at",
       "last_authenticated_at",
       "version",
     ],
-    migration: "000038",
+    migration: "000038 + 000039",
     relationshipNote:
       "user_id 与 credential_account_id 均由外键保护；全局 admin 角色变更通过数据库触发器同步 active/revoked，suspended 不会被普通角色刷新静默恢复。",
   },
@@ -433,10 +436,46 @@ const databaseTables: DbTable[] = [
     name: "sessions",
     title: "刷新会话",
     domain: "identity",
-    purpose: "保存不透明 Refresh Token 的摘要、设备、轮换家族和撤销状态，不保存原始凭据。",
-    fields: ["id", "user_id", "refresh_token_digest", "token_family_id", "revoked_at", "expires_at"],
-    migration: "000001 + 000016 + 000030",
-    relationshipNote: "一个用户可在多个设备保持会话；user_id 由外键保护，密码恢复或邮箱绑定会撤销关联会话。",
+    purpose: "保存不透明 Refresh Token 的摘要、设备、轮换家族、撤销状态与服务端 MFA 认证强度，不保存原始凭据。",
+    fields: ["id", "user_id", "refresh_token_digest", "token_family_id", "authentication_strength", "mfa_authenticated_at", "revoked_at", "expires_at"],
+    migration: "000001 + 000016 + 000030 + 000040",
+    relationshipNote: "一个用户可在多个设备保持会话；user_id 由外键保护，密码恢复、邮箱绑定、管理员暂停或 MFA 关闭会撤销对应会话。",
+  },
+  {
+    name: "identity_mfa_totp_methods",
+    title: "TOTP 认证器",
+    domain: "identity",
+    purpose: "保存用户认证器的加密信封、状态和最近接受时间步；不保存明文 TOTP Secret、二维码或手工密钥。",
+    fields: ["id", "user_id", "status", "key_id", "nonce", "ciphertext", "last_accepted_step", "enrollment_expires_at"],
+    migration: "000040",
+    relationshipNote: "user_id 由外键指向 users；每个用户最多一个 active 和一个 pending 认证器，重放保护依赖 last_accepted_step。",
+  },
+  {
+    name: "identity_mfa_tickets",
+    title: "MFA 登录 Ticket",
+    domain: "identity",
+    purpose: "保存密码成功后的短期单用途 MFA Ticket 摘要、用途、受众与失败次数；不保存原始 Ticket。",
+    fields: ["id", "user_id", "audience", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
+    migration: "000040",
+    relationshipNote: "user_id 由外键指向 users；digest 全局唯一，消费和失败次数在事务中更新，不能用作长期会话。",
+  },
+  {
+    name: "identity_mfa_recovery_codes",
+    title: "MFA 恢复码摘要",
+    domain: "identity",
+    purpose: "保存一次性恢复码的不可逆摘要和使用时间；页面只在生成时显示原始恢复码一次。",
+    fields: ["id", "user_id", "method_id", "code_digest", "used_at", "created_at"],
+    migration: "000040",
+    relationshipNote: "user_id 与 method_id 分别由外键指向 users 和 identity_mfa_totp_methods；一条摘要只能消费一次。",
+  },
+  {
+    name: "identity_mfa_policies",
+    title: "管理员 MFA 策略",
+    domain: "identity",
+    purpose: "保存管理员 MFA 的 off、注册宽限期或 required 策略、版本和更新人；不保存个人认证器材料。",
+    fields: ["id", "mode", "grace_ends_at", "version", "updated_by", "updated_at"],
+    migration: "000040",
+    relationshipNote: "固定 admin 策略行；updated_by 可空外键指向 users，策略更新使用版本检查和 required audit。",
   },
   {
     name: "roles",
@@ -1043,6 +1082,51 @@ const relations: Relation[] = [
     domains: ["identity"],
   },
   {
+    id: "users-mfa-totp-methods",
+    source: "users",
+    target: "identity_mfa_totp_methods",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> user_id",
+    domains: ["identity"],
+  },
+  {
+    id: "users-mfa-tickets",
+    source: "users",
+    target: "identity_mfa_tickets",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> user_id",
+    domains: ["identity"],
+  },
+  {
+    id: "users-mfa-recovery-codes",
+    source: "users",
+    target: "identity_mfa_recovery_codes",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> user_id",
+    domains: ["identity"],
+  },
+  {
+    id: "mfa-methods-recovery-codes",
+    source: "identity_mfa_totp_methods",
+    target: "identity_mfa_recovery_codes",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> method_id",
+    domains: ["identity"],
+  },
+  {
+    id: "users-mfa-policies",
+    source: "users",
+    target: "identity_mfa_policies",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> updated_by (optional)",
+    domains: ["identity"],
+  },
+  {
     id: "users-accounts",
     source: "users",
     target: "accounts",
@@ -1637,6 +1721,7 @@ const storageRows = [
     contents: [
       "modules/core、modules/features：campusos.module/v1 描述符",
       "internal/modules/core、internal/modules/features：编译期实现",
+      "internal/platform/observability：有界指标、Admin 摘要与可选 loopback Prometheus 导出",
     ],
     note: "模块随主程序构建；Core 不可停用，Built-in Feature 由 /features 管理。",
   },
@@ -2093,6 +2178,24 @@ const migrations = [
     summary:
       "建立独立管理员准入账号表，将管理平面准入与普通用户主体、登录凭据及 RBAC 授权分层，并以触发器同步全局 admin 角色生命周期。",
     tables: ["identity_admin_accounts", "users", "accounts", "user_roles", "roles"],
+  },
+  {
+    version: "000039",
+    file: "000039_v13_admin_admission_operations.up.sql",
+    title: "v13 管理员准入运营操作",
+    scope: "身份与后台安全",
+    summary:
+      "为独立管理员准入追加状态原因、变更操作者和时间、状态索引及暂停/恢复权限；角色同步保持 suspended 状态不会被静默恢复。",
+    tables: ["identity_admin_accounts", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000040",
+    file: "000040_v13_identity_mfa.up.sql",
+    title: "v13 TOTP MFA 与受控恢复",
+    scope: "身份与后台安全",
+    summary:
+      "为 Session 追加服务端 MFA 强度，并建立加密 TOTP 信封、单用途 Ticket 摘要、恢复码摘要和管理员 MFA 策略；不存储明文认证器材料。",
+    tables: ["sessions", "identity_mfa_totp_methods", "identity_mfa_tickets", "identity_mfa_recovery_codes", "identity_mfa_policies", "permission_definitions", "role_permissions"],
   },
 ];
 

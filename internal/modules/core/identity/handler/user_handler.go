@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
+	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -27,6 +27,7 @@ type UserHandler struct {
 	sessions    *service.SessionService
 	recovery    *service.RecoveryService
 	adminAccess *service.AdminAccessService
+	mfa         *service.MFAService
 	sessionHTTP SessionHTTPConfig
 }
 
@@ -65,18 +66,22 @@ func (h *UserHandler) SetAdminAccessService(adminAccess *service.AdminAccessServ
 	h.adminAccess = adminAccess
 }
 
+func (h *UserHandler) SetMFAService(mfa *service.MFAService) {
+	h.mfa = mfa
+}
+
 // RequestRegistrationChallenge begins the verified registration flow without
 // revealing whether a future email address is already associated with an
 // account. Duplicate registration is resolved only by the final command.
 // POST /api/v1/auth/registration/challenge
 func (h *UserHandler) RequestRegistrationChallenge(c *gin.Context) {
 	if h.challenges == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentityChallengeUnavailable))
 		return
 	}
 	var req domain.RegistrationChallengeRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 	receipt, err := h.challenges.Request(c.Request.Context(), domain.ChallengeRequest{
@@ -84,17 +89,8 @@ func (h *UserHandler) RequestRegistrationChallenge(c *gin.Context) {
 		Email:    req.Email,
 		ClientIP: c.ClientIP(),
 	})
-	if errors.Is(err, service.ErrChallengeRateLimited) {
-		response.Error(c, http.StatusTooManyRequests, 10010, "verification request is temporarily limited")
-		return
-	}
-	if errors.Is(err, service.ErrChallengeInvalid) {
-		response.Error(c, http.StatusBadRequest, 10009, "registration verification request was not accepted")
-		return
-	}
 	if err != nil {
-		log.Printf("[IDENTITY] registration challenge request failed request_id=%s: %v", c.GetString("trace_id"), err)
-		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is temporarily unavailable")
+		response.WriteError(c, unavailableIfInternal(challengeErrorTranslator.Translate(err)))
 		return
 	}
 	response.Success(c, receipt)
@@ -105,12 +101,12 @@ func (h *UserHandler) RequestRegistrationChallenge(c *gin.Context) {
 // POST /api/v1/auth/registration/verify
 func (h *UserHandler) VerifyRegistrationChallenge(c *gin.Context) {
 	if h.challenges == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "registration verification is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentityChallengeUnavailable))
 		return
 	}
 	var req domain.RegistrationChallengeVerificationRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 	ticket, err := h.challenges.Verify(c.Request.Context(), domain.ChallengeVerificationRequest{
@@ -119,7 +115,7 @@ func (h *UserHandler) VerifyRegistrationChallenge(c *gin.Context) {
 		Code:     req.Code,
 	})
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 10009, "registration verification is invalid or expired")
+		response.WriteError(c, unavailableIfInternal(challengeErrorTranslator.Translate(err)))
 		return
 	}
 	response.Success(c, ticket)
@@ -360,7 +356,7 @@ func (h *UserHandler) CancelAdminRecoveryCase(c *gin.Context) {
 // GET /api/v1/admin/identity/users/:id/sessions
 func (h *UserHandler) ListAdminUserSessions(c *gin.Context) {
 	if h.recovery == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
 		return
 	}
 	userID, ok := numericIdentityID(c.Param("id"))
@@ -370,7 +366,7 @@ func (h *UserHandler) ListAdminUserSessions(c *gin.Context) {
 	}
 	items, err := h.recovery.ListUserSessions(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions are unavailable")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	response.Success(c, gin.H{"items": items, "total": len(items)})
@@ -381,7 +377,7 @@ func (h *UserHandler) ListAdminUserSessions(c *gin.Context) {
 // POST /api/v1/admin/identity/users/:id/sessions/revoke-all
 func (h *UserHandler) RevokeAdminUserSessions(c *gin.Context) {
 	if h.recovery == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
 		return
 	}
 	actorID, actorOK := currentRoleActorID(c)
@@ -395,7 +391,7 @@ func (h *UserHandler) RevokeAdminUserSessions(c *gin.Context) {
 		return
 	}
 	if err := h.recovery.RevokeUserSessionsByAdmin(c.Request.Context(), actorID, userID); err != nil {
-		response.Error(c, http.StatusBadRequest, 10009, "sessions could not be revoked")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	response.Success(c, gin.H{"revoked": true})
@@ -410,21 +406,13 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 	if strings.TrimSpace(req.ChallengeID) == "" || strings.TrimSpace(req.Ticket) == "" {
-		response.Error(c, http.StatusBadRequest, 10008, "email verification is required before registration")
+		response.ErrorDescriptor(c, apperror.IdentityRegistrationVerificationRequired, nil)
 		return
 	}
 
 	user, err := h.svc.RegisterVerified(c.Request.Context(), req)
 	if err != nil {
-		if errors.Is(err, service.ErrRegistrationVerificationRequired) {
-			response.Error(c, http.StatusBadRequest, 10008, "email verification is required before registration")
-			return
-		}
-		if errors.Is(err, service.ErrRegistrationTicketInvalid) {
-			response.Error(c, http.StatusBadRequest, 10009, "registration verification is invalid or expired")
-			return
-		}
-		response.Error(c, http.StatusConflict, 10004, err.Error())
+		response.WriteError(c, registrationErrorTranslator.Translate(err))
 		return
 	}
 
@@ -448,36 +436,57 @@ func (h *UserHandler) AdminLogin(c *gin.Context) {
 func (h *UserHandler) login(c *gin.Context, requireAdmin bool) {
 	var req domain.LoginRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
 
 	if h.sessions == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
 		return
 	}
 	user, err := h.svc.Authenticate(c.Request.Context(), req)
 	if err != nil {
 		// Login intentionally does not distinguish missing accounts, bad
 		// passwords, inactive accounts, or unverified account state.
-		response.Error(c, http.StatusUnauthorized, 20001, "invalid email or password")
+		response.ErrorDescriptor(c, apperror.IdentityCredentialsInvalid, nil)
 		return
 	}
 	if requireAdmin {
 		if h.adminAccess == nil {
-			response.Error(c, http.StatusServiceUnavailable, 10006, "administrator login is unavailable")
+			response.WriteError(c, unavailableError(apperror.IdentityAdminLoginUnavailable))
 			return
 		}
-		if err := h.adminAccess.RecordAuthentication(c.Request.Context(), user.ID); err != nil {
+		if err := h.adminAccess.Require(c.Request.Context(), user.ID); err != nil {
 			// Do not reveal whether a valid user credential lacks management-plane
 			// admission or whether an administrator account is suspended.
-			response.Error(c, http.StatusUnauthorized, 20001, "invalid administrator email or password")
+			response.ErrorDescriptor(c, apperror.IdentityAdminCredentialsInvalid, nil)
+			return
+		}
+	}
+	if h.mfa != nil {
+		audience := domain.MFAAudienceWeb
+		if requireAdmin {
+			audience = domain.MFAAudienceAdmin
+		}
+		requirement, mfaErr := h.mfa.BeginLogin(c.Request.Context(), user.ID, audience)
+		if mfaErr != nil {
+			response.WriteError(c, unavailableIfInternal(mfaErrorTranslator.Translate(mfaErr)))
+			return
+		}
+		if requirement != nil && requirement.Required {
+			response.Success(c, requirement)
+			return
+		}
+	}
+	if requireAdmin {
+		if err := h.adminAccess.RecordAuthentication(c.Request.Context(), user.ID); err != nil {
+			response.ErrorDescriptor(c, apperror.IdentityAdminCredentialsInvalid, nil)
 			return
 		}
 	}
 	tokens, err := h.sessions.Issue(c.Request.Context(), user, h.sessionMetadata(c))
 	if err != nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "login session could not be created")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	h.writeSessionCookies(c, tokens)
@@ -501,18 +510,18 @@ func (h *UserHandler) login(c *gin.Context, requireAdmin bool) {
 // POST /api/v1/auth/refresh
 func (h *UserHandler) Refresh(c *gin.Context) {
 	if h.sessions == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
 		return
 	}
 	rawRefresh, fromCookie := h.readRefreshCookie(c)
 	if fromCookie && !h.requireCSRF(c) {
-		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+		response.ErrorDescriptor(c, apperror.IdentityCSRFInvalid, nil)
 		return
 	}
 	if rawRefresh == "" && h.sessionHTTP.RefreshBodyCompat {
 		var request domain.RefreshRequest
 		if err := decodeOptionalStrictJSON(c, &request); err != nil {
-			response.Error(c, http.StatusBadRequest, 10001, "invalid request")
+			response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 			return
 		}
 		rawRefresh = strings.TrimSpace(request.RefreshToken)
@@ -521,7 +530,7 @@ func (h *UserHandler) Refresh(c *gin.Context) {
 		}
 	}
 	if rawRefresh == "" {
-		response.Error(c, http.StatusUnauthorized, 20002, "invalid or expired refresh token")
+		response.ErrorDescriptor(c, apperror.IdentityRefreshInvalid, nil)
 		return
 	}
 	tokens, err := h.sessions.Refresh(c.Request.Context(), rawRefresh, h.sessionMetadata(c))
@@ -529,7 +538,7 @@ func (h *UserHandler) Refresh(c *gin.Context) {
 		// Reuse is intentionally indistinguishable to an attacker. The Session
 		// service has already revoked the family when it returns this branch.
 		h.clearSessionCookies(c)
-		response.Error(c, http.StatusUnauthorized, 20002, "invalid or expired refresh token")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	h.writeSessionCookies(c, tokens)
@@ -542,17 +551,21 @@ func (h *UserHandler) Refresh(c *gin.Context) {
 // Logout revokes only the authenticated session and clears browser cookies.
 // POST /api/v1/auth/logout
 func (h *UserHandler) Logout(c *gin.Context) {
-	if h.sessions == nil || !h.requireCSRF(c) {
-		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+	if h.sessions == nil {
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		return
+	}
+	if !h.requireCSRF(c) {
+		response.ErrorDescriptor(c, apperror.IdentityCSRFInvalid, nil)
 		return
 	}
 	userID, sessionID, ok := currentSession(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	if err := h.sessions.RevokeCurrent(c.Request.Context(), userID, sessionID); err != nil {
-		response.Error(c, http.StatusUnauthorized, 20002, "session is no longer active")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	h.clearSessionCookies(c)
@@ -563,17 +576,21 @@ func (h *UserHandler) Logout(c *gin.Context) {
 // revokes all persisted sessions. The current browser cookies are cleared.
 // POST /api/v1/auth/logout-all
 func (h *UserHandler) LogoutAll(c *gin.Context) {
-	if h.sessions == nil || !h.requireCSRF(c) {
-		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+	if h.sessions == nil {
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		return
+	}
+	if !h.requireCSRF(c) {
+		response.ErrorDescriptor(c, apperror.IdentityCSRFInvalid, nil)
 		return
 	}
 	userID, _, ok := currentSession(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	if _, err := h.sessions.RevokeAll(c.Request.Context(), userID, "logout_all", "identity.session.logout_all"); err != nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions could not be revoked")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	h.clearSessionCookies(c)
@@ -584,17 +601,17 @@ func (h *UserHandler) LogoutAll(c *gin.Context) {
 // GET /api/v1/auth/sessions
 func (h *UserHandler) ListSessions(c *gin.Context) {
 	if h.sessions == nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "session service is unavailable")
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
 		return
 	}
 	userID, sessionID, ok := currentSession(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	items, err := h.sessions.List(c.Request.Context(), userID, sessionID)
 	if err != nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "sessions are unavailable")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	response.Success(c, gin.H{"items": items})
@@ -603,18 +620,22 @@ func (h *UserHandler) ListSessions(c *gin.Context) {
 // RevokeSession revokes one selected session owned by the authenticated user.
 // DELETE /api/v1/auth/sessions/:id
 func (h *UserHandler) RevokeSession(c *gin.Context) {
-	if h.sessions == nil || !h.requireCSRF(c) {
-		response.Error(c, http.StatusForbidden, 20004, "csrf validation failed")
+	if h.sessions == nil {
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		return
+	}
+	if !h.requireCSRF(c) {
+		response.ErrorDescriptor(c, apperror.IdentityCSRFInvalid, nil)
 		return
 	}
 	userID, currentID, ok := currentSession(c)
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
 	targetID := strings.TrimSpace(c.Param("id"))
 	if err := h.sessions.RevokeSession(c.Request.Context(), userID, targetID); err != nil {
-		response.Error(c, http.StatusNotFound, 30004, "session was not found")
+		response.WriteError(c, unavailableIfInternal(sessionErrorTranslator.Translate(err)))
 		return
 	}
 	if targetID == currentID {
@@ -635,7 +656,7 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 
 	user, err := h.svc.GetByID(c.Request.Context(), userID.(string))
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "user not found")
 		return
 	}
 
@@ -649,7 +670,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 	user, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "user not found")
 		return
 	}
 
@@ -666,7 +687,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 
 	users, total, err := h.svc.ListUsers(c.Request.Context(), page, pageSize)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		response.Error(c, http.StatusInternalServerError, 10006, "user list is unavailable")
 		return
 	}
 
@@ -699,13 +720,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	var req domain.UpdateUserRequest
 	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request")
 		return
 	}
 
 	user, err := h.svc.UpdateUser(c.Request.Context(), id, req)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "user not found")
 		return
 	}
 
@@ -718,7 +739,7 @@ func (h *UserHandler) SuspendUser(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.svc.SuspendUser(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "user not found")
 		return
 	}
 	response.Success(c, user)
@@ -730,7 +751,7 @@ func (h *UserHandler) ActivateUser(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.svc.ActivateUser(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "user not found")
 		return
 	}
 	response.Success(c, user)

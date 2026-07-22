@@ -13,6 +13,7 @@ import (
 	communitydomain "github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	xhtml "golang.org/x/net/html"
 )
 
 var ErrContentRepositoryUnavailable = errors.New("space content repository unavailable")
@@ -386,12 +387,39 @@ func threadFromEventData(data interface{}) (*communitydomain.Thread, error) {
 }
 
 func excerpt(content string, limit int) string {
-	content = strings.Join(strings.Fields(strings.TrimSpace(content)), " ")
+	content = excerptPlainText(content)
 	if limit <= 0 || utf8.RuneCountInString(content) <= limit {
 		return content
 	}
 	runes := []rune(content)
 	return string(runes[:limit])
+}
+
+// excerptPlainText keeps profile projections readable when a safe rich-text
+// article is rendered as an excerpt rather than as its full document.
+func excerptPlainText(content string) string {
+	content = strings.TrimSpace(content)
+	if strings.Contains(content, "<") {
+		if node, err := xhtml.Parse(strings.NewReader(content)); err == nil {
+			var text strings.Builder
+			appendExcerptText(&text, node)
+			content = text.String()
+		}
+	}
+	return strings.Join(strings.Fields(content), " ")
+}
+
+func appendExcerptText(text *strings.Builder, node *xhtml.Node) {
+	if node == nil {
+		return
+	}
+	if node.Type == xhtml.TextNode {
+		text.WriteString(node.Data)
+		text.WriteByte(' ')
+	}
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		appendExcerptText(text, child)
+	}
 }
 
 func normalizePage(page int) int {

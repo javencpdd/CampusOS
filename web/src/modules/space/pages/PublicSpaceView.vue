@@ -249,6 +249,8 @@ onUnmounted(() => {
 .public-space {
   position: relative;
   isolation: isolate;
+  min-width: 0;
+  max-width: 100%;
   min-height: 70vh;
   padding: 28px 0 40px;
   background: var(--space-bg);
@@ -301,12 +303,15 @@ onUnmounted(() => {
 }
 .content-section {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 .content-section.layout-grid {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 .content-item {
+  min-width: 0;
   padding: 18px;
   border: 1px solid #e4e7ed;
   border-top: 3px solid var(--space-primary);
@@ -319,6 +324,7 @@ onUnmounted(() => {
   color: var(--space-text);
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 .content-title:hover {
   color: var(--space-primary);
@@ -327,6 +333,7 @@ onUnmounted(() => {
   margin: 0 0 12px;
   color: var(--space-muted);
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 .content-governance-reason {
   margin-top: -4px !important;

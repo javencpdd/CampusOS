@@ -1,0 +1,36 @@
+# v13 管理员准入 API
+
+> 适用 migration：`000039_v13_admin_admission_operations`
+
+所有接口均位于 `/api/v1/admin`，需要有效 Admin Session、活动管理员准入和对应 Permission Code。错误仍使用
+CampusOS 兼容包络；客户端应读取 `error.code`，不要依赖中文提示文本。
+
+| 方法与路径 | Permission Code | 说明 |
+| --- | --- | --- |
+| `GET /identity/admin-accounts` | `identity.admin_account.read` | 分页读取准入账号，支持 `status`、`page`、`page_size`。 |
+| `GET /identity/admin-accounts/:id` | `identity.admin_account.read` | 读取单个非敏感准入投影。 |
+| `POST /identity/admin-accounts/:id/suspend` | `identity.admin_account.suspend` | 暂停准入并撤销全部 Session。 |
+| `POST /identity/admin-accounts/:id/restore` | `identity.admin_account.restore` | 恢复已暂停准入。 |
+| `GET /identity/admin-accounts/audits` | `identity.admin_account.read_audit` | 读取准入生命周期审计。 |
+
+## 状态变更请求
+
+```json
+{
+  "expected_version": 4,
+  "reason": "权限复核完成，恢复值班"
+}
+```
+
+`expected_version` 必须是列表或详情返回的当前版本，`reason` 为 1 至 500 个字符。冲突、非法状态和最后管理员
+保护分别返回稳定 machine code：
+
+```text
+identity.admin_admission.version_conflict
+identity.admin_admission.transition_conflict
+identity.admin_admission.last_active
+```
+
+响应不会包含密码、Session、Refresh Token、MFA Secret 或恢复码。完整运营流程见
+[`v13管理员准入管理与本地恢复`](../help/系统设计相关/v13管理员准入管理与本地恢复.md)。
+

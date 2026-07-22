@@ -345,7 +345,7 @@ runtime: %s
 scope: %s
 
 compatibility:
-  campusos: ">=0.6.0 <0.12.0"
+  campusos: ">=0.6.0 <0.14.0"
   host_api: "v1"
   sdk_go: "%s"
 

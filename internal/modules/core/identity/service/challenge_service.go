@@ -20,6 +20,7 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 var (
@@ -53,6 +54,13 @@ type ChallengeService struct {
 	maxAttempts int
 	clock       func() time.Time
 	random      io.Reader
+	meter       observability.Meter
+}
+
+func (s *ChallengeService) SetMeter(meter observability.Meter) {
+	if s != nil {
+		s.meter = meter
+	}
 }
 
 type ChallengePolicyReader interface {
@@ -127,14 +135,15 @@ func (s *ChallengeService) SetPolicyReader(policy ChallengePolicyReader) {
 
 // Request records a rate-limited challenge and a durable event containing
 // only its opaque ID. SMTP delivery is intentionally implemented in A4.
-func (s *ChallengeService) Request(ctx context.Context, request domain.ChallengeRequest) (*domain.ChallengeReceipt, error) {
+func (s *ChallengeService) Request(ctx context.Context, request domain.ChallengeRequest) (receipt *domain.ChallengeReceipt, err error) {
+	defer func() { s.observeChallenge("request", challengeResult(err, receipt != nil)) }()
 	publicID, err := s.randomToken(24)
 	if err != nil {
 		return nil, err
 	}
 	var challenge *domain.EmailChallenge
 	var event reliability.Event
-	if err := s.execute(ctx, reliability.Command{
+	if err = s.execute(ctx, reliability.Command{
 		Code:          "identity.email.challenge.request",
 		ActorType:     "anonymous",
 		ResourceType:  "identity_email_challenge",
@@ -158,7 +167,8 @@ func (s *ChallengeService) Request(ctx context.Context, request domain.Challenge
 	if challenge == nil {
 		return nil, ErrChallengeInvalid
 	}
-	return &domain.ChallengeReceipt{PublicID: challenge.PublicID, Purpose: challenge.Purpose, ExpiresAt: challenge.ExpiresAt}, nil
+	receipt = &domain.ChallengeReceipt{PublicID: challenge.PublicID, Purpose: challenge.Purpose, ExpiresAt: challenge.ExpiresAt}
+	return receipt, nil
 }
 
 // RequestForCommand creates a rate-limited Challenge in the caller's active
@@ -226,13 +236,13 @@ func (s *ChallengeService) requestForCommand(ctx context.Context, request domain
 	return challenge, event, nil
 }
 
-func (s *ChallengeService) Verify(ctx context.Context, request domain.ChallengeVerificationRequest) (*domain.ChallengeTicket, error) {
+func (s *ChallengeService) Verify(ctx context.Context, request domain.ChallengeVerificationRequest) (ticket *domain.ChallengeTicket, err error) {
+	defer func() { s.observeChallenge("verify", challengeResult(err, ticket != nil)) }()
 	if !request.Purpose.Valid() || strings.TrimSpace(request.PublicID) == "" {
 		return nil, ErrChallengeInvalid
 	}
-	var ticket *domain.ChallengeTicket
 	var resultErr error
-	err := s.execute(ctx, reliability.Command{
+	err = s.execute(ctx, reliability.Command{
 		Code:          "identity.email.challenge.verify",
 		ActorType:     "anonymous",
 		ResourceType:  "identity_email_challenge",
@@ -306,10 +316,10 @@ func (s *ChallengeService) Verify(ctx context.Context, request domain.ChallengeV
 // ConsumeTicket wraps standalone consumers in a reliable command. Compound
 // identity commands must use ConsumeTicketForCommand so Ticket consumption is
 // committed or rolled back with their own user/account changes.
-func (s *ChallengeService) ConsumeTicket(ctx context.Context, request domain.ChallengeTicketConsumption) (*domain.EmailChallenge, error) {
-	var consumed *domain.EmailChallenge
+func (s *ChallengeService) ConsumeTicket(ctx context.Context, request domain.ChallengeTicketConsumption) (consumed *domain.EmailChallenge, err error) {
+	defer func() { s.observeChallenge("consume", challengeResult(err, consumed != nil)) }()
 	var resultErr error
-	err := s.execute(ctx, reliability.Command{
+	err = s.execute(ctx, reliability.Command{
 		Code:          "identity.email.challenge.consume_ticket",
 		ActorType:     "system",
 		ResourceType:  "identity_email_challenge",
@@ -497,6 +507,29 @@ func (s *ChallengeService) randomToken(bytes int) (string, error) {
 }
 
 func (s *ChallengeService) now() time.Time { return s.clock().UTC() }
+
+func (s *ChallengeService) observeChallenge(operation, result string) {
+	if s == nil || s.meter == nil {
+		return
+	}
+	_ = s.meter.AddCounter("campusos_identity_challenges_total", observability.Labels{
+		"operation": operation,
+		"result":    result,
+	}, 1)
+}
+
+func challengeResult(err error, success bool) string {
+	if err == nil && success {
+		return "success"
+	}
+	if errors.Is(err, ErrChallengeRateLimited) {
+		return "rate_limited"
+	}
+	if errors.Is(err, ErrChallengeInvalid) || errors.Is(err, ErrChallengeTicket) {
+		return "invalid"
+	}
+	return "error"
+}
 
 func (s *ChallengeService) execute(ctx context.Context, command reliability.Command, action func(context.Context) error) error {
 	if s.reliable != nil {

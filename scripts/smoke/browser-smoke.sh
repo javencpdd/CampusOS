@@ -43,6 +43,20 @@ if [[ "${RUN_BROWSER_WORKFLOW:-true}" == "true" ]]; then
   )
 fi
 
+if [[ "${RUN_MFA_BROWSER_WORKFLOW:-false}" == "true" ]]; then
+  echo "running explicit MFA enrollment/recovery browser workflow"
+  (
+    cd web
+    CHROME_BIN="$CHROME_BIN" \
+      WEB_URL="${WEB_URL:-http://localhost:3000}" \
+      ADMIN_URL="${ADMIN_URL:-http://localhost:3001}" \
+      CAMPUSOS_MFA_TEST_EMAIL="${CAMPUSOS_MFA_TEST_EMAIL:?CAMPUSOS_MFA_TEST_EMAIL is required}" \
+      CAMPUSOS_MFA_TEST_PASSWORD="${CAMPUSOS_MFA_TEST_PASSWORD:?CAMPUSOS_MFA_TEST_PASSWORD is required}" \
+      CAMPUSOS_MFA_TEST_ALLOW_STATE_CHANGE="${CAMPUSOS_MFA_TEST_ALLOW_STATE_CHANGE:?CAMPUSOS_MFA_TEST_ALLOW_STATE_CHANGE=yes is required}" \
+      node tests/mfa-security-workflow.mjs
+  )
+fi
+
 if [[ "${RUN_STYLE_PACK_SMOKE:-true}" == "true" ]]; then
   echo "running style-pack desktop/mobile workflow"
   (

@@ -8,6 +8,10 @@ export interface WebThemeItem {
   version: string
   description?: string
   preview_url?: string
+  desktop_preview_url?: string
+  mobile_preview_url?: string
+  delivery_status?: 'valid' | 'legacy-readonly' | 'invalid'
+  checksum?: string
   tokens?: Record<string, string>
   capabilities?: string[]
 }

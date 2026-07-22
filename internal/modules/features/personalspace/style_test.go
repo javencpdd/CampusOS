@@ -219,14 +219,24 @@ func TestApplyStylePackZipPersistsCompiledManifest(t *testing.T) {
 target: personal-space
 name: alice-folder
 version: 0.1.0
+delivery_contract: campusos.appearance-delivery/v1
+viewport_support:
+  desktop: true
+  mobile: true
+  mobile_breakpoint: 720px
 entry: templates/page.html
 styles:
   - styles/theme.css
+preview_images:
+  desktop: preview-desktop.png
+  mobile: preview-mobile.png
 tokens:
   color.primary: "#0f766e"
 `,
 		"templates/page.html": `<section class="cstyle-page"><h2>Alice Folder</h2></section>`,
-		"styles/theme.css":    `.public-space[data-campusos-space] .cstyle-page { padding: 16px; color: #0f766e; }`,
+		"styles/theme.css":    `.public-space[data-campusos-space] .cstyle-page { padding: 16px; color: #0f766e; } @media (max-width: 720px) { .public-space[data-campusos-space] .cstyle-page { padding: 12px; } }`,
+		"preview-desktop.png": "desktop preview",
+		"preview-mobile.png":  "mobile preview",
 	})
 
 	applied, err := svc.ApplyStylePackZip(testContext(), "1001", bytes.NewReader(data), int64(len(data)))
@@ -241,6 +251,26 @@ tokens:
 	}
 	if applied.Space.StyleManifest.SourceStylePack.Name != "alice-folder" {
 		t.Fatalf("unexpected source style pack: %#v", applied.Space.StyleManifest.SourceStylePack)
+	}
+}
+
+func TestSourceStylePackAssetServesOnlyDeclaredResources(t *testing.T) {
+	t.Setenv("RESOURCE_DIR", "../../../../data/resources")
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
+		ID:       "1001",
+		Username: "alice",
+		Nickname: "Alice",
+	}))
+
+	data, contentType, err := svc.SourceStylePackAsset(testContext(), "clean-blog", "/preview-desktop.png")
+	if err != nil || len(data) == 0 || contentType != "image/png" {
+		t.Fatalf("expected declared preview asset, data=%d type=%q err=%v", len(data), contentType, err)
+	}
+	if _, _, err := svc.SourceStylePackAsset(testContext(), "clean-blog", "/styles/theme.css"); err == nil {
+		t.Fatal("expected undeclared non-image resource to be rejected")
+	}
+	if _, _, err := svc.SourceStylePackAsset(testContext(), "clean-blog", "/../../style.yaml"); err == nil {
+		t.Fatal("expected traversal resource to be rejected")
 	}
 }
 

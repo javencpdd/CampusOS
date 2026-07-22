@@ -3,9 +3,12 @@ package middleware
 import (
 	"log"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"time"
 
+	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -82,12 +85,26 @@ func Logger() gin.HandlerFunc {
 }
 
 // Recovery panic 恢复
-func Recovery() gin.HandlerFunc {
+func Recovery(collectors ...*observability.Collector) gin.HandlerFunc {
+	var collector *observability.Collector
+	if len(collectors) > 0 {
+		collector = collectors[0]
+	}
 	return func(c *gin.Context) {
 		defer func() {
-			if err := recover(); err != nil {
-				log.Printf("[PANIC] %v", err)
-				response.Error(c, 500, 10006, "internal server error")
+			if recovered := recover(); recovered != nil {
+				if collector != nil {
+					operation := c.GetString(observability.RouteOperationContextKey)
+					if operation == "" {
+						operation = c.FullPath()
+					}
+					collector.RecordPanic(operation)
+				}
+				log.Printf("[PANIC] request_id=%s method=%s path=%s panic=%v\n%s",
+					c.GetString("trace_id"), c.Request.Method, c.Request.URL.Path, recovered, debug.Stack())
+				if !c.Writer.Written() {
+					response.ErrorDescriptor(c, apperror.InternalError, nil)
+				}
 				c.Abort()
 			}
 		}()

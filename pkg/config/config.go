@@ -8,18 +8,19 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig
-	HostAPI    HostAPIConfig
-	Database   DatabaseConfig
-	Redis      RedisConfig
-	NATS       NATSConfig
-	JWT        JWTConfig
-	Auth       AuthConfig
-	Email      EmailConfig
-	Plugin     PluginConfig
-	Deployment DeploymentConfig
-	AI         AIConfig
-	Webhook    WebhookConfig
+	Server        ServerConfig
+	HostAPI       HostAPIConfig
+	Observability ObservabilityConfig
+	Database      DatabaseConfig
+	Redis         RedisConfig
+	NATS          NATSConfig
+	JWT           JWTConfig
+	Auth          AuthConfig
+	Email         EmailConfig
+	Plugin        PluginConfig
+	Deployment    DeploymentConfig
+	AI            AIConfig
+	Webhook       WebhookConfig
 }
 
 type ServerConfig struct {
@@ -30,6 +31,12 @@ type ServerConfig struct {
 type HostAPIConfig struct {
 	Enabled bool
 	Addr    string
+}
+
+type ObservabilityConfig struct {
+	PrometheusEnabled bool
+	PrometheusAddr    string
+	PrometheusPath    string
 }
 
 type DatabaseConfig struct {
@@ -63,6 +70,9 @@ type AuthConfig struct {
 	ChallengeIPHashSecret        string
 	SessionIPHashSecret          string
 	RefreshBodyCompat            bool
+	MFAActiveKeyID               string
+	MFAEncryptionKeys            map[string]string
+	MFAIssuer                    string
 }
 
 // EmailConfig contains process-only email delivery settings. It is never
@@ -119,6 +129,13 @@ func Load() *Config {
 	getBool := func(key string, fallback bool) bool {
 		return getEnvBoolWithFile(fileEnv, key, fallback)
 	}
+	environment := strings.ToLower(strings.TrimSpace(get("CAMPUSOS_ENV", "development")))
+	mfaActiveKeyID := ""
+	mfaKeyRing := ""
+	if environment == "development" || environment == "test" {
+		mfaActiveKeyID = "development-v1"
+		mfaKeyRing = "development-v1:campusos-development-mfa-encryption-key-change-before-production"
+	}
 
 	return &Config{
 		Server: ServerConfig{
@@ -128,6 +145,11 @@ func Load() *Config {
 		HostAPI: HostAPIConfig{
 			Enabled: get("HOST_API_ENABLED", "true") == "true",
 			Addr:    get("HOST_API_ADDR", "127.0.0.1:18080"),
+		},
+		Observability: ObservabilityConfig{
+			PrometheusEnabled: getBool("OBSERVABILITY_PROMETHEUS_ENABLED", false),
+			PrometheusAddr:    strings.TrimSpace(get("OBSERVABILITY_PROMETHEUS_ADDR", "127.0.0.1:9091")),
+			PrometheusPath:    strings.TrimSpace(get("OBSERVABILITY_PROMETHEUS_PATH", "/metrics")),
 		},
 		Database: DatabaseConfig{
 			DSN: get("DATABASE_DSN", "postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable"),
@@ -156,6 +178,9 @@ func Load() *Config {
 			ChallengeIPHashSecret:        strings.TrimSpace(get("AUTH_CHALLENGE_IP_HASH_SECRET", "campusos-development-ip-hash-key-change-before-production")),
 			SessionIPHashSecret:          strings.TrimSpace(get("AUTH_SESSION_IP_HASH_SECRET", "campusos-development-session-ip-hash-key-change-before-production")),
 			RefreshBodyCompat:            getBool("AUTH_REFRESH_BODY_COMPAT", false),
+			MFAActiveKeyID:               strings.TrimSpace(get("AUTH_MFA_ACTIVE_KEY_ID", mfaActiveKeyID)),
+			MFAEncryptionKeys:            parseKeyedSecrets(get("AUTH_MFA_ENCRYPTION_KEYS", mfaKeyRing)),
+			MFAIssuer:                    strings.TrimSpace(get("AUTH_MFA_ISSUER", "CampusOS")),
 		},
 		Email: EmailConfig{
 			Provider:     strings.ToLower(strings.TrimSpace(get("EMAIL_PROVIDER", "fake"))),
@@ -172,7 +197,7 @@ func Load() *Config {
 		},
 		Deployment: DeploymentConfig{
 			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),
-			Environment:  strings.ToLower(strings.TrimSpace(get("CAMPUSOS_ENV", "development"))),
+			Environment:  environment,
 		},
 		AI: AIConfig{
 			Enabled:              get("AI_ENABLED", "false") == "true",

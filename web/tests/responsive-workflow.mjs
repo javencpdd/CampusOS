@@ -86,14 +86,34 @@ async function evaluateWhenStable(page, expression) {
 async function assertNoOverflow(page, label) {
   const overflow = await evaluateWhenStable(page, () => document.documentElement.scrollWidth - window.innerWidth)
   if (overflow > 1) throw new Error(`${label} has ${overflow}px horizontal overflow`)
-  const focusable = await evaluateWhenStable(page, () => {
-    const target = document.querySelector(
-      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
-    )
-    target?.focus()
-    return Boolean(target) && document.activeElement === target
-  })
-  if (!focusable) throw new Error(`${label} has no keyboard-focusable control`)
+  let focusable = { available: false, focused: false, candidates: 0 }
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    focusable = await evaluateWhenStable(page, () => {
+      const candidates = [
+        ...document.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((element) => {
+        const style = window.getComputedStyle(element)
+        return (
+          element.getClientRects().length > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          !element.closest('[inert]')
+        )
+      })
+      const target = candidates[0]
+      target?.focus({ preventScroll: true })
+      return {
+        available: Boolean(target),
+        focused: Boolean(target) && document.activeElement === target,
+        candidates: candidates.length,
+      }
+    })
+    if (focusable.available && focusable.focused) return
+    await page.waitForTimeout(200)
+  }
+  throw new Error(`${label} has no keyboard-focusable control: ${JSON.stringify(focusable)}`)
 }
 
 async function assertRenderedMedia(page, label) {
@@ -124,7 +144,10 @@ try {
   const webErrors = []
   collectPageErrors(webPage, webErrors)
   await login(webPage, webURL, '请输入邮箱', '请输入密码')
-  const webPaths = ['/', '/threads', '/appearance', '/space/settings', '/schedule', '/plugins']
+  // The login page probes the HttpOnly refresh cookie before credentials are
+  // submitted. Its expected 401 is not part of the authenticated page matrix.
+  webErrors.length = 0
+  const webPaths = ['/', '/threads', '/appearance', '/space/settings', '/account/security', '/schedule', '/plugins']
   for (const viewport of viewports) {
     await webPage.setViewportSize(viewport)
     for (const route of webPaths) {
@@ -150,6 +173,7 @@ try {
   const adminErrors = []
   collectPageErrors(adminPage, adminErrors)
   await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码')
+  adminErrors.length = 0
   const adminPaths = [
     '/',
     '/users',
@@ -159,6 +183,8 @@ try {
     '/extensions',
     '/features',
     '/appearance',
+    '/admin-admission',
+    '/mfa-policy',
     '/integrations',
     '/architecture',
   ]

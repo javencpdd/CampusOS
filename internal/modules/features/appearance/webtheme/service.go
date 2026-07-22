@@ -37,13 +37,17 @@ type Catalog struct {
 }
 
 type CatalogItem struct {
-	Name         string            `json:"name"`
-	DisplayName  string            `json:"display_name"`
-	Version      string            `json:"version"`
-	Description  string            `json:"description,omitempty"`
-	PreviewURL   string            `json:"preview_url,omitempty"`
-	Tokens       map[string]string `json:"tokens,omitempty"`
-	Capabilities []string          `json:"capabilities,omitempty"`
+	Name              string            `json:"name"`
+	DisplayName       string            `json:"display_name"`
+	Version           string            `json:"version"`
+	Description       string            `json:"description,omitempty"`
+	PreviewURL        string            `json:"preview_url,omitempty"`
+	DesktopPreviewURL string            `json:"desktop_preview_url,omitempty"`
+	MobilePreviewURL  string            `json:"mobile_preview_url,omitempty"`
+	DeliveryStatus    string            `json:"delivery_status"`
+	Checksum          string            `json:"checksum,omitempty"`
+	Tokens            map[string]string `json:"tokens,omitempty"`
+	Capabilities      []string          `json:"capabilities,omitempty"`
 }
 
 type RuntimePackage struct {
@@ -69,7 +73,7 @@ func (s *Service) Catalog() (*Catalog, error) {
 	catalog.AllowUserSwitch = boolConfig(config, "allow_user_switch", true)
 	catalog.DefaultStylePack = stringConfig(config, "default_style_pack", "")
 
-	items, err := stylepack.ListSourcePacks(PluginName)
+	items, err := stylepack.ListSourcePacksStrict(PluginName)
 	if err != nil {
 		return nil, err
 	}
@@ -79,13 +83,17 @@ func (s *Service) Catalog() (*Catalog, error) {
 		}
 		manifest := item.Manifest
 		catalog.Items = append(catalog.Items, CatalogItem{
-			Name:         manifest.Name,
-			DisplayName:  displayName(*manifest),
-			Version:      manifest.Version,
-			Description:  manifest.Description,
-			PreviewURL:   previewURL(*manifest),
-			Tokens:       copyMap(manifest.Tokens),
-			Capabilities: append([]string(nil), manifest.Capabilities...),
+			Name:              manifest.Name,
+			DisplayName:       displayName(*manifest),
+			Version:           manifest.Version,
+			Description:       manifest.Description,
+			PreviewURL:        previewURL(*manifest),
+			DesktopPreviewURL: previewURLFor(*manifest, "desktop"),
+			MobilePreviewURL:  previewURLFor(*manifest, "mobile"),
+			DeliveryStatus:    item.Validation.DeliveryStatus,
+			Checksum:          item.Checksum,
+			Tokens:            copyMap(manifest.Tokens),
+			Capabilities:      append([]string(nil), manifest.Capabilities...),
 		})
 	}
 	if !containsTheme(catalog.Items, catalog.DefaultStylePack) {
@@ -149,7 +157,7 @@ func (s *Service) load(name string) (*stylepack.Package, error) {
 	if !themeNamePattern.MatchString(name) {
 		return nil, ErrNotFound
 	}
-	pack, validation := stylepack.LoadDir(stylepack.SourceDir(PluginName, name))
+	pack, validation := stylepack.LoadDirStrict(stylepack.SourceDir(PluginName, name))
 	if !validation.Valid || pack == nil || pack.Manifest.Name != name || pack.Manifest.Target != stylepack.TargetWeb {
 		return nil, fmt.Errorf("%w: %s", ErrNotFound, strings.Join(validation.Errors, "; "))
 	}
@@ -174,8 +182,25 @@ func previewURL(manifest stylepack.Manifest) string {
 	return "/api/v1/web-themes/" + manifest.Name + "/assets/" + manifest.PreviewImage
 }
 
+func previewURLFor(manifest stylepack.Manifest, viewport string) string {
+	if manifest.PreviewImages == nil {
+		return previewURL(manifest)
+	}
+	assetPath := manifest.PreviewImages.Desktop
+	if viewport == "mobile" {
+		assetPath = manifest.PreviewImages.Mobile
+	}
+	if assetPath == "" {
+		return ""
+	}
+	return "/api/v1/web-themes/" + manifest.Name + "/assets/" + assetPath
+}
+
 func declaredAsset(manifest stylepack.Manifest, assetPath string) bool {
 	if assetPath == manifest.PreviewImage {
+		return true
+	}
+	if manifest.PreviewImages != nil && (assetPath == manifest.PreviewImages.Desktop || assetPath == manifest.PreviewImages.Mobile) {
 		return true
 	}
 	for _, asset := range manifest.Assets {
