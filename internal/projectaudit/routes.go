@@ -193,7 +193,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.moderation"
 	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/identity"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
 		return "core.identity"
-	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
+	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), strings.HasPrefix(path, APIPrefix+"/notifications"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
 		return "core.community"
 	case path == APIPrefix+"/content/preview":
 		return "core.community"

@@ -11,7 +11,7 @@
 
     <section class="governance-panel">
       <div class="filters" aria-label="帖子筛选">
-        <el-segmented v-model="listMode" :options="listModes" @change="load" />
+        <el-segmented v-model="listMode" :options="listModes" @change="changeListMode" />
         <el-select v-if="listMode === 'active'" v-model="filterModeration" placeholder="治理状态" clearable @change="load">
           <el-option label="待审核" value="pending" />
           <el-option label="已下架" value="taken_down" />
@@ -43,8 +43,21 @@
         title="回收站内容不会公开。恢复操作和永久清除都需要填写原因；永久清除后无法恢复。"
       />
 
+      <div class="batch-toolbar" aria-label="帖子批量操作">
+        <span class="batch-summary">
+          已选择 <strong>{{ selectedRows.length }}</strong> 项
+          <small>勾选表头复选框可全选当前页</small>
+        </span>
+        <el-select v-model="batchAction" class="batch-action-select" placeholder="选择批量操作" :disabled="selectedRows.length === 0">
+          <el-option v-for="option in batchActionOptions" :key="option.value" :label="option.label" :value="option.value" />
+        </el-select>
+        <el-button type="primary" :disabled="selectedRows.length === 0 || !batchAction" :loading="operating" @click="startBatchAction">执行</el-button>
+        <el-button text :disabled="selectedRows.length === 0" @click="clearSelection">清除选择</el-button>
+      </div>
+
       <div class="table-wrap">
-        <el-table :data="threads" v-loading="loading" stripe border class="thread-table">
+        <el-table ref="tableRef" :data="threads" row-key="id" v-loading="loading" stripe border class="thread-table" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="48" fixed="left" />
           <el-table-column prop="id" label="ID" width="150" show-overflow-tooltip />
           <el-table-column prop="title" label="内容" min-width="260" show-overflow-tooltip>
             <template #default="{ row }">
@@ -129,12 +142,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bottom, Delete, List, Lock, Refresh, Search, Top, Unlock } from '@element-plus/icons-vue'
 import { categoryApi, threadApi } from '@/modules/community/api'
 
 type GovernanceAction = 'approve' | 'reject' | 'take_down' | 'direct_restore' | 'restore_trash' | 'purge'
+type BatchAction = GovernanceAction | 'pin' | 'unpin' | 'lock' | 'unlock' | 'trash'
 
 const threads = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -156,6 +170,10 @@ const selectedThread = ref<any>(null)
 const actionsDialogVisible = ref(false)
 const actionsLoading = ref(false)
 const moderationActions = ref<any[]>([])
+const tableRef = ref<any>(null)
+const selectedRows = ref<any[]>([])
+const batchAction = ref<BatchAction | ''>('')
+const batchMode = ref(false)
 
 const publicationLabel = (status?: string) => ({ published: '公开', draft: '草稿', private: '私密' }[status || ''] || '-')
 const publicationType = (status?: string) => ({ published: 'success', draft: 'info', private: 'warning' }[status || ''] || 'info')
@@ -171,8 +189,32 @@ const actionMeta: Record<GovernanceAction, { title: string; copy: string }> = {
   restore_trash: { title: '恢复回收站内容', copy: '填写恢复原因。恢复会保留内容原有的发布与治理状态。' },
   purge: { title: '永久清除内容', copy: '此操作不可恢复。请确认已满足保留要求并填写永久清除原因。' },
 }
-const reasonDialogTitle = () => pendingAction.value ? actionMeta[pendingAction.value].title : '治理操作'
-const reasonDialogCopy = () => pendingAction.value ? actionMeta[pendingAction.value].copy : ''
+const batchActionOptions = computed<Array<{ label: string; value: BatchAction }>>(() => listMode.value === 'trash'
+  ? [
+      { label: '恢复回收站内容', value: 'restore_trash' },
+      { label: '永久清除', value: 'purge' },
+    ]
+  : [
+      { label: '置顶', value: 'pin' },
+      { label: '取消置顶', value: 'unpin' },
+      { label: '锁定', value: 'lock' },
+      { label: '解除锁定', value: 'unlock' },
+      { label: '审核通过', value: 'approve' },
+      { label: '审核拒绝', value: 'reject' },
+      { label: '下架', value: 'take_down' },
+      { label: '直接恢复', value: 'direct_restore' },
+      { label: '移入回收站', value: 'trash' },
+    ])
+const reasonDialogTitle = () => {
+  if (!pendingAction.value) return '治理操作'
+  const title = actionMeta[pendingAction.value].title
+  return batchMode.value ? `批量${title}（${selectedRows.value.length} 项）` : title
+}
+const reasonDialogCopy = () => {
+  if (!pendingAction.value) return ''
+  const copy = actionMeta[pendingAction.value].copy
+  return batchMode.value ? `${copy} 本次原因将分别写入每一项内容的治理记录。` : copy
+}
 const dataOf = (value: any) => value?.data ?? value
 const itemsOf = (value: any) => {
   const data = dataOf(value)
@@ -181,7 +223,19 @@ const itemsOf = (value: any) => {
 const messageOf = (error: any, fallback: string) => error?.msg || error?.message || fallback
 const formatTime = (value?: string) => value ? new Date(value).toLocaleString('zh-CN') : '-'
 
+const handleSelectionChange = (rows: any[]) => { selectedRows.value = rows }
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+  selectedRows.value = []
+}
+const changeListMode = () => {
+  batchAction.value = ''
+  clearSelection()
+  page.value = 1
+  void load()
+}
 const load = async () => {
+  clearSelection()
   loading.value = true
   try {
     const params: any = { page: page.value, page_size: 20 }
@@ -231,17 +285,88 @@ const moveToTrash = async (row: any) => {
   } catch (error: any) { ElMessage.error(messageOf(error, '移入回收站失败')) }
 }
 const openReasonDialog = (row: any, action: GovernanceAction) => {
+  batchMode.value = false
   selectedThread.value = row
   pendingAction.value = action
   reason.value = action === 'approve' ? '审核通过' : ''
   reasonDialogVisible.value = true
 }
+const executeBatchItem = async (row: any, action: BatchAction, value = '') => {
+  if (action === 'pin') return threadApi.pin(row.id)
+  if (action === 'unpin') return threadApi.unpin(row.id)
+  if (action === 'lock') return threadApi.lock(row.id)
+  if (action === 'unlock') return threadApi.unlock(row.id)
+  if (action === 'trash') return threadApi.adminDelete(row.id)
+  if (action === 'approve') return threadApi.approve(row.id, value)
+  if (action === 'reject') return threadApi.reject(row.id, value)
+  if (action === 'take_down') return threadApi.takeDown(row.id, value)
+  if (action === 'direct_restore') return threadApi.directRestore(row.id, value)
+  if (action === 'restore_trash') return threadApi.restoreTrash(row.id, value)
+  return threadApi.purge(row.id, value)
+}
+const runBatchAction = async (action: BatchAction, value = '') => {
+  const rows = [...selectedRows.value]
+  if (!rows.length) return
+  operating.value = true
+  let completed = 0
+  const failed: Array<{ row: any; message: string }> = []
+  try {
+    for (const row of rows) {
+      try {
+        await executeBatchItem(row, action, value)
+        completed++
+      } catch (error: any) {
+        failed.push({ row, message: messageOf(error, '操作失败') })
+      }
+    }
+    if (failed.length === 0) {
+      ElMessage.success(`批量操作完成，共处理 ${completed} 项`)
+    } else {
+      const first = failed[0]
+      ElMessage.warning(`批量操作完成 ${completed} 项，失败 ${failed.length} 项。首个失败：${first.row.title || first.row.id} - ${first.message}`)
+    }
+    reasonDialogVisible.value = false
+    batchAction.value = ''
+    clearSelection()
+    await load()
+  } finally {
+    operating.value = false
+    batchMode.value = false
+  }
+}
+const startBatchAction = async () => {
+  const action = batchAction.value
+  if (!action || selectedRows.value.length === 0) return
+  if (['approve', 'reject', 'take_down', 'direct_restore', 'restore_trash', 'purge'].includes(action)) {
+    batchMode.value = true
+    selectedThread.value = null
+    pendingAction.value = action as GovernanceAction
+    reason.value = action === 'approve' ? '批量审核通过' : ''
+    reasonDialogVisible.value = true
+    return
+  }
+  try {
+    const label = batchActionOptions.value.find((item) => item.value === action)?.label
+    await ElMessageBox.confirm(`确定对当前选择的 ${selectedRows.value.length} 项内容执行“${label}”吗？`, '确认批量操作', {
+      type: action === 'trash' ? 'warning' : 'info',
+      confirmButtonText: '确认执行',
+      cancelButtonText: '取消',
+    })
+    await runBatchAction(action)
+  } catch {
+    // Cancelling a confirmation is not an operation failure.
+  }
+}
 const confirmReasonAction = async () => {
   const action = pendingAction.value
   const row = selectedThread.value
   const value = reason.value.trim()
-  if (!action || !row) return
+  if (!action || (!row && !batchMode.value)) return
   if (!value) { ElMessage.warning('请填写治理原因'); return }
+  if (batchMode.value) {
+    await runBatchAction(action, value)
+    return
+  }
   operating.value = true
   try {
     if (action === 'approve') await threadApi.approve(row.id, value)
@@ -275,5 +400,7 @@ onMounted(() => { void load(); void loadCategories() })
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px; }
 .page-header h2 { margin: 0; }.page-header p:last-child { margin: 7px 0 0; color: #606266; line-height: 1.6; }.eyebrow { margin: 0 0 6px; color: #b45309; font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .governance-panel { display: grid; gap: 14px; padding: 18px; }.filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }.filters .el-select { width: 150px; }.filters .el-input { width: min(260px, 100%); }.table-wrap { min-width: 0; }.thread-table { width: 100%; }.thread-title { display: grid; gap: 5px; min-width: 0; }.thread-badges, .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }.pagination-wrapper { display: flex; justify-content: flex-end; }.dialog-copy { margin: 0 0 12px; color: #606266; line-height: 1.6; }
-@media (max-width: 760px) { .page-header { padding: 14px; }.governance-panel { padding: 12px; }.filters { align-items: stretch; }.filters :deep(.el-segmented), .filters .el-select, .filters .el-input { width: 100%; }.table-wrap { overflow-x: auto; }.thread-table { min-width: 990px; }.pagination-wrapper { justify-content: center; } }
+.batch-toolbar { min-height: 52px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid #dcdfe6; background: #f8fafc; }
+.batch-summary { margin-right: auto; display: inline-flex; align-items: baseline; gap: 5px; color: #606266; }.batch-summary strong { color: #303133; }.batch-summary small { margin-left: 6px; color: #909399; }.batch-action-select { width: 180px; }
+@media (max-width: 760px) { .page-header { padding: 14px; }.governance-panel { padding: 12px; }.filters { align-items: stretch; }.filters :deep(.el-segmented), .filters .el-select, .filters .el-input { width: 100%; }.batch-toolbar { align-items: stretch; }.batch-summary { width: 100%; flex-wrap: wrap; }.batch-action-select { width: 100%; }.table-wrap { overflow-x: auto; }.thread-table { min-width: 1040px; }.pagination-wrapper { justify-content: center; } }
 </style>

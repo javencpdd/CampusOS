@@ -271,5 +271,30 @@ onMounted(async () => {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
+  .aid-editor :deep(.el-radio-group) {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .aid-editor :deep(.el-radio-button),
+  .aid-editor :deep(.el-radio-button__inner) {
+    width: 100%;
+  }
+  .aid-editor :deep(.el-radio-button__inner) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;
+  }
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .form-actions .el-button {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0;
+  }
 }
 </style>

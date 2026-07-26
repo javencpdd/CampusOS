@@ -274,5 +274,24 @@ onMounted(async () => {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
+  .listing-editor :deep(.el-input-number__decrease),
+  .listing-editor :deep(.el-input-number__increase) {
+    width: 44px;
+    min-height: 44px;
+  }
+  .listing-editor :deep(.el-input-number .el-input__wrapper) {
+    min-height: 44px;
+    padding-right: 52px;
+    padding-left: 52px;
+  }
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+  .form-actions .el-button {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0;
+  }
 }
 </style>

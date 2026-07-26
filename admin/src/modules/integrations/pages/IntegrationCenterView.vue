@@ -194,6 +194,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { integrationApi, mcpApi, messageApi, webhookApi } from '@/modules/integrations/api'
 import { Document, Plus, Promotion, Refresh } from '@element-plus/icons-vue'
+import { resolveCompanionUrl } from '@/shared/runtime/companionUrl'
 
 const loading = ref(false)
 const activeTab = ref('webhook')
@@ -206,7 +207,7 @@ const mcpEnabled = ref(true)
 const mcpResult = ref('')
 const messages = ref<any[]>([])
 const messageForm = ref({ conversation_id: 'local-room', sender_id: 'tester', content: 'ping' })
-const docsBase = (import.meta.env.VITE_DOCS_URL || 'http://localhost:3002').replace(/\/$/, '')
+const docsBase = resolveCompanionUrl(import.meta.env.VITE_DOCS_URL, 3002)
 const capabilities = [
   { id: 'webhook', title: 'Webhook', maturity: '可配置 / 可测试', type: 'success', summary: '向受控 HTTP 地址发送 CampusOS 事件，并保留投递记录用于排查。', boundary: '需要管理员配置；目标服务负责验证和幂等处理。', anchor: '#webhook' },
   { id: 'mcp', title: 'MCP-like 工具', maturity: '内部只读', type: 'warning', summary: '在管理端验证受限工具调用和审计，不开放标准 MCP 网络服务。', boundary: '只读；不提供任意外部客户端连接或写操作。', anchor: '#mcp-like' },

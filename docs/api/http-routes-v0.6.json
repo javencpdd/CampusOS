@@ -1941,6 +1941,57 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/notifications",
+      "handler": "notificationHandler.List",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.notifications",
+      "legacy_aliases": [
+        "http.get.api.v1.notifications",
+        "httpapi.get.api.v1.notifications"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/:id/read",
+      "handler": "notificationHandler.MarkRead",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.notifications.id.read",
+      "legacy_aliases": [
+        "http.post.api.v1.notifications.id.read",
+        "httpapi.post.api.v1.notifications.id.read"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/read-all",
+      "handler": "notificationHandler.MarkAllRead",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.notifications.read_all",
+      "legacy_aliases": [
+        "http.post.api.v1.notifications.read_all",
+        "httpapi.post.api.v1.notifications.read_all"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/moderation/status",
       "handler": "d.Moderation",
       "module_owner": "core.moderation",

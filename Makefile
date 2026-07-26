@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -53,6 +53,9 @@ v13-capacity-drill:
 
 appearance-delivery-check:
 	bash scripts/check-v13-appearance-delivery.sh
+
+docker-deploy-check:
+	bash scripts/check-docker-deployment.sh
 
 docs-links:
 	python3 scripts/check-doc-links.py
@@ -189,6 +192,18 @@ docker-tools-up:
 
 docker-down:
 	docker compose down
+
+docker-deploy-init:
+	./scripts/docker-deploy.sh init
+
+docker-deploy-build:
+	./scripts/docker-deploy.sh build
+
+docker-deploy-up:
+	./scripts/docker-deploy.sh up
+
+docker-deploy-down:
+	./scripts/docker-deploy.sh down
 
 # 前端
 web-dev:

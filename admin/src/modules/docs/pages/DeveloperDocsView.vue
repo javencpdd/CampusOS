@@ -41,8 +41,9 @@
 
 <script setup lang="ts">
 import { Document, Link, Promotion } from '@element-plus/icons-vue'
+import { resolveCompanionUrl } from '@/shared/runtime/companionUrl'
 
-const docsUrl = (import.meta.env.VITE_DOCS_URL || 'http://localhost:3002').replace(/\/$/, '')
+const docsUrl = resolveCompanionUrl(import.meta.env.VITE_DOCS_URL, 3002)
 const githubUrl = import.meta.env.VITE_GITHUB_URL || 'https://github.com/javencpdd/CampusOS'
 
 const resources = [

@@ -86,6 +86,7 @@ import { ElMessage } from 'element-plus'
 import { Promotion, Refresh } from '@element-plus/icons-vue'
 import HomepagePackManager from '@/modules/appearance/components/HomepagePackManager.vue'
 import { webThemeCatalogApi } from '@/modules/appearance/api'
+import { resolveCompanionUrl } from '@/shared/runtime/companionUrl'
 
 interface ThemeItem {
   name: string
@@ -104,7 +105,7 @@ interface ThemeCatalog {
 
 const loading = ref(false)
 const catalog = ref<ThemeCatalog>({ enabled: false, allow_user_switch: false, items: [] })
-const webUrl = (import.meta.env.VITE_WEB_URL || 'http://localhost:3000').replace(/\/$/, '')
+const webUrl = resolveCompanionUrl(import.meta.env.VITE_WEB_URL, 3000)
 
 const ownership = [
   { title: '首页风格包', actor: '管理员统一切换', type: 'warning', description: '作用于用户前台首页，切换后所有访问者看到同一首页方案。' },

@@ -1,10 +1,34 @@
 <template>
-  <div class="create-thread">
+  <div ref="createThreadRoot" class="create-thread">
     <el-card class="editor-card" shadow="never">
       <template #header>
         <div class="editor-header">
           <h2>{{ editorTitle }}</h2>
-          <el-segmented v-if="richTextEnabled && !isEditMode" v-model="templateMode" :options="templateOptions" />
+          <div v-if="!isEditMode" class="publish-mode-picker">
+            <span class="publish-mode-label">发布类型</span>
+            <el-select
+              v-if="isCompact"
+              :model-value="publishMode"
+              class="publish-mode-select"
+              aria-label="选择帖子发布类型"
+              @change="selectPublishMode"
+            >
+              <el-option
+                v-for="option in publishOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                :disabled="option.disabled"
+              />
+            </el-select>
+            <el-segmented
+              v-else
+              :model-value="publishMode"
+              :options="publishOptions"
+              aria-label="选择帖子发布类型"
+              @change="selectPublishMode"
+            />
+          </div>
         </div>
       </template>
 
@@ -166,10 +190,15 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { richTextApi } from '@/modules/richtext/api'
+import { mutualAidApi } from '@/modules/mutual-aid/api'
+import { secondhandApi } from '@/modules/secondhand/api'
+import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
+const createThreadRoot = ref<HTMLElement | null>(null)
+const { isCompact } = useLayoutCapability(createThreadRoot)
 
 const loading = ref(false)
 const categoryLoading = ref(false)
@@ -179,6 +208,10 @@ const previewing = ref(false)
 const assetUploading = ref(false)
 const richTextEnabled = ref(false)
 const templateMode = ref<'richtext' | 'plain_text'>('richtext')
+type PublishMode = 'richtext' | 'plain_text' | 'mutual_aid' | 'secondhand'
+const publishMode = ref<PublishMode>('richtext')
+const mutualAidEnabled = ref(true)
+const secondhandEnabled = ref(true)
 const draftThreadId = ref('')
 const articleContentId = ref('')
 const previewVisible = ref(false)
@@ -203,10 +236,12 @@ const plainDirty = ref(false)
 const initializingPlain = ref(true)
 const allowLeave = ref(false)
 
-const templateOptions = [
-  { label: '图文文章', value: 'richtext' },
+const publishOptions = computed(() => [
+  { label: '图文文章', value: 'richtext', disabled: !richTextEnabled.value },
   { label: '普通文本', value: 'plain_text' },
-]
+  { label: '校园互助', value: 'mutual_aid', disabled: !mutualAidEnabled.value },
+  { label: '校园二手', value: 'secondhand', disabled: !secondhandEnabled.value },
+])
 
 const isEditMode = computed(() => Boolean(route.params.id))
 const editorTitle = computed(() => {
@@ -243,9 +278,21 @@ const loadStatus = async () => {
     const status = unwrap(await richTextApi.status())
     richTextEnabled.value = Boolean(status.enabled)
     templateMode.value = richTextEnabled.value ? 'richtext' : 'plain_text'
+    publishMode.value = templateMode.value
   } catch {
     richTextEnabled.value = false
     templateMode.value = 'plain_text'
+    publishMode.value = 'plain_text'
+  }
+}
+
+const loadStructuredStatuses = async () => {
+  const [mutualAid, secondhand] = await Promise.allSettled([mutualAidApi.status(), secondhandApi.status()])
+  if (mutualAid.status === 'fulfilled') {
+    mutualAidEnabled.value = unwrap(mutualAid.value)?.enabled !== false
+  }
+  if (secondhand.status === 'fulfilled') {
+    secondhandEnabled.value = unwrap(secondhand.value)?.enabled !== false
   }
 }
 
@@ -404,6 +451,19 @@ const previewArticle = async () => {
   }
 }
 
+const selectPublishMode = (value: PublishMode) => {
+  if (value === 'mutual_aid' || value === 'secondhand') {
+    if (hasUnsavedChanges() && !window.confirm('当前内容尚未保存，确定切换到其他发布类型吗？')) {
+      return
+    }
+    allowLeave.value = true
+    void router.push(value === 'mutual_aid' ? '/mutual-aid/create' : '/secondhand/create')
+    return
+  }
+  publishMode.value = value
+  templateMode.value = value
+}
+
 const chooseCover = () => coverInput.value?.click()
 const chooseBodyImage = () => bodyImageInput.value?.click()
 
@@ -529,7 +589,7 @@ onBeforeRouteLeave(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadStatus(), loadCategories()])
+  await Promise.all([loadStatus(), loadStructuredStatuses(), loadCategories()])
   await loadEditingThread()
   initializingArticle.value = false
   initializingPlain.value = false
@@ -565,6 +625,20 @@ onBeforeUnmount(() => {
 }
 .editor-header h2 {
   margin: 0;
+}
+.publish-mode-picker {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.publish-mode-label {
+  color: var(--campus-muted-color, #606266);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.publish-mode-select {
+  width: 100%;
 }
 .field-full {
   width: 100%;
@@ -610,6 +684,25 @@ onBeforeUnmount(() => {
   .editor-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .publish-mode-picker {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .editor-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .editor-actions .el-button {
+    width: 100%;
+    min-height: 44px;
+    margin-left: 0;
+  }
+  .cover-row .el-input {
+    min-width: 0;
+    flex-basis: 100%;
   }
 }
 </style>

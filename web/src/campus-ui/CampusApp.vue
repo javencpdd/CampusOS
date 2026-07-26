@@ -30,6 +30,7 @@
             <router-link v-if="userStore.isLoggedIn && !isCompact" :to="publicSpacePath"
               ><el-button text>个人主页</el-button></router-link
             >
+            <NotificationCenter v-if="userStore.isLoggedIn" />
             <el-dropdown v-if="userStore.isLoggedIn" trigger="click">
               <el-avatar class="nav-avatar" :size="32" :src="displayAvatar" role="button" tabindex="0">{{
                 avatarInitial
@@ -198,6 +199,7 @@ import { useUserStore } from '@/modules/identity/store'
 import { useWebThemeStore } from '@/modules/appearance/store'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
+import NotificationCenter from '@/modules/notifications/components/NotificationCenter.vue'
 import AppShell from './AppShell.vue'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import ThemeRoot from './ThemeRoot.vue'

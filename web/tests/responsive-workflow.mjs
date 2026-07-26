@@ -147,7 +147,18 @@ try {
   // The login page probes the HttpOnly refresh cookie before credentials are
   // submitted. Its expected 401 is not part of the authenticated page matrix.
   webErrors.length = 0
-  const webPaths = ['/', '/threads', '/appearance', '/space/settings', '/account/security', '/schedule', '/plugins']
+  const webPaths = [
+    '/',
+    '/threads',
+    '/threads/create',
+    '/mutual-aid/create',
+    '/secondhand/create',
+    '/appearance',
+    '/space/settings',
+    '/account/security',
+    '/schedule',
+    '/plugins',
+  ]
   for (const viewport of viewports) {
     await webPage.setViewportSize(viewport)
     const compactWeb = viewport.width <= 760 || (viewport.height <= 540 && viewport.width <= 1000)
@@ -156,6 +167,7 @@ try {
       await webPage.evaluate(() => window.scrollTo(0, 0))
       await waitForSettledPage(webPage)
       if (route === '/threads') {
+        await webPage.getByRole('button', { name: '消息通知' }).waitFor()
         if (compactWeb) {
           await webPage.locator('[aria-label="移动端帖子列表"]').waitFor()
           await webPage.getByRole('button', { name: '打开主导航' }).click()
@@ -170,6 +182,25 @@ try {
           }
         }
       }
+      if (route === '/threads/create') {
+        const picker = webPage.locator('.publish-mode-picker')
+        await picker.waitFor()
+        if (await picker.locator('.publish-mode-select').isVisible()) {
+          await picker.locator('.publish-mode-select').click()
+          await webPage.getByRole('option', { name: '校园互助' }).waitFor()
+          await webPage.getByRole('option', { name: '校园二手' }).waitFor()
+          await webPage.keyboard.press('Escape')
+        } else {
+          await picker.getByText('校园互助', { exact: true }).waitFor()
+          await picker.getByText('校园二手', { exact: true }).waitFor()
+        }
+      }
+      if (route === '/mutual-aid/create') {
+        await webPage.getByRole('heading', { name: '发布校园互助' }).waitFor()
+      }
+      if (route === '/secondhand/create') {
+        await webPage.getByRole('heading', { name: '发布校园二手' }).waitFor()
+      }
       if (route === '/schedule') {
         const untranslatedControls = await webPage
           .locator('[aria-label="decrease number"], [aria-label="increase number"]')
@@ -179,6 +210,9 @@ try {
         }
         if (compactWeb) {
           const controls = webPage.locator('[aria-label="减少数值"], [aria-label="增加数值"]')
+          await webPage.waitForFunction(
+            () => document.querySelectorAll('[aria-label="减少数值"], [aria-label="增加数值"]').length >= 4,
+          )
           const count = await controls.count()
           if (count < 4) throw new Error(`schedule compact number controls are missing at ${viewport.name}`)
           for (let index = 0; index < count; index += 1) {
@@ -191,6 +225,7 @@ try {
           }
         }
       }
+      await webPage.evaluate(() => window.scrollTo(0, 0))
       await assertNoOverflow(webPage, `web ${route} at ${viewport.name}`)
       await assertRenderedMedia(webPage, `web ${route} at ${viewport.name}`)
       await webPage.screenshot({
@@ -214,6 +249,7 @@ try {
   const adminPaths = [
     '/',
     '/users',
+    '/threads',
     '/permissions',
     '/plugins',
     '/plugin-center',
@@ -246,6 +282,10 @@ try {
         })
         await adminPage.waitForFunction(() => !document.querySelector('.admin-aside')?.classList.contains('is-open'))
         await adminPage.waitForTimeout(220)
+      }
+      if (route === '/threads') {
+        await adminPage.locator('[aria-label="帖子批量操作"]').waitFor()
+        await adminPage.locator('.thread-table .el-table__header-wrapper .el-checkbox').waitFor()
       }
       if (!compactAdmin && route === '/extensions') {
         await adminPage.getByRole('button', { name: '收起侧边栏' }).click()

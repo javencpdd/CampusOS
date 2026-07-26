@@ -47,6 +47,7 @@ var operationProfiles = map[string]operationProfile{
 	"postHandler.UpdatePost":                   {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
 	"postHandler.ListPosts":                    {ResponseSchema: "PostListData", Paginated: true},
 	"postHandler.ListPostsForCurrentUser":      {ResponseSchema: "PostListData", Paginated: true},
+	"notificationHandler.List":                 {ResponseSchema: "NotificationListData", Paginated: true},
 	"categoryHandler.Create":                   {RequestSchema: "CreateCategoryRequest", ResponseSchema: "Category", SuccessStatus: "201"},
 	"categoryHandler.Update":                   {RequestSchema: "UpdateCategoryRequest", ResponseSchema: "Category"},
 	"categoryHandler.Get":                      {ResponseSchema: "Category"},
@@ -119,6 +120,8 @@ var noBodyHandlers = map[string]bool{
 	"userHandler.RevokeSession":           true,
 	"userHandler.CancelAdminRecoveryCase": true,
 	"userHandler.RevokeAdminUserSessions": true,
+	"notificationHandler.MarkRead":        true,
+	"notificationHandler.MarkAllRead":     true,
 }
 
 var noContentHandlers = map[string]bool{
@@ -130,6 +133,7 @@ var noContentHandlers = map[string]bool{
 	"categoryHandler.Delete":          true,
 	"pluginHandler.UninstallPlugin":   true,
 	"richTextHandler.AdminDelete":     true,
+	"notificationHandler.MarkRead":    true,
 }
 
 func profileFor(route RouteContract) operationProfile {
@@ -491,6 +495,21 @@ func openAPIComponents() string {
         floor_number: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    Notification:
+      type: object
+      required: [id, user_id, type, title, content, action_url, is_read, metadata, created_at, updated_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        content: { type: string }
+        action_url: { type: string }
+        is_read: { type: boolean }
+        read_at: { type: string, format: date-time, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     CreatePostRequest:
       type: object
       required: [content]
@@ -702,6 +721,13 @@ func openAPIComponents() string {
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Post' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
+    NotificationListData:
+      type: object
+      required: [items, pagination, unread_count]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+        unread_count: { type: integer, format: int64, minimum: 0 }
   responses:
     Unauthorized:
       description: Missing or invalid authentication
