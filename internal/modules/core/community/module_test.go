@@ -39,7 +39,7 @@ func TestMemoryProfileAndModuleExposePortsAndHandlers(t *testing.T) {
 	if err := module.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if module.Handlers().Thread == nil || module.Handlers().Category == nil || module.Handlers().Post == nil || module.Handlers().Event == nil {
+	if module.Handlers().Thread == nil || module.Handlers().Category == nil || module.Handlers().Post == nil || module.Handlers().Notification == nil || module.Handlers().Event == nil {
 		t.Fatal("community module did not construct its handlers")
 	}
 	for _, name := range []string{portCategoryReader, portThreadPort, portPostPort} {

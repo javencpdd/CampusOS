@@ -20,6 +20,7 @@ make v13-reliability-observability-check
 make v13-baseline-check
 make v13-capacity-check
 make appearance-delivery-check
+make docker-deploy-check
 make version-check
 
 echo "==> documentation links"

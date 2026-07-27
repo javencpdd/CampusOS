@@ -82,6 +82,7 @@ func Build(d Dependencies) *Router {
 	threadHandler := d.Community.Thread
 	categoryHandler := d.Community.Category
 	postHandler := d.Community.Post
+	notificationHandler := d.Community.Notification
 	eventHandler := d.Community.Event
 	userStorageHandler := d.UserStorage
 	runtimeHTTPHandler := plugin.NewRuntimeHTTPHandler(d.PluginManager, func(ctx context.Context, userID, resource, action string) (bool, error) {
@@ -243,6 +244,9 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/threads/:id/posts", postHandler.CreatePost)
 		authenticated.PUT("/threads/:id/posts/:post_id", postHandler.UpdatePost)
 		authenticated.DELETE("/threads/:id/posts/:post_id", postHandler.DeletePost)
+		authenticated.GET("/notifications", notificationHandler.List)
+		authenticated.POST("/notifications/:id/read", notificationHandler.MarkRead)
+		authenticated.POST("/notifications/read-all", notificationHandler.MarkAllRead)
 		authenticated.GET("/moderation/status", d.Moderation.Status)
 		authenticated.GET("/moderation/me", d.Moderation.MyAccess)
 		authenticated.POST("/moderation/threads/:id/pin", d.Moderation.Pin)

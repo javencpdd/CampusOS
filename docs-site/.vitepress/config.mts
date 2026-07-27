@@ -1,11 +1,13 @@
 import { defineConfig } from 'vitepress'
 
+const includeLastUpdated = process.env.CAMPUSOS_DOCS_LAST_UPDATED !== 'false'
+
 export default defineConfig({
   lang: 'zh-CN',
   title: 'CampusOS 官方文档',
   description: 'CampusOS 部署、接口、插件开发与系统设计文档',
   cleanUrls: true,
-  lastUpdated: true,
+  lastUpdated: includeLastUpdated,
   head: [
     ['meta', { name: 'theme-color', content: '#166534' }],
     ['meta', { name: 'color-scheme', content: 'light dark' }],
@@ -112,7 +114,7 @@ export default defineConfig({
     },
     outline: { level: [2, 3], label: '本页目录' },
     docFooter: { prev: '上一篇', next: '下一篇' },
-    lastUpdated: { text: '最后更新' },
+    lastUpdated: includeLastUpdated ? { text: '最后更新' } : false,
     darkModeSwitchLabel: '外观',
     sidebarMenuLabel: '目录',
     returnToTopLabel: '返回顶部',

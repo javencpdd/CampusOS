@@ -14,6 +14,7 @@ import (
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/cache"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
@@ -33,26 +34,29 @@ const (
 )
 
 type HTTPHandlers struct {
-	Thread   *handler.ThreadHandler
-	Category *handler.CategoryHandler
-	Post     *handler.PostHandler
-	Event    *handler.EventHandler
+	Thread       *handler.ThreadHandler
+	Category     *handler.CategoryHandler
+	Post         *handler.PostHandler
+	Notification *handler.NotificationHandler
+	Event        *handler.EventHandler
 }
 
 // Module owns Community adapter lookup, application composition, public Ports,
 // and HTTP handlers. Other domains consume only the Ports or events.
 type Module struct {
-	app          *platformmodule.AppContext
-	threads      repository.ThreadRepository
-	categories   repository.CategoryRepository
-	posts        repository.PostRepository
-	governance   repository.ContentGovernanceRepository
-	typePolicies repository.ThreadTypePolicyRepository
+	app           *platformmodule.AppContext
+	threads       repository.ThreadRepository
+	categories    repository.CategoryRepository
+	posts         repository.PostRepository
+	governance    repository.ContentGovernanceRepository
+	typePolicies  repository.ThreadTypePolicyRepository
+	notifications repository.NotificationRepository
 
-	threadService   *service.ThreadService
-	categoryService *service.CategoryService
-	postService     *service.PostService
-	handlers        HTTPHandlers
+	threadService       *service.ThreadService
+	categoryService     *service.CategoryService
+	postService         *service.PostService
+	notificationService *service.NotificationService
+	handlers            HTTPHandlers
 }
 
 func NewModule() *Module { return &Module{} }
@@ -102,6 +106,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}
 	if m.typePolicies, valid = typePolicies.(repository.ThreadTypePolicyRepository); !valid {
 		return fmt.Errorf("community thread type policy repository adapter has incompatible type %T", typePolicies)
+	}
+	notifications, ok := app.Lookup(portNotificationRepo)
+	if !ok {
+		return errors.New("community notification repository adapter is not bound by profile")
+	}
+	if m.notifications, valid = notifications.(repository.NotificationRepository); !valid {
+		return fmt.Errorf("community notification repository adapter has incompatible type %T", notifications)
 	}
 	m.app = app
 	for _, binding := range []struct {
@@ -154,6 +165,7 @@ func (m *Module) Start(context.Context) error {
 	if !ok || appCache == nil {
 		return fmt.Errorf("community cache port has incompatible type %T", cacheValue)
 	}
+	notifications := service.NewNotificationService(m.notifications)
 	threads := service.NewThreadService(m.threads, bus)
 	if reliabilityValue, found := m.app.Lookup("platform.reliability.service"); found {
 		reliable, compatible := reliabilityValue.(*reliability.Service)
@@ -161,7 +173,11 @@ func (m *Module) Start(context.Context) error {
 			return fmt.Errorf("community reliability port has incompatible type %T", reliabilityValue)
 		}
 		threads.SetReliability(reliable)
+		if snapshotter, compatible := m.notifications.(transaction.Snapshotter); compatible {
+			reliable.RegisterMemorySnapshotters(snapshotter)
+		}
 	}
+	threads.SetNotificationWriter(notifications)
 	// Standalone Community tests and legacy composition can omit Identity's
 	// policy port. The production module graph always provides it before Start.
 	if authorizationValue, found := m.app.Lookup("identity.authorization"); found {
@@ -214,11 +230,13 @@ func (m *Module) Start(context.Context) error {
 	m.threadService = threads
 	m.categoryService = categories
 	m.postService = posts
+	m.notificationService = notifications
 	m.handlers = HTTPHandlers{
-		Thread:   handler.NewThreadHandler(threads),
-		Category: handler.NewCategoryHandler(categories),
-		Post:     handler.NewPostHandler(posts),
-		Event:    handler.NewEventHandler(memoryBus),
+		Thread:       handler.NewThreadHandler(threads),
+		Category:     handler.NewCategoryHandler(categories),
+		Post:         handler.NewPostHandler(posts),
+		Notification: handler.NewNotificationHandler(notifications),
+		Event:        handler.NewEventHandler(memoryBus),
 	}
 	return nil
 }
@@ -226,7 +244,7 @@ func (m *Module) Start(context.Context) error {
 func (m *Module) Stop(context.Context) error { return nil }
 
 func (m *Module) Health(context.Context) platformmodule.Health {
-	if m.threadService == nil || m.categoryService == nil || m.postService == nil {
+	if m.threadService == nil || m.categoryService == nil || m.postService == nil || m.notificationService == nil {
 		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "community services are not started"}
 	}
 	return platformmodule.Health{Status: platformmodule.HealthHealthy}
@@ -237,4 +255,5 @@ func (m *Module) CategoryRepository() repository.CategoryRepository { return m.c
 func (m *Module) PostRepository() repository.PostRepository         { return m.posts }
 func (m *Module) ThreadService() *service.ThreadService             { return m.threadService }
 func (m *Module) PostService() *service.PostService                 { return m.postService }
+func (m *Module) NotificationService() *service.NotificationService { return m.notificationService }
 func (m *Module) Handlers() HTTPHandlers                            { return m.handlers }

@@ -3971,6 +3971,95 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/notifications:
+    get:
+      operationId: notificationHandler_List
+      summary: GET /api/v1/notifications
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NotificationListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/notifications/read-all:
+    post:
+      operationId: notificationHandler_MarkAllRead
+      summary: POST /api/v1/notifications/read-all
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.notifications.read_all
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/notifications/{id}/read:
+    post:
+      operationId: notificationHandler_MarkRead
+      summary: POST /api/v1/notifications/:id/read
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.community
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.notifications.id.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/permissions:
     get:
       operationId: roleHandler_ListPermissionDefinitions
@@ -9088,6 +9177,21 @@ components:
         floor_number: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    Notification:
+      type: object
+      required: [id, user_id, type, title, content, action_url, is_read, metadata, created_at, updated_at]
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        content: { type: string }
+        action_url: { type: string }
+        is_read: { type: boolean }
+        read_at: { type: string, format: date-time, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     CreatePostRequest:
       type: object
       required: [content]
@@ -9299,6 +9403,13 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Post' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
+    NotificationListData:
+      type: object
+      required: [items, pagination, unread_count]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+        unread_count: { type: integer, format: int64, minimum: 0 }
   responses:
     Unauthorized:
       description: Missing or invalid authentication

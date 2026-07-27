@@ -120,6 +120,9 @@
 | `POST` | `/api/v1/threads/:id/posts` | `http.post.api.v1.threads.id.posts` | `core.community` | `postHandler.CreatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `PUT` | `/api/v1/threads/:id/posts/:post_id` | `http.put.api.v1.threads.id.posts.post_id` | `core.community` | `postHandler.UpdatePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `DELETE` | `/api/v1/threads/:id/posts/:post_id` | `http.delete.api.v1.threads.id.posts.post_id` | `core.community` | `postHandler.DeletePost` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/notifications` | `http.get.api.v1.notifications` | `core.community` | `notificationHandler.List` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `POST` | `/api/v1/notifications/:id/read` | `http.post.api.v1.notifications.id.read` | `core.community` | `notificationHandler.MarkRead` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `POST` | `/api/v1/notifications/read-all` | `http.post.api.v1.notifications.read_all` | `core.community` | `notificationHandler.MarkAllRead` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/moderation/status` | `http.get.api.v1.moderation.status` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
 | `GET` | `/api/v1/moderation/me` | `http.get.api.v1.moderation.me` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |
 | `POST` | `/api/v1/moderation/threads/:id/pin` | `http.post.api.v1.moderation.threads.id.pin` | `core.moderation` | `d.Moderation` | `jwt` | `-` | `category-membership` | `assigned-category` | `moderation-audit` |

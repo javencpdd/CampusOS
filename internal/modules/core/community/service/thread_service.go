@@ -38,6 +38,7 @@ type ThreadService struct {
 	cache         cache.Cache
 	reliable      *reliability.Service
 	typeEnabled   func(domain.ThreadType) bool
+	notifications ThreadNotificationWriter
 }
 
 // ContentAuthorization is the narrow server-side policy port used for
@@ -45,6 +46,10 @@ type ThreadService struct {
 // thread, never from a client-provided scope field.
 type ContentAuthorization interface {
 	CheckCodeScoped(context.Context, string, string, string, int64) (bool, error)
+}
+
+type ThreadNotificationWriter interface {
+	NotifyThreadTrashed(context.Context, string, string, string, string) error
 }
 
 // ContentAuthorizationAuditor is optional so standalone Community tests and
@@ -125,6 +130,10 @@ func (s *ThreadService) SetGovernanceRepository(repo repository.ContentGovernanc
 
 func (s *ThreadService) SetContentAuthorization(authorization ContentAuthorization) {
 	s.authorization = authorization
+}
+
+func (s *ThreadService) SetNotificationWriter(writer ThreadNotificationWriter) {
+	s.notifications = writer
 }
 
 func (s *ThreadService) SetReliability(reliable *reliability.Service) {
@@ -1086,7 +1095,13 @@ func (s *ThreadService) trashThread(ctx context.Context, thread *domain.Thread, 
 	if err := s.updateGoverned(ctx, thread); err != nil {
 		return err
 	}
-	return s.recordTransition(ctx, thread, actorID, action, reason, before, false)
+	if err := s.recordTransition(ctx, thread, actorID, action, reason, before, false); err != nil {
+		return err
+	}
+	if s.notifications != nil && !isAuthorTrashAction(action) && thread.AuthorID != actorID {
+		return s.notifications.NotifyThreadTrashed(ctx, thread.AuthorID, thread.ID, thread.Title, reason)
+	}
+	return nil
 }
 
 func (s *ThreadService) recordRevision(ctx context.Context, thread *domain.Thread, actorID, action, reason string) error {
