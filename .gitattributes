@@ -1,8 +1,65 @@
-* text=auto
+# Canonical repository text is UTF-8/LF. Git stores normalized LF blobs and
+# checks text out as LF on Windows, Linux and inside containers.
+* text=auto eol=lf
 
+# Linux/container entrypoints and configuration must never acquire CRLF.
 *.sh text eol=lf
 Dockerfile text eol=lf
 Dockerfile.* text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# Windows-native command scripts keep their conventional checkout format.
 *.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Resource checksums are calculated from working-tree bytes. Keep every text
+# payload stable across Windows and Linux; binary rules below take precedence.
+data/resources/** text eol=lf
+data/module_data/** text eol=lf
+data/plugin_data/** text eol=lf
+
+# Binary artifacts must never be newline-normalized.
+main -text
+*.7z -text
+*.a -text
+*.avi -text
+*.class -text
+*.db -text
+*.dll -text
+*.doc -text
+*.docx -text
+*.dylib -text
+*.eot -text
+*.exe -text
+*.gif -text
+*.gz -text
+*.ico -text
+*.jar -text
+*.jpeg -text
+*.jpg -text
+*.mov -text
+*.mp3 -text
+*.mp4 -text
+*.o -text
+*.otf -text
+*.pdf -text
+*.png -text
+*.ppt -text
+*.pptx -text
+*.rar -text
+*.so -text
+*.sqlite -text
+*.tar -text
+*.tgz -text
+*.ttf -text
+*.wav -text
+*.wasm -text
+*.webm -text
+*.webp -text
+*.woff -text
+*.woff2 -text
+*.xls -text
+*.xlsx -text
+*.zip -text

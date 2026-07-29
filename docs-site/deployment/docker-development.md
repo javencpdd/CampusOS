@@ -318,7 +318,10 @@ Windows 对应：
 
 ## Windows 注意事项
 
-- 使用 Git 的默认 LF 规则；仓库 `.gitattributes` 会固定 shell、YAML 和 Dockerfile 的换行。
+- `.gitattributes` 将普通文本、Shell、Dockerfile、YAML 和资源包固定为 UTF-8/LF；Windows 专用
+  `.ps1`、`.bat`、`.cmd` 使用 CRLF，二进制文件不转换。
+- 支持 EditorConfig 的编辑器会读取 `.editorconfig`。提交前运行
+  `python scripts/check-line-endings.py --include-untracked`；需要修复时显式追加 `--fix`，脚本不会暂存。
 - 不要在 Windows Containers 模式运行。
 - Defender 或索引软件可能降低大型仓库绑定挂载速度；优先把仓库放在 WSL2 文件系统。
 - PowerShell 脚本只在当前进程临时放宽执行策略，不要求永久修改系统策略。

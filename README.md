@@ -109,7 +109,7 @@ curl -fsS http://localhost:8080/api/v1/health
 ```bash
 git switch -c feat/my-change
 ./scripts/docker-dev.sh test
-git diff --check
+git diff --check && python scripts/check-line-endings.py --include-untracked
 ```
 
 专项检查和 Docker/宿主热更新切换见[贡献与 CI 工作流](docs-site/contributing/workflow.md)和
@@ -157,7 +157,7 @@ head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数�
 
 ## 验证
 
-完整门禁执行 `make release-check`；恢复演练和验证矩阵见
+跨平台换行先执行 `python scripts/check-line-endings.py --include-untracked`；完整门禁执行 `make release-check`。验证矩阵见
 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 文档

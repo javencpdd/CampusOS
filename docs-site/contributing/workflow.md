@@ -24,12 +24,17 @@ git branch --show-current
 | Migration | migration drill、`make database-check`、`make data-governance-check` |
 | Plugin/Resource | CLI inspect、包/权限负向测试、`make architecture-check` |
 | Docker | `make docker-deploy-check` 和受影响的备份恢复流程 |
+| 任意文本/资源包 | `python scripts/check-line-endings.py --include-untracked` |
 
 所有改动都执行：
 
 ```bash
 git diff --check
+python scripts/check-line-endings.py --include-untracked
 ```
+
+换行检查默认只读，并依据 `.gitattributes` 同时校验 UTF-8、LF/CRLF 与二进制声明。只有需要修复当前工作区时
+才使用 `--fix`；脚本不会执行 `git add`。CI 会在 `ubuntu-latest` 和 `windows-latest` 分别执行只读检查。
 
 版本封板和高风险改动使用：
 
@@ -99,6 +104,12 @@ GitHub CI 文件是：
 
 触发范围包括 `main`、`develop`、受支持的功能/修复分支和指向主分支的 Pull Request。它包含：
 
+### Cross-platform Text Matrix
+
+- 在 `ubuntu-latest` 和 `windows-latest` 分别检出同一提交。
+- 校验 `.gitattributes` 的文本/二进制分类、UTF-8 编码和 LF/CRLF 规则。
+- 不在 CI 中自动修复，发现漂移直接失败。
+
 ### Backend Test
 
 - PostgreSQL 16 service。
@@ -162,4 +173,3 @@ DEPLOY_RESTART_COMMAND
 - [构建与发布](/deployment/release)
 - [文档状态与历史替代](/project/document-lifecycle)
 - 仓库内 `docs/help/系统设计相关/开发运行与验证指南.md`
-
