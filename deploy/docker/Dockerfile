@@ -3,6 +3,7 @@
 ARG GO_IMAGE=golang:1.25-bookworm
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG NGINX_IMAGE=nginx:1.27-alpine
+ARG API_RUNTIME_IMAGE=alpine:3.20
 
 FROM ${GO_IMAGE} AS api-builder
 WORKDIR /src
@@ -16,16 +17,15 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-$(go env GOARCH)}" \
     go build -trimpath -ldflags="-s -w" -o /out/campusos-server ./cmd/server
 
-FROM debian:bookworm-slim AS api
+FROM ${API_RUNTIME_IMAGE} AS api
 ARG CAMPUSOS_VERSION=0.13.0
+ARG POSTGRES_CLIENT_MAJOR=16
 LABEL org.opencontainers.image.title="CampusOS API" \
       org.opencontainers.image.version="${CAMPUSOS_VERSION}" \
       org.opencontainers.image.source="https://github.com/javencpdd/CampusOS"
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && apt-get install -y --no-install-recommends bash ca-certificates curl postgresql-client tini tzdata \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 campusos \
-    && useradd --uid 10001 --gid 10001 --home-dir /app --shell /usr/sbin/nologin campusos
+RUN apk add --no-cache bash ca-certificates curl tini tzdata "postgresql${POSTGRES_CLIENT_MAJOR}-client" \
+    && addgroup -S -g 10001 campusos \
+    && adduser -S -D -H -u 10001 -G campusos campusos
 WORKDIR /app
 COPY --from=api-builder --chown=campusos:campusos /out/campusos-server ./bin/campusos-server
 COPY --chown=campusos:campusos migrations ./migrations
@@ -33,6 +33,7 @@ COPY --chown=campusos:campusos modules ./modules
 COPY --chown=campusos:campusos data ./seed-data
 COPY --chown=campusos:campusos scripts/migrate.sh scripts/backup.sh scripts/restore.sh ./scripts/
 COPY --chown=campusos:campusos deploy/docker/entrypoint.sh ./entrypoint.sh
+COPY --chown=campusos:campusos deploy/docker/restore-container.sh ./scripts/docker-restore.sh
 RUN chmod 0755 ./bin/campusos-server ./entrypoint.sh ./scripts/*.sh \
     && mkdir -p data .campusos/logs \
     && chown -R campusos:campusos data .campusos
@@ -49,7 +50,7 @@ EXPOSE 8080
 VOLUME ["/app/data"]
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=10 \
   CMD curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null || exit 1
-ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini", "--", "/app/entrypoint.sh"]
 CMD ["/app/bin/campusos-server"]
 
 FROM ${NODE_IMAGE} AS web-builder

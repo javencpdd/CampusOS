@@ -1,6 +1,7 @@
 # CampusOS ID 策略说明
 
-> 状态：v0.3-dev-pre 稳定化基线
+> 文档状态：v0.3-dev-pre 架构决策快照；当前仍以 BIGINT 为主要内部 ID，但表清单和实现细节应以
+> [当前架构概览](../../architecture/当前架构概览.md) 与 migration 为准。
 > 日期：2026-06-27
 
 ## 1. 当前结论

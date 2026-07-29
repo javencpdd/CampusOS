@@ -32,8 +32,13 @@ data/personal-space/**
 !data/personal-space/.gitkeep
 data/plugin_data/**
 !data/plugin_data/.gitkeep
+data/module_data/**
+!data/module_data/personal-space/
+!data/module_data/personal-space/styles/
+!data/module_data/personal-space/styles/*.json
 data/images/**
 !data/images/.gitkeep
+data/logs/**
 data/config/**
 !data/config/.gitkeep
 data/dist/**
@@ -41,9 +46,13 @@ data/dist/**
 data/skills/**
 !data/skills/.gitkeep
 
+# Go tests execute from each package directory. Exclude any package-local
+# runtime data left by an interrupted or misconfigured container test.
+internal/**/data
+internal/**/data/**
+
 docs
 examples
 skills
 tests
 sh
-

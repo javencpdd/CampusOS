@@ -1,0 +1,22 @@
+name: campusos-web
+
+services:
+  web:
+    image: campusos-web:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/Dockerfile
+      target: web
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${WEB_PORT:-3000}:80"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      edge:
+        aliases: ["web", "campusos-web"]
+
+networks:
+  edge:
+    external: true
+    name: ${CAMPUSOS_EDGE_NETWORK:-campusos_edge}

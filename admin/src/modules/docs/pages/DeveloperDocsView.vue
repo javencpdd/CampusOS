@@ -62,6 +62,13 @@ const resources = [
     tone: 'tone-guide',
   },
   {
+    title: 'Docker 跨平台开发与部署',
+    description: '在 Windows 或 Linux 上用容器继续开发，并完成单主机部署、备份和主机迁移。',
+    url: `${docsUrl}/deployment/docker-development`,
+    icon: Document,
+    tone: 'tone-docker',
+  },
+  {
     title: '权限配置入门',
     description: '逐步理解角色、Permission Code、板块范围和审计，并完成自定义角色与版主配置。',
     url: `${docsUrl}/guide/permission-configuration`,
@@ -74,6 +81,13 @@ const resources = [
     url: `${docsUrl}/plugins/schedule-plugin-tutorial`,
     icon: Document,
     tone: 'tone-plugin',
+  },
+  {
+    title: '版本演进与当前规划',
+    description: '查看 v1-v13 的迭代主线、历史计划有效性和下一阶段候选边界。',
+    url: `${docsUrl}/project/current-roadmap`,
+    icon: Document,
+    tone: 'tone-roadmap',
   },
   {
     title: 'GitHub 仓库',
@@ -169,9 +183,19 @@ const openExternal = (url: string) => {
   background: #f5f3ff;
 }
 
+.tone-docker {
+  color: #0369a1;
+  background: #f0f9ff;
+}
+
 .tone-permission {
   color: #b42318;
   background: #fff1f0;
+}
+
+.tone-roadmap {
+  color: #374151;
+  background: #f3f4f6;
 }
 
 .resource-copy {

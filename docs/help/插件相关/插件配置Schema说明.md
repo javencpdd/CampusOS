@@ -1,7 +1,8 @@
 # CampusOS 插件配置 Schema 说明
 
-> 日期：2026-07-07
-> 范围：v0.5-dev 插件配置 schema 与 Admin 配置表单
+> 初始日期：2026-07-07
+> 当前基线：`v0.13.0`；本文只说明仍兼容的 `config_schema`。新插件还应遵守 Manifest v2、
+> Host API v2 和当前插件教程。
 
 ## 1. 设计目标
 

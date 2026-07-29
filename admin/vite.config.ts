@@ -4,6 +4,8 @@ import { resolve } from 'path'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
+const apiProxyTarget = process.env.CAMPUSOS_API_PROXY_TARGET || 'http://localhost:8080'
+
 export default defineConfig({
 	plugins: [vue(), Components({ resolvers: [ElementPlusResolver()], dts: false })],
   resolve: {
@@ -15,7 +17,7 @@ export default defineConfig({
     port: 3001,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },

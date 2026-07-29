@@ -1,51 +1,102 @@
 # CampusOS 文档门户
 
-这里保存 CampusOS 的帮助、API、架构、版本计划和可复验进度记录。仓库根 [README](../README.md) 只承担项目入口；面向普通使用者和插件开发者的可部署文档前端位于 [docs-site](../docs-site/README.md)。
+> 当前发布基线：`v0.13.0`
+> 仓库文档：架构、合同、Help、计划和可复验证据
+> 官方文档前端：[docs-site](../docs-site/README.md)
 
-## 从这里开始
+仓库根 [README](../README.md) 只提供项目概要和最短启动命令。本目录保存开发和维护所需的详细材料；
+第一次接触项目时不要从版本计划或旧故障记录随机开始。
 
-| 角色 | 建议入口 |
+## 1. 新开发者四步入口
+
+1. **认识系统**：[开发者递进入门路线](help/开发者递进入门路线.md)。
+2. **启动系统**：[开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md)，或
+   [Docker 跨平台开发](../docs-site/deployment/docker-development.md)。
+3. **理解边界**：[当前架构概览](architecture/当前架构概览.md)、
+   [模块与插件边界](../docs-site/guide/module-plugin-resource-boundaries.md)。
+4. **完成贡献**：[官方贡献与 CI 工作流](../docs-site/contributing/workflow.md)。
+
+完成这四步后，再根据任务进入 API、插件、权限、数据库或运维专项文档。
+
+## 2. 按任务选择入口
+
+| 任务 | 当前入口 |
 | --- | --- |
-| 新贡献者 | [官方文档完整入门路径](../docs-site/guide/getting-started.md)、[开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md)、[当前架构概览](architecture/当前架构概览.md) |
-| 平台管理员 | [官方文档权限配置入门](../docs-site/guide/permission-configuration.md)、[分组导航与结构化图文发布](help/系统设计相关/v12分组导航与结构化图文发布.md)、[验证码频率策略](help/系统设计相关/v12验证码频率策略配置说明.md)、[初始管理员安全](help/系统设计相关/v12部署与初始管理员安全.md)、[账号身份与历史迁移](help/系统设计相关/v12账号身份与历史迁移说明.md)、[账号恢复与邮箱绑定](help/系统设计相关/v12账号恢复与邮箱绑定说明.md)、[注册邮箱验证](../docs-site/api/registration.md)、[邮件投递与 SMTP](help/系统设计相关/v12邮件投递与SMTP部署说明.md)、[v11 权限与可靠审计设计](help/系统设计相关/v11权限管理与可靠审计设计入门.md)、[可靠任务与 Webhook 运维](help/系统设计相关/v11可靠任务与Webhook安全运维.md)、[可靠事件异常恢复](help/系统设计相关/v12可靠事件异常诊断与安全恢复.md)、[v13 指标告警与故障恢复](help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md)、[v13 TOTP MFA 与本机恢复](help/系统设计相关/v13TOTP多因素认证与恢复说明.md)、[v13 容量基线与回归门禁](help/系统设计相关/v13容量基线与回归门禁.md)、[备份恢复说明](help/系统设计相关/备份恢复说明.md) |
-| 插件开发者 | [课表插件完整教程](../docs-site/plugins/schedule-plugin-tutorial.md)、[插件开发与工具链](help/插件相关/插件开发与工具链v0.6.md)、[Host API v2 受管数据合同](api/Host-API-v2受管数据合同.md)、[插件市场与受管数据](help/插件相关/插件市场与受管数据-v0.9.md) |
-| API 调用方 | [API 索引](api/API索引.md)、[注册邮箱验证合同](api/v12注册邮箱验证流程.md)、[会话与 Token 安全流程](api/v12会话与Token安全流程.md)、[账号恢复与邮箱绑定流程](api/v12账号恢复与邮箱绑定流程.md)、[v13 多因素认证 API](api/v13多因素认证API.md)、[当前 OpenAPI](api/openapi-v0.6-current.yaml)、[HTTP 路由与授权矩阵](api/HTTP路由与授权矩阵-v0.6.md) |
-| 风格包开发者 | [app-style-pack.v2 开发说明](help/系统设计相关/app-style-pack-v2开发说明.md)、[风格包能力边界与 CampusStyleSDK](help/系统设计相关/风格包能力边界与CampusStyleSDK说明.md) |
-| Skill 使用者 | [CampusOS Skills 文档索引](skills/README.md) |
-| 版本维护者 | [v13 正式计划书](项目计划v13/00-v13版本计划书.md)、[v13 实施回顾与 v14 进入条件](项目计划v13/01-v13实施回顾与v14进入条件.md)、[v0.13 进度记录](进度/v0.13-dev/)、[v12 历史验收](进度/v0.12-dev/) |
+| 本机 Go/Node 开发 | [开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md) |
+| Windows/Linux Docker 开发 | [Docker 开发](../docs-site/deployment/docker-development.md) |
+| 单主机部署、备份和迁移 | [Docker 部署](../docs-site/deployment/docker.md)、[备份恢复](help/系统设计相关/备份恢复说明.md) |
+| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[可靠命令与数据所有权](architecture/v11可靠命令事件与数据所有权.md) |
+| HTTP API | [API 与机器合同](api/README.md)、[接口约定](../docs-site/api/overview.md) |
+| Web/Admin 前端 | [官方完整入门](../docs-site/guide/getting-started.md)、[权限配置](../docs-site/guide/permission-configuration.md) |
+| External Plugin | [插件体系](../docs-site/plugins/overview.md)、[课表插件教程](../docs-site/plugins/schedule-plugin-tutorial.md) |
+| Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v13风格包双端交付标准.md) |
+| 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
+| 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md) |
+| Skill 使用和维护 | [Skills 索引](skills/README.md) |
+| 版本历史和未来路线 | [Help 版计划总结](help/计划书总结/README.md)、[详细计划治理](计划书总结/README.md) |
+| 判断文档是否仍有效 | [Help 生命周期](help/README.md)、[文档审计与整理](help/文档审计与整理说明.md) |
 
-## 当前基线
+## 3. 文档类型和职责
 
-当前发布版本为 `v0.13.0`。权威状态按以下优先级判断：可执行代码与迁移、生成契约和检查器、最新进度证据、架构/帮助文档、版本计划。
+| 路径 | 作用 | 是否作为当前操作入口 |
+| --- | --- | --- |
+| `help/` | 开发、部署、权限、插件、风格和运维说明 | 需要先看生命周期索引 |
+| `api/` | [HTTP、Host API、权限和机器可读合同](api/README.md) | 当前合同优先于手写示例 |
+| `architecture/` | [模块边界、数据所有权和安全设计](architecture/README.md) | 当前概览有效；带旧版本号的是决策历史 |
+| `skills/` | 项目 Skills 的调用和维护 | 当前 |
+| `项目计划v1/` 至 `项目计划v13/` | 原始计划、回顾和输入材料 | 已封版，不是当前待办 |
+| `计划书总结/` | 计划有效性、逐版推理和候选路线 | 当前治理入口 |
+| `进度/` | [每阶段实现、测试、兼容和回滚证据](进度/README.md) | 对应版本的历史证据 |
+| `Todo/` | [未排期需求、思考草稿和样例](Todo/README.md) | 不是产品承诺 |
+| `../docs-site/` | 可独立部署的官方教程前端 | 面向普通开发者和使用者 |
 
-| 主题 | 当前文档 |
-| --- | --- |
-| v12 实施与验收 | [正式计划书](项目计划v12/00-v12版本计划书.md)、[实施回顾与 v13 进入条件](项目计划v12/10-v12实施回顾与v13进入条件.md)、[Final 进度证据](进度/v0.12-dev/) |
-| 可靠命令、事件与 Webhook | [可靠命令与数据所有权](architecture/v11可靠命令事件与数据所有权.md)、[Webhook 安全模型](architecture/v11Webhook可靠投递与安全模型.md)、[运维入门](help/系统设计相关/v11可靠任务与Webhook安全运维.md)、[异常诊断与安全恢复](help/系统设计相关/v12可靠事件异常诊断与安全恢复.md)、[v13 指标告警与故障恢复](help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md) |
-| 数据、目录和迁移归属 | [v10 模块/插件/资源物理隔离](architecture/v10模块插件资源物理隔离.md)、[v11 可靠性数据所有权](architecture/v11可靠命令事件与数据所有权.md) |
-| 权限、作用域和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[v11 权限管理与可靠审计设计](help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
-| v12 已封版 | [正式计划书](项目计划v12/00-v12版本计划书.md)、[测试与发布验收矩阵](项目计划v12/08-v12测试与发布验收矩阵.md)、[风险登记与回滚方案](项目计划v12/09-v12风险登记与回滚方案.md)、[实施回顾](项目计划v12/10-v12实施回顾与v13进入条件.md) |
-| v13 已封版 | [正式计划书](项目计划v13/00-v13版本计划书.md)、[实施回顾与 v14 进入条件](项目计划v13/01-v13实施回顾与v14进入条件.md)、[Final 进度证据](进度/v0.13-dev/) |
-| 板块与结构化图文 | [结构化帖子类型与板块策略](help/系统设计相关/v12结构化帖子类型与板块策略.md)、[分组导航与结构化图文发布](help/系统设计相关/v12分组导航与结构化图文发布.md) |
-| 历史封版与后续 | [v10 最终审计与后续路线](项目计划v10/03-v10最终全方位审计与后续路线.md)、[v12 进入条件](项目计划v11/01-v11实施回顾与v12进入条件.md) |
+## 4. 当前事实如何判断
 
-`openapi-v0.6-current.yaml`、`http-routes-v0.6.json` 等文件名为兼容已有链接而保留；文件内容和 `version` 字段由当前应用版本与路由代码生成。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实第三方消息生产 Adapter 和远程公共插件市场仍属于后续版本。
+```text
+可执行代码和 migration
+  > 生成的 OpenAPI、路由、数据库和资源合同
+  > 最新进度验收证据
+  > 当前架构和 Help
+  > 已封版计划与历史设计
+```
 
-## 文档分类
+`openapi-v0.6-current.yaml`、`http-routes-v0.6.json` 等名称为兼容旧链接保留；文件内容由当前代码生成，
+不能根据文件名中的 `v0.6` 判断实现版本。
 
-| 路径 | 内容 |
-| --- | --- |
-| `help/` | 部署、运行、权限、插件管理、风格包、数据库和贡献指南 |
-| `api/` | HTTP、Host API、Manifest、权限和机器可读契约 |
-| `architecture/` | 模块边界、数据所有权、存储、安全和版本基线 |
-| `skills/` | 项目 Skills 的使用、维护、同步和验证 |
-| `项目计划v1/` 至 `项目计划v13/` | 历史计划、当前基线与下一阶段范围；历史文档不回写为当前事实 |
-| `进度/` | 每个阶段的实现、兼容、测试和回滚证据 |
-| `Todo/` | 未排期思路和样例，不代表产品承诺 |
-| `../docs-site/` | 可独立部署的官方文档前端 |
+当前数据库有 40 个追加 migration。静态旧表清单不能替代 Admin `/architecture`、`migrations/`、
+`make database-check` 和架构同步检查器。
 
-## 维护规则
+## 5. 当前架构和产品边界
 
-- 行为、API、迁移、目录或安全边界变化时，同步修改其唯一权威文档和对应进度记录。
-- 生成文件通过 `make contracts` 更新，不手工编辑；提交前运行 `make readme-check`、`make docs-links` 和适用的发布门禁。
-- 计划中的功能只有在代码、测试和当次证据完整后才能标记为已验收；受控限制必须明确写入回顾和后续路线。
+- CampusOS 是模块化单体，不是单模块，也没有拆成大量微服务。
+- Core Module、Built-in Feature、External Plugin、Resource Package 使用不同生命周期和数据目录。
+- `data/plugins` 只保存 External Plugin 实现；`data/plugin_data` 保存其运行数据；
+  `data/resources` 保存无 Runtime 的资源包。
+- 管理平面使用独立管理员准入事实，但密码凭据仍由 Identity 的 `accounts` 安全拥有。
+- 标准 MCP Server、真实 protobuf gRPC、Discord/OneBot 生产 Adapter、远程公共插件市场和完整 Agent
+  产品尚未实现。
+- Windows 支持路径是 Docker Desktop Linux Containers；当前真实发行证据仍以 Linux `amd64` 为主。
+
+## 6. 版本与计划
+
+v1-v13 都已退出待执行状态，v13 是当前发布基线但也已封版。下一版尚未正式立项：
+
+- [v1-v13 迭代内容与有效性](help/计划书总结/01-v1-v13迭代内容与有效性.md)
+- [当前项目状态与未来规划](help/计划书总结/02-当前项目状态与未来规划.md)
+- [v13 最终专业审计](项目计划v13/02-v13最终专业审计与后续路线.md)
+- [v0.13 进度证据](进度/v0.13-dev/)
+
+## 7. 维护规则
+
+1. 一个操作只保留一个当前权威正文；其他位置提供简短入口。
+2. API、migration、权限、数据目录或 Manifest 变化时同步更新生成合同和对应文档。
+3. 历史证据不静默删除；完全重复且无历史引用的文件可以在记录迁移关系后删除。
+4. 规划内容必须明确区分已实现、候选和非目标。
+5. 文档变更至少运行：
+
+```bash
+make readme-check
+make docs-links
+cd docs-site && pnpm build
+git diff --check
+```

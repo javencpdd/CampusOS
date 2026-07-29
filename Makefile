@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -192,6 +192,18 @@ docker-tools-up:
 
 docker-down:
 	docker compose down
+
+docker-dev-build:
+	./scripts/docker-dev.sh build
+
+docker-dev-up:
+	./scripts/docker-dev.sh up
+
+docker-dev-down:
+	./scripts/docker-dev.sh down
+
+docker-dev-test:
+	./scripts/docker-dev.sh test
 
 docker-deploy-init:
 	./scripts/docker-deploy.sh init

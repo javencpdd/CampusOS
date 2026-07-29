@@ -9,11 +9,21 @@ pnpm dev
 
 默认地址：`http://localhost:3002`
 
-新开发者入口：`http://localhost:3002/guide/getting-started`
+开发者学习路线：`http://localhost:3002/guide/developer-learning-path`
+
+完整入门操作：`http://localhost:3002/guide/getting-started`
+
+贡献与 CI：`http://localhost:3002/contributing/workflow`
 
 权限配置入门：`http://localhost:3002/guide/permission-configuration`
 
 课表插件教程：`http://localhost:3002/plugins/schedule-plugin-tutorial`
+
+版本演进：`http://localhost:3002/project/version-evolution`
+
+文档状态：`http://localhost:3002/project/document-lifecycle`
+
+当前规划：`http://localhost:3002/project/current-roadmap`
 
 生产构建：
 

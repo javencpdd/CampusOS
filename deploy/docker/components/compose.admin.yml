@@ -1,0 +1,26 @@
+name: campusos-admin
+
+services:
+  admin:
+    image: campusos-admin:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/Dockerfile
+      target: admin
+      args:
+        VITE_WEB_URL: ${PUBLIC_WEB_URL:-}
+        VITE_DOCS_URL: ${PUBLIC_DOCS_URL:-}
+        VITE_GITHUB_URL: ${PUBLIC_GITHUB_URL:-https://github.com/javencpdd/CampusOS}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${ADMIN_PORT:-3001}:80"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      edge:
+        aliases: ["admin", "campusos-admin"]
+
+networks:
+  edge:
+    external: true
+    name: ${CAMPUSOS_EDGE_NETWORK:-campusos_edge}

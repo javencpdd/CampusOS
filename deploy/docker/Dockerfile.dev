@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1
+
+ARG GO_IMAGE=golang:1.25-bookworm
+ARG NODE_IMAGE=node:22-bookworm-slim
+
+FROM ${GO_IMAGE} AS api-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl postgresql-client tini \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+ENV GOCACHE=/go-cache/build \
+    GOMODCACHE=/go-cache/modules
+EXPOSE 8080
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/workspace/deploy/docker/dev-api.sh"]
+
+FROM ${NODE_IMAGE} AS frontend-dev
+ENV COREPACK_HOME=/opt/corepack \
+    COREPACK_DEFAULT_TO_LATEST=0 \
+    PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
+RUN mkdir -p "$COREPACK_HOME" \
+    && corepack enable \
+    && corepack prepare pnpm@8.15.9 --activate \
+    && chmod -R a+rX "$COREPACK_HOME" \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tini \
+    && rm -rf /var/lib/apt/lists/*
+COPY deploy/docker/dev-frontend.sh /usr/local/bin/campusos-dev-frontend
+RUN chmod 0755 /usr/local/bin/campusos-dev-frontend
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+FROM frontend-dev AS web-dev
+WORKDIR /opt/campusos-deps/web
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=campusos-web-pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile \
+    && sha256sum pnpm-lock.yaml | cut -d' ' -f1 >.campusos-lock-sha
+
+FROM frontend-dev AS admin-dev
+WORKDIR /opt/campusos-deps/admin
+COPY admin/package.json admin/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=campusos-admin-pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile \
+    && sha256sum pnpm-lock.yaml | cut -d' ' -f1 >.campusos-lock-sha
+
+FROM frontend-dev AS docs-dev
+WORKDIR /opt/campusos-deps/docs
+COPY docs-site/package.json docs-site/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=campusos-docs-pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile \
+    && sha256sum pnpm-lock.yaml | cut -d' ' -f1 >.campusos-lock-sha

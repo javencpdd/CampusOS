@@ -11,12 +11,13 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
 </div>
 
 <div class="doc-link-grid">
-  <a href="/guide/getting-started"><strong>完整入门路径</strong><span>从环境准备、启动验证、模块分类到第一次开发闭环。</span></a>
+  <a href="/guide/developer-learning-path"><strong>开发者学习路线</strong><span>按阶段完成认识架构、启动环境、跟踪请求、首次改动和提交贡献。</span></a>
   <a href="/guide/permission-configuration"><strong>配置角色与权限</strong><span>从权限概念、自定义角色和用户分配，逐步完成板块版主与授权审计。</span></a>
   <a href="/deployment/development"><strong>启动开发环境</strong><span>安装依赖、准备配置、运行 migration 并启动四个开发服务。</span></a>
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
   <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
   <a href="/operations/reliable-tasks"><strong>可靠任务与 Webhook</strong><span>查看持久事件、失败队列、重放边界和安全投递配置。</span></a>
+  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>理解 v1-v13 演进、当前有效边界和下一阶段候选。</span></a>
 </div>
 
 ## 当前界面
@@ -42,7 +43,9 @@ STOP_EXISTING=true make dev-all
 | 后端 API | `http://localhost:8080/api/v1` |
 
 ::: warning 当前开发边界
-CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL、Redis、NATS 和 pgAdmin 等开发依赖，不应把本文中的本地配置直接用于公网生产环境。
+CampusOS 仍处于开发阶段。仓库已经提供容器化开发环境、API/Web/Admin/Docs 独立镜像和单主机
+Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
+Linux Containers，不支持原生 Windows Containers。
 当前兼容名称 `runtime: grpc` 表示受管外部进程，Extension/Event 使用受限 loopback HTTP；它不是标准 protobuf gRPC 协议。
 :::
 
@@ -50,7 +53,12 @@ CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL�
 
 - [GitHub 仓库](https://github.com/javencpdd/CampusOS)
 - [完整入门路径](/guide/getting-started)
+- [开发者学习路线](/guide/developer-learning-path)
+- [贡献、Pull Request 与 CI/CD](/contributing/workflow)
 - [权限配置入门](/guide/permission-configuration)
 - [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
 - [编写第一个插件](/plugins/create-first-plugin)
 - [构建与发布](/deployment/release)
+- [v1-v13 版本演进](/project/version-evolution)
+- [文档状态与历史替代](/project/document-lifecycle)
+- [当前规划与后续路线](/project/current-roadmap)

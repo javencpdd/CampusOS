@@ -1,157 +1,175 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-07-16
+> Snapshot date: 2026-07-29
 > Repository: `/home/jack/bbs/bbs01/CampusOS`
-> Current development baseline: `v0.10.0` plus the v10 module/plugin/resource separation follow-up
+> Current release baseline: `v0.13.0`
+> Migrations: `000001` through `000040`
 
-## 1. System Shape
+This file is an orientation snapshot. Before changing code, verify claims against the live worktree, generated contracts,
+migrations, the latest progress evidence, and `docs/计划书总结/README.md`.
 
-CampusOS is a Go + Vue 3 modular monolith. One API process does not mean one
-module. The current architecture distinguishes:
+## 1. Current Shape
 
-| Type | Descriptor/implementation | Lifecycle |
-| --- | --- | --- |
-| Core Module | `modules/core/*/module.yaml`, `internal/modules/core/*` | always-on, not installable or removable |
-| Built-in Feature | `modules/features/*/module.yaml`, `internal/modules/features/*` | restart or hot-gated; disable preserves data |
-| External Plugin | `data/plugins/*/plugin.yaml`, Wasm or managed process | installable, upgradable and removable through Plugin Platform |
-| Resource Package | `data/resources/*/*/resource.json` | validated/imported/applied data; no business runtime |
-
-`runtime: builtin` is parse-only migration compatibility. Plugin Manager, CLI,
-package import and directory scanning reject it and reject names reserved by a
-module, feature or compatibility alias.
-
-## 2. Current Functional Baseline
-
-| Area | Implemented baseline |
-| --- | --- |
-| Community | Categories/default tags, plain and rich-text threads, replies/floors, private content, unified publication/moderation/deletion state, revisions, review, takedown, resubmission, trash and purge |
-| Identity/RBAC | JWT, stable Permission Code, route operations, global/category scope, custom roles, moderator assignments, authorization audits, self-escalation denial and last-admin atomic protection |
-| Moderation | Always-on Core policy, category scope, pin/lock/delete-reply action limits and audit; `category-moderation` is only a compatibility alias |
-| User Storage | Safe per-user paths, ownership, quota and asset Provider under `data/personal-space/<user-id>` |
-| Personal Space | Owner-bound public pages, avatar history, style settings and Community `ContentQuery`; Built-in Feature |
-| RichText | Draft/edit/preview/publish, image assets and sanitization; Built-in Feature using User Storage |
-| Schedule | Year + spring/fall terms, first week, week/calendar views, manual editing and XLS/CSV/JSON import; Built-in Feature using User Storage |
-| Appearance | Homepage, system theme, personal-space style, safe HTML/CSS, sandbox effects and CampusStyleSDK through one Built-in Feature Facade |
-| External Plugin Platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API/Gateway, event/UI registry, config, logs, package governance, catalog, user grants, managed records/files and signatures |
-| Integrations | AI Gateway, Webhook, internal MCP-like read-only tools, Message local adapter, integration overview and platform logs |
-| Frontends | Web `:3000`, Admin `:3001`, independent VitePress docs `:3002`; adaptive layout and browser regression paths |
-
-The current system does not claim a standard MCP Server, protobuf gRPC plugin
-protocol, production Discord/OneBot adapter, remote public marketplace or
-production high-availability deployment.
-
-## 3. Important Directories
+CampusOS is a Go and Vue 3 modular monolith with one API process and three separately built frontends:
 
 ```text
-cmd/server/                         API entrypoint
-internal/server/                    bootstrap and application assembly
-internal/platform/module/           module kernel
-internal/platform/feature/          authoritative Built-in Feature registry/API
-modules/                            compiled module descriptors
-internal/modules/core/              Identity, Community, Moderation, User Storage
-internal/modules/features/          Personal Space, RichText, Schedule, Appearance and integrations
-internal/plugin/                    External Plugin Platform only
-data/plugins/                       External Plugin implementation only
-data/plugin_data/                   External Plugin private runtime data only
-data/module_data/                   Built-in Feature local mutable data
-data/resources/                     runtime-free resource packages
-data/personal-space/<user-id>/      User Storage files
-web/ admin/ docs-site/              user, admin and documentation frontends
-migrations/                         ordered PostgreSQL migrations 000001..000026
+API modular monolith
+├── Core Modules
+├── Built-in Feature Modules
+├── External Plugin Platform
+└── Resource Package Repository
+
+frontends
+├── web       user application
+├── admin     management application
+└── docs-site public documentation
 ```
 
-Current checked-in resource examples:
+The four extension categories are not interchangeable:
 
-- `data/resources/themes/{campus-canvas,aurora-campus}`
-- `data/resources/homepage-packs/campus-hero`
-- `data/resources/space-style-packs/{clean-blog,kinetic-journal}`
-- `data/module_data/personal-space/styles/*.space-style.json`
+| Category | Lifecycle | Main locations |
+| --- | --- | --- |
+| Core Module | always on, not installable or removable | `modules/core/`, `internal/modules/core/` |
+| Built-in Feature | compiled in, restart or hot-gated, data retained when disabled | `modules/features/`, `internal/modules/features/`, `data/module_data/` |
+| External Plugin | installable/upgradable/removable through governed runtimes | `data/plugins/`, `data/plugin_data/`, `internal/plugin/` |
+| Resource Package | validated data with no business runtime | `data/resources/` |
 
-Current external plugin examples:
+## 2. Implemented Baseline
 
-- `data/plugins/hello-wasm`
-- `examples/plugins/{grpc-example,campus-welcome,v2-managed-example,schedule-helper,wasm-example}`
+| Area | Verified baseline |
+| --- | --- |
+| Identity | Verified email registration, Challenge/Ticket, password recovery, email binding, revocable sessions, separate admin admission, TOTP MFA and recovery |
+| Authorization | Stable Permission Codes, route Operations, global/category scopes, custom roles, moderator bounds, last-admin protection and required audit |
+| Community | Two-level categories, tags, text/rich posts, revisions, content governance, private posts, replies/floors, notifications and batch admin actions |
+| Structured content | Built-in Mutual Aid and Secondhand modules on the reliable Community transaction boundary |
+| Reliability | TxKernel, Outbox, lease/fencing Worker, retry, dead-letter, controlled replay, receipts, retention and failure-injection tests |
+| User features | Personal Space, User Storage, avatar retention, Schedule, RichText and Appearance |
+| Appearance | Themes, homepage packs and space style packs under Resource Package governance, dual PC/mobile delivery contracts and browser matrix |
+| Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
+| Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
+| Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
 
-## 4. Database and Compatibility
+## 3. Important Boundaries
 
-- Migrations are sequential `000001` through `000026`; historical migrations
-  are read-only.
-- `000023` adds v10 content governance, `000025` adds authorization catalog,
-  and `000026` separates historical Built-in plugin state/config from the
-  External Plugin Catalog.
-- `000026` keeps existing Feature Store rows authoritative, merges old
-  Homepage/Web Theme config into Appearance, soft-deletes historical Built-in
-  plugin rows and adds `platform.feature.*` permissions.
-- Old `/plugins/<builtin-alias>` single-item routes remain compatibility
-  projections for one transition window. `/plugins` lists only External
-  Plugin; new clients use `/features` for compiled features.
-- The file-layout migration is conflict-safe and reversible:
+Do not overstate these capabilities:
+
+- MCP is currently an internal controlled MCP-like integration, not a complete standard MCP Server.
+- Historical `runtime: grpc` is a managed process using restricted loopback HTTP Extension/Event contracts, not
+  standard protobuf gRPC.
+- Discord, OneBot and other real production adapters are not implemented.
+- The plugin market is local and governed; there is no remote public marketplace, payment, rating or federation.
+- Docker delivery is single-host. It does not include HA, automatic TLS, multi-node failover or autoscaling.
+- Real runtime evidence is Linux `amd64`; Windows Docker Desktop scripts and `arm64` still need target-runner release
+  certification.
+- Agent contracts exist, but there is no unrestricted Agent Center, code executor or host-wide Agent Runner.
+
+## 4. Key Directories
+
+| Path | Purpose |
+| --- | --- |
+| `cmd/server/`, `internal/server/` | API entry and bootstrap composition |
+| `modules/` | machine-readable Core and Built-in Feature descriptors |
+| `internal/modules/core/` | Identity, Community, Moderation, User Storage and other Core implementations |
+| `internal/modules/features/` | Personal Space, Schedule, RichText, Appearance and other Built-in Features |
+| `internal/platform/` | module, feature, transaction, reliability, resource, route, runtime and version kernels |
+| `internal/plugin/` | External Plugin catalog, runtime, lifecycle, Host API and package governance |
+| `internal/transport/httpapi/` | owned route and HTTP contract composition |
+| `web/src/modules/` | user frontend feature modules |
+| `admin/src/modules/` | admin frontend feature modules |
+| `docs-site/` | public VitePress documentation |
+| `data/plugins/` | External Plugin implementation and manifest |
+| `data/plugin_data/` | External Plugin private runtime data |
+| `data/module_data/` | Built-in Feature local mutable data |
+| `data/resources/` | themes, homepage/space packs, Skills, Prompt, Persona and knowledge metadata |
+| `data/personal-space/<user-id>/` | user-owned files, images, schedules and authorized plugin attachments |
+| `sdk/`, `examples/plugins/` | Go/TypeScript SDKs and verifiable plugin examples |
+
+## 5. Run Modes
+
+Native development:
 
 ```bash
-./scripts/migrate-v10-module-plugin-layout.sh check
-./scripts/migrate-v10-module-plugin-layout.sh apply backups/v10-layout-before
-./scripts/migrate-v10-module-plugin-layout.sh rollback backups/v10-layout-before
+cp .env.example .env
+STOP_EXISTING=true make dev-all
 ```
 
-## 5. Admin and User Entry Points
+Docker development on Windows/Linux:
 
-| Capability | Entry |
+```bash
+./scripts/docker-dev.sh up
+```
+
+PowerShell uses `.\scripts\docker-dev.ps1 up`.
+
+Single-host aggregate deployment:
+
+```bash
+./scripts/docker-deploy.sh init
+./scripts/docker-deploy.sh up
+```
+
+Independent components use `./scripts/docker-component.sh up <infra|api|web|admin|docs>`.
+
+| Service | Default URL |
 | --- | --- |
-| Built-in Feature state/config | Admin `/features` |
-| Appearance and Resource Packages | Admin `/appearance`; user `/appearance` and `/space/settings` |
-| External Plugin management | Admin `/plugins` |
-| External Plugin catalog/governance | Admin `/plugin-center` |
-| Unified extension inventory | Admin `/extensions` |
-| Roles and permissions | Admin `/permissions` |
-| Category moderators | Admin `/moderators` |
-| Personal schedule | User `/schedule`; Admin sees feature state, not private course data |
+| Web | `http://localhost:3000` |
+| Admin | `http://localhost:3001` |
+| Docs | `http://localhost:3002` |
+| API | `http://localhost:8080/api/v1` |
 
-Runtime Manifest returns Built-in UI contributions in `modules[]` and External
-Plugin contributions in `plugins[]`.
+## 6. Validation
 
-## 6. Required Validation
-
-Always start with `git status --short` and never revert unrelated dirty-tree
-changes. For a full v10 acceptance run:
+Always run full Go tests for implementation work:
 
 ```bash
 GOCACHE=/tmp/campusos-go-cache go test ./... -count=1
-GOCACHE=/tmp/campusos-go-cache go run ./cmd/campusos-contracts --check
+```
+
+Common gates:
+
+```bash
+make readme-check
+make docs-links
 make architecture-check
 make data-governance-check
 make database-check
-make docs-links
-make readme-check
-make version-check
-make generated-files-check
-pnpm --dir web lint
-pnpm --dir web format:check
-pnpm --dir web build
-pnpm --dir admin test:component
-pnpm --dir admin build
-pnpm --dir docs-site build
-pnpm --dir sdk/typescript build
-git diff --check
+make docker-deploy-check
 ```
 
-Release closure additionally uses:
+Frontend checks:
 
 ```bash
-STOP_EXISTING=true make dev-all
-RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
+cd web && pnpm lint && pnpm format:check && pnpm build
+cd ../admin && pnpm test:component && pnpm build
+cd ../docs-site && pnpm build
 ```
 
-Do not weaken permission, audit, path, quota, content-safety, checksum or
-database checks to make validation pass.
+Release/high-risk changes use the applicable database, restore and browser form of `make release-check`.
 
-## 7. Read Before Editing
+## 7. Documentation Authority
 
-1. `README.md`
-2. `docs/项目计划v10/00-v10版本计划书.md`
-3. Latest file under `docs/进度/v0.10-dev/`
-4. `docs/architecture/v10模块插件资源物理隔离.md`
-5. `docs/architecture/v10当前系统清点与治理.md`
-6. The relevant module descriptor and README under `modules/`
+Read these before a new task:
 
-When behavior, paths, migrations, APIs or manifests change, update contracts,
-the current architecture/help docs, v10 plan evidence and a new progress file.
+| Need | Document |
+| --- | --- |
+| Root entry | `README.md` |
+| Documentation portal | `docs/README.md` |
+| Help lifecycle and stale-doc map | `docs/help/README.md` |
+| Version evolution and plan validity | `docs/计划书总结/README.md` |
+| Current candidate roadmap | `docs/计划书总结/01-当前项目规划与后续路线.md` |
+| Current architecture | `docs/architecture/当前架构概览.md` |
+| v13 plan and audit | `docs/项目计划v13/00-v13版本计划书.md`, `docs/项目计划v13/02-v13最终专业审计与后续路线.md` |
+| Current evidence | latest files in `docs/进度/v0.13-dev/` |
+
+Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation
+instructions. Planned capabilities must not be reported as implemented without live code and test evidence.
+
+## 8. Onboarding Checklist
+
+1. Run `git status --short`; preserve unrelated user changes.
+2. Run `scripts/context_snapshot.sh` from this Skill.
+3. Classify the task as Core, Built-in Feature, External Plugin or Resource Package.
+4. Inspect the owning module, Port, migration and frontend route before editing.
+5. Keep API/data compatibility unless the task provides a migration and rollback path.
+6. Run impact-specific checks plus full Go tests.
+7. Update the canonical guide, current progress evidence and generated contracts when behavior changes.

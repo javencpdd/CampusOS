@@ -19,24 +19,27 @@ git status -sb || true
 section "Current README status lines"
 sed -n '1,40p' README.md
 
-section "Recent v0.5 and v0.6 progress docs"
-find docs/进度/v0.5-dev -maxdepth 1 -type f -name 'v0.5.*-dev.md' 2>/dev/null | sort -V
-find docs/进度/v0.6-dev -maxdepth 1 -type f -name 'v0.6.*-dev.md' 2>/dev/null | sort -V
+section "Version plan authority"
+sed -n '1,120p' docs/计划书总结/README.md 2>/dev/null || true
+
+section "Latest progress docs"
+mapfile -t progress_docs < <(rg --files docs/进度 2>/dev/null | sort -V | tail -n 30)
+printf '%s\n' "${progress_docs[@]}"
 
 section "Migrations"
-find migrations -maxdepth 1 -type f -name '*.up.sql' | sort
+rg --files migrations -g '*.up.sql' | sort
 
 section "Help docs"
-find docs/help -type f | sort
+rg --files docs/help | sort
 
 section "Skill docs"
-find docs/skills -type f 2>/dev/null | sort
+rg --files docs/skills 2>/dev/null | sort
 
 section "Project skills"
-find skills -maxdepth 2 -type f -name SKILL.md | sort
+rg --files skills -g 'SKILL.md' | sort
 
 section "Make targets"
 sed -n '1,120p' Makefile
 
 section "Key implementation directories"
-find internal cmd web/src admin/src sdk data skills -maxdepth 2 -type d 2>/dev/null | sort | sed -n '1,180p'
+printf '%s\n' modules internal/modules internal/platform internal/plugin cmd web/src admin/src docs-site sdk data skills

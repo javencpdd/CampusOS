@@ -2,6 +2,9 @@
 
 这条路径面向第一次接触 CampusOS 的开发者。完成后，你应能启动四个服务、理解系统为何是“单进程但多模块”、找到课表与风格包管理入口，并完成一次最小改动和验证。
 
+希望按“每阶段完成标志”学习时，先使用 [开发者学习路线](/guide/developer-learning-path)；本页保留完整的
+一次性操作说明。
+
 本页在本地文档站的固定地址是：
 
 ```text
@@ -51,6 +54,10 @@ cd ..
 ```
 
 ## 3. 一次启动完整开发环境
+
+只安装 Git 和 Docker 的 Windows/Linux 开发者可以直接使用
+[Docker 跨平台开发环境](/deployment/docker-development)。已经安装本地 Go、Node.js 与 pnpm 时，可继续使用
+下面的原生开发流程。
 
 在仓库根目录执行：
 
@@ -193,6 +200,10 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 | 配置角色、权限或版主 | [权限配置入门](/guide/permission-configuration) |
 | 设计新的权限能力 | [系统架构](/guide/architecture) 和仓库内 `v10权限管理设计与使用入门.md` |
 | 准备发布 | [构建与发布](/deployment/release) |
+| 在 Windows/Linux 用 Docker 开发 | [Docker 跨平台开发环境](/deployment/docker-development) |
+| 单主机部署或迁移 | [Docker 单主机部署与迁移](/deployment/docker) |
+| 理解历史计划、文档有效性和下一步 | [v1-v13 版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、[当前规划与后续路线](/project/current-roadmap) |
+| 准备提交代码 | [贡献、Pull Request 与 CI/CD](/contributing/workflow) |
 
 ## 9. 常见启动问题
 

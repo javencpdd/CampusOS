@@ -1,6 +1,8 @@
 # CampusOS RBAC 权限与版主管理说明
 
-> 当前执行阶段：`v0.10`
+> 文档状态：v10 前后的权限模型快照；当前操作入口见
+> [权限配置入门](../../../docs-site/guide/permission-configuration.md) 和
+> [v11 权限管理与可靠审计](v11权限管理与可靠审计设计入门.md)。
 > 适用范围：角色管理、版块版主授权、Moderation Core 和用户端治理
 
 ## 1. 先看结论

@@ -16,6 +16,7 @@ Use this reference to select one canonical owner for content removed from `READM
 | Module boundaries, topology, database/file ownership, security design | `docs/architecture/` | Keep one architecture overview link. |
 | Completed task evidence and exact verification output | `docs/进度/<stage>/` | Root README links only the latest relevant progress record when useful. |
 | Planned scope, priorities, deferred work, acceptance | `docs/项目计划v*/` | Keep only current plan/next-stage link. |
+| Cross-version evolution, plan validity, current candidate roadmap | `docs/计划书总结/` | Link the summary, not a long list of historical plans. |
 | Release notes and upgrade notes | `docs/releases/` | Do not duplicate a release history in README. |
 | Unscheduled ideas and raw samples | `docs/Todo/` | Do not present as current product capability. |
 
@@ -34,3 +35,7 @@ When adding a document:
 Some historical progress documents point to `docs/help/skills相关/`. New Skill documentation belongs in `docs/skills/`. When migrating an existing Skill guide, leave a short Markdown relocation file at the old path instead of rewriting historical progress records.
 
 Do not create duplicate full documents at old and new paths. The relocation file must name and link the canonical document.
+
+Raw files named `计划思路`, prompt transcripts, and planning discussion exports are inputs, not current plans. Preserve them
+for traceability, add an explicit non-authoritative status when needed, and record their replacement in
+`docs/计划书总结/README.md`.
