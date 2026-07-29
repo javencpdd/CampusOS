@@ -40,15 +40,86 @@ if ! [[ "$SAMPLES" =~ ^[0-9]+$ ]] || (( SAMPLES < 20 || SAMPLES > 50 )); then
 fi
 
 cleanup() {
-  if [[ -n "$api_pid" ]]; then
-    kill "$api_pid" 2>/dev/null || true
-    wait "$api_pid" 2>/dev/null || true
-  fi
+  stop_api
   docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" \
     dropdb -U "$DB_USER" --if-exists --force "$drill_db" >/dev/null 2>&1 || true
   rm -rf "$work_dir"
 }
 trap cleanup EXIT
+
+stop_api() {
+  if [[ -z "$api_pid" ]]; then
+    return
+  fi
+  kill "$api_pid" 2>/dev/null || true
+  wait "$api_pid" 2>/dev/null || true
+  api_pid=""
+}
+
+start_api() {
+  local phase="$1"
+  api_log="$work_dir/api-$phase.log"
+  : >"$api_log"
+
+  DATABASE_DSN="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${drill_db}?sslmode=disable" \
+    SERVER_HOST=127.0.0.1 \
+    SERVER_PORT="$API_PORT" \
+    CAMPUSOS_ENV=development \
+    AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN=true \
+    AUTH_BOOTSTRAP_ADMIN_SECRET= \
+    AUTH_CHALLENGE_ACTIVE_KEY_ID=capacity-v1 \
+    AUTH_CHALLENGE_HMAC_KEYS=capacity-v1:campusos-capacity-challenge-key \
+    AUTH_CHALLENGE_IP_HASH_SECRET=campusos-capacity-challenge-ip-hash-key \
+    AUTH_SESSION_IP_HASH_SECRET=campusos-capacity-session-ip-hash-key \
+    AUTH_MFA_ACTIVE_KEY_ID=capacity-v1 \
+    AUTH_MFA_ENCRYPTION_KEYS=capacity-v1:campusos-capacity-mfa-envelope-key \
+    AUTH_MFA_ISSUER='CampusOS Capacity Drill' \
+    JWT_SECRET=campusos-capacity-drill-jwt-secret \
+    EMAIL_PROVIDER=fake \
+    HOST_API_ENABLED=false \
+    OBSERVABILITY_PROMETHEUS_ENABLED=false \
+    REDIS_ENABLED=false \
+    PLUGIN_DATA_DIR="$work_dir/plugin_data" \
+    "$api_binary" >"$api_log" 2>&1 &
+  api_pid="$!"
+
+  for attempt in $(seq 1 80); do
+    if curl -fsS "http://127.0.0.1:$API_PORT/api/v1/health" >/dev/null 2>&1; then
+      return
+    fi
+    if ! kill -0 "$api_pid" 2>/dev/null; then
+      sed -n '1,220p' "$api_log" >&2
+      exit 1
+    fi
+    if (( attempt == 80 )); then
+      echo "isolated CampusOS API did not become ready during $phase" >&2
+      sed -n '1,220p' "$api_log" >&2
+      exit 1
+    fi
+    sleep 0.25
+  done
+}
+
+capture_phase() {
+  local phase="$1"
+  local output="$work_dir/$phase.json"
+
+  echo "==> starting fresh isolated API for $phase"
+  start_api "$phase"
+  GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity capture \
+    --base-url "http://127.0.0.1:$API_PORT" \
+    --samples 3 \
+    --include-admin-observability \
+    --authorization-file "$authorization_file" \
+    --output "$work_dir/$phase-warmup.json"
+  GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity capture \
+    --base-url "http://127.0.0.1:$API_PORT" \
+    --samples "$SAMPLES" \
+    --include-admin-observability \
+    --authorization-file "$authorization_file" \
+    --output "$output"
+  stop_api
+}
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -75,46 +146,8 @@ PSQL_MODE=docker DB_NAME="$drill_db" DB_PASSWORD="$DB_PASSWORD" POSTGRES_CONTAIN
 echo "==> building isolated CampusOS API"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go build -o "$api_binary" ./cmd/server/main.go
 
-echo "==> starting isolated CampusOS API on 127.0.0.1:$API_PORT"
-DATABASE_DSN="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${drill_db}?sslmode=disable" \
-  SERVER_HOST=127.0.0.1 \
-  SERVER_PORT="$API_PORT" \
-  CAMPUSOS_ENV=development \
-  AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN=true \
-  AUTH_BOOTSTRAP_ADMIN_SECRET= \
-  AUTH_CHALLENGE_ACTIVE_KEY_ID=capacity-v1 \
-  AUTH_CHALLENGE_HMAC_KEYS=capacity-v1:campusos-capacity-challenge-key \
-  AUTH_CHALLENGE_IP_HASH_SECRET=campusos-capacity-challenge-ip-hash-key \
-  AUTH_SESSION_IP_HASH_SECRET=campusos-capacity-session-ip-hash-key \
-  AUTH_MFA_ACTIVE_KEY_ID=capacity-v1 \
-  AUTH_MFA_ENCRYPTION_KEYS=capacity-v1:campusos-capacity-mfa-envelope-key \
-  AUTH_MFA_ISSUER='CampusOS Capacity Drill' \
-  JWT_SECRET=campusos-capacity-drill-jwt-secret \
-  EMAIL_PROVIDER=fake \
-  HOST_API_ENABLED=false \
-  OBSERVABILITY_PROMETHEUS_ENABLED=false \
-  REDIS_ENABLED=false \
-  PLUGIN_DATA_DIR="$work_dir/plugin_data" \
-  "$api_binary" >"$api_log" 2>&1 &
-api_pid="$!"
-
-for attempt in $(seq 1 80); do
-  if curl -fsS "http://127.0.0.1:$API_PORT/api/v1/health" >/dev/null 2>&1; then
-    break
-  fi
-  if ! kill -0 "$api_pid" 2>/dev/null; then
-    sed -n '1,220p' "$api_log" >&2
-    exit 1
-  fi
-  if (( attempt == 80 )); then
-    echo "isolated CampusOS API did not become ready" >&2
-    sed -n '1,220p' "$api_log" >&2
-    exit 1
-  fi
-  sleep 0.25
-done
-
 echo "==> issuing short-lived local capacity authorization"
+start_api authorization
 CAPACITY_API_URL="http://127.0.0.1:$API_PORT/api/v1" \
   CAPACITY_AUTH_FILE="$authorization_file" \
   CAPACITY_ADMIN_EMAIL="$DRILL_EMAIL" \
@@ -135,28 +168,11 @@ if (!response.ok || !token || payload?.data?.mfa_required) {
 writeFileSync(process.env.CAPACITY_AUTH_FILE, `Bearer ${token}\n`, { mode: 0o600 })
 chmodSync(process.env.CAPACITY_AUTH_FILE, 0o600)
 NODE
+stop_api
 
-echo "==> warming isolated capacity paths"
-GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity capture \
-  --base-url "http://127.0.0.1:$API_PORT" \
-  --samples 3 \
-  --include-admin-observability \
-  --authorization-file "$authorization_file" \
-  --output "$work_dir/warmup.json"
-
-echo "==> capturing isolated capacity baseline and candidate"
-GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity capture \
-  --base-url "http://127.0.0.1:$API_PORT" \
-  --samples "$SAMPLES" \
-  --include-admin-observability \
-  --authorization-file "$authorization_file" \
-  --output "$work_dir/baseline.json"
-GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity capture \
-  --base-url "http://127.0.0.1:$API_PORT" \
-  --samples "$SAMPLES" \
-  --include-admin-observability \
-  --authorization-file "$authorization_file" \
-  --output "$work_dir/candidate.json"
+echo "==> capturing baseline and candidate in independent fresh API processes"
+capture_phase baseline
+capture_phase candidate
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity compare \
   --baseline "$work_dir/baseline.json" \
   --candidate "$work_dir/candidate.json" \
