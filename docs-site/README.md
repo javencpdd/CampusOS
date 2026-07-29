@@ -15,6 +15,10 @@ pnpm dev
 
 课表插件教程：`http://localhost:3002/plugins/schedule-plugin-tutorial`
 
+版本演进：`http://localhost:3002/project/version-evolution`
+
+当前规划：`http://localhost:3002/project/current-roadmap`
+
 生产构建：
 
 ```bash

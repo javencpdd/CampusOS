@@ -17,6 +17,7 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
   <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
   <a href="/operations/reliable-tasks"><strong>可靠任务与 Webhook</strong><span>查看持久事件、失败队列、重放边界和安全投递配置。</span></a>
+  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>理解 v1-v13 演进、当前有效边界和下一阶段候选。</span></a>
 </div>
 
 ## 当前界面
@@ -42,7 +43,9 @@ STOP_EXISTING=true make dev-all
 | 后端 API | `http://localhost:8080/api/v1` |
 
 ::: warning 当前开发边界
-CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL、Redis、NATS 和 pgAdmin 等开发依赖，不应把本文中的本地配置直接用于公网生产环境。
+CampusOS 仍处于开发阶段。仓库已经提供容器化开发环境、API/Web/Admin/Docs 独立镜像和单主机
+Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
+Linux Containers，不支持原生 Windows Containers。
 当前兼容名称 `runtime: grpc` 表示受管外部进程，Extension/Event 使用受限 loopback HTTP；它不是标准 protobuf gRPC 协议。
 :::
 
@@ -54,3 +57,5 @@ CampusOS 仍处于开发阶段。当前 Docker Compose 主要提供 PostgreSQL�
 - [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
 - [编写第一个插件](/plugins/create-first-plugin)
 - [构建与发布](/deployment/release)
+- [v1-v13 版本演进](/project/version-evolution)
+- [当前规划与后续路线](/project/current-roadmap)

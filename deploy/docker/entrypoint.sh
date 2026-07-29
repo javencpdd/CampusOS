@@ -18,7 +18,14 @@ mkdir -p \
 # Seed only missing files. Installed plugins, user resources and mutable module
 # state in the volume always win over image defaults during upgrades.
 if [[ -d /app/seed-data ]]; then
-  cp -a -n /app/seed-data/. /app/data/
+  while IFS= read -r -d '' seed_file; do
+    relative_path="${seed_file#/app/seed-data/}"
+    target_path="/app/data/$relative_path"
+    if [[ ! -e "$target_path" ]]; then
+      mkdir -p "$(dirname "$target_path")"
+      cp -a "$seed_file" "$target_path"
+    fi
+  done < <(find /app/seed-data -type f -print0)
 fi
 
 wait_for_postgres() {
@@ -50,4 +57,3 @@ fi
 mkdir -p "${CAMPUSOS_LOG_DIR:-/app/data/logs}"
 exec > >(tee -a "${CAMPUSOS_LOG_DIR:-/app/data/logs}/api.log") 2>&1
 exec "$@"
-

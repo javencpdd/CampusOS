@@ -1,176 +1,104 @@
 # CampusOS 项目上手 Skill 使用说明
 
-> 日期：2026-07-07
-> Skill 名称：`campusos-project-onboarding`
-> 仓库内位置：`/home/jack/bbs/bbs01/CampusOS/skills/campusos-project-onboarding`
-> Codex 用户级位置：`/home/jack/.codex/skills/campusos-project-onboarding`
-> 用途：帮助 agent 快速了解 CampusOS 当前项目进度、代码结构、验证命令和开发边界
+> 更新日期：2026-07-29
+> Skill：`campusos-project-onboarding`
+> 当前项目基线：`v0.13.0`
 
-## 1. 用途
+## 1. 什么时候使用
 
-`campusos-project-onboarding` 用于在 agent 开始处理 CampusOS 任务前快速建立项目上下文。
+在新 Agent 接手项目、上下文压缩后继续开发、审查版本完成度或准备修改架构前，先使用该 Skill。它会先
+建立当前版本、四类扩展、migration、文档权威性和验证命令的共同上下文，避免从旧 v0.5/v0.6 文档开始工作。
 
-它解决的问题是：后续会话或新 agent 可能不知道当前项目已经完成到哪里、哪些能力是真实落地、哪些只是计划或暂缓项。使用该 Skill 后，agent 会先读取项目进度快照，再根据任务读取相关代码和文档，避免从零开始翻完整个 `docs/`。
-
-适用场景：
-
-| 场景 | 说明 |
-| --- | --- |
-| 新 agent 接手项目 | 快速了解项目当前阶段和关键模块 |
-| 上下文压缩后继续开发 | 用快照恢复项目背景 |
-| 开始新版本阶段任务 | 先确认 v0.5-dev 完成状态和后续边界 |
-| 做代码审查或缺陷修复 | 先明确相关目录、验证命令和风险点 |
-| 更新 README 或计划文档 | 先确认当前真实状态，避免文档夸大 |
-
-## 2. 推荐触发方式
-
-中文触发：
-
-```text
-使用 campusos-project-onboarding 快速了解 CampusOS 当前项目进度后，再继续处理任务。
-```
-
-英文显式触发：
+推荐提示：
 
 ```text
 Use $campusos-project-onboarding to understand the current CampusOS project status before working.
 ```
 
-也可以在具体任务前加上：
+或者：
 
 ```text
-先使用 campusos-project-onboarding 读取项目当前状态，然后修复 xxx 问题。
+先使用 campusos-project-onboarding 核对当前 CampusOS 基线，再处理这个任务。
 ```
 
-## 3. Skill 结构
+## 2. Skill 结构
 
 ```text
 skills/campusos-project-onboarding/
 ├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── references/
-│   └── current-project-status.md
-└── scripts/
-    └── context_snapshot.sh
+├── agents/openai.yaml
+├── references/current-project-status.md
+└── scripts/context_snapshot.sh
 ```
 
 | 文件 | 作用 |
 | --- | --- |
-| `SKILL.md` | 定义触发条件和 agent 上手流程 |
-| `references/current-project-status.md` | 保存当前项目进度快照 |
-| `scripts/context_snapshot.sh` | 只读输出最新仓库状态、README 摘要、迁移、文档和目录 |
-| `agents/openai.yaml` | Skill UI 元数据 |
+| `SKILL.md` | 定义上手步骤、必读文件和按影响选择的验证 |
+| `current-project-status.md` | `v0.13.0` 的架构、能力、限制、目录和运行快照 |
+| `context_snapshot.sh` | 只读输出工作树、计划权威入口、最新进度、migration、Help/Skill 和关键目录 |
+| `openai.yaml` | Skill 的界面元数据 |
 
-## 4. 当前快照内容
+## 3. 当前快照覆盖什么
 
-`references/current-project-status.md` 记录了以下信息：
+- 模块化单体和 Core/Built-in Feature/External Plugin/Resource Package 四分类。
+- Identity、Community、Reliability、Appearance、插件平台和 Docker 交付的当前边界。
+- migration `000001-000040` 和关键代码/数据目录。
+- 原生开发、Docker 开发、总编排和分组件启动方式。
+- 当前仍未实现的标准 MCP、标准 protobuf gRPC、远程市场、真实第三方 Adapter 和高可用。
+- Help 文档生命周期、v1-v13 计划总结和当前候选路线。
 
-| 内容 | 说明 |
-| --- | --- |
-| 当前基线 | `v0.5-dev` 已完成到 `v0.5.11-dev` |
-| 已实现模块 | 用户前台、管理后台、后端 API、插件、个人主页、Webhook、MCP-like、Message、Metrics 等 |
-| 版本回顾 | v0.1 到 v0.5-dev 的核心完成内容 |
-| 数据库迁移 | `000001` 到 `000012` 的用途 |
-| 关键目录 | `internal/`、`web/`、`admin/`、`sdk/`、`examples/` 等 |
-| 运行命令 | `make dev-all`、`make migrate-up`、`go test`、前端构建命令等 |
-| 服务和账号 | 本地端口、默认管理员、PostgreSQL、pgAdmin 账号 |
-| 文档地图 | README、v5 计划、v0.5 进度、help 文档入口 |
-| 开发边界 | 标准 MCP、真实 IM、插件市场、AI 审核、原生 Windows 等暂未完成项 |
+快照不是代码事实的替代品。具体任务仍要读取所属模块、Port、migration、路由和测试。
 
-## 5. 快照脚本
-
-脚本位置：
-
-```bash
-skills/campusos-project-onboarding/scripts/context_snapshot.sh
-```
-
-运行：
+## 4. 运行动态快照
 
 ```bash
 ./skills/campusos-project-onboarding/scripts/context_snapshot.sh
 ```
 
-脚本只读取项目状态，不修改文件。输出内容包括：
+脚本不会修改文件。它不再硬编码只列 v0.5/v0.6，而是动态显示最新 30 份进度记录，并从
+`docs/计划书总结/README.md` 输出当前计划权威关系。
 
-| 输出项 | 说明 |
-| --- | --- |
-| Repository | 根目录、当前分支、HEAD、`git status -sb` |
-| README 摘要 | 当前 README 开头状态说明 |
-| v0.5 进度文档 | `docs/进度/v0.5-dev/` 中的进度文件 |
-| Migrations | 当前 up migration 文件 |
-| Help docs | `docs/help/` 下的帮助文档 |
-| Project skills | 仓库内 Skill 列表 |
-| Make targets | 当前 Makefile 命令入口 |
-| Key implementation directories | 关键实现目录 |
-
-## 6. 与其它 Skill 的关系
-
-| Skill | 作用 | 与本 Skill 的关系 |
-| --- | --- | --- |
-| `campusos-project-onboarding` | 快速理解项目当前状态 | 建议作为接手项目的第一步 |
-| `campusos-dev-workflow` | 继续完成版本阶段开发任务 | 上手后用于执行具体开发任务 |
-| `campusos-dev-nocommit` | 完成任务但不提交 | 适合用户要求不 commit 的开发流程 |
-| `campusos-readme-update` | 同步 README | 上手确认状态后再更新 README |
-
-建议顺序：
+## 5. 推荐工作顺序
 
 ```text
 campusos-project-onboarding
-        ↓
-根据任务选择 campusos-dev-workflow / campusos-dev-nocommit / campusos-readme-update
+  -> 确认 Core / Feature / Plugin / Resource 归属
+  -> 读取所属代码、migration、前端和当前文档
+  -> 使用 campusos-dev-nocommit 或 campusos-dev-workflow
+  -> 按影响运行测试、构建、架构和发布门禁
+  -> 更新唯一权威文档和进度证据
 ```
 
-## 7. 同步到 Codex 用户级目录
-
-仓库内副本用于版本管理。为了让新会话能自动发现该 Skill，同步到用户级目录：
+开始修改前必须运行：
 
 ```bash
-mkdir -p /home/jack/.codex/skills
-rsync -a skills/campusos-project-onboarding/ /home/jack/.codex/skills/campusos-project-onboarding/
+git status --short
 ```
 
-同步后可用：
+不要覆盖其他开发者的改动，也不要把计划中的能力描述成已实现。
 
-```text
-Use $campusos-project-onboarding to understand the current CampusOS project status before working.
-```
+## 6. 维护与验证
 
-## 8. 维护规则
+以下变化需要同步该 Skill：
 
-当以下内容变化时，应同步更新 `references/current-project-status.md`：
-
-| 变化 | 需要更新 |
+| 变化 | 更新位置 |
 | --- | --- |
-| 新版本阶段开始或完成 | 当前基线、版本回顾、后续边界 |
-| 新增 migration | 迁移清单 |
-| 新增核心模块 | 已实现模块和关键目录 |
-| 运行方式变化 | 运行命令、服务端口、默认账号 |
-| 新增 help 文档 | 文档地图 |
-| 暂缓项变为已完成 | 开发边界说明 |
+| 发布版本或版本路线变化 | `current-project-status.md`、计划总结链接 |
+| 新增 Core/Feature 或目录迁移 | 四分类和关键目录 |
+| 新增 migration | migration 基线 |
+| Docker/端口/启动方式变化 | Run Modes |
+| 完成原受控限制 | Important Boundaries |
+| 文档入口变化 | Documentation Authority |
 
-更新后建议执行：
+验证：
 
 ```bash
-python3 /home/jack/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/campusos-project-onboarding
 bash -n skills/campusos-project-onboarding/scripts/context_snapshot.sh
 ./skills/campusos-project-onboarding/scripts/context_snapshot.sh
-git diff --check -- skills/campusos-project-onboarding docs/help/skills相关/CampusOS-项目上手Skill使用说明.md
+python3 /home/jack/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
+  skills/campusos-project-onboarding
+git diff --check
 ```
 
-如同步了用户级副本，也建议验证：
-
-```bash
-python3 /home/jack/.codex/skills/.system/skill-creator/scripts/quick_validate.py /home/jack/.codex/skills/campusos-project-onboarding
-```
-
-## 9. 注意事项
-
-| 项目 | 要求 |
-| --- | --- |
-| 快照准确性 | 快照用于快速上手，但具体开发前仍要读取当前代码和文档 |
-| 工作区安全 | agent 必须先看 `git status --short`，不要覆盖无关用户改动 |
-| 已完成/未完成边界 | 不要把标准 MCP、真实 IM 适配器、插件市场、AI 审核、原生 Windows 写成已完成 |
-| 验证范围 | 根据实际改动选择 Go 测试、迁移、web/admin 构建或脚本语法检查 |
-| 文档同步 | 项目状态、运行方式或目录结构变化后应更新该 Skill 快照 |
+仓库副本是版本化事实源。同步到用户级 Codex Skill 目录属于本机安装操作，应在确认当前仓库版本后显式执行，
+不要让自动脚本覆盖用户的其他 Skill。

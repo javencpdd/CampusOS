@@ -1,0 +1,234 @@
+name: campusos-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-campusos}
+      POSTGRES_USER: ${POSTGRES_USER:-campusos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusos_dev}
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-campusos} -d ${POSTGRES_DB:-campusos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes $${REDIS_PASSWORD:+--requirepass "$${REDIS_PASSWORD}"}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_REDIS_PORT:-56379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$${REDIS_PASSWORD}\"} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  nats:
+    image: nats:2-alpine
+    command: ["-js", "-m", "8222", "-sd", "/data"]
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_NATS_PORT:-54222}:4222"
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_NATS_MONITOR_PORT:-58222}:8222"
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "nats-server", "--help"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.dev
+      target: api-dev
+      args:
+        GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
+        GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    working_dir: /workspace
+    environment:
+      CAMPUSOS_ENV: development
+      CAMPUSOS_INSTANCE_MODE: single
+      CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
+      CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
+      CAMPUSOS_DEV_POLL_INTERVAL: ${CAMPUSOS_DEV_POLL_INTERVAL:-1}
+      GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
+      GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
+      GOFLAGS: -buildvcs=false
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      DATABASE_DSN: postgres://${POSTGRES_USER:-campusos}:${POSTGRES_PASSWORD:-campusos_dev}@postgres:5432/${POSTGRES_DB:-campusos}?sslmode=disable
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-campusos}
+      DB_NAME: ${POSTGRES_DB:-campusos}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-campusos_dev}
+      MIGRATIONS_DIR: migrations
+      REDIS_ENABLED: "true"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: campusos-dev-secret-key-change-in-production
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 720h
+      JWT_ISSUER: campusos
+      AUTH_PASSWORD_HASH_ENABLED: "true"
+      AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN: "true"
+      AUTH_CHALLENGE_ACTIVE_KEY_ID: development-v1
+      AUTH_CHALLENGE_HMAC_KEYS: development-v1:campusos-development-challenge-key-change-before-production
+      AUTH_CHALLENGE_IP_HASH_SECRET: campusos-development-ip-hash-key-change-before-production
+      AUTH_SESSION_IP_HASH_SECRET: campusos-development-session-ip-hash-key-change-before-production
+      AUTH_REFRESH_BODY_COMPAT: "false"
+      AUTH_MFA_ACTIVE_KEY_ID: development-v1
+      AUTH_MFA_ENCRYPTION_KEYS: development-v1:campusos-development-mfa-encryption-key-change-before-production
+      AUTH_MFA_ISSUER: CampusOS
+      EMAIL_PROVIDER: fake
+      HOST_API_ENABLED: "true"
+      HOST_API_ADDR: 127.0.0.1:18080
+      OBSERVABILITY_PROMETHEUS_ENABLED: "false"
+      PLUGINS_DIR: data/plugins
+      PLUGIN_DATA_DIR: data/plugin_data
+      MODULE_DATA_DIR: data/module_data
+      RESOURCE_DIR: data/resources
+      AI_ENABLED: "false"
+      WEBHOOK_ALLOW_PRIVATE_NETWORK: "false"
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_API_PORT:-8080}:8080"
+    volumes:
+      - .:/workspace
+      - go-build-cache:/go-cache/build
+      - go-module-cache:/go-cache/modules
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 5s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.dev
+      target: web-dev
+    depends_on:
+      api:
+        condition: service_healthy
+    working_dir: /workspace/web
+    command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev", "--host", "0.0.0.0"]
+    environment:
+      CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/web
+      CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
+      CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
+      CAMPUSOS_API_PROXY_TARGET: http://api:8080
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_WEB_PORT:-3000}:3000"
+    volumes:
+      - ./web:/workspace/web
+      - web-node-modules:/workspace/web/node_modules
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+
+  admin:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.dev
+      target: admin-dev
+    depends_on:
+      api:
+        condition: service_healthy
+    working_dir: /workspace/admin
+    command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev", "--host", "0.0.0.0"]
+    environment:
+      CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/admin
+      CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
+      CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
+      CAMPUSOS_API_PROXY_TARGET: http://api:8080
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
+      VITE_WEB_URL: http://localhost:${CAMPUSOS_DEV_WEB_PORT:-3000}
+      VITE_DOCS_URL: http://localhost:${CAMPUSOS_DEV_DOCS_PORT:-3002}
+      VITE_GITHUB_URL: https://github.com/javencpdd/CampusOS
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_ADMIN_PORT:-3001}:3001"
+    volumes:
+      - ./admin:/workspace/admin
+      - admin-node-modules:/workspace/admin/node_modules
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+
+  docs:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.dev
+      target: docs-dev
+    working_dir: /workspace/docs-site
+    command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev"]
+    environment:
+      CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/docs
+      CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
+      CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
+      CAMPUSOS_DOCS_LAST_UPDATED: "false"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_DOCS_PORT:-3002}:3002"
+    volumes:
+      - ./docs-site:/workspace/docs-site
+      - docs-node-modules:/workspace/docs-site/node_modules
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@campusos.dev
+      PGADMIN_DEFAULT_PASSWORD: pgadmin123
+    ports:
+      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  postgres-data:
+  redis-data:
+  nats-data:
+  go-build-cache:
+  go-module-cache:
+  web-node-modules:
+  admin-node-modules:
+  docs-node-modules:
+  pgadmin-data:

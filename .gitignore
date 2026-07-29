@@ -39,6 +39,7 @@ __pycache__/
 
 # ─── Node.js / 前端 ───
 node_modules/
+.pnpm-store/
 web/dist/
 admin/dist/
 web/.vite/
@@ -52,6 +53,7 @@ docs-site/.vitepress/.temp/
 # ─── 环境变量与密钥 ───
 .env
 .env.docker
+.env.components/
 .env.production
 *.pem
 *.key
@@ -94,6 +96,10 @@ nats-data/
 !/data/config/.gitkeep
 /data/skills/*
 !/data/skills/.gitkeep
+
+# Runtime data belongs under the repository-level data directory or a Docker
+# volume, never under an internal Go package.
+/internal/**/data/
 
 # ─── 临时文件 ───
 *.tmp

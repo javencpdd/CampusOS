@@ -13,7 +13,10 @@ CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容
 - 扩展：区分 External Plugin、Built-in Feature、Resource Package 与 Integration；支持 Wasm 和进程 Runtime、Host API v1/v2、受管数据/文件、用户授权与本地插件目录。
 - 前端：Web 与 Admin 按布局能力适配手机、平板、横屏和桌面；课表、内容治理、插件中心和权限页纳入七视口回归。
 
-当前仍不提供标准 MCP Server、标准 protobuf gRPC 扩展协议、真实 Discord/OneBot 生产适配器、远程公共插件市场或生产级高可用部署。历史名为 `runtime: grpc` 的进程 Runtime 当前通过受限 loopback HTTP Extension 合同通信。
+v13 同时提供 Windows/Linux 通用的 Docker 开发栈和经过门禁检查的单主机 Compose 交付，但仍不提供
+生产级高可用、多节点自动故障转移或自动 TLS。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实
+Discord/OneBot 生产适配器和远程公共插件市场也仍属于后续范围。历史名为 `runtime: grpc` 的进程 Runtime
+当前通过受限 loopback HTTP Extension 合同通信。
 
 ## 快速开始
 
@@ -32,6 +35,18 @@ STOP_EXISTING=true make dev-all
 | API | `http://localhost:8080/api/v1` |
 
 环境变量、开发账号、数据库迁移、手动启动和故障排查见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
+
+只安装 Git 与 Docker 的 Windows/Linux 开发者可以使用：
+
+```bash
+./scripts/docker-dev.sh up
+```
+
+Windows PowerShell 使用 `.\scripts\docker-dev.ps1 up`。单主机部署先运行
+`./scripts/docker-deploy.sh init && ./scripts/docker-deploy.sh up`，详细边界、备份和迁移步骤见
+[Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)。
+API、Web、Admin、Docs 也可以分别通过 `./scripts/docker-component.sh up <component>` 构建和启动；
+整体配置继续使用 `compose.deploy.yml` 一键启动。
 
 ## 仓库结构
 
@@ -63,12 +78,13 @@ make release-check
 | 主题 | 文档 |
 | --- | --- |
 | 新开发者入门 | [官方文档完整入门路径](docs-site/guide/getting-started.md) |
-| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[v11 可靠命令与数据所有权](docs/architecture/v11可靠命令事件与数据所有权.md)、[v10 模块/插件/资源物理隔离](docs/architecture/v10模块插件资源物理隔离.md) |
+| Docker 开发与部署 | [跨平台开发教程](docs-site/deployment/docker-development.md)、[单主机部署与迁移](docs-site/deployment/docker.md) |
+| 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[模块与插件边界](docs-site/guide/module-plugin-resource-boundaries.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
-| 权限与可靠审计 | [v11 权限管理与可靠审计设计入门](docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md)、[可靠任务与 Webhook 安全运维](docs/help/系统设计相关/v11可靠任务与Webhook安全运维.md) |
-| 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件分级与生命周期说明](docs/help/插件相关/插件分级与生命周期说明.md)、[插件市场与受管数据](docs/help/插件相关/插件市场与受管数据-v0.9.md) |
-| 当前版本 | [v13 计划书](docs/项目计划v13/00-v13版本计划书.md)、[v13 实施回顾与 v14 进入条件](docs/项目计划v13/01-v13实施回顾与v14进入条件.md)、[v0.13 进度记录](docs/进度/v0.13-dev/) |
-| 历史封版与后续 | [v10 最终审计与后续路线](docs/项目计划v10/03-v10最终全方位审计与后续路线.md)、[v12 进入条件](docs/项目计划v11/01-v11实施回顾与v12进入条件.md) |
+| 权限与可靠审计 | [权限配置入门](docs-site/guide/permission-configuration.md)、[可靠任务与 Webhook](docs-site/operations/reliable-tasks.md) |
+| 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件体系](docs-site/plugins/overview.md) |
+| Help 文档状态 | [Help 索引、历史文档与替代关系](docs/help/README.md) |
+| 当前版本与后续 | [v13 最终专业审计](docs/项目计划v13/02-v13最终专业审计与后续路线.md)、[v1-v13 计划总结](docs/计划书总结/README.md)、[公开规划页](docs-site/project/current-roadmap.md) |
 
 ## License
 

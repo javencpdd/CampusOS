@@ -52,6 +52,10 @@ cd ..
 
 ## 3. 一次启动完整开发环境
 
+只安装 Git 和 Docker 的 Windows/Linux 开发者可以直接使用
+[Docker 跨平台开发环境](/deployment/docker-development)。已经安装本地 Go、Node.js 与 pnpm 时，可继续使用
+下面的原生开发流程。
+
 在仓库根目录执行：
 
 ```bash
@@ -193,6 +197,9 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 | 配置角色、权限或版主 | [权限配置入门](/guide/permission-configuration) |
 | 设计新的权限能力 | [系统架构](/guide/architecture) 和仓库内 `v10权限管理设计与使用入门.md` |
 | 准备发布 | [构建与发布](/deployment/release) |
+| 在 Windows/Linux 用 Docker 开发 | [Docker 跨平台开发环境](/deployment/docker-development) |
+| 单主机部署或迁移 | [Docker 单主机部署与迁移](/deployment/docker) |
+| 理解历史计划和下一步 | [v1-v13 版本演进](/project/version-evolution)、[当前规划与后续路线](/project/current-roadmap) |
 
 ## 9. 常见启动问题
 

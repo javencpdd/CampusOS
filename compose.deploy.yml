@@ -1,67 +1,27 @@
 name: campusos
 
+# One-click stack. Service definitions are reused from the independently
+# runnable component Compose files under deploy/docker/components/.
 services:
   postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-campusos}
-      POSTGRES_USER: ${POSTGRES_USER:-campusos}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./scripts/docker-deploy.sh init first}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-campusos} -d ${POSTGRES_DB:-campusos}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - backend
+    extends:
+      file: deploy/docker/components/compose.infra.yml
+      service: postgres
 
   redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command:
-      - sh
-      - -c
-      - exec redis-server --appendonly yes $${REDIS_PASSWORD:+--requirepass "$${REDIS_PASSWORD}"}
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$${REDIS_PASSWORD}\"} ping | grep -q PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - backend
+    extends:
+      file: deploy/docker/components/compose.infra.yml
+      service: redis
 
   nats:
-    image: nats:2-alpine
-    restart: unless-stopped
-    command: ["-js", "-sd", "/data"]
-    volumes:
-      - nats-data:/data
-    healthcheck:
-      test: ["CMD", "nats-server", "--help"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - backend
+    extends:
+      file: deploy/docker/components/compose.infra.yml
+      service: nats
 
   api:
-    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile
-      target: api
-      args:
-        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-0.13.0}
-        GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
-        GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
-    restart: unless-stopped
+    extends:
+      file: deploy/docker/components/compose.api.yml
+      service: api
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,123 +29,52 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
+
+  web:
+    extends:
+      file: deploy/docker/components/compose.web.yml
+      service: web
+    depends_on:
+      api:
+        condition: service_healthy
+
+  admin:
+    extends:
+      file: deploy/docker/components/compose.admin.yml
+      service: admin
+    depends_on:
+      api:
+        condition: service_healthy
+
+  docs:
+    extends:
+      file: deploy/docker/components/compose.docs.yml
+      service: docs
+
+  maintenance:
+    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    profiles: ["maintenance"]
+    user: "0:0"
+    entrypoint: ["/sbin/tini", "--"]
     environment:
-      CAMPUSOS_ENV: ${CAMPUSOS_ENV:-development}
-      CAMPUSOS_INSTANCE_MODE: single
-      CAMPUSOS_RUN_MIGRATIONS: "true"
-      SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8080
-      DATABASE_DSN: postgres://${POSTGRES_USER:-campusos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-campusos}?sslmode=disable
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER:-campusos}
       DB_NAME: ${POSTGRES_DB:-campusos}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_ENABLED: "true"
-      REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      NATS_URL: nats://nats:4222
-      JWT_SECRET: ${JWT_SECRET:?run ./scripts/docker-deploy.sh init first}
-      JWT_ACCESS_TTL: 15m
-      JWT_REFRESH_TTL: 720h
-      JWT_ISSUER: campusos
-      AUTH_PASSWORD_HASH_ENABLED: "true"
-      AUTH_BOOTSTRAP_ADMIN_SECRET: ${AUTH_BOOTSTRAP_ADMIN_SECRET:?run ./scripts/docker-deploy.sh init first}
-      AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN: ${AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN:-false}
-      AUTH_CHALLENGE_ACTIVE_KEY_ID: ${AUTH_CHALLENGE_ACTIVE_KEY_ID:-docker-v1}
-      AUTH_CHALLENGE_HMAC_KEYS: ${AUTH_CHALLENGE_HMAC_KEYS:?run ./scripts/docker-deploy.sh init first}
-      AUTH_CHALLENGE_IP_HASH_SECRET: ${AUTH_CHALLENGE_IP_HASH_SECRET:?run ./scripts/docker-deploy.sh init first}
-      AUTH_SESSION_IP_HASH_SECRET: ${AUTH_SESSION_IP_HASH_SECRET:?run ./scripts/docker-deploy.sh init first}
-      AUTH_REFRESH_BODY_COMPAT: "false"
-      AUTH_MFA_ACTIVE_KEY_ID: ${AUTH_MFA_ACTIVE_KEY_ID:-docker-v1}
-      AUTH_MFA_ENCRYPTION_KEYS: ${AUTH_MFA_ENCRYPTION_KEYS:?run ./scripts/docker-deploy.sh init first}
-      AUTH_MFA_ISSUER: ${AUTH_MFA_ISSUER:-CampusOS}
-      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-fake}
-      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
-      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
-      EMAIL_SMTP_USERNAME: ${EMAIL_SMTP_USERNAME:-}
-      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
-      EMAIL_SMTP_FROM: ${EMAIL_SMTP_FROM:-}
-      EMAIL_SMTP_TIMEOUT: ${EMAIL_SMTP_TIMEOUT:-10s}
-      EMAIL_SMTP_STARTTLS: ${EMAIL_SMTP_STARTTLS:-true}
-      HOST_API_ENABLED: "true"
-      HOST_API_ADDR: 127.0.0.1:18080
-      OBSERVABILITY_PROMETHEUS_ENABLED: "false"
-      AI_ENABLED: ${AI_ENABLED:-false}
-      AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
-      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
-      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_TIMEOUT: ${AI_TIMEOUT:-30s}
-      AI_MAX_REQUESTS_PER_MINUTE: ${AI_MAX_REQUESTS_PER_MINUTE:-60}
-      AI_MAX_CONCURRENT: ${AI_MAX_CONCURRENT:-4}
-      WEBHOOK_ALLOWED_HOSTS: ${WEBHOOK_ALLOWED_HOSTS:-}
-      WEBHOOK_ALLOW_PRIVATE_NETWORK: ${WEBHOOK_ALLOW_PRIVATE_NETWORK:-false}
-    ports:
-      - "${API_BIND:-127.0.0.1}:${API_PORT:-8080}:8080"
     volumes:
       - campusos-data:/app/data
-    tmpfs:
-      - /tmp
+      - ./backups:/backups:ro
+    security_opt:
+      - no-new-privileges:true
     cap_drop:
       - ALL
-    security_opt:
-      - no-new-privileges:true
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
     networks:
       - backend
-      - edge
-
-  web:
-    image: campusos-web:${CAMPUSOS_IMAGE_TAG:-0.13.0}
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile
-      target: web
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "${HTTP_BIND:-0.0.0.0}:${WEB_PORT:-3000}:80"
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - edge
-
-  admin:
-    image: campusos-admin:${CAMPUSOS_IMAGE_TAG:-0.13.0}
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile
-      target: admin
-      args:
-        VITE_WEB_URL: ${PUBLIC_WEB_URL:-}
-        VITE_DOCS_URL: ${PUBLIC_DOCS_URL:-}
-        VITE_GITHUB_URL: ${PUBLIC_GITHUB_URL:-https://github.com/javencpdd/CampusOS}
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
-    ports:
-      - "${HTTP_BIND:-0.0.0.0}:${ADMIN_PORT:-3001}:80"
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - edge
-
-  docs:
-    image: campusos-docs:${CAMPUSOS_IMAGE_TAG:-0.13.0}
-    build:
-      context: .
-      dockerfile: deploy/docker/Dockerfile
-      target: docs
-    restart: unless-stopped
-    ports:
-      - "${HTTP_BIND:-0.0.0.0}:${DOCS_PORT:-3002}:80"
-    security_opt:
-      - no-new-privileges:true
-    networks:
-      - edge
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -204,12 +93,25 @@ services:
 
 volumes:
   postgres-data:
+    external: true
+    name: ${CAMPUSOS_POSTGRES_VOLUME:-campusos_postgres-data}
   redis-data:
+    external: true
+    name: ${CAMPUSOS_REDIS_VOLUME:-campusos_redis-data}
   nats-data:
+    external: true
+    name: ${CAMPUSOS_NATS_VOLUME:-campusos_nats-data}
   campusos-data:
+    external: true
+    name: ${CAMPUSOS_DATA_VOLUME:-campusos_campusos-data}
   pgadmin-data:
+    external: true
+    name: ${CAMPUSOS_PGADMIN_VOLUME:-campusos_pgadmin-data}
 
 networks:
   backend:
-    internal: true
+    external: true
+    name: ${CAMPUSOS_BACKEND_NETWORK:-campusos_backend}
   edge:
+    external: true
+    name: ${CAMPUSOS_EDGE_NETWORK:-campusos_edge}

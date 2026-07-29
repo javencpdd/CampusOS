@@ -1,0 +1,71 @@
+name: campusos-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-campusos}
+      POSTGRES_USER: ${POSTGRES_USER:-campusos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run the Docker environment init first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-campusos} -d ${POSTGRES_DB:-campusos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      backend:
+        aliases: ["postgres", "campusos-postgres"]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes $${REDIS_PASSWORD:+--requirepass "$${REDIS_PASSWORD}"}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$${REDIS_PASSWORD}\"} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      backend:
+        aliases: ["redis", "campusos-redis"]
+
+  nats:
+    image: nats:2-alpine
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data"]
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "nats-server", "--help"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      backend:
+        aliases: ["nats", "campusos-nats"]
+
+volumes:
+  postgres-data:
+    external: true
+    name: ${CAMPUSOS_POSTGRES_VOLUME:-campusos_postgres-data}
+  redis-data:
+    external: true
+    name: ${CAMPUSOS_REDIS_VOLUME:-campusos_redis-data}
+  nats-data:
+    external: true
+    name: ${CAMPUSOS_NATS_VOLUME:-campusos_nats-data}
+
+networks:
+  backend:
+    external: true
+    name: ${CAMPUSOS_BACKEND_NETWORK:-campusos_backend}

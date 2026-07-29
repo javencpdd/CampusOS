@@ -39,13 +39,38 @@ dump_database() {
 
 dump_database
 
-paths=(migrations "$MODULES_DIR" "$PLUGINS_DIR" "$PLUGIN_DATA_DIR" "$MODULE_DATA_DIR" "$RESOURCE_DIR" data/personal-space data/images data/config data/skills)
-[[ -f .env ]] && paths+=(.env)
-existing=()
-for item in "${paths[@]}"; do
-  [[ -e "$item" ]] && existing+=("$item")
-done
-tar -czf "$work_dir/files.tar.gz" "${existing[@]}"
+files_root="$work_dir/files"
+mkdir -p "$files_root"
+
+# Normalize configurable absolute paths to a stable archive layout. Restore
+# consumers therefore always receive modules/ and data/* regardless of whether
+# the backup was created on a host checkout or inside /app in Docker.
+stage_path() {
+  local source="$1"
+  local destination="$2"
+  [[ -e "$source" ]] || return 0
+  mkdir -p "$files_root/$(dirname "$destination")"
+  if [[ -d "$source" ]]; then
+    mkdir -p "$files_root/$destination"
+    cp -a "$source/." "$files_root/$destination/"
+  else
+    cp -a "$source" "$files_root/$destination"
+  fi
+}
+
+stage_path migrations migrations
+stage_path "$MODULES_DIR" modules
+stage_path "$PLUGINS_DIR" data/plugins
+stage_path "$PLUGIN_DATA_DIR" data/plugin_data
+stage_path "$MODULE_DATA_DIR" data/module_data
+stage_path "$RESOURCE_DIR" data/resources
+stage_path data/personal-space data/personal-space
+stage_path data/images data/images
+stage_path data/config data/config
+stage_path data/skills data/skills
+[[ -f .env ]] && stage_path .env .env
+
+tar -C "$files_root" -czf "$work_dir/files.tar.gz" .
 
 cat >"$work_dir/metadata.txt" <<EOF
 format=campusos-single-node-v2

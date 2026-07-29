@@ -17,20 +17,26 @@ The snapshot is useful, but it is not a substitute for checking live files. Trea
 2. Read `references/current-project-status.md`.
 3. Run `scripts/context_snapshot.sh` when current git status, migrations, docs, or skill inventory matters.
 4. Read only the task-relevant source files after the snapshot:
-   - Version planning: `docs/项目计划v5/00-v5版本计划书.md`, `docs/项目计划v4/02-v4实现状态与后续规划总结.md`
-   - Current progress: `docs/进度/v0.5-dev/`
-   - Runtime setup: `README.md`, `.env.example`, `Makefile`, `docker-compose.yml`, `scripts/`
-   - Backend implementation: `internal/`, `cmd/server/`, `pkg/`
-   - Frontend implementation: `web/src/`, `admin/src/`
-   - Plugins and SDK: `internal/plugin/`, `data/plugins/`, `sdk/go/`, `cmd/campusosctl/`
+   - Version status: `docs/计划书总结/README.md`, `docs/计划书总结/01-当前项目规划与后续路线.md`
+   - Current baseline: `docs/项目计划v13/00-v13版本计划书.md`, `docs/项目计划v13/02-v13最终专业审计与后续路线.md`
+   - Current progress: the latest files in `docs/进度/v0.13-dev/`
+   - Documentation status: `docs/help/README.md`, `docs/README.md`
+   - Runtime setup: `README.md`, `.env.example`, `Makefile`, `compose.dev.yml`, `compose.deploy.yml`, `scripts/`
+   - Backend implementation: `modules/`, `internal/modules/`, `internal/platform/`, `internal/plugin/`, `cmd/`, `pkg/`
+   - Frontend implementation: `web/src/`, `admin/src/`, `docs-site/`
+   - Plugins, resources and SDK: `data/plugins/`, `data/resources/`, `sdk/`, `examples/plugins/`, `cmd/campusosctl/`
 5. Before editing, check `git status --short` and do not overwrite unrelated user changes.
 6. After edits, validate based on impact:
    - Go/backend: `GOCACHE=/tmp/campusos-go-cache go test ./... -count=1`
-   - Migrations: `make migrate-up && make migrate-status`
-   - User frontend: `cd web && pnpm build`
-   - Admin frontend: `cd admin && pnpm build`
+   - Migrations/data: `make migrate-status`, `make database-check`, and the relevant migration drill
+   - User frontend: `cd web && pnpm lint && pnpm format:check && pnpm build`
+   - Admin frontend: `cd admin && pnpm test:component && pnpm build`
+   - Docs frontend: `cd docs-site && pnpm build`
+   - Documentation: `make readme-check && make docs-links`
+   - Architecture: `make architecture-check`
+   - Docker: `make docker-deploy-check`
    - Shell scripts: `bash -n <script>`
-   - Markdown links when relevant: use the relevant local checker if one exists.
+   - Release/high-risk changes: run the applicable restore and browser release gates.
 
 ## Output Pattern
 
@@ -38,7 +44,8 @@ When using this skill to brief the user or another agent, summarize:
 
 - Current completed stage and next recommended stage.
 - Key implemented modules.
-- Current run and validation commands.
+- Native and Docker run/validation commands.
+- Core Module, Built-in Feature, External Plugin, and Resource Package boundaries.
 - Boundaries that must not be overstated.
 - Files or directories the agent should read next for the requested task.
 

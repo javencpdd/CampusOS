@@ -1,0 +1,22 @@
+name: campusos-docs
+
+services:
+  docs:
+    image: campusos-docs:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/Dockerfile
+      target: docs
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${DOCS_PORT:-3002}:80"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      edge:
+        aliases: ["docs", "campusos-docs"]
+
+networks:
+  edge:
+    external: true
+    name: ${CAMPUSOS_EDGE_NETWORK:-campusos_edge}

@@ -1,0 +1,94 @@
+name: campusos-api
+
+services:
+  api:
+    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    build:
+      context: ../../..
+      dockerfile: deploy/docker/Dockerfile
+      target: api
+      args:
+        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-0.13.0}
+        GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
+        GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
+    restart: unless-stopped
+    environment:
+      CAMPUSOS_ENV: ${CAMPUSOS_ENV:-development}
+      CAMPUSOS_INSTANCE_MODE: single
+      CAMPUSOS_RUN_MIGRATIONS: "true"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      DATABASE_DSN: postgres://${POSTGRES_USER:-campusos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-campusos}?sslmode=disable
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-campusos}
+      DB_NAME: ${POSTGRES_DB:-campusos}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_ENABLED: "true"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: ${JWT_SECRET:?run the Docker environment init first}
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 720h
+      JWT_ISSUER: campusos
+      AUTH_PASSWORD_HASH_ENABLED: "true"
+      AUTH_BOOTSTRAP_ADMIN_SECRET: ${AUTH_BOOTSTRAP_ADMIN_SECRET:?run the Docker environment init first}
+      AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN: ${AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN:-false}
+      AUTH_CHALLENGE_ACTIVE_KEY_ID: ${AUTH_CHALLENGE_ACTIVE_KEY_ID:-docker-v1}
+      AUTH_CHALLENGE_HMAC_KEYS: ${AUTH_CHALLENGE_HMAC_KEYS:?run the Docker environment init first}
+      AUTH_CHALLENGE_IP_HASH_SECRET: ${AUTH_CHALLENGE_IP_HASH_SECRET:?run the Docker environment init first}
+      AUTH_SESSION_IP_HASH_SECRET: ${AUTH_SESSION_IP_HASH_SECRET:?run the Docker environment init first}
+      AUTH_REFRESH_BODY_COMPAT: "false"
+      AUTH_MFA_ACTIVE_KEY_ID: ${AUTH_MFA_ACTIVE_KEY_ID:-docker-v1}
+      AUTH_MFA_ENCRYPTION_KEYS: ${AUTH_MFA_ENCRYPTION_KEYS:?run the Docker environment init first}
+      AUTH_MFA_ISSUER: ${AUTH_MFA_ISSUER:-CampusOS}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-fake}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USERNAME: ${EMAIL_SMTP_USERNAME:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_FROM: ${EMAIL_SMTP_FROM:-}
+      EMAIL_SMTP_TIMEOUT: ${EMAIL_SMTP_TIMEOUT:-10s}
+      EMAIL_SMTP_STARTTLS: ${EMAIL_SMTP_STARTTLS:-true}
+      HOST_API_ENABLED: "true"
+      HOST_API_ADDR: 127.0.0.1:18080
+      OBSERVABILITY_PROMETHEUS_ENABLED: "false"
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_TIMEOUT: ${AI_TIMEOUT:-30s}
+      AI_MAX_REQUESTS_PER_MINUTE: ${AI_MAX_REQUESTS_PER_MINUTE:-60}
+      AI_MAX_CONCURRENT: ${AI_MAX_CONCURRENT:-4}
+      WEBHOOK_ALLOWED_HOSTS: ${WEBHOOK_ALLOWED_HOSTS:-}
+      WEBHOOK_ALLOW_PRIVATE_NETWORK: ${WEBHOOK_ALLOW_PRIVATE_NETWORK:-false}
+    ports:
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-8080}:8080"
+    volumes:
+      - campusos-data:/app/data
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      backend:
+        aliases: ["api-backend", "campusos-api-backend"]
+      edge:
+        aliases: ["api", "campusos-api"]
+
+volumes:
+  campusos-data:
+    external: true
+    name: ${CAMPUSOS_DATA_VOLUME:-campusos_campusos-data}
+
+networks:
+  backend:
+    external: true
+    name: ${CAMPUSOS_BACKEND_NETWORK:-campusos_backend}
+  edge:
+    external: true
+    name: ${CAMPUSOS_EDGE_NETWORK:-campusos_edge}
