@@ -33,10 +33,11 @@ IDE 或其他编辑器修改这份工作区。开发 Compose 的挂载关系是�
 
 ### Windows
 
-1. 安装 Git 与 Docker Desktop。
-2. 在 Docker Desktop 启用 WSL2 backend 和 Linux Containers。
+1. 安装 Git；管理员 PowerShell 可用 `wsl --install --no-distribution` 启用 WSL 2，按提示重启。
+2. 安装并启动 Docker Desktop，在设置中启用 WSL2 backend 和 Linux Containers。
 3. 给仓库所在磁盘开启文件共享。
-4. 推荐把仓库克隆到 WSL2 文件系统以获得更快的绑定挂载。
+4. 用 `docker context show` 确认当前为 `desktop-linux`，再运行 `docker info`。
+5. 推荐把仓库克隆到 WSL2 文件系统以获得更快的绑定挂载。
 
 ### Linux
 
@@ -127,6 +128,31 @@ Corepack 缓存固定在镜像内并锁定 pnpm `8.15.9`，运行期不会因切
 ```
 
 这些固定值只允许在 loopback 开发栈使用。
+
+### Windows Docker Hub 代理
+
+如果构建出现：
+
+```text
+failed to fetch oauth token
+Post "https://auth.docker.io/token"
+```
+
+这是 Docker Hub 网络、DNS 或代理故障，不是 CampusOS Dockerfile 错误。先确认 Windows 系统代理或
+Docker Desktop “Settings → Resources → Proxies”中的代理可用。例如代理监听
+`127.0.0.1:7897` 时，保持代理程序运行，并让 Docker Desktop/Containers proxy 使用 System proxy
+或对应的手工 HTTP/HTTPS proxy。
+
+修改代理后重启 Docker Desktop，并用小镜像验证：
+
+```powershell
+docker desktop restart
+docker pull hello-world:latest
+```
+
+只有小镜像成功拉取后才重新执行 `docker-dev.ps1 up`。`docker info` 显示
+`http.docker.internal:3128` 属于 Docker Desktop 内部转发地址，不代表宿主代理端口丢失。不要把临时
+Docker Hub CDN IP 固定到 Windows hosts。
 
 ## 与原生 `make dev-all` 无缝切换
 
@@ -269,6 +295,12 @@ PowerShell：
 ./scripts/docker-dev.sh down
 ```
 
+Windows：
+
+```powershell
+.\scripts\docker-dev.ps1 down
+```
+
 删除开发容器和开发命名卷：
 
 ```bash
@@ -325,3 +357,9 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 检查配置摘要是否显示 `Email provider: fake`。Fake Provider 不发送邮件；在
 `deploy/docker/.env.dev.local` 中配置 `EMAIL_PROVIDER=smtp` 和 `EMAIL_SMTP_*` 后重新运行
 `docker-dev.* setup --start`（PowerShell 使用 `setup -Start`），再申请新的验证码。旧 Fake 事件不会补发。
+
+**Windows PowerShell 中输入 `sh` 后没有启动项目**
+
+`sh` 只会尝试进入 POSIX Shell。PowerShell 的项目启动命令是
+`.\scripts\docker-dev.ps1 setup -Start` 或 `.\scripts\docker-dev.ps1 up`；误进入 Shell 时使用
+`exit` 或 `Ctrl+C` 返回。

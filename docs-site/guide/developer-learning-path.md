@@ -131,11 +131,17 @@ Web/Admin/Docs 改动还要运行各自的组件测试、lint 或 build。具体
 ## 7. 提交贡献
 
 ```bash
+git branch --show-current
+git status --short
 ./sh/git_commit.sh "feat: describe the change"
-./sh/git_pr.sh -t "feat: describe the change"
+gh auth status
+./sh/git_pr.sh -t "feat: describe the change" --base main --dry-run
+./sh/git_pr.sh -t "feat: describe the change" --base main
 ```
 
-辅助脚本不是强制入口，也不替代代码审查和 CI。提交前阅读
+脚本动态使用当前分支，不需要在切换分支后修改；提交脚本会暂存全部改动，PR 脚本默认要求工作区干净。
+Windows 使用 Git Bash/WSL2，或从 PowerShell 显式调用 Git for Windows。辅助脚本不是强制入口，也不
+替代代码审查和 CI。提交前阅读
 [贡献与 CI 工作流](/contributing/workflow)。
 
 仓库内更详细的文档状态、历史替代和逐文件审计位于：

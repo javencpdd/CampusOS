@@ -1,7 +1,7 @@
 # CampusOS Help 文档索引与生命周期
 
 > 当前基线：`v0.13.0`
-> 最近审查：2026-07-29
+> 最近审查：2026-07-30
 > 适用范围：`docs/help/` 的入口、权威性判断、历史文档保留和后续维护
 
 `docs/help/` 保存面向开发者、管理员和运维人员的操作说明。这里既有当前指南，也保留了早期版本的
@@ -34,6 +34,7 @@
 | 第一次认识、运行并完成一次改动 | [开发者递进入门路线](开发者递进入门路线.md) |
 | 在浏览器中阅读完整教程 | [官方文档开发者学习路线](../../docs-site/guide/developer-learning-path.md) |
 | 只安装 Git 和 Docker 开发 | [Docker 跨平台开发](../../docs-site/deployment/docker-development.md) |
+| 按 Windows 实机流程安装、配置代理并启动 Docker 开发栈 | [Windows 系统 Docker 部署实操报告](Windows系统Docker部署实操报告.md) |
 | 本机 Go/Node 开发、验证和贡献 | [开发、验证与贡献指南](系统设计相关/开发运行与验证指南.md) |
 | 理解模块化单体和数据归属 | [当前架构概览](../architecture/当前架构概览.md)、[模块、插件与资源生命周期](插件相关/插件分级与生命周期说明.md) |
 | 判断新功能应该放在哪里 | [模块、插件与资源边界](../../docs-site/guide/module-plugin-resource-boundaries.md) |
@@ -49,6 +50,7 @@
 
 - [开发者递进入门路线](开发者递进入门路线.md)
 - [开发、验证与贡献指南](系统设计相关/开发运行与验证指南.md)
+- [Windows 系统 Docker 部署实操报告](Windows系统Docker部署实操报告.md)
 - [Docker 跨平台部署、迁移与开发指南](系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)
 - [环境配置与 Host API 端口](系统设计相关/环境配置与HostAPI端口说明.md)
 - [备份恢复说明](系统设计相关/备份恢复说明.md)
@@ -90,7 +92,7 @@
 ### 贡献协作
 
 - [开发、验证与贡献指南](系统设计相关/开发运行与验证指南.md)
-- [PR 提交脚本](github使用相关/PR提交脚本使用说明.md)
+- [Git 提交与 PR 脚本](github使用相关/PR提交脚本使用说明.md)
 - [官方贡献与 CI 工作流](../../docs-site/contributing/workflow.md)
 - [ID 策略历史决策](github使用相关/ID策略说明.md)
 

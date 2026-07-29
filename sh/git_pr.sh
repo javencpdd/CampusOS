@@ -8,6 +8,7 @@
 #   ./sh/git_pr.sh --fill
 #   ./sh/git_pr.sh --no-push
 #   ./sh/git_pr.sh --dry-run
+#   ./sh/git_pr.sh --remote origin
 # ============================================
 
 set -euo pipefail
@@ -56,7 +57,8 @@ usage() {
 
 参数：
   -t, --title TEXT       PR 标题；未提供时交互输入，--fill 模式除外
-  -b, --base BRANCH      目标分支；默认从 origin/HEAD 推断，其次 main/develop
+  -b, --base BRANCH      目标分支；默认从 REMOTE/HEAD 推断，其次 main/develop
+  -r, --remote REMOTE    push 和 base 推断使用的 remote；默认 origin
       --body TEXT        PR 描述文本
       --body-file FILE   PR 描述文件；默认使用 .github/PULL_REQUEST_TEMPLATE/pull_request_template.md
   -f, --fill             使用 gh 根据 commit 自动填充标题和描述
@@ -88,7 +90,10 @@ git_root_check() {
 }
 
 current_branch() {
-    git rev-parse --abbrev-ref HEAD
+    local branch
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    [ -n "$branch" ] || fail "当前处于 detached HEAD 状态，请先切换到功能分支"
+    echo "$branch"
 }
 
 detect_base_branch() {
@@ -130,17 +135,23 @@ ensure_clean_worktree() {
     fi
 }
 
+ensure_remote() {
+    git remote get-url "$REMOTE" >/dev/null 2>&1 || fail "Git remote 不存在：$REMOTE"
+}
+
 ensure_branch_is_safe() {
     local branch="$1"
-    if [ "$branch" = "HEAD" ]; then
-        fail "当前处于 detached HEAD 状态，请先切换到功能分支"
-    fi
+    local base="$2"
 
     case "$branch" in
         main|master|develop)
             fail "当前分支是 $branch，不建议直接从主干分支创建 PR。请先切换到功能分支"
             ;;
     esac
+
+    if [ "$branch" = "$base" ]; then
+        fail "当前分支与 PR 目标分支相同（$branch），请切换到功能分支或使用 --base 指定正确目标"
+    fi
 }
 
 ensure_gh_auth() {
@@ -235,6 +246,7 @@ print_summary() {
     echo -e "${BLUE}PR 创建信息：${NC}"
     echo "  当前分支：$branch"
     echo "  目标分支：$base"
+    echo "  远程仓库：$REMOTE"
     echo "  自动 push：$([ "$NO_PUSH" = true ] && echo "否" || echo "是")"
     echo "  Draft：$([ "$DRAFT" = true ] && echo "是" || echo "否")"
     echo "  Fill：$([ "$FILL" = true ] && echo "是" || echo "否")"
@@ -256,6 +268,11 @@ while [ $# -gt 0 ]; do
         -b|--base)
             BASE_BRANCH="${2:-}"
             [ -n "$BASE_BRANCH" ] || fail "--base 需要参数"
+            shift 2
+            ;;
+        -r|--remote)
+            REMOTE="${2:-}"
+            [ -n "$REMOTE" ] || fail "--remote 需要参数"
             shift 2
             ;;
         --body)
@@ -301,6 +318,7 @@ print_header
 require_cmd git
 require_cmd gh
 git_root_check
+ensure_remote
 if [ "$DRY_RUN" != true ]; then
     ensure_gh_auth
 fi
@@ -308,7 +326,7 @@ fi
 BRANCH="$(current_branch)"
 BASE="$(detect_base_branch)"
 
-ensure_branch_is_safe "$BRANCH"
+ensure_branch_is_safe "$BRANCH" "$BASE"
 ensure_clean_worktree
 prompt_title
 

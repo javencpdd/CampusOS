@@ -41,21 +41,41 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 ## 3. 提交辅助脚本
 
-创建提交：
+两个 Bash 脚本始终读取当前 Git 分支，切换分支后不需要修改脚本：
+
+| 脚本 | 作用 |
+| --- | --- |
+| `sh/git_commit.sh` | 查看状态/diff、`git add -A`、commit，并按确认 push 当前分支 |
+| `sh/git_pr.sh` | 检查分支、工作区和 GitHub CLI，push 当前分支并创建 PR |
+
+Windows 应在 Git Bash/WSL2 中运行；PowerShell 可以显式调用 Git for Windows：
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh --help
+& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_pr.sh --help
+```
+
+标准流程：
 
 ```bash
+git branch --show-current
+git status --short
+./sh/git_commit.sh -s
 ./sh/git_commit.sh "feat: describe the change"
+
+gh auth login
+gh auth status
+./sh/git_pr.sh -t "feat: describe the change" --base main --dry-run
+./sh/git_pr.sh -t "feat: describe the change" --base main
 ```
 
-创建 Pull Request：
+`git_commit.sh` 会暂存全部改动，新分支 push 时通过 `-u` 建立 upstream，并默认拒绝直接 push
+`main`、`master`、`develop`。`git_pr.sh` 默认要求工作区干净、使用
+`.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`，从 `origin/HEAD` 推断 base，并拒绝 head/base
+相同。使用 fork 或其他 remote 时传 `--remote <name>`；目标不是默认主干时传 `--base <branch>`。
 
-```bash
-./sh/git_pr.sh -t "feat: describe the change"
-```
-
-`git_pr.sh` 需要已安装并登录的 GitHub CLI。它默认使用
-`.github/PULL_REQUEST_TEMPLATE/pull_request_template.md`，并会在工作树未提交时停止。辅助脚本不会替你
-选择测试范围，也不会自动证明改动安全。
+辅助脚本不会替你选择测试范围，也不会自动证明改动安全。仓库内详细说明见
+`docs/help/github使用相关/PR提交脚本使用说明.md`。
 
 ## 4. Pull Request 应说明什么
 

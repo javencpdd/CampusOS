@@ -74,8 +74,8 @@ Windows PowerShell：
 .\scripts\docker-dev.ps1 setup -Start
 ```
 
-向导会检查端口冲突、loopback 绑定、SMTP 必填项和 Compose 配置，并且不会输出 SMTP 密码。后续日常启动
-直接运行 `./scripts/docker-dev.sh up` 或 `.\scripts\docker-dev.ps1 up`。
+向导会检查端口、loopback、SMTP 和 Compose；后续运行 `docker-dev.* up`。Windows 出现 Docker Hub
+OAuth/代理错误时按 [Windows 实操报告](docs/help/Windows系统Docker部署实操报告.md) 重启代理链路后再构建。
 
 ### 4. 验证服务并阅读官方文档
 
@@ -108,31 +108,37 @@ curl -fsS http://localhost:8080/api/v1/health
 
 ```bash
 git switch -c feat/my-change
-# 修改代码后执行基础回归
 ./scripts/docker-dev.sh test
 git diff --check
 ```
 
-Web、Admin、Docs、数据库或插件改动还需要对应的专项检查，具体矩阵见
-[贡献与 CI 工作流](docs-site/contributing/workflow.md)。开发结束后使用 `docker-dev.* down` 停止容器并保留数据。
+专项检查和 Docker/宿主热更新切换见[贡献与 CI 工作流](docs-site/contributing/workflow.md)和
+[Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)。
+开发结束后使用 `docker-dev.* down` 停止容器并保留数据。
 
-已经安装 Go、Node.js 和 pnpm 时，可以从完整 Docker 模式切到宿主机热更新：
+## 提交改动与创建 Pull Request
 
-```bash
-STOP_EXISTING=true make dev-all
+`sh/git_commit.sh` 负责状态、暂存、commit 和当前分支 push；`sh/git_pr.sh` 负责检查并创建 PR。切换分支
+不需要修改脚本：它们动态读取当前分支，PR base 默认从 `origin/HEAD` 推断。Windows 应使用 Git Bash/
+WSL2；PowerShell 可显式调用 Git for Windows：
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh -s
+& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_pr.sh --help
 ```
 
-只要 `deploy/docker/.env.dev.local` 已由 `docker-dev.* setup` 创建，该命令就会停止 Docker 中的
-API/Web/Admin/Docs，保留并复用同一组 PostgreSQL、Redis、NATS 容器及命名卷；仓库 `data/` 本来就是
-宿主绑定目录，因此用户文件和资源也保持一致。切回完整 Docker 模式时，在另一终端执行
-`./scripts/docker-dev.sh up`，脚本只会停止已登记的 CampusOS 原生进程，再启动应用容器。
-
-两种应用模式使用相同默认端口，设计目标是安全交接而非并行写入。强制使用旧的独立本地基础设施时才设置
-`CAMPUSOS_DEV_INFRA_MODE=legacy`；该模式的数据与 `campusos-dev` Docker 卷不共享。
-
-单主机部署、分组件启动、备份和迁移不属于首次开发流程，统一从
-[Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)
-进入。
+```bash
+git branch --show-current
+git status --short
+./sh/git_commit.sh "docs: document Windows Docker workflow"
+gh auth login
+gh auth status
+./sh/git_pr.sh -t "docs: document Windows Docker workflow" --base main --dry-run
+./sh/git_pr.sh -t "docs: document Windows Docker workflow" --base main
+```
+提交脚本执行 `git add -A`、为新分支设置 upstream，并拒绝直接 push 主干；PR 脚本要求工作区干净并拒绝
+head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数、PR 模板和常见故障见
+[Git 提交与 PR 脚本使用说明](docs/help/github使用相关/PR提交脚本使用说明.md)。
 
 ## 仓库结构
 
@@ -151,11 +157,8 @@ API/Web/Admin/Docs，保留并复用同一组 PostgreSQL、Redis、NATS 容器�
 
 ## 验证
 
-```bash
-make release-check
-```
-
-完整门禁、恢复演练和贡献脚本说明见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
+完整门禁执行 `make release-check`；恢复演练和验证矩阵见
+[开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
 
 ## 文档
 
@@ -164,7 +167,7 @@ make release-check
 | 主题 | 文档 |
 | --- | --- |
 | 新开发者入门 | [开发者递进入门路线](docs/help/开发者递进入门路线.md)、[官方学习路线](docs-site/guide/developer-learning-path.md) |
-| Docker 开发与部署 | [跨平台开发教程](docs-site/deployment/docker-development.md)、[单主机部署与迁移](docs-site/deployment/docker.md) |
+| Docker 开发与部署 | [Windows 实操报告](docs/help/Windows系统Docker部署实操报告.md)、[跨平台开发教程](docs-site/deployment/docker-development.md)、[单主机部署与迁移](docs-site/deployment/docker.md) |
 | 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[模块与插件边界](docs-site/guide/module-plugin-resource-boundaries.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
 | 权限与可靠审计 | [权限配置入门](docs-site/guide/permission-configuration.md)、[可靠任务与 Webhook](docs-site/operations/reliable-tasks.md) |
