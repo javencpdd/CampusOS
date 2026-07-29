@@ -4,9 +4,9 @@
 
 | 工具 | 用途 |
 | --- | --- |
-| Go | 编译和运行 API、CLI 与测试。 |
-| Node.js + pnpm | 运行 Web、Admin 和官方文档前端。 |
-| Docker Compose | 启动 PostgreSQL、Redis、NATS 和 pgAdmin。 |
+| Go | 原生模式编译和运行 API、CLI 与测试；完整 Docker 模式不要求宿主安装。 |
+| Node.js + pnpm | 原生模式运行 Web、Admin 和官方文档；完整 Docker 模式不要求宿主安装。 |
+| Docker Compose | 运行共享 PostgreSQL、Redis、NATS，或运行完整容器开发栈。 |
 | Git | 获取源码和管理变更。 |
 
 ## 获取项目
@@ -14,12 +14,16 @@
 ```bash
 git clone https://github.com/javencpdd/CampusOS.git
 cd CampusOS
-cp .env.example .env
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local
 ```
 
-## 安装前端依赖
+Docker 开发仍以这份宿主源码为准。容器通过 bind mount 读取它，不会替你 clone、commit 或 push。
 
-三个前端是相互独立的 Node 项目：
+## 准备原生工具链
+
+只使用完整 Docker 模式时跳过本节。需要运行 `make dev-all` 时，安装 Go、Node.js、pnpm，并为三个独立前端
+安装依赖：
 
 ```bash
 cd web && pnpm install
@@ -30,16 +34,27 @@ cd ..
 
 ## 一键启动
 
+完整 Docker 模式：
+
+```bash
+./scripts/docker-dev.sh setup --start
+```
+
+宿主机 API/前端模式：
+
 ```bash
 STOP_EXISTING=true make dev-all
 ```
 
-启动脚本依次执行：
+只要已经生成 `deploy/docker/.env.dev.local`，原生启动脚本会：
 
-1. 启动 Docker 开发依赖。
-2. 执行尚未应用的数据库 migration。
-3. 启动 API、Web、Admin 和官方文档站。
-4. 等待四个 HTTP 地址可访问。
+1. 停止完整 Docker 模式的 API、Web、Admin、Docs 容器。
+2. 保留并启动同一个 `campusos-dev` PostgreSQL、Redis、NATS 项目和命名卷。
+3. 读取同一份数据库、邮件和认证安全配置并执行 migration。
+4. 从宿主工作区启动四个应用并登记受控 PID。
+
+在另一终端执行 `./scripts/docker-dev.sh up` 可切回完整 Docker 模式。两种模式共享数据库卷和宿主
+`data/`，但不会同时运行两套 API。
 
 | 服务 | 默认地址 |
 | --- | --- |
@@ -63,8 +78,8 @@ STOP_EXISTING=true make dev-all
 基础设施：
 
 ```bash
-make docker-up
-make migrate-up
+./scripts/docker-dev.sh infra-up
+./scripts/docker-dev.sh migrate up
 ```
 
 后端：
@@ -89,8 +104,9 @@ SKIP_INFRA=true SKIP_MIGRATE=true make dev-all
 
 - `SKIP_INFRA=true`：不启动 Docker 依赖。
 - `SKIP_MIGRATE=true`：不执行 migration。
-- `STOP_EXISTING=true`：停止占用目标端口的旧开发进程。
+- `STOP_EXISTING=true`：受控停止 Docker 应用容器和已登记的旧原生进程，再交接默认端口。
 - `WEB_PORT`、`ADMIN_PORT`、`DOCS_PORT`、`SERVER_PORT`：覆盖默认端口。
+- `CAMPUSOS_DEV_INFRA_MODE=legacy`：使用旧 `docker-compose.yml` 独立数据源；不与 Docker 开发卷共享。
 
 ## 开发账号
 

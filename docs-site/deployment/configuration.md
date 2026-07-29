@@ -10,9 +10,16 @@
 
 `.env` 不应提交到 Git。新增非敏感示例项时同步更新 `.env.example`。
 
+启动器还会注入模式配置：
+
+- `docker-dev.* up` 由 Compose 读取 `deploy/docker/.env.dev.local`。
+- `STOP_EXISTING=true make dev-all` 检测到该文件后，会把其中的数据库、Redis、NATS、邮件和认证配置转成
+  进程环境变量，因此优先于根 `.env`，并共享 Docker 开发数据卷。
+- `CAMPUSOS_DEV_INFRA_MODE=legacy` 才使用根 `.env` 和旧 `docker-compose.yml` 独立数据源。
+
 ## 数据库
 
-默认连接字符串：
+下面的默认连接字符串只描述没有共享 Docker 开发配置时的 Legacy/直接后端启动：
 
 ```dotenv
 DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5432/campusos?sslmode=disable
@@ -25,7 +32,8 @@ POSTGRES_PORT=5433
 DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=disable
 ```
 
-`POSTGRES_PORT` 只控制 Docker 暴露端口，不会自动重写 `DATABASE_DSN`。
+`POSTGRES_PORT` 只控制旧 Compose 暴露端口，不会自动重写 `DATABASE_DSN`。共享模式改用
+`CAMPUSOS_DEV_POSTGRES_PORT`，`start-dev.sh` 会自动构造指向该映射端口的 DSN。
 
 ## 服务端口
 

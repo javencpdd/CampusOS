@@ -63,8 +63,9 @@ Fake Provider 只确认 Consumer 是否被调用，不打印邮件，也没有�
 先在 QQ 邮箱设置中开启 IMAP/SMTP 或 POP3/SMTP 服务并生成一枚新的授权码。Foxmail 地址也使用完整
 邮箱地址作为 SMTP 用户名。授权码相当于第三方客户端密码，不是邮箱网页登录密码。
 
-仓库根目录 `.env` 已被 `.gitignore` 排除。本地示例应写成下面的形式，尖括号内容必须替换为自己的值，
-但不得把真实授权码写入本文档、`.env.example`、Issue、聊天记录、截图或 Git：
+完整 Docker 与共享数据的本机 Go/Node 模式统一读取 `deploy/docker/.env.dev.local`。先运行
+`./scripts/docker-dev.sh setup` 生成该 Git 忽略文件，再按下面形式填写；尖括号必须替换为自己的值，但
+不得把真实授权码写入本文档、模板、Issue、聊天记录、截图或 Git：
 
 ```dotenv
 CAMPUSOS_ENV=development
@@ -81,12 +82,23 @@ EMAIL_SMTP_STARTTLS=true
 这里的 `EMAIL_SMTP_FROM` 使用裸邮箱地址，不写成 `CampusOS <...>`，以兼容当前 SMTP envelope sender
 和 QQ 邮箱的发件人校验。`EMAIL_SMTP_USERNAME` 与 `EMAIL_SMTP_FROM` 首次配置时应保持一致。
 
-配置后限制本地文件权限并重启四端服务：
+配置后限制本地文件权限。启动完整 Docker 模式：
 
 ```bash
-chmod 600 .env
+chmod 600 deploy/docker/.env.dev.local
+./scripts/docker-dev.sh setup --start
+```
+
+已安装 Go、Node.js 和 pnpm 时，可以在同一数据库和配置上切换为本机应用进程：
+
+```bash
 STOP_EXISTING=true make dev-all
 ```
+
+PowerShell 使用 `.\scripts\docker-dev.ps1 setup` 和 `.\scripts\docker-dev.ps1 setup -Start`。脚本会验证
+SMTP 必填字段并通过 Compose 传入 API，但不会显示授权码，也不会主动连接 SMTP 测试凭据。后续修改配置后
+运行 `docker-dev.* up` 重启开发栈。只有显式使用 `CAMPUSOS_DEV_INFRA_MODE=legacy` 时，本机 API 才以根
+`.env` 为配置源；Legacy 数据不与 `campusos-dev` 卷共享。
 
 然后重新申请一枚验证码。此前由 Fake Provider 处理并已标记为 `published` 的可靠事件不会在切换 SMTP
 后自动重发；不要重放旧验证码事件，应使用新的 Challenge。若触发邮箱/IP 频率限制，应等待当前窗口结束，

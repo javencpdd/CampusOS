@@ -66,8 +66,8 @@ services:
         condition: service_healthy
     working_dir: /workspace
     environment:
-      CAMPUSOS_ENV: development
-      CAMPUSOS_INSTANCE_MODE: single
+      CAMPUSOS_ENV: ${CAMPUSOS_ENV:-development}
+      CAMPUSOS_INSTANCE_MODE: ${CAMPUSOS_INSTANCE_MODE:-single}
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_DEV_POLL_INTERVAL: ${CAMPUSOS_DEV_POLL_INTERVAL:-1}
@@ -87,21 +87,29 @@ services:
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       NATS_URL: nats://nats:4222
-      JWT_SECRET: campusos-dev-secret-key-change-in-production
-      JWT_ACCESS_TTL: 15m
-      JWT_REFRESH_TTL: 720h
-      JWT_ISSUER: campusos
-      AUTH_PASSWORD_HASH_ENABLED: "true"
-      AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN: "true"
-      AUTH_CHALLENGE_ACTIVE_KEY_ID: development-v1
-      AUTH_CHALLENGE_HMAC_KEYS: development-v1:campusos-development-challenge-key-change-before-production
-      AUTH_CHALLENGE_IP_HASH_SECRET: campusos-development-ip-hash-key-change-before-production
-      AUTH_SESSION_IP_HASH_SECRET: campusos-development-session-ip-hash-key-change-before-production
-      AUTH_REFRESH_BODY_COMPAT: "false"
-      AUTH_MFA_ACTIVE_KEY_ID: development-v1
-      AUTH_MFA_ENCRYPTION_KEYS: development-v1:campusos-development-mfa-encryption-key-change-before-production
-      AUTH_MFA_ISSUER: CampusOS
-      EMAIL_PROVIDER: fake
+      JWT_SECRET: ${JWT_SECRET:-campusos-dev-secret-key-change-in-production}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
+      JWT_ISSUER: ${JWT_ISSUER:-campusos}
+      AUTH_PASSWORD_HASH_ENABLED: ${AUTH_PASSWORD_HASH_ENABLED:-true}
+      AUTH_BOOTSTRAP_ADMIN_SECRET: ${AUTH_BOOTSTRAP_ADMIN_SECRET:-}
+      AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN: ${AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN:-true}
+      AUTH_CHALLENGE_ACTIVE_KEY_ID: ${AUTH_CHALLENGE_ACTIVE_KEY_ID:-development-v1}
+      AUTH_CHALLENGE_HMAC_KEYS: ${AUTH_CHALLENGE_HMAC_KEYS:-development-v1:campusos-development-challenge-key-change-before-production}
+      AUTH_CHALLENGE_IP_HASH_SECRET: ${AUTH_CHALLENGE_IP_HASH_SECRET:-campusos-development-ip-hash-key-change-before-production}
+      AUTH_SESSION_IP_HASH_SECRET: ${AUTH_SESSION_IP_HASH_SECRET:-campusos-development-session-ip-hash-key-change-before-production}
+      AUTH_REFRESH_BODY_COMPAT: ${AUTH_REFRESH_BODY_COMPAT:-false}
+      AUTH_MFA_ACTIVE_KEY_ID: ${AUTH_MFA_ACTIVE_KEY_ID:-development-v1}
+      AUTH_MFA_ENCRYPTION_KEYS: ${AUTH_MFA_ENCRYPTION_KEYS:-development-v1:campusos-development-mfa-encryption-key-change-before-production}
+      AUTH_MFA_ISSUER: ${AUTH_MFA_ISSUER:-CampusOS}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-fake}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USERNAME: ${EMAIL_SMTP_USERNAME:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_FROM: ${EMAIL_SMTP_FROM:-}
+      EMAIL_SMTP_TIMEOUT: ${EMAIL_SMTP_TIMEOUT:-10s}
+      EMAIL_SMTP_STARTTLS: ${EMAIL_SMTP_STARTTLS:-true}
       HOST_API_ENABLED: "true"
       HOST_API_ADDR: 127.0.0.1:18080
       OBSERVABILITY_PROMETHEUS_ENABLED: "false"

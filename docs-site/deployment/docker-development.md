@@ -18,6 +18,19 @@ Go、Node.js、pnpm、PostgreSQL、Redis 和 NATS 都在 Linux 容器中，不�
 
 ## 准备宿主机
 
+两种 Docker 方式都不会替你获取或长期保存源码。先在宿主机执行 `git clone`，再用 VS Code、JetBrains
+IDE 或其他编辑器修改这份工作区。开发 Compose 的挂载关系是：
+
+| 宿主目录 | 容器目录 | 用途 |
+| --- | --- | --- |
+| 仓库根目录 | `/workspace` | API、migration、module、插件、资源和 `data/` |
+| `web/` | `/workspace/web` | 用户前台 HMR |
+| `admin/` | `/workspace/admin` | 管理端 HMR |
+| `docs-site/` | `/workspace/docs-site` | 官方文档 HMR |
+
+容器不会把改动同步回 GitHub；Git 分支、提交和推送仍在宿主工作区完成。`docker-dev.* shell` 主要用于诊断，
+不要只在容器可写层保存源码，因为重建容器后该层会消失。
+
 ### Windows
 
 1. 安装 Git 与 Docker Desktop。
@@ -38,26 +51,55 @@ docker compose version
 git version
 ```
 
-## 启动
+## 首次配置和启动
 
 Linux：
 
 ```bash
-./scripts/docker-dev.sh up
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local
+./scripts/docker-dev.sh setup --start
 ```
 
 Windows PowerShell：
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\docker-dev.ps1 setup
+# 编辑 deploy/docker/.env.dev.local
+.\scripts\docker-dev.ps1 setup -Start
+```
+
+第一次 `setup` 生成受 Git 忽略的 `deploy/docker/.env.dev.local`，不会启动容器。填写后再次执行：
+
+- 如果根 `.env` 已存在，只按白名单导入数据库账号、JWT/认证和 `EMAIL_*`，不导入旧 DSN/端口且不打印值；
+- 检查所有宿主端口合法且不冲突；
+- 强制开发栈使用 `127.0.0.1`，避免固定开发凭据暴露到网络；
+- 校验 `fake`/`smtp` Provider 和 SMTP 必填字段；
+- 执行 Compose 静态配置检查；
+- 不显示 SMTP 密码。
+
+默认 `EMAIL_PROVIDER=fake` 可以运行系统，但不会发送或打印验证码。需要从页面完成注册、密码找回或邮箱
+绑定时，应配置 SMTP；只开发 API 或使用预置开发管理员时可以保留 `fake`。
+自动导入只是一次兼容迁移；创建后以 `.env.dev.local` 为两种共享开发模式的配置事实源。
+
+后续启动直接使用：
+
+```bash
+./scripts/docker-dev.sh up
+```
+
+PowerShell：
+
+```powershell
 .\scripts\docker-dev.ps1 up
 ```
 
-也可以在任意平台直接使用标准 Compose：
+也可以在任意平台使用已经生成的配置直接调用标准 Compose：
 
 ```bash
 docker compose \
-  --env-file deploy/docker/.env.dev.example \
+  --env-file deploy/docker/.env.dev.local \
   -f compose.dev.yml \
   up -d --build --wait --wait-timeout 600
 ```
@@ -85,6 +127,53 @@ Corepack 缓存固定在镜像内并锁定 pnpm `8.15.9`，运行期不会因切
 ```
 
 这些固定值只允许在 loopback 开发栈使用。
+
+## 与原生 `make dev-all` 无缝切换
+
+完成 `docker-dev.* setup` 后，`deploy/docker/.env.dev.local` 同时成为完整 Docker 模式和共享基础设施模式的
+开发配置。宿主机已经安装 Go、Node.js 与 pnpm 时，可切到原生应用进程：
+
+```bash
+STOP_EXISTING=true make dev-all
+```
+
+脚本会按以下顺序交接：
+
+1. 停止 `campusos-dev` 项目中的 API、Web、Admin 和 Docs 容器，但保留 PostgreSQL、Redis、NATS。
+2. 从同一份 Docker 开发配置读取数据库映射端口、SMTP、JWT、Challenge、Session 和 MFA 设置。
+3. 在同一个 PostgreSQL 容器中执行 migration。
+4. 从宿主工作区启动 API 和三个前端，并记录 `.campusos/run/native-dev.pid`。
+
+切回完整 Docker 模式时，在另一个终端执行：
+
+```bash
+./scripts/docker-dev.sh up
+```
+
+PowerShell 使用 `.\scripts\docker-dev.ps1 up`。启动器只会停止 PID 文件中已核验为
+`scripts/start-dev.sh` 的 CampusOS 进程，不会按端口盲目终止任意程序。Windows 上从 WSL2 启动原生模式时，
+建议也从同一个 WSL2 终端运行 Bash 版 Docker 启动器。
+
+| 数据 | 两种模式是否共享 | 实现 |
+| --- | --- | --- |
+| PostgreSQL 业务事实 | 是 | 同一 `campusos-dev` PostgreSQL 容器和命名卷 |
+| Redis/NATS 状态 | 是 | 同一基础设施容器和命名卷 |
+| 用户文件、插件数据、模块数据和资源 | 是 | 两种 API 都读取宿主仓库的 `data/` |
+| 源码 | 是 | 宿主工作区；Docker 模式使用 bind mount |
+| Go/pnpm 构建缓存和 `node_modules` | 否，也不需要共享 | Docker 使用专用卷，原生模式使用宿主工具链 |
+
+默认应用端口相同，因此这是单写入者的安全交接，不支持同时运行两套 API。直接调用标准
+`docker compose up` 会绕过 PID 交接，应优先使用 `docker-dev.* up`。只有需要旧的独立
+`docker-compose.yml` 基础设施时才运行：
+
+```bash
+CAMPUSOS_DEV_INFRA_MODE=legacy STOP_EXISTING=true make dev-all
+```
+
+Legacy 模式的数据不与 `campusos-dev` 命名卷共享。
+如果升级前一直使用旧 `docker-compose.yml`，第一次切换不会自动合并两套 PostgreSQL；应先按
+[备份与恢复](/operations/recovery) 导出并验证，再导入 `campusos-dev`，不要让两个 PostgreSQL 容器同时
+挂载同一卷。
 
 ## 修改代码后会发生什么
 
@@ -192,8 +281,8 @@ Windows 对应：
 .\scripts\docker-dev.ps1 reset -Confirm
 ```
 
-`reset` 会删除开发 PostgreSQL、Redis、NATS 和依赖缓存卷，不会删除绑定挂载的源码；工作区 `data/`
-仍需按项目规则单独备份和管理。
+`down` 和 `reset` 都会先停止仍在运行的受管原生开发进程。`reset` 会删除开发 PostgreSQL、Redis、NATS
+和依赖缓存卷，不会删除绑定挂载的源码；工作区 `data/` 仍需按项目规则单独备份和管理。
 
 ## Windows 注意事项
 
@@ -229,5 +318,10 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 
 **默认端口冲突**
 
-复制 `deploy/docker/.env.dev.example` 到自己的未跟踪文件，修改端口，并设置
-`CAMPUSOS_DOCKER_DEV_ENV` 指向它。
+运行 `docker-dev.* setup` 生成本地配置并修改端口。向导会在启动前报告具体冲突项。
+
+**发送验证码显示成功但没有邮件**
+
+检查配置摘要是否显示 `Email provider: fake`。Fake Provider 不发送邮件；在
+`deploy/docker/.env.dev.local` 中配置 `EMAIL_PROVIDER=smtp` 和 `EMAIL_SMTP_*` 后重新运行
+`docker-dev.* setup --start`（PowerShell 使用 `setup -Start`），再申请新的验证码。旧 Fake 事件不会补发。

@@ -29,9 +29,15 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
 ## 最短启动路径
 
 ```bash
-cp .env.example .env
-STOP_EXISTING=true make dev-all
+git clone https://github.com/javencpdd/CampusOS.git
+cd CampusOS
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local 后：
+./scripts/docker-dev.sh setup --start
 ```
+
+源码保存在宿主工作区并绑定挂载进开发容器。安装 Go、Node.js 与 pnpm 后，也可用
+`STOP_EXISTING=true make dev-all` 在共享同一开发数据卷的前提下切换到原生应用进程。
 
 默认开发地址：
 
