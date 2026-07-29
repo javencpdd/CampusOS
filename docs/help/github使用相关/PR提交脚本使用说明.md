@@ -223,5 +223,5 @@ git status --short
 
 | 文档 | 说明 |
 | --- | --- |
-| `docs/help/github使用相关/PR模板与CI自测说明.md` | PR 模板填写和本地自测 |
-| `docs/help/github使用相关/GitHub Actions CI-CD使用说明.md` | CI/CD 流程和配置 |
+| `docs/help/系统设计相关/开发运行与验证指南.md` | 当前本地验证、提交与 CI 入口 |
+| `docs-site/contributing/workflow.md` | 官方贡献、PR 与 CI/CD 完整流程 |

@@ -41,4 +41,5 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 - 当前 MCP 能力是受控的 MCP-like 集成，不应描述为完整标准 MCP Server。
 - Windows 支持路径是 Docker Desktop 的 Linux Containers；当前真实发行证据仍以 Linux `amd64` 为主。
 
-下一页：[当前规划与后续路线](/project/current-roadmap)。
+继续阅读：[文档状态与历史替代](/project/document-lifecycle)、
+[当前规划与后续路线](/project/current-roadmap)。

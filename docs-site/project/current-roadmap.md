@@ -21,6 +21,9 @@ v13 已完成当前计划内的业务、架构和可移植交付范围。下一�
 - 持续同步 OpenAPI、路由授权矩阵、Admin 只读架构和资源 checksum。
 - 将 Windows/Linux/arm64 真实运行证据接入发行 Runner。
 
+当前文档有效性和替代关系见 [文档状态与历史替代](/project/document-lifecycle)。该页面解决当前版本的
+入口治理；版本选择器和 release notes 仍是下一阶段候选。
+
 ### 安全与运行
 
 - 为 TOTP、SMTP、插件签名和第三方 Secret 提供可替换 Secret Provider。
@@ -64,5 +67,5 @@ v13 已完成当前计划内的业务、架构和可移植交付范围。下一�
 - Feature 停用、Plugin 卸载和资源切换不得隐式删除用户数据。
 - 不为了通过测试删除权限、审计、清洗、路径、配额、事务或数据库约束。
 
-相关页面：[版本演进](/project/version-evolution)、[完整入门路径](/guide/getting-started)、
-[构建与发布](/deployment/release)。
+相关页面：[版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、
+[完整入门路径](/guide/getting-started)、[构建与发布](/deployment/release)。

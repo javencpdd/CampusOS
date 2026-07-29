@@ -18,7 +18,7 @@ export default defineConfig({
   themeConfig: {
     siteTitle: 'CampusOS 文档',
     nav: [
-      { text: '开始使用', link: '/guide/getting-started' },
+      { text: '开始使用', link: '/guide/developer-learning-path' },
       { text: '权限配置', link: '/guide/permission-configuration' },
       { text: '部署', link: '/deployment/development' },
       { text: 'API', link: '/api/overview' },
@@ -31,6 +31,7 @@ export default defineConfig({
         text: '项目指南',
         items: [
           { text: '文档首页', link: '/' },
+          { text: '开发者学习路线', link: '/guide/developer-learning-path' },
           { text: '完整入门路径', link: '/guide/getting-started' },
           { text: '权限配置入门', link: '/guide/permission-configuration' },
           { text: '验证码策略配置', link: '/guide/challenge-policy' },
@@ -102,9 +103,17 @@ export default defineConfig({
         ],
       },
       {
+        text: '参与贡献',
+        items: [
+          { text: '贡献、PR 与 CI/CD', link: '/contributing/workflow' },
+          { text: '构建与发布', link: '/deployment/release' },
+        ],
+      },
+      {
         text: '版本与规划',
         items: [
           { text: 'v1-v13 版本演进', link: '/project/version-evolution' },
+          { text: '文档状态与历史替代', link: '/project/document-lifecycle' },
           { text: '当前规划与后续路线', link: '/project/current-roadmap' },
         ],
       },

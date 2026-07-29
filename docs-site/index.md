@@ -11,7 +11,7 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
 </div>
 
 <div class="doc-link-grid">
-  <a href="/guide/getting-started"><strong>完整入门路径</strong><span>从环境准备、启动验证、模块分类到第一次开发闭环。</span></a>
+  <a href="/guide/developer-learning-path"><strong>开发者学习路线</strong><span>按阶段完成认识架构、启动环境、跟踪请求、首次改动和提交贡献。</span></a>
   <a href="/guide/permission-configuration"><strong>配置角色与权限</strong><span>从权限概念、自定义角色和用户分配，逐步完成板块版主与授权审计。</span></a>
   <a href="/deployment/development"><strong>启动开发环境</strong><span>安装依赖、准备配置、运行 migration 并启动四个开发服务。</span></a>
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
@@ -53,9 +53,12 @@ Linux Containers，不支持原生 Windows Containers。
 
 - [GitHub 仓库](https://github.com/javencpdd/CampusOS)
 - [完整入门路径](/guide/getting-started)
+- [开发者学习路线](/guide/developer-learning-path)
+- [贡献、Pull Request 与 CI/CD](/contributing/workflow)
 - [权限配置入门](/guide/permission-configuration)
 - [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
 - [编写第一个插件](/plugins/create-first-plugin)
 - [构建与发布](/deployment/release)
 - [v1-v13 版本演进](/project/version-evolution)
+- [文档状态与历史替代](/project/document-lifecycle)
 - [当前规划与后续路线](/project/current-roadmap)

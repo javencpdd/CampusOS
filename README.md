@@ -77,7 +77,7 @@ make release-check
 
 | 主题 | 文档 |
 | --- | --- |
-| 新开发者入门 | [官方文档完整入门路径](docs-site/guide/getting-started.md) |
+| 新开发者入门 | [开发者递进入门路线](docs/help/开发者递进入门路线.md)、[官方学习路线](docs-site/guide/developer-learning-path.md) |
 | Docker 开发与部署 | [跨平台开发教程](docs-site/deployment/docker-development.md)、[单主机部署与迁移](docs-site/deployment/docker.md) |
 | 架构与数据边界 | [当前架构概览](docs/architecture/当前架构概览.md)、[模块与插件边界](docs-site/guide/module-plugin-resource-boundaries.md) |
 | HTTP API | [API 索引](docs/api/API索引.md) |
