@@ -462,13 +462,36 @@ Docker Desktop 并等待引擎就绪，再执行项目的 `up`。
 
 容器内部是 Linux，仓库文件应遵守 `.gitattributes`：
 
-- `.sh`、Dockerfile、YAML 应使用 LF。
-- PowerShell `.ps1` 当前使用 CRLF。
-- 不要让编辑器批量修改文件编码或换行后直接提交。
+- 仓库文本统一以 UTF-8、LF 存入 Git，Windows 与 Linux 检出的普通文本也保持 LF。
+- `.sh`、Dockerfile、YAML 和资源包文本固定为 LF。
+- Windows 专用的 `.ps1`、`.bat`、`.cmd` 在工作区使用 CRLF，提交时仍由 Git 规范化。
+- 图片、字体、压缩包、Office 文件、WASM、可执行文件和数据库等显式标记为二进制，不做换行转换。
+- `.editorconfig` 约束支持 EditorConfig 的编辑器，新建文件默认使用 UTF-8、LF 和文件末尾换行。
 - 文件名大小写必须与 import、COPY 和文档链接完全一致；Windows 通常不敏感，Linux 敏感。
-- 文本推荐 UTF-8；密钥和本地 `.env` 不进入 Git。
+- 密钥和本地 `.env` 不进入 Git。
 
-出现 `bad interpreter` 或 Docker COPY 找不到文件时，应先检查换行和大小写，而不是修改容器启动命令。
+提交前在 PowerShell、Git Bash 或 Linux 终端执行只读检查：
+
+```powershell
+python scripts/check-line-endings.py --include-untracked
+```
+
+已有工作区需要修复时可以显式执行：
+
+```powershell
+python scripts/check-line-endings.py --include-untracked --fix
+```
+
+`--fix` 只重写工作区的换行字节，不会执行 `git add`、commit 或 push。修复后再次运行只读检查并审查
+`git diff`。不要在包含未完成改动的工作区盲目执行 `git add --renormalize .`，以免把无关文件一起暂存。
+
+首次引入新的 `.gitattributes` 且它尚未提交时，Windows 的 `core.autocrlf` 与索引中的旧规则可能让
+`git status` 暂时列出大量只有工作区换行时间戳/格式变化的文件。此时以换行检查、`git diff` 和
+`git add --dry-run --all` 审查实际提交范围；新规则提交后重新检出，状态应恢复稳定。不要因此直接删除或
+覆盖源码。
+
+出现 `bad interpreter`、资源包 checksum 不一致或 Docker COPY 找不到文件时，应先运行上述检查并确认文件名
+大小写，而不是修改容器启动命令。
 
 ## 13. 安全和维护要求
 

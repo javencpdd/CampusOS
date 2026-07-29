@@ -24,6 +24,7 @@ make docker-deploy-check
 make version-check
 
 echo "==> documentation links"
+make line-endings-check
 python3 scripts/check-doc-links.py
 make readme-check
 

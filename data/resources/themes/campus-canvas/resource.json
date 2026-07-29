@@ -5,6 +5,6 @@
   "version": "0.1.0",
   "compatibility": "\u003e=0.13.0 \u003c0.14.0",
   "entry": "style.yaml",
-  "checksum": "d6fe9bf09534832c6b4fed7494993363c1d7a58fd60df1ac91a5ef45ef2dc269",
+  "checksum": "8bc80b1e3c55ff225a63ab4e3dd7f886a007e1e55273603c00b0842431952699",
   "source": "campusos-builtin"
 }
