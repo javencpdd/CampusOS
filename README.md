@@ -20,12 +20,64 @@ Discord/OneBot 生产适配器和远程公共插件市场也仍属于后续范�
 
 ## 快速开始
 
-需要 Go、Node.js + pnpm、Docker Compose，以及可用的 PostgreSQL、Redis 和 NATS 开发环境。
+以下是第一次开发的完整路径。推荐使用 Docker 路线，只需准备 Git、Docker Desktop/Engine 和 Compose v2。Windows 必须使用
+Docker Desktop 的 WSL2 backend 与 Linux Containers。
+
+### 1. 克隆并进入仓库
 
 ```bash
-cp .env.example .env
-STOP_EXISTING=true make dev-all
+git clone https://github.com/javencpdd/CampusOS.git
+cd CampusOS
+git status --short
+docker compose version
 ```
+
+Docker 开发仍然需要先在宿主机克隆源码。`compose.dev.yml` 会把仓库、`web/`、`admin/` 和
+`docs-site/` 绑定挂载进容器；日常应在宿主机 IDE 中编辑，容器不会自行从 GitHub 同步，也不应作为源码
+唯一保存位置。进入容器只用于诊断或执行容器内命令。
+
+### 2. 生成基础配置
+
+Linux、WSL2 或 Git Bash：
+
+```bash
+./scripts/docker-dev.sh setup
+```
+
+Windows PowerShell：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\docker-dev.ps1 setup
+```
+
+脚本会创建已被 Git 忽略的 `deploy/docker/.env.dev.local`；若已有根 `.env`，会按白名单迁移数据库账号、
+认证和邮件设置但不打印值。第一次至少确认端口和邮件方式：
+
+- `EMAIL_PROVIDER=fake`：可以开发 API 和使用现有开发账号，但不会发送或显示注册验证码。
+- `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
+
+配置字段和 SMTP 示例见 [Docker 开发指南](docs-site/deployment/docker-development.md)；文档站启动后也可访问
+[邮件投递说明](http://localhost:3002/deployment/email-delivery)。
+
+### 3. 校验配置并启动
+
+Linux、WSL2 或 Git Bash：
+
+```bash
+./scripts/docker-dev.sh setup --start
+```
+
+Windows PowerShell：
+
+```powershell
+.\scripts\docker-dev.ps1 setup -Start
+```
+
+向导会检查端口冲突、loopback 绑定、SMTP 必填项和 Compose 配置，并且不会输出 SMTP 密码。后续日常启动
+直接运行 `./scripts/docker-dev.sh up` 或 `.\scripts\docker-dev.ps1 up`。
+
+### 4. 验证服务并阅读官方文档
 
 | 服务 | 地址 |
 | --- | --- |
@@ -34,19 +86,53 @@ STOP_EXISTING=true make dev-all
 | 官方文档 | `http://localhost:3002` |
 | API | `http://localhost:8080/api/v1` |
 
-环境变量、开发账号、数据库迁移、手动启动和故障排查见 [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md)。
-
-只安装 Git 与 Docker 的 Windows/Linux 开发者可以使用：
-
 ```bash
-./scripts/docker-dev.sh up
+curl -fsS http://localhost:8080/api/v1/health
 ```
 
-Windows PowerShell 使用 `.\scripts\docker-dev.ps1 up`。单主机部署先运行
-`./scripts/docker-deploy.sh init && ./scripts/docker-deploy.sh up`，详细边界、备份和迁移步骤见
-[Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)。
-API、Web、Admin、Docs 也可以分别通过 `./scripts/docker-component.sh up <component>` 构建和启动；
-整体配置继续使用 `compose.deploy.yml` 一键启动。
+`http://localhost:3002` 是本地运行的官方文档前端。建议按以下顺序学习：
+
+| 阶段 | 本地官方文档 | 文档站未启动时 |
+| --- | --- | --- |
+| 完整学习路线 | [开发者学习路线](http://localhost:3002/guide/developer-learning-path) | [仓库递进入门路线](docs/help/开发者递进入门路线.md) |
+| 认识架构边界 | [系统架构](http://localhost:3002/guide/architecture) | [当前架构概览](docs/architecture/当前架构概览.md) |
+| 掌握 Docker 开发 | [Docker 跨平台开发](http://localhost:3002/deployment/docker-development) | [开发运行指南](docs/help/系统设计相关/开发运行与验证指南.md) |
+| 编写插件 | [课表插件教程](http://localhost:3002/plugins/schedule-plugin-tutorial) | [插件文档入口](docs/help/插件相关/插件分级与生命周期说明.md) |
+| 理解权限 | [权限配置入门](http://localhost:3002/guide/permission-configuration) | [权限与可靠审计](docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
+| 准备贡献 | [贡献与 CI 工作流](http://localhost:3002/contributing/workflow) | [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md) |
+
+官方文档后续部署到公网时，开发者只需替换站点域名；仓库内 `docs/` 继续作为离线文档、机器合同和历史
+验收证据入口。
+
+### 5. 完成改动并切换开发模式
+
+```bash
+git switch -c feat/my-change
+# 修改代码后执行基础回归
+./scripts/docker-dev.sh test
+git diff --check
+```
+
+Web、Admin、Docs、数据库或插件改动还需要对应的专项检查，具体矩阵见
+[贡献与 CI 工作流](docs-site/contributing/workflow.md)。开发结束后使用 `docker-dev.* down` 停止容器并保留数据。
+
+已经安装 Go、Node.js 和 pnpm 时，可以从完整 Docker 模式切到宿主机热更新：
+
+```bash
+STOP_EXISTING=true make dev-all
+```
+
+只要 `deploy/docker/.env.dev.local` 已由 `docker-dev.* setup` 创建，该命令就会停止 Docker 中的
+API/Web/Admin/Docs，保留并复用同一组 PostgreSQL、Redis、NATS 容器及命名卷；仓库 `data/` 本来就是
+宿主绑定目录，因此用户文件和资源也保持一致。切回完整 Docker 模式时，在另一终端执行
+`./scripts/docker-dev.sh up`，脚本只会停止已登记的 CampusOS 原生进程，再启动应用容器。
+
+两种应用模式使用相同默认端口，设计目标是安全交接而非并行写入。强制使用旧的独立本地基础设施时才设置
+`CAMPUSOS_DEV_INFRA_MODE=legacy`；该模式的数据与 `campusos-dev` Docker 卷不共享。
+
+单主机部署、分组件启动、备份和迁移不属于首次开发流程，统一从
+[Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)
+进入。
 
 ## 仓库结构
 

@@ -25,6 +25,19 @@ EMAIL_SMTP_STARTTLS=true
 `development` 和 `test` 可以使用 `EMAIL_PROVIDER=fake`。Fake Provider 不会打印验证码或提供
 可公开访问的测试邮箱；需要手工验收时请使用隔离的 SMTP 测试服务。
 
+Docker 开发栈使用独立的本地配置，不读取仓库根 `.env`：
+
+```bash
+./scripts/docker-dev.sh setup
+# 在 deploy/docker/.env.dev.local 填写 EMAIL_*
+./scripts/docker-dev.sh setup --start
+```
+
+PowerShell 使用 `.\scripts\docker-dev.ps1 setup` 和 `.\scripts\docker-dev.ps1 setup -Start`。向导校验
+配置结构并确保密码不出现在摘要中；实际 SMTP 网络和凭据仍在 API 启动并投递新验证码时验证。
+执行 `STOP_EXISTING=true make dev-all` 切换到宿主 Go/Node 进程时，也会读取这同一份配置并继续使用
+Docker 开发数据库卷，不需要把 SMTP 授权码复制到根 `.env`。
+
 ### QQ 邮箱与 Foxmail 地址
 
 CampusOS 当前支持 STARTTLS，因此 QQ/Foxmail 账号使用 `smtp.qq.com:587`，不要使用需要隐式 TLS 的

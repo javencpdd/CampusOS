@@ -26,7 +26,8 @@ CampusOS 不是单模块应用，也不是一组微服务。它是 **模块化�
 
 ## 2. 准备开发环境
 
-仓库当前 `go.mod` 使用 Go 1.25。还需要 Node.js、pnpm、Docker Compose 和 Git。
+完整 Docker 路线只要求 Git、Docker 与 Compose v2；原生应用路线另外要求 `go.mod` 对应的 Go、
+Node.js 和 pnpm。
 
 ```bash
 go version
@@ -41,10 +42,12 @@ git --version
 ```bash
 git clone https://github.com/javencpdd/CampusOS.git
 cd CampusOS
-cp .env.example .env
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local
 ```
 
-安装三个前端的依赖：
+Docker 不负责从 GitHub 克隆源码。开发容器绑定挂载这份宿主工作区，平时应在宿主 IDE 中编辑并使用宿主
+Git 提交。只有选择原生应用路线时才需要安装三个前端的依赖：
 
 ```bash
 cd web && pnpm install
@@ -55,9 +58,9 @@ cd ..
 
 ## 3. 一次启动完整开发环境
 
-只安装 Git 和 Docker 的 Windows/Linux 开发者可以直接使用
-[Docker 跨平台开发环境](/deployment/docker-development)。已经安装本地 Go、Node.js 与 pnpm 时，可继续使用
-下面的原生开发流程。
+只安装 Git 和 Docker 的 Windows/Linux 开发者先按
+[Docker 跨平台开发环境](/deployment/docker-development) 执行 `docker-dev.* setup --start`。已经安装本地
+Go、Node.js 与 pnpm 时，可在同一份配置和数据上使用下面的原生应用流程。
 
 在仓库根目录执行：
 
@@ -65,7 +68,9 @@ cd ..
 STOP_EXISTING=true make dev-all
 ```
 
-该命令会启动开发基础设施、执行尚未应用的 migration，并启动 API、Web、Admin 和 Docs。`STOP_EXISTING=true` 会先处理 CampusOS 默认端口上的旧开发进程。
+该命令会停止完整 Docker 模式的四个应用容器，继续使用同一组 PostgreSQL、Redis、NATS 命名卷与宿主
+`data/`，执行 migration 后启动宿主 API、Web、Admin 和 Docs。切回完整 Docker 模式时执行
+`./scripts/docker-dev.sh up`；两种模式按单写入者交接，不能同时运行两套 API。
 
 | 服务 | 地址 | 用途 |
 | --- | --- | --- |
@@ -209,7 +214,9 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 **端口已占用**
 
-重新执行 `STOP_EXISTING=true make dev-all`，或在 `.env` 中调整 `WEB_PORT`、`ADMIN_PORT`、`DOCS_PORT` 和 `SERVER_PORT`。
+重新执行 `STOP_EXISTING=true make dev-all`。完整 Docker 模式在
+`deploy/docker/.env.dev.local` 中调整 `CAMPUSOS_DEV_*_PORT`；原生模式也可在命令行覆盖
+`WEB_PORT`、`ADMIN_PORT`、`DOCS_PORT` 和 `SERVER_PORT`。
 
 **页面可打开但 API 请求失败**
 

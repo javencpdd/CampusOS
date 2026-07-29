@@ -1,7 +1,7 @@
 # 环境配置与 Host API 端口说明
 
 > 适用范围：CampusOS 本地开发环境
-> 相关文件：`.env`、`.env.example`、`pkg/config/config.go`、`docker-compose.yml`、`internal/plugin/hostapi/grpc_server.go`
+> 相关文件：`.env`、`.env.example`、`deploy/docker/.env.dev.local`、`compose.dev.yml`、`pkg/config/config.go`
 
 ## 1. `.env.example` 在开发环境中会生效吗
 
@@ -16,6 +16,11 @@ fileEnv := loadDotEnv(".env")
 ```
 
 这表示后端启动时只尝试读取项目根目录下的 `.env` 文件。没有 `.env` 时，后端会继续使用系统环境变量或代码里的默认值。
+
+但开发启动脚本会在后端加载配置前注入环境变量。完成 `docker-dev.* setup` 后，
+`STOP_EXISTING=true make dev-all` 默认从 `deploy/docker/.env.dev.local` 注入共享 PostgreSQL、Redis、
+NATS、SMTP 和认证配置；这些环境变量优先于根 `.env`。只有
+`CAMPUSOS_DEV_INFRA_MODE=legacy` 才继续使用旧 Compose 和根 `.env` 的独立数据源。
 
 ## 2. 配置读取优先级
 

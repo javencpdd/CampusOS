@@ -23,8 +23,50 @@ Linux `arm64` 具备同一静态合同，但正式发行仍需在目标平台 Ru
 | `compose.deploy.yml` | 运行、升级、备份和主机迁移 | 构建进镜像 | Nginx 静态产物 | PostgreSQL/Redis/NATS/CampusOS 命名卷 |
 | `compose.dev.yml` | Windows/Linux 继续开发 | 绑定挂载 | Vite/VitePress HMR | 开发数据库命名卷；仓库 `data/` 直接可见 |
 
-两套栈使用不同项目名和命名卷，不应混用。部署配置由 `.env.docker` 提供随机密钥；开发配置使用
-`deploy/docker/.env.dev.example` 中明确标注的 loopback 固定值。
+两套栈使用不同项目名和命名卷，不应混用。部署配置由 `.env.docker` 提供随机密钥；开发配置以
+`deploy/docker/.env.dev.example` 为模板，并由首次配置向导生成受 Git 忽略的
+`deploy/docker/.env.dev.local`。开发栈继续使用明确标注的 loopback 固定值。
+
+### 2.1 开发栈首次配置向导
+
+向导不会替开发者克隆代码。必须先在宿主机取得 Git 工作区；开发 Compose 把仓库根目录和三个前端目录
+绑定挂载进容器，Git 分支、提交和推送仍由宿主完成。容器 shell 只用于诊断，不能作为源码唯一保存位置。
+
+Linux：
+
+```bash
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local
+./scripts/docker-dev.sh setup --start
+```
+
+Windows PowerShell：
+
+```powershell
+.\scripts\docker-dev.ps1 setup
+# 编辑 deploy/docker/.env.dev.local
+.\scripts\docker-dev.ps1 setup -Start
+```
+
+第一次执行只复制模板并提示需要填写的字段，不启动容器。第二次执行校验端口、loopback 绑定、邮件
+Provider、SMTP 必填项和 Compose 语法；带 `--start`/`-Start` 时才构建并启动。脚本只显示非敏感摘要，
+不会输出 `EMAIL_SMTP_PASSWORD`。
+
+默认目标首次创建时，如果根 `.env` 已存在，向导会按固定白名单迁移 PostgreSQL 账号、Redis 密码、
+JWT/Challenge/Session/MFA 和 `EMAIL_*`，但不复制旧 `DATABASE_DSN` 或端口。迁移值不输出；创建完成后
+应以 `.env.dev.local` 为共享开发模式的配置事实源，避免继续双写。
+
+本地配置至少需要确认：
+
+| 配置 | 默认值 | 什么时候修改 |
+| --- | --- | --- |
+| `CAMPUSOS_DEV_*_PORT` | Web `3000`、Admin `3001`、Docs `3002`、API `8080` 等 | 宿主端口冲突时 |
+| `POSTGRES_*` | 仅 loopback 开发使用的固定值 | 需要隔离多个开发栈时 |
+| `EMAIL_PROVIDER` | `fake` | 需要收到注册、找回密码或邮箱绑定验证码时改为 `smtp` |
+| `EMAIL_SMTP_*` | 空 | 使用 SMTP 时填写 host、port、from；需要认证时 username/password 成对填写 |
+
+`fake` 只确认可靠消费者被调用，不发送、不显示验证码。因此它适合 API 和现有账号开发，但无法完成依赖
+真实验证码的新用户注册。配置 SMTP 后，脚本只能确认结构有效；网络、授权码和收件箱仍需在启动后验证。
 
 部署栈同时按组件拆分为：
 
@@ -93,7 +135,8 @@ UID/GID，PowerShell 使用 Docker Desktop/WSL2 的 `1000:1000`；API、Vite 和
 开发：
 
 ```bash
-./scripts/docker-dev.sh up
+./scripts/docker-dev.sh setup
+./scripts/docker-dev.sh setup --start
 ./scripts/docker-dev.sh logs api
 ./scripts/docker-dev.sh test
 ```
@@ -113,7 +156,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\docker-dev.ps1 up
+.\scripts\docker-dev.ps1 setup
+.\scripts\docker-dev.ps1 setup -Start
 .\scripts\docker-dev.ps1 logs -Service api
 .\scripts\docker-dev.ps1 test
 ```
@@ -184,6 +228,33 @@ Windows 将命令中的脚本改为 `docker-component.ps1` 并使用 `-Component
 
 Web/Admin/Docs 使用轮询监听，解决 Docker Desktop 对文件事件转发不一致的问题。修改普通源码会 HMR；
 修改 `package.json` 或 lockfile 后重新执行 `docker-dev.* up`，由 `--build` 重建对应依赖种子。
+
+### 8.1 完整 Docker 与原生应用模式交接
+
+完成 `docker-dev.* setup` 后，已安装 Go、Node.js 和 pnpm 的开发者可以执行：
+
+```bash
+STOP_EXISTING=true make dev-all
+```
+
+启动器停止 `campusos-dev` 的 API/Web/Admin/Docs 容器，保留 PostgreSQL、Redis、NATS 及其命名卷，再让
+宿主进程读取同一个 Docker 开发配置、执行 migration 并使用宿主 `data/`。数据库事实、可靠任务、会话、
+个人文件、插件/模块数据和资源不会因模式切换而换到另一套数据源。
+
+反向切换使用 `./scripts/docker-dev.sh up` 或 `.\scripts\docker-dev.ps1 up`。脚本通过
+`.campusos/run/native-dev.pid` 核验并停止原生 CampusOS 进程，禁止两套 API 同时写入。WSL2 中启动的
+原生模式建议继续在同一 WSL2 shell 使用 Bash 启动器。直接调用 `docker compose up` 会绕过进程交接。
+
+| 数据层 | 共享方式 |
+| --- | --- |
+| PostgreSQL/Redis/NATS | 同一 `campusos-dev` Compose 项目和命名卷 |
+| CampusOS `data/` | 同一宿主 Git 工作区，Docker API 通过 `/workspace` bind mount 访问 |
+| 源码 | 同一宿主工作区 |
+| Go/pnpm cache、`node_modules` | 各模式独立；不属于需迁移的业务数据 |
+
+`CAMPUSOS_DEV_INFRA_MODE=legacy` 仅用于兼容旧 `docker-compose.yml` 基础设施；它与 `campusos-dev`
+命名卷不共享，不能用于“无缝切换”。升级前的 Legacy PostgreSQL 数据不会被启动器自动合并；需要保留时
+先备份、再恢复并核对数量，禁止两个 PostgreSQL 容器并发挂载同一物理卷。
 
 默认端口：
 

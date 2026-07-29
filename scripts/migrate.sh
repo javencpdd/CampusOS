@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTION="${1:-up}"
 
-if [[ -f .env ]]; then
+if [[ "${CAMPUSOS_SKIP_DOTENV:-false}" != "true" && -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
   source .env
@@ -20,8 +20,11 @@ POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-campusos-postgres}"
 PSQL_MODE="${PSQL_MODE:-auto}"
 
 docker_container_available() {
-  command -v docker >/dev/null 2>&1 &&
-    docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$POSTGRES_CONTAINER"
+  command -v docker >/dev/null 2>&1 || return 1
+  if docker inspect --format '{{.State.Running}}' "$POSTGRES_CONTAINER" 2>/dev/null | grep -qx true; then
+    return 0
+  fi
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$POSTGRES_CONTAINER"
 }
 
 select_psql_mode() {

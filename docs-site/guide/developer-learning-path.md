@@ -26,23 +26,34 @@
 只安装 Git 和 Docker 时使用 [Docker 跨平台开发](/deployment/docker-development)：
 
 ```bash
-./scripts/docker-dev.sh up
+git clone https://github.com/javencpdd/CampusOS.git
+cd CampusOS
+./scripts/docker-dev.sh setup
+# 编辑 deploy/docker/.env.dev.local
+./scripts/docker-dev.sh setup --start
 ```
 
 Windows PowerShell：
 
 ```powershell
-.\scripts\docker-dev.ps1 up
+.\scripts\docker-dev.ps1 setup
+# 编辑 deploy/docker/.env.dev.local
+.\scripts\docker-dev.ps1 setup -Start
 ```
+
+默认 `EMAIL_PROVIDER=fake` 不会发送验证码；需要测试注册、密码找回和邮箱绑定时，在本地配置中填写 SMTP。
+源码始终在宿主机工作区编辑；Compose 只是把这份工作区绑定挂载进容器，不会自行从 GitHub 同步。
 
 ### 本机工具链路线
 
 已经安装 Go、Node.js 和 pnpm 时：
 
 ```bash
-cp .env.example .env
 STOP_EXISTING=true make dev-all
 ```
+
+如果已经运行过 `docker-dev.* setup`，该命令会保留并复用 Docker 开发栈的 PostgreSQL、Redis、NATS 和
+数据卷，只把 API 与三个前端切换为宿主机进程；执行 `./scripts/docker-dev.sh up` 可切回完整 Docker 模式。
 
 详细步骤见 [完整入门路径](/guide/getting-started) 和 [开发环境](/deployment/development)。
 
@@ -133,4 +144,3 @@ Web/Admin/Docs 改动还要运行各自的组件测试、lint 或 build。具体
 docs/help/README.md
 docs/help/文档审计与整理说明.md
 ```
-

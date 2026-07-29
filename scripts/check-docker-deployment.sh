@@ -33,6 +33,8 @@ required=(
   scripts/docker-component.ps1
   scripts/docker-dev.sh
   scripts/docker-dev.ps1
+  scripts/test-docker-dev-setup.sh
+  scripts/test-dev-mode-compat.sh
   scripts/docker-deploy.sh
   scripts/docker-deploy.ps1
 )
@@ -59,9 +61,20 @@ fi
 deploy_rendered="$(mktemp)"
 dev_rendered="$(mktemp)"
 component_rendered="$(mktemp)"
-trap 'rm -f "$deploy_rendered" "$dev_rendered" "$component_rendered"' EXIT
+smtp_dev_env="$(mktemp)"
+smtp_dev_rendered="$(mktemp)"
+trap 'rm -f "$deploy_rendered" "$dev_rendered" "$component_rendered" "$smtp_dev_env" "$smtp_dev_rendered"' EXIT
 docker compose --env-file deploy/docker/.env.example -f compose.deploy.yml --profile maintenance config >"$deploy_rendered"
 docker compose --env-file deploy/docker/.env.dev.example -f compose.dev.yml config >"$dev_rendered"
+cp deploy/docker/.env.dev.example "$smtp_dev_env"
+sed -i \
+  -e 's/^EMAIL_PROVIDER=.*/EMAIL_PROVIDER=smtp/' \
+  -e 's/^EMAIL_SMTP_HOST=.*/EMAIL_SMTP_HOST=smtp.example.test/' \
+  -e 's/^EMAIL_SMTP_USERNAME=.*/EMAIL_SMTP_USERNAME=mailer@example.test/' \
+  -e 's/^EMAIL_SMTP_PASSWORD=.*/EMAIL_SMTP_PASSWORD=compose-contract-secret/' \
+  -e 's/^EMAIL_SMTP_FROM=.*/EMAIL_SMTP_FROM=mailer@example.test/' \
+  "$smtp_dev_env"
+docker compose --env-file "$smtp_dev_env" -f compose.dev.yml config >"$smtp_dev_rendered"
 
 for service in postgres redis nats api web admin docs; do
   if ! grep -q "^  ${service}:" "$deploy_rendered"; then
@@ -91,6 +104,25 @@ grep -q 'target: web-dev' "$dev_rendered"
 grep -q 'target: admin-dev' "$dev_rendered"
 grep -q 'target: docs-dev' "$dev_rendered"
 grep -q 'CAMPUSOS_DEV_UID' "$dev_rendered"
+grep -q 'EMAIL_PROVIDER: fake' "$dev_rendered"
+grep -q 'EMAIL_SMTP_PORT: "587"' "$dev_rendered"
+grep -q 'EMAIL_PROVIDER: smtp' "$smtp_dev_rendered"
+grep -q 'EMAIL_SMTP_HOST: smtp.example.test' "$smtp_dev_rendered"
+grep -q 'EMAIL_SMTP_PASSWORD: compose-contract-secret' "$smtp_dev_rendered"
+grep -q 'setup' scripts/docker-dev.sh
+grep -q 'setup' scripts/docker-dev.ps1
+grep -q 'stop-apps' scripts/docker-dev.sh
+grep -q 'stop-apps' scripts/docker-dev.ps1
+grep -q 'infra-up' scripts/docker-dev.sh
+grep -q 'infra-up' scripts/docker-dev.ps1
+grep -q 'stop-native' scripts/docker-dev.sh
+grep -q 'stop-native' scripts/docker-dev.ps1
+grep -q 'docker-dev.sh stop-apps' scripts/start-dev.sh
+grep -q 'docker-dev.sh infra-up' scripts/start-dev.sh
+grep -q 'docker-dev.sh migrate up' scripts/start-dev.sh
+grep -q 'CAMPUSOS_DEV_INFRA_MODE' scripts/start-dev.sh
+grep -q 'CAMPUSOS_API_PROXY_TARGET="http://localhost:$SERVER_PORT"' scripts/start-dev.sh
+git check-ignore -q deploy/docker/.env.dev.local
 grep -q 'setpriv --reuid' deploy/docker/dev-api.sh
 grep -q 'setpriv --reuid' deploy/docker/dev-frontend.sh
 grep -q 'COREPACK_HOME=/opt/corepack' deploy/docker/Dockerfile.dev
@@ -128,5 +160,10 @@ bash -n \
   deploy/docker/restore-container.sh \
   scripts/docker-component.sh \
   scripts/docker-dev.sh \
+  scripts/start-dev.sh \
+  scripts/test-docker-dev-setup.sh \
+  scripts/test-dev-mode-compat.sh \
   scripts/docker-deploy.sh
+bash scripts/test-docker-dev-setup.sh
+bash scripts/test-dev-mode-compat.sh
 echo "Docker deployment and cross-platform development contracts passed."
