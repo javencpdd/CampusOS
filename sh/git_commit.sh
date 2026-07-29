@@ -5,13 +5,16 @@
 #   ./sh/git_commit.sh                    # 交互模式（显示变更，提示输入提交信息）
 #   ./sh/git_commit.sh "提交信息"           # 快速模式（直接提交所有变更）
 #   ./sh/git_commit.sh -m "提交信息"        # 同上
-#   ./sh/git_commit.sh -p                  # 仅 push，不提交
+#   ./sh/git_commit.sh -p                  # 仅 push 当前分支，不提交
 #   ./sh/git_commit.sh -s                  # 仅查看状态，不提交
 #   ./sh/git_commit.sh -l [n]             # 查看最近 n 条提交记录（默认 10）
 #   ./sh/git_commit.sh -d                  # 查看变更详情（diff）
+# 环境变量：
+#   CAMPUSOS_GIT_REMOTE=origin             # push 目标 remote（默认 origin）
+#   CAMPUSOS_ALLOW_PROTECTED_PUSH=true     # 明确允许直接 push main/master/develop
 # ============================================
 
-set -e
+set -euo pipefail
 
 # 颜色定义
 RED='\033[0;31m'
@@ -20,6 +23,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+REMOTE="${CAMPUSOS_GIT_REMOTE:-origin}"
 
 # 确保在项目根目录运行
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,6 +31,22 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 # ---- 辅助函数 ----
+fail() {
+    echo -e "${RED}❌ 错误：$*${NC}" >&2
+    exit 1
+}
+
+current_branch() {
+    local branch
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    [ -n "$branch" ] || fail "当前处于 detached HEAD 状态，请先切换到工作分支"
+    echo "$branch"
+}
+
+ensure_remote() {
+    git remote get-url "$REMOTE" >/dev/null 2>&1 || fail "Git remote 不存在：$REMOTE"
+}
+
 print_header() {
     echo ""
     echo -e "${CYAN}════════════════════════════════════════${NC}"
@@ -38,7 +58,7 @@ print_header() {
 show_status() {
     echo -e "${BLUE}📋 工作区状态：${NC}"
     echo "────────────────────────────────────────"
-    git status -s
+    git status -sb
     echo ""
 }
 
@@ -80,9 +100,19 @@ do_commit() {
 
 do_push() {
     local branch
-    branch=$(git rev-parse --abbrev-ref HEAD)
-    echo -e "${BLUE}🚀 推送到远程 (${branch})...${NC}"
-    if git push origin "$branch"; then
+    branch="$(current_branch)"
+    ensure_remote
+
+    case "$branch" in
+        main|master|develop)
+            if [ "${CAMPUSOS_ALLOW_PROTECTED_PUSH:-false}" != "true" ]; then
+                fail "拒绝直接推送受保护分支 $branch。请切换到工作分支；如确需推送，显式设置 CAMPUSOS_ALLOW_PROTECTED_PUSH=true"
+            fi
+            ;;
+    esac
+
+    echo -e "${BLUE}🚀 推送当前分支到 ${REMOTE}/${branch}...${NC}"
+    if git push -u "$REMOTE" "$branch"; then
         echo -e "${GREEN}✅ 推送成功！${NC}"
     else
         echo -e "${RED}❌ 推送失败，请检查网络或远程仓库配置。${NC}"
@@ -125,6 +155,11 @@ case "${1:-}" in
         echo "  ./sh/git_commit.sh -l [n]        查看提交记录（默认10条）"
         echo "  ./sh/git_commit.sh -d            查看变更详情"
         echo "  ./sh/git_commit.sh -h            显示帮助"
+        echo ""
+        echo "分支与远程："
+        echo "  - commit 始终发生在当前分支；push 使用当前分支名并设置 upstream"
+        echo "  - 默认 remote 为 origin；可用 CAMPUSOS_GIT_REMOTE 覆盖"
+        echo "  - 默认拒绝直接 push main/master/develop"
         echo ""
         exit 0
         ;;
