@@ -51,14 +51,14 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\docker-dev.ps1 setup
 ```
 
-脚本会创建已被 Git 忽略的 `deploy/docker/.env.dev.local`；若已有根 `.env`，会按白名单迁移数据库账号、
-认证和邮件设置但不打印值。第一次至少确认端口和邮件方式：
+脚本会创建已被 Git 忽略的 `deploy/docker/.env.dev.local`；它是 Docker 开发环境的实际配置文件和后续
+修改入口。根 `.env.example`、`deploy/docker/.env.example` 和 `.env.dev.example` 都只是其他模式或初始化模板。
 
 - `EMAIL_PROVIDER=fake`：可以开发 API 和使用现有开发账号，但不会发送或显示注册验证码。
 - `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
 
-配置字段和 SMTP 示例见 [Docker 开发指南](docs-site/deployment/docker-development.md)；文档站启动后也可访问
-[邮件投递说明](http://localhost:3002/deployment/email-delivery)。
+修改后重新执行 `docker-dev.* up`，Compose 会按新配置重建受影响容器；`docker restart` 不会重新读取环境文件，也不需要重启 Docker Desktop。
+只有修改 Docker Desktop 自身代理/引擎设置时才重启 Desktop。字段说明见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
 
 ### 3. 校验配置并启动
 

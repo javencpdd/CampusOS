@@ -96,6 +96,13 @@ PowerShell：
 .\scripts\docker-dev.ps1 up
 ```
 
+修改 `.env.dev.local` 后必须重新执行上述 `up`。启动脚本使用 `docker compose up -d --build`，会按新配置
+重建受影响容器；仅执行 `docker restart` 不会重新读取环境文件。普通端口、SMTP、JWT 等项目配置不需要
+重启 Docker Desktop，只有修改 Docker Desktop 自身代理、DNS 或引擎设置时才需要重启 Desktop。
+
+`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 是 PostgreSQL 首次初始化变量；已有数据卷不会因为
+重建容器自动修改数据库内部账号。不要为了让配置“生效”直接删除数据卷，应先备份并按数据库迁移流程处理。
+
 也可以在任意平台使用已经生成的配置直接调用标准 Compose：
 
 ```bash
