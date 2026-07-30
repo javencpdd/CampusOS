@@ -148,6 +148,7 @@ v12-migration-check:
 
 v13-migration-check:
 	./scripts/test-v13-identity-security-migrations.sh
+	./scripts/test-v13-schema-index-hygiene-migration.sh
 
 v13-baseline-check:
 	go test ./cmd/campusos-baseline -count=1

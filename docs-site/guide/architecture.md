@@ -73,7 +73,7 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | 用户文件 | `data/personal-space/<user_id>/`。 |
 | 开发日志 | `.campusos/logs/`。 |
 
-数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的插件关系。修改 schema 前必须运行 `make database-check` 和 migration 验证；当前顺序 migration 为 `000001` 至 `000040`。`000039` 记录管理员准入状态变更，`000040` 增加服务端 MFA Session 强度、TOTP 加密信封、Ticket/恢复码摘要和管理员策略。
+数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的插件关系。修改 schema 前必须运行 `make database-check` 和 migration 验证；当前顺序 migration 为 `000001` 至 `000041`。`000039` 记录管理员准入状态变更，`000040` 增加服务端 MFA Session 强度、TOTP 加密信封、Ticket/恢复码摘要和管理员策略，`000041` 删除九个被同谓词复合索引严格左前缀覆盖的窄索引并启用 Schema 冗余门禁。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
 
 ## 页面扩展安全
 

@@ -63,8 +63,9 @@
 `openapi-v0.6-current.yaml`、`http-routes-v0.6.json` 等名称为兼容旧链接保留；文件内容由当前代码生成，
 不能根据文件名中的 `v0.6` 判断实现版本。
 
-当前数据库有 40 个追加 migration。静态旧表清单不能替代 Admin `/architecture`、`migrations/`、
-`make database-check` 和架构同步检查器。
+当前数据库有 41 个追加 migration。静态旧表清单不能替代 Admin `/architecture`、`migrations/`、
+`make database-check` 和架构同步检查器；索引与约束冗余治理见
+[数据库迁移与 Schema 冗余治理](help/系统设计相关/数据库迁移与Schema冗余治理.md)。
 
 ## 5. 当前架构和产品边界
 

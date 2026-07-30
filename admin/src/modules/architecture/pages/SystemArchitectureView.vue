@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000040</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000041</el-tag>
     </section>
 
     <el-alert
@@ -2196,6 +2196,15 @@ const migrations = [
     summary:
       "为 Session 追加服务端 MFA 强度，并建立加密 TOTP 信封、单用途 Ticket 摘要、恢复码摘要和管理员 MFA 策略；不存储明文认证器材料。",
     tables: ["sessions", "identity_mfa_totp_methods", "identity_mfa_tickets", "identity_mfa_recovery_codes", "identity_mfa_policies", "permission_definitions", "role_permissions"],
+  },
+  {
+    version: "000041",
+    file: "000041_v13_schema_index_hygiene.up.sql",
+    title: "v13 Schema 索引收敛",
+    scope: "数据库维护",
+    summary:
+      "保留全部历史迁移和业务数据，通过前向迁移删除九个已被同谓词复合 B-tree 严格左前缀覆盖的窄索引，并把重复索引、重复约束和冗余前缀检测接入数据库门禁。",
+    tables: ["notifications", "plugin_permissions", "plugin_records", "posts", "role_permissions", "sessions", "threads", "user_roles", "webhook_deliveries"],
   },
 ];
 

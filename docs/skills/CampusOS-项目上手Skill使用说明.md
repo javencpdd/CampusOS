@@ -42,7 +42,7 @@ skills/campusos-project-onboarding/
 
 - 模块化单体和 Core/Built-in Feature/External Plugin/Resource Package 四分类。
 - Identity、Community、Reliability、Appearance、插件平台和 Docker 交付的当前边界。
-- migration `000001-000040` 和关键代码/数据目录。
+- migration `000001-000041` 和关键代码/数据目录。
 - 原生开发、Docker 开发、总编排和分组件启动方式。
 - 当前仍未实现的标准 MCP、标准 protobuf gRPC、远程市场、真实第三方 Adapter 和高可用。
 - Help 文档生命周期、v1-v13 计划总结和当前候选路线。

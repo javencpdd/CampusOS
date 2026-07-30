@@ -40,7 +40,7 @@
 | 判断新功能应该放在哪里 | [模块、插件与资源边界](../../docs-site/guide/module-plugin-resource-boundaries.md) |
 | 编写第一个 External Plugin | [课表插件完整教程](../../docs-site/plugins/schedule-plugin-tutorial.md) |
 | 配置或开发权限能力 | [权限配置入门](../../docs-site/guide/permission-configuration.md)、[v11 权限与可靠审计](系统设计相关/v11权限管理与可靠审计设计入门.md) |
-| 修改数据库或可靠写入 | [v11 数据所有权](../architecture/v11可靠命令事件与数据所有权.md)、[结构化帖子可靠写入](系统设计相关/v12结构化帖子可靠写入说明.md) |
+| 修改数据库或可靠写入 | [数据库迁移与 Schema 冗余治理](系统设计相关/数据库迁移与Schema冗余治理.md)、[v11 数据所有权](../architecture/v11可靠命令事件与数据所有权.md)、[结构化帖子可靠写入](系统设计相关/v12结构化帖子可靠写入说明.md) |
 | 发布、备份和恢复 | [构建与发布](../../docs-site/deployment/release.md)、[Docker 部署与迁移](../../docs-site/deployment/docker.md) |
 | 查看版本演进和当前路线 | [Help 版计划书总结](计划书总结/README.md)、[详细计划治理](../计划书总结/README.md) |
 
@@ -54,6 +54,7 @@
 - [Docker 跨平台部署、迁移与开发指南](系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)
 - [环境配置与 Host API 端口](系统设计相关/环境配置与HostAPI端口说明.md)
 - [备份恢复说明](系统设计相关/备份恢复说明.md)
+- [数据库迁移与 Schema 冗余治理](系统设计相关/数据库迁移与Schema冗余治理.md)
 - [邮件投递与 SMTP](系统设计相关/v12邮件投递与SMTP部署说明.md)
 
 ### 身份、权限与可靠运行
@@ -130,7 +131,7 @@
 | `系统设计相关/v0.5回归Smoke测试说明.md` | v0.5 测试快照；当前发布门禁已扩展到数据库、恢复和浏览器矩阵 | [开发、验证与贡献指南](系统设计相关/开发运行与验证指南.md)、[构建与发布](../../docs-site/deployment/release.md) |
 | `系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 能力边界快照 | [集成中心与能力边界](../../docs-site/operations/integrations.md) |
 | `系统设计相关/数据库v0.6体检与模型决策.md` | migration `000016` 时点的体检证据 | Admin `/architecture`、[当前架构概览](../architecture/当前架构概览.md) |
-| `系统设计相关/数据库管理指南.md` 的表清单部分 | 只统计到 migration `000018`，不再代表当前 40 个 migration | Admin `/architecture`、`migrations/`、`make database-check` |
+| `系统设计相关/数据库管理指南.md` 的表清单部分 | 只统计到 migration `000018`，不再代表当前 41 个 migration | Admin `/architecture`、`migrations/`、`make database-check` |
 | `系统设计相关/PostgreSQL双实例数据不一致说明.md` | 一次本机双实例事故复盘 | [Docker 部署与迁移](../../docs-site/deployment/docker.md)；仅在同类故障时查阅旧复盘 |
 | `系统设计相关/RBAC权限与版主管理说明.md` | v6 前后的权限模型快照 | [权限配置入门](../../docs-site/guide/permission-configuration.md)、[v11 权限与可靠审计](系统设计相关/v11权限管理与可靠审计设计入门.md) |
 | `系统设计相关/v10权限管理设计与使用入门.md` | v10 权限目录形成时的架构记录 | v11 文档和当前生成授权矩阵 |
