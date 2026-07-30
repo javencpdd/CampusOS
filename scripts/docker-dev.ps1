@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("setup", "config", "build", "up", "infra-up", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
+    [ValidateSet("setup", "config", "build", "up", "infra-up", "lan-check", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
     [string]$Command = "up",
     [string]$Service = "",
     [switch]$Start,
@@ -160,6 +160,32 @@ function Assert-Environment {
     $Bind = Get-EnvironmentSetting "CAMPUSOS_DEV_BIND" "127.0.0.1"
     if ($Bind -ne "127.0.0.1") {
         throw "CAMPUSOS_DEV_BIND must remain 127.0.0.1 because this stack uses development credentials."
+    }
+
+    $AllowLan = (Get-EnvironmentSetting "CAMPUSOS_DEV_ALLOW_LAN" "false").ToLowerInvariant()
+    if ($AllowLan -ne "true" -and $AllowLan -ne "false") {
+        throw "CAMPUSOS_DEV_ALLOW_LAN must be true or false."
+    }
+    $SurfaceBinds = [ordered]@{
+        CAMPUSOS_DEV_WEB_BIND = "127.0.0.1"
+        CAMPUSOS_DEV_ADMIN_BIND = "127.0.0.1"
+        CAMPUSOS_DEV_DOCS_BIND = "127.0.0.1"
+    }
+    $LanSurfaces = @()
+    foreach ($Key in $SurfaceBinds.Keys) {
+        $SurfaceBind = Get-EnvironmentSetting $Key $SurfaceBinds[$Key]
+        if ($SurfaceBind -ne "127.0.0.1" -and $SurfaceBind -ne "0.0.0.0") {
+            throw "$Key must be 127.0.0.1 or 0.0.0.0."
+        }
+        if ($SurfaceBind -eq "0.0.0.0") {
+            if ($AllowLan -ne "true") {
+                throw "$Key=0.0.0.0 requires CAMPUSOS_DEV_ALLOW_LAN=true."
+            }
+            $LanSurfaces += $Key
+        }
+    }
+    if ($LanSurfaces.Count -gt 0) {
+        Write-Warning "LAN exposure is enabled for $($LanSurfaces.Count) UI service(s); API and data services remain loopback-only."
     }
 
     $Ports = @{}
@@ -386,6 +412,34 @@ switch ($Command) {
         Assert-Environment
         Assert-Docker
         Start-Infrastructure
+    }
+    "lan-check" {
+        $Python = $null
+        foreach ($Candidate in @("python", "python3")) {
+            $CandidateCommand = Get-Command $Candidate -ErrorAction SilentlyContinue
+            if (-not $CandidateCommand) {
+                continue
+            }
+            try {
+                & $CandidateCommand.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    $Python = $CandidateCommand
+                    break
+                }
+            }
+            catch {
+                continue
+            }
+        }
+        if (-not $Python) {
+            throw "Python 3.10 or newer is required for lan-check."
+        }
+        & $Python.Source (Join-Path $Root "scripts/check-lan-access.py") `
+            --env-file $EnvFile `
+            --compose-file $ComposeFile
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
     }
     "ps" {
         Invoke-Compose @("ps")

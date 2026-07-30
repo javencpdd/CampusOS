@@ -96,6 +96,13 @@ PowerShell：
 .\scripts\docker-dev.ps1 up
 ```
 
+修改 `.env.dev.local` 后必须重新执行上述 `up`。启动脚本使用 `docker compose up -d --build`，会按新配置
+重建受影响容器；仅执行 `docker restart` 不会重新读取环境文件。普通端口、SMTP、JWT 等项目配置不需要
+重启 Docker Desktop，只有修改 Docker Desktop 自身代理、DNS 或引擎设置时才需要重启 Desktop。
+
+`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 是 PostgreSQL 首次初始化变量；已有数据卷不会因为
+重建容器自动修改数据库内部账号。不要为了让配置“生效”直接删除数据卷，应先备份并按数据库迁移流程处理。
+
 也可以在任意平台使用已经生成的配置直接调用标准 Compose：
 
 ```bash
@@ -109,6 +116,71 @@ docker compose \
 Linux/POSIX 启动脚本会把当前宿主 UID/GID 传入 API、Web、Admin 和 Docs；Windows 脚本使用
 Docker Desktop/WSL2 常见的 `1000:1000`。应用进程因此不会用 root 所有权写入绑定源码。
 Corepack 缓存固定在镜像内并锁定 pnpm `8.15.9`，运行期不会因切换用户而下载“最新 pnpm”。
+
+### 可信局域网访问
+
+默认所有端口只监听 `127.0.0.1`。需要让同一可信局域网内的设备访问 Web、Admin 和 Docs 时，在
+`deploy/docker/.env.dev.local` 设置：
+
+```dotenv
+CAMPUSOS_DEV_BIND=127.0.0.1
+CAMPUSOS_DEV_ALLOW_LAN=true
+CAMPUSOS_DEV_WEB_BIND=0.0.0.0
+CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
+CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
+```
+
+启动后自动诊断 Compose 发布、容器健康、LAN IPv4、HTTP/API Proxy 和宿主网络/防火墙提示：
+
+```powershell
+.\scripts\docker-dev.ps1 lan-check
+```
+
+Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows 会读取活动网卡、网络类别和项目
+防火墙规则；Linux 会优先读取默认路由网卡的 IPv4/子网，并根据 UFW、firewalld 或 nftables/iptables 给出
+防火墙提示。两端都会列出 Web/Admin/Docs URL，同时生成供另一台局域网主机执行的 Windows
+`Test-NetConnection` 与 Linux/macOS `curl`、`nc` 命令。`LOCAL READY` 只证明开发机自身通过 LAN 地址访问
+正常；只有另一台主机实测才能发现宿主入站策略或路由器 AP/客户端隔离。
+
+不要把 `CAMPUSOS_DEV_BIND` 改为 `0.0.0.0`。它继续控制 API、PostgreSQL、Redis、NATS 和 pgAdmin，
+启动器也会拒绝非 loopback 值。浏览器通过 Web/Admin 的同源 Vite 代理访问 API，因此无需暴露 8080。
+Admin 中指向 Web/Docs 的本地 companion URL 会自动换成浏览器正在访问的局域网主机名。
+
+修改后运行 `docker-dev.* up`。如果镜像已经存在且 Docker Hub 暂时不可用，可以只重建三个 UI 容器：
+
+```powershell
+docker compose `
+  --env-file deploy/docker/.env.dev.local `
+  -f compose.dev.yml `
+  up -d --no-build --no-deps --force-recreate web admin docs
+```
+
+Windows 还需要在管理员 PowerShell 中为“专用网络”添加窄范围防火墙规则：
+
+```powershell
+New-NetFirewallRule `
+  -DisplayName "CampusOS Dev UI (Private LAN)" `
+  -Direction Inbound `
+  -Action Allow `
+  -Protocol TCP `
+  -LocalPort 3000-3002 `
+  -Profile Private `
+  -RemoteAddress LocalSubnet
+```
+
+Linux 同样可能被宿主防火墙拦截。Ubuntu/Debian 用 `sudo ufw status`，Fedora/RHEL 用
+`sudo firewall-cmd --get-active-zones` 和 `sudo firewall-cmd --list-ports` 检查；其他发行版检查
+nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3002，不要直接创建面向任意来源的规则。
+
+脚本会自动输出应使用的开发机 IPv4；局域网设备分别访问
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。若仍无法连接，检查 Windows 当前网络类别或 Linux
+防火墙、路由器/AP 客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
+只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值。Windows
+如果创建过项目规则，再删除：
+
+```powershell
+Remove-NetFirewallRule -DisplayName "CampusOS Dev UI (Private LAN)"
+```
 
 | 服务 | 地址 |
 | --- | --- |

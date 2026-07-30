@@ -108,6 +108,28 @@ if PATH="$TEMP_DIR/bin:$PATH" CAMPUSOS_DOCKER_DEV_ENV="$EXPOSED_ENV" \
 fi
 grep -q 'CAMPUSOS_DEV_BIND must remain 127.0.0.1' "$TEMP_DIR/exposed.out"
 
+LAN_WITHOUT_OPT_IN_ENV="$TEMP_DIR/lan-without-opt-in.env"
+cp "$ROOT_DIR/deploy/docker/.env.dev.example" "$LAN_WITHOUT_OPT_IN_ENV"
+sed -i 's/^CAMPUSOS_DEV_WEB_BIND=.*/CAMPUSOS_DEV_WEB_BIND=0.0.0.0/' "$LAN_WITHOUT_OPT_IN_ENV"
+if PATH="$TEMP_DIR/bin:$PATH" CAMPUSOS_DOCKER_DEV_ENV="$LAN_WITHOUT_OPT_IN_ENV" \
+  "$ROOT_DIR/scripts/docker-dev.sh" setup >"$TEMP_DIR/lan-without-opt-in.out" 2>&1; then
+  echo "LAN UI bind without explicit opt-in unexpectedly passed." >&2
+  exit 1
+fi
+grep -q 'CAMPUSOS_DEV_WEB_BIND=0.0.0.0 requires CAMPUSOS_DEV_ALLOW_LAN=true' "$TEMP_DIR/lan-without-opt-in.out"
+
+LAN_ENV="$TEMP_DIR/lan.env"
+cp "$ROOT_DIR/deploy/docker/.env.dev.example" "$LAN_ENV"
+sed -i \
+  -e 's/^CAMPUSOS_DEV_ALLOW_LAN=.*/CAMPUSOS_DEV_ALLOW_LAN=true/' \
+  -e 's/^CAMPUSOS_DEV_WEB_BIND=.*/CAMPUSOS_DEV_WEB_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_ADMIN_BIND=.*/CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_DOCS_BIND=.*/CAMPUSOS_DEV_DOCS_BIND=0.0.0.0/' \
+  "$LAN_ENV"
+PATH="$TEMP_DIR/bin:$PATH" CAMPUSOS_DOCKER_DEV_ENV="$LAN_ENV" \
+  "$ROOT_DIR/scripts/docker-dev.sh" setup >"$TEMP_DIR/lan.out"
+grep -q 'LAN exposure is enabled for 3 UI service(s)' "$TEMP_DIR/lan.out"
+
 VALID_ENV="$TEMP_DIR/valid.env"
 cp "$ROOT_DIR/deploy/docker/.env.dev.example" "$VALID_ENV"
 sed -i \
