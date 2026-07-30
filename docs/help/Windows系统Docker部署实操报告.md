@@ -495,7 +495,7 @@ python scripts/check-line-endings.py --include-untracked --fix
 
 ## 13. 安全和维护要求
 
-1. 开发栈必须继续绑定 `127.0.0.1`。
+1. API、数据库、Redis、NATS 和 pgAdmin 必须继续绑定 `127.0.0.1`；UI 端口只能按下述显式 opt-in 开放。
 2. `.env.dev.local`、SMTP 密码和代理凭据不得提交。
 3. 不要把固定开发管理员密码用于生产。
 4. `EMAIL_PROVIDER=fake` 不是邮件测试工具。
@@ -503,6 +503,11 @@ python scripts/check-line-endings.py --include-untracked --fix
 6. 停止项目优先使用仓库脚本，不要盲目删除所有 Docker Volume。
 7. 代理故障优先修复系统代理或 Docker Desktop 设置，不要固定 Docker Hub hosts IP。
 8. 本报告记录一次 Windows 实操；命令合同变化时，以脚本、Compose 和跨平台权威指南为准。
+
+如需可信局域网访问，不要修改控制敏感服务的 `CAMPUSOS_DEV_BIND`。使用
+`CAMPUSOS_DEV_ALLOW_LAN=true` 和独立的 `CAMPUSOS_DEV_WEB_BIND`、`CAMPUSOS_DEV_ADMIN_BIND`、
+`CAMPUSOS_DEV_DOCS_BIND` 只开放 3000–3002，并仅为 Windows“专用网络”的 `LocalSubnet` 添加防火墙规则。
+完整配置、关闭方法和风险边界见[官方 Docker 跨平台开发环境](../../docs-site/deployment/docker-development.md#可信局域网访问)。
 
 ## 14. 最短复现清单
 

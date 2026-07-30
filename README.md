@@ -57,8 +57,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 - `EMAIL_PROVIDER=fake`：可以开发 API 和使用现有开发账号，但不会发送或显示注册验证码。
 - `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
 
-修改后重新执行 `docker-dev.* up`，Compose 会按新配置重建受影响容器；`docker restart` 不会重新读取环境文件，也不需要重启 Docker Desktop。
-只有修改 Docker Desktop 自身代理/引擎设置时才重启 Desktop。字段说明见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
+修改后重新执行 `docker-dev.* up`；`docker restart` 不会重读环境文件，只有修改 Desktop 代理/引擎时才重启 Docker Desktop。
+可信局域网开放 3000–3002 须使用独立 UI bind 和 Windows 私有网络防火墙规则；API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
 
 ### 3. 校验配置并启动
 

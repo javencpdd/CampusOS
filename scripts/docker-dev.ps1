@@ -162,6 +162,32 @@ function Assert-Environment {
         throw "CAMPUSOS_DEV_BIND must remain 127.0.0.1 because this stack uses development credentials."
     }
 
+    $AllowLan = (Get-EnvironmentSetting "CAMPUSOS_DEV_ALLOW_LAN" "false").ToLowerInvariant()
+    if ($AllowLan -ne "true" -and $AllowLan -ne "false") {
+        throw "CAMPUSOS_DEV_ALLOW_LAN must be true or false."
+    }
+    $SurfaceBinds = [ordered]@{
+        CAMPUSOS_DEV_WEB_BIND = "127.0.0.1"
+        CAMPUSOS_DEV_ADMIN_BIND = "127.0.0.1"
+        CAMPUSOS_DEV_DOCS_BIND = "127.0.0.1"
+    }
+    $LanSurfaces = @()
+    foreach ($Key in $SurfaceBinds.Keys) {
+        $SurfaceBind = Get-EnvironmentSetting $Key $SurfaceBinds[$Key]
+        if ($SurfaceBind -ne "127.0.0.1" -and $SurfaceBind -ne "0.0.0.0") {
+            throw "$Key must be 127.0.0.1 or 0.0.0.0."
+        }
+        if ($SurfaceBind -eq "0.0.0.0") {
+            if ($AllowLan -ne "true") {
+                throw "$Key=0.0.0.0 requires CAMPUSOS_DEV_ALLOW_LAN=true."
+            }
+            $LanSurfaces += $Key
+        }
+    }
+    if ($LanSurfaces.Count -gt 0) {
+        Write-Warning "LAN exposure is enabled for $($LanSurfaces.Count) UI service(s); API and data services remain loopback-only."
+    }
+
     $Ports = @{}
     $PortDefaults = [ordered]@{
         CAMPUSOS_DEV_WEB_PORT = 3000

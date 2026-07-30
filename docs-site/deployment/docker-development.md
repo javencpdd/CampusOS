@@ -117,6 +117,54 @@ Linux/POSIX 启动脚本会把当前宿主 UID/GID 传入 API、Web、Admin 和 
 Docker Desktop/WSL2 常见的 `1000:1000`。应用进程因此不会用 root 所有权写入绑定源码。
 Corepack 缓存固定在镜像内并锁定 pnpm `8.15.9`，运行期不会因切换用户而下载“最新 pnpm”。
 
+### 可信局域网访问
+
+默认所有端口只监听 `127.0.0.1`。需要让同一可信局域网内的设备访问 Web、Admin 和 Docs 时，在
+`deploy/docker/.env.dev.local` 设置：
+
+```dotenv
+CAMPUSOS_DEV_BIND=127.0.0.1
+CAMPUSOS_DEV_ALLOW_LAN=true
+CAMPUSOS_DEV_WEB_BIND=0.0.0.0
+CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
+CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
+```
+
+不要把 `CAMPUSOS_DEV_BIND` 改为 `0.0.0.0`。它继续控制 API、PostgreSQL、Redis、NATS 和 pgAdmin，
+启动器也会拒绝非 loopback 值。浏览器通过 Web/Admin 的同源 Vite 代理访问 API，因此无需暴露 8080。
+Admin 中指向 Web/Docs 的本地 companion URL 会自动换成浏览器正在访问的局域网主机名。
+
+修改后运行 `docker-dev.* up`。如果镜像已经存在且 Docker Hub 暂时不可用，可以只重建三个 UI 容器：
+
+```powershell
+docker compose `
+  --env-file deploy/docker/.env.dev.local `
+  -f compose.dev.yml `
+  up -d --no-build --no-deps --force-recreate web admin docs
+```
+
+Windows 还需要在管理员 PowerShell 中为“专用网络”添加窄范围防火墙规则：
+
+```powershell
+New-NetFirewallRule `
+  -DisplayName "CampusOS Dev UI (Private LAN)" `
+  -Direction Inbound `
+  -Action Allow `
+  -Protocol TCP `
+  -LocalPort 3000-3002 `
+  -Profile Private `
+  -RemoteAddress LocalSubnet
+```
+
+用 `ipconfig` 查询开发机 IPv4 地址，局域网设备分别访问
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。若仍无法连接，检查 Windows 当前网络是否为“专用”、
+路由器/AP 是否开启客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
+只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值，并删除规则：
+
+```powershell
+Remove-NetFirewallRule -DisplayName "CampusOS Dev UI (Private LAN)"
+```
+
 | 服务 | 地址 |
 | --- | --- |
 | 用户前台 | `http://localhost:3000` |

@@ -60,12 +60,22 @@ fi
 
 deploy_rendered="$(mktemp)"
 dev_rendered="$(mktemp)"
+lan_dev_env="$(mktemp)"
+lan_dev_rendered="$(mktemp)"
 component_rendered="$(mktemp)"
 smtp_dev_env="$(mktemp)"
 smtp_dev_rendered="$(mktemp)"
-trap 'rm -f "$deploy_rendered" "$dev_rendered" "$component_rendered" "$smtp_dev_env" "$smtp_dev_rendered"' EXIT
+trap 'rm -f "$deploy_rendered" "$dev_rendered" "$lan_dev_env" "$lan_dev_rendered" "$component_rendered" "$smtp_dev_env" "$smtp_dev_rendered"' EXIT
 docker compose --env-file deploy/docker/.env.example -f compose.deploy.yml --profile maintenance config >"$deploy_rendered"
 docker compose --env-file deploy/docker/.env.dev.example -f compose.dev.yml config >"$dev_rendered"
+cp deploy/docker/.env.dev.example "$lan_dev_env"
+sed -i \
+  -e 's/^CAMPUSOS_DEV_ALLOW_LAN=.*/CAMPUSOS_DEV_ALLOW_LAN=true/' \
+  -e 's/^CAMPUSOS_DEV_WEB_BIND=.*/CAMPUSOS_DEV_WEB_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_ADMIN_BIND=.*/CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_DOCS_BIND=.*/CAMPUSOS_DEV_DOCS_BIND=0.0.0.0/' \
+  "$lan_dev_env"
+docker compose --env-file "$lan_dev_env" -f compose.dev.yml config >"$lan_dev_rendered"
 cp deploy/docker/.env.dev.example "$smtp_dev_env"
 sed -i \
   -e 's/^EMAIL_PROVIDER=.*/EMAIL_PROVIDER=smtp/' \
@@ -109,6 +119,10 @@ grep -q 'EMAIL_SMTP_PORT: "587"' "$dev_rendered"
 grep -q 'EMAIL_PROVIDER: smtp' "$smtp_dev_rendered"
 grep -q 'EMAIL_SMTP_HOST: smtp.example.test' "$smtp_dev_rendered"
 grep -q 'EMAIL_SMTP_PASSWORD: compose-contract-secret' "$smtp_dev_rendered"
+test "$(grep -c 'host_ip: 0.0.0.0' "$lan_dev_rendered")" -eq 3
+grep -q 'host_ip: 127.0.0.1' "$lan_dev_rendered"
+grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.sh
+grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.ps1
 grep -q 'setup' scripts/docker-dev.sh
 grep -q 'setup' scripts/docker-dev.ps1
 grep -q 'stop-apps' scripts/docker-dev.sh

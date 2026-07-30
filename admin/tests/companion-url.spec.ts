@@ -14,5 +14,13 @@ describe('resolveCompanionUrl', () => {
       }),
     ).toBe('http://192.0.2.50:3000')
   })
-})
 
+  it('replaces a configured loopback host for LAN browser access', () => {
+    expect(
+      resolveCompanionUrl('http://localhost:3002', 3002, {
+        origin: 'http://192.0.2.50:3001',
+        protocol: 'http:',
+      }),
+    ).toBe('http://192.0.2.50:3002')
+  })
+})

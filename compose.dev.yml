@@ -150,7 +150,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "500"
     ports:
-      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_WEB_PORT:-3000}:3000"
+      - "${CAMPUSOS_DEV_WEB_BIND:-127.0.0.1}:${CAMPUSOS_DEV_WEB_PORT:-3000}:3000"
     volumes:
       - ./web:/workspace/web
       - web-node-modules:/workspace/web/node_modules
@@ -182,7 +182,7 @@ services:
       VITE_DOCS_URL: http://localhost:${CAMPUSOS_DEV_DOCS_PORT:-3002}
       VITE_GITHUB_URL: https://github.com/javencpdd/CampusOS
     ports:
-      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_ADMIN_PORT:-3001}:3001"
+      - "${CAMPUSOS_DEV_ADMIN_BIND:-127.0.0.1}:${CAMPUSOS_DEV_ADMIN_PORT:-3001}:3001"
     volumes:
       - ./admin:/workspace/admin
       - admin-node-modules:/workspace/admin/node_modules
@@ -208,7 +208,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "500"
     ports:
-      - "${CAMPUSOS_DEV_BIND:-127.0.0.1}:${CAMPUSOS_DEV_DOCS_PORT:-3002}:3002"
+      - "${CAMPUSOS_DEV_DOCS_BIND:-127.0.0.1}:${CAMPUSOS_DEV_DOCS_PORT:-3002}:3002"
     volumes:
       - ./docs-site:/workspace/docs-site
       - docs-node-modules:/workspace/docs-site/node_modules

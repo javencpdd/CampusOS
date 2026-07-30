@@ -137,11 +137,44 @@ validate_env() {
     return 1
   fi
 
-  local bind provider smtp_host smtp_port smtp_username smtp_password smtp_from smtp_timeout smtp_starttls
+  local bind allow_lan provider smtp_host smtp_port smtp_username smtp_password smtp_from smtp_timeout smtp_starttls
   bind="$(read_env_setting CAMPUSOS_DEV_BIND 127.0.0.1)"
   if [[ "$bind" != "127.0.0.1" ]]; then
     echo "CAMPUSOS_DEV_BIND must remain 127.0.0.1 because this stack uses development credentials." >&2
     return 1
+  fi
+
+  allow_lan="$(read_env_setting CAMPUSOS_DEV_ALLOW_LAN false)"
+  allow_lan="${allow_lan,,}"
+  if [[ "$allow_lan" != "true" && "$allow_lan" != "false" ]]; then
+    echo "CAMPUSOS_DEV_ALLOW_LAN must be true or false." >&2
+    return 1
+  fi
+
+  local bind_key bind_value bind_spec
+  local lan_surface_count=0
+  local bind_specs=(
+    "CAMPUSOS_DEV_WEB_BIND|127.0.0.1"
+    "CAMPUSOS_DEV_ADMIN_BIND|127.0.0.1"
+    "CAMPUSOS_DEV_DOCS_BIND|127.0.0.1"
+  )
+  for bind_spec in "${bind_specs[@]}"; do
+    IFS='|' read -r bind_key bind_value <<<"$bind_spec"
+    bind_value="$(read_env_setting "$bind_key" "$bind_value")"
+    if [[ "$bind_value" != "127.0.0.1" && "$bind_value" != "0.0.0.0" ]]; then
+      echo "$bind_key must be 127.0.0.1 or 0.0.0.0." >&2
+      return 1
+    fi
+    if [[ "$bind_value" == "0.0.0.0" ]]; then
+      if [[ "$allow_lan" != "true" ]]; then
+        echo "$bind_key=0.0.0.0 requires CAMPUSOS_DEV_ALLOW_LAN=true." >&2
+        return 1
+      fi
+      ((lan_surface_count += 1))
+    fi
+  done
+  if (( lan_surface_count > 0 )); then
+    echo "Warning: LAN exposure is enabled for $lan_surface_count UI service(s); API and data services remain loopback-only."
   fi
 
   local port_key port_default port_value port_spec
