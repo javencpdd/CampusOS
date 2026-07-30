@@ -99,6 +99,7 @@ export default defineConfig({
           { text: '管理员准入与紧急恢复', link: '/operations/admin-admission' },
           { text: '管理员 MFA 与恢复', link: '/operations/mfa' },
           { text: '容量基线与发布门禁', link: '/operations/capacity' },
+          { text: '数据库迁移与 Schema 冗余', link: '/operations/database-migration-hygiene' },
           { text: '备份、恢复与验收', link: '/operations/recovery' },
         ],
       },

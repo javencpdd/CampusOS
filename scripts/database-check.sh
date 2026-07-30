@@ -31,9 +31,11 @@ run_file() {
 case "$ACTION" in
   audit) run_file scripts/database-audit.sql ;;
   schema) run_file scripts/schema-contract.sql ;;
+  hygiene) run_file scripts/migration-hygiene.sql ;;
   all)
     run_file scripts/database-audit.sql
     run_file scripts/schema-contract.sql
+    run_file scripts/migration-hygiene.sql
     ;;
-  *) echo "usage: $0 {audit|schema|all}" >&2; exit 2 ;;
+  *) echo "usage: $0 {audit|schema|hygiene|all}" >&2; exit 2 ;;
 esac

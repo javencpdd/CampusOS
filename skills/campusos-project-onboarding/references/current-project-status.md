@@ -3,7 +3,7 @@
 > Snapshot date: 2026-07-29
 > Repository: `/home/jack/bbs/bbs01/CampusOS`
 > Current release baseline: `v0.13.0`
-> Migrations: `000001` through `000040`
+> Migrations: `000001` through `000041`
 
 This file is an orientation snapshot. Before changing code, verify claims against the live worktree, generated contracts,
 migrations, the latest progress evidence, and `docs/计划书总结/README.md`.
