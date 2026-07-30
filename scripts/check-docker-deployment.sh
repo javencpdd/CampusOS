@@ -33,6 +33,8 @@ required=(
   scripts/docker-component.ps1
   scripts/docker-dev.sh
   scripts/docker-dev.ps1
+  scripts/check-lan-access.py
+  scripts/test_lan_access.py
   scripts/test-docker-dev-setup.sh
   scripts/test-dev-mode-compat.sh
   scripts/docker-deploy.sh
@@ -123,6 +125,8 @@ test "$(grep -c 'host_ip: 0.0.0.0' "$lan_dev_rendered")" -eq 3
 grep -q 'host_ip: 127.0.0.1' "$lan_dev_rendered"
 grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.sh
 grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.ps1
+grep -q 'lan-check' scripts/docker-dev.sh
+grep -q 'lan-check' scripts/docker-dev.ps1
 grep -q 'setup' scripts/docker-dev.sh
 grep -q 'setup' scripts/docker-dev.ps1
 grep -q 'stop-apps' scripts/docker-dev.sh
@@ -180,4 +184,16 @@ bash -n \
   scripts/docker-deploy.sh
 bash scripts/test-docker-dev-setup.sh
 bash scripts/test-dev-mode-compat.sh
+if command -v python3 >/dev/null 2>&1 &&
+  python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  python_command="python3"
+elif command -v python >/dev/null 2>&1 &&
+  python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+  python_command="python"
+else
+  echo "Python 3.10 or newer is required for LAN access diagnostic tests." >&2
+  exit 1
+fi
+
+"$python_command" scripts/test_lan_access.py
 echo "Docker deployment and cross-platform development contracts passed."

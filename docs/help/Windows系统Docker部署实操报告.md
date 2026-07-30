@@ -508,6 +508,10 @@ python scripts/check-line-endings.py --include-untracked --fix
 `CAMPUSOS_DEV_ALLOW_LAN=true` 和独立的 `CAMPUSOS_DEV_WEB_BIND`、`CAMPUSOS_DEV_ADMIN_BIND`、
 `CAMPUSOS_DEV_DOCS_BIND` 只开放 3000–3002，并仅为 Windows“专用网络”的 `LocalSubnet` 添加防火墙规则。
 完整配置、关闭方法和风险边界见[官方 Docker 跨平台开发环境](../../docs-site/deployment/docker-development.md#可信局域网访问)。
+启动后运行 `.\scripts\docker-dev.ps1 lan-check`，可自动输出开发机 LAN IPv4、三个访问 URL、容器和
+HTTP 探测结果，以及 Windows 网络类别/项目防火墙规则提示。相同诊断也支持 Linux：
+`./scripts/docker-dev.sh lan-check` 会识别默认路由网卡和子网，并提示 UFW、firewalld 或
+nftables/iptables 检查方法；两种平台都会输出 Windows 与 Linux 远端验证命令。
 
 ## 14. 最短复现清单
 

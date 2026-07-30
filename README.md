@@ -58,7 +58,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 - `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
 
 修改后重新执行 `docker-dev.* up`；`docker restart` 不会重读环境文件，只有修改 Desktop 代理/引擎时才重启 Docker Desktop。
-可信局域网开放 3000–3002 须使用独立 UI bind 和 Windows 私有网络防火墙规则；API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
+可信局域网开放 3000–3002 后运行 `docker-dev.* lan-check`；Windows 和 Linux 都会自动识别访问 IP、检查三个服务并给出防火墙/远端验证提示。API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
 
 ### 3. 校验配置并启动
 

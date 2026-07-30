@@ -457,6 +457,18 @@ case "$command" in
     check_docker
     run_migrations "${2:-up}"
     ;;
+  lan-check)
+    if command -v python3 >/dev/null 2>&1 &&
+      python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+      python3 "$ROOT_DIR/scripts/check-lan-access.py" --env-file "$ENV_FILE" --compose-file "$COMPOSE_FILE"
+    elif command -v python >/dev/null 2>&1 &&
+      python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1; then
+      python "$ROOT_DIR/scripts/check-lan-access.py" --env-file "$ENV_FILE" --compose-file "$COMPOSE_FILE"
+    else
+      echo "Python 3.10 or newer is required for lan-check." >&2
+      exit 2
+    fi
+    ;;
   ps)
     compose ps
     ;;
@@ -495,7 +507,7 @@ case "$command" in
     compose down --volumes --remove-orphans
     ;;
   *)
-    echo "Usage: $0 {setup [--start]|config|build|up|infra-up|migrate [action]|ps|logs [service]|test|shell|down|stop-apps|stop-native|reset --confirm}" >&2
+    echo "Usage: $0 {setup [--start]|config|build|up|infra-up|migrate [action]|lan-check|ps|logs [service]|test|shell|down|stop-apps|stop-native|reset --confirm}" >&2
     exit 2
     ;;
 esac

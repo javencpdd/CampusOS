@@ -130,6 +130,18 @@ CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
 CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
 ```
 
+启动后自动诊断 Compose 发布、容器健康、LAN IPv4、HTTP/API Proxy 和宿主网络/防火墙提示：
+
+```powershell
+.\scripts\docker-dev.ps1 lan-check
+```
+
+Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows 会读取活动网卡、网络类别和项目
+防火墙规则；Linux 会优先读取默认路由网卡的 IPv4/子网，并根据 UFW、firewalld 或 nftables/iptables 给出
+防火墙提示。两端都会列出 Web/Admin/Docs URL，同时生成供另一台局域网主机执行的 Windows
+`Test-NetConnection` 与 Linux/macOS `curl`、`nc` 命令。`LOCAL READY` 只证明开发机自身通过 LAN 地址访问
+正常；只有另一台主机实测才能发现宿主入站策略或路由器 AP/客户端隔离。
+
 不要把 `CAMPUSOS_DEV_BIND` 改为 `0.0.0.0`。它继续控制 API、PostgreSQL、Redis、NATS 和 pgAdmin，
 启动器也会拒绝非 loopback 值。浏览器通过 Web/Admin 的同源 Vite 代理访问 API，因此无需暴露 8080。
 Admin 中指向 Web/Docs 的本地 companion URL 会自动换成浏览器正在访问的局域网主机名。
@@ -156,10 +168,15 @@ New-NetFirewallRule `
   -RemoteAddress LocalSubnet
 ```
 
-用 `ipconfig` 查询开发机 IPv4 地址，局域网设备分别访问
-`http://<开发机IPv4>:3000`、`:3001`、`:3002`。若仍无法连接，检查 Windows 当前网络是否为“专用”、
-路由器/AP 是否开启客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
-只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值，并删除规则：
+Linux 同样可能被宿主防火墙拦截。Ubuntu/Debian 用 `sudo ufw status`，Fedora/RHEL 用
+`sudo firewall-cmd --get-active-zones` 和 `sudo firewall-cmd --list-ports` 检查；其他发行版检查
+nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3002，不要直接创建面向任意来源的规则。
+
+脚本会自动输出应使用的开发机 IPv4；局域网设备分别访问
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。若仍无法连接，检查 Windows 当前网络类别或 Linux
+防火墙、路由器/AP 客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
+只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值。Windows
+如果创建过项目规则，再删除：
 
 ```powershell
 Remove-NetFirewallRule -DisplayName "CampusOS Dev UI (Private LAN)"

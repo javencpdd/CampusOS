@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("setup", "config", "build", "up", "infra-up", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
+    [ValidateSet("setup", "config", "build", "up", "infra-up", "lan-check", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
     [string]$Command = "up",
     [string]$Service = "",
     [switch]$Start,
@@ -412,6 +412,34 @@ switch ($Command) {
         Assert-Environment
         Assert-Docker
         Start-Infrastructure
+    }
+    "lan-check" {
+        $Python = $null
+        foreach ($Candidate in @("python", "python3")) {
+            $CandidateCommand = Get-Command $Candidate -ErrorAction SilentlyContinue
+            if (-not $CandidateCommand) {
+                continue
+            }
+            try {
+                & $CandidateCommand.Source -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    $Python = $CandidateCommand
+                    break
+                }
+            }
+            catch {
+                continue
+            }
+        }
+        if (-not $Python) {
+            throw "Python 3.10 or newer is required for lan-check."
+        }
+        & $Python.Source (Join-Path $Root "scripts/check-lan-access.py") `
+            --env-file $EnvFile `
+            --compose-file $ComposeFile
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
     }
     "ps" {
         Invoke-Compose @("ps")
