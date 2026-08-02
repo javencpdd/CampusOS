@@ -48,6 +48,27 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 只记录实际执行过的命令。没有证据时不要写“已验收”。
 
+## 2.1 项目 Agent Skills
+
+仓库 `skills/sources/` 保存可版本化的 Agent 工作流，`skills/guides/` 保存调用、适用性和维护说明；根目录
+`.agents/skills/` 是由同步脚本生成的轻量发现桥接。开发者 clone 仓库后，从仓库内启动 Codex 即可直接调用，
+不需要复制到个人系统目录。普通开发默认使用 `campusos-dev-nocommit`；只有用户明确要求本地 commit 时才使用
+`campusos-dev-workflow`。专项入口：
+
+| 任务 | Skill |
+| --- | --- |
+| 新会话、上下文恢复、版本状态核对 | `campusos-project-onboarding` |
+| README 和文档信息架构 | `campusos-readme-update` |
+| migration、Schema、数据目录和 Admin 架构视图 | `campusos-data-architecture-sync` |
+| Windows/Linux Docker 首配、热更新、代理、LAN 和日志 | `campusos-docker-development` |
+| Web/Admin 空态、字段、通知、表单、路由和跨层回归 | `campusos-webui-regression` |
+| 新增、移动、校验仓库 Skill 和发现桥接 | `campusos-skill-repository-sync` |
+
+Skill 不能替代代码事实和实际测试。每个项目 `SKILL.md` 与使用说明必须写明更新时间；完整审计见
+[仓库 Skills 文档](https://github.com/javencpdd/CampusOS/tree/main/skills)。修改 Skill 后执行
+`python skills/sources/campusos-skill-repository-sync/scripts/sync_skill_bridges.py --root . --write`，再用 `--check`
+检查漂移。已打开的会话若未自动刷新列表，重启 Codex 一次即可；该流程不会覆盖用户级 Skills。
+
 ## 3. 提交辅助脚本
 
 两个 Bash 脚本始终读取当前 Git 分支，切换分支后不需要修改脚本：

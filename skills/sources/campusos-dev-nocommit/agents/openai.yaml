@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Dev No Commit"
+  short_description: "CampusOS task, progress docs, validation, no commit"
+  default_prompt: "Use $campusos-dev-nocommit to complete the current CampusOS task with progress evidence and validation, without committing or pushing."

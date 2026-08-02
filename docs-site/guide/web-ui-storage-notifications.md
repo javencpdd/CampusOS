@@ -6,7 +6,12 @@
 
 - 选择 group 的“全部帖子”会聚合它的全部活动子 board；空 group 返回空列表。
 - 选择 board 仍只读取该 board。
+- 讨论、互助和二手详情统一显示所属板块与标签；板块名称可点击回到该板块的帖子列表。
 - 二手价格输入允许两位小数，客户端把元转换为整数分；`12.34` 元对应 `price_minor=1234`。
+
+PostgreSQL 聚合查询将展开后的板块字符串 ID 校验并转换为 `bigint[]`，与 `threads.category_id BIGINT`
+同型比较。若旧进程日志出现 `operator does not exist: bigint = text`，说明仍在运行修复前的 API；Docker
+开发模式会自动重编译 Go 源码，健康恢复后重新打开分组即可。
 
 ## 个人空间
 
@@ -19,6 +24,10 @@ JPEG/PNG 会在服务端去元数据、重编码，并将超过 1920 像素的�
 
 个人主页设置展示最近三个头像源文件。选择历史头像不会改变它们的顺序；只有新上传才按 FIFO 删除最老文件。
 
+空间状态包含 `max_avatar_bytes`，页面会显示服务端当前的单头像上限。默认允许 PNG、JPEG、GIF、WebP，单文件
+最大 2 MB。文件过大、格式不支持和总空间不足时，前后端都使用中文说明具体上限和下一步，例如压缩/裁剪图片、
+删除不用的文件或联系管理员提高配额；错误详情还包含机器可读的 `max_bytes` 与 `accepted_types`。
+
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
 | `GET` | `/spaces/me/storage` | 当前用户空间状态。 |
@@ -26,6 +35,21 @@ JPEG/PNG 会在服务端去元数据、重编码，并将超过 1920 像素的�
 | `POST` | `/spaces/me/avatar` | 上传新头像并执行 FIFO。 |
 | `PUT` | `/spaces/me/avatar` | 选择已保留头像。 |
 | `GET/PUT` | `/spaces/admin/users/:user_id/storage` | 管理员读取/授权用户配额。 |
+
+## 系统 Logo
+
+用户前台顶部 Logo 由 Appearance Feature 提供。管理员在 Admin“外观与风格包 → 系统 Logo”上传 PNG/JPEG
+或恢复默认图；单文件最大 2 MB，服务端会压缩并把最长边限制为 1024 px。操作立即生效，不需要重启 Docker，
+用户前台刷新后会读取带新版本参数的 `/home/logo`。
+
+仓库默认图位于 `data/resources/branding/default-logo.png`；管理员上传的本地可变文件位于
+`data/config/branding/`，部署备份时必须包含后者。详细维护合同见仓库 Help 的系统 Logo 与品牌管理说明。
+
+## 后台用户邮箱
+
+Admin“用户管理”通过 `GET /admin/users` 读取包含邮箱的管理投影。该接口需要管理员准入和
+`identity.user.read` 权限；未绑定个人邮箱或仅有历史共享占位邮箱的用户显示“未绑定邮箱”。公开
+`GET /users` 与 `GET /users/:id` 仍不返回邮箱，前台用户不能据此枚举其他用户的登录地址。
 
 ## 通知接收规则
 

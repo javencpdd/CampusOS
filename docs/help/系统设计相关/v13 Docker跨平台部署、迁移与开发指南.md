@@ -227,7 +227,8 @@ Windows 将命令中的脚本改为 `docker-component.ps1` 并使用 `-Component
 再执行 migration，均成功后才替换正在运行的 API。构建失败不会主动杀死上一版成功进程。
 
 Web/Admin/Docs 使用轮询监听，解决 Docker Desktop 对文件事件转发不一致的问题。修改普通源码会 HMR；
-修改 `package.json` 或 lockfile 后重新执行 `docker-dev.* up`，由 `--build` 重建对应依赖种子。
+修改 `package.json` 或 lockfile 后重新执行 `docker-dev.* rebuild`，由 `--build` 重建对应依赖种子。日常
+`docker-dev.* up` 使用 `--no-build` 从已有镜像启动，不会因普通源码变化访问 Docker Hub。
 
 ### 8.1 完整 Docker 与原生应用模式交接
 

@@ -129,6 +129,8 @@ grep -q 'lan-check' scripts/docker-dev.sh
 grep -q 'lan-check' scripts/docker-dev.ps1
 grep -q 'setup' scripts/docker-dev.sh
 grep -q 'setup' scripts/docker-dev.ps1
+grep -q 'rebuild' scripts/docker-dev.sh
+grep -q 'rebuild' scripts/docker-dev.ps1
 grep -q 'stop-apps' scripts/docker-dev.sh
 grep -q 'stop-apps' scripts/docker-dev.ps1
 grep -q 'infra-up' scripts/docker-dev.sh

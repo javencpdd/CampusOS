@@ -109,7 +109,7 @@ func TestLocalFileStoreSaveAvatarKeepsLatestFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("storage status: %v", err)
 	}
-	if status.QuotaBytes != 10*1024*1024 || status.AvatarKeepLimit != 3 {
+	if status.QuotaBytes != 10*1024*1024 || status.AvatarKeepLimit != 3 || status.MaxAvatarBytes != 1024 {
 		t.Fatalf("unexpected status: %#v", status)
 	}
 	if status.UsedBytes != int64(len(optimized.Data))*3 {

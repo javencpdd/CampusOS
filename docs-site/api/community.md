@@ -82,7 +82,8 @@ CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` �
 
 公开帖子列表的 `category_id` 也接受 group ID。服务端会把活动 group 展开为其全部活动子 board，再执行
 统一的公开状态和分页筛选；空 group 返回空列表，不会误命中“全部帖子”缓存。Web 导航中的“分组 · 全部帖子”
-使用该语义，单个 board 仍只返回本板块帖子。
+使用该语义，单个 board 仍只返回本板块帖子。PostgreSQL 实现把展开结果校验并转换为 `bigint[]`，与
+`threads.category_id BIGINT` 同型比较；互助和二手的基础 Thread 因而都包含在所属 group 的聚合列表中。
 
 ## 结构化帖子类型与板块策略
 

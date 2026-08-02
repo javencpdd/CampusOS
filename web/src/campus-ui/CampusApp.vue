@@ -8,7 +8,10 @@
     <AppShell :health="runtimeStore.degradedPlugins.length ? 'degraded' : 'healthy'">
       <template #header>
         <div class="header-content">
-          <router-link to="/" class="brand logo"><h2>CampusOS</h2></router-link>
+          <router-link to="/" class="brand logo" aria-label="CampusOS 首页">
+            <img v-if="!brandLogoFailed" :src="brandLogoURL" alt="CampusOS" @error="brandLogoFailed = true" />
+            <h2 v-else>CampusOS</h2>
+          </router-link>
           <div class="header-actions">
             <template v-if="!isCompact">
               <router-link to="/threads"><el-button text>帖子</el-button></router-link>
@@ -200,6 +203,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, EditPen, Menu } from '@element-plus/icons-vue'
 import { categoryApi, threadApi } from '@/modules/community/api'
+import { homeApi } from '@/modules/appearance/api'
 import { scheduleApi } from '@/modules/schedule/api'
 import { spaceApi } from '@/modules/space/api'
 import StyleEffectLayer from '@/components/StyleEffectLayer.vue'
@@ -222,6 +226,8 @@ const runtimeStore = useUIRuntimeStore()
 const { isCompact } = useLayoutCapability()
 const mobileNavigationOpen = ref(false)
 const categoryNavigation = ref<CategoryNavigationNode[]>([])
+const brandLogoURL = ref('/api/v1/home/logo?v=default')
+const brandLogoFailed = ref(false)
 const publicSpacePath = computed(() => (userStore.user?.username ? `/u/${userStore.user.username}` : '/space/settings'))
 const displayAvatar = computed(() => userStore.user?.avatar || '')
 const avatarInitial = computed(() =>
@@ -282,6 +288,17 @@ const loadCategoryNavigation = async () => {
   }
 }
 
+const loadBranding = async () => {
+  try {
+    const response: any = await homeApi.config()
+    const logoURL = String(response?.data?.logo?.url || '').trim()
+    if (logoURL) brandLogoURL.value = logoURL
+    brandLogoFailed.value = false
+  } catch {
+    brandLogoURL.value = '/api/v1/home/logo?v=default'
+  }
+}
+
 const resolveThemeQuery = async (method: string, params: Record<string, unknown>) => {
   if (method === 'community.threads.read') {
     const requested = Number(params.limit || 10)
@@ -309,6 +326,7 @@ onMounted(() => {
   void syncSpaceAvatar()
   void runtimeStore.initialize()
   void loadCategoryNavigation()
+  void loadBranding()
 })
 watch(
   () => userStore.user?.id,
@@ -354,6 +372,16 @@ watch(isCompact, (compact) => {
   text-decoration: none;
   white-space: nowrap;
   letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.brand img {
+  display: block;
+  width: auto;
+  height: 44px;
+  max-width: 190px;
+  object-fit: contain;
 }
 .brand h2 {
   margin: 0;
@@ -491,6 +519,10 @@ p {
   }
   .brand {
     font-size: 18px;
+  }
+  .brand img {
+    height: 36px;
+    max-width: 126px;
   }
 }
 </style>

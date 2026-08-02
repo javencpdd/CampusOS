@@ -3,6 +3,7 @@ package space
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -495,24 +496,70 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
+	maxBytes := h.svc.MaxAvatarBytes()
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes+64*1024)
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "avatar file is required")
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			writeAvatarUploadError(c, ErrSpaceFileTooLarge, maxBytes)
+			return
+		}
+		response.ErrorWithDetails(c, http.StatusBadRequest, 10001, "请选择要上传的头像图片。", gin.H{
+			"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
+			"max_bytes":      maxBytes,
+		})
+		return
+	}
+	if fileHeader.Size > maxBytes {
+		writeAvatarUploadError(c, ErrSpaceFileTooLarge, maxBytes)
 		return
 	}
 	file, err := fileHeader.Open()
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		response.Error(c, http.StatusBadRequest, 10001, "无法读取所选头像文件，请重新选择。")
 		return
 	}
 	defer file.Close()
 
 	uploaded, err := h.svc.UploadAvatar(c.Request.Context(), userID, fileHeader.Filename, file)
 	if err != nil {
-		writeSpaceError(c, err)
+		writeAvatarUploadError(c, err, maxBytes)
 		return
 	}
 	response.Success(c, uploaded)
+}
+
+func writeAvatarUploadError(c *gin.Context, err error, maxBytes int64) {
+	switch {
+	case errors.Is(err, ErrSpaceFileTooLarge):
+		response.ErrorWithDetails(c, http.StatusRequestEntityTooLarge, 10001,
+			fmt.Sprintf("头像文件过大：单个文件最大 %s，请压缩或裁剪后重试。", formatSpaceBytes(maxBytes)), gin.H{
+				"max_bytes":      maxBytes,
+				"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
+			})
+	case errors.Is(err, ErrSpaceFileQuotaExceeded):
+		response.Error(c, http.StatusRequestEntityTooLarge, 10001,
+			"个人空间剩余容量不足，请删除不需要的文件，或联系管理员提高空间配额后重试。")
+	case errors.Is(err, ErrSpaceFileUnsupportedType):
+		response.ErrorWithDetails(c, http.StatusBadRequest, 10001,
+			"头像格式不受支持，请上传 PNG、JPEG、GIF 或 WebP 图片。", gin.H{
+				"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
+				"max_bytes":      maxBytes,
+			})
+	default:
+		writeSpaceError(c, err)
+	}
+}
+
+func formatSpaceBytes(value int64) string {
+	if value >= 1024*1024 && value%(1024*1024) == 0 {
+		return fmt.Sprintf("%d MB", value/(1024*1024))
+	}
+	if value >= 1024 && value%1024 == 0 {
+		return fmt.Sprintf("%d KB", value/1024)
+	}
+	return fmt.Sprintf("%d B", value)
 }
 
 func (h *Handler) ListAvatars(c *gin.Context) {
@@ -715,12 +762,16 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusServiceUnavailable, 60006, err.Error())
 	case errors.Is(err, ErrSpaceFileStoreUnavailable):
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
-	case errors.Is(err, ErrSpaceFileInvalidName), errors.Is(err, ErrSpaceFileUnsupportedType):
-		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrSpaceFileInvalidName):
+		response.Error(c, http.StatusBadRequest, 10001, "文件名称或路径无效，请重新选择文件。")
+	case errors.Is(err, ErrSpaceFileUnsupportedType):
+		response.Error(c, http.StatusBadRequest, 10001, "文件格式不受支持，请选择系统允许的文件类型。")
 	case errors.Is(err, ErrSpaceFileNotFound):
-		response.Error(c, http.StatusNotFound, 30004, err.Error())
-	case errors.Is(err, ErrSpaceFileTooLarge), errors.Is(err, ErrSpaceFileQuotaExceeded):
-		response.Error(c, http.StatusRequestEntityTooLarge, 10001, err.Error())
+		response.Error(c, http.StatusNotFound, 30004, "文件不存在或已被删除。")
+	case errors.Is(err, ErrSpaceFileTooLarge):
+		response.Error(c, http.StatusRequestEntityTooLarge, 10001, "文件超过系统允许的大小，请压缩后重试。")
+	case errors.Is(err, ErrSpaceFileQuotaExceeded):
+		response.Error(c, http.StatusRequestEntityTooLarge, 10001, "个人空间剩余容量不足，请删除不需要的文件，或联系管理员提高空间配额后重试。")
 	case errors.Is(err, ErrStorageQuotaInvalid):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 	case errors.Is(err, ErrStorageQuotaUnavailable):

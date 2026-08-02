@@ -37,6 +37,23 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/home/logo",
+      "handler": "d.Homepage",
+      "module_owner": "feature.appearance",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1.home.logo",
+      "legacy_aliases": [
+        "http.get.api.v1.home.logo",
+        "httpapi.get.api.v1.home.logo"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/web-themes",
       "handler": "d.WebTheme",
       "module_owner": "feature.appearance",
@@ -2535,6 +2552,25 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/admin/users",
+      "handler": "userHandler.ListAdminUsers",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "user:read",
+      "permission_code": "identity.user.read",
+      "operation_code": "http.identity.user.admin_list",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.users",
+        "httpapi.get.api.v1.admin.users"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/users/:id/suspend",
       "handler": "userHandler.SuspendUser",
@@ -4640,6 +4676,44 @@
       "legacy_aliases": [
         "http.post.api.v1.home.style_packs.validate",
         "httpapi.post.api.v1.home.style_packs.validate"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/home/logo",
+      "handler": "d.Homepage",
+      "module_owner": "feature.appearance",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.appearance.home.logo_upload",
+      "legacy_aliases": [
+        "http.post.api.v1.home.logo",
+        "httpapi.post.api.v1.home.logo"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/home/logo",
+      "handler": "d.Homepage",
+      "module_owner": "feature.appearance",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "homepage:configure",
+      "permission_code": "appearance.homepage.configure",
+      "operation_code": "http.appearance.home.logo_reset",
+      "legacy_aliases": [
+        "http.delete.api.v1.home.logo",
+        "httpapi.delete.api.v1.home.logo"
       ],
       "ownership": "none",
       "scope": "global",

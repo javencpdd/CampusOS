@@ -1,7 +1,7 @@
 # v13 WebUI 交互、通知与个人空间治理说明
 
 > 当前基线：`v0.13.0`  
-> 更新时间：2026-08-02  
+> 更新时间：2026-08-03
 > 适用范围：Web 用户端、Admin 用户管理、Community Core、User Storage Core、Docker 开发日志
 
 ## 1. 本轮行为基线
@@ -9,11 +9,14 @@
 | 场景 | 当前合同 |
 | --- | --- |
 | 点击一个分组查看帖子 | 返回该活动分组下全部活动子板块的公开帖子；空分组返回空列表。 |
+| 查看帖子详情 | 讨论、互助、二手详情统一展示所属板块和标签；板块可点击回到对应筛选列表。 |
 | 填写二手价格 | Web 允许两位小数，以“分”的整数写入 `price_minor`。 |
 | 用户个人空间 | 默认 50 MB；管理员可在用户管理中为单个用户授权 1 MB–100 GB。 |
+| 后台用户邮箱 | 管理员用户目录读取独立受保护接口；已绑定邮箱可见，空值显示“未绑定邮箱”。 |
 | 上传图片 | JPEG/PNG 自动重编码和缩放，配额按优化后的实际字节数计算。 |
 | 帖子和评论事件 | 管理员下架、主题被回复、评论被回复都会生成站内通知，并避免自我/重复通知。 |
 | 历史头像 | 主页设置显示最近保留的头像，可直接切换；切换不改变 FIFO 顺序。 |
+| 头像上传错误 | 中文说明支持格式、单文件上限和处理办法；当前默认单头像最大 2 MB。 |
 | Docker 平台日志 | API、Web、Admin、Docs stdout 同时写入 `.campusos/logs/`，管理端可以实时 follow。 |
 | 首次进入模块 | 核心路由和可信模块提前加载，重复 Runtime Manifest 不再拆卸并重建相同路由。 |
 
@@ -23,12 +26,26 @@
 展开为所有活动子 board 的 ID 集合，再交给 Memory/PostgreSQL Repository 统一过滤。非空 `CategoryIDs`
 不会进入无筛选公开列表缓存；空集合显式匹配零行，避免空分组错误显示全站帖子。
 
+PostgreSQL 的 `threads.category_id` 是 `BIGINT`。分组展开后的字符串 ID 会先执行正整数校验并转换为
+`[]int64`，查询使用 `category_id = ANY($n::bigint[])`。旧实现错误写成 `text[]`，会返回
+`operator does not exist: bigint = text`；Web 捕获请求失败后表现为“暂无帖子”。当前实现已统一数据库类型，
+“校园”这类挂有互助、二手 board 的 group 会返回两者的全部公开基础 Thread。
+
 Web 桌面导航在 group 下增加“分组名 · 全部帖子”，移动导航也提供同一入口。单个 board 的行为不变。
+
+讨论、互助和二手详情页统一读取 `GET /api/v1/categories/:id`，在正文元信息区显示所属板块与主题标签。板块名称
+链接到 `/threads?category_id=<board_id>`；标签会去空白、按大小写去重。分类请求失败、帖子未指定板块或没有标签
+时显示明确空态，不会让用户误以为页面漏渲染。
 
 二手 UI 使用 `precision=2`、`step=0.01`。提交前执行 `Math.round(priceYuan * 100)`，例如 `12.34` 元提交为
 `1234` 分。后端和 PostgreSQL 继续只保存非负 BIGINT 分价，避免金额持久化引入浮点误差。
 
-## 3. 50 MB 配额、管理员授权与图片优化
+## 3. 后台用户目录、50 MB 配额与图片优化
+
+Admin“用户管理”读取 `GET /api/v1/admin/users`，响应使用专用管理投影并包含已绑定邮箱。该接口同时要求
+有效 JWT、管理员准入账号和 `identity.user.read` 权限。公开 `GET /api/v1/users` 与
+`GET /api/v1/users/:id` 继续只返回公开资料，不因管理需求泄露邮箱。没有绑定个人邮箱，或仅存在历史共享
+占位邮箱时，管理投影返回空邮箱，页面显示“未绑定邮箱”。
 
 User Storage Core 默认值为 `50 * 1024 * 1024` 字节。新增表：
 
@@ -71,6 +88,17 @@ Content-Type: application/json
 
 后端验证文件名和用户目录归属后，只更新 `user_spaces.avatar`。它不重命名文件、不改 mtime、不改变上传顺序。
 只有 `POST /api/v1/spaces/me/avatar` 新上传成功时，才按上传时间删除最老源文件，然后把新文件设为当前头像。
+
+`GET /api/v1/spaces/me/storage` 现在同时返回 `max_avatar_bytes`。页面在选择文件后先检查 MIME 和大小，服务端
+仍执行最终校验，避免绕过。默认允许 PNG、JPEG、GIF、WebP，单文件最大 `2 * 1024 * 1024` 字节；实际值可由
+Personal Space Feature 配置调整，前端显示服务端返回值而不是硬编码提示。典型错误为：
+
+- `头像文件过大：单个文件最大 2 MB，请压缩或裁剪后重试。`
+- `头像格式不受支持，请上传 PNG、JPEG、GIF 或 WebP 图片。`
+- `个人空间剩余容量不足，请删除不需要的文件，或联系管理员提高空间配额后重试。`
+
+错误响应的 `error.details.max_bytes` 和 `accepted_types` 供客户端自动提示。大小上限是单次头像源文件上限，
+空间配额是用户所有受管文件的总上限，两者必须同时满足。
 
 ## 5. 站内通知
 
@@ -130,7 +158,7 @@ Vue Router 页面采用动态 `import()`，第一次访问会下载该模块 chu
 | Admin 调整单用户配额 | 不需要；立即生效。 |
 | 上传/切换头像 | 不需要。 |
 | 普通 Web/Go 源码 | Docker 开发栈由 Vite HMR/API 轮询重建处理。 |
-| `compose.dev.yml`、`deploy/docker/dev-*.sh` | 需要执行 `docker-dev.* up` 重建/重建容器。 |
+| Compose 构建项、`deploy/docker/dev-*.sh` | 需要执行 `docker-dev.* rebuild` 重建镜像和容器。 |
 | 新 migration `000042` | API 开发容器重建时自动执行；生产必须按迁移流程备份、up、检查。 |
 
 建议回归：分组含多个 board/空 group、`0.01` 和 `12.34` 元、管理员扩/缩容、超大 JPEG/PNG、四次头像上传并

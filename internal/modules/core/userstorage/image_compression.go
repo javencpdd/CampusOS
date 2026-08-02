@@ -33,6 +33,16 @@ type OptimizedImage struct {
 // are preserved byte-for-byte because transcoding them would discard animation
 // or require a lossy format change.
 func OptimizeImage(data []byte) (OptimizedImage, error) {
+	return OptimizeImageWithin(data, DefaultImageMaxDimension)
+}
+
+// OptimizeImageWithin applies the shared safe decoder and compression policy
+// while allowing callers such as Appearance branding to request a smaller
+// maximum edge than ordinary content images.
+func OptimizeImageWithin(data []byte, maxDimension int) (OptimizedImage, error) {
+	if maxDimension <= 0 || maxDimension > DefaultImageMaxDimension {
+		maxDimension = DefaultImageMaxDimension
+	}
 	mimeType := http.DetectContentType(data)
 	extension := ""
 	switch mimeType {
@@ -66,7 +76,7 @@ func OptimizeImage(data []byte) (OptimizedImage, error) {
 	if err != nil {
 		return OptimizedImage{}, ErrImageUnsupported
 	}
-	width, height := scaledImageSize(config.Width, config.Height, DefaultImageMaxDimension)
+	width, height := scaledImageSize(config.Width, config.Height, maxDimension)
 	if width != config.Width || height != config.Height {
 		source = resizeBilinear(source, width, height)
 	}

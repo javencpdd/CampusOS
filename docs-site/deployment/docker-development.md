@@ -96,8 +96,8 @@ PowerShell：
 .\scripts\docker-dev.ps1 up
 ```
 
-修改 `.env.dev.local` 后必须重新执行上述 `up`。启动脚本使用 `docker compose up -d --build`，会按新配置
-重建受影响容器；仅执行 `docker restart` 不会重新读取环境文件。普通端口、SMTP、JWT 等项目配置不需要
+修改 `.env.dev.local` 后必须重新执行上述 `up`。日常 `up` 使用 `docker compose up -d --no-build`，只按新配置
+创建或更新容器，不触发 Docker Hub 镜像构建；仅执行 `docker restart` 不会重新读取环境文件。普通端口、SMTP、JWT 等项目配置不需要
 重启 Docker Desktop，只有修改 Docker Desktop 自身代理、DNS 或引擎设置时才需要重启 Desktop。
 
 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 是 PostgreSQL 首次初始化变量；已有数据卷不会因为
@@ -109,10 +109,10 @@ PowerShell：
 docker compose \
   --env-file deploy/docker/.env.dev.local \
   -f compose.dev.yml \
-  up -d --build --wait --wait-timeout 600
+  up -d --no-build --wait --wait-timeout 600
 ```
 
-首次构建会下载 Go module 与三个前端的锁定依赖，后续使用 Docker 构建缓存和命名卷。
+首次 `setup --start` 或显式 `rebuild` 会下载 Go module 与三个前端的锁定依赖，后续使用 Docker 构建缓存和命名卷。
 Linux/POSIX 启动脚本会把当前宿主 UID/GID 传入 API、Web、Admin 和 Docs；Windows 脚本使用
 Docker Desktop/WSL2 常见的 `1000:1000`。应用进程因此不会用 root 所有权写入绑定源码。
 Corepack 缓存固定在镜像内并锁定 pnpm `8.15.9`，运行期不会因切换用户而下载“最新 pnpm”。
@@ -146,7 +146,7 @@ Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows �
 启动器也会拒绝非 loopback 值。浏览器通过 Web/Admin 的同源 Vite 代理访问 API，因此无需暴露 8080。
 Admin 中指向 Web/Docs 的本地 companion URL 会自动换成浏览器正在访问的局域网主机名。
 
-修改后运行 `docker-dev.* up`。如果镜像已经存在且 Docker Hub 暂时不可用，可以只重建三个 UI 容器：
+修改后运行 `docker-dev.* up` 即可无构建地应用端口/绑定配置。若只想强制重新创建三个 UI 容器：
 
 ```powershell
 docker compose `
@@ -215,6 +215,30 @@ Docker Desktop “Settings → Resources → Proxies”中的代理可用。例�
 `127.0.0.1:7897` 时，保持代理程序运行，并让 Docker Desktop/Containers proxy 使用 System proxy
 或对应的手工 HTTP/HTTPS proxy。
 
+仓库提供两个平台入口。Bash 脚本适用于 Linux、WSL2 和 Git Bash，必须使用 `source` 才能让环境变量留在
+当前 Shell；它还会修改 Git 全局代理和带标记的 SSH 配置：
+
+```bash
+source sh/proxy.sh on
+source sh/proxy.sh status
+source sh/proxy.sh off
+```
+
+Windows 原生 PowerShell 使用专用脚本。命令开头的 `. ` 是 dot-source 语法，不能省略；`-SystemProxy`
+会在被 Git 忽略的 `.campusos/run/proxy-windows-state.json` 中保存旧值，再修改 Windows 当前用户 WinINET
+代理，`off` 会恢复原来的 Git/系统配置。脚本不会改 Windows OpenSSH 配置：
+
+```powershell
+. .\sh\proxy.ps1 on
+. .\sh\proxy.ps1 on -SystemProxy
+.\sh\proxy.ps1 status
+.\sh\proxy.ps1 test
+. .\sh\proxy.ps1 off
+```
+
+默认地址是 HTTP/mixed 代理 `127.0.0.1:7897`，可用 `-ProxyHost` 和 `-Port` 覆盖。只需要当前 Shell 和
+Git 时不要传 `-SystemProxy`；Docker Desktop 使用 System proxy 时才需要它。
+
 修改代理后重启 Docker Desktop，并用小镜像验证：
 
 ```powershell
@@ -222,7 +246,8 @@ docker desktop restart
 docker pull hello-world:latest
 ```
 
-只有小镜像成功拉取后才重新执行 `docker-dev.ps1 up`。`docker info` 显示
+只有小镜像成功拉取后才重新执行首次 `setup -Start` 或 `docker-dev.ps1 rebuild`。日常 `up` 不再强制构建，
+不应仅因普通源码变化进入 Docker Hub 代理链路。`docker info` 显示
 `http.docker.internal:3128` 属于 Docker Desktop 内部转发地址，不代表宿主代理端口丢失。不要把临时
 Docker Hub CDN IP 固定到 Windows hosts。
 
@@ -275,6 +300,36 @@ Legacy 模式的数据不与 `campusos-dev` 命名卷共享。
 
 ## 修改代码后会发生什么
 
+统一判断规则如下：
+
+| 改动范围 | 是否需要命令 | 加载方式 |
+| --- | --- | --- |
+| `cmd/`、`internal/`、`pkg/`、`sdk/`、`go.mod`、`go.sum` | 不需要 | API 轮询构建并自动重启成功的新二进制。 |
+| 新 migration、`modules/**/*.yaml` | 不需要 | API 轮询检测，构建成功后执行向前 migration 并切换进程。 |
+| Web/Admin 的 `.vue`、`.ts`、`.css` 等 | 不需要 | Vite HMR；浏览器保持当前页面或按 Vite 提示刷新。 |
+| `docs-site/` 页面和主题源码 | 不需要 | VitePress 轮询重载。 |
+| 仓库 `docs/`、README | 不需要 | 静态仓库文档没有运行时加载步骤。 |
+| `.env.dev.local`、Compose 运行参数/端口/挂载 | 执行 `docker-dev.* up` | 不构建镜像；重新创建受影响容器并读取配置。 |
+| 前端 `package.json`/lockfile、开发 Dockerfile、Compose 构建项、`dev-*.sh` | 执行 `docker-dev.* rebuild` | 显式重建镜像并启动，需要镜像源/依赖源可用。 |
+
+容器未运行时可执行 `up`；完成 `git switch`、`git pull` 后先查看改动：普通源码只需热更新或 `up`，构建输入
+变化才使用 `rebuild`。
+
+```powershell
+# Windows PowerShell
+.\scripts\docker-dev.ps1 up
+```
+
+```bash
+# Linux、WSL2、Git Bash
+./scripts/docker-dev.sh up
+```
+
+`up` 内部使用 `docker compose up -d --no-build --wait`，因此已有镜像时不会访问 Docker Hub；`rebuild` 才对
+API/Web/Admin/Docs 使用 `--build --force-recreate`。两者都无需先执行 `down`。`docker-dev.* build` 只构建镜像而不启动容器，`docker restart` 也不会
+读取新的 Compose 环境配置。分支切换不会自动回滚已经执行的数据库 migration；
+遇到不兼容的降级必须先备份，再按迁移/重置流程显式处理。
+
 ### Go 后端
 
 `api` 容器每秒检查 Go 源码、migration 和 module descriptor：
@@ -293,13 +348,13 @@ Legacy 模式的数据不与 `campusos-dev` 命名卷共享。
 Docker 开发进程的标准输出仍保留在 `docker compose logs`，同时由启动脚本追加到宿主仓库
 `.campusos/logs/api.log`、`web.log`、`admin.log`、`docs.log`。因此管理后台“平台日志”在 Docker 模式也能
 读取并 follow 实时输出；这不是 Docker 导致能力缺失，而是容器 stdout 与原生日志文件原先没有桥接。
-修改 `compose.dev.yml` 或 `deploy/docker/dev-*.sh` 后需要重新构建/创建对应容器：
+修改 Compose 构建项或 `deploy/docker/dev-*.sh` 后需要重新构建/创建对应容器：
 
 ```bash
-./scripts/docker-dev.sh up
+./scripts/docker-dev.sh rebuild
 ```
 
-Windows 使用 `.\scripts\docker-dev.ps1 up`。旧容器不会自动获得新的入口脚本；仅刷新浏览器无效。
+Windows 使用 `.\scripts\docker-dev.ps1 rebuild`。旧容器不会自动获得新的入口脚本；仅刷新浏览器无效。
 
 ### Web、Admin 与 Docs
 
@@ -309,10 +364,10 @@ Windows 使用 `.\scripts\docker-dev.ps1 up`。旧容器不会自动获得新的
 修改 `package.json` 或 `pnpm-lock.yaml` 后重新运行：
 
 ```bash
-./scripts/docker-dev.sh up
+./scripts/docker-dev.sh rebuild
 ```
 
-`up` 自带 `--build`，会重建发生依赖变化的目标并重新播种依赖卷。
+`rebuild` 自带 `--build`，会重建发生依赖变化的目标并重新播种依赖卷。
 
 ## 在没有宿主 Node.js 时增删依赖
 
@@ -326,7 +381,7 @@ docker compose \
   /usr/local/bin/campusos-dev-frontend pnpm add <package>
 ```
 
-完成后再次执行 `docker-dev.sh up` 或 PowerShell 的 `docker-dev.ps1 up`。
+完成后再次执行 `docker-dev.sh rebuild` 或 PowerShell 的 `docker-dev.ps1 rebuild`。
 
 ## 运行测试
 
@@ -432,7 +487,11 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 
 **修改代码没有刷新**
 
-确认 `CHOKIDAR_USEPOLLING=true` 未被覆盖，并检查源码目录已授权给 Docker Desktop。
+先运行 `docker-dev.* ps` 确认对应服务健康，再用 `docker-dev.* logs <service>`（服务名选择
+`api`、`web`、`admin` 或 `docs`）查看监听或构建错误。
+前端还需确认 `CHOKIDAR_USEPOLLING=true` 未被覆盖，并检查源码目录已授权给 Docker Desktop。若改的是环境、
+依赖、Compose 构建项或容器入口脚本，执行 `docker-dev.* rebuild`；仅环境/端口/挂载变化执行 `up`，普通源码
+不要用 `docker restart` 处理。
 
 **默认端口冲突**
 

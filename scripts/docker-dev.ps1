@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("setup", "config", "build", "up", "infra-up", "lan-check", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
+    [ValidateSet("setup", "config", "build", "up", "rebuild", "infra-up", "lan-check", "ps", "logs", "test", "shell", "down", "stop-apps", "stop-native", "reset")]
     [string]$Command = "up",
     [string]$Service = "",
     [switch]$Start,
@@ -268,12 +268,27 @@ function Invoke-Compose {
 }
 
 function Start-DevelopmentStack {
+    param([switch]$Build)
+
     $script:NativeHandoff = $false
     Stop-NativeDevelopment
     if ($script:NativeHandoff) {
         Wait-ApplicationPorts
     }
-    Invoke-Compose @("up", "-d", "--build", "--wait", "--wait-timeout", "600")
+    $Arguments = @("up", "-d")
+    if ($Build) {
+        Write-Host "Rebuilding Docker development application images before startup."
+        $Arguments += @("--build", "--force-recreate")
+    } else {
+        Write-Host "Starting with existing Docker development images (no registry-backed rebuild)."
+        Write-Host "Use '.\scripts\docker-dev.ps1 rebuild' after dependency, Dockerfile, Compose build, or container entry-script changes."
+        $Arguments += "--no-build"
+    }
+    $Arguments += @("--wait", "--wait-timeout", "600")
+    if ($Build) {
+        $Arguments += @("api", "web", "admin", "docs")
+    }
+    Invoke-Compose $Arguments
     Invoke-Compose @("ps")
 }
 
@@ -388,7 +403,7 @@ switch ($Command) {
         Write-Host "Docker development configuration is valid: $EnvFile"
         if ($Start) {
             Assert-Docker
-            Start-DevelopmentStack
+            Start-DevelopmentStack -Build
         } else {
             Write-Host "Run '.\scripts\docker-dev.ps1 setup -Start' to start now, or '.\scripts\docker-dev.ps1 up' later."
         }
@@ -407,6 +422,11 @@ switch ($Command) {
         Assert-Environment
         Assert-Docker
         Start-DevelopmentStack
+    }
+    "rebuild" {
+        Assert-Environment
+        Assert-Docker
+        Start-DevelopmentStack -Build
     }
     "infra-up" {
         Assert-Environment

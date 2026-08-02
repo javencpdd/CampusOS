@@ -597,6 +597,13 @@ func (s *Service) StorageStatus(_ context.Context, userID string) (*SpaceStorage
 	return status, nil
 }
 
+func (s *Service) MaxAvatarBytes() int64 {
+	if s == nil || s.fileStore == nil {
+		return defaultMaxAvatarBytes
+	}
+	return s.fileStore.MaxAvatarBytes()
+}
+
 func (s *Service) AdminStorageStatus(ctx context.Context, userID string) (*SpaceStorageStatus, error) {
 	if _, err := s.users.GetByID(ctx, strings.TrimSpace(userID)); err != nil {
 		return nil, fmt.Errorf("get storage owner: %w", err)

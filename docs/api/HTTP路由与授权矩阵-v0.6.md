@@ -8,6 +8,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `GET` | `/api/v1/health` | `http.get.api.v1.health` | `core.identity` | `userHandler.HealthCheck` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/home/config` | `http.get.api.v1.home.config` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |
+| `GET` | `/api/v1/home/logo` | `http.get.api.v1.home.logo` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/web-themes` | `http.get.api.v1.web_themes` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/web-themes/:name` | `http.get.api.v1.web_themes.name` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/web-themes/:name/assets/*path` | `http.get.api.v1.web_themes.name.assets.wildcardpath` | `feature.appearance` | `d.WebTheme` | `none` | `-` | `none` | `public` | `request-log-read` |
@@ -155,6 +156,7 @@
 | `PUT` | `/api/v1/extensions/:plugin/*path` | `http.put.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `PATCH` | `/api/v1/extensions/:plugin/*path` | `http.patch.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `DELETE` | `/api/v1/extensions/:plugin/*path` | `http.delete.api.v1.extensions.plugin.wildcardpath` | `core.plugin-platform` | `runtimeHTTPHandler.Extension` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/admin/users` | `http.identity.user.admin_list` | `core.identity` | `userHandler.ListAdminUsers` | `jwt+admin-account+permission` | `identity.user.read` | `none` | `global` | `request-log-read` |
 | `POST` | `/api/v1/users/:id/suspend` | `http.post.api.v1.users.id.suspend` | `core.identity` | `userHandler.SuspendUser` | `jwt+admin-account+permission` | `identity.user.suspend` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/users/:id/activate` | `http.post.api.v1.users.id.activate` | `core.identity` | `userHandler.ActivateUser` | `jwt+admin-account+permission` | `identity.user.suspend` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/admin/threads` | `http.get.api.v1.admin.threads` | `core.community` | `threadHandler.AdminListThreads` | `jwt+admin-account+permission` | `community.thread.read` | `none` | `global` | `request-log-read` |
@@ -266,6 +268,8 @@
 | `GET` | `/api/v1/identity/mfa-policy` | `http.identity.mfa_policy.get` | `core.identity` | `userHandler.GetMFAAdminPolicy` | `jwt+admin-account+permission` | `identity.mfa_policy.read` | `none` | `global` | `identity-recovery-audit` |
 | `PUT` | `/api/v1/identity/mfa-policy` | `http.identity.mfa_policy.update` | `core.identity` | `userHandler.UpdateMFAAdminPolicy` | `jwt+admin-account+permission` | `identity.mfa_policy.update` | `none` | `global` | `identity-recovery-audit` |
 | `POST` | `/api/v1/home/style-packs/validate` | `http.post.api.v1.home.style_packs.validate` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `POST` | `/api/v1/home/logo` | `http.appearance.home.logo_upload` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
+| `DELETE` | `/api/v1/home/logo` | `http.appearance.home.logo_reset` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/home/style-packs/example` | `http.get.api.v1.home.style_packs.example` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/home/style-packs/example.zip` | `http.get.api.v1.home.style_packs.example.zip` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/home/style-packs/sources` | `http.get.api.v1.home.style_packs.sources` | `feature.appearance` | `d.Homepage` | `jwt+admin-account+permission` | `appearance.homepage.configure` | `none` | `global` | `request-log-read` |

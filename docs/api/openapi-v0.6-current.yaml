@@ -492,6 +492,45 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/users:
+    get:
+      operationId: userHandler_ListAdminUsers
+      summary: GET /api/v1/admin/users
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: global
+      x-campusos-operation: http.identity.user.admin_list
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: identity.user.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminUserListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/ai/logs:
     get:
       operationId: d_AI
@@ -2389,6 +2428,84 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/home/logo:
+    delete:
+      operationId: d_Homepage
+      summary: DELETE /api/v1/home/logo
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.appearance
+      x-campusos-scope: global
+      x-campusos-operation: http.appearance.home.logo_reset
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: appearance.homepage.configure
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      operationId: d_Homepage
+      summary: GET /api/v1/home/logo
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.appearance
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1.home.logo
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      operationId: d_Homepage
+      summary: POST /api/v1/home/logo
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.appearance
+      x-campusos-scope: global
+      x-campusos-operation: http.appearance.home.logo_upload
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: appearance.homepage.configure
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/home/style-packs/apply:
     post:
       operationId: d_Homepage
@@ -9043,6 +9160,18 @@ components:
         status: { type: string, enum: [active, suspended, deactivated] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    AdminUser:
+      type: object
+      required: [id, username, nickname, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: string }
+        status: { type: string, enum: [active, suspended, deactivated] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     RegisterRequest:
       type: object
       required: [username, nickname, email, password, challenge_id, ticket]
@@ -9569,6 +9698,12 @@ components:
       required: [items, pagination]
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/PublicUser' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    AdminUserListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminUser' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     ThreadListData:
       type: object

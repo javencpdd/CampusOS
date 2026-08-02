@@ -55,6 +55,7 @@ type SpaceStorageStatus struct {
 	DefaultQuotaBytes int64      `json:"default_quota_bytes"`
 	UsedBytes         int64      `json:"used_bytes"`
 	AvailableBytes    int64      `json:"available_bytes"`
+	MaxAvatarBytes    int64      `json:"max_avatar_bytes"`
 	AvatarKeepLimit   int        `json:"avatar_keep_limit"`
 	CustomQuota       bool       `json:"custom_quota"`
 	QuotaUpdatedBy    string     `json:"quota_updated_by,omitempty"`
@@ -418,8 +419,16 @@ func (s *LocalFileStore) Status(userID string) (*SpaceStorageStatus, error) {
 		DefaultQuotaBytes: s.cfg.DefaultQuotaBytes,
 		UsedBytes:         usage,
 		AvailableBytes:    available,
+		MaxAvatarBytes:    s.cfg.MaxAvatarBytes,
 		AvatarKeepLimit:   s.cfg.AvatarKeepLimit,
 	}, nil
+}
+
+func (s *LocalFileStore) MaxAvatarBytes() int64 {
+	if s == nil || s.cfg.MaxAvatarBytes <= 0 {
+		return defaultMaxAvatarBytes
+	}
+	return s.cfg.MaxAvatarBytes
 }
 
 func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reader) (string, int64, error) {

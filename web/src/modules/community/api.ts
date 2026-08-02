@@ -45,5 +45,6 @@ export const moderationApi = {
 export const categoryApi = {
   list: () => api.get('/categories'),
   tree: () => api.get('/categories/tree'),
+  get: (id: string) => api.get(`/categories/${id}`),
   threadTypes: (id: string) => api.get(`/categories/${id}/thread-types`),
 }

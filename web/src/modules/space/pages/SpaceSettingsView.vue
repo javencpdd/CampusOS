@@ -45,8 +45,8 @@
                   />
                   <el-button @click="chooseAvatar" :loading="uploadingAvatar"> 上传头像 </el-button>
                   <span v-if="storage" class="storage-hint">
-                    {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}，保留最近
-                    {{ storage.avatar_keep_limit }} 个源文件
+                    已用 {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}；单个头像最大
+                    {{ formatBytes(storage.max_avatar_bytes) }}；保留最近 {{ storage.avatar_keep_limit }} 个源文件
                   </span>
                 </div>
               </div>
@@ -510,6 +510,7 @@ interface SpaceStorageStatus {
   quota_bytes: number
   used_bytes: number
   available_bytes: number
+  max_avatar_bytes: number
   avatar_keep_limit: number
 }
 
@@ -710,6 +711,18 @@ const uploadAvatar = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+  const acceptedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  const maxBytes = storage.value?.max_avatar_bytes || 2 * 1024 * 1024
+  if (!acceptedTypes.includes(file.type)) {
+    ElMessage.error('头像格式不受支持，请上传 PNG、JPEG、GIF 或 WebP 图片。')
+    input.value = ''
+    return
+  }
+  if (file.size > maxBytes) {
+    ElMessage.error(`头像文件过大：单个文件最大 ${formatBytes(maxBytes)}，请压缩或裁剪后重试。`)
+    input.value = ''
+    return
+  }
   uploadingAvatar.value = true
   try {
     const payload = unwrap<AvatarUploadResult>(await spaceApi.uploadAvatar(file))

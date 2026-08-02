@@ -14,7 +14,10 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 
 错误响应在保留旧 `{ code, msg, data }` 字段的同时增加 `error.code`、`error.message`、`error.details`、`error.request_id` 和 `error.retryable`。成功响应也可携带顶层 `request_id`。列表接口的 `page` 必须大于等于 1，`page_size` 必须在 1 到 100 之间，非法值返回 `400 request.invalid`，不会静默改成默认值。
 
-公开 `/users` 与 `/users/:id` 只返回公开资料，不返回邮箱；`/auth/me` 和登录响应仍向本人返回账号资料。`PUT /users/:id` 只允许本人修改 `nickname`、`bio`、`avatar`，未知字段和跨用户写入分别返回 400 与 403。
+公开 `/users` 与 `/users/:id` 只返回公开资料，不返回邮箱；`/auth/me` 和登录响应仍向本人返回账号资料。
+后台用户目录使用独立的 `GET /admin/users`，只有通过管理员准入且拥有 `identity.user.read` 的主体才能读取
+包含邮箱的管理投影；未绑定邮箱及历史共享占位邮箱返回空值。`PUT /users/:id` 只允许本人修改 `nickname`、
+`bio`、`avatar`，未知字段和跨用户写入分别返回 400 与 403。
 
 ## 2. 路由分组
 

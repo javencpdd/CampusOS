@@ -13,9 +13,11 @@
 | `sh/git_commit.sh` | 状态/diff、`git add -A`、commit、按确认 push 当前分支 | 不创建 PR、不替代测试 |
 | `sh/git_pr.sh` | 分支/工作区/`gh` 检查、push、`gh pr create` | 不生成 commit、不自动修复 CI |
 
-切换 Git 分支后不需要修改脚本。两个脚本都在运行时读取当前分支；默认 remote 是 `origin`。当前分支为
-`djw-window` 时，push 使用 `origin/djw-window`。PR base 默认从 `origin/HEAD` 推断，本仓库当前为
-`main`。
+切换 Git 分支后不需要修改脚本。两个脚本都在运行时读取当前分支；
+
+默认 remote 是 `origin`。当前分支为`djw-window` 时，push 使用 `origin/djw-window`。
+
+PR base 默认从 `origin/HEAD` 推断，本仓库当前为`main`。
 
 PR 脚本负责：
 
@@ -30,21 +32,9 @@ PR 脚本负责：
 
 ## 2. Windows、Git Bash 和 WSL2
 
-两个文件都是 Bash 脚本，不是 PowerShell 脚本。Windows PowerShell 5.1 和 PowerShell 7 都不能直接把下面的
-命令当作 `.ps1` 执行：
-
-```powershell
-./sh/git_commit.sh "提交信息" # 不推荐：PowerShell 不能直接解释 Bash 语法
-```
-
-`Set-ExecutionPolicy` 只影响 PowerShell 脚本，对 `.sh` 文件无效。Windows 推荐使用以下两种方式之一；仓库位于
-`C:` 盘时优先使用 Git for Windows 自带的 Bash。
-
 ### 2.1 在 PowerShell 中调用 Git Bash（推荐）
 
-`$gitBash` 不是 PowerShell 内置变量，也不是仓库自动注入的变量。每次新开 PowerShell/Windows Terminal 会话后，
-都要先执行下面的初始化片段，再执行 `& $gitBash ...`。如果只复制调用命令，`$gitBash` 为 `$null`，PowerShell
-会报“`&` 后面的表达式不是有效命令”。
+`$gitBash` 不是 PowerShell 内置变量，也不是仓库自动注入的变量。每次新开 PowerShell/Windows Terminal 会话后，都要先执行下面的初始化片段，再执行 `& $gitBash ...`。如果只复制调用命令，`$gitBash` 为 `$null`，PowerShell会报“`&` 后面的表达式不是有效命令”。
 
 先在仓库根目录运行以下初始化片段。它会从当前 `git.exe` 的安装位置寻找同一套 Git Bash，避免系统中的
 `bash.exe` 实际指向 WSL：
@@ -66,8 +56,7 @@ if (-not (Test-Path -LiteralPath $gitBash)) {
 & 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh '更新参考 CampusOS/docs/进度'
 ```
 
-不要写成 `$gitBash ./sh/git_commit.sh ...`。PowerShell 调用保存在变量中的命令路径时必须保留前面的 `&`；但
-前提仍是 `$gitBash` 已经赋值且指向真实文件。
+不要写成 `$gitBash ./sh/git_commit.sh ...`。PowerShell 调用保存在变量中的命令路径时必须保留前面的 `&`；但前提仍是 `$gitBash` 已经赋值且指向真实文件。
 
 随后所有脚本参数直接放在 `& $gitBash` 后面，不需要使用容易产生多层引号问题的 `bash -lc`：
 
@@ -96,6 +85,8 @@ if (-not (Test-Path -LiteralPath $gitBash)) {
 if ($LASTEXITCODE -ne 0) {
     throw "CampusOS Git 脚本执行失败，退出码：$LASTEXITCODE"
 }
+# If we reach here, $LASTEXITCODE is 0 — genuine success
+Write-Host "CampusOS Git 脚本执行成功"
 ```
 
 默认安装位置确实是 `C:\Program Files\Git` 时，也可以使用较短写法：
@@ -104,6 +95,14 @@ if ($LASTEXITCODE -ne 0) {
 & 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh -s
 & 'C:\Program Files\Git\bin\bash.exe' ./sh/git_pr.sh --help
 ```
+
+
+
+PS: 在linux环境中，就不需要 `& 'C:\Program Files\Git\bin\bash.exe'`  或者 `& $gitBash`
+
+直接使用 `./sh/git_commit.sh` 或 `./sh/git_pr.sh` 即可
+
+
 
 ### 2.2 Windows 完整提交与 PR 流程
 

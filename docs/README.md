@@ -32,7 +32,7 @@
 | Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v13风格包双端交付标准.md) |
 | 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
 | 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md) |
-| Skill 使用和维护 | [Skills 索引](skills/README.md) |
+| Skill 使用和维护 | [仓库 Skills 索引](../skills/guides/README.md) |
 | 版本历史和未来路线 | [Help 版计划总结](help/计划书总结/README.md)、[详细计划治理](计划书总结/README.md) |
 | 判断文档是否仍有效 | [Help 生命周期](help/README.md)、[文档审计与整理](help/文档审计与整理说明.md) |
 
@@ -43,7 +43,7 @@
 | `help/` | 开发、部署、权限、插件、风格和运维说明 | 需要先看生命周期索引 |
 | `api/` | [HTTP、Host API、权限和机器可读合同](api/README.md) | 当前合同优先于手写示例 |
 | `architecture/` | [模块边界、数据所有权和安全设计](architecture/README.md) | 当前概览有效；带旧版本号的是决策历史 |
-| `skills/` | 项目 Skills 的调用和维护 | 当前 |
+| `../skills/sources/`、`../skills/guides/` | 项目 Skills 的规范源文件与调用维护说明 | 当前；`.agents/skills/` 提供仓库发现入口 |
 | `项目计划v1/` 至 `项目计划v13/` | 原始计划、回顾和输入材料 | 已封版，不是当前待办 |
 | `计划书总结/` | 计划有效性、逐版推理和候选路线 | 当前治理入口 |
 | `进度/` | [每阶段实现、测试、兼容和回滚证据](进度/README.md) | 对应版本的历史证据 |

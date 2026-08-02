@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS README Update"
+  short_description: "Keep README concise and route details into CampusOS docs"
+  default_prompt: "Use $campusos-readme-update to audit CampusOS README, move secondary details into the right docs category, and verify portal links."

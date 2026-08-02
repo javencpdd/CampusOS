@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS WebUI Regression"
+  short_description: "Diagnose CampusOS WebUI issues across UI API and DB"
+  default_prompt: "Use $campusos-webui-regression to reproduce, diagnose, fix, and verify this CampusOS WebUI issue."

@@ -13,6 +13,9 @@ const { api } = vi.hoisted(() => ({
     exampleZip: vi.fn(),
     applySource: vi.fn(),
     rollback: vi.fn(),
+    homeConfig: vi.fn(),
+    uploadLogo: vi.fn(),
+    resetLogo: vi.fn(),
   },
 }))
 
@@ -27,10 +30,16 @@ vi.mock('../src/modules/appearance/api', () => ({
     applySource: api.applySource,
     rollback: api.rollback,
   },
+  homeBrandingApi: {
+    config: api.homeConfig,
+    uploadLogo: api.uploadLogo,
+    resetLogo: api.resetLogo,
+  },
 }))
 
 vi.mock('element-plus', () => ({
   ElMessage: { error: vi.fn(), success: vi.fn() },
+  ElMessageBox: { confirm: vi.fn() },
 }))
 
 const stubs = {
@@ -72,6 +81,19 @@ describe('AppearanceManageView', () => {
         ],
       },
     })
+    api.homeConfig.mockResolvedValue({
+      data: {
+        logo: {
+          url: '/api/v1/home/logo?v=default',
+          custom: false,
+          mime_type: 'image/png',
+          size_bytes: 104765,
+          width: 720,
+          height: 223,
+          max_bytes: 2 * 1024 * 1024,
+        },
+      },
+    })
   })
 
   it('shows the three appearance ownership boundaries and live catalogs', async () => {
@@ -82,6 +104,9 @@ describe('AppearanceManageView', () => {
 
     expect(api.catalog).toHaveBeenCalledOnce()
     expect(api.sources).toHaveBeenCalledOnce()
+    expect(api.homeConfig).toHaveBeenCalledOnce()
+    expect(wrapper.text()).toContain('系统 Logo')
+    expect(wrapper.text()).toContain('上传后立即生效，无需重启 Docker')
     expect(wrapper.text()).toContain('首页风格包')
     expect(wrapper.text()).toContain('管理员统一切换')
     expect(wrapper.text()).toContain('系统主题目录')

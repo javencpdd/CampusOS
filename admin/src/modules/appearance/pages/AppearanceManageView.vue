@@ -31,6 +31,8 @@
       </article>
     </section>
 
+    <BrandingManager />
+
     <HomepagePackManager />
 
     <section class="theme-band" aria-labelledby="system-theme-heading">
@@ -85,6 +87,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Promotion, Refresh } from '@element-plus/icons-vue'
 import HomepagePackManager from '@/modules/appearance/components/HomepagePackManager.vue'
+import BrandingManager from '@/modules/appearance/components/BrandingManager.vue'
 import { webThemeCatalogApi } from '@/modules/appearance/api'
 import { resolveCompanionUrl } from '@/shared/runtime/companionUrl'
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 # ============================================
 # CampusOS Git 快捷提交脚本
+# 用途：查看变更、暂存全部文件、提交并按确认推送当前分支。
+# 适用平台：Linux、macOS、WSL2、Git Bash；Windows PowerShell 需通过 bash.exe 调用。
 # 用法：
 #   ./sh/git_commit.sh                    # 交互模式（显示变更，提示输入提交信息）
 #   ./sh/git_commit.sh "提交信息"           # 快速模式（直接提交所有变更）
@@ -12,6 +14,7 @@
 # 环境变量：
 #   CAMPUSOS_GIT_REMOTE=origin             # push 目标 remote（默认 origin）
 #   CAMPUSOS_ALLOW_PROTECTED_PUSH=true     # 明确允许直接 push main/master/develop
+# 注意：提交模式会执行 git add -A，运行前务必确认工作区没有混入无关改动。
 # ============================================
 
 set -euo pipefail

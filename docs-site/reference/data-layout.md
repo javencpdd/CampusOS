@@ -20,8 +20,11 @@ data/
 ├── images/                            无用户归属的全局图片
 ├── config/                            本地配置预留
 ├── dist/                              本地发布产物预留
-└── skills/                            旧本地 Skill 导入预留
+└── skills/                            旧运行数据导入预留；项目 Agent Skills 位于仓库根 skills/
 ```
+
+仓库根 `skills/sources/` 是项目 Agent Skill 的规范源，`skills/guides/` 是使用说明，`.agents/skills/` 是 clone 后
+由 Codex 自动发现的跨平台桥接。它们属于开发工作流，不属于 `data/resources/skills/` 资源包运行数据。
 
 ## External Plugin
 

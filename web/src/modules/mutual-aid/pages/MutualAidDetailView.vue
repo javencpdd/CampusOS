@@ -14,6 +14,7 @@
           <span>{{ thread.view_count || 0 }} 浏览</span>
           <span>{{ thread.reply_count || 0 }} 回复</span>
         </div>
+        <ThreadTaxonomy :category-id="thread.category_id" :tags="thread.tags" />
       </div>
       <div class="heading-actions">
         <router-link v-if="isOwner" :to="`/mutual-aid/${thread.id}/edit`"><el-button>编辑</el-button></router-link>
@@ -30,9 +31,6 @@
           v-html="thread.content"
         ></article>
         <p v-else class="content">{{ thread.content }}</p>
-        <div v-if="thread.tags?.length" class="tag-row">
-          <el-tag v-for="tag in thread.tags" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
-        </div>
       </article>
       <aside class="information-panel">
         <h3>信息状态</h3>
@@ -85,6 +83,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import ThreadTaxonomy from '@/modules/community/components/ThreadTaxonomy.vue'
 import { useUserStore } from '@/modules/identity/store'
 import { mutualAidApi, type AidStatus, type AidType, type ContactMode, type MutualAidResult } from '../api'
 
@@ -230,9 +229,6 @@ onMounted(load)
   padding: 12px 16px;
   border-left: 4px solid var(--el-border-color);
   background: var(--el-fill-color-light);
-}
-.content + .tag-row {
-  margin-top: 16px;
 }
 dl {
   margin: 16px 0;

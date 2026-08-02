@@ -10,6 +10,12 @@ export const homeStylePackApi = {
   rollback: () => api.post('/home/style-packs/rollback'),
 }
 
+export const homeBrandingApi = {
+  config: () => api.get('/home/config'),
+  uploadLogo: (file: File) => withFile('/home/logo', file),
+  resetLogo: () => api.delete('/home/logo'),
+}
+
 export const webThemeCatalogApi = {
   catalog: () => api.get('/web-themes'),
 }
