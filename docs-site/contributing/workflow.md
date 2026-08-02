@@ -26,6 +26,10 @@ git branch --show-current
 | Docker | `make docker-deploy-check` 和受影响的备份恢复流程 |
 | 任意文本/资源包 | `python scripts/check-line-endings.py --include-untracked` |
 
+Web 与 Admin 使用 `"@/*": ["./src/*"]` 这种相对 `tsconfig.json` 的显式 `paths` 映射，并由 Vite 配置相同的
+`@` alias。不要重新加入 TypeScript 6 已弃用、TypeScript 7 将移除的 `baseUrl`，也不要用
+`ignoreDeprecations` 掩盖它；官方迁移说明见 [Deprecated: baseUrl](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html#deprecated---baseurl)。
+
 所有改动都执行：
 
 ```bash
