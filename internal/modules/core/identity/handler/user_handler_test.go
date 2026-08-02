@@ -85,6 +85,33 @@ func TestUpdateUserAuthorizationAndFieldFiltering(t *testing.T) {
 	}
 }
 
+func TestPublicAndAdminUserListsUseDifferentEmailProjections(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := repository.NewMemoryUserRepository()
+	now := time.Now().UTC()
+	if err := repo.Create(context.Background(), &domain.User{
+		ID: "1101", Username: "listed", Nickname: "Listed", Email: "listed@example.test",
+		Status: domain.UserStatusActive, CreatedAt: now, UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	handler := NewUserHandler(service.NewUserService(repo, nil, nil, nil))
+	router := gin.New()
+	router.GET("/users", handler.ListUsers)
+	router.GET("/admin/users", handler.ListAdminUsers)
+
+	public := httptest.NewRecorder()
+	router.ServeHTTP(public, httptest.NewRequest(http.MethodGet, "/users", nil))
+	if public.Code != http.StatusOK || strings.Contains(public.Body.String(), "listed@example.test") {
+		t.Fatalf("public list leaked email: status=%d body=%s", public.Code, public.Body.String())
+	}
+	admin := httptest.NewRecorder()
+	router.ServeHTTP(admin, httptest.NewRequest(http.MethodGet, "/admin/users", nil))
+	if admin.Code != http.StatusOK || !strings.Contains(admin.Body.String(), "listed@example.test") {
+		t.Fatalf("admin list omitted email: status=%d body=%s", admin.Code, admin.Body.String())
+	}
+}
+
 func TestHealthCheckUsesApplicationVersion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	handler := NewUserHandler(nil)

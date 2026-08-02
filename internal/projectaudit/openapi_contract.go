@@ -33,6 +33,7 @@ var operationProfiles = map[string]operationProfile{
 	"challengePolicyHandler.Update":            {RequestSchema: "ChallengePolicyUpdateRequest", ResponseSchema: "ChallengePolicy"},
 	"userHandler.UpdateUser":                   {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
 	"userHandler.ListUsers":                    {ResponseSchema: "UserListData", Paginated: true},
+	"userHandler.ListAdminUsers":               {ResponseSchema: "AdminUserListData", Paginated: true},
 	"userHandler.GetUser":                      {ResponseSchema: "PublicUser"},
 	"userHandler.GetMe":                        {ResponseSchema: "User"},
 	"threadHandler.CreateThread":               {RequestSchema: "CreateThreadRequest", ResponseSchema: "Thread", SuccessStatus: "201"},
@@ -236,6 +237,18 @@ func openAPIComponents() string {
         nickname: { type: string }
         avatar: { type: string }
         bio: { type: string }
+        status: { type: string, enum: [active, suspended, deactivated] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    AdminUser:
+      type: object
+      required: [id, username, nickname, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        email: { type: string, format: email }
+        avatar: { type: string }
         status: { type: string, enum: [active, suspended, deactivated] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -765,6 +778,12 @@ func openAPIComponents() string {
       required: [items, pagination]
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/PublicUser' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    AdminUserListData:
+      type: object
+      required: [items, pagination]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminUser' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     ThreadListData:
       type: object

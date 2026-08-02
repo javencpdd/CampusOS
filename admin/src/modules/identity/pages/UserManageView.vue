@@ -28,7 +28,11 @@
         <el-table-column prop="id" label="ID" width="200" show-overflow-tooltip />
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="nickname" label="昵称" width="120" />
-        <el-table-column prop="email" label="邮箱" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="email" label="邮箱" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span :class="{ 'empty-email': !row.email }">{{ row.email || '未绑定邮箱' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column v-if="canManageRoles" label="角色" width="180" align="center">
           <template #default="{ row }">
             <div v-if="userRoles[row.id] && userRoles[row.id].length > 0">
@@ -474,5 +478,9 @@ onMounted(() => {
   color: #606266;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.empty-email {
+  color: #909399;
 }
 </style>

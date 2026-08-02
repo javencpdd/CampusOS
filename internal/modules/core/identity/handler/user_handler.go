@@ -708,6 +708,33 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	})
 }
 
+// ListAdminUsers returns the management directory projection. The public
+// /users route deliberately omits email, so Admin must use this separately
+// authorized endpoint instead of weakening the public profile contract.
+// GET /api/v1/admin/users
+func (h *UserHandler) ListAdminUsers(c *gin.Context) {
+	page, pageSize, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return
+	}
+	users, total, err := h.svc.ListUsers(c.Request.Context(), page, pageSize)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, 10006, "user list is unavailable")
+		return
+	}
+	adminUsers := make([]domain.AdminUser, 0, len(users))
+	for _, user := range users {
+		adminUsers = append(adminUsers, user.Admin())
+	}
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	response.List(c, adminUsers, &response.Pagination{
+		Page: page, PageSize: pageSize, Total: total, TotalPages: totalPages,
+	})
+}
+
 // UpdateUser 更新用户信息
 // PUT /api/v1/users/:id
 func (h *UserHandler) UpdateUser(c *gin.Context) {

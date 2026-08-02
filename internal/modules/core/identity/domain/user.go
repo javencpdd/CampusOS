@@ -85,6 +85,31 @@ func (u *User) Public() PublicUser {
 	}
 }
 
+// AdminUser is the management-plane directory projection. It exposes the
+// current email compatibility projection only to the protected Admin route,
+// without leaking auth-version or password-transition state from User.
+type AdminUser struct {
+	ID        string     `json:"id"`
+	Username  string     `json:"username"`
+	Nickname  string     `json:"nickname"`
+	Email     string     `json:"email,omitempty"`
+	Avatar    string     `json:"avatar,omitempty"`
+	Status    UserStatus `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+func (u *User) Admin() AdminUser {
+	email := NormalizeEmail(u.Email)
+	if IsReservedEmail(email) {
+		email = ""
+	}
+	return AdminUser{
+		ID: u.ID, Username: u.Username, Nickname: u.Nickname, Email: email,
+		Avatar: u.Avatar, Status: u.Status, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt,
+	}
+}
+
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
 	Username string `json:"username" binding:"required,min=3,max=32"`

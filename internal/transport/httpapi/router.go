@@ -285,6 +285,7 @@ func Build(d Dependencies) *Router {
 	admin.SetAdminMFA(d.AdminMFA)
 	admin.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
+		admin.Permission("user", "read").Operation("http.identity.user.admin_list").GET("/admin/users", userHandler.ListAdminUsers)
 		admin.Permission("user", "suspend").POST("/users/:id/suspend", userHandler.SuspendUser)
 		admin.Permission("user", "suspend").POST("/users/:id/activate", userHandler.ActivateUser)
 		admin.Permission("thread", "read").GET("/admin/threads", threadHandler.AdminListThreads)
