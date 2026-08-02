@@ -5,6 +5,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"mime/multipart"
 	"net/http"
@@ -25,6 +26,29 @@ func testPNG(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return output.Bytes()
+}
+
+func TestOptimizeImageDownsizesAndCompressesJPEG(t *testing.T) {
+	var input bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 3000, 1000))
+	for y := 0; y < 1000; y++ {
+		for x := 0; x < 3000; x++ {
+			img.SetRGBA(x, y, color.RGBA{R: uint8(x % 255), G: uint8(y % 255), B: 120, A: 255})
+		}
+	}
+	if err := jpeg.Encode(&input, img, &jpeg.Options{Quality: 100}); err != nil {
+		t.Fatal(err)
+	}
+	optimized, err := OptimizeImage(input.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if optimized.Width != 1920 || optimized.Height != 640 || optimized.MimeType != "image/jpeg" {
+		t.Fatalf("unexpected optimized image: %#v", optimized)
+	}
+	if len(optimized.Data) >= input.Len() {
+		t.Fatalf("expected compressed output smaller than input: input=%d output=%d", input.Len(), len(optimized.Data))
+	}
 }
 
 func TestContentImageStoreSavesUnderUserStorage(t *testing.T) {

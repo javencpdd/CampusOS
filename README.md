@@ -11,7 +11,7 @@ CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容
 - 可靠运行：注册、角色/权限和内容治理高风险写操作可与 required audit、Outbox 同事务提交；持久 Worker 提供 lease、重试、dead-letter、受控重放和可恢复操作记录。
 - 运营与安全：管理端提供可靠任务、管理员准入和 MFA 策略；Prometheus 导出默认关闭且只绑定 loopback，容量与迁移/恢复演练进入发布门禁。
 - 扩展：区分 External Plugin、Built-in Feature、Resource Package 与 Integration；支持 Wasm 和进程 Runtime、Host API v1/v2、受管数据/文件、用户授权与本地插件目录。
-- 前端：Web 与 Admin 按布局能力适配手机、平板、横屏和桌面；课表、内容治理、插件中心和权限页纳入七视口回归。
+- 前端：Web 与 Admin 按布局能力适配多类视口；分组聚合帖子、二手小数价格、回复/下架通知、50 MB 用户空间与头像历史均由服务端合同约束，核心页面会预加载以避免首次进入模块时的假刷新感。
 
 v13 同时提供 Windows/Linux 通用的 Docker 开发栈和经过门禁检查的单主机 Compose 交付，但仍不提供
 生产级高可用、多节点自动故障转移或自动 TLS。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实
@@ -57,7 +57,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 - `EMAIL_PROVIDER=fake`：可以开发 API 和使用现有开发账号，但不会发送或显示注册验证码。
 - `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
 
-修改后重新执行 `docker-dev.* up`；`docker restart` 不会重读环境文件，只有修改 Desktop 代理/引擎时才重启 Docker Desktop。
+修改后重新执行 `docker-dev.* up`；`docker restart` 不会重读环境文件，只有修改 Desktop 代理/引擎时才重启 Docker Desktop。Docker 模式的 API/Web/Admin/Docs 输出会同时写入 `.campusos/logs/`，可在管理端“平台日志”实时查看。
 可信局域网开放 3000–3002 后运行 `docker-dev.* lan-check`；Windows 和 Linux 都会自动识别访问 IP、检查三个服务并给出防火墙/远端验证提示。API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
 
 ### 3. 校验配置并启动

@@ -124,7 +124,7 @@
       </template>
 
       <div v-if="posts.length > 0" class="reply-list">
-        <div v-for="post in posts" :key="post.id" class="reply-item">
+        <div v-for="post in posts" :id="`post-${post.id}`" :key="post.id" class="reply-item">
           <div class="reply-meta">
             <strong class="reply-floor">第 {{ post.floor_number || '-' }} 楼</strong>
             <span class="reply-author">{{ post.author_name }}</span>

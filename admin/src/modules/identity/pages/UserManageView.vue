@@ -52,8 +52,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" align="center" fixed="right">
+        <el-table-column label="操作" width="340" align="center" fixed="right">
           <template #default="{ row }">
+            <el-button v-if="canManageRoles" size="small" plain @click="openStorageDialog(row)">
+              空间
+            </el-button>
             <el-button v-if="canManageRoles" type="primary" size="small" plain @click="openRoleDialog(row)">
               角色
             </el-button>
@@ -155,6 +158,28 @@
         </el-button>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="storageDialogVisible" title="个人空间配额" width="520px" destroy-on-close>
+      <div v-if="storageSelectedUser" v-loading="storageLoading" class="storage-dialog-content">
+        <p><strong>用户：</strong>{{ storageSelectedUser.username }}（{{ storageSelectedUser.nickname }}）</p>
+        <el-descriptions v-if="storageStatus" :column="2" border>
+          <el-descriptions-item label="已使用">{{ formatBytes(storageStatus.used_bytes) }}</el-descriptions-item>
+          <el-descriptions-item label="当前配额">{{ formatBytes(storageStatus.quota_bytes) }}</el-descriptions-item>
+          <el-descriptions-item label="可用空间">{{ formatBytes(storageStatus.available_bytes) }}</el-descriptions-item>
+          <el-descriptions-item label="配额类型">{{ storageStatus.custom_quota ? '管理员授权' : '系统默认' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-form label-position="top" @submit.prevent="saveStorageQuota">
+          <el-form-item label="授权空间（MB）">
+            <el-input-number v-model="storageQuotaMB" :min="1" :max="102400" :step="10" class="storage-quota-input" />
+            <p class="storage-hint">默认 50 MB。调小至已用容量以下不会删除文件，但会阻止后续写入，直至释放空间或再次扩容。</p>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="storageDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="storageSaving" :disabled="!storageStatus" @click="saveStorageQuota">保存授权</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -164,6 +189,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { categoryApi } from '@/modules/community/api'
 import { moderationApi, userApi, roleApi } from '@/modules/identity/api'
+import { spaceAdminApi } from '@/modules/integrations/api'
 import { useAdminStore } from '@/modules/identity/store'
 
 const users = ref<any[]>([])
@@ -185,6 +211,12 @@ const assigningRole = ref(false)
 const categories = ref<any[]>([])
 const moderatorCategoryIds = ref<string[]>([])
 const selectedRole = computed(() => allRoles.value.find((role) => role.id === newRoleId.value))
+const storageDialogVisible = ref(false)
+const storageSelectedUser = ref<any>(null)
+const storageStatus = ref<any>(null)
+const storageQuotaMB = ref(50)
+const storageLoading = ref(false)
+const storageSaving = ref(false)
 
 const roleNameMap: Record<string, string> = {
   admin: '管理员',
@@ -212,6 +244,12 @@ const isProtectedRole = (role: any) => role.name === 'member' || role.name === '
 const canRevokeRole = (role: any) => selectedUser.value?.id !== adminStore.user?.id && !isProtectedRole(role)
 
 const apiMessage = (error: any, fallback: string) => error?.msg || error?.message || fallback
+const formatBytes = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const power = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
+  return `${(value / 1024 ** power).toFixed(power === 0 ? 0 : 2)} ${units[power]}`
+}
 
 const load = async () => {
   loading.value = true
@@ -264,6 +302,39 @@ const openRoleDialog = async (user: any) => {
     await loadAllRoles()
   }
   roleDialogVisible.value = true
+}
+
+const openStorageDialog = async (user: any) => {
+  storageSelectedUser.value = user
+  storageStatus.value = null
+  storageQuotaMB.value = 50
+  storageDialogVisible.value = true
+  storageLoading.value = true
+  try {
+    const result = (await spaceAdminApi.storage(user.id)) as any
+    storageStatus.value = result?.data
+    storageQuotaMB.value = Math.max(1, Math.round(Number(result?.data?.quota_bytes || 50 * 1024 * 1024) / 1024 / 1024))
+  } catch (error: any) {
+    ElMessage.error(apiMessage(error, '加载个人空间配额失败'))
+  } finally {
+    storageLoading.value = false
+  }
+}
+
+const saveStorageQuota = async () => {
+  if (!storageSelectedUser.value || !Number.isFinite(storageQuotaMB.value)) return
+  storageSaving.value = true
+  try {
+    const quotaBytes = Math.round(storageQuotaMB.value * 1024 * 1024)
+    const result = (await spaceAdminApi.setStorageQuota(storageSelectedUser.value.id, quotaBytes)) as any
+    storageStatus.value = result?.data
+    storageQuotaMB.value = Math.max(1, Math.round(Number(result?.data?.quota_bytes || quotaBytes) / 1024 / 1024))
+    ElMessage.success('个人空间配额已更新')
+  } catch (error: any) {
+    ElMessage.error(apiMessage(error, '更新个人空间配额失败'))
+  } finally {
+    storageSaving.value = false
+  }
 }
 
 const handleRoleSelection = async () => {
@@ -382,5 +453,26 @@ onMounted(() => {
 
 .moderator-scope-editor h4 {
   margin: 0;
+}
+
+.storage-dialog-content {
+  display: grid;
+  gap: 16px;
+}
+
+.storage-dialog-content p,
+.storage-hint {
+  margin: 0;
+}
+
+.storage-quota-input {
+  width: 100%;
+}
+
+.storage-hint {
+  margin-top: 8px;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.6;
 }
 </style>

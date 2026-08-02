@@ -5,22 +5,26 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"strings"
 	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 var (
-	ErrInvalidVisibility     = errors.New("invalid space visibility")
-	ErrInvalidStyleExport    = errors.New("invalid style export")
-	ErrSpaceNotPublic        = errors.New("space is not public")
-	ErrStyleSnapshotNotFound = errors.New("style snapshot not found")
-	ErrSpacePluginDisabled   = errors.New("personal-space plugin is disabled")
+	ErrInvalidVisibility       = errors.New("invalid space visibility")
+	ErrInvalidStyleExport      = errors.New("invalid style export")
+	ErrSpaceNotPublic          = errors.New("space is not public")
+	ErrStyleSnapshotNotFound   = errors.New("style snapshot not found")
+	ErrSpacePluginDisabled     = errors.New("personal-space plugin is disabled")
+	ErrStorageQuotaInvalid     = errors.New("storage quota must be between 1 MB and 100 GB")
+	ErrStorageQuotaUnavailable = errors.New("user storage quota management is unavailable")
 )
 
 type UserLookup interface {
@@ -42,6 +46,7 @@ type Service struct {
 	contentQuery  communityport.ContentQuery
 	users         UserLookup
 	fileStore     *LocalFileStore
+	quotaManager  corestorage.QuotaManager
 	enabled       func() bool
 	compatibility CompatibilityReporter
 }
@@ -69,6 +74,10 @@ func (s *Service) SetContentQuery(query communityport.ContentQuery) {
 
 func (s *Service) SetFileStore(store *LocalFileStore) {
 	s.fileStore = store
+}
+
+func (s *Service) SetQuotaManager(manager corestorage.QuotaManager) {
+	s.quotaManager = manager
 }
 
 func (s *Service) SetPluginEnabledChecker(checker func() bool) {
@@ -572,7 +581,46 @@ func (s *Service) StorageStatus(_ context.Context, userID string) (*SpaceStorage
 	if s.fileStore == nil {
 		return nil, ErrSpaceFileStoreUnavailable
 	}
-	return s.fileStore.Status(userID)
+	status, err := s.fileStore.Status(userID)
+	if err != nil {
+		return nil, err
+	}
+	if s.quotaManager != nil {
+		status.DefaultQuotaBytes = s.quotaManager.DefaultQuotaBytes()
+		if override, ok := s.quotaManager.QuotaOverride(userID); ok {
+			status.CustomQuota = true
+			status.QuotaUpdatedBy = override.UpdatedBy
+			updatedAt := override.UpdatedAt
+			status.QuotaUpdatedAt = &updatedAt
+		}
+	}
+	return status, nil
+}
+
+func (s *Service) AdminStorageStatus(ctx context.Context, userID string) (*SpaceStorageStatus, error) {
+	if _, err := s.users.GetByID(ctx, strings.TrimSpace(userID)); err != nil {
+		return nil, fmt.Errorf("get storage owner: %w", err)
+	}
+	return s.StorageStatus(ctx, userID)
+}
+
+func (s *Service) SetStorageQuota(ctx context.Context, userID, actorID string, quotaBytes int64) (*SpaceStorageStatus, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if quotaBytes < 1024*1024 || quotaBytes > 100*1024*1024*1024 {
+		return nil, ErrStorageQuotaInvalid
+	}
+	if s.quotaManager == nil {
+		return nil, ErrStorageQuotaUnavailable
+	}
+	if _, err := s.users.GetByID(ctx, strings.TrimSpace(userID)); err != nil {
+		return nil, fmt.Errorf("get storage owner: %w", err)
+	}
+	if _, err := s.quotaManager.SetQuota(ctx, userID, quotaBytes, actorID); err != nil {
+		return nil, fmt.Errorf("set storage quota: %w", err)
+	}
+	return s.StorageStatus(ctx, userID)
 }
 
 func (s *Service) UploadAvatar(ctx context.Context, userID, originalName string, reader io.Reader) (*AvatarUploadResult, error) {
@@ -609,11 +657,15 @@ func (s *Service) UploadAvatar(ctx context.Context, userID, originalName string,
 	if err := s.repo.Upsert(ctx, space); err != nil {
 		return nil, fmt.Errorf("save space avatar: %w", err)
 	}
-	status, err := s.fileStore.Status(user.ID)
+	status, err := s.StorageStatus(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
 	public := buildPublicSpace(user, space)
+	avatars, err := s.fileStore.ListAvatars(user.ID, space.Avatar)
+	if err != nil {
+		return nil, err
+	}
 	return &AvatarUploadResult{
 		FileName: fileName,
 		URL:      space.Avatar,
@@ -621,6 +673,85 @@ func (s *Service) UploadAvatar(ctx context.Context, userID, originalName string,
 		Storage:  *status,
 		Owner:    public.Owner,
 		Space:    public.Space,
+		Avatars:  avatars,
+	}, nil
+}
+
+func (s *Service) ListAvatars(ctx context.Context, userID string) (*AvatarHistory, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	activeURL := user.Avatar
+	if current, err := s.repo.GetByUserID(ctx, user.ID); err == nil {
+		activeURL = current.Avatar
+	} else if !errors.Is(err, ErrSpaceNotFound) {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	items, err := s.fileStore.ListAvatars(user.ID, activeURL)
+	if err != nil {
+		return nil, err
+	}
+	status, err := s.StorageStatus(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &AvatarHistory{Items: items, Storage: *status}, nil
+}
+
+func (s *Service) SelectAvatar(ctx context.Context, userID, fileName string) (*AvatarUploadResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if s.fileStore == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get owner: %w", err)
+	}
+	filePath, err := s.fileStore.AvatarPath(user.ID, strings.TrimSpace(fileName))
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return nil, err
+	}
+	space, err := s.repo.GetByUserID(ctx, user.ID)
+	if err != nil {
+		if !errors.Is(err, ErrSpaceNotFound) {
+			return nil, fmt.Errorf("get space: %w", err)
+		}
+		space = defaultSpace(user)
+		space.ID = fmt.Sprintf("%d", idgen.New())
+	}
+	space.UserID = user.ID
+	space.Avatar = s.fileStore.AvatarURL(user.ID, strings.TrimSpace(fileName))
+	space.IsDefault = false
+	space.UpdatedAt = time.Now().UTC()
+	ensureDefaults(space)
+	if err := s.repo.Upsert(ctx, space); err != nil {
+		return nil, fmt.Errorf("select space avatar: %w", err)
+	}
+	status, err := s.StorageStatus(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	avatars, err := s.fileStore.ListAvatars(user.ID, space.Avatar)
+	if err != nil {
+		return nil, err
+	}
+	public := buildPublicSpace(user, space)
+	return &AvatarUploadResult{
+		FileName: strings.TrimSpace(fileName), URL: space.Avatar, Size: info.Size(),
+		Storage: *status, Owner: public.Owner, Space: public.Space, Avatars: avatars,
 	}, nil
 }
 

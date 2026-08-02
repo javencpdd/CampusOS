@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 )
 
@@ -18,7 +19,7 @@ var tinyPNG = []byte{
 	0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
 	0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
 	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
+	0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
 	0xae, 0x42, 0x60, 0x82,
 }
 
@@ -62,10 +63,14 @@ func TestLocalAssetStoreSavesInPersonalSpace(t *testing.T) {
 }
 
 func TestLocalAssetStoreEnforcesPersonalSpaceQuota(t *testing.T) {
+	optimized, err := corestorage.OptimizeImage(tinyPNG)
+	if err != nil {
+		t.Fatal(err)
+	}
 	store, err := NewLocalAssetStore(AssetStoreConfig{
 		RootDir:       t.TempDir(),
 		MaxAssetBytes: 1024,
-		QuotaBytes:    int64(len(tinyPNG) - 1),
+		QuotaBytes:    int64(len(optimized.Data) - 1),
 	})
 	if err != nil {
 		t.Fatalf("new asset store: %v", err)

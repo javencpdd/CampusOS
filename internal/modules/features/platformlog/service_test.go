@@ -15,11 +15,14 @@ func TestSourcesReportsKnownLogFiles(t *testing.T) {
 	svc := NewService(dir)
 
 	sources := svc.Sources()
-	if len(sources) != 3 {
-		t.Fatalf("expected three log sources, got %d", len(sources))
+	if len(sources) != 4 {
+		t.Fatalf("expected four log sources, got %d", len(sources))
 	}
 	if sources[0].Key != "api" || !sources[0].Exists || sources[0].Size == 0 {
 		t.Fatalf("unexpected api source metadata: %#v", sources[0])
+	}
+	if sources[3].Key != "docs" || sources[3].Label != "官方文档 docs" {
+		t.Fatalf("unexpected docs source metadata: %#v", sources[3])
 	}
 }
 

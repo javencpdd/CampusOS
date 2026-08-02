@@ -54,6 +54,12 @@ var operationProfiles = map[string]operationProfile{
 	"categoryHandler.ListThreadTypePolicies":   {ResponseSchema: "CategoryThreadTypePolicies"},
 	"categoryHandler.UpdateThreadTypePolicies": {RequestSchema: "UpdateCategoryThreadTypePolicyRequest", ResponseSchema: "CategoryThreadTypePolicyUpdate"},
 	"spaceHandler.UpdateMe":                    {RequestSchema: "UpsertSpaceRequest", ResponseSchema: "Space"},
+	"spaceHandler.StorageStatus":               {ResponseSchema: "SpaceStorageStatus"},
+	"spaceHandler.UploadAvatar":                {ResponseSchema: "AvatarUploadResult"},
+	"spaceHandler.ListAvatars":                 {ResponseSchema: "AvatarHistory"},
+	"spaceHandler.SelectAvatar":                {RequestSchema: "SelectAvatarRequest", ResponseSchema: "AvatarUploadResult"},
+	"spaceHandler.AdminStorageStatus":          {ResponseSchema: "SpaceStorageStatus"},
+	"spaceHandler.SetStorageQuota":             {RequestSchema: "SetStorageQuotaRequest", ResponseSchema: "SpaceStorageStatus"},
 	"spaceHandler.ListContentsByUserID":        {Paginated: true},
 	"spaceHandler.ListContentsByUsername":      {Paginated: true},
 	"scheduleHandler.ActivateTerm":             {RequestSchema: "ActivateTermRequest"},
@@ -607,6 +613,57 @@ func openAPIComponents() string {
         sync_tags: { type: array, items: { type: string } }
       additionalProperties: false
     Space: { type: object, additionalProperties: true }
+    SpaceStorageStatus:
+      type: object
+      required: [user_id, quota_bytes, default_quota_bytes, used_bytes, available_bytes, avatar_keep_limit, custom_quota]
+      properties:
+        user_id: { type: string, pattern: '^[0-9]+$' }
+        quota_bytes: { type: integer, format: int64, minimum: 1 }
+        default_quota_bytes: { type: integer, format: int64, minimum: 1 }
+        used_bytes: { type: integer, format: int64, minimum: 0 }
+        available_bytes: { type: integer, format: int64, minimum: 0 }
+        avatar_keep_limit: { type: integer, minimum: 1 }
+        custom_quota: { type: boolean }
+        quota_updated_by: { type: string }
+        quota_updated_at: { type: string, format: date-time, nullable: true }
+    SetStorageQuotaRequest:
+      type: object
+      required: [quota_bytes]
+      properties:
+        quota_bytes: { type: integer, format: int64, minimum: 1048576, maximum: 107374182400 }
+      additionalProperties: false
+    SelectAvatarRequest:
+      type: object
+      required: [file_name]
+      properties:
+        file_name: { type: string, minLength: 1, maxLength: 255 }
+      additionalProperties: false
+    AvatarHistoryItem:
+      type: object
+      required: [file_name, url, size, uploaded_at, active]
+      properties:
+        file_name: { type: string }
+        url: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        uploaded_at: { type: string, format: date-time }
+        active: { type: boolean }
+    AvatarHistory:
+      type: object
+      required: [items, storage]
+      properties:
+        items: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/AvatarHistoryItem' } }
+        storage: { $ref: '#/components/schemas/SpaceStorageStatus' }
+    AvatarUploadResult:
+      type: object
+      required: [file_name, url, size, storage, owner, space, avatars]
+      properties:
+        file_name: { type: string }
+        url: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        storage: { $ref: '#/components/schemas/SpaceStorageStatus' }
+        owner: { type: object, additionalProperties: true }
+        space: { $ref: '#/components/schemas/Space' }
+        avatars: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/AvatarHistoryItem' } }
     ActivateTermRequest:
       type: object
       required: [term_year, semester]

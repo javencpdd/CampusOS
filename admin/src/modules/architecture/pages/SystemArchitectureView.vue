@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000041</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000042</el-tag>
     </section>
 
     <el-alert
@@ -979,6 +979,15 @@ const databaseTables: DbTable[] = [
     relationshipNote: "一个用户最多一份个人主页配置；user_id 由外键保护。",
   },
   {
+    name: "user_storage_quotas",
+    title: "用户空间配额授权",
+    domain: "space",
+    purpose: "只保存管理员对单个用户授予的 User Storage 配额覆盖；没有记录时使用系统默认 50 MB。",
+    fields: ["user_id", "quota_bytes", "updated_by", "updated_at"],
+    migration: "000042",
+    relationshipNote: "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。",
+  },
+  {
     name: "user_space_contents",
     title: "主页同步内容",
     domain: "space",
@@ -1442,6 +1451,15 @@ const relations: Relation[] = [
     domains: ["identity", "space"],
   },
   {
+    id: "users-storage-quotas",
+    source: "users",
+    target: "user_storage_quotas",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> user_id",
+    domains: ["identity", "space"],
+  },
+  {
     id: "threads-space-contents",
     source: "threads",
     target: "user_space_contents",
@@ -1703,10 +1721,10 @@ const storageRows = [
     path: "data/personal-space/<user_id>/",
     category: "用户文件",
     type: "success",
-    purpose: "每个用户拥有的本地文件空间，默认受 personal-space 配额管理。",
+    purpose: "每个用户拥有的本地文件空间，默认 50 MB，可由管理员按用户授权。",
     contents: [
-      "img/avatars/：头像源文件，默认保留最近 3 个",
-      "img/richtext/：图文文章图片",
+      "img/avatars/：头像源文件，默认保留最近 3 个并可切换，只有新上传才按 FIFO 清理",
+      "img/richtext/：图文文章图片；JPEG/PNG 优化后计入配额",
       "file/schedule/terms/<year>-<semester>.json：每学期课表",
       "plugins/<plugin>/：v2 插件受控附件",
       "file/、excel/、word/、pdf/：按用途/后缀分类的文件",
@@ -1791,9 +1809,9 @@ const storageRows = [
     path: ".campusos/logs/",
     category: "开发期日志",
     type: "info",
-    purpose: "启动脚本写入 API、web 和 admin 的本地输出。",
-    contents: ["api.log", "web.log", "admin.log"],
-    note: "管理端平台日志页只读取固定来源；这不是集中日志系统。",
+    purpose: "原生和 Docker 开发启动脚本写入 API、Web、Admin 和 Docs 的本地输出。",
+    contents: ["api.log", "web.log", "admin.log", "docs.log"],
+    note: "Docker stdout 通过 tee 同步到固定来源供管理端实时 follow；这不是集中日志系统。",
   },
 ];
 
@@ -2205,6 +2223,15 @@ const migrations = [
     summary:
       "保留全部历史迁移和业务数据，通过前向迁移删除九个已被同谓词复合 B-tree 严格左前缀覆盖的窄索引，并把重复索引、重复约束和冗余前缀检测接入数据库门禁。",
     tables: ["notifications", "plugin_permissions", "plugin_records", "posts", "role_permissions", "sessions", "threads", "user_roles", "webhook_deliveries"],
+  },
+  {
+    version: "000042",
+    file: "000042_v13_user_storage_quotas.up.sql",
+    title: "v13 用户空间配额授权",
+    scope: "个人空间与存储",
+    summary:
+      "建立按用户覆盖的 User Storage 配额记录，保留 50 MB 系统默认值，并记录最近授权管理员和时间；文件仍位于 data/personal-space。",
+    tables: ["user_storage_quotas", "users"],
   },
 ];
 

@@ -32,6 +32,7 @@ type Module struct {
 	users        identityport.UserReader
 	contentQuery communityport.ContentQuery
 	storage      corestorage.Port
+	quotaManager corestorage.QuotaManager
 	styles       StyleApplication
 	attacher     interface{ AttachSpaceStyleTarget(StyleApplication) }
 	service      *Service
@@ -82,6 +83,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
 	}
+	quotaValue, ok := app.Lookup("storage.quota-manager")
+	if !ok {
+		return errors.New("user storage quota manager is unavailable")
+	}
+	quotaManager, ok := quotaValue.(corestorage.QuotaManager)
+	if !ok || quotaManager == nil {
+		return fmt.Errorf("user storage quota manager has incompatible type %T", quotaValue)
+	}
 	appearanceValue, ok := app.Lookup("appearance.application")
 	if !ok {
 		return errors.New("appearance application is unavailable")
@@ -94,7 +103,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("appearance application cannot attach personal-space styles: %T", appearanceValue)
 	}
-	m.app, m.repo, m.users, m.contentQuery, m.storage = app, repo, users, contentQuery, storage
+	m.app, m.repo, m.users, m.contentQuery, m.storage, m.quotaManager = app, repo, users, contentQuery, storage, quotaManager
 	m.styles, m.attacher = styles, attacher
 	return nil
 }
@@ -105,6 +114,7 @@ func (m *Module) Start(ctx context.Context) error {
 	}
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
 	svc.SetContentQuery(m.contentQuery)
+	svc.SetQuotaManager(m.quotaManager)
 	svc.SetPluginEnabledChecker(m.enabled)
 	if value, ok := m.app.Lookup("platform.reliability.service"); ok {
 		if reporter, ok := value.(CompatibilityReporter); ok {
@@ -127,6 +137,9 @@ func (m *Module) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("initialize personal space file store: %w", err)
 	}
+	// Quota overrides govern the shared user directory even when an installation
+	// retained a custom compatible root during migration.
+	store.quota = m.quotaManager
 	svc.SetFileStore(store)
 	busValue, ok := m.app.Lookup("platform.event-bus")
 	if !ok {

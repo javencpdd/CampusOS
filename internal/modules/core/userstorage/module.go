@@ -32,7 +32,15 @@ func (m *Module) ID() string { return ModuleID }
 func (m *Module) Dependencies() []string { return []string{"core.identity"} }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
-	adapter, err := NewLocalAdapterWithQuota(m.config.Root, m.config.QuotaBytes)
+	quotaRepository := QuotaRepository(NewMemoryQuotaRepository())
+	if value, ok := app.Lookup(portQuotaRepository); ok {
+		var compatible bool
+		quotaRepository, compatible = value.(QuotaRepository)
+		if !compatible || quotaRepository == nil {
+			return fmt.Errorf("user storage quota repository has incompatible type %T", value)
+		}
+	}
+	adapter, err := NewLocalAdapterWithQuotaRepository(m.config.Root, m.config.QuotaBytes, quotaRepository)
 	if err != nil {
 		return fmt.Errorf("initialize local user storage provider: %w", err)
 	}
@@ -49,6 +57,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}{
 		{"storage.user", Port(adapter)},
 		{"storage.quota", Quota(adapter)},
+		{"storage.quota-manager", QuotaManager(adapter)},
 		{"storage.safe-path", SafePath(adapter)},
 		{"storage.provider", Provider(LocalProvider{})},
 		{"storage.content-images", contentImages},

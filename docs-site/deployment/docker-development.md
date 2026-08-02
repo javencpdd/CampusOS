@@ -290,6 +290,17 @@ Legacy 模式的数据不与 `campusos-dev` 命名卷共享。
 ./scripts/docker-dev.sh logs api
 ```
 
+Docker 开发进程的标准输出仍保留在 `docker compose logs`，同时由启动脚本追加到宿主仓库
+`.campusos/logs/api.log`、`web.log`、`admin.log`、`docs.log`。因此管理后台“平台日志”在 Docker 模式也能
+读取并 follow 实时输出；这不是 Docker 导致能力缺失，而是容器 stdout 与原生日志文件原先没有桥接。
+修改 `compose.dev.yml` 或 `deploy/docker/dev-*.sh` 后需要重新构建/创建对应容器：
+
+```bash
+./scripts/docker-dev.sh up
+```
+
+Windows 使用 `.\scripts\docker-dev.ps1 up`。旧容器不会自动获得新的入口脚本；仅刷新浏览器无效。
+
 ### Web、Admin 与 Docs
 
 三个前端使用独立 `node_modules` 卷和锁定依赖种子。源码通过绑定挂载进入容器，Vite/VitePress 使用轮询

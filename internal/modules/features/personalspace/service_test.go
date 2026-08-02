@@ -6,9 +6,11 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	identityrepo "github.com/campusos/CampusOS/internal/modules/core/identity/repository"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 )
 
 type fakeUserLookup struct {
@@ -219,6 +221,92 @@ func TestUploadAvatarStoresPersonalSpaceAvatar(t *testing.T) {
 	}
 	if own.Owner.Avatar != uploaded.URL || own.Space.Avatar != uploaded.URL {
 		t.Fatalf("saved avatar not reflected in own space: %#v", own)
+	}
+}
+
+func TestAvatarHistorySelectionPreservesFIFOOrder(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMemoryRepository()
+	svc := NewService(repo, newFakeUserLookup(&identitydomain.User{
+		ID: "1001", Username: "alice", Nickname: "Alice",
+	}))
+	store, err := NewLocalFileStore(FileStorageConfig{
+		RootDir: t.TempDir(), URLPrefix: "/api/v1/spaces/files",
+		DefaultQuotaBytes: 10 * 1024 * 1024, AvatarKeepLimit: 3, MaxAvatarBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.SetFileStore(store)
+
+	var uploaded []*AvatarUploadResult
+	for i := 0; i < 3; i++ {
+		item, uploadErr := svc.UploadAvatar(ctx, "1001", "avatar.png", bytes.NewReader(tinyPNG))
+		if uploadErr != nil {
+			t.Fatalf("upload avatar %d: %v", i, uploadErr)
+		}
+		uploaded = append(uploaded, item)
+		time.Sleep(time.Millisecond)
+	}
+	before, err := svc.ListAvatars(ctx, "1001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before.Items) != 3 || before.Items[0].FileName != uploaded[2].FileName || before.Items[2].FileName != uploaded[0].FileName {
+		t.Fatalf("unexpected FIFO order before selection: %#v", before.Items)
+	}
+
+	selected, err := svc.SelectAvatar(ctx, "1001", uploaded[0].FileName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selected.Avatars[2].Active {
+		t.Fatalf("oldest retained avatar should be active: %#v", selected.Avatars)
+	}
+	for i := range before.Items {
+		if selected.Avatars[i].FileName != before.Items[i].FileName ||
+			!selected.Avatars[i].UploadedAt.Equal(before.Items[i].UploadedAt) {
+			t.Fatalf("selection changed source order at %d: before=%#v after=%#v", i, before.Items[i], selected.Avatars[i])
+		}
+	}
+
+	fourth, err := svc.UploadAvatar(ctx, "1001", "avatar.png", bytes.NewReader(tinyPNG))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fourth.Avatars) != 3 || fourth.Avatars[0].FileName != fourth.FileName || !fourth.Avatars[0].Active {
+		t.Fatalf("new upload should become the active FIFO head: %#v", fourth.Avatars)
+	}
+	for _, item := range fourth.Avatars {
+		if item.FileName == uploaded[0].FileName {
+			t.Fatalf("oldest source was not pruned after a new upload: %#v", fourth.Avatars)
+		}
+	}
+}
+
+func TestAdminCanAdjustOneUsersStorageQuota(t *testing.T) {
+	ctx := context.Background()
+	users := newFakeUserLookup(&identitydomain.User{ID: "1001", Username: "alice", Nickname: "Alice"})
+	adapter, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := NewLocalFileStoreWithStorage(FileStorageConfig{}, adapter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(NewMemoryRepository(), users)
+	svc.SetFileStore(store)
+	svc.SetQuotaManager(adapter)
+	status, err := svc.SetStorageQuota(ctx, "1001", "9001", 75*1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.QuotaBytes != 75*1024*1024 || !status.CustomQuota || status.QuotaUpdatedBy != "9001" {
+		t.Fatalf("unexpected custom quota status: %#v", status)
+	}
+	if status.DefaultQuotaBytes != corestorage.DefaultQuotaBytes {
+		t.Fatalf("unexpected default quota: %#v", status)
 	}
 }
 

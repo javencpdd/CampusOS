@@ -56,9 +56,23 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 Windows 应在 Git Bash/WSL2 中运行；PowerShell 可以显式调用 Git for Windows：
 
 ```powershell
-& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh --help
-& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_pr.sh --help
+$gitExe = (Get-Command git.exe -ErrorAction Stop).Source
+$gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent
+$gitBash = Join-Path $gitRoot 'bin\bash.exe'
+
+& $gitBash ./sh/git_commit.sh 'feat: describe the change'
+gh auth status
+& $gitBash ./sh/git_pr.sh -t 'feat: describe the change' --base main --dry-run
+& $gitBash ./sh/git_pr.sh -t 'feat: describe the change' --base main
 ```
+
+`$gitBash` 是当前 PowerShell 会话变量，每次新开终端都需要重新执行前三行初始化。默认安装路径下也可直接使用
+`& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh 'feat: describe the change'`。变量未初始化时，
+`& $gitBash ...` 会被 PowerShell 拒绝；去掉 `&` 同样不是合法调用。
+
+PowerShell 的 `Set-ExecutionPolicy` 不影响 `.sh`；也不要依赖可能指向 WSL 的裸 `bash`。环境变量使用
+`$env:CAMPUSOS_GIT_REMOTE = 'my-fork'` 后再调用 `$gitBash`。完整 Windows 命令、退出码检查和故障处理见仓库
+Help 的 PR 脚本说明。
 
 标准流程：
 

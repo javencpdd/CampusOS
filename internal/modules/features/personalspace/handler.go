@@ -515,6 +515,41 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	response.Success(c, uploaded)
 }
 
+func (h *Handler) ListAvatars(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	history, err := h.svc.ListAvatars(c.Request.Context(), userID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, history)
+}
+
+func (h *Handler) SelectAvatar(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req struct {
+		FileName string `json:"file_name" binding:"required,min=1,max=255"`
+	}
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+	selected, err := h.svc.SelectAvatar(c.Request.Context(), userID, strings.TrimSpace(req.FileName))
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, selected)
+}
+
 func (h *Handler) ServeAvatarFile(c *gin.Context) {
 	userID := c.Param("user_id")
 	fileName := c.Param("filename")
@@ -537,6 +572,46 @@ func (h *Handler) AdminSummary(c *gin.Context) {
 		return
 	}
 	response.Success(c, summary)
+}
+
+func (h *Handler) AdminStorageStatus(c *gin.Context) {
+	targetUserID := c.Param("user_id")
+	if _, err := strconv.ParseInt(targetUserID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+	status, err := h.svc.AdminStorageStatus(c.Request.Context(), targetUserID)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+func (h *Handler) SetStorageQuota(c *gin.Context) {
+	targetUserID := c.Param("user_id")
+	if _, err := strconv.ParseInt(targetUserID, 10, 64); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
+		return
+	}
+	actorUserID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var req struct {
+		QuotaBytes int64 `json:"quota_bytes" binding:"required,min=1048576,max=107374182400"`
+	}
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
+		return
+	}
+	status, err := h.svc.SetStorageQuota(c.Request.Context(), targetUserID, actorUserID, req.QuotaBytes)
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, status)
 }
 
 func (h *Handler) DisableSpace(c *gin.Context) {
@@ -646,6 +721,10 @@ func writeSpaceError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, 30004, err.Error())
 	case errors.Is(err, ErrSpaceFileTooLarge), errors.Is(err, ErrSpaceFileQuotaExceeded):
 		response.Error(c, http.StatusRequestEntityTooLarge, 10001, err.Error())
+	case errors.Is(err, ErrStorageQuotaInvalid):
+		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+	case errors.Is(err, ErrStorageQuotaUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 60006, err.Error())
 	case errors.Is(err, ErrSpaceNotPublic):
 		response.Error(c, http.StatusForbidden, 20004, err.Error())
 	case errors.Is(err, identityport.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):

@@ -6829,6 +6829,78 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/spaces/admin/users/{user_id}/storage:
+    get:
+      operationId: d_Space
+      summary: GET /api/v1/spaces/admin/users/:user_id/storage
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.spaces.admin.users.user_id.storage
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: personal_space.space.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: d_Space
+      summary: PUT /api/v1/spaces/admin/users/:user_id/storage
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: global
+      x-campusos-operation: http.put.api.v1.spaces.admin.users.user_id.storage
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: personal_space.space.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/spaces/files/{user_id}/avatars/{filename}:
     get:
       operationId: d_Space
@@ -6934,6 +7006,62 @@ paths:
             schema:
               $ref: '#/components/schemas/GenericObject'
       x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: d_Space
+      summary: PUT /api/v1/spaces/me/avatar
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.spaces.me.avatar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/spaces/me/avatars:
+    get:
+      operationId: d_Space
+      summary: GET /api/v1/spaces/me/avatars
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.personal-space
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.spaces.me.avatars
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Success
@@ -9289,6 +9417,57 @@ components:
         sync_tags: { type: array, items: { type: string } }
       additionalProperties: false
     Space: { type: object, additionalProperties: true }
+    SpaceStorageStatus:
+      type: object
+      required: [user_id, quota_bytes, default_quota_bytes, used_bytes, available_bytes, avatar_keep_limit, custom_quota]
+      properties:
+        user_id: { type: string, pattern: '^[0-9]+$' }
+        quota_bytes: { type: integer, format: int64, minimum: 1 }
+        default_quota_bytes: { type: integer, format: int64, minimum: 1 }
+        used_bytes: { type: integer, format: int64, minimum: 0 }
+        available_bytes: { type: integer, format: int64, minimum: 0 }
+        avatar_keep_limit: { type: integer, minimum: 1 }
+        custom_quota: { type: boolean }
+        quota_updated_by: { type: string }
+        quota_updated_at: { type: string, format: date-time, nullable: true }
+    SetStorageQuotaRequest:
+      type: object
+      required: [quota_bytes]
+      properties:
+        quota_bytes: { type: integer, format: int64, minimum: 1048576, maximum: 107374182400 }
+      additionalProperties: false
+    SelectAvatarRequest:
+      type: object
+      required: [file_name]
+      properties:
+        file_name: { type: string, minLength: 1, maxLength: 255 }
+      additionalProperties: false
+    AvatarHistoryItem:
+      type: object
+      required: [file_name, url, size, uploaded_at, active]
+      properties:
+        file_name: { type: string }
+        url: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        uploaded_at: { type: string, format: date-time }
+        active: { type: boolean }
+    AvatarHistory:
+      type: object
+      required: [items, storage]
+      properties:
+        items: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/AvatarHistoryItem' } }
+        storage: { $ref: '#/components/schemas/SpaceStorageStatus' }
+    AvatarUploadResult:
+      type: object
+      required: [file_name, url, size, storage, owner, space, avatars]
+      properties:
+        file_name: { type: string }
+        url: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        storage: { $ref: '#/components/schemas/SpaceStorageStatus' }
+        owner: { type: object, additionalProperties: true }
+        space: { $ref: '#/components/schemas/Space' }
+        avatars: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/AvatarHistoryItem' } }
     ActivateTermRequest:
       type: object
       required: [term_year, semester]

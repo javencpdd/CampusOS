@@ -1,16 +1,10 @@
 package richtext
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"io"
 	"mime"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +18,7 @@ const (
 	legacyAssetRoot       = "data/images/richtext"
 	defaultAssetURLPrefix = "/api/v1/richtext/assets"
 	defaultMaxAssetBytes  = int64(5 * 1024 * 1024)
-	defaultQuotaBytes     = int64(10 * 1024 * 1024)
+	defaultQuotaBytes     = corestorage.DefaultQuotaBytes
 )
 
 type AssetStoreConfig struct {
@@ -143,19 +137,13 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 	if int64(len(data)) > s.cfg.MaxAssetBytes {
 		return nil, ErrAssetTooLarge
 	}
-	mimeType := http.DetectContentType(data)
-	ext, err := imageExtension(originalName, mimeType)
+	optimized, err := corestorage.OptimizeImage(data)
 	if err != nil {
-		return nil, err
+		return nil, ErrAssetUnsupported
 	}
-	width, height := 0, 0
-	if mimeType != "image/webp" {
-		cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
-		if err != nil {
-			return nil, ErrAssetUnsupported
-		}
-		width = cfg.Width
-		height = cfg.Height
+	data = optimized.Data
+	if int64(len(data)) > s.cfg.MaxAssetBytes {
+		return nil, ErrAssetTooLarge
 	}
 	dir, err := s.assetDir(userID)
 	if err != nil {
@@ -170,7 +158,7 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
-	fileName := fmt.Sprintf("%d%s", time.Now().UTC().UnixNano(), ext)
+	fileName := fmt.Sprintf("%d%s", time.Now().UTC().UnixNano(), optimized.Extension)
 	if err := validateStorageSegment(fileName); err != nil {
 		return nil, err
 	}
@@ -182,9 +170,9 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 		FileURL:    fmt.Sprintf("%s/%s/%s", s.cfg.URLPrefix, userID, fileName),
 		FileName:   fileName,
 		FileSize:   int64(len(data)),
-		MimeType:   mimeType,
-		Width:      width,
-		Height:     height,
+		MimeType:   optimized.MimeType,
+		Width:      optimized.Width,
+		Height:     optimized.Height,
 		CreatedAt:  time.Now().UTC(),
 	}, nil
 }
@@ -229,6 +217,15 @@ func (s *LocalAssetStore) assetDir(userID string) (string, error) {
 }
 
 func (s *LocalAssetStore) checkQuota(userID string, incomingBytes int64) error {
+	if quota, ok := s.storage.(corestorage.Quota); ok {
+		if err := quota.CheckQuota(userID, incomingBytes); err != nil {
+			if errors.Is(err, corestorage.ErrQuotaExceeded) {
+				return ErrAssetQuotaExceeded
+			}
+			return err
+		}
+		return nil
+	}
 	usage, err := s.storage.Usage(userID)
 	if err != nil {
 		return err

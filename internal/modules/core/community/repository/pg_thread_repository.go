@@ -203,7 +203,7 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		args = append(args, filter.CategoryID)
 		argIdx++
 	}
-	if len(filter.CategoryIDs) > 0 {
+	if filter.CategoryIDs != nil {
 		where = append(where, fmt.Sprintf("category_id = ANY($%d::text[])", argIdx))
 		args = append(args, filter.CategoryIDs)
 		argIdx++

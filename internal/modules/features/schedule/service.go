@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultRootDir        = "data/personal-space"
-	defaultQuotaBytes     = int64(10 * 1024 * 1024)
+	defaultQuotaBytes     = corestorage.DefaultQuotaBytes
 	defaultMaxCourses     = 200
 	defaultMaxImportBytes = int64(2 * 1024 * 1024)
 	dateLayout            = "2006-01-02"
@@ -742,7 +742,11 @@ func (s *Service) checkQuota(userID string, newSize int64, schedulePath string) 
 	} else if !errors.Is(statErr, os.ErrNotExist) {
 		return statErr
 	}
-	if usage+newSize > s.cfg.QuotaBytes {
+	quotaBytes := s.cfg.QuotaBytes
+	if quota, ok := s.storage.(corestorage.Quota); ok {
+		quotaBytes = quota.QuotaBytes(userID)
+	}
+	if usage+newSize > quotaBytes {
 		return ErrQuotaExceeded
 	}
 	return nil

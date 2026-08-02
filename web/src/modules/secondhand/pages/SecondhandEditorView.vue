@@ -43,7 +43,7 @@
       </el-form-item>
       <div class="field-grid">
         <el-form-item label="标价（元）" required>
-          <el-input-number v-model="priceYuan" :min="0" :precision="2" :step="1" class="field-full" />
+          <el-input-number v-model="priceYuan" :min="0" :precision="2" :step="0.01" class="field-full" />
           <p class="field-hint">按人民币元填写，系统以“分”保存。</p>
         </el-form-item>
         <el-form-item label="物品成色" required>

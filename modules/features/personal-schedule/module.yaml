@@ -13,7 +13,7 @@ implementation: internal/modules/features/schedule
 compatibility_aliases:
   - name: personal-schedule
 config:
-  quota_mb: 10
+  quota_mb: 50
   max_courses: 200
   max_import_mb: 2
   future_cloud_provider: local
@@ -24,7 +24,7 @@ config_schema:
       type: number
       description: "Personal-space quota used when saving schedule data."
       required: true
-      default: 10
+      default: 50
     - key: max_courses
       label: "Max courses"
       type: number

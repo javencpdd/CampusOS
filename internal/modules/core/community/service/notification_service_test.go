@@ -45,6 +45,11 @@ func (n *recordingThreadNotifier) NotifyThreadTrashed(_ context.Context, userID,
 	return n.err
 }
 
+func (n *recordingThreadNotifier) NotifyThreadTakenDown(_ context.Context, userID, threadID, title, _ string) error {
+	n.calls = append(n.calls, "taken-down:"+userID+":"+threadID+":"+title)
+	return n.err
+}
+
 func TestAdminTrashNotifiesAuthorButAuthorTrashDoesNot(t *testing.T) {
 	ctx := context.Background()
 	threadRepo := repository.NewMemoryThreadRepository()
@@ -104,5 +109,27 @@ func TestAdminTrashRollsBackWhenNotificationCannotBeStored(t *testing.T) {
 	}
 	if stored.DeletionStatus != domain.DeletionStatusActive || stored.CurrentRevision != 1 {
 		t.Fatalf("failed notification left thread trashed: %#v", stored)
+	}
+}
+
+func TestAdminTakeDownCreatesASeparateAuthorNotification(t *testing.T) {
+	ctx := context.Background()
+	threadRepo := repository.NewMemoryThreadRepository()
+	notificationRepo := repository.NewMemoryNotificationRepository()
+	svc := NewThreadService(threadRepo, nil)
+	svc.SetGovernanceRepository(repository.NewMemoryContentGovernanceRepository())
+	svc.SetContentAuthorization(fakeContentAuthorization{allowedCategory: 12})
+	svc.SetNotificationWriter(NewNotificationService(notificationRepo))
+	svc.SetReliability(reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
+	thread, err := svc.CreateThread(ctx, "1001", "alice", domain.CreateThreadRequest{Title: "moderated", Content: "body", CategoryID: "12"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.TakeDown(ctx, thread.ID, "9001", "policy reason"); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err := notificationRepo.ListByUser(ctx, "1001", 1, 20)
+	if err != nil || len(items) != 1 || items[0].Type != domain.NotificationTypeThreadTakenDown {
+		t.Fatalf("take-down notification mismatch: items=%#v err=%v", items, err)
 	}
 }

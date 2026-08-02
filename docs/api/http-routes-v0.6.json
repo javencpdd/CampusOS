@@ -1107,6 +1107,40 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/spaces/me/avatars",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.spaces.me.avatars",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.me.avatars",
+        "httpapi.get.api.v1.spaces.me.avatars"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/spaces/me/avatar",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.spaces.me.avatar",
+      "legacy_aliases": [
+        "http.put.api.v1.spaces.me.avatar",
+        "httpapi.put.api.v1.spaces.me.avatar"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/validate",
       "handler": "d.Space",
@@ -3660,6 +3694,44 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/spaces/admin/users/:user_id/storage",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "space:manage",
+      "permission_code": "personal_space.space.manage",
+      "operation_code": "http.get.api.v1.spaces.admin.users.user_id.storage",
+      "legacy_aliases": [
+        "http.get.api.v1.spaces.admin.users.user_id.storage",
+        "httpapi.get.api.v1.spaces.admin.users.user_id.storage"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/spaces/admin/users/:user_id/storage",
+      "handler": "d.Space",
+      "module_owner": "feature.personal-space",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "space:manage",
+      "permission_code": "personal_space.space.manage",
+      "operation_code": "http.put.api.v1.spaces.admin.users.user_id.storage",
+      "legacy_aliases": [
+        "http.put.api.v1.spaces.admin.users.user_id.storage",
+        "httpapi.put.api.v1.spaces.admin.users.user_id.storage"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

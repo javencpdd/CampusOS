@@ -55,6 +55,7 @@ func NewService(logDir string) *Service {
 			{Key: "api", Label: "后端 API", Path: "api.log"},
 			{Key: "web", Label: "用户前台 web", Path: "web.log"},
 			{Key: "admin", Label: "管理后台 admin", Path: "admin.log"},
+			{Key: "docs", Label: "官方文档 docs", Path: "docs.log"},
 		},
 	}
 }

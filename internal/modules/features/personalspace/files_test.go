@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 )
 
 var tinyPNG = []byte{
@@ -59,6 +61,10 @@ func TestFileStorageConfigMigratesLegacyDefaultRoot(t *testing.T) {
 }
 
 func TestLocalFileStoreSaveAvatarKeepsLatestFiles(t *testing.T) {
+	optimized, err := corestorage.OptimizeImage(tinyPNG)
+	if err != nil {
+		t.Fatal(err)
+	}
 	store, err := NewLocalFileStore(FileStorageConfig{
 		RootDir:           filepath.Join(t.TempDir(), "space-files"),
 		DefaultQuotaBytes: 10 * 1024 * 1024,
@@ -106,7 +112,7 @@ func TestLocalFileStoreSaveAvatarKeepsLatestFiles(t *testing.T) {
 	if status.QuotaBytes != 10*1024*1024 || status.AvatarKeepLimit != 3 {
 		t.Fatalf("unexpected status: %#v", status)
 	}
-	if status.UsedBytes != int64(len(tinyPNG))*3 {
+	if status.UsedBytes != int64(len(optimized.Data))*3 {
 		t.Fatalf("unexpected used bytes: %d", status.UsedBytes)
 	}
 }
@@ -157,9 +163,13 @@ func TestMigrateLegacyUserDir(t *testing.T) {
 }
 
 func TestLocalFileStoreRejectsQuotaExceeded(t *testing.T) {
+	optimized, err := corestorage.OptimizeImage(tinyPNG)
+	if err != nil {
+		t.Fatal(err)
+	}
 	store, err := NewLocalFileStore(FileStorageConfig{
 		RootDir:           filepath.Join(t.TempDir(), "space-files"),
-		DefaultQuotaBytes: int64(len(tinyPNG)),
+		DefaultQuotaBytes: int64(len(optimized.Data)),
 		AvatarKeepLimit:   3,
 		MaxAvatarBytes:    int64(len(tinyPNG) + 32),
 	})

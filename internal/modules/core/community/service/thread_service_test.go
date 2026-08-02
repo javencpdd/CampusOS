@@ -43,6 +43,53 @@ func TestCreateThreadMergesCategoryDefaultTags(t *testing.T) {
 	}
 }
 
+func TestListThreadsExpandsGroupToEveryActiveChildBoard(t *testing.T) {
+	ctx := context.Background()
+	categories := repository.NewMemoryCategoryRepository()
+	categorySvc := NewCategoryService(categories, nil)
+	group, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Campus life", NodeKind: domain.CategoryNodeGroup})
+	if err != nil {
+		t.Fatal(err)
+	}
+	boardA, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Market", ParentID: &group.ID, NodeKind: domain.CategoryNodeBoard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	boardB, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Clubs", ParentID: &group.ID, NodeKind: domain.CategoryNodeBoard, IsClosed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	threads := repository.NewMemoryThreadRepository()
+	for id, categoryID := range map[string]string{"in-a": boardA.ID, "in-b": boardB.ID, "outside": other.ID} {
+		if err := threads.Create(ctx, &domain.Thread{ID: id, Title: id, Content: "body", CategoryID: categoryID, AuthorID: "1001", AuthorName: "alice", Status: domain.ThreadStatusPublished}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc := NewThreadService(threads, nil)
+	svc.SetCategoryRepository(categories)
+	items, total, err := svc.ListThreads(ctx, domain.ThreadListFilter{CategoryID: group.ID, Page: 1, PageSize: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 2 || len(items) != 2 {
+		t.Fatalf("group list should include both child boards only: total=%d items=%#v", total, items)
+	}
+
+	emptyGroup, err := categorySvc.Create(ctx, domain.CreateCategoryRequest{Name: "Empty", NodeKind: domain.CategoryNodeGroup})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, total, err = svc.ListThreads(ctx, domain.ThreadListFilter{CategoryID: emptyGroup.ID, Page: 1, PageSize: 20})
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("empty group must not fall back to the global feed: total=%d items=%#v err=%v", total, items, err)
+	}
+}
+
 func TestPrivateThreadVisibilityAndStatusUpdate(t *testing.T) {
 	threadRepo := repository.NewMemoryThreadRepository()
 	svc := NewThreadService(threadRepo, nil)

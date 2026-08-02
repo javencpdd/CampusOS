@@ -226,6 +226,14 @@ func (m *Module) Start(context.Context) error {
 	posts := service.NewPostService(m.posts, bus)
 	posts.SetThreadRepository(m.threads)
 	posts.SetCategoryRepository(m.categories)
+	posts.SetNotificationWriter(notifications)
+	if reliabilityValue, found := m.app.Lookup("platform.reliability.service"); found {
+		reliable, compatible := reliabilityValue.(*reliability.Service)
+		if !compatible || reliable == nil {
+			return fmt.Errorf("community reliability port has incompatible type %T", reliabilityValue)
+		}
+		posts.SetReliability(reliable)
+	}
 	posts.SetCache(appCache)
 	m.threadService = threads
 	m.categoryService = categories

@@ -11,6 +11,7 @@ export interface RegistrySnapshot {
 
 export class RuntimeRegistry {
   private disposers: Array<() => void> = []
+  private manifestFingerprint = ''
   private snapshot: RegistrySnapshot = {
     revision: 0,
     navigation: [],
@@ -28,6 +29,8 @@ export class RuntimeRegistry {
   replace(manifest: UIRuntimeManifest): RegistrySnapshot {
     if (manifest.contract_version !== 'campusos.ui/v1')
       throw new Error(`不兼容的 UI Contract: ${manifest.contract_version}`)
+    const fingerprint = JSON.stringify(manifest)
+    if (fingerprint === this.manifestFingerprint) return this.snapshot
     const next: RegistrySnapshot = {
       revision: manifest.revision,
       navigation: [],
@@ -46,6 +49,7 @@ export class RuntimeRegistry {
     this.disposers.reverse().forEach((dispose) => dispose())
     this.disposers = nextDisposers
     this.snapshot = next
+    this.manifestFingerprint = fingerprint
     const current = this.router.currentRoute.value
     const browserPath = `${window.location.pathname}${window.location.search}`
     if (current.matched.length === 0 && browserPath === current.fullPath) void this.router.replace(current.fullPath)
@@ -55,6 +59,7 @@ export class RuntimeRegistry {
   clear() {
     this.disposers.reverse().forEach((dispose) => dispose())
     this.disposers = []
+    this.manifestFingerprint = ''
     this.snapshot = {
       revision: 0,
       navigation: [],
@@ -81,6 +86,12 @@ export class RuntimeRegistry {
     for (const route of routes) {
       if (!target.surfaces.has(route.surface_id)) throw new Error(`路由 ${route.id} 缺少 Surface`)
       const name = `plugin:${plugin.name}:${route.id}`
+      const hasStaticRoute =
+        typeof this.router.getRoutes === 'function' &&
+        this.router
+          .getRoutes()
+          .some((candidate) => candidate.path === route.path && !String(candidate.name || '').startsWith('plugin:'))
+      if (hasStaticRoute) continue
       const remove = this.router.addRoute({
         name,
         path: route.path,

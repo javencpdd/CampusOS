@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
@@ -20,7 +19,7 @@ const (
 	defaultSpaceFileRoot       = "data/personal-space"
 	legacySpaceFileRoot        = "data/images/personal-space"
 	defaultSpaceFileURLPrefix  = "/api/v1/spaces/files"
-	defaultSpaceFileQuotaBytes = int64(10 * 1024 * 1024)
+	defaultSpaceFileQuotaBytes = corestorage.DefaultQuotaBytes
 	defaultAvatarKeepLimit     = 3
 	defaultMaxAvatarBytes      = int64(2 * 1024 * 1024)
 )
@@ -51,24 +50,44 @@ type FileStorageConfig struct {
 }
 
 type SpaceStorageStatus struct {
-	UserID          string `json:"user_id"`
-	QuotaBytes      int64  `json:"quota_bytes"`
-	UsedBytes       int64  `json:"used_bytes"`
-	AvailableBytes  int64  `json:"available_bytes"`
-	AvatarKeepLimit int    `json:"avatar_keep_limit"`
+	UserID            string     `json:"user_id"`
+	QuotaBytes        int64      `json:"quota_bytes"`
+	DefaultQuotaBytes int64      `json:"default_quota_bytes"`
+	UsedBytes         int64      `json:"used_bytes"`
+	AvailableBytes    int64      `json:"available_bytes"`
+	AvatarKeepLimit   int        `json:"avatar_keep_limit"`
+	CustomQuota       bool       `json:"custom_quota"`
+	QuotaUpdatedBy    string     `json:"quota_updated_by,omitempty"`
+	QuotaUpdatedAt    *time.Time `json:"quota_updated_at,omitempty"`
 }
 
 type AvatarUploadResult struct {
-	FileName string             `json:"file_name"`
-	URL      string             `json:"url"`
-	Size     int64              `json:"size"`
-	Storage  SpaceStorageStatus `json:"storage"`
-	Owner    Owner              `json:"owner"`
-	Space    *Space             `json:"space"`
+	FileName string              `json:"file_name"`
+	URL      string              `json:"url"`
+	Size     int64               `json:"size"`
+	Storage  SpaceStorageStatus  `json:"storage"`
+	Owner    Owner               `json:"owner"`
+	Space    *Space              `json:"space"`
+	Avatars  []AvatarHistoryItem `json:"avatars"`
+}
+
+type AvatarHistoryItem struct {
+	FileName   string    `json:"file_name"`
+	URL        string    `json:"url"`
+	Size       int64     `json:"size"`
+	UploadedAt time.Time `json:"uploaded_at"`
+	Active     bool      `json:"active"`
+}
+
+type AvatarHistory struct {
+	Items   []AvatarHistoryItem `json:"items"`
+	Storage SpaceStorageStatus  `json:"storage"`
 }
 
 type LocalFileStore struct {
-	cfg FileStorageConfig
+	cfg   FileStorageConfig
+	quota corestorage.Quota
+	mu    sync.Mutex
 }
 
 func DefaultFileStorageConfig() FileStorageConfig {
@@ -121,10 +140,15 @@ func NewLocalFileStoreWithStorage(cfg FileStorageConfig, storage corestorage.Por
 		return nil, ErrSpaceFileStoreUnavailable
 	}
 	cfg.RootDir = storage.Root()
-	if quota, ok := storage.(corestorage.Quota); ok {
+	quota, ok := storage.(corestorage.Quota)
+	if ok {
 		cfg.DefaultQuotaBytes = quota.QuotaBytes("")
 	}
-	return newLocalFileStore(cfg)
+	store, err := newLocalFileStore(cfg)
+	if err == nil && ok {
+		store.quota = quota
+	}
+	return store, err
 }
 
 func newLocalFileStore(cfg FileStorageConfig) (*LocalFileStore, error) {
@@ -383,16 +407,18 @@ func (s *LocalFileStore) Status(userID string) (*SpaceStorageStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	available := s.cfg.DefaultQuotaBytes - usage
+	quotaBytes := s.quotaBytes(userID)
+	available := quotaBytes - usage
 	if available < 0 {
 		available = 0
 	}
 	return &SpaceStorageStatus{
-		UserID:          userID,
-		QuotaBytes:      s.cfg.DefaultQuotaBytes,
-		UsedBytes:       usage,
-		AvailableBytes:  available,
-		AvatarKeepLimit: s.cfg.AvatarKeepLimit,
+		UserID:            userID,
+		QuotaBytes:        quotaBytes,
+		DefaultQuotaBytes: s.cfg.DefaultQuotaBytes,
+		UsedBytes:         usage,
+		AvailableBytes:    available,
+		AvatarKeepLimit:   s.cfg.AvatarKeepLimit,
 	}, nil
 }
 
@@ -406,6 +432,8 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	if reader == nil {
 		return "", 0, ErrSpaceFileInvalidName
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, err := EnsurePersonalSpaceLayout(s.cfg.RootDir, userID); err != nil {
 		return "", 0, err
 	}
@@ -418,9 +446,7 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	}
 
 	limit := s.cfg.MaxAvatarBytes
-	if limit > s.cfg.DefaultQuotaBytes {
-		limit = s.cfg.DefaultQuotaBytes
-	}
+	quotaBytes := s.quotaBytes(userID)
 	data, err := io.ReadAll(io.LimitReader(reader, limit+1))
 	if err != nil {
 		return "", 0, err
@@ -428,10 +454,15 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	if int64(len(data)) > limit {
 		return "", 0, ErrSpaceFileTooLarge
 	}
-	ext, err := avatarExtension(originalName, data)
+	optimized, err := corestorage.OptimizeImage(data)
 	if err != nil {
-		return "", 0, err
+		return "", 0, ErrSpaceFileUnsupportedType
 	}
+	data = optimized.Data
+	if int64(len(data)) > s.cfg.MaxAvatarBytes {
+		return "", 0, ErrSpaceFileTooLarge
+	}
+	ext := optimized.Extension
 	usage, err := s.userUsage(userID)
 	if err != nil {
 		return "", 0, err
@@ -440,7 +471,7 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	if err != nil {
 		return "", 0, err
 	}
-	if usage-reclaim+int64(len(data)) > s.cfg.DefaultQuotaBytes {
+	if usage-reclaim+int64(len(data)) > quotaBytes {
 		return "", 0, ErrSpaceFileQuotaExceeded
 	}
 
@@ -458,8 +489,37 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	return fileName, int64(len(data)), nil
 }
 
+func (s *LocalFileStore) quotaBytes(userID string) int64 {
+	if s.quota != nil {
+		return s.quota.QuotaBytes(userID)
+	}
+	return s.cfg.DefaultQuotaBytes
+}
+
 func (s *LocalFileStore) AvatarURL(userID, fileName string) string {
 	return fmt.Sprintf("%s/%s/avatars/%s", s.cfg.URLPrefix, userID, fileName)
+}
+
+func (s *LocalFileStore) ListAvatars(userID, activeURL string) ([]AvatarHistoryItem, error) {
+	if s == nil {
+		return nil, ErrSpaceFileStoreUnavailable
+	}
+	if err := validateStorageSegment(userID); err != nil {
+		return nil, err
+	}
+	files, err := s.avatarFiles(userID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]AvatarHistoryItem, 0, len(files))
+	for _, file := range files {
+		url := s.AvatarURL(userID, file.name)
+		items = append(items, AvatarHistoryItem{
+			FileName: file.name, URL: url, Size: file.size, UploadedAt: file.modTime,
+			Active: strings.TrimSpace(activeURL) == url,
+		})
+	}
+	return items, nil
 }
 
 func (s *LocalFileStore) AvatarPath(userID, fileName string) (string, error) {
@@ -611,28 +671,6 @@ func (s *LocalFileStore) userDir(userID string) (string, error) {
 
 func (s *LocalFileStore) avatarDir(userID string) (string, error) {
 	return PersonalSpacePath(s.cfg.RootDir, userID, PersonalSpaceImageDir, "avatars")
-}
-
-func avatarExtension(originalName string, data []byte) (string, error) {
-	contentType := http.DetectContentType(data)
-	switch contentType {
-	case "image/jpeg", "image/png", "image/gif", "image/webp":
-	default:
-		return "", ErrSpaceFileUnsupportedType
-	}
-	ext := strings.ToLower(filepath.Ext(originalName))
-	if ext == "" {
-		exts, _ := mime.ExtensionsByType(contentType)
-		if len(exts) > 0 {
-			ext = exts[0]
-		}
-	}
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".gif", ".webp":
-		return ext, nil
-	default:
-		return "", ErrSpaceFileUnsupportedType
-	}
 }
 
 func validateStorageSegment(value string) error {

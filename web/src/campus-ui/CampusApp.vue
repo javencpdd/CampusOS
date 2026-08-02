@@ -69,6 +69,7 @@
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item :command="node.id">{{ node.name }} · 全部帖子</el-dropdown-item>
                   <el-dropdown-item v-for="board in node.children" :key="board.key" :command="board.id">
                     {{ board.name }}
                   </el-dropdown-item>
@@ -99,7 +100,14 @@
             >
             <template v-for="node in categoryNavigation" :key="`mobile:${node.key}`">
               <section v-if="node.kind === 'group'" class="mobile-navigation-group">
-                <h3>{{ node.name }}</h3>
+                <h3>
+                  <router-link
+                    :to="{ path: '/threads', query: { category_id: node.id } }"
+                    @click="closeMobileNavigation"
+                  >
+                    {{ node.name }} · 全部帖子
+                  </router-link>
+                </h3>
                 <router-link
                   v-for="board in node.children"
                   :key="`mobile:${board.key}`"
@@ -204,6 +212,7 @@ import AppShell from './AppShell.vue'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import ThemeRoot from './ThemeRoot.vue'
 import { buildCategoryNavigation, type CategoryNavigationNode, type PublicCategory } from './categoryNavigation'
+import { preloadCoreViews } from '@/router/preload'
 
 const router = useRouter()
 const route = useRoute()
@@ -296,6 +305,7 @@ const resolveThemeQuery = async (method: string, params: Record<string, unknown>
 }
 
 onMounted(() => {
+  void preloadCoreViews()
   void syncSpaceAvatar()
   void runtimeStore.initialize()
   void loadCategoryNavigation()
@@ -432,6 +442,14 @@ watch(isCompact, (compact) => {
   color: var(--campus-muted-color, #4b5563);
   font-size: 12px;
   font-weight: 700;
+}
+.mobile-navigation-group h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.mobile-navigation-group h3 a:hover,
+.mobile-navigation-group h3 a:focus-visible {
+  color: var(--campus-brand-color, #174ea6);
 }
 .category-nav-group {
   color: var(--campus-muted-color, #4b5563);

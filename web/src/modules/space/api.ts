@@ -35,6 +35,8 @@ export const spaceApi = {
   syncStatus: () => api.get('/spaces/me/sync-status'),
   storage: () => api.get('/spaces/me/storage'),
   uploadAvatar: (file: File) => withFile('/spaces/me/avatar', file),
+  avatars: () => api.get('/spaces/me/avatars'),
+  selectAvatar: (fileName: string) => api.put('/spaces/me/avatar', { file_name: fileName }),
   publicByUsername: (username: string) => api.get(`/u/${username}`),
   publicContentsByUsername: (username: string, params?: { page?: number; page_size?: number }) =>
     api.get(`/u/${username}/contents`, { params }),

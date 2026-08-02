@@ -67,7 +67,7 @@ func writeContentImageError(c *gin.Context, err error) {
 		response.Error(c, http.StatusNotFound, 74004, "content image was not found")
 	case errors.Is(err, ErrImageTooLarge):
 		response.Error(c, http.StatusRequestEntityTooLarge, 74002, err.Error())
-	case errors.Is(err, ErrImageUnsupported), errors.Is(err, ErrUnsafePath):
+	case errors.Is(err, ErrImageUnsupported), errors.Is(err, ErrImageDimensions), errors.Is(err, ErrUnsafePath):
 		response.Error(c, http.StatusBadRequest, 74002, err.Error())
 	case errors.Is(err, ErrQuotaExceeded):
 		response.Error(c, http.StatusBadRequest, 74003, "personal storage quota exceeded")

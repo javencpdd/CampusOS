@@ -102,6 +102,7 @@ nats-data/
 /internal/**/data/
 
 # ─── 临时文件 ───
+/.cache/
 *.tmp
 *.bak
 *.swp

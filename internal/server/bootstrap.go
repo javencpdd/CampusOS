@@ -134,7 +134,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		SMTPStartTLS: s.cfg.Email.SMTPStartTLS,
 	})
 	communityModule := communitycore.NewModule()
-	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: 10 * 1024 * 1024})
+	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: corestorage.DefaultQuotaBytes})
 	appearanceModule := appearance.NewModule(appearance.ModuleConfig{FeatureRegistry: features.Registry})
 	spaceModule := space.NewModule(space.ModuleConfig{
 		FileStorageConfig: func() space.FileStorageConfig {
@@ -224,6 +224,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				return err
 			}
 			if pool != nil {
+				if err := corestorage.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
 				if err := reliability.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
@@ -258,6 +261,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 					return err
 				}
 				return message.BindPostgreSQLAdapter(app, pool)
+			}
+			if err := corestorage.BindMemoryAdapter(app); err != nil {
+				return err
 			}
 			if err := reliability.BindMemoryAdapter(app); err != nil {
 				return err

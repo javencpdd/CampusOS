@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,6 +17,10 @@ type PgPostRepository struct {
 
 func NewPgPostRepository(pool *pgxpool.Pool) *PgPostRepository {
 	return &PgPostRepository{pool: pool}
+}
+
+func (r *PgPostRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
 }
 
 func (r *PgPostRepository) Create(ctx context.Context, post *domain.Post) error {
@@ -29,7 +34,7 @@ func (r *PgPostRepository) Create(ctx context.Context, post *domain.Post) error 
 			CASE WHEN $10 > 0 THEN $10 ELSE (SELECT floor_number FROM next_floor) END,
 			$11, $12)
 		RETURNING floor_number`
-	err := r.pool.QueryRow(ctx, query,
+	err := r.db(ctx).QueryRow(ctx, query,
 		post.ID, post.ThreadID, post.AuthorID, post.AuthorName,
 		post.ParentID, post.Content, "markdown", post.Status,
 		post.LikeCount, post.FloorNumber, post.CreatedAt, post.UpdatedAt).Scan(&post.FloorNumber)
@@ -40,7 +45,7 @@ func (r *PgPostRepository) GetByID(ctx context.Context, id string) (*domain.Post
 	query := `SELECT id, thread_id, author_id, author_name, parent_id, content, status, like_count, floor_number, created_at, updated_at
 		FROM posts WHERE id = $1 AND deleted_at IS NULL`
 	post := &domain.Post{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(
+	err := r.db(ctx).QueryRow(ctx, query, id).Scan(
 		&post.ID, &post.ThreadID, &post.AuthorID, &post.AuthorName,
 		&post.ParentID, &post.Content, &post.Status,
 		&post.LikeCount, &post.FloorNumber, &post.CreatedAt, &post.UpdatedAt)
@@ -63,7 +68,7 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 
 	// count
 	var total int64
-	err := r.pool.QueryRow(ctx, "SELECT COUNT(*) FROM posts WHERE thread_id = $1 AND deleted_at IS NULL", threadID).Scan(&total)
+	err := r.db(ctx).QueryRow(ctx, "SELECT COUNT(*) FROM posts WHERE thread_id = $1 AND deleted_at IS NULL", threadID).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -71,7 +76,7 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 	offset := (page - 1) * pageSize
 	query := `SELECT id, thread_id, author_id, author_name, parent_id, content, status, like_count, floor_number, created_at, updated_at
 		FROM posts WHERE thread_id = $1 AND deleted_at IS NULL ORDER BY floor_number ASC LIMIT $2 OFFSET $3`
-	rows, err := r.pool.Query(ctx, query, threadID, pageSize, offset)
+	rows, err := r.db(ctx).Query(ctx, query, threadID, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -93,7 +98,7 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 
 func (r *PgPostRepository) Update(ctx context.Context, post *domain.Post) error {
 	query := `UPDATE posts SET content=$1, updated_at=$2 WHERE id = $3 AND deleted_at IS NULL`
-	tag, err := r.pool.Exec(ctx, query, post.Content, time.Now().UTC(), post.ID)
+	tag, err := r.db(ctx).Exec(ctx, query, post.Content, time.Now().UTC(), post.ID)
 	if err != nil {
 		return err
 	}
@@ -105,7 +110,7 @@ func (r *PgPostRepository) Update(ctx context.Context, post *domain.Post) error 
 
 func (r *PgPostRepository) Delete(ctx context.Context, id string) error {
 	query := `UPDATE posts SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL`
-	tag, err := r.pool.Exec(ctx, query, time.Now().UTC(), id)
+	tag, err := r.db(ctx).Exec(ctx, query, time.Now().UTC(), id)
 	if err != nil {
 		return err
 	}

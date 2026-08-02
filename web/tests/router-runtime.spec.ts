@@ -48,6 +48,38 @@ describe('Web navigation and runtime gates', () => {
     expect(registry.replace(disabled).navigation).toHaveLength(0)
     expect(paths.has('/plugin-notes')).toBe(false)
   })
+
+  it('does not tear down and register the same runtime routes twice', () => {
+    const remove = vi.fn()
+    const router = {
+      currentRoute: { value: { matched: [{}], fullPath: '/' } },
+      replace: vi.fn(),
+      getRoutes: vi.fn(() => []),
+      addRoute: vi.fn(() => remove),
+    } as unknown as Router
+    const registry = new RuntimeRegistry(router)
+    const manifest = runtimeManifest(1, true)
+
+    const first = registry.replace(manifest)
+    const second = registry.replace(manifest)
+
+    expect(second).toBe(first)
+    expect(router.addRoute).toHaveBeenCalledTimes(1)
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('keeps a declared core route instead of adding a duplicate plugin path', () => {
+    const router = {
+      currentRoute: { value: { matched: [{}], fullPath: '/' } },
+      replace: vi.fn(),
+      getRoutes: vi.fn(() => [{ path: '/plugin-notes', name: 'CoreNotes' }]),
+      addRoute: vi.fn(),
+    } as unknown as Router
+    const registry = new RuntimeRegistry(router)
+
+    expect(registry.replace(runtimeManifest(1, true)).navigation).toHaveLength(1)
+    expect(router.addRoute).not.toHaveBeenCalled()
+  })
 })
 
 function runtimeManifest(revision: number, includePlugin: boolean): UIRuntimeManifest {

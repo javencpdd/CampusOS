@@ -71,6 +71,8 @@
 | `PUT` | `/api/v1/spaces/me` | `http.put.api.v1.spaces.me` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/spaces/me/storage` | `http.get.api.v1.spaces.me.storage` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
 | `POST` | `/api/v1/spaces/me/avatar` | `http.post.api.v1.spaces.me.avatar` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `GET` | `/api/v1/spaces/me/avatars` | `http.get.api.v1.spaces.me.avatars` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
+| `PUT` | `/api/v1/spaces/me/avatar` | `http.put.api.v1.spaces.me.avatar` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/spaces/me/styles/validate` | `http.post.api.v1.spaces.me.styles.validate` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/spaces/me/styles/preview` | `http.post.api.v1.spaces.me.styles.preview` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/spaces/me/styles/export` | `http.post.api.v1.spaces.me.styles.export` | `feature.personal-space` | `d.Space` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
@@ -214,6 +216,8 @@
 | `GET` | `/api/v1/integrations/overview` | `http.get.api.v1.integrations.overview` | `feature.integration-overview` | `d.Integration` | `jwt+admin-account+permission` | `integration.integration.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/metrics/summary` | `http.get.api.v1.metrics.summary` | `feature.integration-overview` | `d.Integration` | `jwt+admin-account+permission` | `platform.metrics.read` | `none` | `global` | `request-log-read` |
 | `GET` | `/api/v1/spaces/admin/summary` | `http.get.api.v1.spaces.admin.summary` | `feature.personal-space` | `d.Space` | `jwt+admin-account+permission` | `personal_space.space.manage` | `none` | `global` | `request-log-read` |
+| `GET` | `/api/v1/spaces/admin/users/:user_id/storage` | `http.get.api.v1.spaces.admin.users.user_id.storage` | `feature.personal-space` | `d.Space` | `jwt+admin-account+permission` | `personal_space.space.manage` | `none` | `global` | `request-log-read` |
+| `PUT` | `/api/v1/spaces/admin/users/:user_id/storage` | `http.put.api.v1.spaces.admin.users.user_id.storage` | `feature.personal-space` | `d.Space` | `jwt+admin-account+permission` | `personal_space.space.manage` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/spaces/:user_id/disable` | `http.post.api.v1.spaces.user_id.disable` | `feature.personal-space` | `d.Space` | `jwt+admin-account+permission` | `personal_space.space.manage` | `none` | `global` | `request-log` |
 | `POST` | `/api/v1/spaces/:user_id/enable` | `http.post.api.v1.spaces.user_id.enable` | `feature.personal-space` | `d.Space` | `jwt+admin-account+permission` | `personal_space.space.manage` | `none` | `global` | `request-log` |
 | `GET` | `/api/v1/webhooks` | `http.get.api.v1.webhooks` | `feature.webhook` | `d.Webhook` | `jwt+admin-account+permission` | `integration.webhook.read` | `none` | `global` | `request-log-read` |
