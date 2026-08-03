@@ -133,3 +133,54 @@ func TestAdminTakeDownCreatesASeparateAuthorNotification(t *testing.T) {
 		t.Fatalf("take-down notification mismatch: items=%#v err=%v", items, err)
 	}
 }
+
+func TestNotificationServiceModeratorScopeMessages(t *testing.T) {
+	ctx := context.Background()
+	repo := repository.NewMemoryNotificationRepository()
+	svc := NewNotificationService(repo)
+
+	if err := svc.NotifyModeratorScopeGranted(ctx, "1001", []ModeratorScopeCategory{{ID: "10", Name: "校园二手"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.NotifyModeratorScopeGranted(ctx, "1001", []ModeratorScopeCategory{
+		{ID: "10", Name: "校园二手"}, {ID: "20", Name: "失物招领"}, {ID: "30", Name: "跑腿互助"}, {ID: "40", Name: "学习资料"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.NotifyModeratorScopeRevoked(ctx, "1001", []ModeratorScopeCategory{{ID: "20", Name: "失物招领"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.NotifyModeratorScopeGranted(ctx, "1001", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	items, total, err := repo.ListByUser(ctx, "1001", 1, 20)
+	if err != nil || total != 3 || len(items) != 3 {
+		t.Fatalf("unexpected moderator notifications: total=%d items=%#v err=%v", total, items, err)
+	}
+	var grantedSingle, grantedMulti, revoked *domain.Notification
+	for _, item := range items {
+		switch {
+		case item.Type == domain.NotificationTypeModeratorGranted && item.ActionURL == "/threads?category_id=10":
+			grantedSingle = item
+		case item.Type == domain.NotificationTypeModeratorGranted && item.ActionURL == "/threads":
+			grantedMulti = item
+		case item.Type == domain.NotificationTypeModeratorRevoked:
+			revoked = item
+		}
+	}
+	if grantedSingle == nil {
+		t.Fatalf("missing single-board grant notification: %#v", items)
+	}
+	if grantedMulti == nil {
+		t.Fatalf("multi-board grant must link to the thread list: %#v", items)
+	}
+	if revoked == nil || revoked.ActionURL != "/threads?category_id=20" {
+		t.Fatalf("single-board revoke must link to that board: %#v", revoked)
+	}
+	for _, item := range items {
+		if len([]rune(item.Content)) > 150 {
+			t.Fatalf("moderator notification content was not bounded: %d runes", len([]rune(item.Content)))
+		}
+	}
+}

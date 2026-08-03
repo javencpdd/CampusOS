@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { categoryApi } from '@/modules/community/api'
+import { normalizeThreadTags } from '@/modules/community/threadTags'
 
 type CategorySummary = {
   id: string
@@ -48,18 +49,7 @@ const category = ref<CategorySummary | null>(null)
 const categoryLoading = ref(false)
 const categoryFailed = ref(false)
 
-const normalizedTags = computed(() => {
-  const seen = new Set<string>()
-  return (props.tags || []).reduce<string[]>((result, value) => {
-    const tag = String(value || '').trim()
-    const key = tag.toLocaleLowerCase()
-    if (tag && !seen.has(key)) {
-      seen.add(key)
-      result.push(tag)
-    }
-    return result
-  }, [])
-})
+const normalizedTags = computed(() => normalizeThreadTags(props.tags))
 
 const categoryStatus = computed(() => {
   if (!String(props.categoryId || '').trim()) return '未指定板块'

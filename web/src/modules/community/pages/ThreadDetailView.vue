@@ -143,7 +143,7 @@
             </el-popconfirm>
           </div>
           <div v-if="post.parent_id" class="reply-parent">
-            回复：第 {{ parentFloor(post.parent_id) || post.parent_id }} 楼
+            回复：第 {{ parentFloor(post) || '-' }} 楼
           </div>
           <div class="reply-content">{{ post.content }}</div>
         </div>
@@ -482,8 +482,12 @@ const clearReplyTarget = () => {
   replyTarget.value = null
 }
 
-const parentFloor = (parentID: string) => {
-  const parent = posts.value.find((item) => item.id === parentID)
+const parentFloor = (post: any) => {
+  // The backend snapshots the parent floor at creation time, so the quoted floor
+  // stays stable even after the parent reply is deleted; fall back to the posts
+  // loaded on the current page only for legacy payloads without the snapshot.
+  if (post.parent_floor_number) return post.parent_floor_number
+  const parent = posts.value.find((item) => item.id === post.parent_id)
   return parent?.floor_number
 }
 

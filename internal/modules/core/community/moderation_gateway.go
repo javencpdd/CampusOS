@@ -78,12 +78,12 @@ func (g *moduleModerationGateway) SetLocked(ctx context.Context, id string, lock
 	return delegate.SetLocked(ctx, id, locked)
 }
 
-func (g *moduleModerationGateway) DeletePostForModeration(ctx context.Context, id string) error {
+func (g *moduleModerationGateway) DeletePostForModeration(ctx context.Context, id, actorID string) error {
 	delegate, err := g.gateway()
 	if err != nil {
 		return err
 	}
-	return delegate.DeletePostForModeration(ctx, id)
+	return delegate.DeletePostForModeration(ctx, id, actorID)
 }
 
 func (g *moduleContentGateway) gateway() (*moderationGateway, error) {
@@ -420,8 +420,8 @@ func (g *moderationGateway) SetLocked(ctx context.Context, id string, locked boo
 	return value, err
 }
 
-func (g *moderationGateway) DeletePostForModeration(ctx context.Context, id string) error {
-	err := g.postSvc.AdminDeletePost(ctx, id)
+func (g *moderationGateway) DeletePostForModeration(ctx context.Context, id, actorID string) error {
+	err := g.postSvc.AdminDeletePost(ctx, id, actorID)
 	if errors.Is(err, repository.ErrPostNotFound) {
 		return communityport.ErrPostNotFound
 	}

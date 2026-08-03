@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000042</el-tag>
+      <el-tag type="info" effect="plain">迁移 000001 - 000043</el-tag>
     </section>
 
     <el-alert
@@ -747,9 +747,17 @@ const databaseTables: DbTable[] = [
     title: "回复",
     domain: "community",
     purpose: "主题下的回复，可通过 parent_id 形成引用/嵌套关系。",
-    fields: ["id", "thread_id", "author_id", "parent_id", "floor_number"],
-    migration: "000001 + 000016",
-    relationshipNote: "thread_id、author_id 和 parent_id 由外键保护。",
+    fields: [
+      "id",
+      "thread_id",
+      "author_id",
+      "parent_id",
+      "parent_floor_number",
+      "floor_number",
+    ],
+    migration: "000001 + 000016 + 000043",
+    relationshipNote:
+      "thread_id、author_id 和 parent_id 由外键保护；parent_floor_number 是创建时快照，父回复删除后引用楼层仍稳定。",
   },
   {
     name: "tags",
@@ -2232,6 +2240,15 @@ const migrations = [
     summary:
       "建立按用户覆盖的 User Storage 配额记录，保留 50 MB 系统默认值，并记录最近授权管理员和时间；文件仍位于 data/personal-space。",
     tables: ["user_storage_quotas", "users"],
+  },
+  {
+    version: "000043",
+    file: "000043_v13_post_parent_floor.up.sql",
+    title: "v13 回复父楼层快照",
+    scope: "社区回复",
+    summary:
+      "为 posts 增加 parent_floor_number 创建时快照并从父回复回填存量数据，父回复删除或跨分页时引用楼层显示保持稳定。",
+    tables: ["posts"],
   },
 ];
 

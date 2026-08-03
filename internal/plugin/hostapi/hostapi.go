@@ -134,17 +134,18 @@ func (api *DataAPI) GetReply(ctx context.Context, replyID string) (map[string]in
 		return nil, err
 	}
 	return map[string]interface{}{
-		"id":           post.ID,
-		"thread_id":    post.ThreadID,
-		"author_id":    post.AuthorID,
-		"author_name":  post.AuthorName,
-		"parent_id":    post.ParentID,
-		"content":      post.Content,
-		"status":       post.Status,
-		"like_count":   post.LikeCount,
-		"floor_number": post.FloorNumber,
-		"created_at":   post.CreatedAt,
-		"updated_at":   post.UpdatedAt,
+		"id":                  post.ID,
+		"thread_id":           post.ThreadID,
+		"author_id":           post.AuthorID,
+		"author_name":         post.AuthorName,
+		"parent_id":           post.ParentID,
+		"parent_floor_number": post.ParentFloorNumber,
+		"content":             post.Content,
+		"status":              post.Status,
+		"like_count":          post.LikeCount,
+		"floor_number":        post.FloorNumber,
+		"created_at":          post.CreatedAt,
+		"updated_at":          post.UpdatedAt,
 	}, nil
 }
 

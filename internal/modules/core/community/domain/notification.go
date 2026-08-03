@@ -3,10 +3,13 @@ package domain
 import "time"
 
 const (
-	NotificationTypeThreadTrashed   = "community.thread.trashed"
-	NotificationTypeThreadTakenDown = "community.thread.taken_down"
-	NotificationTypeThreadReplied   = "community.thread.replied"
-	NotificationTypePostReplied     = "community.post.replied"
+	NotificationTypeThreadTrashed          = "community.thread.trashed"
+	NotificationTypeThreadTakenDown        = "community.thread.taken_down"
+	NotificationTypeThreadReplied          = "community.thread.replied"
+	NotificationTypePostReplied            = "community.post.replied"
+	NotificationTypePostDeletedByModerator = "community.post.deleted_by_moderator"
+	NotificationTypeModeratorGranted       = "identity.moderator.granted"
+	NotificationTypeModeratorRevoked       = "identity.moderator.revoked"
 )
 
 type Notification struct {

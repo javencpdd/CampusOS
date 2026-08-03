@@ -24,6 +24,7 @@
           </span>
           <strong>{{ thread.title }}</strong>
         </router-link>
+        <ThreadBoardChips :category="resolveCategory(thread.category_id)" :tags="thread.tags" />
         <div class="compact-thread-meta">
           <span>{{ thread.author_name || '未知用户' }}</span>
           <span>{{ thread.view_count || 0 }} 浏览</span>
@@ -46,6 +47,11 @@
             >
             {{ row.title }}
           </router-link>
+        </template>
+      </el-table-column>
+      <el-table-column label="板块 / 标签" min-width="180">
+        <template #default="{ row }">
+          <ThreadBoardChips :category="resolveCategory(row.category_id)" :tags="row.tags" />
         </template>
       </el-table-column>
       <el-table-column prop="author_name" label="作者" width="120" />
@@ -73,6 +79,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { threadApi } from '@/modules/community/api'
+import ThreadBoardChips from '@/modules/community/components/ThreadBoardChips.vue'
+import { ensureCategoryCatalog, resolveCategory } from '@/modules/community/useCategoryCatalog'
 import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
 
 const route = useRoute()
@@ -136,7 +144,10 @@ const onTabChange = () => {
   loadThreads()
 }
 
-onMounted(loadThreads)
+onMounted(() => {
+  ensureCategoryCatalog()
+  loadThreads()
+})
 watch(
   () => route.query.category_id,
   () => {

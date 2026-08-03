@@ -509,6 +509,7 @@ func openAPIComponents() string {
         author_id: { type: string }
         author_name: { type: string }
         parent_id: { type: string, nullable: true }
+        parent_floor_number: { type: integer, minimum: 0 }
         content: { type: string }
         status: { type: string }
         floor_number: { type: integer, minimum: 0 }
