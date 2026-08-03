@@ -177,7 +177,13 @@ if kill -0 "$NATIVE_TEST_PID" 2>/dev/null; then
 fi
 NATIVE_TEST_PID=""
 grep -q 'Stopping native CampusOS development services' "$TEMP_DIR/native-to-docker.out"
-grep -q 'up -d --build --wait --wait-timeout 600' "$TEMP_DIR/docker.log"
+grep -q 'up -d --no-build --wait --wait-timeout 600' "$TEMP_DIR/docker.log"
 test ! -e "$TEMP_DIR/run/native-dev.pid"
+
+MOCK_DOCKER_LOG="$TEMP_DIR/rebuild-docker.log" PATH="$TEMP_DIR/bin:$PATH" \
+  CAMPUSOS_DOCKER_DEV_ENV="$VALID_ENV" \
+  "$ROOT_DIR/scripts/docker-dev.sh" rebuild >"$TEMP_DIR/rebuild.out"
+grep -q 'Rebuilding Docker development application images before startup' "$TEMP_DIR/rebuild.out"
+grep -q 'up -d --build --force-recreate --wait --wait-timeout 600 api web admin docs' "$TEMP_DIR/rebuild-docker.log"
 
 echo "Docker development setup guidance tests passed."

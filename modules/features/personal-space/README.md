@@ -23,8 +23,12 @@ User Storage Core, not Personal Space, owns safe paths, quotas, avatar files,
 rich-text images, schedule files, and future storage providers. Personal Space
 uses those ports for its profile and file UI.
 
-Default local quota is 10 MB, a single avatar upload is limited to 2 MB, and
-the latest three avatar source files are retained. These defaults are changed
+Default local quota is 50 MB, a single avatar upload is limited to 2 MB, and
+the latest three avatar source files are retained in FIFO upload order. Users
+can select any retained avatar without changing that order; a new upload alone
+prunes the oldest source. Administrators can grant a per-user override through
+the Space administration API. JPEG/PNG uploads are re-encoded and oversized
+images are downsized before quota accounting. Feature defaults are changed
 through `GET/PUT /api/v1/features/personal-space`, not a plugin manifest.
 
 ## Style packages

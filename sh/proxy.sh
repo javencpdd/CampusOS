@@ -1,8 +1,10 @@
 #!/bin/bash
 # ============================================================================
 # 脚本名称: proxy.sh
-# 功能描述: 代理开关脚本 - 支持开启/关闭系统代理，并测试连接
-# 使用方法: source proxy.sh [on|off|status|test|help]
+# 功能描述: 为当前 Bash、Git 和 SSH 开启/关闭代理，并测试连接
+# 适用平台: Linux、macOS、WSL2、Git Bash；原生 Windows PowerShell 请使用 sh/proxy.ps1
+# 基本用法: source sh/proxy.sh [on|off|status|test|help]
+# 注意事项: 必须使用 source；on/off 会修改 Git 全局代理和带标记的 ~/.ssh/config
 # 作者:    Jack
 # 创建日期: 2024
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Dev Workflow"
+  short_description: "CampusOS explicitly committed task workflow"
+  default_prompt: "Use $campusos-dev-workflow to complete, validate, document, and locally commit one CampusOS task."

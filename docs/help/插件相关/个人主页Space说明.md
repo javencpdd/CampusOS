@@ -2,7 +2,7 @@
 
 > 文档状态：Personal Space 专项参考，不是新开发者必读入口。
 > 当前基线：`v0.13.0`；接口最终以 OpenAPI 和路由矩阵为准。
-> 更新时间：2026-07-29
+> 更新时间：2026-08-02
 
 ## 1. 功能定位
 
@@ -25,8 +25,9 @@
 | 受限 HTML/CSS 风格编辑、检测、示例生成和应用 | 已支持 |
 | 风格包回滚、恢复默认 | 已支持 |
 | 头像上传到个人空间 | 已支持 |
-| 默认 10MB 本地个人空间 | 已支持，可通过 Feature 配置调整 |
-| 头像源文件保留最近 3 个 | 已支持，可通过 Feature 配置调整 |
+| 默认 50MB 本地个人空间 | 已支持；管理员可按用户单独授权 |
+| 头像源文件保留最近 3 个并切换 | 已支持；仅新上传按 FIFO 删除最老源文件 |
+| JPEG/PNG 自动压缩与超大图缩放 | 已支持；压缩后再计入配额 |
 | 个人云盘接入 | 后续任务，当前只保留配置占位 |
 
 ## 2. API 接口
@@ -195,10 +196,13 @@ GET /api/v1/spaces/me/storage
 
 | 字段 | 说明 |
 | --- | --- |
-| `quota_bytes` | 当前用户本地个人空间配额，默认 10MB |
+| `quota_bytes` | 当前用户实际生效的本地个人空间配额，默认 50MB |
+| `default_quota_bytes` | 系统默认配额 |
 | `used_bytes` | 已使用字节数 |
 | `available_bytes` | 剩余可用字节数 |
 | `avatar_keep_limit` | 头像源文件保留数量，默认 3 |
+| `custom_quota` | 当前是否为管理员单独授权的配额 |
+| `quota_updated_by` / `quota_updated_at` | 最近一次单独授权的操作者和时间 |
 
 ### 2.8 上传个人主页头像
 
@@ -220,13 +224,37 @@ POST /api/v1/spaces/me/avatar
 | --- | --- |
 | 支持格式 | `jpeg`、`png`、`gif`、`webp` |
 | 单文件上限 | 2MB |
-| 用户默认配额 | 10MB |
+| 用户默认配额 | 50MB |
 | 源文件保留 | 最近 3 个 |
 | 存储目录 | `data/personal-space/<user_id>/img/avatars/` |
 
-上传成功后，`user_spaces.avatar` 会更新为公开头像 URL，公开主页和顶部头像会优先使用该 URL。
+上传成功后，`user_spaces.avatar` 会更新为公开头像 URL，公开主页和顶部头像会优先使用该 URL。主页设置页会列出
+当前保留的三个头像。切换历史头像只更新当前 URL，不修改文件时间和 FIFO 顺序；只有再次上传新头像时才会删除
+上传时间最早的源文件，并把新头像设为当前头像。
 
-受控富文本图文文章的上传图片保存在同一用户目录的 `img/richtext/`，同样计入默认 10MB 的个人空间配额。
+头像、Community 内容图片和受控富文本图片会在服务端识别真实格式。JPEG 以质量 82 去元数据重编码，PNG 使用
+最高无损压缩，长边超过 1920 像素的 JPEG/PNG 等比缩小；GIF/WebP 为避免破坏动画或重复有损编码而保留原始
+字节。配额使用优化后的实际文件大小计算。受控富文本图片保存在同一用户目录的 `img/richtext/`。
+
+#### 2.8.1 查看与切换保留头像
+
+```text
+GET /api/v1/spaces/me/avatars
+PUT /api/v1/spaces/me/avatar
+```
+
+切换请求体为 `{"file_name":"<保留文件名>"}`。后端只允许选择当前用户头像目录内实际存在的安全文件名。
+
+#### 2.8.2 管理员调整用户配额
+
+```text
+GET /api/v1/spaces/admin/users/:user_id/storage
+PUT /api/v1/spaces/admin/users/:user_id/storage
+```
+
+更新请求体为 `{"quota_bytes":78643200}`，范围为 1 MB 到 100 GB。接口要求管理员具备 `space:manage`；
+管理后台“用户管理”的“空间”操作提供同一能力。授权立即生效，不需要重启 API 或 Docker。调低到已用容量以下
+不会删除文件，只会阻止新写入，直到用户释放空间或管理员再次扩容。
 
 ### 2.9 访问头像文件
 
@@ -302,6 +330,8 @@ migrations/000007_add_user_spaces.up.sql
 migrations/000007_add_user_spaces.down.sql
 migrations/000009_add_user_space_styles.up.sql
 migrations/000009_add_user_space_styles.down.sql
+migrations/000042_v13_user_storage_quotas.up.sql
+migrations/000042_v13_user_storage_quotas.down.sql
 ```
 
 核心表：
@@ -309,6 +339,7 @@ migrations/000009_add_user_space_styles.down.sql
 ```text
 user_spaces
 user_space_contents
+user_storage_quotas
 ```
 
 主要字段：
@@ -337,7 +368,9 @@ user_space_contents
 | `thread_created_at` / `thread_updated_at` | 来源帖子时间 |
 | `synced_at` | 最近同步时间 |
 
-个人空间文件当前不新增数据库表。头像 URL 写入 `user_spaces.avatar`，文件本体由 User Storage Core 保存在 Feature 配置指定的本地根目录。后续如接入个人云盘，可以在不改变公开主页字段的前提下扩展 Provider 配置和文件索引表。
+头像 URL 写入 `user_spaces.avatar`，文件本体由 User Storage Core 保存在 Feature 配置指定的本地根目录。
+`user_storage_quotas` 只保存显式的用户配额覆盖、更新人和时间；没有记录时使用系统默认 50 MB。后续如接入
+个人云盘，可以在不改变公开主页字段的前提下扩展 Provider 配置和文件索引表。
 
 ## 3.1 Feature 配置
 
@@ -354,7 +387,7 @@ modules/features/personal-space/module.yaml
 | `styles_dir` | `data/module_data/personal-space/styles` | 默认 JSON 风格包数据目录 |
 | `file_root` | `data/personal-space` | 个人空间本地文件根目录 |
 | `file_url_prefix` | `/api/v1/spaces/files` | 文件公开访问 URL 前缀 |
-| `default_quota_mb` | `10` | 每个用户初始本地空间 |
+| `default_quota_mb` | `50` | 没有单独授权时的每用户本地空间 |
 | `avatar_keep_limit` | `3` | 头像源文件保留数量 |
 | `max_avatar_mb` | `2` | 单个头像大小上限 |
 | `future_storage_provider` | `local` | 后续个人云盘接入预留字段 |

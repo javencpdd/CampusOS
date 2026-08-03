@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -18,6 +19,31 @@ func TestLocalAdapterConfinesUserPaths(t *testing.T) {
 	}
 	if _, err := adapter.Path("user-1", ".."); err == nil {
 		t.Fatal("expected unsafe path rejection")
+	}
+}
+
+func TestLocalAdapterPersistsPerUserQuotaOverrides(t *testing.T) {
+	repository := NewMemoryQuotaRepository()
+	root := t.TempDir()
+	adapter, err := NewLocalAdapterWithQuotaRepository(root, DefaultQuotaBytes, repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adapter.SetQuota(context.Background(), "1001", 75*1024*1024, "9001"); err != nil {
+		t.Fatal(err)
+	}
+	if got := adapter.QuotaBytes("1001"); got != 75*1024*1024 {
+		t.Fatalf("override quota=%d", got)
+	}
+	if got := adapter.QuotaBytes("1002"); got != DefaultQuotaBytes {
+		t.Fatalf("default quota=%d", got)
+	}
+	reloaded, err := NewLocalAdapterWithQuotaRepository(root, DefaultQuotaBytes, repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reloaded.QuotaBytes("1001"); got != 75*1024*1024 {
+		t.Fatalf("persisted override quota=%d", got)
 	}
 }
 

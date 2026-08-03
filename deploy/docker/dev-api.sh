@@ -16,6 +16,10 @@ drop_to_developer "$@"
 
 cd /workspace
 
+log_dir="${CAMPUSOS_LOG_DIR:-/workspace/.campusos/logs}"
+mkdir -p "$log_dir"
+exec > >(tee -a "$log_dir/api.log") 2>&1
+
 wait_for_postgres() {
   local attempts="${CAMPUSOS_DATABASE_WAIT_ATTEMPTS:-60}"
   local delay="${CAMPUSOS_DATABASE_WAIT_DELAY:-2}"

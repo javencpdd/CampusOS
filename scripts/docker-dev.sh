@@ -370,12 +370,26 @@ start_infrastructure() {
 }
 
 start_stack() {
+  local build_mode="${1:-no-build}"
+  local up_args=(up -d)
   NATIVE_HANDOFF=false
   stop_native_dev
   if [[ "$NATIVE_HANDOFF" == "true" ]]; then
     wait_for_application_ports
   fi
-  compose up -d --build --wait --wait-timeout "${CAMPUSOS_DOCKER_WAIT_TIMEOUT:-600}"
+  if [[ "$build_mode" == "build" ]]; then
+    echo "Rebuilding Docker development application images before startup."
+    up_args+=(--build --force-recreate)
+  else
+    echo "Starting with existing Docker development images (no registry-backed rebuild)."
+    echo "Use '$0 rebuild' after dependency, Dockerfile, Compose build, or container entry-script changes."
+    up_args+=(--no-build)
+  fi
+  up_args+=(--wait --wait-timeout "${CAMPUSOS_DOCKER_WAIT_TIMEOUT:-600}")
+  if [[ "$build_mode" == "build" ]]; then
+    up_args+=(api web admin docs)
+  fi
+  compose "${up_args[@]}"
   compose ps
 }
 
@@ -426,7 +440,7 @@ case "$command" in
     echo "Docker development configuration is valid: $ENV_FILE"
     if [[ "${2:-}" == "--start" ]]; then
       check_docker
-      start_stack
+      start_stack build
     else
       echo "Run '$0 setup --start' to start now, or '$0 up' later."
     fi
@@ -445,6 +459,11 @@ case "$command" in
     validate_env
     check_docker
     start_stack
+    ;;
+  rebuild)
+    validate_env
+    check_docker
+    start_stack build
     ;;
   infra-up)
     validate_env
@@ -507,7 +526,7 @@ case "$command" in
     compose down --volumes --remove-orphans
     ;;
   *)
-    echo "Usage: $0 {setup [--start]|config|build|up|infra-up|migrate [action]|lan-check|ps|logs [service]|test|shell|down|stop-apps|stop-native|reset --confirm}" >&2
+    echo "Usage: $0 {setup [--start]|config|build|up|rebuild|infra-up|migrate [action]|lan-check|ps|logs [service]|test|shell|down|stop-apps|stop-native|reset --confirm}" >&2
     exit 2
     ;;
 esac

@@ -1,6 +1,8 @@
 #!/bin/bash
 # ============================================
 # CampusOS GitHub PR 快捷脚本
+# 用途：检查当前分支和工作区，推送分支并通过 GitHub CLI 创建 PR。
+# 适用平台：Linux、macOS、WSL2、Git Bash；Windows PowerShell 需通过 bash.exe 调用。
 # 用法：
 #   ./sh/git_pr.sh
 #   ./sh/git_pr.sh -t "PR 标题"
@@ -9,6 +11,7 @@
 #   ./sh/git_pr.sh --no-push
 #   ./sh/git_pr.sh --dry-run
 #   ./sh/git_pr.sh --remote origin
+# 注意：正式创建 PR 前需要安装 GitHub CLI，并完成 gh auth login。
 # ============================================
 
 set -euo pipefail

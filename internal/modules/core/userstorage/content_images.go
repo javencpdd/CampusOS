@@ -1,16 +1,10 @@
 package storage
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -75,18 +69,13 @@ func (s *ContentImageStore) Save(userID, originalName string, reader io.Reader) 
 	if int64(len(data)) > s.maxBytes {
 		return nil, ErrImageTooLarge
 	}
-	mimeType := http.DetectContentType(data)
-	ext, err := canonicalImageExtension(originalName, mimeType)
+	optimized, err := OptimizeImage(data)
 	if err != nil {
 		return nil, err
 	}
-	width, height := 0, 0
-	if mimeType != "image/webp" {
-		config, _, decodeErr := image.DecodeConfig(bytes.NewReader(data))
-		if decodeErr != nil {
-			return nil, ErrImageUnsupported
-		}
-		width, height = config.Width, config.Height
+	data = optimized.Data
+	if int64(len(data)) > s.maxBytes {
+		return nil, ErrImageTooLarge
 	}
 
 	// Serialize quota check and write for the local Provider so concurrent
@@ -106,7 +95,7 @@ func (s *ContentImageStore) Save(userID, originalName string, reader io.Reader) 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
-	name, err := randomImageName(ext)
+	name, err := randomImageName(optimized.Extension)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +117,9 @@ func (s *ContentImageStore) Save(userID, originalName string, reader io.Reader) 
 		FileURL:  ContentImageURLPrefix + "/" + userID + "/" + name,
 		FileName: name,
 		FileSize: int64(len(data)),
-		MimeType: mimeType,
-		Width:    width,
-		Height:   height,
+		MimeType: optimized.MimeType,
+		Width:    optimized.Width,
+		Height:   optimized.Height,
 	}, nil
 }
 

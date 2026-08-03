@@ -20,8 +20,11 @@ data/
 ├── images/                            无用户归属的全局图片
 ├── config/                            本地配置预留
 ├── dist/                              本地发布产物预留
-└── skills/                            旧本地 Skill 导入预留
+└── skills/                            旧运行数据导入预留；项目 Agent Skills 位于仓库根 skills/
 ```
+
+仓库根 `skills/sources/` 是项目 Agent Skill 的规范源，`skills/guides/` 是使用说明，`.agents/skills/` 是 clone 后
+由 Codex 自动发现的跨平台桥接。它们属于开发工作流，不属于 `data/resources/skills/` 资源包运行数据。
 
 ## External Plugin
 
@@ -64,8 +67,13 @@ data/personal-space/<user_id>/
 └── pdf/
 ```
 
-默认配额为 10 MB，可在 Personal Space Built-in Feature 配置中调整。课表和
-富文本只依赖 User Storage Port，不依赖个人主页功能是否启用。
+默认配额为 50 MB；管理员可以在用户管理中写入 `user_storage_quotas`，按用户覆盖默认值且立即生效。
+头像、Community 内容图片和富文本图片共享该配额。JPEG/PNG 会去元数据、重编码，并在长边超过 1920
+像素时等比缩小，配额按优化后的文件大小计算；GIF/WebP 为保留动画或避免重复有损编码而原样保存。
+
+头像目录默认按上传时间保留最近 3 个源文件。用户切换到历史头像只修改 `user_spaces.avatar`，不会修改
+源文件时间或 FIFO 顺序；只有上传新头像才会删除最早的源文件。课表和富文本只依赖 User Storage Port，
+不依赖个人主页功能是否启用。备份必须同时包含 PostgreSQL 和 `data/personal-space/`。
 
 ## Resource Package
 

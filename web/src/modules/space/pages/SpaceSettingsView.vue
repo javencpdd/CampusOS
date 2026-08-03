@@ -45,10 +45,25 @@
                   />
                   <el-button @click="chooseAvatar" :loading="uploadingAvatar"> 上传头像 </el-button>
                   <span v-if="storage" class="storage-hint">
-                    {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}，保留最近
-                    {{ storage.avatar_keep_limit }} 个源文件
+                    已用 {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}；单个头像最大
+                    {{ formatBytes(storage.max_avatar_bytes) }}；保留最近 {{ storage.avatar_keep_limit }} 个源文件
                   </span>
                 </div>
+              </div>
+              <div v-if="avatars.length" class="avatar-history" aria-label="最近上传的头像">
+                <button
+                  v-for="item in avatars"
+                  :key="item.file_name"
+                  type="button"
+                  class="avatar-history-item"
+                  :class="{ active: item.active }"
+                  :aria-pressed="item.active"
+                  :title="item.active ? '当前头像' : '切换到此头像'"
+                  @click="selectAvatar(item)"
+                >
+                  <el-avatar :size="48" :src="item.url" />
+                  <span>{{ item.active ? '当前' : formatAvatarTime(item.uploaded_at) }}</span>
+                </button>
               </div>
             </el-form-item>
             <el-form-item label="标题">
@@ -495,6 +510,7 @@ interface SpaceStorageStatus {
   quota_bytes: number
   used_bytes: number
   available_bytes: number
+  max_avatar_bytes: number
   avatar_keep_limit: number
 }
 
@@ -505,6 +521,15 @@ interface AvatarUploadResult {
   storage: SpaceStorageStatus
   owner: Owner
   space: Space
+  avatars: AvatarHistoryItem[]
+}
+
+interface AvatarHistoryItem {
+  file_name: string
+  url: string
+  size: number
+  uploaded_at: string
+  active: boolean
 }
 
 interface SpaceForm {
@@ -528,6 +553,8 @@ const storage = ref<SpaceStorageStatus | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const uploadingAvatar = ref(false)
+const selectingAvatar = ref(false)
+const avatars = ref<AvatarHistoryItem[]>([])
 const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
@@ -619,13 +646,14 @@ const syncHTMLEditor = (space: Space) => {
 const loadSpace = async () => {
   loading.value = true
   try {
-    const [spaceRes, storageRes] = await Promise.all([spaceApi.me(), spaceApi.storage()])
+    const [spaceRes, storageRes, avatarRes] = await Promise.all([spaceApi.me(), spaceApi.storage(), spaceApi.avatars()])
     const payload = unwrap<PublicSpacePayload>(spaceRes)
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
     syncHTMLEditor(payload.space)
     storage.value = unwrap<SpaceStorageStatus>(storageRes)
+    avatars.value = unwrap<{ items: AvatarHistoryItem[] }>(avatarRes)?.items || []
     await loadSourceStylePacks(false)
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
@@ -683,12 +711,25 @@ const uploadAvatar = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+  const acceptedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  const maxBytes = storage.value?.max_avatar_bytes || 2 * 1024 * 1024
+  if (!acceptedTypes.includes(file.type)) {
+    ElMessage.error('头像格式不受支持，请上传 PNG、JPEG、GIF 或 WebP 图片。')
+    input.value = ''
+    return
+  }
+  if (file.size > maxBytes) {
+    ElMessage.error(`头像文件过大：单个文件最大 ${formatBytes(maxBytes)}，请压缩或裁剪后重试。`)
+    input.value = ''
+    return
+  }
   uploadingAvatar.value = true
   try {
     const payload = unwrap<AvatarUploadResult>(await spaceApi.uploadAvatar(file))
     owner.value = payload.owner
     currentSpace.value = payload.space
     storage.value = payload.storage
+    avatars.value = payload.avatars || []
     fillForm(payload.space)
     syncHTMLEditor(payload.space)
     userStore.setAvatar(payload.url)
@@ -699,6 +740,31 @@ const uploadAvatar = async (event: Event) => {
     uploadingAvatar.value = false
     input.value = ''
   }
+}
+
+const selectAvatar = async (item: AvatarHistoryItem) => {
+  if (item.active || selectingAvatar.value) return
+  selectingAvatar.value = true
+  try {
+    const payload = unwrap<AvatarUploadResult>(await spaceApi.selectAvatar(item.file_name))
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    storage.value = payload.storage
+    avatars.value = payload.avatars || []
+    fillForm(payload.space)
+    userStore.setAvatar(payload.url)
+    ElMessage.success('头像已切换，保留文件顺序未改变')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '切换头像失败')
+  } finally {
+    selectingAvatar.value = false
+  }
+}
+
+const formatAvatarTime = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '历史头像'
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
 const formatBytes = (value: number) => {
@@ -1094,6 +1160,37 @@ onMounted(loadSpace)
 }
 .avatar-input {
   display: none;
+}
+.avatar-history {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.avatar-history-item {
+  min-width: 68px;
+  padding: 8px;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  color: #606266;
+  cursor: pointer;
+}
+.avatar-history-item:hover,
+.avatar-history-item:focus-visible {
+  border-color: var(--campus-brand-color, #409eff);
+}
+.avatar-history-item.active {
+  border-color: var(--campus-brand-color, #409eff);
+  color: var(--campus-brand-color, #409eff);
+  background: #ecf5ff;
+}
+.avatar-history-item span {
+  font-size: 11px;
 }
 .storage-hint {
   color: #606266;

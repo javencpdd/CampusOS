@@ -208,14 +208,17 @@ Run '.\scripts\docker-dev.ps1 setup -Start' to start now
 .\scripts\docker-dev.ps1 up
 ```
 
-脚本最终调用的 Compose 语义相当于：
+日常 `up` 使用已有开发镜像，Compose 语义相当于：
 
 ```powershell
 docker compose `
   --env-file deploy/docker/.env.dev.local `
   -f compose.dev.yml `
-  up -d --build --wait --wait-timeout 600
+  up -d --no-build --wait --wait-timeout 600
 ```
+
+只有首次 `setup -Start`，或依赖、开发 Dockerfile、Compose 构建项、容器入口脚本变化后执行
+`.\scripts\docker-dev.ps1 rebuild`，才会附加 `--build` 并访问 Docker Hub/依赖源。
 
 首次构建需要：
 
@@ -228,7 +231,7 @@ docker compose `
 7. 启动三个前端开发服务器。
 8. 等待七个服务通过健康检查。
 
-不要在构建尚未结束时反复执行 `setup -Start` 或 `up`，否则会产生相互竞争的 Compose 客户端。
+不要在构建尚未结束时反复执行 `setup -Start` 或 `rebuild`，否则会产生相互竞争的 Compose 客户端。
 
 ## 7. Docker Hub 代理故障和处理
 
@@ -263,6 +266,30 @@ Get-ItemProperty `
 
 预期 `ProxyEnable` 为 `1`，`ProxyServer` 包含 `127.0.0.1:7897`。
 
+### 7.2.1 使用仓库的 Windows 代理脚本
+
+`sh/proxy.sh` 是 Bash 脚本，适用于 Linux、WSL2 和 Git Bash，不应在原生 PowerShell 中直接运行。
+Windows 使用 `sh/proxy.ps1`：
+
+```powershell
+# 当前 PowerShell 环境变量 + Git 全局代理
+. .\sh\proxy.ps1 on
+
+# 同时设置 Windows 当前用户系统代理，供 Docker Desktop 的 System proxy 读取
+. .\sh\proxy.ps1 on -SystemProxy
+
+.\sh\proxy.ps1 status
+.\sh\proxy.ps1 test
+
+# 清除当前 Shell 设置，并恢复开启前保存的 Git/Windows 系统代理
+. .\sh\proxy.ps1 off
+```
+
+第一字符 `.` 后面还有一个空格，这是 PowerShell dot-source。若写成 `\.\sh\proxy.ps1 on`，脚本子进程结束后
+环境变量不会留在当前终端；Git 和带 `-SystemProxy` 的 Windows 设置仍是持久配置。默认代理是
+`http://127.0.0.1:7897`，也可传 `-ProxyHost`、`-Port`。恢复状态保存在被 `.gitignore` 覆盖的
+`.campusos/run/proxy-windows-state.json`，不包含代理凭据。Windows 脚本不修改 `~/.ssh/config`。
+
 ### 7.3 让 Docker Desktop 重新读取代理
 
 Docker Desktop 可以使用 Windows 系统代理，也可以在 Docker Desktop
@@ -284,8 +311,10 @@ docker pull hello-world:latest
 成功时应看到镜像层下载完成和 Digest。之后再执行：
 
 ```powershell
-.\scripts\docker-dev.ps1 up
+.\scripts\docker-dev.ps1 rebuild
 ```
+
+这里是在验证“需要构建镜像”的代理链路，因此使用 `rebuild`；日常从已有镜像启动仍使用 `up`。
 
 `docker info` 可能显示：
 
@@ -399,10 +428,11 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v1/health
 修改 `package.json` 或 lockfile 后重新执行：
 
 ```powershell
-.\scripts\docker-dev.ps1 up
+.\scripts\docker-dev.ps1 rebuild
 ```
 
-它会使用已有缓存重建受影响镜像。
+它会使用已有缓存重建受影响镜像并启动。普通源码由热更新加载，不要执行 `rebuild`；已经停止的容器使用
+`.\scripts\docker-dev.ps1 up` 从现有镜像启动，不会进入 Docker Hub 构建流程。
 
 ## 10. 停止、再次启动和数据边界
 

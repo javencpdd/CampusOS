@@ -2,7 +2,12 @@ package domain
 
 import "time"
 
-const NotificationTypeThreadTrashed = "community.thread.trashed"
+const (
+	NotificationTypeThreadTrashed   = "community.thread.trashed"
+	NotificationTypeThreadTakenDown = "community.thread.taken_down"
+	NotificationTypeThreadReplied   = "community.thread.replied"
+	NotificationTypePostReplied     = "community.post.replied"
+)
 
 type Notification struct {
 	ID        string                 `json:"id"`

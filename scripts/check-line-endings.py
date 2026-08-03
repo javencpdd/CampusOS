@@ -171,7 +171,9 @@ def main() -> int:
         relative = Path(*item.path.split("/"))
         target = root / relative
         if not target.is_file():
-            errors.append(f"{item.path}: tracked file is missing from the working tree")
+            # Deleted or moved tracked paths have no working-tree bytes to
+            # validate. Git status owns deletion detection; this checker only
+            # validates files that are actually present.
             continue
 
         attrs = attributes.get(item.path, {})

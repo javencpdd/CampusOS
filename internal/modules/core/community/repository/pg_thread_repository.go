@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -203,9 +204,13 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		args = append(args, filter.CategoryID)
 		argIdx++
 	}
-	if len(filter.CategoryIDs) > 0 {
-		where = append(where, fmt.Sprintf("category_id = ANY($%d::text[])", argIdx))
-		args = append(args, filter.CategoryIDs)
+	if filter.CategoryIDs != nil {
+		categoryIDs, err := parseBigIntIDs(filter.CategoryIDs)
+		if err != nil {
+			return nil, 0, fmt.Errorf("invalid category list filter: %w", err)
+		}
+		where = append(where, fmt.Sprintf("category_id = ANY($%d::bigint[])", argIdx))
+		args = append(args, categoryIDs)
 		argIdx++
 	}
 	if filter.AuthorID != "" {
@@ -306,6 +311,22 @@ func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListF
 		threads = append(threads, t)
 	}
 	return threads, total, nil
+}
+
+func parseBigIntIDs(values []string) ([]int64, error) {
+	result := make([]int64, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		parsed, err := strconv.ParseInt(trimmed, 10, 64)
+		if err != nil || parsed < 1 {
+			if err == nil {
+				err = errors.New("ID must be positive")
+			}
+			return nil, fmt.Errorf("%q: %w", value, err)
+		}
+		result = append(result, parsed)
+	}
+	return result, nil
 }
 
 type rowScanner interface {

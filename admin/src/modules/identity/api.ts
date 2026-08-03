@@ -36,7 +36,7 @@ export const mfaPolicyApi = {
 }
 
 export const userApi = {
-  list: (params?: { page?: number; page_size?: number }) => api.get('/users', { params }),
+  list: (params?: { page?: number; page_size?: number }) => api.get('/admin/users', { params }),
   get: (id: string) => api.get(`/users/${id}`),
   suspend: (id: string) => api.post(`/users/${id}/suspend`),
   activate: (id: string) => api.post(`/users/${id}/activate`),

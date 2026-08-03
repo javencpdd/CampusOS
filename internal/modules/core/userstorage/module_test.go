@@ -16,7 +16,7 @@ func TestModulePublishesStableStoragePorts(t *testing.T) {
 	if err := module.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"storage.user", "storage.quota", "storage.safe-path", "storage.provider", "storage.content-images"} {
+	for _, name := range []string{"storage.user", "storage.quota", "storage.quota-manager", "storage.safe-path", "storage.provider", "storage.content-images"} {
 		if _, ok := app.Lookup(name); !ok {
 			t.Fatalf("missing storage port %s", name)
 		}

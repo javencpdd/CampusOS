@@ -36,6 +36,7 @@ export default defineConfig({
           { text: '权限配置入门', link: '/guide/permission-configuration' },
           { text: '验证码策略配置', link: '/guide/challenge-policy' },
           { text: '分组导航与图文发布', link: '/guide/structured-image-text' },
+          { text: 'Web 交互、空间与通知', link: '/guide/web-ui-storage-notifications' },
           { text: '项目介绍', link: '/guide/introduction' },
           { text: '系统架构', link: '/guide/architecture' },
           { text: '模块与插件边界', link: '/guide/module-plugin-resource-boundaries' },

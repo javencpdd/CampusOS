@@ -80,6 +80,11 @@ CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` �
 
 版块可以配置默认标签。用户发帖时，服务会将默认标签和用户标签合并并去重。
 
+公开帖子列表的 `category_id` 也接受 group ID。服务端会把活动 group 展开为其全部活动子 board，再执行
+统一的公开状态和分页筛选；空 group 返回空列表，不会误命中“全部帖子”缓存。Web 导航中的“分组 · 全部帖子”
+使用该语义，单个 board 仍只返回本板块帖子。PostgreSQL 实现把展开结果校验并转换为 `bigint[]`，与
+`threads.category_id BIGINT` 同型比较；互助和二手的基础 Thread 因而都包含在所属 group 的聚合列表中。
+
 ## 结构化帖子类型与板块策略
 
 `thread_type` 表示内容的业务类型，`content_format` 只表示正文如何渲染。当前固定类型是：
@@ -156,7 +161,8 @@ CampusOS 只有两级导航：`group` 是根级分组，不能发帖；`board` �
 | `PUT` | `/secondhand/threads/:id` | JWT + 作者 | 编辑正文和 Detail，需版本号。 |
 | `POST` | `/secondhand/threads/:id/status` | JWT + 作者 | 修改交易业务状态，需版本号。 |
 
-`price_minor` 以分保存，首版只允许 `CNY`。状态机为
+`price_minor` 以分保存，首版只允许 `CNY`。Web 表单允许两位小数并用 `Math.round(元 × 100)` 转换，因此
+`12.34` 元以整数 `1234` 提交，不使用浮点数作为持久化金额。状态机为
 `available -> reserved/sold/closed`、`reserved -> available/sold/closed`；`sold` 和
 `closed` 是终态。它不等同于帖子发布或审核状态，状态冲突返回 `409`。
 编辑和状态更新只接受仍处于 active（未回收）状态的基础 Thread；作者已回收的内容返回 `409 / 40009`，且不会
@@ -197,8 +203,9 @@ Content-Type: application/json
 
 ## 站内通知
 
-管理员或其他治理主体把帖子移入回收站时，Community Core 会在同一可靠事务中给作者写入站内通知。通知保存
-失败会使治理命令回滚；作者自己删除内容不会收到重复通知。
+管理员或其他治理主体把帖子移入回收站或下架时，Community Core 会在同一可靠事务中给作者写入站内通知。
+其他用户直接回复主题时通知主题作者；回复某条评论时通知评论作者，并在接收者不同的情况下同时通知主题作者。
+自我回复和同一接收者不会产生重复通知。通知保存失败会使对应可靠命令回滚。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |

@@ -26,6 +26,10 @@ git branch --show-current
 | Docker | `make docker-deploy-check` 和受影响的备份恢复流程 |
 | 任意文本/资源包 | `python scripts/check-line-endings.py --include-untracked` |
 
+Web 与 Admin 使用 `"@/*": ["./src/*"]` 这种相对 `tsconfig.json` 的显式 `paths` 映射，并由 Vite 配置相同的
+`@` alias。不要重新加入 TypeScript 6 已弃用、TypeScript 7 将移除的 `baseUrl`，也不要用
+`ignoreDeprecations` 掩盖它；官方迁移说明见 [Deprecated: baseUrl](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html#deprecated---baseurl)。
+
 所有改动都执行：
 
 ```bash
@@ -44,6 +48,27 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 只记录实际执行过的命令。没有证据时不要写“已验收”。
 
+## 2.1 项目 Agent Skills
+
+仓库 `skills/sources/` 保存可版本化的 Agent 工作流，`skills/guides/` 保存调用、适用性和维护说明；根目录
+`.agents/skills/` 是由同步脚本生成的轻量发现桥接。开发者 clone 仓库后，从仓库内启动 Codex 即可直接调用，
+不需要复制到个人系统目录。普通开发默认使用 `campusos-dev-nocommit`；只有用户明确要求本地 commit 时才使用
+`campusos-dev-workflow`。专项入口：
+
+| 任务 | Skill |
+| --- | --- |
+| 新会话、上下文恢复、版本状态核对 | `campusos-project-onboarding` |
+| README 和文档信息架构 | `campusos-readme-update` |
+| migration、Schema、数据目录和 Admin 架构视图 | `campusos-data-architecture-sync` |
+| Windows/Linux Docker 首配、热更新、代理、LAN 和日志 | `campusos-docker-development` |
+| Web/Admin 空态、字段、通知、表单、路由和跨层回归 | `campusos-webui-regression` |
+| 新增、移动、校验仓库 Skill 和发现桥接 | `campusos-skill-repository-sync` |
+
+Skill 不能替代代码事实和实际测试。每个项目 `SKILL.md` 与使用说明必须写明更新时间；完整审计见
+[仓库 Skills 文档](https://github.com/javencpdd/CampusOS/tree/main/skills)。修改 Skill 后执行
+`python skills/sources/campusos-skill-repository-sync/scripts/sync_skill_bridges.py --root . --write`，再用 `--check`
+检查漂移。已打开的会话若未自动刷新列表，重启 Codex 一次即可；该流程不会覆盖用户级 Skills。
+
 ## 3. 提交辅助脚本
 
 两个 Bash 脚本始终读取当前 Git 分支，切换分支后不需要修改脚本：
@@ -56,9 +81,23 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 Windows 应在 Git Bash/WSL2 中运行；PowerShell 可以显式调用 Git for Windows：
 
 ```powershell
-& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh --help
-& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_pr.sh --help
+$gitExe = (Get-Command git.exe -ErrorAction Stop).Source
+$gitRoot = Split-Path (Split-Path $gitExe -Parent) -Parent
+$gitBash = Join-Path $gitRoot 'bin\bash.exe'
+
+& $gitBash ./sh/git_commit.sh 'feat: describe the change'
+gh auth status
+& $gitBash ./sh/git_pr.sh -t 'feat: describe the change' --base main --dry-run
+& $gitBash ./sh/git_pr.sh -t 'feat: describe the change' --base main
 ```
+
+`$gitBash` 是当前 PowerShell 会话变量，每次新开终端都需要重新执行前三行初始化。默认安装路径下也可直接使用
+`& 'C:\Program Files\Git\bin\bash.exe' ./sh/git_commit.sh 'feat: describe the change'`。变量未初始化时，
+`& $gitBash ...` 会被 PowerShell 拒绝；去掉 `&` 同样不是合法调用。
+
+PowerShell 的 `Set-ExecutionPolicy` 不影响 `.sh`；也不要依赖可能指向 WSL 的裸 `bash`。环境变量使用
+`$env:CAMPUSOS_GIT_REMOTE = 'my-fork'` 后再调用 `$gitBash`。完整 Windows 命令、退出码检查和故障处理见仓库
+Help 的 PR 脚本说明。
 
 标准流程：
 

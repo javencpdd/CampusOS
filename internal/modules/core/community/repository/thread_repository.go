@@ -198,7 +198,7 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 		if filter.CategoryID != "" && t.CategoryID != filter.CategoryID {
 			continue
 		}
-		if len(filter.CategoryIDs) > 0 && !containsString(filter.CategoryIDs, t.CategoryID) {
+		if filter.CategoryIDs != nil && !containsString(filter.CategoryIDs, t.CategoryID) {
 			continue
 		}
 		if filter.AuthorID != "" && t.AuthorID != filter.AuthorID {

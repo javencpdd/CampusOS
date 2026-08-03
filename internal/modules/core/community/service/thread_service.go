@@ -50,6 +50,7 @@ type ContentAuthorization interface {
 
 type ThreadNotificationWriter interface {
 	NotifyThreadTrashed(context.Context, string, string, string, string) error
+	NotifyThreadTakenDown(context.Context, string, string, string, string) error
 }
 
 // ContentAuthorizationAuditor is optional so standalone Community tests and
@@ -433,6 +434,9 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
+	if err := s.expandGroupCategoryFilter(ctx, &filter); err != nil {
+		return nil, 0, fmt.Errorf("resolve thread category filter: %w", err)
+	}
 	includeAllStatuses := filter.Status == "all"
 	if includeAllStatuses {
 		filter.Status = ""
@@ -450,7 +454,7 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	cacheablePublicList := filter.Status == string(domain.ThreadStatusPublished) &&
 		filter.Keyword == "" &&
 		filter.CategoryID == "" &&
-		len(filter.CategoryIDs) == 0 &&
+		filter.CategoryIDs == nil &&
 		filter.AuthorID == "" &&
 		filter.ContentFormat == "" &&
 		filter.ThreadType == "" &&
@@ -486,6 +490,37 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 	}
 
 	return threads, total, nil
+}
+
+// expandGroupCategoryFilter keeps the category_id HTTP contract stable while
+// giving group nodes their intended read semantics. Threads can only belong to
+// boards, so selecting a group becomes an explicit set filter over every
+// active child board. A non-nil empty set deliberately matches no rows.
+func (s *ThreadService) expandGroupCategoryFilter(ctx context.Context, filter *domain.ThreadListFilter) error {
+	if filter == nil || strings.TrimSpace(filter.CategoryID) == "" || s.categoryRepo == nil {
+		return nil
+	}
+	category, err := s.categoryRepo.GetByID(ctx, strings.TrimSpace(filter.CategoryID))
+	if err != nil {
+		return err
+	}
+	category.NormalizeHierarchy()
+	if category.NodeKind != domain.CategoryNodeGroup {
+		return nil
+	}
+	children, err := s.categoryRepo.ListChildren(ctx, category.ID)
+	if err != nil {
+		return err
+	}
+	filter.CategoryID = ""
+	filter.CategoryIDs = make([]string, 0, len(children))
+	for _, child := range children {
+		child.NormalizeHierarchy()
+		if child.NodeKind == domain.CategoryNodeBoard && child.LifecycleStatus == domain.CategoryLifecycleActive {
+			filter.CategoryIDs = append(filter.CategoryIDs, child.ID)
+		}
+	}
+	return nil
 }
 
 // UpdateThread 更新帖子
@@ -776,6 +811,11 @@ func (s *ThreadService) TakeDown(ctx context.Context, id, actorID, reason string
 	}
 	if err := s.recordTransition(ctx, thread, actorID, "take_down", reason, before, true); err != nil {
 		return nil, err
+	}
+	if s.notifications != nil && thread.AuthorID != actorID {
+		if err := s.notifications.NotifyThreadTakenDown(ctx, thread.AuthorID, thread.ID, thread.Title, reason); err != nil {
+			return nil, err
+		}
 	}
 	s.invalidateListCache(ctx)
 	s.publishThreadUpdated(ctx, thread)

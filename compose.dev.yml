@@ -71,6 +71,7 @@ services:
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_DEV_POLL_INTERVAL: ${CAMPUSOS_DEV_POLL_INTERVAL:-1}
+      CAMPUSOS_LOG_DIR: /workspace/.campusos/logs
       GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
       GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
       GOFLAGS: -buildvcs=false
@@ -144,6 +145,7 @@ services:
     command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev", "--host", "0.0.0.0"]
     environment:
       CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/web
+      CAMPUSOS_FRONTEND_LOG_FILE: /workspace/.campusos/logs/web.log
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_API_PROXY_TARGET: http://api:8080
@@ -153,6 +155,7 @@ services:
       - "${CAMPUSOS_DEV_WEB_BIND:-127.0.0.1}:${CAMPUSOS_DEV_WEB_PORT:-3000}:3000"
     volumes:
       - ./web:/workspace/web
+      - ./.campusos/logs:/workspace/.campusos/logs
       - web-node-modules:/workspace/web/node_modules
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -173,6 +176,7 @@ services:
     command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev", "--host", "0.0.0.0"]
     environment:
       CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/admin
+      CAMPUSOS_FRONTEND_LOG_FILE: /workspace/.campusos/logs/admin.log
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_API_PROXY_TARGET: http://api:8080
@@ -185,6 +189,7 @@ services:
       - "${CAMPUSOS_DEV_ADMIN_BIND:-127.0.0.1}:${CAMPUSOS_DEV_ADMIN_PORT:-3001}:3001"
     volumes:
       - ./admin:/workspace/admin
+      - ./.campusos/logs:/workspace/.campusos/logs
       - admin-node-modules:/workspace/admin/node_modules
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -202,6 +207,7 @@ services:
     command: ["/usr/local/bin/campusos-dev-frontend", "pnpm", "dev"]
     environment:
       CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/docs
+      CAMPUSOS_FRONTEND_LOG_FILE: /workspace/.campusos/logs/docs.log
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
       CAMPUSOS_DOCS_LAST_UPDATED: "false"
@@ -211,6 +217,7 @@ services:
       - "${CAMPUSOS_DEV_DOCS_BIND:-127.0.0.1}:${CAMPUSOS_DEV_DOCS_PORT:-3002}:3002"
     volumes:
       - ./docs-site:/workspace/docs-site
+      - ./.campusos/logs:/workspace/.campusos/logs
       - docs-node-modules:/workspace/docs-site/node_modules
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]

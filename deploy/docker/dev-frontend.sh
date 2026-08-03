@@ -18,6 +18,11 @@ drop_to_developer() {
 
 drop_to_developer "$@"
 
+if [[ -n "${CAMPUSOS_FRONTEND_LOG_FILE:-}" ]]; then
+  mkdir -p "$(dirname "$CAMPUSOS_FRONTEND_LOG_FILE")"
+  exec > >(tee -a "$CAMPUSOS_FRONTEND_LOG_FILE") 2>&1
+fi
+
 seed_dir="${CAMPUSOS_FRONTEND_SEED:?CAMPUSOS_FRONTEND_SEED is required}"
 if [[ ! -f "$seed_dir/.campusos-lock-sha" || ! -f pnpm-lock.yaml ]]; then
   echo "frontend dependency seed or source lockfile is missing" >&2

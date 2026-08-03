@@ -16,7 +16,7 @@ config:
   styles_dir: "data/module_data/personal-space/styles"
   file_root: "data/personal-space"
   file_url_prefix: "/api/v1/spaces/files"
-  default_quota_mb: 10
+  default_quota_mb: 50
   avatar_keep_limit: 3
   max_avatar_mb: 2
   future_storage_provider: local
@@ -45,7 +45,7 @@ config_schema:
       type: number
       description: "Default local storage quota assigned to each user."
       required: true
-      default: 10
+      default: 50
     - key: avatar_keep_limit
       label: "Avatar keep limit"
       type: number

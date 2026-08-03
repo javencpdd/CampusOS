@@ -23,6 +23,38 @@ func NewNotificationService(repo repository.NotificationRepository) *Notificatio
 }
 
 func (s *NotificationService) NotifyThreadTrashed(ctx context.Context, userID, threadID, threadTitle, reason string) error {
+	return s.createThreadNotification(ctx, userID, threadID, domain.NotificationTypeThreadTrashed,
+		"帖子已被管理员移入回收站",
+		fmt.Sprintf("您的帖子《%s》已被管理员移入回收站。内容不会继续公开，您可以打开详情查看或恢复。", notificationThreadTitle(threadTitle)),
+		map[string]interface{}{"reason": strings.TrimSpace(reason)}, "")
+}
+
+func (s *NotificationService) NotifyThreadTakenDown(ctx context.Context, userID, threadID, threadTitle, reason string) error {
+	return s.createThreadNotification(ctx, userID, threadID, domain.NotificationTypeThreadTakenDown,
+		"帖子已被管理员下架",
+		fmt.Sprintf("您的帖子《%s》已被管理员下架，请查看原因并在整改后重新提交审核。", notificationThreadTitle(threadTitle)),
+		map[string]interface{}{"reason": strings.TrimSpace(reason)}, "")
+}
+
+func (s *NotificationService) NotifyThreadReplied(ctx context.Context, userID, threadID, threadTitle, postID, actorName string) error {
+	actorName = notificationActorName(actorName)
+	return s.createThreadNotification(ctx, userID, threadID, domain.NotificationTypeThreadReplied,
+		"您的帖子收到新回复",
+		fmt.Sprintf("%s 回复了您的帖子《%s》。", actorName, notificationThreadTitle(threadTitle)),
+		map[string]interface{}{"post_id": strings.TrimSpace(postID), "actor_name": actorName}, strings.TrimSpace(postID))
+}
+
+func (s *NotificationService) NotifyPostReplied(ctx context.Context, userID, threadID, threadTitle, parentPostID, postID, actorName string) error {
+	actorName = notificationActorName(actorName)
+	return s.createThreadNotification(ctx, userID, threadID, domain.NotificationTypePostReplied,
+		"您的评论收到新回复",
+		fmt.Sprintf("%s 回复了您在《%s》中的评论。", actorName, notificationThreadTitle(threadTitle)),
+		map[string]interface{}{
+			"parent_post_id": strings.TrimSpace(parentPostID), "post_id": strings.TrimSpace(postID), "actor_name": actorName,
+		}, strings.TrimSpace(postID))
+}
+
+func (s *NotificationService) createThreadNotification(ctx context.Context, userID, threadID, notificationType, title, content string, metadata map[string]interface{}, postID string) error {
 	if s == nil || s.repo == nil {
 		return errors.New("notification repository is unavailable")
 	}
@@ -31,25 +63,36 @@ func (s *NotificationService) NotifyThreadTrashed(ctx context.Context, userID, t
 	if userID == "" || threadID == "" {
 		return errors.New("notification recipient and thread are required")
 	}
-	now := time.Now().UTC()
-	title := truncateNotificationTitle(strings.TrimSpace(threadTitle), 80)
-	if title == "" {
-		title = "未命名帖子"
+	if metadata == nil {
+		metadata = make(map[string]interface{})
 	}
+	metadata["thread_id"] = threadID
+	actionURL := "/threads/" + threadID
+	if postID != "" {
+		actionURL += "#post-" + postID
+	}
+	now := time.Now().UTC()
 	return s.repo.Create(ctx, &domain.Notification{
-		ID:        strconv.FormatInt(idgen.New(), 10),
-		UserID:    userID,
-		Type:      domain.NotificationTypeThreadTrashed,
-		Title:     "帖子已被管理员移入回收站",
-		Content:   fmt.Sprintf("您的帖子《%s》已被管理员移入回收站。内容不会继续公开，您可以打开详情查看或恢复。", title),
-		ActionURL: "/threads/" + threadID,
-		Metadata: map[string]interface{}{
-			"thread_id": threadID,
-			"reason":    strings.TrimSpace(reason),
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID: strconv.FormatInt(idgen.New(), 10), UserID: userID, Type: notificationType,
+		Title: title, Content: content, ActionURL: actionURL, Metadata: metadata,
+		CreatedAt: now, UpdatedAt: now,
 	})
+}
+
+func notificationThreadTitle(value string) string {
+	value = truncateNotificationTitle(strings.TrimSpace(value), 80)
+	if value == "" {
+		return "未命名帖子"
+	}
+	return value
+}
+
+func notificationActorName(value string) string {
+	value = truncateNotificationTitle(strings.TrimSpace(value), 40)
+	if value == "" {
+		return "一位用户"
+	}
+	return value
 }
 
 func (s *NotificationService) List(ctx context.Context, userID string, page, pageSize int) (*domain.NotificationList, error) {

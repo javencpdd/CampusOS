@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Skill Repository Sync"
+  short_description: "同步仓库 Skill 源文件、发现桥接与使用说明结构"
+  default_prompt: "Use $campusos-skill-repository-sync to validate and synchronize the repository-local CampusOS skills."

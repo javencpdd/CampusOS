@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS 数据架构同步"
+  short_description: "持续检查并同步CampusOS迁移文件与管理端数据架构可视化视图"
+  default_prompt: "Use $campusos-data-architecture-sync to synchronize CampusOS migrations, data directories, and the Admin architecture view."

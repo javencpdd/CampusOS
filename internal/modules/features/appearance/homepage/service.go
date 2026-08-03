@@ -37,6 +37,7 @@ type Service struct {
 
 type Config struct {
 	Enabled           bool          `json:"enabled"`
+	Logo              LogoInfo      `json:"logo"`
 	HeroTitle         string        `json:"hero_title"`
 	HeroSubtitle      string        `json:"hero_subtitle"`
 	BackgroundImage   string        `json:"background_image"`
@@ -82,6 +83,7 @@ func NewService(source ConfigSource, categories CategoryRepository) *Service {
 
 func (s *Service) PublicConfig(ctx context.Context) (*Config, error) {
 	cfg := defaultConfig()
+	cfg.Logo = s.LogoInfo()
 	if s.config == nil || !s.config.Enabled() {
 		cfg.Enabled = false
 		return cfg, nil
@@ -343,6 +345,7 @@ func (s *Service) categoryTags(ctx context.Context, limit int) []CategoryTag {
 func defaultConfig() *Config {
 	return &Config{
 		Enabled:           false,
+		Logo:              LogoInfo{URL: logoURL("default"), MIMEType: "image/png", MaxBytes: DefaultLogoMaxBytes},
 		HeroTitle:         "欢迎来到 CampusOS",
 		HeroSubtitle:      "下一代校园社区引擎 - 事件驱动、AI Native 的社区操作系统",
 		BackgroundImage:   "",

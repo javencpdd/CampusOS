@@ -1,0 +1,4 @@
+interface:
+  display_name: "CampusOS Docker Development"
+  short_description: "Cross-platform CampusOS Docker development workflow"
+  default_prompt: "Use $campusos-docker-development to diagnose or update the CampusOS Docker development workflow safely."

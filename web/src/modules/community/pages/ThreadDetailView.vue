@@ -17,8 +17,8 @@
               <el-tag v-if="moderationStatus === 'taken_down'" type="danger" size="small">已下架</el-tag>
               <el-tag v-if="moderationStatus === 'rejected'" type="danger" size="small">已拒绝</el-tag>
               <el-tag v-if="deletionStatus === 'trashed'" type="warning" size="small">回收站</el-tag>
-              <el-tag v-for="tag in thread.tags" :key="tag" size="small">{{ tag }}</el-tag>
             </div>
+            <ThreadTaxonomy :category-id="thread.category_id" :tags="thread.tags" />
             <el-alert
               v-if="isOwnThread && governanceNotice"
               class="governance-notice"
@@ -124,7 +124,7 @@
       </template>
 
       <div v-if="posts.length > 0" class="reply-list">
-        <div v-for="post in posts" :key="post.id" class="reply-item">
+        <div v-for="post in posts" :id="`post-${post.id}`" :key="post.id" class="reply-item">
           <div class="reply-meta">
             <strong class="reply-floor">第 {{ post.floor_number || '-' }} 楼</strong>
             <span class="reply-author">{{ post.author_name }}</span>
@@ -200,6 +200,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bottom, Delete, Lock, Top, Unlock } from '@element-plus/icons-vue'
 import { moderationApi, postApi, threadApi } from '@/modules/community/api'
+import ThreadTaxonomy from '@/modules/community/components/ThreadTaxonomy.vue'
 import { richTextApi } from '@/modules/richtext/api'
 import { useUserStore } from '@/modules/identity/store'
 

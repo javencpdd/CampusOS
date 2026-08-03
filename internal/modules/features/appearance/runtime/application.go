@@ -69,6 +69,27 @@ func (a *Application) spaceStyles() (space.StyleApplication, error) {
 func (a *Application) PublicConfig(ctx context.Context) (*homepage.Config, error) {
 	return a.homepage.PublicConfig(ctx)
 }
+func (a *Application) LogoAsset(ctx context.Context) (*homepage.LogoAsset, error) {
+	return a.homepage.LogoAsset(ctx)
+}
+func (a *Application) SaveLogo(ctx context.Context, actorID string, reader io.Reader) (*homepage.LogoInfo, error) {
+	var result *homepage.LogoInfo
+	err := a.track(ctx, "appearance.logo.update", "system-logo", "system", actorID, func(operationCtx context.Context) error {
+		var err error
+		result, err = a.homepage.SaveLogo(operationCtx, reader)
+		return err
+	})
+	return result, err
+}
+func (a *Application) ResetLogo(ctx context.Context, actorID string) (*homepage.LogoInfo, error) {
+	var result *homepage.LogoInfo
+	err := a.track(ctx, "appearance.logo.reset", "system-logo", "system", actorID, func(operationCtx context.Context) error {
+		var err error
+		result, err = a.homepage.ResetLogo(operationCtx)
+		return err
+	})
+	return result, err
+}
 func (a *Application) ValidateStylePackZip(reader io.ReaderAt, size int64) (*homepage.StylePackResult, error) {
 	return a.homepage.ValidateStylePackZip(reader, size)
 }

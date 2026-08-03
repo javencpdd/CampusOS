@@ -1,21 +1,24 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const (
-	DefaultRoot = "data/personal-space"
-	LegacyRoot  = "data/images/personal-space"
-	FileDir     = "file"
-	ImageDir    = "img"
-	ExcelDir    = "excel"
-	WordDir     = "word"
-	PDFDir      = "pdf"
+	DefaultQuotaBytes = int64(50 * 1024 * 1024)
+	DefaultRoot       = "data/personal-space"
+	LegacyRoot        = "data/images/personal-space"
+	FileDir           = "file"
+	ImageDir          = "img"
+	ExcelDir          = "excel"
+	WordDir           = "word"
+	PDFDir            = "pdf"
 )
 
 var ErrUnsafePath = errors.New("user storage path is unsafe")
@@ -34,6 +37,13 @@ type Quota interface {
 	CheckQuota(userID string, incoming int64) error
 }
 
+type QuotaManager interface {
+	Quota
+	DefaultQuotaBytes() int64
+	QuotaOverride(userID string) (QuotaRecord, bool)
+	SetQuota(context.Context, string, int64, string) (QuotaRecord, error)
+}
+
 type SafePath interface {
 	Path(userID string, parts ...string) (string, error)
 }
@@ -48,15 +58,22 @@ type Provider interface {
 }
 
 type LocalAdapter struct {
-	root       string
-	quotaBytes int64
+	root            string
+	quotaBytes      int64
+	quotaRepository QuotaRepository
+	quotaMu         sync.RWMutex
+	quotaOverrides  map[string]QuotaRecord
 }
 
 func NewLocalAdapter(root string) (*LocalAdapter, error) {
-	return NewLocalAdapterWithQuota(root, 10*1024*1024)
+	return NewLocalAdapterWithQuota(root, DefaultQuotaBytes)
 }
 
 func NewLocalAdapterWithQuota(root string, quotaBytes int64) (*LocalAdapter, error) {
+	return NewLocalAdapterWithQuotaRepository(root, quotaBytes, NewMemoryQuotaRepository())
+}
+
+func NewLocalAdapterWithQuotaRepository(root string, quotaBytes int64, quotaRepository QuotaRepository) (*LocalAdapter, error) {
 	root, err := filepath.Abs(filepath.Clean(NormalizeRoot(root)))
 	if err != nil {
 		return nil, err
@@ -65,17 +82,62 @@ func NewLocalAdapterWithQuota(root string, quotaBytes int64) (*LocalAdapter, err
 		return nil, err
 	}
 	if quotaBytes <= 0 {
-		quotaBytes = 10 * 1024 * 1024
+		quotaBytes = DefaultQuotaBytes
 	}
-	return &LocalAdapter{root: root, quotaBytes: quotaBytes}, nil
+	if quotaRepository == nil {
+		quotaRepository = NewMemoryQuotaRepository()
+	}
+	items, err := quotaRepository.List(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	adapter := &LocalAdapter{
+		root: root, quotaBytes: quotaBytes, quotaRepository: quotaRepository,
+		quotaOverrides: make(map[string]QuotaRecord, len(items)),
+	}
+	for _, item := range items {
+		if item.QuotaBytes > 0 {
+			adapter.quotaOverrides[item.UserID] = item
+		}
+	}
+	return adapter, nil
 }
-func (a *LocalAdapter) QuotaBytes(string) int64 { return a.quotaBytes }
+
+func (a *LocalAdapter) DefaultQuotaBytes() int64 { return a.quotaBytes }
+func (a *LocalAdapter) QuotaBytes(userID string) int64 {
+	a.quotaMu.RLock()
+	defer a.quotaMu.RUnlock()
+	if item, ok := a.quotaOverrides[strings.TrimSpace(userID)]; ok && item.QuotaBytes > 0 {
+		return item.QuotaBytes
+	}
+	return a.quotaBytes
+}
+func (a *LocalAdapter) QuotaOverride(userID string) (QuotaRecord, bool) {
+	a.quotaMu.RLock()
+	defer a.quotaMu.RUnlock()
+	item, ok := a.quotaOverrides[strings.TrimSpace(userID)]
+	return item, ok
+}
+func (a *LocalAdapter) SetQuota(ctx context.Context, userID string, quotaBytes int64, actorID string) (QuotaRecord, error) {
+	userID = strings.TrimSpace(userID)
+	if !SafeSegment(userID) || quotaBytes <= 0 {
+		return QuotaRecord{}, ErrUnsafePath
+	}
+	item, err := a.quotaRepository.Upsert(ctx, QuotaRecord{UserID: userID, QuotaBytes: quotaBytes, UpdatedBy: strings.TrimSpace(actorID)})
+	if err != nil {
+		return QuotaRecord{}, err
+	}
+	a.quotaMu.Lock()
+	a.quotaOverrides[userID] = item
+	a.quotaMu.Unlock()
+	return item, nil
+}
 func (a *LocalAdapter) CheckQuota(userID string, incoming int64) error {
 	usage, err := a.Usage(userID)
 	if err != nil {
 		return err
 	}
-	if incoming < 0 || usage+incoming > a.quotaBytes {
+	if incoming < 0 || usage+incoming > a.QuotaBytes(userID) {
 		return ErrQuotaExceeded
 	}
 	return nil

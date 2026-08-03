@@ -4,10 +4,24 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	communitydomain "github.com/campusos/CampusOS/internal/modules/core/community/domain"
 )
+
+var testLogoPNG = []byte{
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+	0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+	0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+	0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+	0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+	0x42, 0x60, 0x82,
+}
 
 type fakeCategoryRepo struct {
 	categories []*communitydomain.Category
@@ -95,6 +109,46 @@ func TestPublicConfigDropsUnsafeCustomHTML(t *testing.T) {
 	}
 	if cfg.CustomHTMLEnabled || cfg.CustomHTML != "" {
 		t.Fatalf("unsafe custom html should be hidden, got %#v", cfg)
+	}
+}
+
+func TestLogoCanBeReplacedServedAndReset(t *testing.T) {
+	resourceDir := filepath.Join(t.TempDir(), "resources")
+	t.Setenv("RESOURCE_DIR", resourceDir)
+	if err := os.MkdirAll(filepath.Join(resourceDir, "branding"), 0o755); err != nil {
+		t.Fatalf("create branding directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(resourceDir, "branding", "default-logo.png"), testLogoPNG, 0o644); err != nil {
+		t.Fatalf("write default logo: %v", err)
+	}
+
+	source := &fakeConfigSource{enabled: true, config: map[string]interface{}{}}
+	svc := NewService(source, nil)
+	info, err := svc.SaveLogo(context.Background(), bytes.NewReader(testLogoPNG))
+	if err != nil {
+		t.Fatalf("save logo: %v", err)
+	}
+	if !info.Custom || info.SizeBytes <= 0 || info.Width != 1 || info.Height != 1 || info.MaxBytes != DefaultLogoMaxBytes {
+		t.Fatalf("unexpected custom logo info: %#v", info)
+	}
+	asset, err := svc.LogoAsset(context.Background())
+	if err != nil {
+		t.Fatalf("read custom logo: %v", err)
+	}
+	if asset.Version == "default" || len(asset.Data) == 0 || asset.MIMEType != "image/png" {
+		t.Fatalf("unexpected custom logo asset: %#v", asset)
+	}
+
+	reset, err := svc.ResetLogo(context.Background())
+	if err != nil {
+		t.Fatalf("reset logo: %v", err)
+	}
+	if reset.Custom || reset.URL != logoURL("default") {
+		t.Fatalf("unexpected reset logo info: %#v", reset)
+	}
+	asset, err = svc.LogoAsset(context.Background())
+	if err != nil || asset.Version != "default" || !bytes.Equal(asset.Data, testLogoPNG) {
+		t.Fatalf("expected bundled default logo after reset: asset=%#v err=%v", asset, err)
 	}
 }
 

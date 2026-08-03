@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"sync"
@@ -100,4 +101,35 @@ func (r *MemoryPostRepository) ListByThread(_ context.Context, threadID string, 
 		end = len(filtered)
 	}
 	return filtered[start:end], total, nil
+}
+
+func (r *MemoryPostRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	payload, err := json.Marshal(struct {
+		Posts map[string]*domain.Post `json:"posts"`
+		Next  map[string]int          `json:"next"`
+	}{Posts: r.posts, Next: r.nextFloorNumber})
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), payload...)
+}
+
+func (r *MemoryPostRepository) Restore(value any) {
+	payload, ok := value.([]byte)
+	if !ok || len(payload) == 0 {
+		return
+	}
+	state := struct {
+		Posts map[string]*domain.Post `json:"posts"`
+		Next  map[string]int          `json:"next"`
+	}{}
+	if err := json.Unmarshal(payload, &state); err != nil {
+		return
+	}
+	r.mu.Lock()
+	r.posts = state.Posts
+	r.nextFloorNumber = state.Next
+	r.mu.Unlock()
 }
