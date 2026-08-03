@@ -94,6 +94,8 @@ curl -fsS http://localhost:8080/api/v1/health
 | `.env.dev.local` | 需要执行 `up` | Compose 重新创建受影响容器并读取新环境；`docker restart` 不会重读该文件。 |
 | 前端 `package.json`/lockfile、`Dockerfile.dev`、Compose 构建项、`deploy/docker/dev-*.sh` | 需要执行 `rebuild` | 显式访问镜像/依赖源，重建镜像并启动。 |
 
+docker exec -it 9c364007a0ba npm run format
+
 切换分支或 `git pull` 后可先执行无构建的 `up`；若上述镜像构建输入发生变化，再执行 `rebuild`，均无需先 `down`。`up` 不访问 Docker Hub 构建前端，`rebuild` 等价于“强制构建 + 启动 + 等待健康”；`build` 只构建镜像而不启动。
 
 | 操作 | Windows PowerShell | Linux、WSL2 或 Git Bash |
