@@ -7,7 +7,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 const apiProxyTarget = process.env.CAMPUSOS_API_PROXY_TARGET || 'http://localhost:8080'
 
 export default defineConfig({
-	plugins: [vue(), Components({ resolvers: [ElementPlusResolver()], dts: false })],
+  plugins: [vue(), Components({ resolvers: [ElementPlusResolver()], dts: false })],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),

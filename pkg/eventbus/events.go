@@ -14,6 +14,7 @@ const (
 	EventThreadUpdated    = "thread.updated"
 	EventThreadDeleted    = "thread.deleted"
 	EventPostCreated      = "post.created"
+	EventPostDeleted      = "post.deleted"
 	EventCategoryCreated  = "category.created"
 	EventCategoryUpdated  = "category.updated"
 	EventCategoryMoved    = "category.moved"

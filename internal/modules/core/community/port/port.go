@@ -55,7 +55,18 @@ type ModerationGateway interface {
 	GetPost(context.Context, string) (*domain.Post, error)
 	SetPinned(context.Context, string, bool) (*domain.Thread, error)
 	SetLocked(context.Context, string, bool) (*domain.Thread, error)
-	DeletePostForModeration(context.Context, string) error
+	DeletePostForModeration(context.Context, string, string) error
+}
+
+// NamedCategory identifies one board in a user-facing governance message.
+type NamedCategory struct{ ID, Name string }
+
+// ModerationNotifier is Community's user-facing notification contract for
+// category-scope moderator lifecycle events. Implementations live in Community;
+// Moderation consumes the port without accessing notification repositories.
+type ModerationNotifier interface {
+	NotifyModeratorScopeGranted(context.Context, string, []NamedCategory) error
+	NotifyModeratorScopeRevoked(context.Context, string, []NamedCategory) error
 }
 
 // ContentGateway is the stable Community contract consumed by built-in

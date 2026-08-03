@@ -78,6 +78,16 @@ fi
 run_file "$repo_root/migrations/000041_v13_schema_index_hygiene.up.sql" >/dev/null
 test "$(scalar "SELECT count(*) FROM pg_class WHERE relkind='i' AND relname IN ($redundant_indexes)")" = "0"
 test "$(scalar "SELECT count(*) FROM pg_class WHERE relkind='i' AND relname IN ($covering_indexes)")" = "9"
+
+# schema-contract.sql and database-audit.sql describe the full current schema,
+# while this drill migrated to 000040 and applied 000041 manually. Replay the
+# standard runner so every migration after the drill target is present before
+# validating them; 000041 is guarded and replays as a no-op.
+(
+  cd "$repo_root"
+  PSQL_MODE=docker DB_NAME="$drill_db" ./scripts/migrate.sh up >/dev/null
+)
+
 run_file "$repo_root/scripts/migration-hygiene.sql" >/dev/null
 run_file "$repo_root/scripts/database-audit.sql" >/dev/null
 run_file "$repo_root/scripts/schema-contract.sql" >/dev/null

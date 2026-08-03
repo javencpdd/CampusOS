@@ -71,6 +71,7 @@ type OperationContext struct {
 type Service struct {
 	permissions identityport.ModerationPolicy
 	community   communityport.ModerationGateway
+	notifier    communityport.ModerationNotifier
 	audit       AuditStore
 	config      Config
 	configFn    func() Config
@@ -99,6 +100,13 @@ func (s *Service) SetEnabledChecker(checker func() bool) {
 	if checker != nil {
 		s.enabled = checker
 	}
+}
+
+// SetNotificationWriter attaches Community's user-facing notification port.
+// Notifications are best-effort: a delivery failure is logged, never aborts
+// the governance action, and never leaks into the HTTP response.
+func (s *Service) SetNotificationWriter(notifier communityport.ModerationNotifier) {
+	s.notifier = notifier
 }
 
 // SetConfigProvider enables hot updates for action switches while preserving
@@ -184,8 +192,52 @@ func (s *Service) SetModeratorCategories(ctx context.Context, actorID, userID st
 			Resource: "user", ResourceID: userID, Before: before, After: after,
 			Metadata: map[string]interface{}{"scope_type": "category"}, IPAddress: operation.IPAddress,
 		})
+		s.notifyModeratorScopeChange(ctx, actorID, userID, before.Categories, after.Categories)
 	}
 	return after, nil
+}
+
+// notifyModeratorScopeChange informs the affected user about newly granted and
+// newly removed board scopes. An operator changing their own assignment is not
+// notified, mirroring the self-suppression contract of content notifications.
+func (s *Service) notifyModeratorScopeChange(ctx context.Context, actorID, userID string, before, after []CategoryRef) {
+	if s.notifier == nil || actorID == userID {
+		return
+	}
+	granted := diffCategoryRefs(after, before)
+	revoked := diffCategoryRefs(before, after)
+	if len(granted) > 0 {
+		if err := s.notifier.NotifyModeratorScopeGranted(ctx, userID, toNamedCategories(granted)); err != nil {
+			log.Printf("moderator grant notification failed: user=%s categories=%d err=%v", userID, len(granted), err)
+		}
+	}
+	if len(revoked) > 0 {
+		if err := s.notifier.NotifyModeratorScopeRevoked(ctx, userID, toNamedCategories(revoked)); err != nil {
+			log.Printf("moderator revoke notification failed: user=%s categories=%d err=%v", userID, len(revoked), err)
+		}
+	}
+}
+
+func diffCategoryRefs(left, right []CategoryRef) []CategoryRef {
+	rightIDs := make(map[string]bool, len(right))
+	for _, ref := range right {
+		rightIDs[ref.ID] = true
+	}
+	result := make([]CategoryRef, 0, len(left))
+	for _, ref := range left {
+		if !rightIDs[ref.ID] {
+			result = append(result, ref)
+		}
+	}
+	return result
+}
+
+func toNamedCategories(refs []CategoryRef) []communityport.NamedCategory {
+	result := make([]communityport.NamedCategory, 0, len(refs))
+	for _, ref := range refs {
+		result = append(result, communityport.NamedCategory{ID: ref.ID, Name: ref.Name})
+	}
+	return result
 }
 
 func (s *Service) AccessForThread(ctx context.Context, userID, threadID string) (Access, error) {
@@ -284,7 +336,7 @@ func (s *Service) DeletePost(ctx context.Context, actorID, threadID, postID stri
 	if post.ThreadID != threadID {
 		return ErrInvalidScope
 	}
-	if err := s.community.DeletePostForModeration(ctx, postID); err != nil {
+	if err := s.community.DeletePostForModeration(ctx, postID, actorID); err != nil {
 		return err
 	}
 	s.writeAudit(ctx, AuditRecord{

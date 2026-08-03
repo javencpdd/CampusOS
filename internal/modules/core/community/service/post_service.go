@@ -29,6 +29,7 @@ type PostService struct {
 type PostNotificationWriter interface {
 	NotifyThreadReplied(context.Context, string, string, string, string, string) error
 	NotifyPostReplied(context.Context, string, string, string, string, string, string) error
+	NotifyPostDeletedByModerator(context.Context, string, string, string, string) error
 }
 
 func NewPostService(repo repository.PostRepository, bus eventbus.EventBus) *PostService {
@@ -126,6 +127,8 @@ func (s *PostService) createPost(ctx context.Context, post *domain.Post) error {
 		if parent.ThreadID != post.ThreadID || parent.Status != "published" {
 			return repository.ErrPostNotFound
 		}
+		// Snapshot the parent floor so quote display survives the parent's deletion.
+		post.ParentFloorNumber = parent.FloorNumber
 	}
 	if err := s.repo.Create(ctx, post); err != nil {
 		return fmt.Errorf("create post: %w", err)
@@ -211,20 +214,59 @@ func (s *PostService) DeletePost(ctx context.Context, id, authorID string) error
 }
 
 // AdminDeletePost removes a reply after an external authorization layer has
-// already checked the actor's governance scope.
-func (s *PostService) AdminDeletePost(ctx context.Context, id string) error {
+// already checked the actor's governance scope. The deletion, reply counter and
+// the author's moderation notification commit on the same reliable boundary;
+// a moderator deleting their own reply never triggers a self notification.
+func (s *PostService) AdminDeletePost(ctx context.Context, id, actorID string) error {
 	post, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get post: %w", err)
 	}
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if s.reliable != nil && !transaction.Active(ctx) {
+		err := s.reliable.Execute(ctx, reliability.Command{
+			Code: "community.post.admin_delete", ActorID: strings.TrimSpace(actorID), ActorType: "user",
+			ResourceType: "post", ResourceID: post.ID, OperationCode: "community.post.admin_delete",
+			EventFactory: func() (reliability.Event, error) {
+				return reliability.NewEvent(eventbus.EventPostDeleted, "post", post.ID,
+					map[string]string{"post_id": post.ID, "thread_id": post.ThreadID})
+			},
+		}, func(commandCtx context.Context) error {
+			return s.adminDeletePost(commandCtx, post, actorID)
+		})
+		if err != nil {
+			return err
+		}
+		s.invalidateThreadListCache(ctx)
+		return nil
+	}
+	if err := s.adminDeletePost(ctx, post, actorID); err != nil {
+		return err
+	}
+	if !transaction.Active(ctx) {
+		s.invalidateThreadListCache(ctx)
+	}
+	return nil
+}
+
+func (s *PostService) adminDeletePost(ctx context.Context, post *domain.Post, actorID string) error {
+	threadTitle := ""
+	if s.threadRepo != nil {
+		if thread, err := s.threadRepo.GetByID(ctx, post.ThreadID); err == nil && thread != nil {
+			threadTitle = thread.Title
+		}
+	}
+	if err := s.repo.Delete(ctx, post.ID); err != nil {
 		return err
 	}
 	if s.threadRepo != nil {
 		if err := s.threadRepo.IncrementReplyCount(ctx, post.ThreadID, -1); err != nil {
 			return fmt.Errorf("update reply count: %w", err)
 		}
-		s.invalidateThreadListCache(ctx)
+	}
+	if s.notifications != nil && post.AuthorID != strings.TrimSpace(actorID) {
+		if err := s.notifications.NotifyPostDeletedByModerator(ctx, post.AuthorID, post.ThreadID, threadTitle, post.ID); err != nil {
+			return err
+		}
 	}
 	return nil
 }

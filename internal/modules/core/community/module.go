@@ -31,6 +31,7 @@ const (
 	portModeration      = "community.moderation-gateway"
 	portContent         = "community.content-gateway"
 	portContentQuery    = "community.content-query"
+	portNotifyWriter    = "community.notification-writer"
 )
 
 type HTTPHandlers struct {
@@ -129,6 +130,9 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		}
 	}
 	if err := app.Provide(portModeration, &moduleModerationGateway{module: m}); err != nil {
+		return err
+	}
+	if err := app.Provide(portNotifyWriter, &moduleNotificationWriter{module: m}); err != nil {
 		return err
 	}
 	if err := app.Provide(portContent, &moduleContentGateway{module: m}); err != nil {

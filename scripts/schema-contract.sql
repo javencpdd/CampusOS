@@ -46,7 +46,7 @@ BEGIN
         'secondhand_details.thread_id', 'secondhand_details.price_minor', 'secondhand_details.currency',
         'secondhand_details.item_condition', 'secondhand_details.trade_method', 'secondhand_details.trade_status',
         'secondhand_details.location_scope', 'secondhand_details.version', 'secondhand_details.created_by',
-        'posts.thread_id', 'posts.author_id', 'posts.floor_number', 'user_roles.scope_type',
+        'posts.thread_id', 'posts.author_id', 'posts.floor_number', 'posts.parent_floor_number', 'user_roles.scope_type',
         'user_roles.scope_id', 'plugins.checksum', 'plugins.package_size',
         'plugins.backend_state', 'plugins.frontend_state', 'plugins.health_state', 'plugins.ui_revision',
         'user_spaces.style_manifest', 'plugin_catalog_entries.experience',

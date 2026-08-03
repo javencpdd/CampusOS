@@ -24,6 +24,7 @@ type Module struct {
 	app       *platformmodule.AppContext
 	policy    identityport.ModerationPolicy
 	community communityport.ModerationGateway
+	notifier  communityport.ModerationNotifier
 	audit     AuditStore
 	service   *Service
 	handler   *Handler
@@ -55,6 +56,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("community moderation gateway port has incompatible type %T", communityValue)
 	}
+	notifierValue, ok := app.Lookup("community.notification-writer")
+	if !ok {
+		return errors.New("community notification writer port is unavailable")
+	}
+	notifier, ok := notifierValue.(communityport.ModerationNotifier)
+	if !ok {
+		return fmt.Errorf("community notification writer port has incompatible type %T", notifierValue)
+	}
 	auditValue, ok := app.Lookup(portAuditStore)
 	if !ok {
 		return errors.New("moderation audit adapter is not bound by profile")
@@ -66,6 +75,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.app = app
 	m.policy = policy
 	m.community = community
+	m.notifier = notifier
 	m.audit = audit
 	return nil
 }
@@ -75,6 +85,7 @@ func (m *Module) Start(context.Context) error {
 		return errors.New("moderation module is not registered")
 	}
 	service := NewService(m.policy, m.community, m.audit, ConfigFromPluginConfig(nil))
+	service.SetNotificationWriter(m.notifier)
 	if m.config.ConfigProvider != nil {
 		service.SetConfigProvider(m.config.ConfigProvider)
 	}

@@ -54,14 +54,43 @@ func (s *NotificationService) NotifyPostReplied(ctx context.Context, userID, thr
 		}, strings.TrimSpace(postID))
 }
 
-func (s *NotificationService) createThreadNotification(ctx context.Context, userID, threadID, notificationType, title, content string, metadata map[string]interface{}, postID string) error {
-	if s == nil || s.repo == nil {
-		return errors.New("notification repository is unavailable")
+func (s *NotificationService) NotifyPostDeletedByModerator(ctx context.Context, userID, threadID, threadTitle, postID string) error {
+	return s.createThreadNotification(ctx, userID, threadID, domain.NotificationTypePostDeletedByModerator,
+		"您的评论已被版主或管理员删除",
+		fmt.Sprintf("您在帖子《%s》中的评论已被版主或管理员删除，如有疑问请联系板块管理团队。", notificationThreadTitle(threadTitle)),
+		map[string]interface{}{"post_id": strings.TrimSpace(postID)}, "")
+}
+
+// ModeratorScopeCategory identifies one board in a moderator lifecycle message.
+type ModeratorScopeCategory struct {
+	ID   string
+	Name string
+}
+
+func (s *NotificationService) NotifyModeratorScopeGranted(ctx context.Context, userID string, categories []ModeratorScopeCategory) error {
+	if len(categories) == 0 {
+		return nil
 	}
-	userID = strings.TrimSpace(userID)
+	return s.createNotification(ctx, userID, domain.NotificationTypeModeratorGranted,
+		"您已获得版主权限",
+		fmt.Sprintf("您已获得%s的版主权限，现在可以在这些板块执行置顶、锁定和删除回复操作。", notificationCategoryNames(categories)),
+		moderatorScopeActionURL(categories), moderatorScopeMetadata(categories))
+}
+
+func (s *NotificationService) NotifyModeratorScopeRevoked(ctx context.Context, userID string, categories []ModeratorScopeCategory) error {
+	if len(categories) == 0 {
+		return nil
+	}
+	return s.createNotification(ctx, userID, domain.NotificationTypeModeratorRevoked,
+		"您的版主权限已变更",
+		fmt.Sprintf("您在%s的版主权限已被移除，对应板块的治理操作入口将不再可用。", notificationCategoryNames(categories)),
+		moderatorScopeActionURL(categories), moderatorScopeMetadata(categories))
+}
+
+func (s *NotificationService) createThreadNotification(ctx context.Context, userID, threadID, notificationType, title, content string, metadata map[string]interface{}, postID string) error {
 	threadID = strings.TrimSpace(threadID)
-	if userID == "" || threadID == "" {
-		return errors.New("notification recipient and thread are required")
+	if threadID == "" {
+		return errors.New("notification thread is required")
 	}
 	if metadata == nil {
 		metadata = make(map[string]interface{})
@@ -71,12 +100,58 @@ func (s *NotificationService) createThreadNotification(ctx context.Context, user
 	if postID != "" {
 		actionURL += "#post-" + postID
 	}
+	return s.createNotification(ctx, userID, notificationType, title, content, actionURL, metadata)
+}
+
+func (s *NotificationService) createNotification(ctx context.Context, userID, notificationType, title, content, actionURL string, metadata map[string]interface{}) error {
+	if s == nil || s.repo == nil {
+		return errors.New("notification repository is unavailable")
+	}
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return errors.New("notification recipient is required")
+	}
+	if metadata == nil {
+		metadata = make(map[string]interface{})
+	}
 	now := time.Now().UTC()
 	return s.repo.Create(ctx, &domain.Notification{
 		ID: strconv.FormatInt(idgen.New(), 10), UserID: userID, Type: notificationType,
 		Title: title, Content: content, ActionURL: actionURL, Metadata: metadata,
 		CreatedAt: now, UpdatedAt: now,
 	})
+}
+
+func moderatorScopeActionURL(categories []ModeratorScopeCategory) string {
+	if len(categories) == 1 && strings.TrimSpace(categories[0].ID) != "" {
+		return "/threads?category_id=" + strings.TrimSpace(categories[0].ID)
+	}
+	return "/threads"
+}
+
+func moderatorScopeMetadata(categories []ModeratorScopeCategory) map[string]interface{} {
+	ids := make([]string, 0, len(categories))
+	for _, category := range categories {
+		if id := strings.TrimSpace(category.ID); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return map[string]interface{}{"category_ids": ids}
+}
+
+func notificationCategoryNames(categories []ModeratorScopeCategory) string {
+	names := make([]string, 0, len(categories))
+	for _, category := range categories {
+		name := truncateNotificationTitle(strings.TrimSpace(category.Name), 24)
+		if name == "" {
+			name = "未命名板块"
+		}
+		names = append(names, "「"+name+"」")
+	}
+	if len(names) <= 3 {
+		return strings.Join(names, "、")
+	}
+	return fmt.Sprintf("%s等 %d 个板块", strings.Join(names[:2], "、"), len(names))
 }
 
 func notificationThreadTitle(value string) string {
