@@ -142,9 +142,7 @@
               </template>
             </el-popconfirm>
           </div>
-          <div v-if="post.parent_id" class="reply-parent">
-            回复：第 {{ parentFloor(post) || '-' }} 楼
-          </div>
+          <div v-if="post.parent_id" class="reply-parent">回复：第 {{ parentFloor(post) || '-' }} 楼</div>
           <div class="reply-content">{{ post.content }}</div>
         </div>
       </div>
