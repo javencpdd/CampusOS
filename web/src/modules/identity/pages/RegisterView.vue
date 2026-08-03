@@ -47,7 +47,8 @@
               {{ cooldown > 0 ? `${cooldown}s` : '发送验证码' }}
             </el-button>
           </div>
-          <div class="field-hint">验证完成后才会创建账号</div>
+          <div class="field-hint">验证完成后才会创建账号（暂时关闭注册）</div>
+          <div class="field-hint">想要体验可以联系管理员qq： 1904650862</div>
         </el-form-item>
 
         <el-form-item label="邮箱验证码" prop="code">
