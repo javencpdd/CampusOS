@@ -64,8 +64,8 @@ docs-links:
 	python3 scripts/check-doc-links.py
 
 readme-check:
-	python3 skills/campusos-readme-update/scripts/audit_readme_structure.py --root .
-	python3 skills/campusos-readme-update/scripts/check_readme_links.py --root . README.md docs/README.md
+	python3 skills/sources/campusos-readme-update/scripts/audit_readme_structure.py --root .
+	python3 skills/sources/campusos-readme-update/scripts/check_readme_links.py --root . README.md docs/README.md
 
 version-check:
 	python3 scripts/check-version-sync.py
@@ -74,7 +74,7 @@ architecture-check:
 	python3 scripts/check-architecture-boundaries.py
 	python3 scripts/check-frontend-boundaries.py
 	python3 scripts/test-architecture-checks.py
-	python3 skills/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
+	python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 reliability-check:
 	python3 scripts/check-reliability-boundaries.py
