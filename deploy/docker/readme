@@ -1,0 +1,4 @@
+复制 .env.dev.example ，命名为 .env.dev.local
+
+.env.dev.local为最终配置文件
+
