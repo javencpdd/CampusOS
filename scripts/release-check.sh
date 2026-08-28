@@ -57,6 +57,7 @@ echo "==> database"
 ./scripts/database-check.sh all
 make v12-migration-check
 make v13-migration-check
+make v14-migration-check
 python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 if [[ "${RUN_V13_CAPACITY_DRILL:-true}" == "true" ]]; then

@@ -24,7 +24,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const baselineSchema = "campusos.v13-baseline/v1"
+// baselineSchema is deliberately versioned so a stored G0 snapshot can be
+// interpreted without guessing which evidence fields were available.
+const baselineSchema = "campusos.v14-g0-baseline/v1"
 
 type snapshot struct {
 	Schema             string              `json:"schema"`
@@ -37,6 +39,9 @@ type snapshot struct {
 	Modules            moduleSnapshot      `json:"modules"`
 	ExternalPlugins    pluginSnapshot      `json:"external_plugins"`
 	Resources          resourceSnapshot    `json:"resources"`
+	Tooling            toolingSnapshot     `json:"tooling"`
+	UserStorage        storageSnapshot     `json:"user_storage"`
+	Schedules          scheduleSnapshot    `json:"schedules"`
 	StructuredQueries  []querySnapshot     `json:"structured_queries"`
 	HTTP               []httpSnapshot      `json:"http,omitempty"`
 }
@@ -93,6 +98,39 @@ type resourceItem struct {
 	Type     string `json:"type"`
 	Version  string `json:"version"`
 	TreeHash string `json:"tree_sha256"`
+}
+
+// toolingSnapshot records what was actually observable on the host. An
+// unavailable executable is evidence too: G0 must not manufacture a Docker,
+// Node or PostgreSQL version that the current environment did not expose.
+type toolingSnapshot struct {
+	Go            string `json:"go"`
+	Node          string `json:"node"`
+	PostgreSQL    string `json:"postgresql"`
+	Docker        string `json:"docker"`
+	DockerCompose string `json:"docker_compose"`
+}
+
+// storageSnapshot describes the legacy Personal Space tree without following
+// symlinks or exposing individual user paths. It is a fact-finding snapshot,
+// not a reconciliation or a mutation command.
+type storageSnapshot struct {
+	Root                string `json:"root"`
+	UserCount           int    `json:"user_count"`
+	FileCount           int64  `json:"file_count"`
+	TotalBytes          int64  `json:"total_bytes"`
+	SymlinkCount        int64  `json:"symlink_count"`
+	UnknownPathCount    int64  `json:"unknown_path_count"`
+	UnreadableFileCount int64  `json:"unreadable_file_count"`
+}
+
+// scheduleSnapshot makes the JSON-based schedule compatibility surface
+// measurable before AcademicTerm and the object store take over new writes.
+type scheduleSnapshot struct {
+	JSONFileCount           int      `json:"json_file_count"`
+	ValidTermKeys           []string `json:"valid_term_keys"`
+	MalformedFileCount      int      `json:"malformed_file_count"`
+	MissingActiveIndexCount int      `json:"missing_active_index_count"`
 }
 
 type querySnapshot struct {
@@ -193,6 +231,13 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 		return nil, err
 	}
 	result.StructuredQueries = collectStructuredQueries(absRoot)
+	result.Tooling = collectTooling(absRoot)
+	if result.UserStorage, err = collectUserStorage(absRoot); err != nil {
+		return nil, err
+	}
+	if result.Schedules, err = collectSchedules(absRoot); err != nil {
+		return nil, err
+	}
 	if live {
 		if samples < 3 || samples > 100 {
 			return nil, errors.New("samples must be between 3 and 100")
@@ -213,6 +258,168 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 			result.HTTP = append(result.HTTP, measurement)
 		}
 	}
+	return result, nil
+}
+
+func collectTooling(root string) toolingSnapshot {
+	return toolingSnapshot{
+		Go:            toolVersion(root, "go", "version"),
+		Node:          toolVersion(root, "node", "--version"),
+		PostgreSQL:    toolVersion(root, "psql", "--version"),
+		Docker:        toolVersion(root, "docker", "--version"),
+		DockerCompose: toolVersion(root, "docker", "compose", "version"),
+	}
+}
+
+func toolVersion(root, name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, name, args...)
+	command.Dir = root
+	payload, err := command.Output()
+	if ctx.Err() != nil {
+		return "unavailable: timed out"
+	}
+	if err != nil {
+		return "unavailable"
+	}
+	return strings.TrimSpace(string(payload))
+}
+
+func collectUserStorage(root string) (storageSnapshot, error) {
+	storageRoot := filepath.Join(root, "data", "personal-space")
+	result := storageSnapshot{Root: "data/personal-space"}
+	entries, err := os.ReadDir(storageRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	// These are the current LocalAdapter layout roots. Entries outside this set
+	// are reported for later classification; they are never deleted here.
+	knownRoots := map[string]struct{}{
+		"excel": {}, "file": {}, "img": {}, "pdf": {}, "word": {},
+	}
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			result.SymlinkCount++
+			continue
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		result.UserCount++
+		userRoot := filepath.Join(storageRoot, entry.Name())
+		userEntries, readErr := os.ReadDir(userRoot)
+		if readErr != nil {
+			result.UnreadableFileCount++
+			continue
+		}
+		for _, userEntry := range userEntries {
+			if _, ok := knownRoots[userEntry.Name()]; !ok {
+				result.UnknownPathCount++
+			}
+		}
+		walkErr := filepath.WalkDir(userRoot, func(path string, item os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				result.UnreadableFileCount++
+				return nil
+			}
+			if item.Type()&os.ModeSymlink != 0 {
+				result.SymlinkCount++
+				if item.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if item.IsDir() {
+				return nil
+			}
+			info, infoErr := item.Info()
+			if infoErr != nil {
+				result.UnreadableFileCount++
+				return nil
+			}
+			result.FileCount++
+			result.TotalBytes += info.Size()
+			return nil
+		})
+		if walkErr != nil {
+			return result, walkErr
+		}
+	}
+	return result, nil
+}
+
+func collectSchedules(root string) (scheduleSnapshot, error) {
+	storageRoot := filepath.Join(root, "data", "personal-space")
+	result := scheduleSnapshot{ValidTermKeys: []string{}}
+	termSet := map[string]struct{}{}
+	entries, err := os.ReadDir(storageRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			continue
+		}
+		userRoot := filepath.Join(storageRoot, entry.Name(), "file", "schedule")
+		termDir := filepath.Join(userRoot, "terms")
+		termEntries, readErr := os.ReadDir(termDir)
+		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+			return result, readErr
+		}
+		activeKey := ""
+		indexPayload, indexErr := os.ReadFile(filepath.Join(userRoot, "index.json"))
+		if indexErr == nil {
+			var index struct {
+				TermYear int    `json:"term_year"`
+				Semester string `json:"semester"`
+			}
+			if json.Unmarshal(indexPayload, &index) != nil || index.TermYear == 0 || strings.TrimSpace(index.Semester) == "" {
+				result.MalformedFileCount++
+			} else {
+				activeKey = fmt.Sprintf("%d-%s", index.TermYear, strings.ToLower(strings.TrimSpace(index.Semester)))
+			}
+		} else if !errors.Is(indexErr, os.ErrNotExist) {
+			return result, indexErr
+		}
+		matchedActive := activeKey == ""
+		for _, termEntry := range termEntries {
+			if termEntry.IsDir() || termEntry.Type()&os.ModeSymlink != 0 || !strings.HasSuffix(termEntry.Name(), ".json") {
+				continue
+			}
+			result.JSONFileCount++
+			payload, readErr := os.ReadFile(filepath.Join(termDir, termEntry.Name()))
+			if readErr != nil {
+				return result, readErr
+			}
+			var term struct {
+				TermYear int    `json:"term_year"`
+				Semester string `json:"semester"`
+			}
+			if json.Unmarshal(payload, &term) != nil || term.TermYear < 2000 || term.TermYear > 2200 || (term.Semester != "spring" && term.Semester != "fall") {
+				result.MalformedFileCount++
+				continue
+			}
+			key := fmt.Sprintf("%d-%s", term.TermYear, term.Semester)
+			termSet[key] = struct{}{}
+			if key == activeKey {
+				matchedActive = true
+			}
+		}
+		if !matchedActive {
+			result.MissingActiveIndexCount++
+		}
+	}
+	for key := range termSet {
+		result.ValidTermKeys = append(result.ValidTermKeys, key)
+	}
+	sort.Strings(result.ValidTermKeys)
 	return result, nil
 }
 

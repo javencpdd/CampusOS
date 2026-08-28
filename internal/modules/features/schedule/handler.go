@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/campusos/CampusOS/pkg/apperror"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -172,6 +173,11 @@ func boolForm(value string) bool {
 }
 
 func writeError(c *gin.Context, err error) {
+	var public *apperror.AppError
+	if errors.As(err, &public) {
+		response.WriteError(c, err)
+		return
+	}
 	switch {
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusServiceUnavailable, 70001, err.Error())

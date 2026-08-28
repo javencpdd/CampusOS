@@ -21,6 +21,7 @@ type ModuleConfig struct {
 type Module struct {
 	config        ModuleConfig
 	adapter       *LocalAdapter
+	objects       *ObjectService
 	contentImages *ContentImageStore
 	handler       *Handler
 }
@@ -33,6 +34,7 @@ func (m *Module) Dependencies() []string { return []string{"core.identity"} }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	quotaRepository := QuotaRepository(NewMemoryQuotaRepository())
+	objectRepository := ObjectRepository(NewMemoryObjectRepository())
 	if value, ok := app.Lookup(portQuotaRepository); ok {
 		var compatible bool
 		quotaRepository, compatible = value.(QuotaRepository)
@@ -40,11 +42,23 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 			return fmt.Errorf("user storage quota repository has incompatible type %T", value)
 		}
 	}
+	if value, ok := app.Lookup(portObjectRepository); ok {
+		var compatible bool
+		objectRepository, compatible = value.(ObjectRepository)
+		if !compatible || objectRepository == nil {
+			return fmt.Errorf("user storage object repository has incompatible type %T", value)
+		}
+	}
 	adapter, err := NewLocalAdapterWithQuotaRepository(m.config.Root, m.config.QuotaBytes, quotaRepository)
 	if err != nil {
 		return fmt.Errorf("initialize local user storage provider: %w", err)
 	}
 	m.adapter = adapter
+	objects, err := NewObjectService(adapter, adapter, objectRepository, adapter.DefaultQuotaBytes())
+	if err != nil {
+		return fmt.Errorf("initialize storage object service: %w", err)
+	}
+	m.objects = objects
 	contentImages, err := NewContentImageStore(adapter, adapter, m.config.MaxContentImageBytes)
 	if err != nil {
 		return fmt.Errorf("initialize content image store: %w", err)
@@ -60,6 +74,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		{"storage.quota-manager", QuotaManager(adapter)},
 		{"storage.safe-path", SafePath(adapter)},
 		{"storage.provider", Provider(LocalProvider{})},
+		{"storage.objects", ObjectPort(objects)},
 		{"storage.content-images", contentImages},
 	} {
 		if err := app.Provide(binding.name, binding.value); err != nil {
@@ -74,13 +89,14 @@ func (m *Module) Start(context.Context) error { return nil }
 func (m *Module) Stop(context.Context) error { return nil }
 
 func (m *Module) Health(context.Context) platformmodule.Health {
-	if m.adapter == nil || m.contentImages == nil || m.handler == nil {
+	if m.adapter == nil || m.objects == nil || m.contentImages == nil || m.handler == nil {
 		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "local user storage provider is unavailable"}
 	}
 	return platformmodule.Health{Status: platformmodule.HealthHealthy}
 }
 
 func (m *Module) Adapter() *LocalAdapter            { return m.adapter }
+func (m *Module) Objects() *ObjectService           { return m.objects }
 func (m *Module) Handler() *Handler                 { return m.handler }
 func (m *Module) ContentImages() *ContentImageStore { return m.contentImages }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 )
@@ -17,16 +18,19 @@ type ModuleConfig struct {
 }
 
 type Module struct {
-	config  ModuleConfig
-	storage corestorage.Port
-	service *Service
-	handler *Handler
+	config     ModuleConfig
+	storage    corestorage.Port
+	objects    corestorage.ObjectPort
+	terms      academicterm.Port
+	references TermReferenceRepository
+	service    *Service
+	handler    *Handler
 }
 
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.user-storage", "core.feature-registry"}
+	return []string{"core.identity", "core.academic-term", "core.user-storage", "core.feature-registry"}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -42,6 +46,33 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		return fmt.Errorf("user storage port has incompatible type %T", value)
 	}
 	m.storage = storage
+	value, ok = app.Lookup("storage.objects")
+	if !ok {
+		return errors.New("storage object port is unavailable")
+	}
+	objects, ok := value.(corestorage.ObjectPort)
+	if !ok || objects == nil {
+		return fmt.Errorf("storage object port has incompatible type %T", value)
+	}
+	m.objects = objects
+	value, ok = app.Lookup("academic-term.service")
+	if !ok {
+		return errors.New("academic term port is unavailable")
+	}
+	terms, ok := value.(academicterm.Port)
+	if !ok || terms == nil {
+		return fmt.Errorf("academic term port has incompatible type %T", value)
+	}
+	m.terms = terms
+	value, ok = app.Lookup(portTermReferences)
+	if !ok {
+		return errors.New("schedule term reference repository is unavailable")
+	}
+	references, ok := value.(TermReferenceRepository)
+	if !ok || references == nil {
+		return fmt.Errorf("schedule term reference repository has incompatible type %T", value)
+	}
+	m.references = references
 	return nil
 }
 
@@ -56,16 +87,24 @@ func (m *Module) Start(context.Context) error {
 	var svc *Service
 	var err error
 	if corestorage.NormalizeRoot(config.RootDir) == corestorage.DefaultRoot {
-		svc, err = NewServiceWithStorage(config, m.storage)
+		svc, err = NewServiceWithStorageAndTerms(config, m.storage, m.terms)
 	} else {
 		// Preserve a historical custom schedule root until an explicit User
-		// Storage migration moves its files.
+		// Storage migration moves its files. It must still obey the central
+		// AcademicTerm guard while the compatibility root is in use.
 		svc, err = NewService(config)
+		if svc != nil {
+			svc.academicTerms = m.terms
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("initialize schedule storage: %w", err)
 	}
 	svc.SetEnabledChecker(m.enabled)
+	svc.termReferences = m.references
+	if corestorage.NormalizeRoot(config.RootDir) == corestorage.DefaultRoot {
+		svc.SetObjectPort(m.objects)
+	}
 	m.service = svc
 	m.handler = NewHandler(svc)
 	return nil

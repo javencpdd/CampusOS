@@ -17,15 +17,17 @@
               <el-button @click="goCurrentWeek">本周</el-button>
             </el-tooltip>
             <el-button @click="nextWeek">下一周</el-button>
-            <el-button type="primary" @click="saveSchedule" :loading="saving">保存</el-button>
+            <el-button type="primary" :disabled="termReadOnly" @click="saveSchedule" :loading="saving">保存</el-button>
           </div>
         </div>
       </template>
 
       <el-alert v-if="disabled" type="warning" :closable="false" show-icon title="个人课表插件当前未启用" />
+      <el-alert v-else-if="!availableTerms.length" type="info" :closable="false" show-icon title="管理员尚未开放教学学期；暂不能新建或编辑课表。" />
+      <el-alert v-else-if="termReadOnly" type="info" :closable="false" show-icon title="当前为已关闭或历史学期，只读查看；请切换到开放学期后编辑。" />
 
       <div class="toolbar">
-        <el-tooltip content="选择已保存的学期；选择后点击“打开/新建课表”确认切换" placement="top">
+        <el-tooltip content="选择本人已保存的学期；关闭学期仅可读取" placement="top">
           <el-select
             v-model="selectedTermKey"
             class="term-select"
@@ -40,26 +42,13 @@
             />
           </el-select>
         </el-tooltip>
-        <el-tooltip content="选择要打开或新建的课表年份" placement="top">
-          <el-input-number
-            v-model="termDraft.term_year"
-            :min="2000"
-            :max="2200"
-            :controls-position="isCompact ? '' : 'right'"
-            aria-label="课表年份"
-          />
+        <el-tooltip content="只显示管理员开放的春季或秋季学期；选中后可打开或新建自己的课表" placement="top">
+          <el-select v-model="selectedAvailableTermKey" class="term-select" placeholder="选择平台开放学期" @change="selectAvailableTerm">
+            <el-option v-for="term in availableTerms" :key="termKey(term.year, term.semester)" :label="availableTermLabel(term)" :value="termKey(term.year, term.semester)" />
+          </el-select>
         </el-tooltip>
-        <el-tooltip content="选择课表所属的春季或秋季学期" placement="top">
-          <el-radio-group v-model="termDraft.semester">
-            <el-radio-button label="spring">春季学期</el-radio-button>
-            <el-radio-button label="fall">秋季学期</el-radio-button>
-          </el-radio-group>
-        </el-tooltip>
-        <el-tooltip content="按年份和学期打开已保存课表；不存在时创建空课表" placement="top">
-          <el-button type="primary" @click="openTerm" :loading="termSwitching">打开/新建课表</el-button>
-        </el-tooltip>
-        <el-tooltip content="为当前选中的学期设置第一周开始日期" placement="top">
-          <el-button @click="openFirstWeekDialog">设置第一周</el-button>
+        <el-tooltip content="只可为管理员开放的学期打开或新建课表，第一周开始日期由平台目录设定" placement="top">
+          <el-button type="primary" :disabled="!selectedAvailableTermKey" @click="openTerm" :loading="termSwitching">打开/新建受管课表</el-button>
         </el-tooltip>
         <el-tooltip content="设置每天显示的课程节数" placement="top">
           <el-input-number
@@ -82,11 +71,11 @@
         </el-tooltip>
         <input ref="importInput" class="hidden-input" type="file" accept=".xls,.csv,.json" @change="handleImport" />
         <el-tooltip content="导入课程到当前学期对应的 JSON 课表" placement="top">
-          <el-button @click="chooseImport" :loading="importing">导入</el-button>
+          <el-button :disabled="termReadOnly" @click="chooseImport" :loading="importing">导入</el-button>
         </el-tooltip>
-        <el-button @click="openCourseDialog()">新增课程</el-button>
-        <el-tooltip content="查看或编辑当前已打开学期的原始 JSON 数据，不会切换或新建课表" placement="top">
-          <el-button @click="openJsonEditor">编辑 JSON</el-button>
+        <el-button :disabled="termReadOnly" @click="openCourseDialog()">新增课程</el-button>
+        <el-tooltip content="仅编辑课程、显示设置和元数据；学期与第一周开始日期由管理员治理" placement="top">
+          <el-button :disabled="termReadOnly" @click="openJsonEditor">编辑 JSON</el-button>
         </el-tooltip>
       </div>
 
@@ -265,22 +254,6 @@
       </div>
     </el-drawer>
 
-    <el-dialog v-model="firstWeekDialog" title="设置第一周" width="420px">
-      <el-tooltip content="选择当前学期第一周的开始日期，周课表和日历会据此计算课程日期" placement="top">
-        <el-date-picker
-          v-model="firstWeekDraft"
-          type="date"
-          value-format="YYYY-MM-DD"
-          placeholder="第一周开始日期"
-          aria-label="第一周开始日期"
-          class="field-full"
-        />
-      </el-tooltip>
-      <template #footer>
-        <el-button @click="firstWeekDialog = false">取消</el-button>
-        <el-button type="primary" @click="applyFirstWeekStart">应用</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -318,6 +291,16 @@ interface TermSummary {
   active: boolean
 }
 
+interface AvailableTerm {
+  id: string
+  year: number
+  semester: Semester
+  display_name: string
+  first_week_start: string
+  status: 'open'
+  is_default: boolean
+}
+
 const loading = ref(false)
 const scheduleRoot = ref<HTMLElement | null>(null)
 const { mode: layoutMode, isCompact } = useLayoutCapability(scheduleRoot)
@@ -329,7 +312,9 @@ const selectedWeek = ref(1)
 const viewMode = ref<'week' | 'calendar'>('week')
 const calendarDate = ref(new Date())
 const terms = ref<TermSummary[]>([])
+const availableTerms = ref<AvailableTerm[]>([])
 const selectedTermKey = ref('')
+const selectedAvailableTermKey = ref('')
 const termSwitching = ref(false)
 const replaceImport = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
@@ -337,8 +322,6 @@ const courseDrawer = ref(false)
 const jsonDrawer = ref(false)
 const editingCourseId = ref('')
 const rawJson = ref('')
-const firstWeekDialog = ref(false)
-const firstWeekDraft = ref('')
 const week = reactive({ current_week: 1, week_start: '', week_end: '', today: '' })
 const termDraft = reactive({
   term_year: new Date().getFullYear(),
@@ -385,6 +368,7 @@ const periods = computed(() =>
 const formatTermLabel = (termYear: number, semester: Semester) =>
   `${termYear} 年${semester === 'fall' ? '秋季' : '春季'}学期`
 const termLabel = computed(() => formatTermLabel(schedule.term_year, schedule.semester))
+const termReadOnly = computed(() => !availableTerms.value.some((term) => termKey(term.year, term.semester) === termKey(schedule.term_year, schedule.semester)))
 const weekRangeText = computed(() => {
   const start = weekDate(selectedWeek.value, 0)
   const end = weekDate(selectedWeek.value, 6)
@@ -417,14 +401,16 @@ const unwrap = (res: any) => res?.data || res
 const loadSchedule = async () => {
   loading.value = true
   try {
-    const [scheduleResult, termsResult] = await Promise.all([scheduleApi.me(), scheduleApi.terms()])
+    const [availableResult, termsResult] = await Promise.all([scheduleApi.availableTerms(), scheduleApi.terms()])
+    applyAvailableTerms(unwrap(availableResult))
+    applyTerms(unwrap(termsResult))
+    const scheduleResult = await scheduleApi.me()
     const payload = unwrap(scheduleResult)
     applyPayload(payload)
-    applyTerms(unwrap(termsResult))
     dirty.value = false
   } catch (error: any) {
-    disabled.value = true
-    ElMessage.error(error?.msg || '加载课表失败')
+    disabled.value = error?.code === 'feature.disabled'
+    ElMessage.error(error?.msg || (availableTerms.value.length ? '加载课表失败' : '管理员尚未开放教学学期'))
   } finally {
     loading.value = false
   }
@@ -439,6 +425,9 @@ const applyPayload = (payload: any) => {
   termDraft.term_year = schedule.term_year
   termDraft.semester = schedule.semester
   selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
+  if (availableTerms.value.some((term) => termKey(term.year, term.semester) === selectedTermKey.value)) {
+    selectedAvailableTermKey.value = selectedTermKey.value
+  }
   schedule.first_week_start = value?.first_week_start || ''
   schedule.settings.periods_per_day = Number(value?.settings?.periods_per_day || 12)
   schedule.settings.show_weekend = value?.settings?.show_weekend !== false
@@ -467,6 +456,22 @@ const applyTerms = (payload: any) => {
   if (active) selectedTermKey.value = termKey(active.term_year, active.semester)
 }
 
+const applyAvailableTerms = (payload: any) => {
+  availableTerms.value = (payload?.items || []).map((term: any) => ({
+    id: String(term.id || ''),
+    year: Number(term.year),
+    semester: term.semester === 'fall' ? 'fall' : 'spring',
+    display_name: term.display_name || formatTermLabel(Number(term.year), term.semester === 'fall' ? 'fall' : 'spring'),
+    first_week_start: term.first_week_start || '',
+    status: 'open' as const,
+    is_default: Boolean(term.is_default),
+  }))
+  const current = termKey(schedule.term_year, schedule.semester)
+  const defaultTerm = availableTerms.value.find((term) => term.is_default)
+  if (availableTerms.value.some((term) => termKey(term.year, term.semester) === current)) selectedAvailableTermKey.value = current
+  else if (!selectedAvailableTermKey.value && defaultTerm) selectedAvailableTermKey.value = termKey(defaultTerm.year, defaultTerm.semester)
+}
+
 const loadTerms = async () => {
   const payload = unwrap(await scheduleApi.terms())
   applyTerms(payload)
@@ -476,16 +481,18 @@ const termKey = (termYear: number, semester: Semester) => `${termYear}-${semeste
 
 const termOptionLabel = (term: TermSummary) =>
   `${term.term_year} 年${term.semester === 'fall' ? '秋季' : '春季'}学期 (${term.course_count} 门)`
+const availableTermLabel = (term: AvailableTerm) => `${term.display_name}${term.is_default ? '（默认）' : ''} · 第一周 ${term.first_week_start}`
 
 const confirmTermSwitch = () => !dirty.value || window.confirm('当前课表还有未保存的修改，确定切换吗？')
 
 const openTerm = async () => {
-  const termYear = Number(termDraft.term_year)
-  const semester = termDraft.semester
-  if (!Number.isInteger(termYear) || termYear < 2000 || termYear > 2200) {
-    ElMessage.warning('请选择有效的课表年份')
+  const selected = availableTerms.value.find((term) => termKey(term.year, term.semester) === selectedAvailableTermKey.value)
+  if (!selected) {
+    ElMessage.warning('请选择管理员开放的教学学期')
     return
   }
+  const termYear = selected.year
+  const semester = selected.semester
   const currentKey = termKey(schedule.term_year, schedule.semester)
   const targetKey = termKey(termYear, semester)
   if (targetKey === currentKey) {
@@ -520,7 +527,24 @@ const openTerm = async () => {
 const selectSavedTerm = (value: string) => {
   const term = terms.value.find((item) => termKey(item.term_year, item.semester) === value)
   if (!term) return
-  termDraft.term_year = term.term_year
+  if (!confirmTermSwitch()) return
+  termSwitching.value = true
+  void scheduleApi.me({ term_year: term.term_year, semester: term.semester })
+    .then((result) => {
+      applyPayload(unwrap(result))
+      dirty.value = false
+    })
+    .catch((error: any) => {
+      selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
+      ElMessage.error(error?.msg || '读取已保存课表失败')
+    })
+    .finally(() => { termSwitching.value = false })
+}
+
+const selectAvailableTerm = (value: string) => {
+  const term = availableTerms.value.find((item) => termKey(item.year, item.semester) === value)
+  if (!term) return
+  termDraft.term_year = term.year
   termDraft.semester = term.semester
 }
 
@@ -591,6 +615,10 @@ const coursesForDay = (weekday: number) =>
 const periodLabel = (period: number) => schedule.settings.period_labels?.[period - 1] || `${period}`
 
 const openCourseDialog = (course?: Course) => {
+  if (termReadOnly.value) {
+    ElMessage.info('当前为已关闭或历史学期，只能查看课表')
+    return
+  }
   editingCourseId.value = course?.id || ''
   courseForm.name = course?.name || ''
   courseForm.teacher = course?.teacher || ''
@@ -653,9 +681,6 @@ const deleteCourse = async () => {
 const openJsonEditor = () => {
   rawJson.value = JSON.stringify(
     {
-      term_year: schedule.term_year,
-      semester: schedule.semester,
-      first_week_start: schedule.first_week_start,
       settings: schedule.settings,
       courses: schedule.courses,
       metadata: schedule.metadata,
@@ -669,9 +694,6 @@ const openJsonEditor = () => {
 const applyJson = async () => {
   try {
     const parsed = JSON.parse(rawJson.value)
-    schedule.term_year = Number(parsed.term_year || schedule.term_year)
-    schedule.semester = parsed.semester === 'fall' ? 'fall' : 'spring'
-    schedule.first_week_start = parsed.first_week_start || schedule.first_week_start
     schedule.settings = {
       periods_per_day: Number(parsed.settings?.periods_per_day || 12),
       show_weekend: parsed.settings?.show_weekend !== false,
@@ -712,23 +734,6 @@ const goCurrentWeek = () => {
 
 const markDirty = () => {
   dirty.value = true
-}
-
-const openFirstWeekDialog = () => {
-  firstWeekDraft.value = schedule.first_week_start
-  firstWeekDialog.value = true
-}
-
-const applyFirstWeekStart = () => {
-  if (!firstWeekDraft.value) {
-    ElMessage.warning('请选择第一周开始日期')
-    return
-  }
-  schedule.first_week_start = firstWeekDraft.value
-  selectedWeek.value = 1
-  syncCalendarToSelectedWeek()
-  markDirty()
-  firstWeekDialog.value = false
 }
 
 const weekDate = (weekNumber: number, offset: number) => {

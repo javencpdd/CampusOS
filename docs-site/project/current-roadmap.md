@@ -1,71 +1,62 @@
 # 当前规划与后续路线
 
-> 基线：`v0.13.0`
-> 状态：版本间候选路线，不是已经立项的 v14 承诺
+> 当前发布基线：`v0.13.0`
+> 更新日期：2026-08-29
+> 状态：v14-dev 已完成 AcademicTerm、对象账本、课表受管写入和个人文档 MVP；历史采用、对象对账 apply、Converter 与发布恢复门禁尚未进入 Final
 
-v13 已完成当前计划内的业务、架构和可移植交付范围。下一版不应继续横向堆叠功能，而应先从有限主线中
-选择范围、冻结基线，再建立可独立验收的阶段。
+CampusOS v13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
+单主机 Docker 交付。v14 选择“学期治理与个人工作区基础”作为有限主线，不改变当前四类能力和单主机边界。
 
-## P0 候选
+仓库中的完整计划位于 `docs/项目计划v14/00-v14版本计划书.md`。本文是公开摘要；计划不等于功能已经上线，
+实际完成情况必须以 `docs/进度/v0.14-dev/`、运行代码和发布证据为准。
 
-### 生产交付认证
+## v14 正式范围
 
-- 在真实 Windows Docker Desktop 和 Linux `arm64` Runner 上复验镜像、PowerShell、备份与恢复。
-- 提供反向代理/TLS 部署示例，并保持证书生命周期在专用网关层。
-- 增加镜像 SBOM、漏洞扫描、签名、来源证明和依赖更新规则。
-- 在目标环境完成 SMTP、Prometheus 告警、备份保留和长稳测试。
-
-### 文档与发布治理
-
-- 为公开文档增加版本化和 release notes，避免历史页面被当作当前操作说明。
-- 持续同步 OpenAPI、路由授权矩阵、Admin 只读架构和资源 checksum。
-- 将 Windows/Linux/arm64 真实运行证据接入发行 Runner。
-
-当前文档有效性和替代关系见 [文档状态与历史替代](/project/document-lifecycle)。该页面解决当前版本的
-入口治理；版本选择器和 release notes 仍是下一阶段候选。
-
-### 安全与运行
-
-- 为 TOTP、SMTP、插件签名和第三方 Secret 提供可替换 Secret Provider。
-- 为可靠 Worker、邮件、Webhook、数据库和 User Storage 建立目标环境 SLO。
-- 保持最后管理员保护、Step-up、板块作用域、required audit 和事务 Outbox 的默认拒绝语义。
-
-## P1 候选
-
-| 方向 | 目标 | 前置边界 |
+| 主线 | 目标 | 关键保护 |
 | --- | --- | --- |
-| 标准 MCP | 正式协议 Server 和版本化 Tool/Resource | 权限、确认、审计、限流和敏感字段投影 |
-| 进程扩展协议 | 真实 protobuf gRPC 或明确的新协议名 | 双版本兼容、超时、健康、签名和迁移 |
-| 远程插件目录 | 下载、版本、审核和签名吊销 | 供应链扫描、透明审计和失败回滚 |
-| 共享 User Storage | S3/OSS/WebDAV Provider | 所有权、配额、幂等、加密和多实例一致性 |
-| 身份增强 | OAuth/OIDC、Passkey、更多邮件 Provider | 账号合并、恢复、Step-up 和历史兼容 |
-| 通知增强 | SSE/WebSocket 或外部邮件通知 | 轮询兼容、离线状态、偏好和限流 |
-| 第三方 Adapter | Discord、OneBot 等生产适配器 | 独立插件、最小权限、重试和审计 |
+| G0 基线 | 已冻结代码、43 个基线 migration、Schema、OpenAPI、Route、Module、文件与课表盘点 | G0 快照与 `000043` 隔离 down/up 已验证 |
+| AcademicTerm | 已交付管理员 spring/fall、open/closed/default、第一周和版本控制 | `000044` CHECK、单默认、版本冲突、管理 API 与 Admin 控制台 |
+| Schedule | 已交付服务端受管学期 Guard；关闭学期仍可读取 | `000046` 记录用户/学期引用，避免删除已有课表的学期；旧 JSON 保留兼容读取 |
+| User Storage Object | 已交付 Object ID、owner、metadata、Quota Reservation、Local Provider 原子写 | `000045` 对象/账户/预留账本与并发配额单测；全量历史采用和 reconcile apply 后续实施 |
+| Personal Documents | 已交付私有文档、版本、回收站、TXT/Markdown/CampusDoc 编辑、PDF/DOCX 认证下载 | `000047` 文档/版本/预览状态；跨用户统一 404；Converter 未配置时严格降级为上传与下载 |
+| Preview | 使用 Reliability 请求预览，复杂转换在可选隔离 Converter 执行 | 无网络、非 root、限 CPU/RAM/时间；不达标则关闭 DOCX 预览 |
 
-## P2 候选
+## 实施顺序
 
-- 多节点 API/Worker、高可用数据库和分布式 Session/限流。
-- 隔离 Agent Runner、Knowledge Provider、Prompt/Persona 管理和代码执行审批。
-- 公共插件市场的社区审核、评分、支付和恶意包分析。
-- 个人云盘、跨插件统一搜索和向量检索。
+```text
+G0 真实基线
+  ├─> AcademicTerm -> Admin/Term Guard -> Schedule 历史迁移
+  └─> Storage Object -> Documents/Version -> Preview/Converter
+                                          └─> 恢复与 Final
+```
 
-这些能力在缺少威胁模型、隔离、资源配额、审计和恢复方案时不得提前开放。
+标准团队按 8 周规划；小团队按 10–12 周。Storage 并发配额、历史课表保护、文档版本和恢复是硬门；
+DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 
-## 下一版如何立项
+## 迁移与兼容
 
-1. 冻结当前代码、42 个 migration、路由/OpenAPI、Module/Runtime Manifest 和数据目录。
-2. 在目标平台运行完整发布门禁并记录环境。
-3. 只选择一条主要产品或架构主线，明确非目标。
-4. 为每阶段定义代码目录、数据迁移、兼容、回滚、负向测试和进度证据。
-5. 创建正式计划后才形成版本承诺；本页只提供候选优先级。
+- 当前 migration 为 `000001-000048`；`000048` 无损统一早期对象账本的约束名称。生产回滚应关闭 Feature 并 forward-fix，不能用 down 删除用户对象或文档。
+- 文件迁移采用 `shadow -> dual -> enforce`，旧头像、图片、RichText 资产和课表先盘点再登记。
+- 未知文件只报告或隔离，不在启动时自动删除。
+- 旧 `year + semester` 请求在兼容期只能解析为已存在 AcademicTerm，不能绕过 Guard 创建学期。
+- Feature Disable、Converter Disable 和紧急回退均保留对象、课表、文档与版本。
 
-## 不应回退的边界
+## v14 非目标
 
-- 不把模块化单体拆成无必要的微服务。
-- 不把 Built-in Feature 或 Resource Package 放回普通插件生命周期。
-- External Plugin 和 Agent Runner 不得取得核心数据库、JWT 私钥、用户 Token 或完整宿主文件系统。
-- Feature 停用、Plugin 卸载和资源切换不得隐式删除用户数据。
-- 不为了通过测试删除权限、审计、清洗、路径、配额、事务或数据库约束。
+- 多人协作文档、分享链接、跨用户 ACL、完整 Office/PDF 编辑。
+- S3/OSS/WebDAV 生产 Provider、云盘同步、全文/向量搜索和 AI 文档能力。
+- 标准 MCP、真实 protobuf gRPC、远程插件市场、Agent Runner。
+- 多节点 API/Worker、数据库 HA、自动 TLS。
+
+这些方向仍需独立威胁模型、资源隔离、迁移、回滚和目标环境证据，不能从 v14 的接口预留推断为已交付。
+
+## v15 及以后候选
+
+- 真实 Windows/arm64 发行认证、SBOM、镜像签名和目标环境长稳。
+- S3/OSS/WebDAV Provider 与多实例对象/配额一致性。
+- OAuth/OIDC、Passkey、实时通知。
+- 标准 MCP/进程扩展协议、远程插件目录。
+- 隔离 Agent Runner 和多节点高可用。
 
 相关页面：[版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、
 [完整入门路径](/guide/getting-started)、[构建与发布](/deployment/release)。

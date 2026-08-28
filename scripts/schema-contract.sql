@@ -13,7 +13,9 @@ BEGIN
         'richtext_article_assets', 'content_revisions', 'content_moderation_cases', 'content_moderation_actions',
         'webhook_endpoints', 'webhook_deliveries',
         'platform_outbox', 'outbox_consumer_receipts', 'platform_outbox_attempts', 'platform_command_audits', 'platform_worker_leases',
-        'platform_operation_runs', 'platform_compatibility_usage', 'platform_retention_runs'
+        'platform_operation_runs', 'platform_compatibility_usage', 'platform_retention_runs',
+        'academic_terms', 'user_storage_accounts', 'storage_objects', 'user_storage_reservations',
+        'user_schedule_terms', 'personal_documents', 'personal_document_versions', 'personal_document_previews'
     ]) item
     WHERE to_regclass('public.' || item) IS NULL;
     IF missing IS NOT NULL THEN
@@ -55,7 +57,17 @@ BEGIN
         'authorization_audits.command_id', 'platform_outbox.status', 'platform_outbox.schema_version',
         'platform_command_audits.command_code', 'platform_operation_runs.status',
         'webhook_deliveries.delivery_key', 'webhook_endpoints.max_concurrent', 'webhook_endpoints.rate_limit_per_minute', 'outbox_consumer_receipts.consumer_name', 'platform_outbox_attempts.status',
-        'platform_retention_runs.target'
+        'platform_retention_runs.target',
+        'academic_terms.id', 'academic_terms.year', 'academic_terms.semester',
+        'academic_terms.first_week_start', 'academic_terms.status', 'academic_terms.is_default',
+        'academic_terms.version', 'academic_terms.created_by', 'academic_terms.updated_by',
+        'user_storage_accounts.user_id', 'user_storage_accounts.used_bytes', 'user_storage_accounts.reserved_bytes', 'user_storage_accounts.version',
+        'storage_objects.id', 'storage_objects.owner_user_id', 'storage_objects.namespace', 'storage_objects.purpose', 'storage_objects.provider', 'storage_objects.storage_key', 'storage_objects.size_bytes', 'storage_objects.sha256', 'storage_objects.status', 'storage_objects.version',
+        'user_storage_reservations.id', 'user_storage_reservations.user_id', 'user_storage_reservations.object_id', 'user_storage_reservations.reserved_bytes', 'user_storage_reservations.status', 'user_storage_reservations.expires_at'
+        ,'user_schedule_terms.user_id', 'user_schedule_terms.academic_term_id',
+        'personal_documents.id', 'personal_documents.owner_user_id', 'personal_documents.name', 'personal_documents.document_type', 'personal_documents.status', 'personal_documents.current_version_id', 'personal_documents.version',
+        'personal_document_versions.id', 'personal_document_versions.document_id', 'personal_document_versions.version_number', 'personal_document_versions.source_object_id', 'personal_document_versions.source_type', 'personal_document_versions.size_bytes', 'personal_document_versions.sha256',
+        'personal_document_previews.id', 'personal_document_previews.document_version_id', 'personal_document_previews.preview_object_id', 'personal_document_previews.status', 'personal_document_previews.attempts'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM information_schema.columns c
@@ -101,6 +113,15 @@ BEGIN
         'chk_route_operation_code', 'chk_authorization_audits_outcome',
         'chk_platform_outbox_status', 'chk_platform_outbox_attempts', 'chk_platform_outbox_attempt_status', 'chk_platform_operation_status',
         'chk_platform_retention_run_mode', 'chk_platform_retention_run_status',
+        'chk_academic_terms_year', 'chk_academic_terms_semester', 'chk_academic_terms_first_week_monday',
+        'chk_academic_terms_status', 'chk_academic_terms_default_open', 'chk_academic_terms_version',
+        'chk_academic_terms_closed_at',
+        'chk_user_storage_accounts_used', 'chk_user_storage_accounts_reserved', 'chk_user_storage_accounts_version',
+        'chk_storage_objects_provider', 'chk_storage_objects_size', 'chk_storage_objects_status', 'chk_storage_objects_version', 'chk_storage_objects_deleted_at', 'chk_storage_objects_ready_payload',
+        'chk_user_storage_reservations_bytes', 'chk_user_storage_reservations_status',
+		'chk_personal_documents_type', 'chk_personal_documents_status', 'chk_personal_documents_version',
+		'chk_personal_document_versions_number', 'chk_personal_document_versions_type', 'chk_personal_document_versions_size',
+		'chk_personal_document_previews_status', 'chk_personal_document_previews_attempts',
         'chk_webhook_endpoint_max_concurrent', 'chk_webhook_endpoint_rate_limit',
         'fk_accounts_user', 'fk_identity_admin_account_user', 'fk_identity_admin_account_credential',
         'fk_identity_email_challenge_account', 'fk_identity_challenge_policy_updated_by', 'fk_identity_recovery_case_user',
@@ -138,7 +159,12 @@ BEGIN
         'idx_plugins_runtime_state', 'uk_permission_definitions_code', 'uk_route_operations_code',
         'uk_role_permissions_active', 'uk_route_permission_bindings_active',
         'uk_platform_outbox_idempotency', 'uk_platform_operation_idempotency',
-        'uk_webhook_deliveries_delivery_key'
+        'uk_webhook_deliveries_delivery_key',
+        'uk_academic_terms_year_semester', 'uk_academic_terms_open_default', 'idx_academic_terms_status_year',
+        'uk_storage_objects_provider_key', 'idx_storage_objects_owner_id_desc', 'idx_storage_objects_owner_namespace_purpose_id_desc', 'idx_storage_objects_status_updated_at',
+        'uk_user_storage_reservations_object', 'idx_user_storage_reservations_pending_expiry',
+        'idx_user_schedule_terms_academic_term', 'idx_personal_documents_owner_status_updated',
+        'idx_personal_document_versions_document_number', 'uk_personal_document_versions_number', 'uk_personal_document_previews_version'
     ]) expected
     WHERE to_regclass('public.' || expected) IS NULL;
     IF missing IS NOT NULL THEN

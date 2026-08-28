@@ -1,6 +1,6 @@
 # CampusOS Versioned Development Reference
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-29
 
 ## Stage Detection
 
@@ -14,7 +14,7 @@ Use this order:
 Current stage name:
 
 ```text
-v0.13-dev
+v0.14-dev
 ```
 
 Progress documents use:
@@ -34,7 +34,7 @@ docs/进度/v0.13-dev/v0.13.35-dev.md
 | Implementation stage | Preferred plan path |
 | --- | --- |
 | Historical stages | Matching `docs/项目计划vN/` and `docs/进度/v0.N-dev/` for traceability |
-| `v0.13-dev` | `docs/项目计划v13/` plus the latest numbered `docs/进度/v0.13-dev/` record |
+| `v0.14-dev` | `docs/项目计划v14/00-v14版本计划书.md` plus the latest numbered `docs/进度/v0.14-dev/` record |
 | Future stages | `docs/计划书总结/README.md`, then the latest matching plan or user-provided plan |
 
 If the exact plan file is unknown, list files in the plan directory and read the most relevant top-level plan first.
@@ -105,6 +105,8 @@ Prefer concise tables over long prose.
 
 ## Current Baseline
 
-The release baseline is `v0.13.0` with migrations through `000042`. Treat old v0.3-v0.12 plans as historical unless a
-compatibility task explicitly targets them. Current candidate directions live under `docs/计划书总结/`; they are not an
-approved v14 plan until a new plan file is created.
+The release baseline remains `v0.13.0`; the active worktree has migrations through `000048`. The active implementation stage is
+`v0.14-dev`; its formal plan is `docs/项目计划v14/00-v14版本计划书.md`, and the latest evidence is
+`docs/进度/v0.14-dev/v0.14.2-dev.md`. AcademicTerm, Storage Object, Schedule Guard and Personal Documents MVP are implemented;
+historical adoption, reconcile apply, Converter isolation and Final recovery/release gates remain incomplete. Treat v0.3-v0.13 plans
+as historical unless a compatibility task explicitly targets them.

@@ -1,0 +1,69 @@
+package personaldocuments
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
+	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+)
+
+const portRepository = "personal-documents.adapter.repository"
+
+type ModuleConfig struct{ Enabled func() bool }
+type Module struct {
+	config     ModuleConfig
+	repository Repository
+	objects    corestorage.ObjectPort
+	service    *Service
+	handler    *Handler
+}
+
+func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
+func (m *Module) ID() string                { return ModuleID }
+func (m *Module) Dependencies() []string {
+	return []string{"core.identity", "core.user-storage", "core.feature-registry"}
+}
+func (m *Module) Register(app *platformmodule.AppContext) error {
+	if app == nil {
+		return errors.New("personal documents app context is required")
+	}
+	value, ok := app.Lookup(portRepository)
+	if !ok {
+		return errors.New("personal document repository is unavailable")
+	}
+	repo, ok := value.(Repository)
+	if !ok || repo == nil {
+		return fmt.Errorf("personal document repository has incompatible type %T", value)
+	}
+	value, ok = app.Lookup("storage.objects")
+	if !ok {
+		return errors.New("storage object port is unavailable")
+	}
+	objects, ok := value.(corestorage.ObjectPort)
+	if !ok || objects == nil {
+		return fmt.Errorf("storage object port has incompatible type %T", value)
+	}
+	m.repository, m.objects = repo, objects
+	return nil
+}
+func (m *Module) Start(context.Context) error {
+	svc, e := NewService(m.repository, m.objects)
+	if e != nil {
+		return e
+	}
+	svc.SetEnabledChecker(m.config.Enabled)
+	m.service = svc
+	m.handler = NewHandler(svc)
+	return nil
+}
+func (m *Module) Stop(context.Context) error { return nil }
+func (m *Module) Health(context.Context) platformmodule.Health {
+	if m.service == nil || m.handler == nil {
+		return platformmodule.Health{Status: platformmodule.HealthUnhealthy, Message: "personal document service is unavailable"}
+	}
+	return platformmodule.Health{Status: platformmodule.HealthHealthy}
+}
+func (m *Module) Handler() *Handler { return m.handler }
+func (m *Module) Service() *Service { return m.service }

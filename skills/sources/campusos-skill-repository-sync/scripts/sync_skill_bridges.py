@@ -11,7 +11,7 @@ from pathlib import Path
 
 BRIDGE_BODY = """# Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [{name} canonical instructions]({canonical}) completely before taking task actions, then follow them faithfully.
 

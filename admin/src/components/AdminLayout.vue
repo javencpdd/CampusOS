@@ -53,6 +53,7 @@
             <el-menu-item v-if="adminStore.isAdmin" index="/challenge-policy"
               >验证码策略</el-menu-item
             >
+			<el-menu-item v-if="adminStore.isAdmin" index="/academic-terms">学期治理</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="content">
             <template #title
@@ -239,6 +240,7 @@ const currentPageTitle = computed(() => {
     "/mfa-policy": "管理员 MFA 策略",
     "/account-recovery": "账号恢复",
     "/challenge-policy": "验证码策略",
+		"/academic-terms": "学期治理",
     "/threads": "帖子治理",
     "/categories": "版块管理",
     "/docs": "相关资料",

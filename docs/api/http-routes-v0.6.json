@@ -1448,6 +1448,23 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/schedule/terms",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.schedule.terms",
+      "legacy_aliases": [
+        "http.get.api.v1.schedule.terms",
+        "httpapi.get.api.v1.schedule.terms"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/schedule/me/terms",
       "handler": "d.Schedule",
       "module_owner": "feature.personal-schedule",
@@ -1512,6 +1529,193 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents",
+      "legacy_aliases": [
+        "http.get.api.v1.documents",
+        "httpapi.get.api.v1.documents"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents",
+      "legacy_aliases": [
+        "http.post.api.v1.documents",
+        "httpapi.post.api.v1.documents"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/upload",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.upload",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.upload",
+        "httpapi.post.api.v1.documents.upload"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/:id",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents.id",
+      "legacy_aliases": [
+        "http.get.api.v1.documents.id",
+        "httpapi.get.api.v1.documents.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/:id/content",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents.id.content",
+      "legacy_aliases": [
+        "http.get.api.v1.documents.id.content",
+        "httpapi.get.api.v1.documents.id.content"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/documents/:id",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.documents.id",
+      "legacy_aliases": [
+        "http.put.api.v1.documents.id",
+        "httpapi.put.api.v1.documents.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/:id/versions",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents.id.versions",
+      "legacy_aliases": [
+        "http.get.api.v1.documents.id.versions",
+        "httpapi.get.api.v1.documents.id.versions"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/:id/versions/:version_id/restore",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.id.versions.version_id.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.id.versions.version_id.restore",
+        "httpapi.post.api.v1.documents.id.versions.version_id.restore"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/:id/trash",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.id.trash",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.id.trash",
+        "httpapi.post.api.v1.documents.id.trash"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/documents/:id/restore",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.id.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.id.restore",
+        "httpapi.post.api.v1.documents.id.restore"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/documents/:id/download",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents.id.download",
+      "legacy_aliases": [
+        "http.get.api.v1.documents.id.download",
+        "httpapi.get.api.v1.documents.id.download"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
       "stability": "experimental"
     },
     {
@@ -3730,6 +3934,139 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/academic-terms",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:read",
+      "permission_code": "schedule.academic_term.read",
+      "operation_code": "http.schedule.academic_term.list",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.academic_terms",
+        "httpapi.get.api.v1.admin.academic_terms"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/academic-terms",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:manage",
+      "permission_code": "schedule.academic_term.manage",
+      "operation_code": "http.schedule.academic_term.create",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.academic_terms",
+        "httpapi.post.api.v1.admin.academic_terms"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/academic-terms/:id",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:manage",
+      "permission_code": "schedule.academic_term.manage",
+      "operation_code": "http.schedule.academic_term.update",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.academic_terms.id",
+        "httpapi.put.api.v1.admin.academic_terms.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/academic-terms/:id/open",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:manage",
+      "permission_code": "schedule.academic_term.manage",
+      "operation_code": "http.schedule.academic_term.open",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.academic_terms.id.open",
+        "httpapi.post.api.v1.admin.academic_terms.id.open"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/academic-terms/:id/close",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:manage",
+      "permission_code": "schedule.academic_term.manage",
+      "operation_code": "http.schedule.academic_term.close",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.academic_terms.id.close",
+        "httpapi.post.api.v1.admin.academic_terms.id.close"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/academic-terms/:id/default",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:manage",
+      "permission_code": "schedule.academic_term.manage",
+      "operation_code": "http.schedule.academic_term.default",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.academic_terms.id.default",
+        "httpapi.post.api.v1.admin.academic_terms.id.default"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/academic-terms/:id",
+      "handler": "d.AcademicTerm",
+      "module_owner": "core.academic-term",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "academic_term:delete",
+      "permission_code": "schedule.academic_term.delete",
+      "operation_code": "http.schedule.academic_term.delete",
+      "legacy_aliases": [
+        "http.delete.api.v1.admin.academic_terms.id",
+        "httpapi.delete.api.v1.admin.academic_terms.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

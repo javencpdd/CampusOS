@@ -1,0 +1,89 @@
+{
+  "schema": "campusos.v14-g0-baseline/v1",
+  "generated_at": "2026-08-28T14:11:33.8781014Z",
+  "application_version": "0.13.0",
+  "git": {
+    "commit": "4ce46bde64de96e5673ca83ca4c219b5fd7d212a",
+    "dirty": true
+  },
+  "environment": {
+    "goos": "windows",
+    "goarch": "amd64",
+    "go_version": "go1.25.0",
+    "logical_cpus": 16
+  },
+  "contracts": {
+    "version": "v0.13",
+    "routes": 282,
+    "audience_counts": {
+      "admin": 132,
+      "authenticated": 104,
+      "public": 46
+    },
+    "sha256": "c0a91dfe3a78bfb7dc04cb8f76f467909e640d16644675def09f7a39d1b7610e"
+  },
+  "database": {
+    "migration_count": 43,
+    "latest_migration": "000043_v13_post_parent_floor",
+    "sha256": "f349dbb6cabd6f66a49fe5367a3e0fe986d5b91d49aa4ebe55a330493b7a6e31"
+  },
+  "modules": {
+    "count": 22,
+    "kind_counts": {
+      "builtin-feature": 12,
+      "core": 10
+    },
+    "ids": [
+      "core.community", "core.email-delivery", "core.event-bus", "core.feature-registry", "core.identity",
+      "core.moderation", "core.observability", "core.plugin-platform", "core.reliability", "core.user-storage",
+      "feature.ai-gateway", "feature.appearance", "feature.controlled-richtext-article", "feature.integration-overview",
+      "feature.mcp", "feature.message", "feature.mutual-aid", "feature.personal-schedule", "feature.personal-space",
+      "feature.platform-log", "feature.secondhand", "feature.webhook"
+    ],
+    "sha256": "11dd2b0868e52d4bc88f45dba77319ec9f686771cfc11080ac3cb6e9d3f2f0c5"
+  },
+  "external_plugins": {
+    "count": 2,
+    "runtime_counts": { "grpc": 1, "wasm": 1 },
+    "names": ["hello-plugin", "hello-wasm"],
+    "sha256": "e4306bd06f8e37a7cd8cf3ac5b5870dfe1781a798f6289a1f4939447c557a705"
+  },
+  "resources": {
+    "count": 5,
+    "type_counts": { "homepage-pack": 1, "space-style-pack": 2, "theme": 2 },
+    "packages": [
+      { "id": "aurora-campus", "type": "theme", "version": "0.2.0", "tree_sha256": "c75326bbde99842d5428721dd294bd9b45193330a30e71fe94dccc2e3ffdc188" },
+      { "id": "campus-canvas", "type": "theme", "version": "0.1.0", "tree_sha256": "3c1ff02a7a347ed8b7895316206be328c70df29078efafdc2976a2bf5605c4c8" },
+      { "id": "campus-hero", "type": "homepage-pack", "version": "0.1.0", "tree_sha256": "96474780c208e640da8ab28d6f6e1b996c4471b9748ec98af6dc418432fe82e1" },
+      { "id": "clean-blog", "type": "space-style-pack", "version": "0.1.0", "tree_sha256": "660891629837651c6b7ab4cd73ca90d6efd9f31c4ad7651d1284ca74f73b2f6c" },
+      { "id": "kinetic-journal", "type": "space-style-pack", "version": "0.1.0", "tree_sha256": "9846efe7865c0b7569f17ce54298ed9403571369e00d5402b52b8ac30a4a5680" }
+    ],
+    "sha256": "1e190b7ed8c9f253b45f0481178c803c056eb1e92bee95c1a8b63d6a797e87d1"
+  },
+  "tooling": {
+    "go": "go version go1.25.0 windows/amd64",
+    "node": "v24.15.0",
+    "postgresql": "unavailable",
+    "docker": "Docker version 29.6.2, build dfc4efb",
+    "docker_compose": "Docker Compose version v5.3.1"
+  },
+  "user_storage": {
+    "root": "data/personal-space",
+    "user_count": 4,
+    "file_count": 15,
+    "total_bytes": 12232636,
+    "symlink_count": 0,
+    "unknown_path_count": 0,
+    "unreadable_file_count": 0
+  },
+  "schedules": {
+    "json_file_count": 1,
+    "valid_term_keys": ["2027-fall"],
+    "malformed_file_count": 0,
+    "missing_active_index_count": 0
+  },
+  "structured_queries": [
+    { "feature": "mutualaid", "detail_fetch_mode": "per-item Store.Get", "detail_reads_for_n_items": "N", "budget_state": "violates constant-query target" },
+    { "feature": "secondhand", "detail_fetch_mode": "per-item Store.Get", "detail_reads_for_n_items": "N", "budget_state": "violates constant-query target" }
+  ]
+}

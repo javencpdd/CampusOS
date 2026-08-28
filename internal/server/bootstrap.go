@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
@@ -18,6 +19,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
+	personaldocuments "github.com/campusos/CampusOS/internal/modules/features/personaldocuments"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
@@ -134,6 +136,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		SMTPStartTLS: s.cfg.Email.SMTPStartTLS,
 	})
 	communityModule := communitycore.NewModule()
+	academicTermModule := academicterm.NewModule()
 	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: corestorage.DefaultQuotaBytes})
 	appearanceModule := appearance.NewModule(appearance.ModuleConfig{FeatureRegistry: features.Registry})
 	spaceModule := space.NewModule(space.ModuleConfig{
@@ -156,6 +159,11 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-schedule") },
 	})
+	personalDocumentsModule := personaldocuments.NewModule(personaldocuments.ModuleConfig{
+		Enabled: func() bool {
+			return features.Registry() != nil && features.Registry().Enabled(personaldocuments.FeatureID)
+		},
+	})
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(mutualaid.FeatureID) },
 	})
@@ -176,11 +184,13 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.identity = identityModule
 	s.emailDelivery = emailDeliveryModule
 	s.community = communityModule
+	s.academicTerm = academicTermModule
 	s.moderation = moderationModule
 	s.storage = storageModule
 	s.space = spaceModule
 	s.richtext = richtextModule
 	s.schedule = scheduleModule
+	s.personalDocuments = personalDocumentsModule
 	s.mutualAid = mutualAidModule
 	s.secondhand = secondhandModule
 	s.appearance = appearanceModule
@@ -199,12 +209,14 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: emailDeliveryModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: academicTermModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: moderationModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: storageModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: plugins, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: spaceModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: richtextModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: scheduleModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
+		{Module: personalDocumentsModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: mutualAidModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: secondhandModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: appearanceModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
@@ -224,7 +236,16 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				return err
 			}
 			if pool != nil {
+				if err := academicterm.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
 				if err := corestorage.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
+				if err := schedule.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
+				if err := personaldocuments.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
 				if err := reliability.BindPostgreSQLAdapter(app, pool); err != nil {
@@ -262,7 +283,16 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				}
 				return message.BindPostgreSQLAdapter(app, pool)
 			}
+			if err := academicterm.BindMemoryAdapter(app); err != nil {
+				return err
+			}
 			if err := corestorage.BindMemoryAdapter(app); err != nil {
+				return err
+			}
+			if err := schedule.BindMemoryAdapter(app); err != nil {
+				return err
+			}
+			if err := personaldocuments.BindMemoryAdapter(app); err != nil {
 				return err
 			}
 			if err := reliability.BindMemoryAdapter(app); err != nil {

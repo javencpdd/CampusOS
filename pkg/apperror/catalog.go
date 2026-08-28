@@ -47,6 +47,21 @@ var (
 	IdentityMFAPolicySafety                  = descriptor("identity", "identity.mfa.policy_safety", 10018, 409, "multi-factor authentication policy safety requirements are not met", false)
 	IdentityMFAStepUpRequired                = descriptor("identity", "identity.mfa.step_up_required", 10019, 403, "recent multi-factor authentication is required", false)
 
+	AcademicTermInvalid             = descriptor("academic-term", "academic_term.invalid", 74001, 400, "学期请求无效", false)
+	AcademicTermNotAvailable        = descriptor("academic-term", "academic_term.not_available", 74002, 404, "学期不存在或当前不可用", false)
+	AcademicTermAlreadyExists       = descriptor("academic-term", "academic_term.already_exists", 74003, 409, "该年份和学期已存在", false)
+	AcademicTermClosed              = descriptor("academic-term", "academic_term.closed", 74004, 409, "学期已关闭，不能执行该操作", false)
+	AcademicTermDefaultUnavailable  = descriptor("academic-term", "academic_term.default_unavailable", 74005, 409, "当前没有可用的默认学期", false)
+	AcademicTermVersionConflict     = descriptor("academic-term", "academic_term.version_conflict", 74006, 409, "学期已被其他管理员更新，请刷新后重试", false)
+	AcademicTermHasSchedules        = descriptor("academic-term", "academic_term.has_schedules", 74007, 409, "该学期已有课表数据，不能删除", false)
+	UserStorageQuotaExceeded        = descriptor("user-storage", "user_storage.quota_exceeded", 76001, 409, "个人空间不足，无法保存文件", false)
+	PersonalDocumentDisabled        = descriptor("personal-documents", "personal_document.feature_disabled", 77001, 503, "我的文档功能暂未启用", true)
+	PersonalDocumentInvalid         = descriptor("personal-documents", "personal_document.invalid", 77002, 400, "文档请求无效", false)
+	PersonalDocumentNotFound        = descriptor("personal-documents", "personal_document.not_found", 77003, 404, "文档不存在或无权访问", false)
+	PersonalDocumentTooLarge        = descriptor("personal-documents", "personal_document.too_large", 77004, 400, "文件超过该类型允许的大小", false)
+	PersonalDocumentVersionConflict = descriptor("personal-documents", "personal_document.version_conflict", 77005, 409, "文档已被更新，请刷新后重试", false)
+	PersonalDocumentNotEditable     = descriptor("personal-documents", "personal_document.not_editable", 77006, 409, "当前文档格式不支持在线编辑", false)
+
 	MutualAidFeatureDisabled   = descriptor("mutual-aid", "mutual_aid.feature_disabled", 50301, 503, "mutual aid feature is disabled", true)
 	MutualAidNotFound          = descriptor("mutual-aid", "mutual_aid.not_found", 40003, 404, "mutual aid thread not found", false)
 	MutualAidForbidden         = descriptor("mutual-aid", "mutual_aid.forbidden", 20003, 403, "mutual aid thread belongs to another user", false)
@@ -90,6 +105,10 @@ var catalog = []Descriptor{
 	IdentityMFAInvalid, IdentityMFATicketInvalid, IdentityMFAFactorInvalid, IdentityMFAEnrollmentRequired,
 	IdentityMFAUnavailable, IdentityMFAReplay, IdentityMFANotEnabled, IdentityMFAPolicyInvalid, IdentityMFAPolicySafety,
 	IdentityMFAStepUpRequired,
+	AcademicTermInvalid, AcademicTermNotAvailable, AcademicTermAlreadyExists, AcademicTermClosed,
+	AcademicTermDefaultUnavailable, AcademicTermVersionConflict, AcademicTermHasSchedules,
+	UserStorageQuotaExceeded, PersonalDocumentDisabled, PersonalDocumentInvalid, PersonalDocumentNotFound,
+	PersonalDocumentTooLarge, PersonalDocumentVersionConflict, PersonalDocumentNotEditable,
 	MutualAidFeatureDisabled, MutualAidNotFound, MutualAidForbidden, MutualAidInvalidInput,
 	MutualAidInvalidTransition, MutualAidVersionConflict, MutualAidNotEditable,
 	SecondhandFeatureDisabled, SecondhandNotFound, SecondhandForbidden, SecondhandInvalidInput,

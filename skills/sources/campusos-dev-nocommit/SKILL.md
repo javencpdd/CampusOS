@@ -5,13 +5,13 @@ description: Complete CampusOS implementation or documentation tasks with versio
 
 # CampusOS Dev No Commit
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 ## Core Rule
 
 Complete one coherent CampusOS development task at a time for the active version stage. For each completed task:
 
-1. Identify the target stage, currently `v0.13-dev` unless the user explicitly selects another stage.
+1. Identify the target stage, currently `v0.14-dev` unless the user explicitly selects another stage.
 2. Read the matching plan and latest progress documents.
 3. Implement the scoped code or documentation change.
 4. Add or update one progress document under `docs/进度/<stage>/`.
@@ -28,8 +28,8 @@ drive, home directory, or operating system.
 Common version-stage paths:
 
 ```text
-docs/项目计划v13/
-docs/进度/v0.13-dev/
+docs/项目计划v14/
+docs/进度/v0.14-dev/
 ```
 
 If a future stage does not have a directory yet, create it only when the task requires a progress document for that stage.

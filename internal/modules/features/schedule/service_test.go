@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 )
 
@@ -60,6 +62,83 @@ func TestSaveAndGetSchedule(t *testing.T) {
 	}
 	if want := filepath.Join("1001", space.PersonalSpaceFileDir, "schedule", "schedule.json"); !strings.HasSuffix(path, want) {
 		t.Fatalf("unexpected schedule path: %q", path)
+	}
+}
+
+func TestManagedTermsGuardNewWritesButKeepsClosedHistoryReadable(t *testing.T) {
+	ctx := context.Background()
+	terms, err := academicterm.NewService(academicterm.NewMemoryRepository())
+	if err != nil {
+		t.Fatalf("new academic term service: %v", err)
+	}
+	term, err := terms.Create(ctx, "9001", academicterm.CreateRequest{
+		Year: 2027, Semester: academicterm.SemesterSpring, FirstWeekStart: "2027-02-22",
+		Status: academicterm.StatusOpen, IsDefault: true, Reason: "创建春季学期",
+	})
+	if err != nil {
+		t.Fatalf("create academic term: %v", err)
+	}
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatalf("new storage: %v", err)
+	}
+	svc, err := NewServiceWithStorageAndTerms(Config{RootDir: storage.Root()}, storage, terms)
+	if err != nil {
+		t.Fatalf("new guarded schedule service: %v", err)
+	}
+	if _, err := svc.Save(ctx, "1001", UpsertRequest{Settings: Settings{PeriodsPerDay: 12}}); err != nil {
+		t.Fatalf("save default managed term: %v", err)
+	}
+	if _, err := svc.ActivateTerm(ctx, "1001", 2027, SemesterFall); !errors.Is(err, academicterm.ErrNotFound) {
+		t.Fatalf("unconfigured term should be rejected, got %v", err)
+	}
+	if _, err := terms.Close(ctx, "9001", term.ID, academicterm.TransitionRequest{ExpectedVersion: term.Version, Reason: "学期归档"}); err != nil {
+		t.Fatalf("close term: %v", err)
+	}
+	if _, err := svc.Save(ctx, "1001", UpsertRequest{TermYear: 2027, Semester: SemesterSpring, Settings: Settings{PeriodsPerDay: 12}}); !errors.Is(err, academicterm.ErrClosed) {
+		t.Fatalf("closed term write should be rejected, got %v", err)
+	}
+	if _, err := svc.GetTerm(ctx, "1001", 2027, SemesterSpring); err != nil {
+		t.Fatalf("closed historical term should remain readable: %v", err)
+	}
+}
+
+func TestManagedScheduleDualWritesImmutableObjectAfterCompatibilityJSON(t *testing.T) {
+	ctx := context.Background()
+	terms, err := academicterm.NewService(academicterm.NewMemoryRepository())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = terms.Create(ctx, "9001", academicterm.CreateRequest{Year: 2027, Semester: academicterm.SemesterFall, FirstWeekStart: "2027-09-06", Status: academicterm.StatusOpen, IsDefault: true, Reason: "创建秋季学期"}); err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects, err := corestorage.NewObjectService(adapter, adapter, corestorage.NewMemoryObjectRepository(), adapter.DefaultQuotaBytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc, err := NewServiceWithStorageAndTerms(Config{RootDir: adapter.Root()}, adapter, terms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.termReferences = NewMemoryTermReferenceRepository()
+	svc.SetObjectPort(objects)
+	if _, err = svc.Save(ctx, "1001", UpsertRequest{Settings: Settings{PeriodsPerDay: 12}}); err != nil {
+		t.Fatalf("save managed schedule: %v", err)
+	}
+	page, err := objects.List(ctx, "1001", corestorage.ObjectFilter{Namespace: "schedule", Purpose: "term-json"}, corestorage.PageRequest{})
+	if err != nil || len(page.Items) != 1 {
+		t.Fatalf("expected one immutable schedule object, items=%#v err=%v", page.Items, err)
+	}
+	usage, err := adapter.Usage("1001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Items[0].SizeBytes >= usage {
+		t.Fatalf("compatibility JSON and object should both be present, object=%d usage=%d", page.Items[0].SizeBytes, usage)
 	}
 }
 

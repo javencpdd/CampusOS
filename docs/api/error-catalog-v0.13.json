@@ -2,6 +2,62 @@
   "contract_version": "campusos.errors/v1",
   "errors": [
     {
+      "owner": "academic-term",
+      "machine_code": "academic_term.already_exists",
+      "legacy_code": 74003,
+      "http_status": 409,
+      "message": "该年份和学期已存在",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.closed",
+      "legacy_code": 74004,
+      "http_status": 409,
+      "message": "学期已关闭，不能执行该操作",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.default_unavailable",
+      "legacy_code": 74005,
+      "http_status": 409,
+      "message": "当前没有可用的默认学期",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.has_schedules",
+      "legacy_code": 74007,
+      "http_status": 409,
+      "message": "该学期已有课表数据，不能删除",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.invalid",
+      "legacy_code": 74001,
+      "http_status": 400,
+      "message": "学期请求无效",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.not_available",
+      "legacy_code": 74002,
+      "http_status": 404,
+      "message": "学期不存在或当前不可用",
+      "retryable": false
+    },
+    {
+      "owner": "academic-term",
+      "machine_code": "academic_term.version_conflict",
+      "legacy_code": 74006,
+      "http_status": 409,
+      "message": "学期已被其他管理员更新，请刷新后重试",
+      "retryable": false
+    },
+    {
       "owner": "identity",
       "machine_code": "auth.invalid_token",
       "legacy_code": 20002,
@@ -234,6 +290,54 @@
       "retryable": false
     },
     {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.feature_disabled",
+      "legacy_code": 77001,
+      "http_status": 503,
+      "message": "我的文档功能暂未启用",
+      "retryable": true
+    },
+    {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.invalid",
+      "legacy_code": 77002,
+      "http_status": 400,
+      "message": "文档请求无效",
+      "retryable": false
+    },
+    {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.not_editable",
+      "legacy_code": 77006,
+      "http_status": 409,
+      "message": "当前文档格式不支持在线编辑",
+      "retryable": false
+    },
+    {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.not_found",
+      "legacy_code": 77003,
+      "http_status": 404,
+      "message": "文档不存在或无权访问",
+      "retryable": false
+    },
+    {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.too_large",
+      "legacy_code": 77004,
+      "http_status": 400,
+      "message": "文件超过该类型允许的大小",
+      "retryable": false
+    },
+    {
+      "owner": "personal-documents",
+      "machine_code": "personal_document.version_conflict",
+      "legacy_code": 77005,
+      "http_status": 409,
+      "message": "文档已被更新，请刷新后重试",
+      "retryable": false
+    },
+    {
       "owner": "reliability",
       "machine_code": "reliability.attempts.unavailable",
       "legacy_code": 89111,
@@ -447,6 +551,14 @@
       "legacy_code": 40009,
       "http_status": 409,
       "message": "secondhand detail version conflict",
+      "retryable": false
+    },
+    {
+      "owner": "user-storage",
+      "machine_code": "user_storage.quota_exceeded",
+      "legacy_code": 76001,
+      "http_status": 409,
+      "message": "个人空间不足，无法保存文件",
       "retryable": false
     }
   ]

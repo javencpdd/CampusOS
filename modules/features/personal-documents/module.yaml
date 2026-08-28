@@ -1,0 +1,34 @@
+schema: campusos.module/v1
+id: feature.personal-documents
+feature_id: personal-documents
+name: personal-documents
+display_name: "Personal Documents"
+version: "0.14.0-dev"
+description: "Private, versioned personal documents backed by the User Storage Object Port."
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.identity, core.user-storage, core.feature-registry]
+implementation: internal/modules/features/personaldocuments
+ui:
+  contract_version: campusos.ui/v1
+  surfaces:
+    - id: module.personal-documents.page.main
+      version: v1
+      type: page
+      layout_role: main
+      renderer: trusted-module
+      module_id: core.personal-documents
+      regions: [toolbar, document-list, editor]
+  routes:
+    - id: module.personal-documents.route.main
+      path: /documents
+      surface_id: module.personal-documents.page.main
+      title: "我的文档"
+      requires_auth: true
+  navigation:
+    - id: module.personal-documents.navigation.main
+      label: "我的文档"
+      route_id: module.personal-documents.route.main
+      location: user-menu
+      order: 45

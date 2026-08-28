@@ -5,7 +5,7 @@ description: Quickly onboard an agent to the CampusOS repository, current versio
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-project-onboarding canonical instructions](../../../skills/sources/campusos-project-onboarding/SKILL.md) completely before taking task actions, then follow them faithfully.
 

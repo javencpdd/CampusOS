@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
@@ -40,10 +42,13 @@ type Config struct {
 }
 
 type Service struct {
-	cfg     Config
-	storage corestorage.Port
-	enabled func() bool
-	now     func() time.Time
+	cfg            Config
+	storage        corestorage.Port
+	academicTerms  academicterm.Port
+	termReferences TermReferenceRepository
+	objects        corestorage.ObjectPort
+	enabled        func() bool
+	now            func() time.Time
 }
 
 func NewService(cfg Config) (*Service, error) {
@@ -52,6 +57,14 @@ func NewService(cfg Config) (*Service, error) {
 
 // NewServiceWithStorage binds schedule JSON files to the User Storage Core.
 func NewServiceWithStorage(cfg Config, storage corestorage.Port) (*Service, error) {
+	return NewServiceWithStorageAndTerms(cfg, storage, nil)
+}
+
+// NewServiceWithStorageAndTerms binds schedule persistence to the user
+// storage adapter and, when supplied, makes AcademicTerm the sole authority
+// for new schedule terms. A nil AcademicTerm port is retained only for
+// isolated legacy tests and standalone compatibility tools.
+func NewServiceWithStorageAndTerms(cfg Config, storage corestorage.Port, academicTerms academicterm.Port) (*Service, error) {
 	if storage == nil {
 		return nil, errors.New("user storage port is required")
 	}
@@ -59,8 +72,18 @@ func NewServiceWithStorage(cfg Config, storage corestorage.Port) (*Service, erro
 	if quota, ok := storage.(corestorage.Quota); ok {
 		cfg.QuotaBytes = quota.QuotaBytes("")
 	}
-	return newService(cfg, storage)
+	svc, err := newService(cfg, storage)
+	if err != nil {
+		return nil, err
+	}
+	svc.academicTerms = academicTerms
+	return svc, nil
 }
+
+// SetObjectPort enables dual writing of an immutable schedule Object alongside
+// the legacy JSON compatibility file. It is optional only for isolated legacy
+// tests and custom roots that have not yet entered the v14 adoption process.
+func (s *Service) SetObjectPort(objects corestorage.ObjectPort) { s.objects = objects }
 
 func newService(cfg Config, storage corestorage.Port) (*Service, error) {
 	cfg = cfg.withDefaults()
@@ -205,8 +228,25 @@ func (s *Service) ActivateTerm(ctx context.Context, userID string, termYear int,
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
+	termYear, semester, term, err := s.resolveWritableTerm(ctx, termYear, semester)
+	if err != nil {
+		return nil, err
+	}
 	schedule, err := s.loadTerm(ctx, userID, termYear, semester, true)
 	if err != nil {
+		return nil, err
+	}
+	if schedule.FirstWeekStart == "" {
+		if term != nil {
+			schedule.FirstWeekStart = term.FirstWeekStart
+		} else {
+			schedule.FirstWeekStart = mondayOf(s.now()).Format(dateLayout)
+		}
+	}
+	if term != nil {
+		schedule.AcademicTermID = term.ID
+	}
+	if err := s.normalize(schedule); err != nil {
 		return nil, err
 	}
 	if err := s.writeTerm(ctx, schedule); err != nil {
@@ -222,11 +262,25 @@ func (s *Service) Save(ctx context.Context, userID string, req UpsertRequest) (*
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
+	termYear, semester, term, err := s.resolveWritableTerm(ctx, req.TermYear, req.Semester)
+	if err != nil {
+		return nil, err
+	}
+	firstWeekStart := strings.TrimSpace(req.FirstWeekStart)
+	if existing, loadErr := s.loadTerm(ctx, userID, termYear, semester, false); loadErr == nil {
+		// The platform term establishes the date for new schedules. A user may
+		// not silently rewrite an already-created term's calendar through Save
+		// or the raw JSON editor.
+		firstWeekStart = existing.FirstWeekStart
+	} else if firstWeekStart == "" && term != nil {
+		firstWeekStart = term.FirstWeekStart
+	}
 	schedule := &Schedule{
 		UserID:         userID,
-		TermYear:       req.TermYear,
-		Semester:       req.Semester,
-		FirstWeekStart: strings.TrimSpace(req.FirstWeekStart),
+		AcademicTermID: termID(term),
+		TermYear:       termYear,
+		Semester:       semester,
+		FirstWeekStart: firstWeekStart,
 		Settings:       req.Settings,
 		Courses:        req.Courses,
 		Metadata:       req.Metadata,
@@ -255,9 +309,23 @@ func (s *Service) Import(ctx context.Context, userID, filename string, size int6
 	if err != nil {
 		return nil, err
 	}
+	termYear, semester, term, err := s.resolveWritableTerm(ctx, termYear, semester)
+	if err != nil {
+		return nil, err
+	}
 	current, err := s.loadTerm(ctx, userID, termYear, semester, true)
 	if err != nil {
 		return nil, err
+	}
+	if current.FirstWeekStart == "" {
+		if term != nil {
+			current.FirstWeekStart = term.FirstWeekStart
+		} else {
+			current.FirstWeekStart = mondayOf(s.now()).Format(dateLayout)
+		}
+	}
+	if term != nil {
+		current.AcademicTermID = term.ID
 	}
 	if replace {
 		current.Courses = courses
@@ -306,7 +374,7 @@ func (s *Service) load(ctx context.Context, userID string) (*Schedule, error) {
 			return nil, listErr
 		}
 		if len(terms.Items) == 0 {
-			return s.defaultSchedule(userID), nil
+			return s.defaultSchedule(ctx, userID)
 		}
 		selected := terms.Items[0]
 		return s.loadTerm(ctx, userID, selected.TermYear, selected.Semester, false)
@@ -330,7 +398,7 @@ func (s *Service) loadTerm(_ context.Context, userID string, termYear int, semes
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if create {
-				return s.defaultScheduleForTerm(userID, termYear, semester), nil
+				return s.emptyScheduleForTerm(userID, termYear, semester), nil
 			}
 			return nil, fmt.Errorf("%w: schedule term not found", ErrInvalidInput)
 		}
@@ -352,7 +420,7 @@ func (s *Service) loadTerm(_ context.Context, userID string, termYear int, semes
 	return &schedule, nil
 }
 
-func (s *Service) writeTerm(_ context.Context, schedule *Schedule) error {
+func (s *Service) writeTerm(ctx context.Context, schedule *Schedule) error {
 	path, err := s.termSchedulePath(schedule.UserID, schedule.TermYear, schedule.Semester)
 	if err != nil {
 		return err
@@ -370,7 +438,30 @@ func (s *Service) writeTerm(_ context.Context, schedule *Schedule) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, raw, 0o644)
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		return err
+	}
+	// Write the compatibility JSON first. ObjectService observes all existing
+	// user bytes when it initializes the ledger; creating the immutable copy
+	// afterwards therefore accounts for both the old readable file and the new
+	// Object instead of leaving a hidden legacy-byte gap in the ledger.
+	objectID := ""
+	if s.objects != nil {
+		object, objectErr := s.objects.Put(ctx, schedule.UserID, corestorage.PutRequest{
+			Namespace: "schedule", Purpose: "term-json", OriginalName: termKey(schedule.TermYear, schedule.Semester) + ".json",
+			MimeType: "application/json", SizeHint: int64(len(raw)), Reader: bytes.NewReader(raw),
+		})
+		if objectErr != nil {
+			return objectErr
+		}
+		objectID = object.ID
+	}
+	if s.termReferences != nil && strings.TrimSpace(schedule.AcademicTermID) != "" {
+		if err := s.termReferences.Upsert(ctx, TermReference{UserID: schedule.UserID, AcademicTermID: schedule.AcademicTermID, CurrentObjectID: objectID, FirstWeekStart: schedule.FirstWeekStart}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) normalize(schedule *Schedule) error {
@@ -451,16 +542,31 @@ func (s *Service) normalize(schedule *Schedule) error {
 	return nil
 }
 
-func (s *Service) defaultSchedule(userID string) *Schedule {
-	return s.defaultScheduleForTerm(userID, defaultTermYear(s.now()), defaultTermSemester(s.now()))
+func (s *Service) defaultSchedule(ctx context.Context, userID string) (*Schedule, error) {
+	if s.academicTerms != nil {
+		term, err := s.academicTerms.DefaultOpen(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return s.defaultScheduleWithFirstWeek(userID, term.Year, term.Semester, term.FirstWeekStart), nil
+	}
+	return s.defaultScheduleForTerm(userID, defaultTermYear(s.now()), defaultTermSemester(s.now())), nil
 }
 
 func (s *Service) defaultScheduleForTerm(userID string, termYear int, semester string) *Schedule {
+	return s.defaultScheduleWithFirstWeek(userID, termYear, semester, mondayOf(s.now()).Format(dateLayout))
+}
+
+func (s *Service) emptyScheduleForTerm(userID string, termYear int, semester string) *Schedule {
+	return s.defaultScheduleWithFirstWeek(userID, termYear, semester, "")
+}
+
+func (s *Service) defaultScheduleWithFirstWeek(userID string, termYear int, semester, firstWeekStart string) *Schedule {
 	return &Schedule{
 		UserID:         userID,
 		TermYear:       termYear,
 		Semester:       semester,
-		FirstWeekStart: mondayOf(s.now()).Format(dateLayout),
+		FirstWeekStart: firstWeekStart,
 		Settings: Settings{
 			PeriodsPerDay: 12,
 			ShowWeekend:   true,
@@ -468,6 +574,39 @@ func (s *Service) defaultScheduleForTerm(userID string, termYear int, semester s
 		Courses:   []Course{},
 		UpdatedAt: s.now().UTC(),
 	}
+}
+
+func termID(term *academicterm.Term) string {
+	if term == nil {
+		return ""
+	}
+	return term.ID
+}
+
+func (s *Service) resolveWritableTerm(ctx context.Context, termYear int, semester string) (int, string, *academicterm.Term, error) {
+	if s.academicTerms == nil {
+		year, normalized, err := s.normalizeTerm(termYear, semester)
+		return year, normalized, nil, err
+	}
+	if termYear == 0 && strings.TrimSpace(semester) == "" {
+		term, err := s.academicTerms.DefaultOpen(ctx)
+		if err != nil {
+			return 0, "", nil, err
+		}
+		return term.Year, term.Semester, &term, nil
+	}
+	if termYear == 0 || strings.TrimSpace(semester) == "" {
+		return 0, "", nil, fmt.Errorf("%w: term_year and semester must be provided together", ErrInvalidInput)
+	}
+	year, normalized, err := s.normalizeTerm(termYear, semester)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	term, err := s.academicTerms.FindOpen(ctx, year, normalized)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	return year, normalized, &term, nil
 }
 
 func defaultTermYear(now time.Time) int {

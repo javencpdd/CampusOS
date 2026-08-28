@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v14-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -150,6 +150,14 @@ v13-migration-check:
 	./scripts/test-v13-identity-security-migrations.sh
 	./scripts/test-v13-schema-index-hygiene-migration.sh
 
+v14-migration-check:
+	./scripts/test-v14-g0-baseline-migration.sh
+	./scripts/test-v14-academic-terms-migration.sh
+	./scripts/test-v14-storage-objects-migration.sh
+	./scripts/test-v14-schedule-term-references-migration.sh
+	./scripts/test-v14-personal-documents-migration.sh
+	./scripts/test-v14-schedule-object-bindings-migration.sh
+
 v13-baseline-check:
 	go test ./cmd/campusos-baseline -count=1
 	go run ./cmd/campusos-baseline --root . >/dev/null
@@ -158,6 +166,7 @@ database-check:
 	./scripts/database-check.sh all
 	$(MAKE) v12-migration-check
 	$(MAKE) v13-migration-check
+	$(MAKE) v14-migration-check
 
 backup:
 	./scripts/backup.sh

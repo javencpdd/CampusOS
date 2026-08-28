@@ -33,6 +33,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runResource(args[1:], stdout, stderr)
 	case "identity":
 		return runIdentity(args[1:], stdout, stderr, os.Stdin)
+	case "storage":
+		return runStorage(args[1:], stdout, stderr)
+	case "schedule":
+		return runSchedule(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		printUsage(stdout)
 		return 0
@@ -391,6 +395,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  plugin    plugin scaffolding and inspection")
 	fmt.Fprintln(w, "  resource  resource package adoption and inspection")
 	fmt.Fprintln(w, "  identity  local system-account recovery commands")
+	fmt.Fprintln(w, "  storage   local user-storage reconciliation commands")
+	fmt.Fprintln(w, "  schedule  historical schedule adoption commands")
 }
 
 func printPluginUsage(w io.Writer) {

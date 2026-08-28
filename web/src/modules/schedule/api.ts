@@ -3,6 +3,7 @@ import api from '../../shared/api/client'
 export const scheduleApi = {
   status: () => api.get('/schedule/status'),
   me: (term?: { term_year: number; semester: 'spring' | 'fall' }) => api.get('/schedule/me', { params: term }),
+  availableTerms: () => api.get('/schedule/terms'),
   terms: () => api.get('/schedule/me/terms'),
   activate: (data: { term_year: number; semester: 'spring' | 'fall' }) => api.post('/schedule/me/terms/activate', data),
   save: (data: {

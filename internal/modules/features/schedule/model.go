@@ -31,7 +31,11 @@ type Settings struct {
 }
 
 type Schedule struct {
-	UserID         string                 `json:"user_id"`
+	UserID string `json:"user_id"`
+	// AcademicTermID is set by the server for schedules created after v0.14.
+	// It is intentionally not accepted from the public write DTO: the active
+	// AcademicTerm catalogue, rather than a client supplied ID, owns it.
+	AcademicTermID string                 `json:"academic_term_id,omitempty"`
 	TermYear       int                    `json:"term_year"`
 	Semester       string                 `json:"semester"`
 	FirstWeekStart string                 `json:"first_week_start"`
