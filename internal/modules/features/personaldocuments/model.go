@@ -72,6 +72,15 @@ type PreviewStatus struct {
 	Status            string         `json:"status"`
 	DownloadAvailable bool           `json:"download_available"`
 	Message           string         `json:"message"`
+	RenderedHTML      string         `json:"rendered_html,omitempty"`
+	Warnings          []string       `json:"warnings,omitempty"`
+}
+
+// PreviewMetricKey is an aggregate-only lifecycle bucket for the optional
+// converter queue. It intentionally contains no document, owner, or filename.
+type PreviewMetricKey struct {
+	Status string
+	Format string
 }
 
 type Repository interface {

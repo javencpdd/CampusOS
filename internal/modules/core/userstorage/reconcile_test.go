@@ -5,8 +5,11 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 func TestReconcileLocalReportsOnlySafeDifferences(t *testing.T) {
@@ -77,5 +80,22 @@ func TestReconcileLocalDoesNotFollowSymbolicLinks(t *testing.T) {
 	}
 	if report.Counts[ReconcileUnsafePath] != 1 || report.Counts[ReconcileLegacyUnclassified] != 0 {
 		t.Fatalf("symlink must be reported but not traversed: %#v", report.Counts)
+	}
+}
+
+func TestRecordReconcileMetricsUsesFixedKindsOnly(t *testing.T) {
+	collector := observability.NewCollector()
+	RecordReconcileMetrics(collector, ReconcileReport{Counts: map[string]int{ReconcileUnsafePath: 2, ReconcilePhysicalOrphan: 1}})
+	metrics := collector.PrometheusText()
+	for _, expected := range []string{
+		`campusos_storage_reconcile_differences{kind="physical_without_metadata"} 1`,
+		`campusos_storage_reconcile_differences{kind="unsafe_path"} 2`,
+	} {
+		if !strings.Contains(metrics, expected) {
+			t.Fatalf("reconcile metric missing %q: %s", expected, metrics)
+		}
+	}
+	if strings.Contains(metrics, "1001") || strings.Contains(metrics, "C:\\") {
+		t.Fatalf("reconcile metrics must not expose owner or paths: %s", metrics)
 	}
 }

@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const portRepository = "personal-documents.adapter.repository"
@@ -16,6 +19,7 @@ type Module struct {
 	config     ModuleConfig
 	repository Repository
 	objects    corestorage.ObjectPort
+	meter      observability.Meter
 	service    *Service
 	handler    *Handler
 }
@@ -23,7 +27,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.user-storage", "core.feature-registry"}
+	return []string{coreeditor.ModuleID, "core.identity", "core.user-storage", "core.feature-registry", platformobservability.ModuleID}
 }
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -46,14 +50,23 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		return fmt.Errorf("storage object port has incompatible type %T", value)
 	}
 	m.repository, m.objects = repo, objects
+	if value, exists := app.Lookup(platformobservability.PortMeter); exists {
+		meter, compatible := value.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("personal documents observability meter has incompatible type %T", value)
+		}
+		m.meter = meter
+	}
 	return nil
 }
-func (m *Module) Start(context.Context) error {
+func (m *Module) Start(ctx context.Context) error {
 	svc, e := NewService(m.repository, m.objects)
 	if e != nil {
 		return e
 	}
 	svc.SetEnabledChecker(m.config.Enabled)
+	svc.SetMeter(m.meter)
+	_ = svc.RefreshPreviewMetrics(ctx)
 	m.service = svc
 	m.handler = NewHandler(svc)
 	return nil

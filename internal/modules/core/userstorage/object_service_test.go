@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
+
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 func TestObjectServiceOwnerQuotaAndVersionedDelete(t *testing.T) {
@@ -81,5 +84,28 @@ func TestObjectServiceConcurrentReservationsStayWithinQuota(t *testing.T) {
 	}
 	if len(page.Items) != 10 {
 		t.Fatalf("expected 10 ready objects, got %d", len(page.Items))
+	}
+}
+
+func TestObjectServiceMetricsAreAggregateAndBounded(t *testing.T) {
+	adapter, err := NewLocalAdapterWithQuota(t.TempDir(), 10)
+	if err != nil {
+		t.Fatalf("new adapter: %v", err)
+	}
+	svc, err := NewObjectService(adapter, adapter, NewMemoryObjectRepository(), 10)
+	if err != nil {
+		t.Fatalf("new object service: %v", err)
+	}
+	collector := observability.NewCollector()
+	svc.SetMeter(collector)
+	if _, err := svc.Put(context.Background(), "1001", PutRequest{Namespace: "documents", Purpose: "source.text", OriginalName: "private-name.txt", MimeType: "text/plain", SizeHint: 1, Reader: bytes.NewReader([]byte("x"))}); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	metrics := collector.PrometheusText()
+	if !strings.Contains(metrics, `campusos_storage_objects{provider="local",status="ready"} 1`) {
+		t.Fatalf("ready aggregate metric missing: %s", metrics)
+	}
+	if strings.Contains(metrics, "1001") || strings.Contains(metrics, "private-name") {
+		t.Fatalf("storage metric must not expose owner or filename: %s", metrics)
 	}
 }

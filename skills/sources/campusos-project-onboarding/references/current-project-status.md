@@ -1,9 +1,9 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-08-29
+> Snapshot date: 2026-08-30
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.13.0`
-> Active implementation stage: `v0.14-dev` (G0, AcademicTerm, Storage Object, Schedule Guard, historical adoption/reconciliation, Personal Documents MVP and Windows-native full Go suite implemented; Final gates remain)
+> Active implementation stage: `v0.14-dev` (G0, AcademicTerm, Storage Object, Schedule Guard, historical adoption/reconciliation, Personal Documents MVP, shared Content Editor Core and low-cardinality operational summaries implemented; Final gates remain)
 > Migrations: `000001` through `000049`
 
 This file is an orientation snapshot. Before changing code, verify claims against the live worktree, generated contracts,

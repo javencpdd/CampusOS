@@ -1,6 +1,6 @@
 # CampusOS Versioned Development Reference
 
-> 更新时间：2026-08-29
+> 更新时间：2026-08-30 01:21（Asia/Shanghai）
 
 ## Stage Detection
 
@@ -107,7 +107,8 @@ Prefer concise tables over long prose.
 
 The release baseline remains `v0.13.0`; the active worktree has migrations through `000049`. The active implementation stage is
 `v0.14-dev`; its formal plan is `docs/项目计划v14/00-v14版本计划书.md`, and the latest evidence is
-`docs/进度/v0.14-dev/v0.14.3-dev.md`. AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
-reconcile apply controls and Personal Documents safe degradation are implemented. The v0.14 Final gates still require an authorized
-operator decision for real historical-data apply plus Docker migration/restore, browser and release evidence. Treat v0.3-v0.13 plans
-as historical unless a compatibility task explicitly targets them.
+`docs/进度/v0.14-dev/v0.14.6-dev.md`（P1 代码与测试证据见 `v0.14.5-dev`）。AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
+reconcile apply controls, Personal Documents safe degradation, the shared Content Editor Core, a trusted owner-scoped Document ReadPort
+draft, and low-cardinality operating metrics are implemented. The v0.14 Final gates still require an authorized operator decision for
+real historical-data apply plus Linux target release, browser, and formal release evidence. Treat v0.3-v0.13 plans as historical unless
+a compatibility task explicitly targets them.

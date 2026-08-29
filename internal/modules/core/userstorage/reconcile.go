@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const (
@@ -79,6 +81,28 @@ type ReconcileReport struct {
 	GeneratedAt time.Time             `json:"generated_at"`
 	Differences []ReconcileDifference `json:"differences"`
 	Counts      map[string]int        `json:"counts"`
+}
+
+// RecordReconcileMetrics projects an explicit read-only reconciliation report
+// into bounded aggregate gauges. The caller owns the report lifecycle: this
+// helper deliberately does not trigger filesystem scans or repair actions.
+func RecordReconcileMetrics(meter observability.Meter, report ReconcileReport) {
+	if meter == nil {
+		return
+	}
+	for _, kind := range []string{
+		ReconcilePendingObjectExpired,
+		ReconcileReservationExpired,
+		ReconcileMetadataMissingFile,
+		ReconcilePhysicalOrphan,
+		ReconcilePayloadMismatch,
+		ReconcileUnsafePath,
+		ReconcileInvalidOwnerDirectory,
+		ReconcileLedgerMismatch,
+		ReconcileLegacyUnclassified,
+	} {
+		_ = meter.SetGauge("campusos_storage_reconcile_differences", observability.Labels{"kind": kind}, float64(report.Counts[kind]))
+	}
 }
 
 // ReconcileLocal scans a provider root without following symbolic links. It

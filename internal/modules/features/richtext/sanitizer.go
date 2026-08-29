@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/campusos/CampusOS/internal/modules/core/community/contentbody"
+	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 )
 
 const (
-	MaxHTMLBytes = contentbody.MaxHTMLBytes
-	MaxNodes     = contentbody.MaxNodes
-	MaxDepth     = contentbody.MaxDepth
+	MaxHTMLBytes = coreeditor.MaxHTMLBytes
+	MaxNodes     = coreeditor.MaxNodes
+	MaxDepth     = coreeditor.MaxDepth
 )
 
-type SanitizeResult = contentbody.SanitizeResult
+type SanitizeResult = coreeditor.SanitizeResult
 
 func Sanitize(input string) (SanitizeResult, error) {
-	result, err := contentbody.Sanitize(input)
+	result, err := coreeditor.SanitizeHTML(input)
 	if err != nil {
 		return SanitizeResult{}, fmt.Errorf("%w: %v", ErrInvalidArticle, err)
 	}
@@ -24,5 +24,5 @@ func Sanitize(input string) (SanitizeResult, error) {
 }
 
 func RenderArticleHTML(sanitized string) string {
-	return contentbody.RenderHTML(strings.TrimSpace(sanitized))
+	return coreeditor.RenderHTML(strings.TrimSpace(sanitized))
 }

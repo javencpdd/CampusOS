@@ -10,6 +10,7 @@ export const personalDocumentsApi = {
     return api.post('/documents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })
   },
   content: (id: string) => api.get(`/documents/${id}/content`),
+  preview: (id: string) => api.get(`/documents/${id}/preview`),
   save: (id: string, data: { expected_version: number; name?: string; content: string }) => api.put(`/documents/${id}`, data),
   trash: (id: string, expected_version: number) => api.post(`/documents/${id}/trash`, { expected_version }),
   restore: (id: string, expected_version: number) => api.post(`/documents/${id}/restore`, { expected_version }),

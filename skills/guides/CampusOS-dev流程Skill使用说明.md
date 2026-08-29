@@ -1,6 +1,6 @@
 # CampusOS 开发流程 Skill 使用说明
 
-> 更新时间：2026-08-29 13:18（Asia/Shanghai）
+> 更新时间：2026-08-29 20:57（Asia/Shanghai）
 > 当前基线：`v0.13.0`
 > 实现目录：`skills/sources/campusos-dev-nocommit/`、`skills/sources/campusos-dev-workflow/`
 

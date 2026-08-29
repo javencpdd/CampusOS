@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 type ObjectService struct {
@@ -20,7 +21,9 @@ type ObjectService struct {
 	quota      Quota
 	repository ObjectRepository
 	maxBytes   int64
+	meter      observability.Meter
 }
+func (s *ObjectService) SetMeter(meter observability.Meter) { s.meter = meter }
 
 func NewObjectService(storage Port, quota Quota, repository ObjectRepository, maxBytes int64) (*ObjectService, error) {
 	if storage == nil || quota == nil || repository == nil {
@@ -92,6 +95,7 @@ func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (
 		return Object{}, err
 	}
 	committed = true
+	_ = s.RefreshMetrics(ctx)
 	return item.Object, nil
 }
 func (s *ObjectService) Open(ctx context.Context, actor, id string) (ObjectReader, error) {
@@ -130,7 +134,11 @@ func (s *ObjectService) Delete(ctx context.Context, actor, id string, version in
 		_ = s.repository.RestoreReady(context.Background(), item.ID)
 		return err
 	}
-	return s.repository.FinalizeDelete(ctx, item.ID)
+	if err := s.repository.FinalizeDelete(ctx, item.ID); err != nil {
+		return err
+	}
+	_ = s.RefreshMetrics(ctx)
+	return nil
 }
 func (s *ObjectService) List(ctx context.Context, owner string, filter ObjectFilter, page PageRequest) (ObjectPage, error) {
 	if !SafeSegment(owner) {
@@ -152,6 +160,25 @@ func (s *ObjectService) Usage(_ context.Context, owner string) (ObjectUsage, err
 		remaining = 0
 	}
 	return ObjectUsage{UsedBytes: used, QuotaBytes: quota, RemainingBytes: remaining}, nil
+}
+// RefreshMetrics updates only aggregate lifecycle gauges. It is safe to call
+// after a successful mutation or at module startup; metrics failure never
+// changes an object write result.
+func (s *ObjectService) RefreshMetrics(ctx context.Context) error {
+	if s == nil || s.meter == nil || s.repository == nil {
+		return nil
+	}
+	summary, err := s.repository.Summary(ctx)
+	if err != nil {
+		return err
+	}
+	for _, status := range []string{ObjectStatusPending, ObjectStatusReady, ObjectStatusDeleting, ObjectStatusDeleted, ObjectStatusQuarantined, ObjectStatusMissing} {
+		_ = s.meter.SetGauge("campusos_storage_objects", observability.Labels{"status": status, "provider": "local"}, float64(summary.ObjectStatuses[status]))
+	}
+	for _, status := range []string{ObjectStatusPending, "committed", "released"} {
+		_ = s.meter.SetGauge("campusos_storage_reservations", observability.Labels{"status": status}, float64(summary.ReservationStatuses[status]))
+	}
+	return nil
 }
 func (s *ObjectService) objectPath(owner, key string) (string, error) {
 	if !SafeSegment(key) {

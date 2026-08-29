@@ -8,6 +8,7 @@ import (
 
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 func newTestService(t *testing.T) *Service {
@@ -81,6 +82,46 @@ func TestPersonalDocumentPreviewDegradesWithoutConverter(t *testing.T) {
 	}
 }
 
+func TestEditablePreviewUsesSharedSafeRenderer(t *testing.T) {
+	svc := newTestService(t)
+	item, err := svc.CreateText(context.Background(), "1001", CreateRequest{Name: "安全说明.md", Format: FormatMarkdown, Content: "# 标题\n\n<script>alert(1)</script>"})
+	if err != nil {
+		t.Fatalf("create markdown: %v", err)
+	}
+	preview, err := svc.Preview(context.Background(), "1001", item.ID)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if preview.Status != "native" || !strings.Contains(preview.RenderedHTML, "<h1>标题</h1>") {
+		t.Fatalf("unexpected native preview: %#v", preview)
+	}
+	if strings.Contains(preview.RenderedHTML, "<script>") {
+		t.Fatalf("raw markdown html must never execute: %s", preview.RenderedHTML)
+	}
+}
+
+func TestCampusDocV1RejectsExternalImageReference(t *testing.T) {
+	svc := newTestService(t)
+	_, err := svc.CreateText(context.Background(), "1001", CreateRequest{Name: "危险.campusdoc", Format: FormatCampusDoc, Content: `{"version":1,"blocks":[{"type":"image","object_id":"https://example.invalid/image.png"}]}`})
+	var public *apperror.AppError
+	if !errors.As(err, &public) || public.Descriptor() != apperror.PersonalDocumentInvalid {
+		t.Fatalf("expected public CampusDoc validation error, got %v", err)
+	}
+}
+
+func TestReadPortKeepsOwnerScope(t *testing.T) {
+	svc := newTestService(t)
+	item, err := svc.CreateText(context.Background(), "1001", CreateRequest{Name: "私有.txt", Format: FormatText, Content: "private"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	_, err = svc.ReadOnly().GetOwnDocument(context.Background(), "1002", item.ID)
+	var public *apperror.AppError
+	if !errors.As(err, &public) || public.Descriptor() != apperror.PersonalDocumentNotFound {
+		t.Fatalf("read port must preserve owner scope, got %v", err)
+	}
+}
+
 func TestQuotaErrorIncludesRemainingPersonalSpace(t *testing.T) {
 	adapter, err := corestorage.NewLocalAdapterWithQuota(t.TempDir(), 4)
 	if err != nil {
@@ -109,5 +150,25 @@ func TestQuotaErrorIncludesRemainingPersonalSpace(t *testing.T) {
 	}
 	if got, ok := details["remaining_quota_bytes"].(int64); !ok || got != 0 {
 		t.Fatalf("remaining quota detail = %#v", details)
+	}
+}
+
+func TestPreviewMetricsUseBoundedSafeLabels(t *testing.T) {
+	svc := newTestService(t)
+	collector := observability.NewCollector()
+	svc.SetMeter(collector)
+	item, err := svc.CreateText(context.Background(), "1001", CreateRequest{Name: "机密计划.md", Format: FormatMarkdown, Content: "# 计划"})
+	if err != nil {
+		t.Fatalf("create markdown: %v", err)
+	}
+	if _, err := svc.Preview(context.Background(), "1001", item.ID); err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	metrics := collector.PrometheusText()
+	if !strings.Contains(metrics, `campusos_document_preview_duration_seconds_count{format="markdown",result="native"} 1`) {
+		t.Fatalf("native preview metric missing: %s", metrics)
+	}
+	if strings.Contains(metrics, "机密计划") || strings.Contains(metrics, "1001") {
+		t.Fatalf("preview metrics must not expose document or owner data: %s", metrics)
 	}
 }

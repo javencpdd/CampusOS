@@ -23,6 +23,8 @@ func TestMetricCatalogIsStableAndValid(t *testing.T) {
 		"campusos_db_pool_acquire_total",
 		"campusos_db_pool_connections",
 		"campusos_db_pool_empty_wait_seconds_total",
+		"campusos_document_preview_duration_seconds",
+		"campusos_document_preview_jobs",
 		"campusos_email_delivery_duration_seconds",
 		"campusos_email_delivery_total",
 		"campusos_external_requests_total",
@@ -42,6 +44,9 @@ func TestMetricCatalogIsStableAndValid(t *testing.T) {
 		"campusos_reliability_queue_events",
 		"campusos_runtime_goroutines",
 		"campusos_runtime_heap_alloc_bytes",
+		"campusos_storage_objects",
+		"campusos_storage_reconcile_differences",
+		"campusos_storage_reservations",
 	}
 	if len(items) != len(want) {
 		t.Fatalf("catalog size=%d want=%d", len(items), len(want))

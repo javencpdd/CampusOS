@@ -2,7 +2,6 @@ package personaldocuments
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const (
@@ -25,7 +26,12 @@ type Service struct {
 	objects    corestorage.ObjectPort
 	enabled    func() bool
 	now        func() time.Time
+	meter      observability.Meter
 }
+
+// SetMeter attaches optional aggregate operational telemetry. A nil meter is
+// valid for focused tests and isolated, non-server use.
+func (s *Service) SetMeter(meter observability.Meter) { s.meter = meter }
 
 func NewService(repo Repository, objects corestorage.ObjectPort) (*Service, error) {
 	if repo == nil || objects == nil {
@@ -73,6 +79,9 @@ func (s *Service) Upload(ctx context.Context, owner, name, format, mime string, 
 	if e := s.enabledError(); e != nil {
 		return DocumentDetail{}, e
 	}
+	if reader == nil {
+		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentInvalid, map[string]any{"field": "file"})
+	}
 	format = normalizeFormat(format)
 	if !supported(format) {
 		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentInvalid, map[string]any{"field": "format"})
@@ -80,6 +89,20 @@ func (s *Service) Upload(ctx context.Context, owner, name, format, mime string, 
 	limit := limitFor(format)
 	if size < 0 || size > limit {
 		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": limit, "provided_bytes": size, "format": format})
+	}
+	if editable(format) {
+		raw, readErr := io.ReadAll(io.LimitReader(reader, limit+1))
+		if readErr != nil {
+			return DocumentDetail{}, readErr
+		}
+		if int64(len(raw)) > limit {
+			return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": limit, "provided_bytes": len(raw), "format": format})
+		}
+		if contentErr := validateContent(format, string(raw)); contentErr != nil {
+			return DocumentDetail{}, contentErr
+		}
+		size = int64(len(raw))
+		reader = strings.NewReader(string(raw))
 	}
 	return s.createObjectAndDocument(ctx, owner, normalizeName(name, format), format, reader, size, mime)
 }
@@ -197,14 +220,70 @@ func (s *Service) TextContent(ctx context.Context, owner, id string) (DocumentDe
 	return d, string(raw), nil
 }
 func (s *Service) Preview(ctx context.Context, owner, id string) (PreviewStatus, error) {
+	started := time.Now()
 	document, e := s.Get(ctx, owner, id)
 	if e != nil {
+		s.recordPreview(document.Format, "error", started)
 		return PreviewStatus{}, e
 	}
 	if editable(document.Format) {
-		return PreviewStatus{Document: document, Status: "native", DownloadAvailable: true, Message: "此格式可在“我的文档”中安全编辑和查看。"}, nil
+		_, content, contentErr := s.TextContent(ctx, owner, id)
+		if contentErr != nil {
+			s.recordPreview(document.Format, "error", started)
+			return PreviewStatus{}, contentErr
+		}
+		rendered, renderErr := coreeditor.RenderDocument(document.Format, content)
+		if renderErr != nil {
+			s.recordPreview(document.Format, "invalid", started)
+			return PreviewStatus{}, s.public(renderErr, apperror.PersonalDocumentInvalid, map[string]any{"field": "content", "reason": "文档内容不符合安全渲染规则"})
+		}
+		s.recordPreview(document.Format, "native", started)
+		_ = s.RefreshPreviewMetrics(ctx)
+		return PreviewStatus{Document: document, Status: "native", DownloadAvailable: true, Message: "此格式可在“我的文档”中安全编辑和查看。", RenderedHTML: rendered.HTML, Warnings: rendered.Warnings}, nil
 	}
+	s.recordPreview(document.Format, "converter_unavailable", started)
+	_ = s.RefreshPreviewMetrics(ctx)
 	return PreviewStatus{Document: document, Status: "converter_unavailable", DownloadAvailable: true, Message: "当前部署未启用满足隔离要求的文档转换服务；原文件已安全保存，可下载后查看。"}, nil
+}
+
+type previewSummaryReader interface {
+	PreviewSummary(context.Context) (map[PreviewMetricKey]int64, error)
+}
+
+// RefreshPreviewMetrics exports bounded aggregate converter-job states. It is
+// intentionally a best-effort operation: document editing must not depend on
+// observability or on a future converter worker.
+func (s *Service) RefreshPreviewMetrics(ctx context.Context) error {
+	if s == nil || s.meter == nil || s.repository == nil {
+		return nil
+	}
+	reader, ok := s.repository.(previewSummaryReader)
+	if !ok {
+		return nil
+	}
+	summary, err := reader.PreviewSummary(ctx)
+	if err != nil {
+		return err
+	}
+	for _, status := range []string{"pending", "processing", "ready", "failed", "unsupported"} {
+		for _, format := range []string{FormatText, FormatMarkdown, FormatCampusDoc, FormatPDF, FormatDOCX, "unknown"} {
+			_ = s.meter.SetGauge("campusos_document_preview_jobs", observability.Labels{"status": status, "format": format}, float64(summary[PreviewMetricKey{Status: status, Format: format}]))
+		}
+	}
+	return nil
+}
+
+func (s *Service) recordPreview(format, result string, started time.Time) {
+	if s == nil || s.meter == nil {
+		return
+	}
+	if !supported(format) {
+		format = "unknown"
+	}
+	if result != "native" && result != "converter_unavailable" && result != "invalid" && result != "error" {
+		result = "error"
+	}
+	_ = s.meter.Observe("campusos_document_preview_duration_seconds", observability.Labels{"format": format, "result": result}, time.Since(started).Seconds())
 }
 func (s *Service) createObjectAndDocument(ctx context.Context, owner, name, format string, reader io.Reader, size int64, mime string) (DocumentDetail, error) {
 	object, e := s.put(ctx, owner, name, format, mime, size, reader)
@@ -329,11 +408,12 @@ func validateContent(format, content string) error {
 	if int64(len([]byte(content))) > maxTextBytes {
 		return apperror.New(apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": maxTextBytes, "provided_bytes": len([]byte(content))})
 	}
-	if format == FormatCampusDoc {
-		var value map[string]any
-		if e := json.Unmarshal([]byte(content), &value); e != nil || len(value) == 0 {
-			return apperror.New(apperror.PersonalDocumentInvalid, map[string]any{"field": "content", "reason": "CampusDoc 必须是非空 JSON 对象"})
+	if e := coreeditor.ValidateDocument(format, content); e != nil {
+		reason := "文档内容不符合安全渲染规则"
+		if errors.Is(e, coreeditor.ErrInvalidCampusDoc) {
+			reason = "CampusDoc 必须是非空 JSON 对象，v1 文档需包含 version=1 和 blocks"
 		}
+		return apperror.New(apperror.PersonalDocumentInvalid, map[string]any{"field": "content", "reason": reason})
 	}
 	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const ModuleID = "core.user-storage"
@@ -30,7 +32,9 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 
 func (m *Module) ID() string { return ModuleID }
 
-func (m *Module) Dependencies() []string { return []string{"core.identity"} }
+func (m *Module) Dependencies() []string {
+	return []string{"core.identity", platformobservability.ModuleID}
+}
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	quotaRepository := QuotaRepository(NewMemoryQuotaRepository())
@@ -59,6 +63,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		return fmt.Errorf("initialize storage object service: %w", err)
 	}
 	m.objects = objects
+	if value, ok := app.Lookup(platformobservability.PortMeter); ok {
+		meter, compatible := value.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("user storage observability meter has incompatible type %T", value)
+		}
+		objects.SetMeter(meter)
+	}
 	contentImages, err := NewContentImageStore(adapter, adapter, m.config.MaxContentImageBytes)
 	if err != nil {
 		return fmt.Errorf("initialize content image store: %w", err)
@@ -84,7 +95,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	return nil
 }
 
-func (m *Module) Start(context.Context) error { return nil }
+func (m *Module) Start(ctx context.Context) error {
+	// Metrics are operational telemetry only. Storage stays available when an
+	// aggregate refresh is temporarily unavailable.
+	if m.objects != nil {
+		_ = m.objects.RefreshMetrics(ctx)
+	}
+	return nil
+}
 
 func (m *Module) Stop(context.Context) error { return nil }
 

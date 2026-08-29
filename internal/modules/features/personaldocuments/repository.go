@@ -148,6 +148,13 @@ func (r *MemoryRepository) Version(_ context.Context, owner, id, vid string) (Do
 	return DocumentVersion{}, ErrNotFound
 }
 
+// PreviewSummary implements the optional operational reader used by Service.
+// The in-memory development adapter has no converter queue, so all bounded
+// lifecycle gauges are reported as zero by the caller.
+func (r *MemoryRepository) PreviewSummary(context.Context) (map[PreviewMetricKey]int64, error) {
+	return map[PreviewMetricKey]int64{}, nil
+}
+
 type PgRepository struct{ pool *pgxpool.Pool }
 
 func NewPgRepository(pool *pgxpool.Pool) *PgRepository { return &PgRepository{pool: pool} }
@@ -279,6 +286,31 @@ func (r *PgRepository) Version(ctx context.Context, owner, id, vid string) (Docu
 		return DocumentVersion{}, ErrNotFound
 	}
 	return x, e
+}
+
+// PreviewSummary is deliberately aggregate-only. It is used for operational
+// telemetry and never returns user, document, version, object, or filename
+// data to the metrics path.
+func (r *PgRepository) PreviewSummary(ctx context.Context) (map[PreviewMetricKey]int64, error) {
+	rows, err := r.pool.Query(ctx, `SELECT p.status,COALESCE(v.source_type,'unknown'),COUNT(*)::bigint
+		FROM personal_document_previews p
+		JOIN personal_document_versions v ON v.id=p.document_version_id
+		GROUP BY p.status,COALESCE(v.source_type,'unknown')
+		ORDER BY p.status,COALESCE(v.source_type,'unknown')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	summary := map[PreviewMetricKey]int64{}
+	for rows.Next() {
+		var key PreviewMetricKey
+		var total int64
+		if err := rows.Scan(&key.Status, &key.Format, &total); err != nil {
+			return nil, err
+		}
+		summary[key] = total
+	}
+	return summary, rows.Err()
 }
 
 const detailSQL = `SELECT d.id::text,d.owner_user_id::text,d.name,d.document_type,d.status,COALESCE(d.current_version_id::text,''),d.version,d.created_at,d.updated_at,d.deleted_at,COALESCE(v.id::text,''),COALESCE(v.version_number,0),COALESCE(v.source_object_id::text,''),COALESCE(v.source_type,''),COALESCE(v.size_bytes,0),COALESCE(v.sha256,''),COALESCE(v.restored_from_version_id::text,''),v.created_at FROM personal_documents d LEFT JOIN personal_document_versions v ON v.id=d.current_version_id`

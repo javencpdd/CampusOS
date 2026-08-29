@@ -9,6 +9,7 @@ import (
 
 	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
+	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
 	"github.com/campusos/CampusOS/internal/modules/core/moderation"
@@ -89,6 +90,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		PrometheusAddr:    s.cfg.Observability.PrometheusAddr,
 		PrometheusPath:    s.cfg.Observability.PrometheusPath,
 	})
+	contentEditorModule := coreeditor.NewModule()
 	featureStore := platformfeature.Store(platformfeature.NewMemoryStore())
 	if pool != nil {
 		featureStore = platformfeature.NewPostgreSQLStore(pool)
@@ -206,6 +208,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: events, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: reliabilityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: features, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: contentEditorModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: emailDeliveryModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},

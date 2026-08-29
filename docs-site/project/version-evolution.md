@@ -1,7 +1,7 @@
-# v1-v13 版本演进
+# v1-v14 版本演进
 
 CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿景同时保留为当前承诺。当前发布基线是
-`v0.13.0`；v1-v12 均已退出执行状态，v13 也已经封版。
+`v0.13.0`；v1-v12 均已退出执行状态，v13 也已经封版。v14-dev 的 P0/P1 已完成，仍未通过 Final 发布门禁。
 
 ## 演进主线
 
@@ -20,6 +20,7 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 | v11 | 可靠命令与事件 | TxKernel、Outbox、lease/fencing、dead-letter、重放和 Webhook |
 | v12 | 可信账号和结构化社区 | 邮件验证/恢复、Session、管理员准入、两级板块、互助和二手 |
 | v13 | 可运营、双端和可移植交付 | 错误合同、指标、MFA、外观双端门禁、响应式、通知/批量治理和 Docker |
+| v14 | 学期治理与个人工作区基础 | AcademicTerm、对象账本、受管课表、私有文档版本、安全内容编辑核心与受限运营摘要；Final 保持未发布 |
 
 ## 如何阅读历史计划
 
@@ -36,7 +37,8 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 
 - CampusOS 是模块化单体，不是单模块，也没有拆成大量微服务。
 - Core Module、Built-in Feature、External Plugin 和 Resource Package 使用不同生命周期和数据目录。
-- 当前数据库包含 42 个追加 migration；静态旧表清单不能替代 Admin 只读架构和数据库检查器。
+- 当前数据库包含 49 个追加 migration；静态旧表清单不能替代 Admin 只读架构和数据库检查器。
+- v14-dev 的实现可在仓库 `docs/进度/v0.14-dev/v0.14.5-dev.md` 中追溯；真实历史数据 apply、Linux 目标环境和正式发布审查仍是 Final 门禁。
 - `runtime: grpc` 是历史兼容名称，当前进程扩展使用受限 loopback HTTP 合同，不是标准 protobuf gRPC。
 - 当前 MCP 能力是受控的 MCP-like 集成，不应描述为完整标准 MCP Server。
 - Windows 支持路径是 Docker Desktop 的 Linux Containers；当前真实发行证据仍以 Linux `amd64` 为主。

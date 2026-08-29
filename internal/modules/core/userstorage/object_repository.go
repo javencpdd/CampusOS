@@ -31,6 +31,13 @@ type reservation struct {
 	Status        string
 }
 
+// ObjectSummary is an aggregate-only, provider-internal operational view. It
+// never includes an owner, object ID, path, filename, or byte payload.
+type ObjectSummary struct {
+	ObjectStatuses      map[string]int64
+	ReservationStatuses map[string]int64
+}
+
 type ObjectRepository interface {
 	Reserve(context.Context, storedObject, int64, int64, int64) (storedObject, reservation, error)
 	Commit(context.Context, string, reservation, int64, string, string) (storedObject, error)
@@ -40,6 +47,7 @@ type ObjectRepository interface {
 	PrepareDelete(context.Context, string, string, int64) (storedObject, error)
 	RestoreReady(context.Context, string) error
 	FinalizeDelete(context.Context, string) error
+	Summary(context.Context) (ObjectSummary, error)
 }
 
 type MemoryObjectRepository struct {
@@ -193,6 +201,18 @@ func (r *MemoryObjectRepository) FinalizeDelete(_ context.Context, id string) er
 	item.Status, item.DeletedAt, item.UpdatedAt, item.Version = ObjectStatusDeleted, &now, now, item.Version+1
 	r.objects[id] = item
 	return nil
+}
+func (r *MemoryObjectRepository) Summary(_ context.Context) (ObjectSummary, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	summary := ObjectSummary{ObjectStatuses: map[string]int64{}, ReservationStatuses: map[string]int64{}}
+	for _, item := range r.objects {
+		summary.ObjectStatuses[item.Status]++
+	}
+	for _, item := range r.reservations {
+		summary.ReservationStatuses[item.Status]++
+	}
+	return summary, nil
 }
 
 type PgObjectRepository struct{ pool *pgxpool.Pool }
@@ -356,6 +376,31 @@ func (r *PgObjectRepository) FinalizeDelete(ctx context.Context, id string) erro
 		return err
 	}
 	return tx.Commit(ctx)
+}
+func (r *PgObjectRepository) Summary(ctx context.Context) (ObjectSummary, error) {
+	summary := ObjectSummary{ObjectStatuses: map[string]int64{}, ReservationStatuses: map[string]int64{}}
+	rows, err := r.pool.Query(ctx, `SELECT kind,status,total FROM (
+		SELECT 'object' AS kind,status,COUNT(*)::bigint AS total FROM storage_objects GROUP BY status
+		UNION ALL
+		SELECT 'reservation' AS kind,status,COUNT(*)::bigint AS total FROM user_storage_reservations GROUP BY status
+	) summary ORDER BY kind,status`)
+	if err != nil {
+		return ObjectSummary{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kind, status string
+		var total int64
+		if err := rows.Scan(&kind, &status, &total); err != nil {
+			return ObjectSummary{}, err
+		}
+		if kind == "object" {
+			summary.ObjectStatuses[status] = total
+		} else {
+			summary.ReservationStatuses[status] = total
+		}
+	}
+	return summary, rows.Err()
 }
 
 type rowScanner interface{ Scan(...any) error }
