@@ -138,6 +138,21 @@ func (s *ObjectService) List(ctx context.Context, owner string, filter ObjectFil
 	}
 	return s.repository.ListOwned(ctx, owner, filter, page)
 }
+func (s *ObjectService) Usage(_ context.Context, owner string) (ObjectUsage, error) {
+	if !SafeSegment(owner) {
+		return ObjectUsage{}, ErrUnsafePath
+	}
+	used, err := s.storage.Usage(owner)
+	if err != nil {
+		return ObjectUsage{}, err
+	}
+	quota := s.quota.QuotaBytes(owner)
+	remaining := quota - used
+	if remaining < 0 {
+		remaining = 0
+	}
+	return ObjectUsage{UsedBytes: used, QuotaBytes: quota, RemainingBytes: remaining}, nil
+}
 func (s *ObjectService) objectPath(owner, key string) (string, error) {
 	if !SafeSegment(key) {
 		return "", ErrUnsafePath

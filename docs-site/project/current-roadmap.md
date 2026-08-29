@@ -2,7 +2,7 @@
 
 > 当前发布基线：`v0.13.0`
 > 更新日期：2026-08-29
-> 状态：v14-dev 已完成 AcademicTerm、对象账本、课表受管写入和个人文档 MVP；历史采用、对象对账 apply、Converter 与发布恢复门禁尚未进入 Final
+> 状态：v14-dev 已完成 AcademicTerm、对象账本、课表对象双写/历史采用命令、个人文档 MVP 与安全 Converter 降级；Windows Docker 的全量 Go、隔离 migration/恢复和认证浏览器工作流已有实际证据，Final 发布门禁尚未通过
 
 CampusOS v13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
 单主机 Docker 交付。v14 选择“学期治理与个人工作区基础”作为有限主线，不改变当前四类能力和单主机边界。
@@ -16,10 +16,10 @@ CampusOS v13 已完成模块化单体、可信账号、可靠任务、可观测�
 | --- | --- | --- |
 | G0 基线 | 已冻结代码、43 个基线 migration、Schema、OpenAPI、Route、Module、文件与课表盘点 | G0 快照与 `000043` 隔离 down/up 已验证 |
 | AcademicTerm | 已交付管理员 spring/fall、open/closed/default、第一周和版本控制 | `000044` CHECK、单默认、版本冲突、管理 API 与 Admin 控制台 |
-| Schedule | 已交付服务端受管学期 Guard；关闭学期仍可读取 | `000046` 记录用户/学期引用，避免删除已有课表的学期；旧 JSON 保留兼容读取 |
-| User Storage Object | 已交付 Object ID、owner、metadata、Quota Reservation、Local Provider 原子写 | `000045` 对象/账户/预留账本与并发配额单测；全量历史采用和 reconcile apply 后续实施 |
-| Personal Documents | 已交付私有文档、版本、回收站、TXT/Markdown/CampusDoc 编辑、PDF/DOCX 认证下载 | `000047` 文档/版本/预览状态；跨用户统一 404；Converter 未配置时严格降级为上传与下载 |
-| Preview | 使用 Reliability 请求预览，复杂转换在可选隔离 Converter 执行 | 无网络、非 root、限 CPU/RAM/时间；不达标则关闭 DOCX 预览 |
+| Schedule | 已交付服务端受管学期 Guard、旧 JSON + immutable Object 双写及历史采用命令；关闭学期仍可读取 | `000046`/`000049` 记录用户/学期、当前对象、第一周和偏好；旧 JSON 不重命名 |
+| User Storage Object | 已交付 Object ID、owner、metadata、Quota Reservation、Local Provider 原子写与默认只读 reconcile | `000045` 对象/账户/预留账本；受审计 apply 只收敛过期 Reservation 和缺物理文件 metadata，未知文件不自动改写 |
+| Personal Documents | 已交付私有文档、版本、回收站、TXT/Markdown/CampusDoc 编辑、PDF/DOCX 认证下载 | `000047` 文档/版本/预览状态；跨用户统一 404；预览端点明确返回 `converter_unavailable` |
+| Preview | 复杂转换只允许在可选隔离 Converter Runner 执行 | 示例 Compose 强制无网络、非 root、只读根文件系统和资源限制；没有受审查 Runner 时保持下载降级 |
 
 ## 实施顺序
 
@@ -35,7 +35,7 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 
 ## 迁移与兼容
 
-- 当前 migration 为 `000001-000048`；`000048` 无损统一早期对象账本的约束名称。生产回滚应关闭 Feature 并 forward-fix，不能用 down 删除用户对象或文档。
+- 当前 migration 为 `000001-000049`；`000048` 无损统一早期对象账本的约束名称，`000049` 增加课表对象绑定和查看偏好。生产回滚应关闭 Feature 并 forward-fix，不能用 down 删除用户对象或文档。
 - 文件迁移采用 `shadow -> dual -> enforce`，旧头像、图片、RichText 资产和课表先盘点再登记。
 - 未知文件只报告或隔离，不在启动时自动删除。
 - 旧 `year + semester` 请求在兼容期只能解析为已存在 AcademicTerm，不能绕过 Guard 创建学期。

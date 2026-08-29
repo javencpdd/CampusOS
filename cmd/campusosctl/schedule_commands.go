@@ -127,7 +127,7 @@ func applyHistoricalSchedules(ctx context.Context, pool *pgxpool.Pool, report sc
 		if termCreated {
 			actions["academic_terms_created"]++
 		}
-		objectID, objectCreated, objectPath, err := ensureHistoricalScheduleObject(ctx, tx, report.Root, item)
+		objectID, objectCreated, objectPath, err := ensureHistoricalScheduleObject(ctx, tx, report.SourceRoot(), item)
 		if err != nil {
 			cleanupFiles()
 			return nil, fmt.Errorf("adopt %s: %w", item.SourcePath, err)

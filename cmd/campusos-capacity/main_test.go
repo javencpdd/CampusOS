@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -80,6 +81,11 @@ func TestAuthorizationFileRequiresPrivateMode(t *testing.T) {
 	value, err := readAuthorizationFile(path)
 	if err != nil || value != "Bearer safe-token" {
 		t.Fatalf("read secure file value=%q err=%v", value, err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows permission semantics are DACL-based; os.Chmod cannot create
+		// the POSIX world-readable fixture used by the Unix assertion below.
+		return
 	}
 	if err := os.Chmod(path, 0o644); err != nil {
 		t.Fatal(err)

@@ -139,7 +139,7 @@ func (s *Service) RestoreVersion(ctx context.Context, owner, id, versionID strin
 	}
 	source, e := s.objects.Open(ctx, owner, v.SourceObjectID)
 	if e != nil {
-		return DocumentDetail{}, s.objectError(e, limitFor(d.Format))
+		return DocumentDetail{}, s.objectError(e, limitFor(d.Format), owner, v.SizeBytes)
 	}
 	defer source.Reader.Close()
 	object, e := s.put(ctx, owner, normalizeName(d.Name, d.Format), d.Format, "text/plain; charset=utf-8", v.SizeBytes, source.Reader)
@@ -174,7 +174,7 @@ func (s *Service) OpenCurrent(ctx context.Context, owner, id string) (DocumentDe
 	}
 	o, e := s.objects.Open(ctx, owner, d.CurrentVersion.SourceObjectID)
 	if e != nil {
-		return DocumentDetail{}, corestorage.ObjectReader{}, s.objectError(e, limitFor(d.Format))
+		return DocumentDetail{}, corestorage.ObjectReader{}, s.objectError(e, limitFor(d.Format), owner, 0)
 	}
 	return d, o, nil
 }
@@ -231,7 +231,7 @@ func (s *Service) put(ctx context.Context, owner, name, format, mime string, siz
 	}
 	object, e := s.objects.Put(ctx, owner, corestorage.PutRequest{Namespace: "personal-documents", Purpose: "source." + format, OriginalName: name, MimeType: normalizeMime(mime, format), SizeHint: size, Reader: io.LimitReader(reader, limit+1)})
 	if e != nil {
-		return corestorage.Object{}, s.objectError(e, limit)
+		return corestorage.Object{}, s.objectError(e, limit, owner, size)
 	}
 	return object, nil
 }
@@ -241,14 +241,32 @@ func (s *Service) enabledError() error {
 	}
 	return nil
 }
-func (s *Service) objectError(e error, limit int64) error {
+func (s *Service) objectError(e error, limit int64, owner string, provided int64) error {
 	if errors.Is(e, corestorage.ErrObjectQuota) {
-		return s.public(e, apperror.UserStorageQuotaExceeded, map[string]any{"max_file_bytes": limit, "message": "个人空间不足，请删除不需要的文件或联系管理员调整配额"})
+		details := map[string]any{"max_file_bytes": limit, "provided_bytes": provided, "message": "个人空间不足，请删除不需要的文件或联系管理员调整配额"}
+		if usage, usageErr := objectUsage(s.objects, owner); usageErr == nil {
+			details["used_bytes"] = usage.UsedBytes
+			details["quota_bytes"] = usage.QuotaBytes
+			details["remaining_quota_bytes"] = usage.RemainingBytes
+		}
+		return s.public(e, apperror.UserStorageQuotaExceeded, details)
 	}
 	if errors.Is(e, corestorage.ErrObjectNotFound) {
 		return s.public(e, apperror.PersonalDocumentNotFound, nil)
 	}
 	return e
+}
+
+type objectUsageReader interface {
+	Usage(context.Context, string) (corestorage.ObjectUsage, error)
+}
+
+func objectUsage(objects corestorage.ObjectPort, owner string) (corestorage.ObjectUsage, error) {
+	reader, ok := objects.(objectUsageReader)
+	if !ok {
+		return corestorage.ObjectUsage{}, errors.New("object usage is unavailable")
+	}
+	return reader.Usage(context.Background(), owner)
 }
 func (s *Service) translateError(e error) error {
 	if e == nil {

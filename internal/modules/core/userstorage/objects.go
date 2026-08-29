@@ -66,6 +66,15 @@ type ObjectReader struct {
 	Object Object
 }
 
+// ObjectUsage is a safe, owner-scoped capacity summary. It exposes byte
+// counts only; it never turns an Object Port into a directory or metadata
+// enumeration API.
+type ObjectUsage struct {
+	UsedBytes      int64 `json:"used_bytes"`
+	QuotaBytes     int64 `json:"quota_bytes"`
+	RemainingBytes int64 `json:"remaining_bytes"`
+}
+
 // ObjectPort is the only file boundary for new user-owned features. It is
 // intentionally streaming and owner-aware; callers never receive host paths.
 type ObjectPort interface {

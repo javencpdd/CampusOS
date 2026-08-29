@@ -425,7 +425,17 @@ func TestPluginDevBuildsGRPCTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := filepath.Join(root, "examples", "plugins", "grpc-example")
+	sourceDir := filepath.Join(root, "examples", "plugins", "grpc-example")
+	dir := t.TempDir()
+	for _, name := range []string{"go.mod", "main.go", "main_test.go", "plugin.yaml"} {
+		payload, readErr := os.ReadFile(filepath.Join(sourceDir, name))
+		if readErr != nil {
+			t.Fatalf("read template %s: %v", name, readErr)
+		}
+		if writeErr := os.WriteFile(filepath.Join(dir, name), payload, 0o600); writeErr != nil {
+			t.Fatalf("copy template %s: %v", name, writeErr)
+		}
+	}
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"plugin", "dev", dir, "--json"}, &stdout, &stderr)
 	if code != 0 {
@@ -438,5 +448,4 @@ func TestPluginDevBuildsGRPCTemplate(t *testing.T) {
 	if result.Status != "pass" || result.Runtime != "grpc" {
 		t.Fatalf("unexpected dev result: %#v", result)
 	}
-	t.Cleanup(func() { _ = os.Remove(filepath.Join(dir, "plugin")) })
 }

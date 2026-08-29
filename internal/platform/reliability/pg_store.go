@@ -321,7 +321,7 @@ func (s *PostgreSQLStore) StartAttempt(ctx context.Context, attempt DeliveryAtte
 		return nil, errors.New("delivery attempt requires event, consumer, and worker")
 	}
 	if attempt.ID == "" {
-		attempt.ID = fmt.Sprintf("attempt-%d", time.Now().UTC().UnixNano())
+		attempt.ID = newRecordID("attempt")
 	}
 	if attempt.Status == "" {
 		attempt.Status = "running"
@@ -387,7 +387,7 @@ func (s *PostgreSQLStore) ListAttempts(ctx context.Context, eventID string, page
 
 func (s *PostgreSQLStore) RecordCommandAudit(ctx context.Context, audit CommandAudit) error {
 	if audit.ID == "" {
-		audit.ID = fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+		audit.ID = newRecordID("audit")
 	}
 	if audit.CreatedAt.IsZero() {
 		audit.CreatedAt = time.Now().UTC()
@@ -440,7 +440,7 @@ func (s *PostgreSQLStore) ListCommandAudits(ctx context.Context, page PageReques
 func (s *PostgreSQLStore) StartOperation(ctx context.Context, operation Operation) (*Operation, error) {
 	now := time.Now().UTC()
 	if operation.ID == "" {
-		operation.ID = fmt.Sprintf("operation-%d", now.UnixNano())
+		operation.ID = newRecordID("operation")
 	}
 	if operation.Status == "" {
 		operation.Status = OperationPending
@@ -605,7 +605,7 @@ func (s *PostgreSQLStore) StartRetentionRun(ctx context.Context, run RetentionRu
 		return nil, fmt.Errorf("unsupported retention target %q", run.Target)
 	}
 	if run.ID == "" {
-		run.ID = fmt.Sprintf("retention-%d", time.Now().UTC().UnixNano())
+		run.ID = newRecordID("retention")
 	}
 	if run.Mode == "" {
 		run.Mode = "dry-run"

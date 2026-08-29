@@ -28,6 +28,9 @@ func TestReconcileLocalReportsOnlySafeDifferences(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "1001", FileDir, "schedule", "legacy.json"), []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, ".gitkeep"), []byte(""), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	hash := sha256.Sum256(payload)
 	now := time.Date(2026, 8, 29, 0, 0, 0, 0, time.UTC)
 	report, err := ReconcileLocal(root, ReconcileSnapshot{
@@ -42,13 +45,16 @@ func TestReconcileLocalReportsOnlySafeDifferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
+	if filepath.IsAbs(report.Root) || report.Root != filepath.Base(root) {
+		t.Fatalf("report must expose only a root label, got %q", report.Root)
+	}
 	if report.Counts[ReconcileMetadataMissingFile] != 1 || report.Counts[ReconcilePhysicalOrphan] != 1 || report.Counts[ReconcileLegacyUnclassified] != 1 {
 		t.Fatalf("unexpected report counts: %#v", report.Counts)
 	}
 	if report.Counts[ReconcilePendingObjectExpired] != 1 || report.Counts[ReconcileReservationExpired] != 1 {
 		t.Fatalf("missing expired state: %#v", report.Counts)
 	}
-	if report.Counts[ReconcileLedgerMismatch] != 0 {
+	if report.Counts[ReconcileLedgerMismatch] != 0 || report.Counts[ReconcileInvalidOwnerDirectory] != 1 {
 		t.Fatalf("ledger should match physical usage: %#v", report.Counts)
 	}
 }

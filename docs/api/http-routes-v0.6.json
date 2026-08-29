@@ -1617,6 +1617,23 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/documents/:id/preview",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.documents.id.preview",
+      "legacy_aliases": [
+        "http.get.api.v1.documents.id.preview",
+        "httpapi.get.api.v1.documents.id.preview"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "PUT",
       "path": "/api/v1/documents/:id",
       "handler": "d.PersonalDocuments",

@@ -496,13 +496,16 @@ case "$command" in
     compose logs -f --tail=200 "$@"
     ;;
   test)
+    # Keep test-only paths relative to the API working directory (/workspace).
+    # This avoids MSYS/Git Bash rewriting container-only absolute paths before
+    # Docker receives them; Dockerfile.dev already defines the Go caches.
     compose run --rm --no-deps \
-      -e PLUGINS_DIR=/workspace/data/plugins \
-      -e PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data \
-      -e MODULE_DATA_DIR=/tmp/campusos-go-test/module_data \
-      -e RESOURCE_DIR=/workspace/data/resources \
+      -e PLUGINS_DIR=data/plugins \
+      -e PLUGIN_DATA_DIR=.campusos/go-test/plugin_data \
+      -e MODULE_DATA_DIR=.campusos/go-test/module_data \
+      -e RESOURCE_DIR=data/resources \
       api bash -c \
-      'GOCACHE=/go-cache/build GOMODCACHE=/go-cache/modules GOFLAGS=-buildvcs=false go test ./... -count=1'
+      'GOFLAGS=-buildvcs=false go test ./... -count=1'
     ;;
   shell)
     compose exec api bash

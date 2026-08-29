@@ -105,8 +105,9 @@ Prefer concise tables over long prose.
 
 ## Current Baseline
 
-The release baseline remains `v0.13.0`; the active worktree has migrations through `000048`. The active implementation stage is
+The release baseline remains `v0.13.0`; the active worktree has migrations through `000049`. The active implementation stage is
 `v0.14-dev`; its formal plan is `docs/项目计划v14/00-v14版本计划书.md`, and the latest evidence is
-`docs/进度/v0.14-dev/v0.14.2-dev.md`. AcademicTerm, Storage Object, Schedule Guard and Personal Documents MVP are implemented;
-historical adoption, reconcile apply, Converter isolation and Final recovery/release gates remain incomplete. Treat v0.3-v0.13 plans
+`docs/进度/v0.14-dev/v0.14.3-dev.md`. AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
+reconcile apply controls and Personal Documents safe degradation are implemented. The v0.14 Final gates still require an authorized
+operator decision for real historical-data apply plus Docker migration/restore, browser and release evidence. Treat v0.3-v0.13 plans
 as historical unless a compatibility task explicitly targets them.

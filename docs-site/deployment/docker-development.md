@@ -397,6 +397,9 @@ Windows：
 .\scripts\docker-dev.ps1 test
 ```
 
+Git Bash 与 PowerShell 入口都会向 API 容器传递相对测试目录，避免 Git Bash/MSYS 把容器专用的绝对
+路径误改写为宿主路径。请直接使用上述脚本，不要手工追加 `/workspace`、`/go-cache` 等容器绝对路径环境变量。
+
 前端示例：
 
 ```bash

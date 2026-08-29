@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -331,7 +332,11 @@ func readAuthorizationFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+	// Windows exposes an ACL rather than POSIX group/other mode bits. Requiring
+	// 0600 there would reject a file that is private according to its DACL;
+	// deployments must therefore keep this token file in the operator's
+	// protected user profile. Unix-like systems retain the strict mode check.
+	if !info.Mode().IsRegular() || (runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0) {
 		return "", errors.New("authorization file must be a regular mode-0600 file")
 	}
 	payload, err := os.ReadFile(path)

@@ -42,7 +42,13 @@ type HistoricalScheduleReport struct {
 	ScannedAt  time.Time                 `json:"scanned_at"`
 	Candidates []HistoricalSchedule      `json:"candidates"`
 	Issues     []HistoricalScheduleIssue `json:"issues"`
+	rootPath   string
 }
+
+// SourceRoot is intentionally not serialized. Command code needs it when an
+// explicitly authorized adoption copies a validated source file, while a
+// portable dry-run report must never reveal an absolute host path.
+func (r HistoricalScheduleReport) SourceRoot() string { return r.rootPath }
 
 // ScanHistoricalSchedules implements the dry-run half of v14 schedule
 // adoption. It never modifies JSON, never follows symlinks, and refuses a
@@ -53,7 +59,7 @@ func ScanHistoricalSchedules(root string, now time.Time) (HistoricalScheduleRepo
 	if err != nil {
 		return HistoricalScheduleReport{}, err
 	}
-	report := HistoricalScheduleReport{Root: cleanRoot, ScannedAt: now.UTC(), Candidates: []HistoricalSchedule{}, Issues: []HistoricalScheduleIssue{}}
+	report := HistoricalScheduleReport{Root: filepath.Base(cleanRoot), ScannedAt: now.UTC(), Candidates: []HistoricalSchedule{}, Issues: []HistoricalScheduleIssue{}, rootPath: cleanRoot}
 	addIssue := func(kind, owner, path string) {
 		report.Issues = append(report.Issues, HistoricalScheduleIssue{Kind: kind, OwnerID: owner, SourcePath: filepath.ToSlash(path)})
 	}

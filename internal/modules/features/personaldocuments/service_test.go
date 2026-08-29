@@ -80,3 +80,34 @@ func TestPersonalDocumentPreviewDegradesWithoutConverter(t *testing.T) {
 		t.Fatalf("unexpected safe degradation: %#v", preview)
 	}
 }
+
+func TestQuotaErrorIncludesRemainingPersonalSpace(t *testing.T) {
+	adapter, err := corestorage.NewLocalAdapterWithQuota(t.TempDir(), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects, err := corestorage.NewObjectService(adapter, adapter, corestorage.NewMemoryObjectRepository(), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc, err := NewService(NewMemoryRepository(), objects)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.Upload(context.Background(), "1001", "a.pdf", FormatPDF, "application/pdf", 4, strings.NewReader("1234"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.Upload(context.Background(), "1001", "b.pdf", FormatPDF, "application/pdf", 1, strings.NewReader("5"))
+	var public *apperror.AppError
+	if !errors.As(err, &public) || public.Descriptor() != apperror.UserStorageQuotaExceeded {
+		t.Fatalf("expected public quota error, got %v", err)
+	}
+	details, ok := public.Details().(map[string]any)
+	if !ok {
+		t.Fatalf("quota details = %#v", public.Details())
+	}
+	if got, ok := details["remaining_quota_bytes"].(int64); !ok || got != 0 {
+		t.Fatalf("remaining quota detail = %#v", details)
+	}
+}

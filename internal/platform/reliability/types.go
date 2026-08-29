@@ -6,6 +6,7 @@ package reliability
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,13 @@ const (
 	OperationSucceeded  = "succeeded"
 	OperationFailed     = "failed"
 )
+
+// newRecordID shares the process-wide monotonic generator used by durable
+// events. Time.Now().UnixNano alone can repeat on Windows and in fast tests,
+// which would otherwise overwrite in-memory attempts or operations.
+func newRecordID(prefix string) string {
+	return prefix + "-" + strconv.FormatInt(idgen.New(), 10)
+}
 
 // Event is the durable representation of a domain event. Payload and headers
 // are JSON so the worker can survive process restarts without Go type coupling.

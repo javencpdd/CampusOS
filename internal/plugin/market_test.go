@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -358,5 +359,7 @@ func newPublishedMarketService(t *testing.T, manifest *Manifest, storage coresto
 	return service
 }
 
-func stringID(value int64) string              { return fmt.Sprintf("%d", value) }
-func containsPath(value, expected string) bool { return strings.Contains(value, expected) }
+func stringID(value int64) string { return fmt.Sprintf("%d", value) }
+func containsPath(value, expected string) bool {
+	return strings.Contains(filepath.ToSlash(value), expected)
+}

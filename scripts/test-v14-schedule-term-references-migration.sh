@@ -24,7 +24,9 @@ fi
 scalar() { docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 -Atc "$1"; }
 [[ "$(scalar "SELECT count(*) FROM schema_migrations")" == "49" ]] || { echo "migration count is not 49" >&2; exit 1; }
 [[ "$(scalar "SELECT to_regclass('public.user_schedule_terms') IS NOT NULL")" == "t" ]] || { echo "schedule reference table is missing" >&2; exit 1; }
+docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000049_v14_schedule_object_bindings.down.sql" >/dev/null
 docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000046_v14_schedule_term_references.down.sql" >/dev/null
 [[ "$(scalar "SELECT to_regclass('public.user_schedule_terms') IS NULL")" == "t" ]] || { echo "schedule reference table remained after down" >&2; exit 1; }
 docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000046_v14_schedule_term_references.up.sql" >/dev/null
+docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000049_v14_schedule_object_bindings.up.sql" >/dev/null
 echo "v14 schedule-term-reference empty migration and 000046 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

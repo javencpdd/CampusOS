@@ -13,19 +13,21 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	ReconcilePendingObjectExpired = "pending_object_expired"
-	ReconcileReservationExpired   = "reservation_expired"
-	ReconcileMetadataMissingFile  = "metadata_missing_physical"
-	ReconcilePhysicalOrphan       = "physical_without_metadata"
-	ReconcilePayloadMismatch      = "payload_hash_or_size_mismatch"
-	ReconcileUnsafePath           = "unsafe_path"
-	ReconcileLedgerMismatch       = "ledger_mismatch"
-	ReconcileLegacyUnclassified   = "legacy_unclassified"
+	ReconcilePendingObjectExpired  = "pending_object_expired"
+	ReconcileReservationExpired    = "reservation_expired"
+	ReconcileMetadataMissingFile   = "metadata_missing_physical"
+	ReconcilePhysicalOrphan        = "physical_without_metadata"
+	ReconcilePayloadMismatch       = "payload_hash_or_size_mismatch"
+	ReconcileUnsafePath            = "unsafe_path"
+	ReconcileInvalidOwnerDirectory = "invalid_owner_directory"
+	ReconcileLedgerMismatch        = "ledger_mismatch"
+	ReconcileLegacyUnclassified    = "legacy_unclassified"
 )
 
 // ReconcileObject is the minimum metadata needed by a local-provider audit.
@@ -71,6 +73,8 @@ type ReconcileDifference struct {
 }
 
 type ReconcileReport struct {
+	// Root is a display label only (for example "personal-space"). It never
+	// contains the absolute host path passed to ReconcileLocal.
 	Root        string                `json:"root"`
 	GeneratedAt time.Time             `json:"generated_at"`
 	Differences []ReconcileDifference `json:"differences"`
@@ -84,7 +88,7 @@ func ReconcileLocal(root string, snapshot ReconcileSnapshot, now time.Time) (Rec
 	if err != nil {
 		return ReconcileReport{}, err
 	}
-	report := ReconcileReport{Root: cleanRoot, GeneratedAt: now.UTC(), Counts: map[string]int{}}
+	report := ReconcileReport{Root: filepath.Base(cleanRoot), GeneratedAt: now.UTC(), Counts: map[string]int{}}
 	add := func(item ReconcileDifference) {
 		report.Differences = append(report.Differences, item)
 		report.Counts[item.Kind]++
@@ -146,7 +150,7 @@ func ReconcileLocal(root string, snapshot ReconcileSnapshot, now time.Time) (Rec
 			}
 			parts := strings.Split(rel, "/")
 			owner := ""
-			if len(parts) > 0 && SafeSegment(parts[0]) {
+			if len(parts) > 0 && validReconcileOwner(parts[0]) {
 				owner = parts[0]
 			}
 			fileInfo, infoErr := entry.Info()
@@ -156,7 +160,7 @@ func ReconcileLocal(root string, snapshot ReconcileSnapshot, now time.Time) (Rec
 			if owner != "" {
 				physicalByOwner[owner] += fileInfo.Size()
 			} else {
-				add(ReconcileDifference{Kind: ReconcileUnsafePath, RelativePath: rel})
+				add(ReconcileDifference{Kind: ReconcileInvalidOwnerDirectory, RelativePath: rel})
 				return nil
 			}
 			if item, ok := expected[path]; ok {
@@ -207,6 +211,14 @@ func ReconcileLocal(root string, snapshot ReconcileSnapshot, now time.Time) (Rec
 		return left.RelativePath < right.RelativePath
 	})
 	return report, nil
+}
+
+func validReconcileOwner(value string) bool {
+	if !SafeSegment(value) {
+		return false
+	}
+	id, err := strconv.ParseInt(value, 10, 64)
+	return err == nil && id > 0
 }
 
 func safeObjectFilePath(root, owner, key string) (string, error) {

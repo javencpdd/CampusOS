@@ -9,7 +9,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -50,8 +53,9 @@ func (r *GRPCRuntime) Start(_ context.Context, p *plugin.Plugin) error {
 		return fmt.Errorf("plugin '%s' already running", p.ID)
 	}
 
-	// 查找插件可执行文件
-	binaryPath := p.Directory + "/plugin"
+	// 查找插件可执行文件。Windows 发行物通常为 plugin.exe，而 Unix
+	// 发行物保持 plugin；两者都不允许从目录外解析。
+	binaryPath := pluginBinaryPath(p.Directory)
 	cmd := exec.Command(binaryPath)
 	cmd.Dir = p.Directory
 	cmd.Env = append(cmd.Environ(),
@@ -105,9 +109,17 @@ func (r *GRPCRuntime) Stop(_ context.Context, name string) error {
 	proc.stopping = true
 	r.mu.Unlock()
 
-	// 发送 SIGTERM 优雅关闭
+	// Windows does not offer SIGTERM semantics for a child process. Marking the
+	// process as stopping before termination preserves the lifecycle state on
+	// both platforms.
 	if proc.cmd.Process != nil {
-		_ = proc.cmd.Process.Signal(syscall.SIGTERM)
+		if runtime.GOOS == "windows" {
+			if err := proc.cmd.Process.Kill(); err != nil {
+				return fmt.Errorf("stop plugin '%s': %w", name, err)
+			}
+		} else {
+			_ = proc.cmd.Process.Signal(os.Interrupt)
+		}
 
 		select {
 		case <-proc.done:
@@ -131,6 +143,17 @@ func (r *GRPCRuntime) Stop(_ context.Context, name string) error {
 	r.mu.Unlock()
 
 	return nil
+}
+
+func pluginBinaryPath(directory string) string {
+	base := filepath.Join(directory, "plugin")
+	if runtime.GOOS == "windows" {
+		windowsBinary := base + ".exe"
+		if _, err := os.Stat(windowsBinary); err == nil {
+			return windowsBinary
+		}
+	}
+	return base
 }
 
 func (r *GRPCRuntime) SendEvent(ctx context.Context, pluginName string, event *plugin.EventMessage) (*plugin.PluginResponse, error) {
@@ -245,6 +268,17 @@ func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
 	}
 
 	if proc.cmd.Process != nil {
+		if runtime.GOOS == "windows" {
+			select {
+			case err := <-proc.done:
+				if err != nil {
+					return fmt.Errorf("plugin '%s' process not alive: %w", pluginName, err)
+				}
+				return fmt.Errorf("plugin '%s' process not alive", pluginName)
+			default:
+				return nil
+			}
+		}
 		// 发送信号 0 检查进程是否存活
 		err := proc.cmd.Process.Signal(syscall.Signal(0))
 		if err != nil {

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -15,10 +17,21 @@ import (
 
 func TestRuntimeStopsManagedProcessWithoutMarkingItFailed(t *testing.T) {
 	directory := t.TempDir()
-	binary := filepath.Join(directory, "plugin")
-	script := "#!/bin/sh\ntrap 'exit 0' TERM INT\nwhile :; do sleep 1; done\n"
-	if err := os.WriteFile(binary, []byte(script), 0o755); err != nil {
-		t.Fatalf("write plugin fixture: %v", err)
+	if runtime.GOOS == "windows" {
+		source := filepath.Join(directory, "main.go")
+		if err := os.WriteFile(source, []byte("package main\nimport \"time\"\nfunc main() { for { time.Sleep(time.Hour) } }\n"), 0o600); err != nil {
+			t.Fatalf("write plugin fixture source: %v", err)
+		}
+		binary := filepath.Join(directory, "plugin.exe")
+		if output, err := exec.Command("go", "build", "-o", binary, source).CombinedOutput(); err != nil {
+			t.Fatalf("build plugin fixture: %v: %s", err, output)
+		}
+	} else {
+		binary := filepath.Join(directory, "plugin")
+		script := "#!/bin/sh\ntrap 'exit 0' TERM INT\nwhile :; do sleep 1; done\n"
+		if err := os.WriteFile(binary, []byte(script), 0o755); err != nil {
+			t.Fatalf("write plugin fixture: %v", err)
+		}
 	}
 
 	runtime := NewGRPCRuntime()

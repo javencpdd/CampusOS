@@ -74,15 +74,11 @@ case "$run_go" in
     echo "skipped by CAMPUSOS_SKILL_RUN_GO=$run_go"
     ;;
   auto)
+    default_go_cache="/tmp/campusos-go-cache"
     case "$(uname -s 2>/dev/null || true)" in
-      MINGW*|MSYS*|CYGWIN*)
-        echo "skipped on Windows Git Bash: the repository managed-process suite requires a Linux executable environment"
-        echo "run focused Windows tests for the touched package, and run the full gate in Docker/WSL2/Linux"
-        ;;
-      *)
-        GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./...
-        ;;
+      MINGW*|MSYS*|CYGWIN*) default_go_cache="$repo/.cache/go-build" ;;
     esac
+    GOCACHE="${GOCACHE:-$default_go_cache}" go test ./...
     ;;
   *)
     echo "invalid CAMPUSOS_SKILL_RUN_GO=$run_go (expected auto, true or false)" >&2

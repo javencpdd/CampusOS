@@ -30,6 +30,9 @@ func TestScanHistoricalSchedulesValidatesOwnerHashAndIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if filepath.IsAbs(report.Root) || report.Root != filepath.Base(root) || report.SourceRoot() != root {
+		t.Fatalf("report must expose a label but retain an internal source root: %#v", report)
+	}
 	if len(report.Candidates) != 1 || !report.Candidates[0].ActiveInIndex || report.Candidates[0].SHA256 == "" {
 		t.Fatalf("unexpected candidates: %#v", report.Candidates)
 	}

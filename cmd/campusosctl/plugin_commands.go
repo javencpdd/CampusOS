@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -128,8 +129,11 @@ func buildPlugin(dir string) (*plugin.Manifest, string, []string, error) {
 	}
 	switch manifest.Runtime {
 	case "grpc":
-		artifact := filepath.Join(dir, "plugin")
 		if err := runCommand(dir, nil, "go", "build", "-o", "plugin", "."); err != nil {
+			return nil, "", nil, err
+		}
+		artifact, err := grpcArtifactPath(dir)
+		if err != nil {
 			return nil, "", nil, err
 		}
 		return manifest, artifact, []string{"go build"}, nil
@@ -190,9 +194,8 @@ func verifyPlugin(target string) (*plugin.Manifest, error) {
 	if statErr == nil && info.IsDir() {
 		switch manifest.Runtime {
 		case "grpc":
-			artifact := filepath.Join(target, "plugin")
-			file, err := os.Stat(artifact)
-			if err != nil || file.Mode()&0o111 == 0 {
+			artifact, err := grpcArtifactPath(target)
+			if err != nil {
 				return nil, fmt.Errorf("grpc runtime requires executable artifact %s", artifact)
 			}
 		case "wasm":
@@ -202,6 +205,26 @@ func verifyPlugin(target string) (*plugin.Manifest, error) {
 		}
 	}
 	return manifest, nil
+}
+
+// grpcArtifactPath accepts the normal Unix artifact and the Windows .exe
+// variant. Windows has no meaningful POSIX execute bit, so a regular local
+// file with the expected name is the executable contract there.
+func grpcArtifactPath(dir string) (string, error) {
+	candidates := []string{filepath.Join(dir, "plugin")}
+	if runtime.GOOS == "windows" {
+		candidates = []string{filepath.Join(dir, "plugin.exe"), filepath.Join(dir, "plugin")}
+	}
+	for _, candidate := range candidates {
+		info, err := os.Stat(candidate)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		if runtime.GOOS == "windows" || info.Mode().Perm()&0o111 != 0 {
+			return candidate, nil
+		}
+	}
+	return candidates[0], errors.New("artifact missing or is not executable")
 }
 
 func validateWasmMagic(path string) error {

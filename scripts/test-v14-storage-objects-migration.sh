@@ -27,9 +27,13 @@ set +e
 duplicate_output="$(scalar "INSERT INTO storage_objects (id, owner_user_id, namespace, purpose, provider, storage_key, original_name, mime_type, size_bytes, sha256, status, version) VALUES (9145002, $user_id, 'documents', 'document.source', 'local', '9145001.bin', 'copy.txt', 'text/plain', 1, repeat('b', 64), 'ready', 1)" 2>&1)"; duplicate_status=$?
 set -e
 if [[ $duplicate_status -eq 0 || "$duplicate_output" != *"uk_storage_objects_provider_key"* ]]; then echo "provider/storage key uniqueness was not enforced: $duplicate_output" >&2; exit 1; fi
+run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.down.sql" >/dev/null
+run_file "$repo_root/migrations/000047_v14_personal_documents.down.sql" >/dev/null
 run_file "$repo_root/migrations/000045_v14_storage_objects.down.sql" >/dev/null
 require_equals "storage objects after down" "$(scalar "SELECT to_regclass('public.storage_objects') IS NULL")" "t"
 run_file "$repo_root/migrations/000045_v14_storage_objects.up.sql" >/dev/null
 require_equals "storage objects after re-up" "$(scalar "SELECT to_regclass('public.storage_objects') IS NOT NULL")" "t"
+run_file "$repo_root/migrations/000047_v14_personal_documents.up.sql" >/dev/null
+run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.up.sql" >/dev/null
 if ! (cd "$repo_root" && POSTGRES_CONTAINER="$POSTGRES_CONTAINER" DB_NAME="$drill_db" ./scripts/database-check.sh all) >"$migration_log" 2>&1; then tail -n 80 "$migration_log" >&2; exit 1; fi
 echo "v14 storage-object empty migration and 000045 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

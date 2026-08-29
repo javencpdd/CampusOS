@@ -1,6 +1,6 @@
 # CampusOS 项目上手 Skill 使用说明
 
-> 更新时间：2026-08-28
+> 更新时间：2026-08-29 13:18（Asia/Shanghai）
 > Skill：`campusos-project-onboarding`
 > 发布基线：`v0.13.0`；当前实施阶段：`v0.14-dev`
 
@@ -42,7 +42,7 @@ skills/sources/campusos-project-onboarding/
 
 - 模块化单体和 Core/Built-in Feature/External Plugin/Resource Package 四分类。
 - Identity、Community、Reliability、Appearance、插件平台和 Docker 交付的当前边界。
-- migration `000001-000048`、v14 正式计划、最新 `v0.14.2-dev` 证据与关键代码/数据目录。
+- migration `000001-000049`、v14 正式计划、最新 `v0.14.3-dev` 证据与关键代码/数据目录。
 - 原生开发、Docker 开发、总编排和分组件启动方式。
 - 当前仍未实现的标准 MCP、标准 protobuf gRPC、远程市场、真实第三方 Adapter 和高可用。
 - Help 文档生命周期、v1-v13 历史计划总结和当前 v14 正式路线。

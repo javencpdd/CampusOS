@@ -474,12 +474,12 @@ switch ($Command) {
     "test" {
         Invoke-Compose @(
             "run", "--rm", "--no-deps",
-            "-e", "PLUGINS_DIR=/workspace/data/plugins",
-            "-e", "PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data",
-            "-e", "MODULE_DATA_DIR=/tmp/campusos-go-test/module_data",
-            "-e", "RESOURCE_DIR=/workspace/data/resources",
+            "-e", "PLUGINS_DIR=data/plugins",
+            "-e", "PLUGIN_DATA_DIR=.campusos/go-test/plugin_data",
+            "-e", "MODULE_DATA_DIR=.campusos/go-test/module_data",
+            "-e", "RESOURCE_DIR=data/resources",
             "api", "bash", "-c",
-            "GOCACHE=/go-cache/build GOMODCACHE=/go-cache/modules GOFLAGS=-buildvcs=false go test ./... -count=1"
+            "GOFLAGS=-buildvcs=false go test ./... -count=1"
         )
     }
     "shell" {

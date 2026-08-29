@@ -1,6 +1,6 @@
 # CampusOS 开发流程 Skill 使用说明
 
-> 更新时间：2026-08-28
+> 更新时间：2026-08-29 13:18（Asia/Shanghai）
 > 当前基线：`v0.13.0`
 > 实现目录：`skills/sources/campusos-dev-nocommit/`、`skills/sources/campusos-dev-workflow/`
 
@@ -71,10 +71,9 @@ skills/sources/campusos-dev-nocommit/scripts/check_task.sh v0.14-dev
 skills/sources/campusos-dev-workflow/scripts/check_task.sh v0.14-dev
 ```
 
-脚本适用于 Bash，会显示阶段、计划、进度和 Git 状态。Linux 默认继续执行全仓 Go 测试；Windows Git Bash
-会在 `auto` 模式明确跳过全仓测试，因为当前 managed-process 测试要求 Linux 可执行文件环境，并提示改在
-Docker/WSL2/Linux 跑完整门禁。可以用 `CAMPUSOS_SKILL_RUN_GO=true|false` 显式覆盖。Windows 仍须直接执行
-任务相关的定向 Go 测试；脚本跳过不是“测试通过”的替代证据。
+脚本适用于 Bash，会显示阶段、计划、进度和 Git 状态。`auto` 模式会在 Linux、WSL2、Git Bash 和 Windows
+环境运行全仓 Go 测试；gRPC 进程测试已使用平台本地可执行 fixture，路径断言也会规范化为 POSIX 形式。可以用
+`CAMPUSOS_SKILL_RUN_GO=true|false` 显式覆盖；耗时门禁仍应按任务影响选择，不把脚本输出代替 Docker、迁移或浏览器证据。
 
 ## 6. 仓库直用与维护
 

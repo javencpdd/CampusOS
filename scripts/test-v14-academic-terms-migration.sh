@@ -92,10 +92,20 @@ if [[ $weekday_status -eq 0 || "$weekday_output" != *"chk_academic_terms_first_w
   exit 1
 fi
 
+# Later v14 tables carry foreign keys to AcademicTerm. Isolated down/up must
+# unwind dependent migrations first; production never follows this path.
+run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.down.sql" >/dev/null
+run_file "$repo_root/migrations/000047_v14_personal_documents.down.sql" >/dev/null
+run_file "$repo_root/migrations/000046_v14_schedule_term_references.down.sql" >/dev/null
+run_file "$repo_root/migrations/000045_v14_storage_objects.down.sql" >/dev/null
 run_file "$repo_root/migrations/000044_v14_academic_terms.down.sql" >/dev/null
 require_equals "academic_terms after down" "$(scalar "SELECT to_regclass('public.academic_terms') IS NULL")" "t"
 run_file "$repo_root/migrations/000044_v14_academic_terms.up.sql" >/dev/null
 require_equals "academic_terms after re-up" "$(scalar "SELECT to_regclass('public.academic_terms') IS NOT NULL")" "t"
+run_file "$repo_root/migrations/000045_v14_storage_objects.up.sql" >/dev/null
+run_file "$repo_root/migrations/000046_v14_schedule_term_references.up.sql" >/dev/null
+run_file "$repo_root/migrations/000047_v14_personal_documents.up.sql" >/dev/null
+run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.up.sql" >/dev/null
 
 if ! (
   cd "$repo_root"

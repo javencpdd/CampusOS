@@ -5,7 +5,7 @@ description: Quickly onboard an agent to the CampusOS repository, current versio
 
 # CampusOS Project Onboarding
 
-> 更新时间：2026-08-28
+> 更新时间：2026-08-29
 
 ## Purpose
 

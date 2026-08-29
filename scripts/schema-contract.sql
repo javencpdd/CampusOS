@@ -15,7 +15,7 @@ BEGIN
         'platform_outbox', 'outbox_consumer_receipts', 'platform_outbox_attempts', 'platform_command_audits', 'platform_worker_leases',
         'platform_operation_runs', 'platform_compatibility_usage', 'platform_retention_runs',
         'academic_terms', 'user_storage_accounts', 'storage_objects', 'user_storage_reservations',
-        'user_schedule_terms', 'personal_documents', 'personal_document_versions', 'personal_document_previews'
+        'user_schedule_terms', 'user_schedule_preferences', 'personal_documents', 'personal_document_versions', 'personal_document_previews'
     ]) item
     WHERE to_regclass('public.' || item) IS NULL;
     IF missing IS NOT NULL THEN
@@ -64,7 +64,8 @@ BEGIN
         'user_storage_accounts.user_id', 'user_storage_accounts.used_bytes', 'user_storage_accounts.reserved_bytes', 'user_storage_accounts.version',
         'storage_objects.id', 'storage_objects.owner_user_id', 'storage_objects.namespace', 'storage_objects.purpose', 'storage_objects.provider', 'storage_objects.storage_key', 'storage_objects.size_bytes', 'storage_objects.sha256', 'storage_objects.status', 'storage_objects.version',
         'user_storage_reservations.id', 'user_storage_reservations.user_id', 'user_storage_reservations.object_id', 'user_storage_reservations.reserved_bytes', 'user_storage_reservations.status', 'user_storage_reservations.expires_at'
-        ,'user_schedule_terms.user_id', 'user_schedule_terms.academic_term_id',
+        ,'user_schedule_terms.user_id', 'user_schedule_terms.academic_term_id', 'user_schedule_terms.current_object_id', 'user_schedule_terms.first_week_start', 'user_schedule_terms.version',
+        'user_schedule_preferences.user_id', 'user_schedule_preferences.academic_term_id',
         'personal_documents.id', 'personal_documents.owner_user_id', 'personal_documents.name', 'personal_documents.document_type', 'personal_documents.status', 'personal_documents.current_version_id', 'personal_documents.version',
         'personal_document_versions.id', 'personal_document_versions.document_id', 'personal_document_versions.version_number', 'personal_document_versions.source_object_id', 'personal_document_versions.source_type', 'personal_document_versions.size_bytes', 'personal_document_versions.sha256',
         'personal_document_previews.id', 'personal_document_previews.document_version_id', 'personal_document_previews.preview_object_id', 'personal_document_previews.status', 'personal_document_previews.attempts'
@@ -163,7 +164,7 @@ BEGIN
         'uk_academic_terms_year_semester', 'uk_academic_terms_open_default', 'idx_academic_terms_status_year',
         'uk_storage_objects_provider_key', 'idx_storage_objects_owner_id_desc', 'idx_storage_objects_owner_namespace_purpose_id_desc', 'idx_storage_objects_status_updated_at',
         'uk_user_storage_reservations_object', 'idx_user_storage_reservations_pending_expiry',
-        'idx_user_schedule_terms_academic_term', 'idx_personal_documents_owner_status_updated',
+        'idx_user_schedule_terms_academic_term', 'idx_user_schedule_terms_current_object', 'idx_user_schedule_preferences_term', 'idx_personal_documents_owner_status_updated',
         'idx_personal_document_versions_document_number', 'uk_personal_document_versions_number', 'uk_personal_document_previews_version'
     ]) expected
     WHERE to_regclass('public.' || expected) IS NULL;
