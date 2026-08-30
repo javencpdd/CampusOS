@@ -18,6 +18,7 @@ type Store interface {
 	GetArticleByThreadID(ctx context.Context, threadID string) (*Article, error)
 	SaveAsset(ctx context.Context, asset *Asset) error
 	ListAssets(ctx context.Context, threadID string) ([]*Asset, error)
+	ListAssetsByUploader(ctx context.Context, uploaderID string) ([]*Asset, error)
 }
 
 type PgStore struct {
@@ -106,6 +107,32 @@ func (s *PgStore) ListAssets(ctx context.Context, threadID string) ([]*Asset, er
 		FROM richtext_article_assets
 		WHERE thread_id=$1
 		ORDER BY created_at DESC`, threadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*Asset{}
+	for rows.Next() {
+		item := &Asset{}
+		if err := rows.Scan(&item.ID, &item.ThreadID, &item.ArticleContentID, &item.UploaderID,
+			&item.FileURL, &item.FileName, &item.FileSize, &item.MimeType, &item.Width, &item.Height,
+			&item.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+// ListAssetsByUploader is an owner-scoped media inventory. It intentionally
+// returns only persisted asset metadata and public URLs, never a storage path.
+func (s *PgStore) ListAssetsByUploader(ctx context.Context, uploaderID string) ([]*Asset, error) {
+	rows, err := s.db(ctx).Query(ctx, `SELECT id, COALESCE(thread_id::text, ''), COALESCE(article_content_id::text, ''),
+			uploader_id, file_url, file_name, file_size, mime_type, width, height, created_at
+		FROM richtext_article_assets
+		WHERE uploader_id=$1::bigint
+		ORDER BY created_at DESC
+		LIMIT 200`, uploaderID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +244,28 @@ func (s *MemoryStore) ListAssets(_ context.Context, threadID string) ([]*Asset, 
 			items = append(items, cloneAsset(asset))
 		}
 	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].ID > items[j].ID
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	return items, nil
+}
+
+func (s *MemoryStore) ListAssetsByUploader(_ context.Context, uploaderID string) ([]*Asset, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := []*Asset{}
+	for _, asset := range s.assets {
+		if asset.UploaderID == uploaderID {
+			items = append(items, cloneAsset(asset))
+		}
+	}
 	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
+	if len(items) > 200 {
+		items = items[:200]
+	}
 	return items, nil
 }
 

@@ -222,7 +222,7 @@
       "machine_code": "internal.error",
       "legacy_code": 10006,
       "http_status": 500,
-      "message": "internal server error",
+      "message": "系统暂时无法完成该操作，请稍后重试；如持续出现，请联系管理员。",
       "retryable": true
     },
     {

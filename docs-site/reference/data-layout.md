@@ -59,6 +59,7 @@ data/module_data/personal-space/styles/
 ```text
 data/personal-space/<user_id>/
 ├── img/avatars/                       头像源文件，默认保留最近 3 个
+├── img/content/                       普通帖子、校园互助和二手正文图片
 ├── img/richtext/                      富文本图片
 ├── file/schedule/                     学期课表索引和 JSON
 ├── plugins/<plugin>/                  获得用户授权的插件附件
@@ -72,8 +73,10 @@ data/personal-space/<user_id>/
 像素时等比缩小，配额按优化后的文件大小计算；GIF/WebP 为保留动画或避免重复有损编码而原样保存。
 
 头像目录默认按上传时间保留最近 3 个源文件。用户切换到历史头像只修改 `user_spaces.avatar`，不会修改
-源文件时间或 FIFO 顺序；只有上传新头像才会删除最早的源文件。课表和富文本只依赖 User Storage Port，
-不依赖个人主页功能是否启用。备份必须同时包含 PostgreSQL 和 `data/personal-space/`。
+源文件时间或 FIFO 顺序；只有上传新头像才会删除最早的源文件。普通正文图片和富文本图片是兼容资源：
+“我的文档 → 已上传资源”只按当前上传者返回安全元数据、预览 URL 和时间，不将文件迁入私有文档版本、
+回收站或删除流程，以免破坏已有帖子。课表和富文本只依赖 User Storage Port，不依赖个人主页功能是否启用。
+备份必须同时包含 PostgreSQL 和 `data/personal-space/`。
 
 ## Resource Package
 

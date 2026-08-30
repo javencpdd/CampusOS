@@ -139,6 +139,9 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 	}
 	optimized, err := corestorage.OptimizeImage(data)
 	if err != nil {
+		if errors.Is(err, corestorage.ErrImageDimensions) {
+			return nil, err
+		}
 		return nil, ErrAssetUnsupported
 	}
 	data = optimized.Data
@@ -175,6 +178,15 @@ func (s *LocalAssetStore) Save(userID, originalName string, reader io.Reader) (*
 		Height:     optimized.Height,
 		CreatedAt:  time.Now().UTC(),
 	}, nil
+}
+
+// MaxAssetBytes exposes the effective per-file limit to the HTTP boundary so
+// multipart parsing can be bounded before a temporary upload is created.
+func (s *LocalAssetStore) MaxAssetBytes() int64 {
+	if s == nil || s.cfg.MaxAssetBytes <= 0 {
+		return defaultMaxAssetBytes
+	}
+	return s.cfg.MaxAssetBytes
 }
 
 func (s *LocalAssetStore) Path(userID, fileName string) (string, error) {

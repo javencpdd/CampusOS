@@ -1,10 +1,14 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-08-30
+> Snapshot date: 2026-08-30 12:58（Asia/Shanghai）
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.13.0`
 > Active implementation stage: `v0.14-dev` (G0, AcademicTerm, Storage Object, Schedule Guard, historical adoption/reconciliation, Personal Documents MVP, shared Content Editor Core and low-cardinality operational summaries implemented; Final gates remain)
 > Migrations: `000001` through `000049`
+
+The latest implementation evidence is `docs/进度/v0.14-dev/v0.14.8-dev.md`: it records the AcademicTerm creation SQL fix,
+configurable Docker API health probe, owner-scoped uploaded-image inventory, and actionable Chinese image-upload errors. P0/P1
+implementation evidence remains in `v0.14.5-dev.md`; v0.14 Final gates remain unchanged.
 
 This file is an orientation snapshot. Before changing code, verify claims against the live worktree, generated contracts,
 migrations, the latest progress evidence, and `docs/计划书总结/README.md`.

@@ -20,6 +20,7 @@ export const contentApi = {
     form.append('file', file)
     return api.post('/content/assets/images', form, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
+  listMyImages: () => api.get('/content/assets/images/me'),
 }
 
 export const contentExcerpt = (content: string, format?: string, limit = 220) => {

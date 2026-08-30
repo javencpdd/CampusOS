@@ -7,7 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -15,6 +18,7 @@ const (
 	DefaultMaxContentImage = int64(5 * 1024 * 1024)
 	ContentImageURLPrefix  = "/api/v1/content/assets/images"
 	contentImageFormSlack  = int64(64 * 1024)
+	maxListedContentImages = 200
 )
 
 var (
@@ -24,12 +28,13 @@ var (
 )
 
 type ContentImage struct {
-	FileURL  string `json:"file_url"`
-	FileName string `json:"file_name"`
-	FileSize int64  `json:"file_size"`
-	MimeType string `json:"mime_type"`
-	Width    int    `json:"width,omitempty"`
-	Height   int    `json:"height,omitempty"`
+	FileURL   string    `json:"file_url"`
+	FileName  string    `json:"file_name"`
+	FileSize  int64     `json:"file_size"`
+	MimeType  string    `json:"mime_type"`
+	Width     int       `json:"width,omitempty"`
+	Height    int       `json:"height,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ContentImageStore is an always-on User Storage capability. Built-in content
@@ -114,13 +119,68 @@ func (s *ContentImageStore) Save(userID, originalName string, reader io.Reader) 
 		return nil, err
 	}
 	return &ContentImage{
-		FileURL:  ContentImageURLPrefix + "/" + userID + "/" + name,
-		FileName: name,
-		FileSize: int64(len(data)),
-		MimeType: optimized.MimeType,
-		Width:    optimized.Width,
-		Height:   optimized.Height,
+		FileURL:   ContentImageURLPrefix + "/" + userID + "/" + name,
+		FileName:  name,
+		FileSize:  int64(len(data)),
+		MimeType:  optimized.MimeType,
+		Width:     optimized.Width,
+		Height:    optimized.Height,
+		CreatedAt: time.Now().UTC(),
 	}, nil
+}
+
+// ListOwned returns the newest content images that belong to one authenticated
+// owner. Content images are compatibility assets referenced from published
+// posts, so this is deliberately an inventory only: it neither moves nor
+// deletes files and never exposes local filesystem paths.
+func (s *ContentImageStore) ListOwned(userID string) ([]ContentImage, error) {
+	if s == nil || !SafeSegment(userID) {
+		return nil, ErrUnsafePath
+	}
+	dir, err := s.storage.Path(userID, ImageDir, ContentImageDir)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return []ContentImage{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	items := make([]ContentImage, 0, len(entries))
+	for _, entry := range entries {
+		// Do not follow links or expose unrecognised files that might have been
+		// placed in a legacy directory outside the upload flow.
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !SafeSegment(entry.Name()) {
+			continue
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		mimeType, ok := contentImageMimeType(entry.Name())
+		if !ok {
+			continue
+		}
+		items = append(items, ContentImage{
+			FileURL:   ContentImageURLPrefix + "/" + userID + "/" + entry.Name(),
+			FileName:  entry.Name(),
+			FileSize:  info.Size(),
+			MimeType:  mimeType,
+			CreatedAt: info.ModTime().UTC(),
+		})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].CreatedAt.Equal(items[j].CreatedAt) {
+			return items[i].FileName > items[j].FileName
+		}
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	if len(items) > maxListedContentImages {
+		items = items[:maxListedContentImages]
+	}
+	return items, nil
 }
 
 func (s *ContentImageStore) Path(userID, fileName string) (string, error) {
@@ -161,4 +221,19 @@ func randomImageName(ext string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(random) + ext, nil
+}
+
+func contentImageMimeType(name string) (string, bool) {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg":
+		return "image/jpeg", true
+	case ".png":
+		return "image/png", true
+	case ".gif":
+		return "image/gif", true
+	case ".webp":
+		return "image/webp", true
+	default:
+		return "", false
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -172,12 +173,32 @@ func (r *MemoryRepository) save(item Term, actor string) Term {
 	return item.withDerivedFields()
 }
 
-type PgRepository struct{ pool *pgxpool.Pool }
+type PgRepository struct {
+	pool         *pgxpool.Pool
+	transactions transaction.Manager
+}
 
-func NewPgRepository(pool *pgxpool.Pool) *PgRepository { return &PgRepository{pool: pool} }
+// createTermSQL keeps the status parameter explicitly varchar in both of its
+// uses. PostgreSQL otherwise has to infer one placeholder as both the
+// academic_terms.status VARCHAR column and a text comparison in CASE, which
+// fails at parse time before the INSERT can run.
+const createTermSQL = `INSERT INTO academic_terms
+	(id, year, semester, first_week_start, status, is_default, version, created_by, updated_by, created_at, updated_at, closed_at)
+	VALUES ($1::bigint, $2, $3, $4::date, $5::varchar, $6, 1, NULLIF($7, '')::bigint, NULLIF($7, '')::bigint, NOW(), NOW(),
+		CASE WHEN $5::varchar='closed' THEN NOW() ELSE NULL END)
+	RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
+		COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at`
+
+func NewPgRepository(pool *pgxpool.Pool) *PgRepository {
+	return &PgRepository{pool: pool, transactions: transaction.NewPostgreSQL(pool)}
+}
+
+func (r *PgRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
 
 func (r *PgRepository) List(ctx context.Context, filter ListFilter) ([]Term, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id::text, year, semester, first_week_start::text, status, is_default,
+	rows, err := r.db(ctx).Query(ctx, `SELECT id::text, year, semester, first_week_start::text, status, is_default,
 		version, COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at
 		FROM academic_terms WHERE ($1='' OR status=$1)
 		ORDER BY year DESC, CASE semester WHEN 'fall' THEN 0 ELSE 1 END, created_at DESC`, filter.Status)
@@ -197,44 +218,37 @@ func (r *PgRepository) List(ctx context.Context, filter ListFilter) ([]Term, err
 }
 
 func (r *PgRepository) Get(ctx context.Context, id string) (Term, error) {
-	return queryTerm(ctx, r.pool, `SELECT id::text, year, semester, first_week_start::text, status, is_default,
+	return queryTerm(ctx, r.db(ctx), `SELECT id::text, year, semester, first_week_start::text, status, is_default,
 		version, COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at
 		FROM academic_terms WHERE id=$1::bigint`, id)
 }
 
 func (r *PgRepository) Create(ctx context.Context, item Term) (Term, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return Term{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if item.IsDefault {
-		if _, err = tx.Exec(ctx, `UPDATE academic_terms SET is_default=FALSE, version=version+1,
-			updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE is_default=TRUE`, item.CreatedBy); err != nil {
-			return Term{}, err
+	var created Term
+	err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		if item.IsDefault {
+			if _, err := db.Exec(txCtx, `UPDATE academic_terms SET is_default=FALSE, version=version+1,
+				updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE is_default=TRUE`, item.CreatedBy); err != nil {
+				return err
+			}
 		}
+		var queryErr error
+		created, queryErr = queryTerm(txCtx, db, createTermSQL,
+			item.ID, item.Year, item.Semester, item.FirstWeekStart, item.Status, item.IsDefault, item.CreatedBy)
+		return queryErr
+	})
+	if isUniqueViolation(err) {
+		return Term{}, ErrAlreadyExists
 	}
-	created, err := queryTerm(ctx, tx, `INSERT INTO academic_terms
-		(id, year, semester, first_week_start, status, is_default, version, created_by, updated_by, created_at, updated_at, closed_at)
-		VALUES ($1::bigint, $2, $3, $4::date, $5, $6, 1, NULLIF($7, '')::bigint, NULLIF($7, '')::bigint, NOW(), NOW(),
-			CASE WHEN $5='closed' THEN NOW() ELSE NULL END)
-		RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
-			COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at`,
-		item.ID, item.Year, item.Semester, item.FirstWeekStart, item.Status, item.IsDefault, item.CreatedBy)
 	if err != nil {
-		if isUniqueViolation(err) {
-			return Term{}, ErrAlreadyExists
-		}
-		return Term{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return Term{}, err
 	}
 	return created, nil
 }
 
 func (r *PgRepository) UpdateFirstWeek(ctx context.Context, id string, expected int64, firstWeek time.Time, actor string) (Term, error) {
-	item, err := queryTerm(ctx, r.pool, `UPDATE academic_terms SET first_week_start=$1::date, version=version+1,
+	item, err := queryTerm(ctx, r.db(ctx), `UPDATE academic_terms SET first_week_start=$1::date, version=version+1,
 		updated_by=NULLIF($2, '')::bigint, updated_at=NOW()
 		WHERE id=$3::bigint AND version=$4 AND status='open'
 		RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
@@ -246,7 +260,7 @@ func (r *PgRepository) UpdateFirstWeek(ctx context.Context, id string, expected 
 }
 
 func (r *PgRepository) Close(ctx context.Context, id string, expected int64, actor string) (Term, error) {
-	item, err := queryTerm(ctx, r.pool, `UPDATE academic_terms SET status='closed', is_default=FALSE, closed_at=NOW(),
+	item, err := queryTerm(ctx, r.db(ctx), `UPDATE academic_terms SET status='closed', is_default=FALSE, closed_at=NOW(),
 		version=version+1, updated_by=NULLIF($1, '')::bigint, updated_at=NOW()
 		WHERE id=$2::bigint AND version=$3 AND status='open'
 		RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
@@ -258,7 +272,7 @@ func (r *PgRepository) Close(ctx context.Context, id string, expected int64, act
 }
 
 func (r *PgRepository) Open(ctx context.Context, id string, expected int64, actor string) (Term, error) {
-	item, err := queryTerm(ctx, r.pool, `UPDATE academic_terms SET status='open', closed_at=NULL,
+	item, err := queryTerm(ctx, r.db(ctx), `UPDATE academic_terms SET status='open', closed_at=NULL,
 		version=version+1, updated_by=NULLIF($1, '')::bigint, updated_at=NOW()
 		WHERE id=$2::bigint AND version=$3 AND status='closed'
 		RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
@@ -270,45 +284,42 @@ func (r *PgRepository) Open(ctx context.Context, id string, expected int64, acto
 }
 
 func (r *PgRepository) SetDefault(ctx context.Context, id string, expected int64, actor string) (Term, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return Term{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	target, err := queryTerm(ctx, tx, `SELECT id::text, year, semester, first_week_start::text, status, is_default, version,
-		COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at
-		FROM academic_terms WHERE id=$1::bigint FOR UPDATE`, id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Term{}, ErrNotFound
-	}
-	if err != nil {
-		return Term{}, err
-	}
-	if target.Version != expected {
-		return Term{}, ErrVersionConflict
-	}
-	if target.Status != StatusOpen {
-		return Term{}, ErrClosed
-	}
-	if _, err = tx.Exec(ctx, `UPDATE academic_terms SET is_default=FALSE, version=version+1,
-		updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE is_default=TRUE AND id<>$2::bigint`, actor, id); err != nil {
-		return Term{}, err
-	}
-	item, err := queryTerm(ctx, tx, `UPDATE academic_terms SET is_default=TRUE, version=version+1,
-		updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE id=$2::bigint
-		RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
+	var item Term
+	err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		target, queryErr := queryTerm(txCtx, db, `SELECT id::text, year, semester, first_week_start::text, status, is_default, version,
+			COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at
+			FROM academic_terms WHERE id=$1::bigint FOR UPDATE`, id)
+		if errors.Is(queryErr, pgx.ErrNoRows) || errors.Is(queryErr, ErrNotFound) {
+			return ErrNotFound
+		}
+		if queryErr != nil {
+			return queryErr
+		}
+		if target.Version != expected {
+			return ErrVersionConflict
+		}
+		if target.Status != StatusOpen {
+			return ErrClosed
+		}
+		if _, queryErr = db.Exec(txCtx, `UPDATE academic_terms SET is_default=FALSE, version=version+1,
+			updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE is_default=TRUE AND id<>$2::bigint`, actor, id); queryErr != nil {
+			return queryErr
+		}
+		item, queryErr = queryTerm(txCtx, db, `UPDATE academic_terms SET is_default=TRUE, version=version+1,
+			updated_by=NULLIF($1, '')::bigint, updated_at=NOW() WHERE id=$2::bigint
+			RETURNING id::text, year, semester, first_week_start::text, status, is_default, version,
 			COALESCE(created_by::text, ''), COALESCE(updated_by::text, ''), created_at, updated_at, closed_at`, actor, id)
+		return queryErr
+	})
 	if err != nil {
-		return Term{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return Term{}, err
 	}
 	return item, nil
 }
 
 func (r *PgRepository) Delete(ctx context.Context, id string, expected int64) error {
-	result, err := r.pool.Exec(ctx, `DELETE FROM academic_terms WHERE id=$1::bigint AND version=$2`, id, expected)
+	result, err := r.db(ctx).Exec(ctx, `DELETE FROM academic_terms WHERE id=$1::bigint AND version=$2`, id, expected)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {

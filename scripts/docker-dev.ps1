@@ -208,6 +208,12 @@ function Assert-Environment {
         $Ports[$Port] = $Key
     }
 
+    $HealthcheckInterval = Get-EnvironmentSetting "CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL" "5s"
+    if ($HealthcheckInterval -notmatch "^([0-9]+(ms|s|m|h))+$") {
+        throw "CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL must be a Docker Compose duration such as 5s, 30s, or 1m."
+    }
+    Write-Host "API Docker healthcheck interval: $HealthcheckInterval (this is not a browser polling interval)."
+
     $Provider = (Get-EnvironmentSetting "EMAIL_PROVIDER" "fake").ToLowerInvariant()
     switch ($Provider) {
         "fake" {
@@ -474,12 +480,8 @@ switch ($Command) {
     "test" {
         Invoke-Compose @(
             "run", "--rm", "--no-deps",
-            "-e", "PLUGINS_DIR=data/plugins",
-            "-e", "PLUGIN_DATA_DIR=.campusos/go-test/plugin_data",
-            "-e", "MODULE_DATA_DIR=.campusos/go-test/module_data",
-            "-e", "RESOURCE_DIR=data/resources",
             "api", "bash", "-c",
-            "GOFLAGS=-buildvcs=false go test ./... -count=1"
+            "mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1"
         )
     }
     "shell" {

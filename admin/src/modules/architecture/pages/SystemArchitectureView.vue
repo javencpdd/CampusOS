@@ -1932,12 +1932,13 @@ const storageRows = [
     purpose: "每个用户拥有的本地文件空间，默认 50 MB，可由管理员按用户授权。",
     contents: [
       "img/avatars/：头像源文件，默认保留最近 3 个并可切换，只有新上传才按 FIFO 清理",
+      "img/content/：普通帖子、校园互助和二手正文图片；仅当前上传者可在“我的文档 → 已上传资源”中查看清单，文件仍可能被公开帖子引用",
       "img/richtext/：图文文章图片；JPEG/PNG 优化后计入配额",
       "file/schedule/terms/<year>-<semester>.json：每学期课表",
       "plugins/<plugin>/：v2 插件受控附件",
       "file/、excel/、word/、pdf/：按用途/后缀分类的文件",
     ],
-    note: "数据库只保存 URL 或元数据；恢复时必须与数据库同时恢复。",
+    note: "数据库只保存 URL 或元数据；“已上传资源”是只读库存，不会把兼容图片迁入私有文档版本，也不会提供删除，以免破坏已发布内容；恢复时必须与数据库同时恢复。",
   },
   {
     path: "modules/ + internal/modules/",

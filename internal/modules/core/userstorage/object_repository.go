@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -215,105 +216,102 @@ func (r *MemoryObjectRepository) Summary(_ context.Context) (ObjectSummary, erro
 	return summary, nil
 }
 
-type PgObjectRepository struct{ pool *pgxpool.Pool }
+type PgObjectRepository struct {
+	pool         *pgxpool.Pool
+	transactions transaction.Manager
+}
 
 func NewPgObjectRepository(pool *pgxpool.Pool) *PgObjectRepository {
-	return &PgObjectRepository{pool: pool}
+	return &PgObjectRepository{pool: pool, transactions: transaction.NewPostgreSQL(pool)}
 }
+
+func (r *PgObjectRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
+
 func (r *PgObjectRepository) Reserve(ctx context.Context, item storedObject, requested, quota, observed int64) (storedObject, reservation, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return storedObject{}, reservation{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	created, err := tx.Exec(ctx, `INSERT INTO user_storage_accounts (user_id,used_bytes,reserved_bytes,version) VALUES ($1,$2,0,1) ON CONFLICT (user_id) DO NOTHING`, item.OwnerID, maxInt64(0, observed))
-	if err != nil {
-		return storedObject{}, reservation{}, err
-	}
-	var used, reserved int64
-	if err = tx.QueryRow(ctx, `SELECT used_bytes,reserved_bytes FROM user_storage_accounts WHERE user_id=$1 FOR UPDATE`, item.OwnerID).Scan(&used, &reserved); err != nil {
-		return storedObject{}, reservation{}, err
-	}
-	_ = created // Existing ledgers are authoritative; do not double count managed objects from a directory scan.
-	if requested < 0 || used+reserved+requested > quota {
-		return storedObject{}, reservation{}, ErrObjectQuota
-	}
-	item.Status, item.Version = ObjectStatusPending, 1
-	if err = tx.QueryRow(ctx, `INSERT INTO storage_objects (id,owner_user_id,namespace,purpose,provider,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at) VALUES ($1,$2,$3,$4,'local',$5,$6,$7,0,'','pending',1,NOW(),NOW()) RETURNING created_at,updated_at`, item.ID, item.OwnerID, item.Namespace, item.Purpose, item.storageKey, item.OriginalName, item.MimeType).Scan(&item.CreatedAt, &item.UpdatedAt); err != nil {
-		return storedObject{}, reservation{}, err
-	}
 	res := reservation{ID: item.ID, ObjectID: item.ID, ReservedBytes: requested, Status: ObjectStatusPending}
-	if _, err = tx.Exec(ctx, `INSERT INTO user_storage_reservations (id,user_id,object_id,reserved_bytes,status,expires_at,created_at,updated_at) VALUES ($1,$2,$3,$4,'pending',NOW()+INTERVAL '15 minutes',NOW(),NOW())`, res.ID, item.OwnerID, item.ID, requested); err != nil {
-		return storedObject{}, reservation{}, err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE user_storage_accounts SET reserved_bytes=reserved_bytes+$2,version=version+1,updated_at=NOW() WHERE user_id=$1`, item.OwnerID, requested); err != nil {
-		return storedObject{}, reservation{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
+	err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		created, queryErr := db.Exec(txCtx, `INSERT INTO user_storage_accounts (user_id,used_bytes,reserved_bytes,version) VALUES ($1,$2,0,1) ON CONFLICT (user_id) DO NOTHING`, item.OwnerID, maxInt64(0, observed))
+		if queryErr != nil {
+			return queryErr
+		}
+		var used, reserved int64
+		if queryErr = db.QueryRow(txCtx, `SELECT used_bytes,reserved_bytes FROM user_storage_accounts WHERE user_id=$1 FOR UPDATE`, item.OwnerID).Scan(&used, &reserved); queryErr != nil {
+			return queryErr
+		}
+		_ = created // Existing ledgers are authoritative; do not double count managed objects from a directory scan.
+		if requested < 0 || used+reserved+requested > quota {
+			return ErrObjectQuota
+		}
+		item.Status, item.Version = ObjectStatusPending, 1
+		if queryErr = db.QueryRow(txCtx, `INSERT INTO storage_objects (id,owner_user_id,namespace,purpose,provider,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at) VALUES ($1,$2,$3,$4,'local',$5,$6,$7,0,'','pending',1,NOW(),NOW()) RETURNING created_at,updated_at`, item.ID, item.OwnerID, item.Namespace, item.Purpose, item.storageKey, item.OriginalName, item.MimeType).Scan(&item.CreatedAt, &item.UpdatedAt); queryErr != nil {
+			return queryErr
+		}
+		if _, queryErr = db.Exec(txCtx, `INSERT INTO user_storage_reservations (id,user_id,object_id,reserved_bytes,status,expires_at,created_at,updated_at) VALUES ($1,$2,$3,$4,'pending',NOW()+INTERVAL '15 minutes',NOW(),NOW())`, res.ID, item.OwnerID, item.ID, requested); queryErr != nil {
+			return queryErr
+		}
+		_, queryErr = db.Exec(txCtx, `UPDATE user_storage_accounts SET reserved_bytes=reserved_bytes+$2,version=version+1,updated_at=NOW() WHERE user_id=$1`, item.OwnerID, requested)
+		return queryErr
+	})
+	if err != nil {
 		return storedObject{}, reservation{}, err
 	}
 	return item, res, nil
 }
 func (r *PgObjectRepository) Commit(ctx context.Context, id string, res reservation, actual int64, sha256, key string) (storedObject, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return storedObject{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	var owner string
-	var reserved int64
-	var status string
-	if err = tx.QueryRow(ctx, `SELECT user_id::text,reserved_bytes,status FROM user_storage_reservations WHERE id=$1 AND object_id=$2 FOR UPDATE`, res.ID, id).Scan(&owner, &reserved, &status); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return storedObject{}, ErrObjectUnavailable
+	var item storedObject
+	err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		var owner, status string
+		var reserved int64
+		if queryErr := db.QueryRow(txCtx, `SELECT user_id::text,reserved_bytes,status FROM user_storage_reservations WHERE id=$1 AND object_id=$2 FOR UPDATE`, res.ID, id).Scan(&owner, &reserved, &status); queryErr != nil {
+			if errors.Is(queryErr, pgx.ErrNoRows) {
+				return ErrObjectUnavailable
+			}
+			return queryErr
 		}
-		return storedObject{}, err
-	}
-	if status != "pending" || actual < 0 || actual > reserved {
-		return storedObject{}, ErrObjectUnavailable
-	}
-	if _, err = tx.Exec(ctx, `UPDATE user_storage_accounts SET reserved_bytes=reserved_bytes-$2,used_bytes=used_bytes+$3,version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, reserved, actual); err != nil {
-		return storedObject{}, err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE user_storage_reservations SET status='committed',updated_at=NOW() WHERE id=$1`, res.ID); err != nil {
-		return storedObject{}, err
-	}
-	item, err := queryStoredObject(ctx, tx, `UPDATE storage_objects SET storage_key=$2,size_bytes=$3,sha256=$4,status='ready',version=version+1,updated_at=NOW() WHERE id=$1 AND status='pending' RETURNING id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at`, id, key, actual, sha256)
+		if status != "pending" || actual < 0 || actual > reserved {
+			return ErrObjectUnavailable
+		}
+		if _, queryErr := db.Exec(txCtx, `UPDATE user_storage_accounts SET reserved_bytes=reserved_bytes-$2,used_bytes=used_bytes+$3,version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, reserved, actual); queryErr != nil {
+			return queryErr
+		}
+		if _, queryErr := db.Exec(txCtx, `UPDATE user_storage_reservations SET status='committed',updated_at=NOW() WHERE id=$1`, res.ID); queryErr != nil {
+			return queryErr
+		}
+		var queryErr error
+		item, queryErr = queryStoredObject(txCtx, db, `UPDATE storage_objects SET storage_key=$2,size_bytes=$3,sha256=$4,status='ready',version=version+1,updated_at=NOW() WHERE id=$1 AND status='pending' RETURNING id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at`, id, key, actual, sha256)
+		return queryErr
+	})
 	if err != nil {
-		return storedObject{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
 		return storedObject{}, err
 	}
 	return item, nil
 }
 func (r *PgObjectRepository) Abort(ctx context.Context, id string, res reservation) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	var owner string
-	var bytes int64
-	var status string
-	err = tx.QueryRow(ctx, `SELECT user_id::text,reserved_bytes,status FROM user_storage_reservations WHERE id=$1 FOR UPDATE`, res.ID).Scan(&owner, &bytes, &status)
-	if err == nil && status == "pending" {
-		if _, err = tx.Exec(ctx, `UPDATE user_storage_accounts SET reserved_bytes=GREATEST(0,reserved_bytes-$2),version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, bytes); err != nil {
-			return err
+	return r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		var owner, status string
+		var bytes int64
+		queryErr := db.QueryRow(txCtx, `SELECT user_id::text,reserved_bytes,status FROM user_storage_reservations WHERE id=$1 FOR UPDATE`, res.ID).Scan(&owner, &bytes, &status)
+		if queryErr == nil && status == "pending" {
+			if _, queryErr = db.Exec(txCtx, `UPDATE user_storage_accounts SET reserved_bytes=GREATEST(0,reserved_bytes-$2),version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, bytes); queryErr != nil {
+				return queryErr
+			}
+			if _, queryErr = db.Exec(txCtx, `UPDATE user_storage_reservations SET status='released',updated_at=NOW() WHERE id=$1`, res.ID); queryErr != nil {
+				return queryErr
+			}
+		} else if queryErr != nil && !errors.Is(queryErr, pgx.ErrNoRows) {
+			return queryErr
 		}
-		if _, err = tx.Exec(ctx, `UPDATE user_storage_reservations SET status='released',updated_at=NOW() WHERE id=$1`, res.ID); err != nil {
-			return err
-		}
-	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE storage_objects SET status='deleted',deleted_at=NOW(),version=version+1,updated_at=NOW() WHERE id=$1 AND status='pending'`, id); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+		_, queryErr = db.Exec(txCtx, `UPDATE storage_objects SET status='deleted',deleted_at=NOW(),version=version+1,updated_at=NOW() WHERE id=$1 AND status='pending'`, id)
+		return queryErr
+	})
 }
 func (r *PgObjectRepository) GetOwned(ctx context.Context, owner, id string) (storedObject, error) {
-	item, err := queryStoredObject(ctx, r.pool, `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE id=$1 AND owner_user_id=$2 AND status='ready'`, id, owner)
+	item, err := queryStoredObject(ctx, r.db(ctx), `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE id=$1 AND owner_user_id=$2 AND status='ready'`, id, owner)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return storedObject{}, ErrObjectNotFound
 	}
@@ -321,7 +319,7 @@ func (r *PgObjectRepository) GetOwned(ctx context.Context, owner, id string) (st
 }
 func (r *PgObjectRepository) ListOwned(ctx context.Context, owner string, filter ObjectFilter, page PageRequest) (ObjectPage, error) {
 	limit := normalizePageLimit(page.Limit)
-	rows, err := r.pool.Query(ctx, `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE owner_user_id=$1 AND ($2='' OR namespace=$2) AND ($3='' OR purpose=$3) AND ($4 OR status<>'deleted') AND ($5='' OR id::text<$5) ORDER BY id DESC LIMIT $6`, owner, filter.Namespace, filter.Purpose, filter.IncludeDeleted, page.Cursor, limit+1)
+	rows, err := r.db(ctx).Query(ctx, `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE owner_user_id=$1 AND ($2='' OR namespace=$2) AND ($3='' OR purpose=$3) AND ($4 OR status<>'deleted') AND ($5='' OR id::text<$5) ORDER BY id DESC LIMIT $6`, owner, filter.Namespace, filter.Purpose, filter.IncludeDeleted, page.Cursor, limit+1)
 	if err != nil {
 		return ObjectPage{}, err
 	}
@@ -345,41 +343,37 @@ func (r *PgObjectRepository) ListOwned(ctx context.Context, owner string, filter
 	return ObjectPage{Items: items, NextCursor: next}, nil
 }
 func (r *PgObjectRepository) PrepareDelete(ctx context.Context, owner, id string, version int64) (storedObject, error) {
-	item, err := queryStoredObject(ctx, r.pool, `UPDATE storage_objects SET status='deleting',version=version+1,updated_at=NOW() WHERE id=$1 AND owner_user_id=$2 AND status='ready' AND version=$3 RETURNING id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at`, id, owner, version)
+	item, err := queryStoredObject(ctx, r.db(ctx), `UPDATE storage_objects SET status='deleting',version=version+1,updated_at=NOW() WHERE id=$1 AND owner_user_id=$2 AND status='ready' AND version=$3 RETURNING id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at`, id, owner, version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return storedObject{}, ErrObjectVersion
 	}
 	return item, err
 }
 func (r *PgObjectRepository) RestoreReady(ctx context.Context, id string) error {
-	_, err := r.pool.Exec(ctx, `UPDATE storage_objects SET status='ready',version=version+1,updated_at=NOW() WHERE id=$1 AND status='deleting'`, id)
+	_, err := r.db(ctx).Exec(ctx, `UPDATE storage_objects SET status='ready',version=version+1,updated_at=NOW() WHERE id=$1 AND status='deleting'`, id)
 	return err
 }
 func (r *PgObjectRepository) FinalizeDelete(ctx context.Context, id string) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	var owner string
-	var size int64
-	if err = tx.QueryRow(ctx, `SELECT owner_user_id::text,size_bytes FROM storage_objects WHERE id=$1 AND status='deleting' FOR UPDATE`, id).Scan(&owner, &size); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrObjectNotFound
+	return r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		var owner string
+		var size int64
+		if err := db.QueryRow(txCtx, `SELECT owner_user_id::text,size_bytes FROM storage_objects WHERE id=$1 AND status='deleting' FOR UPDATE`, id).Scan(&owner, &size); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrObjectNotFound
+			}
+			return err
 		}
+		if _, err := db.Exec(txCtx, `UPDATE user_storage_accounts SET used_bytes=GREATEST(0,used_bytes-$2),version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, size); err != nil {
+			return err
+		}
+		_, err := db.Exec(txCtx, `UPDATE storage_objects SET status='deleted',deleted_at=NOW(),version=version+1,updated_at=NOW() WHERE id=$1`, id)
 		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE user_storage_accounts SET used_bytes=GREATEST(0,used_bytes-$2),version=version+1,updated_at=NOW() WHERE user_id=$1`, owner, size); err != nil {
-		return err
-	}
-	if _, err = tx.Exec(ctx, `UPDATE storage_objects SET status='deleted',deleted_at=NOW(),version=version+1,updated_at=NOW() WHERE id=$1`, id); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	})
 }
 func (r *PgObjectRepository) Summary(ctx context.Context) (ObjectSummary, error) {
 	summary := ObjectSummary{ObjectStatuses: map[string]int64{}, ReservationStatuses: map[string]int64{}}
-	rows, err := r.pool.Query(ctx, `SELECT kind,status,total FROM (
+	rows, err := r.db(ctx).Query(ctx, `SELECT kind,status,total FROM (
 		SELECT 'object' AS kind,status,COUNT(*)::bigint AS total FROM storage_objects GROUP BY status
 		UNION ALL
 		SELECT 'reservation' AS kind,status,COUNT(*)::bigint AS total FROM user_storage_reservations GROUP BY status

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,7 +33,7 @@ func TestWriteErrorDoesNotExposeUnexpectedFailure(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload.Code != 10006 || payload.Msg != "internal server error" || payload.Error.Message != "internal server error" {
+	if payload.Code != apperror.InternalError.LegacyCode || payload.Msg != apperror.InternalError.Message || payload.Error.Message != apperror.InternalError.Message {
 		t.Fatalf("unexpected internal error payload: %#v", payload)
 	}
 	if strings.Contains(recorder.Body.String(), internal.Error()) || strings.Contains(recorder.Body.String(), "secondhand_details") {

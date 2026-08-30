@@ -38,7 +38,7 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 - CampusOS 是模块化单体，不是单模块，也没有拆成大量微服务。
 - Core Module、Built-in Feature、External Plugin 和 Resource Package 使用不同生命周期和数据目录。
 - 当前数据库包含 49 个追加 migration；静态旧表清单不能替代 Admin 只读架构和数据库检查器。
-- v14-dev 的实现可在仓库 `docs/进度/v0.14-dev/v0.14.5-dev.md` 中追溯；真实历史数据 apply、Linux 目标环境和正式发布审查仍是 Final 门禁。
+- v14-dev 的 P0/P1 实现可在仓库 `docs/进度/v0.14-dev/v0.14.5-dev.md` 中追溯；当前学期创建、健康探针、资源可见性和上传错误修复见 `v0.14.8-dev.md`。真实历史数据 apply、Linux 目标环境和正式发布审查仍是 Final 门禁。
 - `runtime: grpc` 是历史兼容名称，当前进程扩展使用受限 loopback HTTP 合同，不是标准 protobuf gRPC。
 - 当前 MCP 能力是受控的 MCP-like 集成，不应描述为完整标准 MCP Server。
 - Windows 支持路径是 Docker Desktop 的 Linux Containers；当前真实发行证据仍以 Linux `amd64` 为主。

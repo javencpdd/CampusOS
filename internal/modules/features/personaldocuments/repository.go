@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -155,34 +156,37 @@ func (r *MemoryRepository) PreviewSummary(context.Context) (map[PreviewMetricKey
 	return map[PreviewMetricKey]int64{}, nil
 }
 
-type PgRepository struct{ pool *pgxpool.Pool }
+type PgRepository struct {
+	pool         *pgxpool.Pool
+	transactions transaction.Manager
+}
 
-func NewPgRepository(pool *pgxpool.Pool) *PgRepository { return &PgRepository{pool: pool} }
+func NewPgRepository(pool *pgxpool.Pool) *PgRepository {
+	return &PgRepository{pool: pool, transactions: transaction.NewPostgreSQL(pool)}
+}
+
+func (r *PgRepository) db(ctx context.Context) transaction.Executor {
+	return transaction.ExecutorFor(ctx, r.pool)
+}
+
 func (r *PgRepository) Create(ctx context.Context, d Document, v DocumentVersion) (DocumentDetail, error) {
-	tx, e := r.pool.Begin(ctx)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	defer tx.Rollback(ctx)
-	_, e = tx.Exec(ctx, `INSERT INTO personal_documents (id,owner_user_id,name,document_type,status,current_version_id,version,created_at,updated_at) VALUES ($1::bigint,$2::bigint,$3,$4,'active',NULL,1,NOW(),NOW())`, d.ID, d.OwnerID, d.Name, d.Format)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	_, e = tx.Exec(ctx, `INSERT INTO personal_document_versions (id,document_id,version_number,source_object_id,source_type,size_bytes,sha256,created_by,created_at) VALUES ($1::bigint,$2::bigint,1,$3::bigint,$4,$5,$6,$7::bigint,NOW())`, v.ID, d.ID, v.SourceObjectID, v.Format, v.SizeBytes, v.SHA256, d.OwnerID)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	_, e = tx.Exec(ctx, `UPDATE personal_documents SET current_version_id=$2::bigint WHERE id=$1::bigint`, d.ID, v.ID)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	if e = tx.Commit(ctx); e != nil {
-		return DocumentDetail{}, e
+	if err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		if _, err := db.Exec(txCtx, `INSERT INTO personal_documents (id,owner_user_id,name,document_type,status,current_version_id,version,created_at,updated_at) VALUES ($1::bigint,$2::bigint,$3,$4,'active',NULL,1,NOW(),NOW())`, d.ID, d.OwnerID, d.Name, d.Format); err != nil {
+			return err
+		}
+		if _, err := db.Exec(txCtx, `INSERT INTO personal_document_versions (id,document_id,version_number,source_object_id,source_type,size_bytes,sha256,created_by,created_at) VALUES ($1::bigint,$2::bigint,1,$3::bigint,$4,$5,$6,$7::bigint,NOW())`, v.ID, d.ID, v.SourceObjectID, v.Format, v.SizeBytes, v.SHA256, d.OwnerID); err != nil {
+			return err
+		}
+		_, err := db.Exec(txCtx, `UPDATE personal_documents SET current_version_id=$2::bigint WHERE id=$1::bigint`, d.ID, v.ID)
+		return err
+	}); err != nil {
+		return DocumentDetail{}, err
 	}
 	return r.Get(ctx, d.OwnerID, d.ID)
 }
 func (r *PgRepository) List(ctx context.Context, owner string, f ListFilter) ([]DocumentDetail, error) {
-	rows, e := r.pool.Query(ctx, detailSQL+` WHERE d.owner_user_id=$1::bigint AND ($2='' OR d.status=$2) ORDER BY d.updated_at DESC`, owner, f.Status)
+	rows, e := r.db(ctx).Query(ctx, detailSQL+` WHERE d.owner_user_id=$1::bigint AND ($2='' OR d.status=$2) ORDER BY d.updated_at DESC`, owner, f.Status)
 	if e != nil {
 		return nil, e
 	}
@@ -198,7 +202,7 @@ func (r *PgRepository) List(ctx context.Context, owner string, f ListFilter) ([]
 	return out, rows.Err()
 }
 func (r *PgRepository) Get(ctx context.Context, owner, id string) (DocumentDetail, error) {
-	x, e := scanDetail(r.pool.QueryRow(ctx, detailSQL+` WHERE d.id=$1::bigint AND d.owner_user_id=$2::bigint`, id, owner))
+	x, e := scanDetail(r.db(ctx).QueryRow(ctx, detailSQL+` WHERE d.id=$1::bigint AND d.owner_user_id=$2::bigint`, id, owner))
 	if errors.Is(e, pgx.ErrNoRows) {
 		return DocumentDetail{}, ErrNotFound
 	}
@@ -208,7 +212,7 @@ func (r *PgRepository) Versions(ctx context.Context, owner, id string) ([]Docume
 	if _, e := r.Get(ctx, owner, id); e != nil {
 		return nil, e
 	}
-	rows, e := r.pool.Query(ctx, versionSQL+` WHERE document_id=$1::bigint ORDER BY version_number DESC`, id)
+	rows, e := r.db(ctx).Query(ctx, versionSQL+` WHERE document_id=$1::bigint ORDER BY version_number DESC`, id)
 	if e != nil {
 		return nil, e
 	}
@@ -224,47 +228,39 @@ func (r *PgRepository) Versions(ctx context.Context, owner, id string) ([]Docume
 	return out, rows.Err()
 }
 func (r *PgRepository) AppendVersion(ctx context.Context, owner, id string, expected int64, v DocumentVersion, name string) (DocumentDetail, error) {
-	tx, e := r.pool.Begin(ctx)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	defer tx.Rollback(ctx)
-	var status string
-	var current int64
-	e = tx.QueryRow(ctx, `SELECT status,version FROM personal_documents WHERE id=$1::bigint AND owner_user_id=$2::bigint FOR UPDATE`, id, owner).Scan(&status, &current)
-	if errors.Is(e, pgx.ErrNoRows) {
-		return DocumentDetail{}, ErrNotFound
-	}
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	if status != StatusActive {
-		return DocumentDetail{}, ErrNotEditable
-	}
-	if current != expected {
-		return DocumentDetail{}, ErrConflict
-	}
-	var number int
-	e = tx.QueryRow(ctx, `SELECT COALESCE(MAX(version_number),0)+1 FROM personal_document_versions WHERE document_id=$1::bigint`, id).Scan(&number)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	v.VersionNumber = number
-	_, e = tx.Exec(ctx, `INSERT INTO personal_document_versions (id,document_id,version_number,source_object_id,source_type,size_bytes,sha256,restored_from_version_id,created_by,created_at) VALUES ($1::bigint,$2::bigint,$3,$4::bigint,$5,$6,$7,NULLIF($8,'')::bigint,$9::bigint,NOW())`, v.ID, id, number, v.SourceObjectID, v.Format, v.SizeBytes, v.SHA256, v.RestoredFromVersionID, owner)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	_, e = tx.Exec(ctx, `UPDATE personal_documents SET current_version_id=$2::bigint,version=version+1,name=CASE WHEN $3='' THEN name ELSE $3 END,updated_at=NOW() WHERE id=$1::bigint`, id, v.ID, name)
-	if e != nil {
-		return DocumentDetail{}, e
-	}
-	if e = tx.Commit(ctx); e != nil {
-		return DocumentDetail{}, e
+	if err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		var status string
+		var current int64
+		if err := db.QueryRow(txCtx, `SELECT status,version FROM personal_documents WHERE id=$1::bigint AND owner_user_id=$2::bigint FOR UPDATE`, id, owner).Scan(&status, &current); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if status != StatusActive {
+			return ErrNotEditable
+		}
+		if current != expected {
+			return ErrConflict
+		}
+		var number int
+		if err := db.QueryRow(txCtx, `SELECT COALESCE(MAX(version_number),0)+1 FROM personal_document_versions WHERE document_id=$1::bigint`, id).Scan(&number); err != nil {
+			return err
+		}
+		v.VersionNumber = number
+		if _, err := db.Exec(txCtx, `INSERT INTO personal_document_versions (id,document_id,version_number,source_object_id,source_type,size_bytes,sha256,restored_from_version_id,created_by,created_at) VALUES ($1::bigint,$2::bigint,$3,$4::bigint,$5,$6,$7,NULLIF($8,'')::bigint,$9::bigint,NOW())`, v.ID, id, number, v.SourceObjectID, v.Format, v.SizeBytes, v.SHA256, v.RestoredFromVersionID, owner); err != nil {
+			return err
+		}
+		_, err := db.Exec(txCtx, `UPDATE personal_documents SET current_version_id=$2::bigint,version=version+1,name=CASE WHEN $3='' THEN name ELSE $3 END,updated_at=NOW() WHERE id=$1::bigint`, id, v.ID, name)
+		return err
+	}); err != nil {
+		return DocumentDetail{}, err
 	}
 	return r.Get(ctx, owner, id)
 }
 func (r *PgRepository) SetStatus(ctx context.Context, owner, id string, expected int64, status string) (DocumentDetail, error) {
-	cmd, e := r.pool.Exec(ctx, `UPDATE personal_documents SET status=$4,version=version+1,updated_at=NOW(),deleted_at=CASE WHEN $4='trashed' THEN NOW() ELSE NULL END WHERE id=$1::bigint AND owner_user_id=$2::bigint AND version=$3`, id, owner, expected, status)
+	cmd, e := r.db(ctx).Exec(ctx, `UPDATE personal_documents SET status=$4,version=version+1,updated_at=NOW(),deleted_at=CASE WHEN $4='trashed' THEN NOW() ELSE NULL END WHERE id=$1::bigint AND owner_user_id=$2::bigint AND version=$3`, id, owner, expected, status)
 	if e != nil {
 		return DocumentDetail{}, e
 	}
@@ -281,7 +277,7 @@ func (r *PgRepository) Version(ctx context.Context, owner, id, vid string) (Docu
 		return DocumentVersion{}, e
 	}
 	var x DocumentVersion
-	e := r.pool.QueryRow(ctx, versionSQL+` WHERE id=$1::bigint AND document_id=$2::bigint`, vid, id).Scan(&x.ID, &x.DocumentID, &x.VersionNumber, &x.SourceObjectID, &x.Format, &x.SizeBytes, &x.SHA256, &x.RestoredFromVersionID, &x.CreatedAt)
+	e := r.db(ctx).QueryRow(ctx, versionSQL+` WHERE id=$1::bigint AND document_id=$2::bigint`, vid, id).Scan(&x.ID, &x.DocumentID, &x.VersionNumber, &x.SourceObjectID, &x.Format, &x.SizeBytes, &x.SHA256, &x.RestoredFromVersionID, &x.CreatedAt)
 	if errors.Is(e, pgx.ErrNoRows) {
 		return DocumentVersion{}, ErrNotFound
 	}
@@ -292,7 +288,7 @@ func (r *PgRepository) Version(ctx context.Context, owner, id, vid string) (Docu
 // telemetry and never returns user, document, version, object, or filename
 // data to the metrics path.
 func (r *PgRepository) PreviewSummary(ctx context.Context) (map[PreviewMetricKey]int64, error) {
-	rows, err := r.pool.Query(ctx, `SELECT p.status,COALESCE(v.source_type,'unknown'),COUNT(*)::bigint
+	rows, err := r.db(ctx).Query(ctx, `SELECT p.status,COALESCE(v.source_type,'unknown'),COUNT(*)::bigint
 		FROM personal_document_previews p
 		JOIN personal_document_versions v ON v.id=p.document_version_id
 		GROUP BY p.status,COALESCE(v.source_type,'unknown')

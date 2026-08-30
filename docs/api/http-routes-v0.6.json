@@ -1770,6 +1770,23 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/content/assets/images/me",
+      "handler": "userStorageHandler.ListMyContentImages",
+      "module_owner": "core.user-storage",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.content.assets.images.me",
+      "legacy_aliases": [
+        "http.get.api.v1.content.assets.images.me",
+        "httpapi.get.api.v1.content.assets.images.me"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/content/assets/images",
       "handler": "userStorageHandler.UploadContentImage",
@@ -1835,6 +1852,23 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/richtext/assets/me",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.richtext.assets.me",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.assets.me",
+        "httpapi.get.api.v1.richtext.assets.me"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
       "stability": "experimental"
     },
     {

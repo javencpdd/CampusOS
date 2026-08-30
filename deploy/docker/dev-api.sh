@@ -43,7 +43,10 @@ wait_for_postgres() {
 
 source_fingerprint() {
   {
-    find cmd internal pkg sdk -type f -name '*.go' -print0
+    # Go test fixtures may leave ignored .campusos directories below a package.
+    # They are not source inputs and can be owned by a different container UID,
+    # so prune them instead of letting the hot-reload watcher emit permission errors.
+    find cmd internal pkg sdk -type d -name '.campusos' -prune -o -type f -name '*.go' -print0
     find migrations modules -type f \( -name '*.sql' -o -name '*.yaml' -o -name '*.yml' \) -print0
     printf '%s\0' go.mod go.sum
   } | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1

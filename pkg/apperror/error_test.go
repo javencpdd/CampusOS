@@ -22,7 +22,7 @@ func TestTranslatorMapsKnownAndSanitizesUnknownErrors(t *testing.T) {
 
 	secret := errors.New("database password=secret")
 	unknown := translator.Translate(secret)
-	if unknown.Descriptor() != InternalError || unknown.Error() != "internal server error" || !errors.Is(unknown, secret) {
+	if unknown.Descriptor() != InternalError || unknown.Error() != "系统暂时无法完成该操作，请稍后重试；如持续出现，请联系管理员。" || !errors.Is(unknown, secret) {
 		t.Fatalf("unknown translation = %#v", unknown)
 	}
 }

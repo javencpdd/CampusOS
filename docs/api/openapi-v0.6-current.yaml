@@ -2179,6 +2179,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/content/assets/images/me:
+    get:
+      operationId: userStorageHandler_ListMyContentImages
+      summary: GET /api/v1/content/assets/images/me
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.user-storage
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.content.assets.images.me
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/content/assets/images/{user_id}/{filename}:
     get:
       operationId: userStorageHandler_ServeContentImage
@@ -6930,6 +6955,31 @@ paths:
             schema:
               $ref: '#/components/schemas/GenericObject'
       x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/richtext/assets/me:
+    get:
+      operationId: d_RichText
+      summary: GET /api/v1/richtext/assets/me
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.controlled-richtext-article
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.richtext.assets.me
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Success

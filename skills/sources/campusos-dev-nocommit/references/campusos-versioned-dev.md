@@ -1,6 +1,6 @@
 # CampusOS Versioned Development Reference
 
-> 更新时间：2026-08-30 01:21（Asia/Shanghai）
+> 更新时间：2026-08-30 01:56（Asia/Shanghai）
 
 ## Stage Detection
 
@@ -107,8 +107,10 @@ Prefer concise tables over long prose.
 
 The release baseline remains `v0.13.0`; the active worktree has migrations through `000049`. The active implementation stage is
 `v0.14-dev`; its formal plan is `docs/项目计划v14/00-v14版本计划书.md`, and the latest evidence is
-`docs/进度/v0.14-dev/v0.14.6-dev.md`（P1 代码与测试证据见 `v0.14.5-dev`）。AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
+`docs/进度/v0.14-dev/v0.14.8-dev.md`（P1 代码与测试证据见 `v0.14.5-dev`）。AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
 reconcile apply controls, Personal Documents safe degradation, the shared Content Editor Core, a trusted owner-scoped Document ReadPort
-draft, and low-cardinality operating metrics are implemented. The v0.14 Final gates still require an authorized operator decision for
-real historical-data apply plus Linux target release, browser, and formal release evidence. Treat v0.3-v0.13 plans as historical unless
+draft, and low-cardinality operating metrics are implemented. The remaining direct PostgreSQL multi-write repositories now participate in
+TxKernel and the Windows/Linux Docker test path keeps its temporary data outside the workspace. The latest usability repair also covers AcademicTerm INSERT typing, configurable
+Docker API health probes, owner-scoped uploaded-media inventory, and actionable Chinese image-upload errors. The v0.14 Final gates still require an authorized operator decision for
+real historical-data apply plus Linux target release, browser, Converter Runner safety acceptance, and formal release evidence. Treat v0.3-v0.13 plans as historical unless
 a compatibility task explicitly targets them.

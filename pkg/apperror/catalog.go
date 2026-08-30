@@ -10,7 +10,8 @@ const CatalogVersion = "campusos.errors/v1"
 var (
 	RequestInvalid   = descriptor("platform", "request.invalid", 10001, 400, "invalid request", false)
 	ResourceConflict = descriptor("platform", "resource.conflict", 10004, 409, "resource conflict", false)
-	InternalError    = descriptor("platform", "internal.error", 10006, 500, "internal server error", true)
+	// Keep the cause server-side, but give every client a safe next action.
+	InternalError    = descriptor("platform", "internal.error", 10006, 500, "系统暂时无法完成该操作，请稍后重试；如持续出现，请联系管理员。", true)
 	AuthRequired     = descriptor("identity", "auth.required", 20001, 401, "unauthorized", false)
 	AuthInvalidToken = descriptor("identity", "auth.invalid_token", 20002, 401, "invalid or expired token", false)
 	PermissionDenied = descriptor("identity", "permission.denied", 20004, 403, "permission denied", false)

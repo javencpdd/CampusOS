@@ -258,12 +258,17 @@ Content-Type: application/json
 
 1. `POST /richtext/articles` 创建草稿。
 2. `POST /richtext/assets` 上传图片。
-3. `PUT /richtext/articles/:id` 保存正文。
-4. `POST /richtext/preview` 预览清洗后的 HTML。
-5. `POST /richtext/articles/:id/publish` 发布。
+3. `GET /richtext/assets/me` 读取当前上传者的只读图片库存。
+4. `PUT /richtext/articles/:id` 保存正文。
+5. `POST /richtext/preview` 预览清洗后的 HTML。
+6. `POST /richtext/articles/:id/publish` 发布。
 
 创建、保存、发布、下线和删除图文文章时，基础 Thread、Revision、Article Detail、命令审计和 Outbox
 会在同一个可靠事务中提交。详情保存失败时不会留下回收站 Thread；文件上传仍独立于数据库事务，并受
 User Storage 的路径和配额规则约束。
+
+`GET /richtext/assets/me` 仅返回当前认证用户上传的资源元数据和 URL；它不会列出其他用户文件，也不提供删除，
+因为一张图片可能仍被已发布的文章引用。普通帖子正文图片的对应只读入口是
+`GET /content/assets/images/me`。
 
 富文本 HTML 会在后端清洗。客户端不能通过自定义标签、脚本或事件处理器绕过清洗规则。

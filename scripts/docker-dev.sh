@@ -200,6 +200,14 @@ validate_env() {
     used_ports[$port_value]="$port_key"
   done
 
+  local healthcheck_interval
+  healthcheck_interval="$(read_env_setting CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL 5s)"
+  if [[ ! "$healthcheck_interval" =~ ^([0-9]+(ms|s|m|h))+$ ]]; then
+    echo "CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL must be a Docker Compose duration such as 5s, 30s, or 1m." >&2
+    return 1
+  fi
+  echo "API Docker healthcheck interval: $healthcheck_interval (this is not a browser polling interval)."
+
   provider="$(read_env_setting EMAIL_PROVIDER fake)"
   provider="${provider,,}"
   case "$provider" in
@@ -496,16 +504,13 @@ case "$command" in
     compose logs -f --tail=200 "$@"
     ;;
   test)
-    # Keep test-only paths relative to the API working directory (/workspace).
-    # This avoids MSYS/Git Bash rewriting container-only absolute paths before
-    # Docker receives them; Dockerfile.dev already defines the Go caches.
+    # Set container-only absolute paths inside bash rather than Docker -e
+    # arguments, so MSYS/Git Bash cannot rewrite them. They remain ephemeral
+    # in the throwaway test container and never create ignored .campusos data
+    # below individual Go package directories.
     compose run --rm --no-deps \
-      -e PLUGINS_DIR=data/plugins \
-      -e PLUGIN_DATA_DIR=.campusos/go-test/plugin_data \
-      -e MODULE_DATA_DIR=.campusos/go-test/module_data \
-      -e RESOURCE_DIR=data/resources \
       api bash -c \
-      'GOFLAGS=-buildvcs=false go test ./... -count=1'
+      'mkdir -p /tmp/campusos-go-test/plugin_data /tmp/campusos-go-test/module_data && PLUGINS_DIR=/workspace/data/plugins PLUGIN_DATA_DIR=/tmp/campusos-go-test/plugin_data MODULE_DATA_DIR=/tmp/campusos-go-test/module_data RESOURCE_DIR=/workspace/data/resources GOFLAGS=-buildvcs=false go test ./... -count=1'
     ;;
   shell)
     compose exec api bash

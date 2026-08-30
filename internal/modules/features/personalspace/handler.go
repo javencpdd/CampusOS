@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -539,17 +540,49 @@ func writeAvatarUploadError(c *gin.Context, err error, maxBytes int64) {
 				"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
 			})
 	case errors.Is(err, ErrSpaceFileQuotaExceeded):
-		response.Error(c, http.StatusRequestEntityTooLarge, 10001,
-			"个人空间剩余容量不足，请删除不需要的文件，或联系管理员提高空间配额后重试。")
+		response.ErrorWithDetails(c, http.StatusConflict, 10001,
+			"个人空间剩余容量不足，无法保存头像。请删除不需要的文件，或联系管理员提高空间配额后重试。", gin.H{
+				"max_bytes":      maxBytes,
+				"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
+			})
 	case errors.Is(err, ErrSpaceFileUnsupportedType):
 		response.ErrorWithDetails(c, http.StatusBadRequest, 10001,
 			"头像格式不受支持，请上传 PNG、JPEG、GIF 或 WebP 图片。", gin.H{
 				"accepted_types": []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
 				"max_bytes":      maxBytes,
 			})
+	case errors.Is(err, corestorage.ErrImageDimensions):
+		response.ErrorWithDetails(c, http.StatusBadRequest, 10001,
+			avatarImageDimensionMessage(err), avatarImageDimensionDetails(err, maxBytes))
 	default:
-		writeSpaceError(c, err)
+		// Upload-specific unknown errors must not surface a decoder or storage
+		// implementation detail to the user.
+		response.WriteError(c, err)
 	}
+}
+
+func avatarImageDimensionDetails(err error, maxBytes int64) gin.H {
+	details := gin.H{
+		"accepted_types":            []string{"image/png", "image/jpeg", "image/gif", "image/webp"},
+		"max_bytes":                 maxBytes,
+		"auto_resize_max_dimension": corestorage.DefaultImageMaxDimension,
+		"max_decoded_pixels":        corestorage.MaxDecodedImagePixels,
+	}
+	var dimensions *corestorage.ImageDimensionError
+	if errors.As(err, &dimensions) && dimensions != nil {
+		details["width"] = dimensions.Width
+		details["height"] = dimensions.Height
+		details["max_decoded_pixels"] = dimensions.MaxPixels
+	}
+	return details
+}
+
+func avatarImageDimensionMessage(err error) string {
+	var dimensions *corestorage.ImageDimensionError
+	if errors.As(err, &dimensions) && dimensions != nil && dimensions.Width > 0 && dimensions.Height > 0 {
+		return fmt.Sprintf("头像分辨率为 %d × %d，超过 %d 万像素的安全处理上限。请裁剪或缩小图片后再上传；JPEG/PNG 的最长边超过 %dpx 时会自动压缩。", dimensions.Width, dimensions.Height, dimensions.MaxPixels/10_000, corestorage.DefaultImageMaxDimension)
+	}
+	return fmt.Sprintf("头像分辨率超过 %d 万像素的安全处理上限。请裁剪或缩小图片后再上传；JPEG/PNG 的最长边超过 %dpx 时会自动压缩。", corestorage.MaxDecodedImagePixels/10_000, corestorage.DefaultImageMaxDimension)
 }
 
 func formatSpaceBytes(value int64) string {
