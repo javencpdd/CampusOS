@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { NavigationGuard } from 'vue-router'
 import { appearanceRoutes } from '../modules/appearance/routes'
+import { academicTermRoutes } from '../modules/academicterm/routes'
 import { communityRoutes } from '../modules/community/routes'
 import { featureRoutes } from '../modules/features/routes'
 import { identityRoutes } from '../modules/identity/routes'
@@ -10,7 +11,7 @@ import { pluginRoutes } from '../modules/plugins/routes'
 import { clearAdminSession, ensureAdminAccessToken, getAdminAccessToken, getAdminRoleNames } from '../modules/identity/session'
 
 const legacyRedirects = [
-  '/admin', '/admin/users', '/admin/moderators', '/admin/threads', '/admin/categories', '/admin/docs', '/admin/architecture',
+  '/admin', '/admin/users', '/admin/moderators', '/admin/threads', '/admin/categories', '/admin/docs', '/admin/architecture', '/admin/academic-terms',
   '/admin/plugins', '/admin/plugin-center', '/admin/features', '/admin/appearance', '/admin/extensions', '/admin/permissions', '/admin/admin-admission', '/admin/integrations', '/admin/reviews', '/admin/events', '/admin/platform-logs', '/admin/challenge-policy',
 ]
 
@@ -26,6 +27,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'Dashboard', component: () => import('@/modules/dashboard/pages/DashboardView.vue'), meta: { title: '仪表盘' } },
         ...identityRoutes,
+        ...academicTermRoutes,
         ...communityRoutes,
         ...featureRoutes,
         ...appearanceRoutes,

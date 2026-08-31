@@ -5,7 +5,7 @@ description: Audit and synchronize CampusOS migrations, system-managed schema ta
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-data-architecture-sync canonical instructions](../../../skills/sources/campusos-data-architecture-sync/SKILL.md) completely before taking task actions, then follow them faithfully.
 

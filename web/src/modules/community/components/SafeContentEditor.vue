@@ -82,13 +82,8 @@
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture, View } from '@element-plus/icons-vue'
-import {
-  contentApi,
-  htmlToPlainText,
-  plainTextToHTML,
-  type ContentImage,
-  type StructuredContentFormat,
-} from '../content'
+import { contentApi, type ContentImage } from '../content'
+import { htmlToPlainText, plainTextToHTML, type StructuredContentFormat } from '@/modules/content-editor/safe-html'
 
 const props = withDefaults(
   defineProps<{

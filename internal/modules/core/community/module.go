@@ -10,6 +10,7 @@ import (
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
+	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
@@ -65,7 +66,7 @@ func NewModule() *Module { return &Module{} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.event-bus", "core.identity", "core.feature-registry", reliability.ModuleID}
+	return []string{coreeditor.ModuleID, "core.event-bus", "core.identity", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {

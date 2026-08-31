@@ -7,5 +7,5 @@ description: "Categories, tags, threads, posts, safe content rendering, publicat
 kind: core
 activation_mode: always-on
 default_enabled: true
-dependencies: [core.event-bus, core.identity, core.feature-registry, core.reliability]
+dependencies: [core.content-editor, core.event-bus, core.identity, core.feature-registry, core.reliability]
 implementation: internal/modules/core/community

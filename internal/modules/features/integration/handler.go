@@ -320,7 +320,72 @@ func (h *Handler) metricsCard() Card {
 		"error_total":     snapshot.ErrorTotal,
 		"last_latency_ms": snapshot.LastLatencyMS,
 	}
+	// The operations card deliberately projects only fixed aggregate keys.
+	// Never copy arbitrary metric labels here: metrics must not become a route
+	// for users, document IDs, paths, or other high-cardinality data into Admin.
+	for _, metric := range snapshot.Metrics {
+		switch metric.Name {
+		case "campusos_storage_objects":
+			if status := metric.Labels["status"]; boundedStorageObjectStatus(status) {
+				card.Metrics["storage_objects_"+status] = int64(metric.Value)
+			}
+		case "campusos_storage_reservations":
+			if status := metric.Labels["status"]; boundedReservationStatus(status) {
+				card.Metrics["storage_reservations_"+status] = int64(metric.Value)
+			}
+		case "campusos_storage_reconcile_differences":
+			if boundedReconcileKind(metric.Labels["kind"]) {
+				current, _ := card.Metrics["storage_reconcile_differences"].(int64)
+				card.Metrics["storage_reconcile_differences"] = current + int64(metric.Value)
+			}
+		case "campusos_document_preview_jobs":
+			if boundedPreviewStatus(metric.Labels["status"]) && boundedPreviewFormat(metric.Labels["format"]) {
+				current, _ := card.Metrics["document_preview_jobs"].(int64)
+				card.Metrics["document_preview_jobs"] = current + int64(metric.Value)
+			}
+		}
+	}
 	return card
+}
+
+func boundedStorageObjectStatus(value string) bool {
+	switch value {
+	case "pending", "ready", "deleting", "deleted", "quarantined", "missing":
+		return true
+	default:
+		return false
+	}
+}
+
+func boundedReservationStatus(value string) bool {
+	return value == "pending" || value == "committed" || value == "released"
+}
+
+func boundedPreviewStatus(value string) bool {
+	switch value {
+	case "pending", "processing", "ready", "failed", "unsupported":
+		return true
+	default:
+		return false
+	}
+}
+
+func boundedPreviewFormat(value string) bool {
+	switch value {
+	case "text", "markdown", "campusdoc", "pdf", "docx", "unknown":
+		return true
+	default:
+		return false
+	}
+}
+
+func boundedReconcileKind(value string) bool {
+	switch value {
+	case "pending_object_expired", "reservation_expired", "metadata_missing_physical", "physical_without_metadata", "payload_hash_or_size_mismatch", "unsafe_path", "invalid_owner_directory", "ledger_mismatch", "legacy_unclassified":
+		return true
+	default:
+		return false
+	}
 }
 
 func (h *Handler) countTable(ctx context.Context, table string) int64 {

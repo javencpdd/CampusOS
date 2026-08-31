@@ -199,6 +199,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.community"
 	case strings.HasPrefix(path, APIPrefix+"/content/assets"):
 		return "core.user-storage"
+	case strings.HasPrefix(path, APIPrefix+"/admin/academic-terms"), path == APIPrefix+"/schedule/terms":
+		return "core.academic-term"
 	case strings.HasPrefix(path, APIPrefix+"/spaces"), strings.HasPrefix(path, APIPrefix+"/space"), strings.HasPrefix(path, APIPrefix+"/u/"), strings.HasPrefix(path, APIPrefix+"/appearance/space-style-packs"):
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
@@ -209,6 +211,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.secondhand"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "feature.personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/documents"):
+		return "feature.personal-documents"
 	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
 		return "feature.appearance"
 	case strings.HasPrefix(path, APIPrefix+"/features"):
@@ -261,6 +265,8 @@ func featureForRoute(path string) string {
 		return "controlled-richtext-article"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/documents"):
+		return "personal-documents"
 	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
 		return "mutual-aid"
 	case strings.HasPrefix(path, APIPrefix+"/secondhand"):

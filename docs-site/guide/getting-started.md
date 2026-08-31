@@ -122,10 +122,11 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 
 1. 在 `http://localhost:3000` 注册普通用户或登录已有用户。
 2. 打开版块，创建普通文本或富文本帖子。
-3. 点击头像进入个人主页、个人主页设置或个人课表。
-4. 在 `/schedule` 新建学期，设置第一周，手工录入或导入 Excel/CSV/JSON。
-5. 在 `/appearance` 选择管理员提供的系统主题。
-6. 在 `/plugins` 查看管理员发布的外部插件并明确授权。
+3. 点击头像进入个人主页、个人主页设置、个人课表或“我的文档”。
+4. 管理员先在 `/academic-terms` 创建开放学期；用户随后在 `/schedule` 选择开放学期，手工录入或导入 Excel/CSV/JSON。关闭的历史学期只能查看。
+5. 在 `/documents` 新建或上传私有文档；TXT、Markdown 和 CampusDoc 可编辑，PDF/DOCX 在未启用隔离转换服务时仅支持安全下载。
+6. 在 `/appearance` 选择管理员提供的系统主题。
+7. 在 `/plugins` 查看管理员发布的外部插件并明确授权。
 
 按钮是否显示只是前端体验。后端仍会检查身份、稳定 Permission Code、资源所有权或板块作用域以及操作约束。
 
@@ -138,6 +139,7 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | 身份与权限 | `internal/modules/core/identity/` |
 | 帖子、版块和内容治理 | `internal/modules/core/community/` |
 | 个人课表 | `internal/modules/features/schedule/` |
+| 个人文档 | `internal/modules/features/personaldocuments/` |
 | User Storage | `internal/modules/core/userstorage/` |
 | 插件平台 | `internal/plugin/` |
 | 风格包与 Appearance | `internal/modules/features/appearance/runtime/`、`internal/modules/features/appearance/stylepack/`、`internal/modules/features/appearance/webtheme/` |
@@ -207,7 +209,7 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 | 准备发布 | [构建与发布](/deployment/release) |
 | 在 Windows/Linux 用 Docker 开发 | [Docker 跨平台开发环境](/deployment/docker-development) |
 | 单主机部署或迁移 | [Docker 单主机部署与迁移](/deployment/docker) |
-| 理解历史计划、文档有效性和下一步 | [v1-v13 版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、[当前规划与后续路线](/project/current-roadmap) |
+| 理解历史计划、文档有效性和下一步 | [v1-v14 版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、[当前规划与后续路线](/project/current-roadmap) |
 | 准备提交代码 | [贡献、Pull Request 与 CI/CD](/contributing/workflow) |
 
 ## 9. 常见启动问题

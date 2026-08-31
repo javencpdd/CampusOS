@@ -4,7 +4,13 @@ set -euo pipefail
 CHROME_BIN="${CHROME_BIN:-$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)}"
 [[ -n "$CHROME_BIN" ]] || { echo "Chrome/Chromium is required for browser smoke" >&2; exit 127; }
 
-work_dir="$(mktemp -d)"
+# Keep evidence under the repository's ignored cache. Git Bash invokes the
+# Windows Node executable, which cannot reliably write a POSIX-only /tmp path.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
+cache_dir="$repo_root/.cache"
+mkdir -p "$cache_dir"
+work_dir="$(mktemp -d "$cache_dir/browser-smoke.XXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT
 
 check_page() {
@@ -15,8 +21,20 @@ check_page() {
     echo "$name did not serve expected marker '$marker'" >&2
     return 1
   fi
-  timeout 30 env CHROME_BIN="$CHROME_BIN" node web/tests/browser-render-smoke.mjs "$url" "$screenshot" "$name" \
-    >"$work_dir/$name.stdout" 2>"$work_dir/$name.stderr"
+  # Git for Windows resolves `timeout` to timeout.exe, whose argument syntax
+  # is incompatible with GNU timeout. The renderer already has navigation and
+  # selector deadlines, so invoke it directly on that platform.
+  case "$(uname -s 2>/dev/null || true)" in
+    MINGW*|MSYS*|CYGWIN*)
+      CHROME_BIN="$CHROME_BIN" node web/tests/browser-render-smoke.mjs "$url" "$screenshot" "$name" \
+        >"$work_dir/$name.stdout" 2>"$work_dir/$name.stderr"
+      ;;
+    *)
+      timeout 30 bash -c 'CHROME_BIN="$1" node web/tests/browser-render-smoke.mjs "$2" "$3" "$4"' -- \
+        "$CHROME_BIN" "$url" "$screenshot" "$name" \
+        >"$work_dir/$name.stdout" 2>"$work_dir/$name.stderr"
+      ;;
+  esac
   if [[ ! -s "$screenshot" ]]; then
     echo "$name did not produce a non-empty Chrome screenshot" >&2
     sed -n '1,80p' "$work_dir/$name.stderr" >&2
@@ -28,7 +46,9 @@ check_page() {
 curl --fail --silent --show-error "${API_URL:-http://localhost:8080/api/v1/health}" >/dev/null
 check_page web "${WEB_URL:-http://localhost:3000}" 'id="app"'
 check_page admin "${ADMIN_URL:-http://localhost:3001}" 'id="app"'
-check_page docs "${DOCS_URL:-http://localhost:3002}" 'CampusOS'
+# VitePress development mode serves an empty #app shell before client-side
+# hydration; browser-render-smoke validates the rendered CampusOS marker.
+check_page docs "${DOCS_URL:-http://localhost:3002}" 'id="app"'
 
 if [[ "${RUN_BROWSER_WORKFLOW:-true}" == "true" ]]; then
   echo "running authenticated browser workflow"

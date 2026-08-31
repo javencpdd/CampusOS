@@ -31,7 +31,18 @@ type Settings struct {
 }
 
 type Schedule struct {
-	UserID         string                 `json:"user_id"`
+	UserID string `json:"user_id"`
+	// AcademicTermID is set by the server for schedules created after v0.14.
+	// It is intentionally not accepted from the public write DTO: the active
+	// AcademicTerm catalogue, rather than a client supplied ID, owns it.
+	AcademicTermID string `json:"academic_term_id,omitempty"`
+	// TermStatus is copied from the authoritative AcademicTerm on reads.  It
+	// lets clients render an archived schedule as read-only without using the
+	// presence of an item in the open-term picker as an authorization signal.
+	TermStatus string `json:"term_status,omitempty"`
+	// TermVersion is the optimistic-lock version of the user's schedule-term
+	// binding.  It is required for later writes once the binding exists.
+	TermVersion    int64                  `json:"term_version,omitempty"`
 	TermYear       int                    `json:"term_year"`
 	Semester       string                 `json:"semester"`
 	FirstWeekStart string                 `json:"first_week_start"`
@@ -42,12 +53,15 @@ type Schedule struct {
 }
 
 type UpsertRequest struct {
-	TermYear       int                    `json:"term_year"`
-	Semester       string                 `json:"semester"`
-	FirstWeekStart string                 `json:"first_week_start"`
-	Settings       Settings               `json:"settings"`
-	Courses        []Course               `json:"courses"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	// ExpectedVersion is zero when creating a new schedule for an open term.
+	// Existing managed schedules must supply the version returned by the API.
+	ExpectedVersion int64                  `json:"expected_version"`
+	TermYear        int                    `json:"term_year"`
+	Semester        string                 `json:"semester"`
+	FirstWeekStart  string                 `json:"first_week_start"`
+	Settings        Settings               `json:"settings"`
+	Courses         []Course               `json:"courses"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
 }
 
 type WeekInfo struct {
@@ -64,6 +78,9 @@ type ScheduleResponse struct {
 }
 
 type TermSummary struct {
+	AcademicTermID string    `json:"academic_term_id,omitempty"`
+	TermStatus     string    `json:"term_status,omitempty"`
+	Version        int64     `json:"version,omitempty"`
 	TermYear       int       `json:"term_year"`
 	Semester       string    `json:"semester"`
 	FirstWeekStart string    `json:"first_week_start"`
@@ -77,8 +94,9 @@ type TermsResponse struct {
 }
 
 type ActivateTermRequest struct {
-	TermYear int    `json:"term_year"`
-	Semester string `json:"semester"`
+	AcademicTermID string `json:"academic_term_id,omitempty"`
+	TermYear       int    `json:"term_year"`
+	Semester       string `json:"semester"`
 }
 
 type scheduleIndex struct {

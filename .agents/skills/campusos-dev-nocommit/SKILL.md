@@ -5,7 +5,7 @@ description: Complete CampusOS implementation or documentation tasks with versio
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-dev-nocommit canonical instructions](../../../skills/sources/campusos-dev-nocommit/SKILL.md) completely before taking task actions, then follow them faithfully.
 

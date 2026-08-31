@@ -258,6 +258,8 @@ func moduleOwner(handlerName, path string) string {
 		return "core.email-delivery"
 	case strings.Contains(handlerName, "/internal/modules/core/community/"):
 		return "core.community"
+	case strings.Contains(handlerName, "/internal/modules/core/academicterm.") || strings.Contains(handlerName, "/internal/modules/core/academicterm/"):
+		return "core.academic-term"
 	case strings.Contains(handlerName, "/internal/modules/core/moderation.") || strings.Contains(handlerName, "/internal/modules/core/moderation/"):
 		return "core.moderation"
 	case strings.Contains(handlerName, "/internal/modules/core/userstorage.") || strings.Contains(handlerName, "/internal/modules/core/userstorage/"):
@@ -272,6 +274,8 @@ func moduleOwner(handlerName, path string) string {
 		return "feature.secondhand"
 	case strings.Contains(handlerName, "/internal/modules/features/schedule.") || strings.Contains(handlerName, "/internal/modules/features/schedule/"):
 		return "feature.personal-schedule"
+	case strings.Contains(handlerName, "/internal/modules/features/personaldocuments.") || strings.Contains(handlerName, "/internal/modules/features/personaldocuments/"):
+		return "feature.personal-documents"
 	case strings.Contains(handlerName, "/internal/modules/features/appearance/homepage.") || strings.Contains(handlerName, "/internal/modules/features/appearance/homepage/"), strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme.") || strings.Contains(handlerName, "/internal/modules/features/appearance/webtheme/"):
 		return "feature.appearance"
 	case strings.Contains(handlerName, "/internal/platform/feature.") || strings.Contains(handlerName, "/internal/platform/feature/"):
@@ -310,6 +314,8 @@ func routeFeature(path string) string {
 		return "controlled-richtext-article"
 	case strings.HasPrefix(path, "/api/v1/schedule"):
 		return "personal-schedule"
+	case strings.HasPrefix(path, "/api/v1/documents"):
+		return "personal-documents"
 	case strings.HasPrefix(path, "/api/v1/mutual-aid"):
 		return "mutual-aid"
 	case strings.HasPrefix(path, "/api/v1/secondhand"):

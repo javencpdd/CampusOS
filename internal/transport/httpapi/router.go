@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
@@ -19,6 +20,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
+	personaldocuments "github.com/campusos/CampusOS/internal/modules/features/personaldocuments"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
@@ -39,36 +41,38 @@ import (
 // Dependencies are module-owned handlers and the small platform ports needed
 // to expose them through HTTP. No concrete repository is accepted here.
 type Dependencies struct {
-	JWT             *auth.JWTManager
-	SessionVerifier middleware.AccessSessionVerifier
-	Permissions     middleware.PermissionChecker
-	AdminAccess     middleware.AdminAccessChecker
-	AdminMFA        middleware.AdminMFAChecker
-	Features        *platformfeature.Registry
-	Feature         *platformfeature.Handler
-	ModuleCatalog   *modulecatalog.Catalog
-	PluginManager   *plugin.Manager
-	Identity        identitycore.HTTPHandlers
-	Community       communitycore.HTTPHandlers
-	UserStorage     *corestorage.Handler
-	Space           *space.Handler
-	Plugin          *plugin.Handler
-	AI              *ai.Handler
-	Integration     *integration.Handler
-	Webhook         *webhook.Handler
-	MCP             *mcp.Handler
-	Message         *message.Handler
-	Homepage        *homepage.Handler
-	WebTheme        *webtheme.Handler
-	RichText        *richtext.Handler
-	Schedule        *schedule.Handler
-	MutualAid       *mutualaid.Handler
-	Secondhand      *secondhand.Handler
-	PlatformLog     *platformlog.Handler
-	Moderation      *moderation.Handler
-	Reliability     *reliability.Handler
-	EmailDelivery   *emaildelivery.Handler
-	Metrics         *observability.Collector
+	JWT               *auth.JWTManager
+	SessionVerifier   middleware.AccessSessionVerifier
+	Permissions       middleware.PermissionChecker
+	AdminAccess       middleware.AdminAccessChecker
+	AdminMFA          middleware.AdminMFAChecker
+	Features          *platformfeature.Registry
+	Feature           *platformfeature.Handler
+	ModuleCatalog     *modulecatalog.Catalog
+	PluginManager     *plugin.Manager
+	Identity          identitycore.HTTPHandlers
+	Community         communitycore.HTTPHandlers
+	AcademicTerm      *academicterm.Handler
+	UserStorage       *corestorage.Handler
+	Space             *space.Handler
+	Plugin            *plugin.Handler
+	AI                *ai.Handler
+	Integration       *integration.Handler
+	Webhook           *webhook.Handler
+	MCP               *mcp.Handler
+	Message           *message.Handler
+	Homepage          *homepage.Handler
+	WebTheme          *webtheme.Handler
+	RichText          *richtext.Handler
+	Schedule          *schedule.Handler
+	PersonalDocuments *personaldocuments.Handler
+	MutualAid         *mutualaid.Handler
+	Secondhand        *secondhand.Handler
+	PlatformLog       *platformlog.Handler
+	Moderation        *moderation.Handler
+	Reliability       *reliability.Handler
+	EmailDelivery     *emaildelivery.Handler
+	Metrics           *observability.Collector
 }
 
 // Build preserves the existing /api/v1 route and authorization contract.
@@ -108,6 +112,7 @@ func Build(d Dependencies) *Router {
 			Prefix: "/api/v1/schedule", FeatureID: "personal-schedule",
 			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/schedule/status"}},
 		},
+		platformfeature.PathRule{Prefix: "/api/v1/documents", FeatureID: "personal-documents"},
 		platformfeature.PathRule{
 			Prefix: "/api/v1/mutual-aid", FeatureID: "mutual-aid",
 			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/mutual-aid/status"}},
@@ -215,16 +220,32 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/spaces/me/styles/default", d.Space.RestoreDefaultStyle)
 		authenticated.GET("/spaces/me/sync-status", d.Space.GetSyncStatus)
 		authenticated.GET("/schedule/me", d.Schedule.GetMe)
+		authenticated.GET("/schedule/terms", d.AcademicTerm.ListOpen)
 		authenticated.GET("/schedule/me/terms", d.Schedule.ListTerms)
 		authenticated.POST("/schedule/me/terms/activate", d.Schedule.ActivateTerm)
 		authenticated.PUT("/schedule/me", d.Schedule.SaveMe)
 		authenticated.POST("/schedule/me/import", d.Schedule.ImportMe)
+		authenticated.GET("/documents", d.PersonalDocuments.List)
+		authenticated.POST("/documents", d.PersonalDocuments.Create)
+		authenticated.POST("/documents/upload", d.PersonalDocuments.Upload)
+		authenticated.GET("/documents/:id", d.PersonalDocuments.Get)
+		authenticated.GET("/documents/:id/content", d.PersonalDocuments.Content)
+		authenticated.GET("/documents/:id/preview", d.PersonalDocuments.Preview)
+		authenticated.PUT("/documents/:id", d.PersonalDocuments.Save)
+		authenticated.GET("/documents/:id/versions", d.PersonalDocuments.Versions)
+		authenticated.POST("/documents/:id/versions/:version_id/restore", d.PersonalDocuments.RestoreVersion)
+		authenticated.DELETE("/documents/:id", d.PersonalDocuments.Trash)
+		authenticated.POST("/documents/:id/trash", d.PersonalDocuments.Trash)
+		authenticated.POST("/documents/:id/restore", d.PersonalDocuments.Restore)
+		authenticated.GET("/documents/:id/download", d.PersonalDocuments.Download)
 		authenticated.POST("/richtext/articles", d.RichText.CreateDraft)
 		authenticated.POST("/content/preview", threadHandler.PreviewContent)
+		authenticated.GET("/content/assets/images/me", userStorageHandler.ListMyContentImages)
 		authenticated.POST("/content/assets/images", userStorageHandler.UploadContentImage)
 		authenticated.GET("/richtext/articles/:id/me", d.RichText.GetMine)
 		authenticated.PUT("/richtext/articles/:id", d.RichText.UpdateDraft)
 		authenticated.POST("/richtext/preview", d.RichText.Preview)
+		authenticated.GET("/richtext/assets/me", d.RichText.ListMyAssets)
 		authenticated.POST("/richtext/assets", d.RichText.UploadAsset)
 		authenticated.POST("/richtext/articles/:id/publish", d.RichText.Publish)
 		authenticated.POST("/richtext/articles/:id/offline", d.RichText.Offline)
@@ -348,6 +369,13 @@ func Build(d Dependencies) *Router {
 		admin.Permission("integration", "read").GET("/integrations/overview", d.Integration.Overview)
 		admin.Permission("metrics", "read").GET("/metrics/summary", d.Integration.Metrics)
 		admin.Permission("space", "manage").GET("/spaces/admin/summary", d.Space.AdminSummary)
+		admin.PermissionCode("schedule.academic_term.read").Operation("http.schedule.academic_term.list").GET("/admin/academic-terms", d.AcademicTerm.ListAdmin)
+		admin.PermissionCode("schedule.academic_term.manage").Operation("http.schedule.academic_term.create").POST("/admin/academic-terms", d.AcademicTerm.Create)
+		admin.PermissionCode("schedule.academic_term.manage").Operation("http.schedule.academic_term.update").PUT("/admin/academic-terms/:id", d.AcademicTerm.UpdateFirstWeek)
+		admin.PermissionCode("schedule.academic_term.manage").Operation("http.schedule.academic_term.open").POST("/admin/academic-terms/:id/open", d.AcademicTerm.Open)
+		admin.PermissionCode("schedule.academic_term.manage").Operation("http.schedule.academic_term.close").POST("/admin/academic-terms/:id/close", d.AcademicTerm.Close)
+		admin.PermissionCode("schedule.academic_term.manage").Operation("http.schedule.academic_term.default").POST("/admin/academic-terms/:id/default", d.AcademicTerm.SetDefault)
+		admin.PermissionCode("schedule.academic_term.delete").Operation("http.schedule.academic_term.delete").DELETE("/admin/academic-terms/:id", d.AcademicTerm.Delete)
 		admin.Permission("space", "manage").GET("/spaces/admin/users/:user_id/storage", d.Space.AdminStorageStatus)
 		admin.Permission("space", "manage").PUT("/spaces/admin/users/:user_id/storage", d.Space.SetStorageQuota)
 		admin.Permission("space", "manage").POST("/spaces/:user_id/disable", d.Space.DisableSpace)

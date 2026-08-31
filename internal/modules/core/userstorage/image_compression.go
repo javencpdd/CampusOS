@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/color"
@@ -14,10 +15,25 @@ import (
 const (
 	DefaultImageMaxDimension = 1920
 	DefaultJPEGQuality       = 82
-	maxDecodedImagePixels    = 40_000_000
+	// MaxDecodedImagePixels bounds decoder work before an image is resized.
+	// JPEG and PNG source images may be larger than DefaultImageMaxDimension:
+	// they are safely downscaled after this source-pixel check.
+	MaxDecodedImagePixels int64 = 40_000_000
 )
 
 var ErrImageDimensions = errors.New("image dimensions exceed the safe processing limit")
+
+// ImageDimensionError retains safe, user-actionable source dimensions while
+// preserving errors.Is(err, ErrImageDimensions) for callers that only need
+// the classification. It never includes a source path or file content.
+type ImageDimensionError struct {
+	Width     int
+	Height    int
+	MaxPixels int64
+}
+
+func (e *ImageDimensionError) Error() string { return ErrImageDimensions.Error() }
+func (e *ImageDimensionError) Unwrap() error { return ErrImageDimensions }
 
 type OptimizedImage struct {
 	Data       []byte
@@ -58,15 +74,22 @@ func OptimizeImageWithin(data []byte, maxDimension int) (OptimizedImage, error) 
 		return OptimizedImage{}, ErrImageUnsupported
 	}
 
-	if mimeType == "image/webp" {
-		return OptimizedImage{Data: data, MimeType: mimeType, Extension: extension}, nil
-	}
-	config, _, err := image.DecodeConfig(bytes.NewReader(data))
+	config, err := imageConfigForMimeType(data, mimeType)
 	if err != nil || config.Width <= 0 || config.Height <= 0 {
 		return OptimizedImage{}, ErrImageUnsupported
 	}
-	if int64(config.Width)*int64(config.Height) > maxDecodedImagePixels {
-		return OptimizedImage{}, ErrImageDimensions
+	if exceedsDecodedPixelLimit(config.Width, config.Height, MaxDecodedImagePixels) {
+		return OptimizedImage{}, &ImageDimensionError{
+			Width:     config.Width,
+			Height:    config.Height,
+			MaxPixels: MaxDecodedImagePixels,
+		}
+	}
+	if mimeType == "image/webp" {
+		// WebP is preserved byte-for-byte to avoid a lossy format change, but its
+		// RIFF dimensions are still validated before it reaches disk so all accepted
+		// image types share the same decoded-pixel safety ceiling.
+		return OptimizedImage{Data: data, MimeType: mimeType, Extension: extension, Width: config.Width, Height: config.Height}, nil
 	}
 	if mimeType == "image/gif" {
 		return OptimizedImage{Data: data, MimeType: mimeType, Extension: extension, Width: config.Width, Height: config.Height}, nil
@@ -94,6 +117,80 @@ func OptimizeImageWithin(data []byte, maxDimension int) (OptimizedImage, error) 
 		Data: output.Bytes(), MimeType: mimeType, Extension: extension,
 		Width: width, Height: height, Compressed: true,
 	}, nil
+}
+
+func imageConfigForMimeType(data []byte, mimeType string) (image.Config, error) {
+	if mimeType == "image/webp" {
+		return webpConfig(data)
+	}
+	config, _, err := image.DecodeConfig(bytes.NewReader(data))
+	return config, err
+}
+
+// webpConfig reads only the WebP RIFF headers needed to enforce the same
+// source-pixel ceiling used for JPEG, PNG, and GIF. The standard library does
+// not decode WebP, and this function deliberately does not rasterize it: WebP
+// remains byte-for-byte preserved after its dimensions are bounded.
+func webpConfig(data []byte) (image.Config, error) {
+	if len(data) < 20 || string(data[:4]) != "RIFF" || string(data[8:12]) != "WEBP" {
+		return image.Config{}, ErrImageUnsupported
+	}
+	for offset := 12; offset+8 <= len(data); {
+		chunkType := string(data[offset : offset+4])
+		chunkLength := int64(binary.LittleEndian.Uint32(data[offset+4 : offset+8]))
+		chunkStart := offset + 8
+		chunkEnd := int64(chunkStart) + chunkLength
+		if chunkEnd > int64(len(data)) {
+			return image.Config{}, ErrImageUnsupported
+		}
+		chunk := data[chunkStart:int(chunkEnd)]
+		switch chunkType {
+		case "VP8X":
+			if len(chunk) < 10 {
+				return image.Config{}, ErrImageUnsupported
+			}
+			return image.Config{
+				Width:  1 + int(chunk[4]) + int(chunk[5])<<8 + int(chunk[6])<<16,
+				Height: 1 + int(chunk[7]) + int(chunk[8])<<8 + int(chunk[9])<<16,
+			}, nil
+		case "VP8 ":
+			// Key-frame start code followed by 14-bit little-endian width/height.
+			if len(chunk) < 10 || chunk[3] != 0x9d || chunk[4] != 0x01 || chunk[5] != 0x2a {
+				return image.Config{}, ErrImageUnsupported
+			}
+			return image.Config{
+				Width:  int(binary.LittleEndian.Uint16(chunk[6:8]) & 0x3fff),
+				Height: int(binary.LittleEndian.Uint16(chunk[8:10]) & 0x3fff),
+			}, nil
+		case "VP8L":
+			if len(chunk) < 5 || chunk[0] != 0x2f {
+				return image.Config{}, ErrImageUnsupported
+			}
+			bits := binary.LittleEndian.Uint32(chunk[1:5])
+			return image.Config{
+				Width:  1 + int(bits&0x3fff),
+				Height: 1 + int((bits>>14)&0x3fff),
+			}, nil
+		}
+		// RIFF chunks are padded to an even byte boundary.
+		next := chunkEnd
+		if chunkLength%2 != 0 {
+			next++
+		}
+		if next > int64(len(data)) || next > int64(^uint(0)>>1) {
+			return image.Config{}, ErrImageUnsupported
+		}
+		offset = int(next)
+	}
+	return image.Config{}, ErrImageUnsupported
+}
+
+func exceedsDecodedPixelLimit(width, height int, limit int64) bool {
+	if width <= 0 || height <= 0 || limit <= 0 {
+		return false
+	}
+	// Avoid integer overflow when a hostile image declares extreme dimensions.
+	return int64(width) > limit/int64(height)
 }
 
 func scaledImageSize(width, height, limit int) (int, int) {

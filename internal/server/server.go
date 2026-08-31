@@ -1,6 +1,7 @@
 package server
 
 import (
+	academicterm "github.com/campusos/CampusOS/internal/modules/core/academicterm"
 	communitycore "github.com/campusos/CampusOS/internal/modules/core/community"
 	"github.com/campusos/CampusOS/internal/modules/core/emaildelivery"
 	identitycore "github.com/campusos/CampusOS/internal/modules/core/identity"
@@ -12,6 +13,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
+	personaldocuments "github.com/campusos/CampusOS/internal/modules/features/personaldocuments"
 	"github.com/campusos/CampusOS/internal/modules/features/personalspace"
 	"github.com/campusos/CampusOS/internal/modules/features/platformlog"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
@@ -28,32 +30,34 @@ import (
 )
 
 type Server struct {
-	cfg            *config.Config
-	bus            eventbus.EventBus
-	manager        *plugin.Manager
-	modules        *platformmodule.Registry
-	features       *feature.Registry
-	featureHandler *feature.Handler
-	moduleCatalog  *modulecatalog.Catalog
-	appearance     *appearance.Module
-	community      *communitycore.Module
-	identity       *identitycore.Module
-	emailDelivery  *emaildelivery.Module
-	moderation     *moderation.Module
-	storage        *corestorage.Module
-	space          *space.Module
-	richtext       *richtext.Module
-	schedule       *schedule.Module
-	mutualAid      *mutualaid.Module
-	secondhand     *secondhand.Module
-	ai             *ai.Module
-	webhook        *webhook.Module
-	mcp            *mcp.Module
-	message        *message.Module
-	platformLog    *platformlog.Module
-	integration    *integration.Module
-	reliability    *reliability.Module
-	appContext     *platformmodule.AppContext
+	cfg               *config.Config
+	bus               eventbus.EventBus
+	manager           *plugin.Manager
+	modules           *platformmodule.Registry
+	features          *feature.Registry
+	featureHandler    *feature.Handler
+	moduleCatalog     *modulecatalog.Catalog
+	appearance        *appearance.Module
+	community         *communitycore.Module
+	academicTerm      *academicterm.Module
+	identity          *identitycore.Module
+	emailDelivery     *emaildelivery.Module
+	moderation        *moderation.Module
+	storage           *corestorage.Module
+	space             *space.Module
+	richtext          *richtext.Module
+	schedule          *schedule.Module
+	personalDocuments *personaldocuments.Module
+	mutualAid         *mutualaid.Module
+	secondhand        *secondhand.Module
+	ai                *ai.Module
+	webhook           *webhook.Module
+	mcp               *mcp.Module
+	message           *message.Module
+	platformLog       *platformlog.Module
+	integration       *integration.Module
+	reliability       *reliability.Module
+	appContext        *platformmodule.AppContext
 }
 
 func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }

@@ -100,6 +100,21 @@ PowerShell：
 创建或更新容器，不触发 Docker Hub 镜像构建；仅执行 `docker restart` 不会重新读取环境文件。普通端口、SMTP、JWT 等项目配置不需要
 重启 Docker Desktop，只有修改 Docker Desktop 自身代理、DNS 或引擎设置时才需要重启 Desktop。
 
+### `/api/v1/health` 与健康检查间隔
+
+开发日志中每 5 秒出现一次 `GET /api/v1/health`，通常来自 API 容器内部的 Docker healthcheck，而不是 3001
+管理端页面轮询。这个接口只表示 API 进程可响应；它不会替代数据库、Redis 或 NATS 的独立健康状态。
+
+如需降低或提高开发栈 API 健康探针频率，在 `deploy/docker/.env.dev.local` 设置 Compose 时长值：
+
+```dotenv
+# 例如 5s、30s 或 1m；默认 5s
+CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL=30s
+```
+
+随后运行 `./scripts/docker-dev.sh up` 或 `.\scripts\docker-dev.ps1 up` 应用运行时配置；无需 `rebuild` 或重启
+Docker Desktop。不要用 `CAMPUSOS_DEV_POLL_INTERVAL` 调整它：后者只控制 API 源码热重载扫描频率。
+
 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 是 PostgreSQL 首次初始化变量；已有数据卷不会因为
 重建容器自动修改数据库内部账号。不要为了让配置“生效”直接删除数据卷，应先备份并按数据库迁移流程处理。
 
@@ -396,6 +411,10 @@ Windows：
 ```powershell
 .\scripts\docker-dev.ps1 test
 ```
+
+Git Bash 与 PowerShell 入口均在临时 API 容器内创建 `/tmp/campusos-go-test`，再由容器 shell 设置测试路径：这避免
+Git Bash/MSYS 改写 Docker 参数，也不会在源码包目录创建被 Git 忽略的 `.campusos/` 测试数据。请直接使用上述脚本，
+不要手工追加 `/workspace`、`/go-cache` 等容器绝对路径环境变量。
 
 前端示例：
 

@@ -34,13 +34,16 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	if s.community == nil || s.community.ThreadService() == nil {
 		return fmt.Errorf("community core module is unavailable")
 	}
+	if s.academicTerm == nil || s.academicTerm.Handler() == nil {
+		return fmt.Errorf("academic term core module is unavailable")
+	}
 	if s.storage == nil || s.storage.Handler() == nil {
 		return fmt.Errorf("user storage core module is unavailable")
 	}
 	if s.moderation == nil || s.moderation.Handler() == nil {
 		return fmt.Errorf("moderation core module is unavailable")
 	}
-	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
+	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.personalDocuments == nil || s.personalDocuments.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
 		return fmt.Errorf("built-in feature modules are unavailable")
 	}
 	pluginHandler, err := s.pluginHTTPHandler()
@@ -49,36 +52,38 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	}
 
 	router := httpapi.Build(httpapi.Dependencies{
-		JWT:             s.identity.JWTManager(),
-		SessionVerifier: s.identity.Sessions(),
-		Permissions:     s.identity.Permissions(),
-		AdminAccess:     s.identity.AdminAccess(),
-		AdminMFA:        s.identity.MFA(),
-		Features:        s.features,
-		Feature:         s.featureHandler,
-		ModuleCatalog:   s.moduleCatalog,
-		PluginManager:   s.manager,
-		Identity:        s.identity.Handlers(),
-		Community:       s.community.Handlers(),
-		UserStorage:     s.storage.Handler(),
-		Space:           s.space.Handler(),
-		Plugin:          pluginHandler,
-		AI:              s.ai.Handler(),
-		Integration:     s.integration.Handler(),
-		Webhook:         s.webhook.Handler(),
-		MCP:             s.mcp.Handler(),
-		Message:         s.message.Handler(),
-		Homepage:        s.appearance.HomepageHandler(),
-		WebTheme:        s.appearance.WebThemeHandler(),
-		RichText:        s.richtext.Handler(),
-		Schedule:        s.schedule.Handler(),
-		MutualAid:       s.mutualAid.Handler(),
-		Secondhand:      s.secondhand.Handler(),
-		PlatformLog:     s.platformLog.Handler(),
-		Moderation:      s.moderation.Handler(),
-		Reliability:     s.reliability.Handler(),
-		EmailDelivery:   s.emailDelivery.Handler(),
-		Metrics:         infra.metrics,
+		JWT:               s.identity.JWTManager(),
+		SessionVerifier:   s.identity.Sessions(),
+		Permissions:       s.identity.Permissions(),
+		AdminAccess:       s.identity.AdminAccess(),
+		AdminMFA:          s.identity.MFA(),
+		Features:          s.features,
+		Feature:           s.featureHandler,
+		ModuleCatalog:     s.moduleCatalog,
+		PluginManager:     s.manager,
+		Identity:          s.identity.Handlers(),
+		Community:         s.community.Handlers(),
+		AcademicTerm:      s.academicTerm.Handler(),
+		UserStorage:       s.storage.Handler(),
+		Space:             s.space.Handler(),
+		Plugin:            pluginHandler,
+		AI:                s.ai.Handler(),
+		Integration:       s.integration.Handler(),
+		Webhook:           s.webhook.Handler(),
+		MCP:               s.mcp.Handler(),
+		Message:           s.message.Handler(),
+		Homepage:          s.appearance.HomepageHandler(),
+		WebTheme:          s.appearance.WebThemeHandler(),
+		RichText:          s.richtext.Handler(),
+		Schedule:          s.schedule.Handler(),
+		PersonalDocuments: s.personalDocuments.Handler(),
+		MutualAid:         s.mutualAid.Handler(),
+		Secondhand:        s.secondhand.Handler(),
+		PlatformLog:       s.platformLog.Handler(),
+		Moderation:        s.moderation.Handler(),
+		Reliability:       s.reliability.Handler(),
+		EmailDelivery:     s.emailDelivery.Handler(),
+		Metrics:           infra.metrics,
 	})
 	if err := s.identity.SyncRouteDescriptors(context.Background(), router.RouteDescriptors()); err != nil {
 		// The catalog is additive. Keep a pre-migration deployment readable, but

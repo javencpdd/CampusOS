@@ -378,7 +378,7 @@ func (s *MemoryStore) StartAttempt(_ context.Context, attempt DeliveryAttempt) (
 		return nil, errors.New("delivery attempt requires event, consumer, and worker")
 	}
 	if attempt.ID == "" {
-		attempt.ID = fmt.Sprintf("attempt-%d", time.Now().UTC().UnixNano())
+		attempt.ID = newRecordID("attempt")
 	}
 	if attempt.Status == "" {
 		attempt.Status = "running"
@@ -432,7 +432,7 @@ func (s *MemoryStore) ListAttempts(_ context.Context, eventID string, page PageR
 
 func (s *MemoryStore) RecordCommandAudit(_ context.Context, audit CommandAudit) error {
 	if audit.ID == "" {
-		audit.ID = fmt.Sprintf("audit-%d", time.Now().UTC().UnixNano())
+		audit.ID = newRecordID("audit")
 	}
 	if audit.CreatedAt.IsZero() {
 		audit.CreatedAt = time.Now().UTC()
@@ -476,7 +476,7 @@ func (s *MemoryStore) StartOperation(_ context.Context, operation Operation) (*O
 	}
 	now := time.Now().UTC()
 	if operation.ID == "" {
-		operation.ID = fmt.Sprintf("operation-%d", now.UnixNano())
+		operation.ID = newRecordID("operation")
 	}
 	if operation.Status == "" {
 		operation.Status = OperationPending
@@ -596,7 +596,7 @@ func (s *MemoryStore) StartRetentionRun(_ context.Context, run RetentionRun) (*R
 		return nil, fmt.Errorf("unsupported retention target %q", run.Target)
 	}
 	if run.ID == "" {
-		run.ID = fmt.Sprintf("retention-%d", time.Now().UTC().UnixNano())
+		run.ID = newRecordID("retention")
 	}
 	if run.Mode == "" {
 		run.Mode = "dry-run"

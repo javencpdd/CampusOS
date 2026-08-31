@@ -24,7 +24,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const baselineSchema = "campusos.v13-baseline/v1"
+// baselineSchema is deliberately versioned so a stored G0 snapshot can be
+// interpreted without guessing which evidence fields were available.
+const baselineSchema = "campusos.v14-g0-baseline/v2"
 
 type snapshot struct {
 	Schema             string              `json:"schema"`
@@ -37,12 +39,17 @@ type snapshot struct {
 	Modules            moduleSnapshot      `json:"modules"`
 	ExternalPlugins    pluginSnapshot      `json:"external_plugins"`
 	Resources          resourceSnapshot    `json:"resources"`
+	Tooling            toolingSnapshot     `json:"tooling"`
+	UserStorage        storageSnapshot     `json:"user_storage"`
+	Schedules          scheduleSnapshot    `json:"schedules"`
+	Bundles            []bundleSnapshot    `json:"bundles"`
 	StructuredQueries  []querySnapshot     `json:"structured_queries"`
 	HTTP               []httpSnapshot      `json:"http,omitempty"`
 }
 
 type gitSnapshot struct {
 	Commit string `json:"commit"`
+	Branch string `json:"branch"`
 	Dirty  bool   `json:"dirty"`
 }
 
@@ -55,10 +62,14 @@ type environmentSnapshot struct {
 }
 
 type contractSnapshot struct {
-	Version        string         `json:"version"`
-	Routes         int            `json:"routes"`
-	AudienceCounts map[string]int `json:"audience_counts"`
-	SHA256         string         `json:"sha256"`
+	Version                 string         `json:"version"`
+	Routes                  int            `json:"routes"`
+	AudienceCounts          map[string]int `json:"audience_counts"`
+	SHA256                  string         `json:"sha256"`
+	SchemaSHA256            string         `json:"schema_sha256"`
+	OpenAPISHA256           string         `json:"openapi_sha256"`
+	RouteOperationSHA256    string         `json:"route_operation_sha256"`
+	PermissionCatalogSHA256 string         `json:"permission_catalog_sha256"`
 }
 
 type databaseSnapshot struct {
@@ -68,10 +79,11 @@ type databaseSnapshot struct {
 }
 
 type moduleSnapshot struct {
-	Count      int            `json:"count"`
-	KindCounts map[string]int `json:"kind_counts"`
-	IDs        []string       `json:"ids"`
-	SHA256     string         `json:"sha256"`
+	Count          int            `json:"count"`
+	KindCounts     map[string]int `json:"kind_counts"`
+	IDs            []string       `json:"ids"`
+	SHA256         string         `json:"sha256"`
+	ManifestSHA256 string         `json:"manifest_sha256"`
 }
 
 type pluginSnapshot struct {
@@ -93,6 +105,53 @@ type resourceItem struct {
 	Type     string `json:"type"`
 	Version  string `json:"version"`
 	TreeHash string `json:"tree_sha256"`
+}
+
+// toolingSnapshot records what was actually observable on the host. An
+// unavailable executable is evidence too: G0 must not manufacture a Docker,
+// Node or PostgreSQL version that the current environment did not expose.
+type toolingSnapshot struct {
+	Go            string `json:"go"`
+	Node          string `json:"node"`
+	PostgreSQL    string `json:"postgresql"`
+	Docker        string `json:"docker"`
+	DockerCompose string `json:"docker_compose"`
+}
+
+// storageSnapshot describes the legacy Personal Space tree without following
+// symlinks or exposing individual user paths. It is a fact-finding snapshot,
+// not a reconciliation or a mutation command.
+type storageSnapshot struct {
+	Root                string `json:"root"`
+	UserCount           int    `json:"user_count"`
+	FileCount           int64  `json:"file_count"`
+	TotalBytes          int64  `json:"total_bytes"`
+	SymlinkCount        int64  `json:"symlink_count"`
+	UnknownPathCount    int64  `json:"unknown_path_count"`
+	UnreadableFileCount int64  `json:"unreadable_file_count"`
+}
+
+// scheduleSnapshot makes the JSON-based schedule compatibility surface
+// measurable before AcademicTerm and the object store take over new writes.
+type scheduleSnapshot struct {
+	JSONFileCount           int      `json:"json_file_count"`
+	ValidTermKeys           []string `json:"valid_term_keys"`
+	MalformedFileCount      int      `json:"malformed_file_count"`
+	MissingActiveIndexCount int      `json:"missing_active_index_count"`
+}
+
+// bundleSnapshot captures build evidence only when an existing dist tree is
+// present.  The collector never runs a build itself, because a G0 record must
+// distinguish "not built on this host" from a measured bundle size.
+type bundleSnapshot struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	JSBytes    int64  `json:"js_bytes,omitempty"`
+	CSSBytes   int64  `json:"css_bytes,omitempty"`
+	JSBudget   int64  `json:"js_budget,omitempty"`
+	CSSBudget  int64  `json:"css_budget,omitempty"`
+	LargestJS  string `json:"largest_js,omitempty"`
+	LargestCSS string `json:"largest_css,omitempty"`
 }
 
 type querySnapshot struct {
@@ -193,6 +252,14 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 		return nil, err
 	}
 	result.StructuredQueries = collectStructuredQueries(absRoot)
+	result.Tooling = collectTooling(absRoot)
+	if result.UserStorage, err = collectUserStorage(absRoot); err != nil {
+		return nil, err
+	}
+	if result.Schedules, err = collectSchedules(absRoot); err != nil {
+		return nil, err
+	}
+	result.Bundles = collectBundles(absRoot)
 	if live {
 		if samples < 3 || samples > 100 {
 			return nil, errors.New("samples must be between 3 and 100")
@@ -216,6 +283,168 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 	return result, nil
 }
 
+func collectTooling(root string) toolingSnapshot {
+	return toolingSnapshot{
+		Go:            toolVersion(root, "go", "version"),
+		Node:          toolVersion(root, "node", "--version"),
+		PostgreSQL:    toolVersion(root, "psql", "--version"),
+		Docker:        toolVersion(root, "docker", "--version"),
+		DockerCompose: toolVersion(root, "docker", "compose", "version"),
+	}
+}
+
+func toolVersion(root, name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, name, args...)
+	command.Dir = root
+	payload, err := command.Output()
+	if ctx.Err() != nil {
+		return "unavailable: timed out"
+	}
+	if err != nil {
+		return "unavailable"
+	}
+	return strings.TrimSpace(string(payload))
+}
+
+func collectUserStorage(root string) (storageSnapshot, error) {
+	storageRoot := filepath.Join(root, "data", "personal-space")
+	result := storageSnapshot{Root: "data/personal-space"}
+	entries, err := os.ReadDir(storageRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	// These are the current LocalAdapter layout roots. Entries outside this set
+	// are reported for later classification; they are never deleted here.
+	knownRoots := map[string]struct{}{
+		"excel": {}, "file": {}, "img": {}, "pdf": {}, "word": {},
+	}
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			result.SymlinkCount++
+			continue
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		result.UserCount++
+		userRoot := filepath.Join(storageRoot, entry.Name())
+		userEntries, readErr := os.ReadDir(userRoot)
+		if readErr != nil {
+			result.UnreadableFileCount++
+			continue
+		}
+		for _, userEntry := range userEntries {
+			if _, ok := knownRoots[userEntry.Name()]; !ok {
+				result.UnknownPathCount++
+			}
+		}
+		walkErr := filepath.WalkDir(userRoot, func(path string, item os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				result.UnreadableFileCount++
+				return nil
+			}
+			if item.Type()&os.ModeSymlink != 0 {
+				result.SymlinkCount++
+				if item.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if item.IsDir() {
+				return nil
+			}
+			info, infoErr := item.Info()
+			if infoErr != nil {
+				result.UnreadableFileCount++
+				return nil
+			}
+			result.FileCount++
+			result.TotalBytes += info.Size()
+			return nil
+		})
+		if walkErr != nil {
+			return result, walkErr
+		}
+	}
+	return result, nil
+}
+
+func collectSchedules(root string) (scheduleSnapshot, error) {
+	storageRoot := filepath.Join(root, "data", "personal-space")
+	result := scheduleSnapshot{ValidTermKeys: []string{}}
+	termSet := map[string]struct{}{}
+	entries, err := os.ReadDir(storageRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			continue
+		}
+		userRoot := filepath.Join(storageRoot, entry.Name(), "file", "schedule")
+		termDir := filepath.Join(userRoot, "terms")
+		termEntries, readErr := os.ReadDir(termDir)
+		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+			return result, readErr
+		}
+		activeKey := ""
+		indexPayload, indexErr := os.ReadFile(filepath.Join(userRoot, "index.json"))
+		if indexErr == nil {
+			var index struct {
+				TermYear int    `json:"term_year"`
+				Semester string `json:"semester"`
+			}
+			if json.Unmarshal(indexPayload, &index) != nil || index.TermYear == 0 || strings.TrimSpace(index.Semester) == "" {
+				result.MalformedFileCount++
+			} else {
+				activeKey = fmt.Sprintf("%d-%s", index.TermYear, strings.ToLower(strings.TrimSpace(index.Semester)))
+			}
+		} else if !errors.Is(indexErr, os.ErrNotExist) {
+			return result, indexErr
+		}
+		matchedActive := activeKey == ""
+		for _, termEntry := range termEntries {
+			if termEntry.IsDir() || termEntry.Type()&os.ModeSymlink != 0 || !strings.HasSuffix(termEntry.Name(), ".json") {
+				continue
+			}
+			result.JSONFileCount++
+			payload, readErr := os.ReadFile(filepath.Join(termDir, termEntry.Name()))
+			if readErr != nil {
+				return result, readErr
+			}
+			var term struct {
+				TermYear int    `json:"term_year"`
+				Semester string `json:"semester"`
+			}
+			if json.Unmarshal(payload, &term) != nil || term.TermYear < 2000 || term.TermYear > 2200 || (term.Semester != "spring" && term.Semester != "fall") {
+				result.MalformedFileCount++
+				continue
+			}
+			key := fmt.Sprintf("%d-%s", term.TermYear, term.Semester)
+			termSet[key] = struct{}{}
+			if key == activeKey {
+				matchedActive = true
+			}
+		}
+		if !matchedActive {
+			result.MissingActiveIndexCount++
+		}
+	}
+	for key := range termSet {
+		result.ValidTermKeys = append(result.ValidTermKeys, key)
+	}
+	sort.Strings(result.ValidTermKeys)
+	return result, nil
+}
+
 func collectGit(root string) (gitSnapshot, error) {
 	commit, err := commandOutput(root, "git", "rev-parse", "HEAD")
 	if err != nil {
@@ -225,12 +454,16 @@ func collectGit(root string) (gitSnapshot, error) {
 	if err != nil {
 		return gitSnapshot{}, err
 	}
-	return gitSnapshot{Commit: commit, Dirty: status != ""}, nil
+	branch, err := commandOutput(root, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return gitSnapshot{}, err
+	}
+	return gitSnapshot{Commit: commit, Branch: branch, Dirty: status != ""}, nil
 }
 
 func collectContracts(root string) (contractSnapshot, error) {
-	path := filepath.Join(root, "docs/api/http-routes-v0.6.json")
-	payload, err := os.ReadFile(path)
+	routesPath := filepath.Join(root, "docs/api/http-routes-v0.6.json")
+	payload, err := os.ReadFile(routesPath)
 	if err != nil {
 		return contractSnapshot{}, err
 	}
@@ -242,7 +475,35 @@ func collectContracts(root string) (contractSnapshot, error) {
 	for _, route := range contract.Routes {
 		counts[route.Audience]++
 	}
-	return contractSnapshot{Version: contract.Version, Routes: len(contract.Routes), AudienceCounts: counts, SHA256: digestBytes(payload)}, nil
+	schema, err := os.ReadFile(filepath.Join(root, "scripts/schema-contract.sql"))
+	if err != nil {
+		return contractSnapshot{}, err
+	}
+	openAPI, err := os.ReadFile(filepath.Join(root, "docs/api/openapi-v0.6-current.yaml"))
+	if err != nil {
+		return contractSnapshot{}, err
+	}
+	permissionFiles := []string{
+		filepath.Join(root, "internal/modules/core/identity/permissioncode/permissioncode.go"),
+		filepath.Join(root, "internal/plugin/permission_catalog.go"),
+		filepath.Join(root, "docs/api/plugin-permissions-v1.json"),
+		filepath.Join(root, "docs/api/plugin-permissions-v2.json"),
+	}
+	for _, path := range permissionFiles {
+		if _, err := os.Stat(path); err != nil {
+			return contractSnapshot{}, err
+		}
+	}
+	return contractSnapshot{
+		Version:                 contract.Version,
+		Routes:                  len(contract.Routes),
+		AudienceCounts:          counts,
+		SHA256:                  digestBytes(payload),
+		SchemaSHA256:            digestBytes(schema),
+		OpenAPISHA256:           digestBytes(openAPI),
+		RouteOperationSHA256:    digestBytes(payload),
+		PermissionCatalogSHA256: digestFiles(root, permissionFiles),
+	}, nil
 }
 
 func collectMigrations(root string) (databaseSnapshot, error) {
@@ -259,7 +520,8 @@ func collectModules(root string) (moduleSnapshot, error) {
 	if err != nil {
 		return moduleSnapshot{}, err
 	}
-	result := moduleSnapshot{Count: len(paths), KindCounts: map[string]int{}, SHA256: digestFiles(root, paths)}
+	manifestHash := digestFiles(root, paths)
+	result := moduleSnapshot{Count: len(paths), KindCounts: map[string]int{}, SHA256: manifestHash, ManifestSHA256: manifestHash}
 	for _, path := range paths {
 		var manifest moduleManifest
 		if err := decodeYAML(path, &manifest); err != nil {
@@ -270,6 +532,58 @@ func collectModules(root string) (moduleSnapshot, error) {
 	}
 	sort.Strings(result.IDs)
 	return result, nil
+}
+
+func collectBundles(root string) []bundleSnapshot {
+	return []bundleSnapshot{
+		collectBundle(root, "web", 500_000, 400_000),
+		collectBundle(root, "admin", 250_000, 400_000),
+		collectBundle(root, "docs-site", 0, 0),
+	}
+}
+
+func collectBundle(root, name string, jsBudget, cssBudget int64) bundleSnapshot {
+	result := bundleSnapshot{Name: name, Status: "not-built", JSBudget: jsBudget, CSSBudget: cssBudget}
+	// Vite emits <app>/dist/assets, while VitePress emits its static site under
+	// <app>/.vitepress/dist/assets.  G0 must measure both rather than report a
+	// freshly built docs site as "not-built".
+	assetRoots := []string{filepath.Join(root, name, "dist", "assets")}
+	if name == "docs-site" {
+		assetRoots = []string{
+			filepath.Join(root, name, ".vitepress", "dist", "assets"),
+			filepath.Join(root, name, "dist", "assets"),
+		}
+	}
+	for _, assetsRoot := range assetRoots {
+		entries, err := os.ReadDir(assetsRoot)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			result.Status = "unreadable"
+			return result
+		}
+		result.Status = "measured"
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				result.Status = "unreadable"
+				continue
+			}
+			assetName := entry.Name()
+			switch {
+			case strings.HasSuffix(assetName, ".js") && info.Size() > result.JSBytes:
+				result.JSBytes, result.LargestJS = info.Size(), assetName
+			case strings.HasSuffix(assetName, ".css") && info.Size() > result.CSSBytes:
+				result.CSSBytes, result.LargestCSS = info.Size(), assetName
+			}
+		}
+		return result
+	}
+	return result
 }
 
 func collectPlugins(root string) (pluginSnapshot, error) {

@@ -1,7 +1,7 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前实现版本：`v0.13.0`（统一错误合同、可观测性、可靠任务运营、双端风格包、管理员准入、TOTP MFA 与容量门禁已验收）
+> 当前发布基线：`v0.13.0`（统一错误合同、可观测性、可靠任务运营、双端风格包、管理员准入、TOTP MFA 与容量门禁已验收）；`v0.14-dev` 的学期治理、对象存储和个人文档接口已进入当前工作树，但不代表 `v0.14.0 Final` 已发布。
 
 第一次调用 API 时先读 [官方接口约定](../../docs-site/api/overview.md)。本页适合开发者按业务域查找当前
 路由；机器集成应使用生成的 OpenAPI 和路由授权矩阵，不能从本文示例推断未声明字段。
@@ -10,7 +10,7 @@
 
 CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；内容的 `version` 为 v0.13，并由真实路由代码生成和检查漂移。
 
-当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。验证式注册、登录、用户资料、帖子、回复、版块、个人空间、课表、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
+当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。验证式注册、登录、用户资料、帖子、回复、版块、个人空间、受管课表、个人文档、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
 
 错误响应在保留旧 `{ code, msg, data }` 字段的同时增加 `error.code`、`error.message`、`error.details`、`error.request_id` 和 `error.retryable`。成功响应也可携带顶层 `request_id`。列表接口的 `page` 必须大于等于 1，`page_size` 必须在 1 到 100 之间，非法值返回 `400 request.invalid`，不会静默改成默认值。
 
@@ -27,7 +27,9 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 | 社区 | `/categories`、`/admin/categories`、`/threads`、`/posts` | 两级版块、默认标签、帖子/回复流程、可见性和内容治理。 |
 | 版主管理 | `/moderation/*` | 版块作用域分配、当前用户可执行动作、置顶、锁定和删除回复。 |
 | 个人空间 | `/spaces/me/*`、`/u/:username` | 主页设置、内容同步、头像、风格包和公开主页。 |
-| 个人课表 | `/schedule/me/*` | 当前或指定学期课表、已保存课表列表、选择/新建、保存和导入。 |
+| 个人课表 | `/schedule/terms`、`/schedule/me/*` | 开放学期目录、本人（含关闭历史）课表、选择/创建、保存和导入。 |
+| 学期管理 | `/admin/academic-terms/*` | 管理员创建、修改、开放/关闭、设默认和删除受管春/秋学期。 |
+| 我的文档 | `/documents/*` | 本人私有文档的上传、列表、不可变版本、预览、下载与回收站。 |
 | 富文本文章 | `/richtext/articles/*` | 草稿、上传、预览、发布、详情、作者操作和管理端治理。 |
 | 通用图文内容 | `/content/preview`、`/content/assets/images/*` | Community 安全预览与 User Storage 正文图片；不受单个 Feature 开关联动。 |
 | 校园互助 | `/mutual-aid/*` | 结构化求助、提供、志愿协助与资源分享；独立业务状态不覆盖 Community 治理。 |
@@ -162,19 +164,28 @@ v0.12 登录以短期 Access JWT 配合服务端可撤销 Session 实现。浏�
 刷新失败、过期、重放或已撤销均返回统一未授权语义；客户端不得尝试通过错误文案判断 Session
 是否存在。旧 v11 JWT 缺少 `typ/session_id/auth_version`，升级后必须重新登录。
 
-## 8. 个人课表 API
+## 8. v14-dev 受管课表、学期与我的文档 API
 
-每个学期互相独立。当前用户接口如下：
+学期是管理员维护的服务端事实，客户端不能用年份参数创建未配置学期。关闭学期只能由已有课表用户读取，所有保存和导入仍由服务端检查开放状态与版本。
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `GET` | `/schedule/me` | 返回活跃学期课表。可同时提供 `term_year` 和 `semester` 查询参数，读取一个已有学期但不改变活跃选择。 |
-| `GET` | `/schedule/me/terms` | 列出已保存的学期 JSON，并标记活跃课表。 |
-| `POST` | `/schedule/me/terms/activate` | 使用 `term_year` 和 `semester` 选择已有课表或创建空课表。 |
-| `PUT` | `/schedule/me` | 保存到其 `term_year`、`semester` 对应 JSON，并将其设为活跃课表。 |
-| `POST` | `/schedule/me/import` | multipart 导入。必须提供 `file`、`term_year`、`semester`；`replace` 控制当前学期内替换或合并。 |
+| `GET` | `/schedule/terms` | 返回开放学期目录与默认项。 |
+| `GET` | `/schedule/me` | 返回当前查看课表；使用 `academic_term_id` 读取本人已有的关闭历史，或在兼容期同时提供 `term_year` 与 `semester` 读取已存在学期。两种查询不能混用。 |
+| `GET` | `/schedule/me/terms` | 列出本人已有课表，含 `academic_term_id`、`term_status`、`version` 和查看偏好。 |
+| `POST` | `/schedule/me/terms/activate` | 使用 `academic_term_id` 选择开放学期；关闭学期只允许选择本人已有的历史项。兼容的 `term_year` + `semester` 只能解析现存开放学期。 |
+| `PUT` | `/schedule/me` | 保存开放学期课表。已有受管课表必须携带返回的 `expected_version`，服务端先保存私有 Object 再切换引用。 |
+| `POST` | `/schedule/me/import` | multipart 导入，提供 `file`、`term_year`、`semester`，可选 `replace` 和 `expected_version`；超限会返回中文的 `max_bytes`、`actual_bytes` 与下一步。 |
+| `GET/POST` | `/admin/academic-terms` | 管理员列出或创建学期；列表含课表引用计数。 |
+| `PUT` | `/admin/academic-terms/:id` | 使用 `expected_version` 修改第一周。 |
+| `POST` | `/admin/academic-terms/:id/open`、`/close`、`/default` | 使用版本和原因执行状态命令。 |
+| `DELETE` | `/admin/academic-terms/:id` | 使用版本和原因删除无引用学期；有引用时返回稳定冲突。 |
+| `GET/POST` | `/documents`、`/documents/upload` | 列出本人文档，或创建文本文档/上传文件。 |
+| `GET/PUT/DELETE` | `/documents/:id` | 读取元数据、追加版本或兼容删除入口；推荐回收站命令见下一行。 |
+| `GET` | `/documents/:id/content`、`/download`、`/preview`、`/versions` | 读取文本版本、认证下载、受控预览或版本历史；可选 `version_id` 指向历史版本。 |
+| `POST` | `/documents/:id/trash`、`/restore`、`/versions/:version_id/restore` | 移入/恢复回收站，或从历史版本创建新版本，均需要 `expected_version`。 |
 
-API 请求应使用 `spring` 或 `fall` 作为 `semester`。服务为兼容旧数据可能接受别名，但客户端应发送标准值。
+`semester` 的标准值为 `spring` 或 `fall`。详细请求字段和所有错误代码以生成的 OpenAPI 为准；学期、配额和文档上传失败使用中文安全文案和机器可读 details，不能依据底层错误文本编写客户端逻辑。
 
 ## 9. 角色与权限管理 API
 

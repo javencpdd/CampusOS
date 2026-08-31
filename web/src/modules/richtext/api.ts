@@ -29,6 +29,7 @@ export const richTextApi = {
   publish: (threadId: string) => api.post(`/richtext/articles/${threadId}/publish`),
   offline: (threadId: string) => api.post(`/richtext/articles/${threadId}/offline`),
   delete: (threadId: string) => api.delete(`/richtext/articles/${threadId}`),
+  listMyAssets: () => api.get('/richtext/assets/me'),
   uploadAsset: (file: File, data?: { thread_id?: string; article_content_id?: string }) => {
     const form = new FormData()
     form.append('file', file)

@@ -18,6 +18,10 @@ make error-contract-check
 make observability-check
 make v13-reliability-observability-check
 make v13-baseline-check
+make v14-baseline-check
+make v14-storage-check
+make v14-schedule-check
+make v14-documents-check
 make v13-capacity-check
 make appearance-delivery-check
 make docker-deploy-check
@@ -57,6 +61,7 @@ echo "==> database"
 ./scripts/database-check.sh all
 make v12-migration-check
 make v13-migration-check
+make v14-migration-check
 python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 if [[ "${RUN_V13_CAPACITY_DRILL:-true}" == "true" ]]; then

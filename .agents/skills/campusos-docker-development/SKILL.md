@@ -5,7 +5,7 @@ description: Diagnose, change, and verify the cross-platform CampusOS Docker dev
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-docker-development canonical instructions](../../../skills/sources/campusos-docker-development/SKILL.md) completely before taking task actions, then follow them faithfully.
 

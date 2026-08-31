@@ -5,7 +5,7 @@ description: Reproduce, diagnose, fix, and verify CampusOS Web/Admin UI regressi
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-webui-regression canonical instructions](../../../skills/sources/campusos-webui-regression/SKILL.md) completely before taking task actions, then follow them faithfully.
 

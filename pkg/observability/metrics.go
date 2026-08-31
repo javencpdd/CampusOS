@@ -68,6 +68,11 @@ var metricDescriptors = []MetricDescriptor{
 	{Name: "campusos_identity_challenges_total", Help: "Total Identity challenge outcomes.", Type: MetricCounter, Unit: "challenges", LabelNames: []string{"operation", "result"}, MaximumSeries: 32},
 	{Name: "campusos_identity_mfa_total", Help: "Total Identity multi-factor authentication outcomes.", Type: MetricCounter, Unit: "operations", LabelNames: []string{"operation", "result"}, MaximumSeries: 48},
 	{Name: "campusos_identity_sessions_total", Help: "Total Identity session outcomes.", Type: MetricCounter, Unit: "sessions", LabelNames: []string{"operation", "result"}, MaximumSeries: 48},
+	{Name: "campusos_storage_objects", Help: "Current User Storage objects by lifecycle state.", Type: MetricGauge, Unit: "objects", LabelNames: []string{"status", "provider"}, MaximumSeries: 16},
+	{Name: "campusos_storage_reservations", Help: "Current User Storage reservations by lifecycle state.", Type: MetricGauge, Unit: "reservations", LabelNames: []string{"status"}, MaximumSeries: 8},
+	{Name: "campusos_storage_reconcile_differences", Help: "Latest explicit storage reconciliation differences by bounded kind.", Type: MetricGauge, Unit: "differences", LabelNames: []string{"kind"}, MaximumSeries: 32},
+	{Name: "campusos_document_preview_jobs", Help: "Current document preview jobs by status and source format.", Type: MetricGauge, Unit: "jobs", LabelNames: []string{"status", "format"}, MaximumSeries: 32},
+	{Name: "campusos_document_preview_duration_seconds", Help: "Document preview operation duration by format and bounded result.", Type: MetricHistogram, Unit: "seconds", LabelNames: []string{"format", "result"}, Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30}, MaximumSeries: 32},
 	{Name: "campusos_runtime_goroutines", Help: "Current Go runtime goroutine count.", Type: MetricGauge, Unit: "goroutines", MaximumSeries: 1},
 	{Name: "campusos_runtime_heap_alloc_bytes", Help: "Current Go runtime allocated heap bytes.", Type: MetricGauge, Unit: "bytes", MaximumSeries: 1},
 }

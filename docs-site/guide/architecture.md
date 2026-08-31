@@ -20,7 +20,9 @@ browser
 | 模块 | 职责 |
 | --- | --- |
 | `internal/modules/core/identity` | 用户、账号、JWT、角色、稳定权限目录、作用域、授权审计、TOTP MFA 和受控恢复。 |
-| `internal/modules/core/userstorage` | 用户目录、安全路径、配额和资产存储 Port。 |
+| `internal/modules/core/userstorage` | 用户目录、安全路径、配额、私有 Object Port、持久 Reservation 账本以及按批次/可恢复 checkpoint 的本地对象对账。 |
+| `internal/modules/core/academicterm` | 管理员治理 spring/fall 学期、第一周、open/closed/default 生命周期和乐观锁。 |
+| `internal/modules/core/contenteditor` | 文本、Markdown 和 CampusDoc v1 的校验、清洗与安全渲染；不依赖帖子或文件系统。 |
 | `internal/modules/core/community` | 版块、帖子、回复、标签、内容治理状态机和统一 `ContentQuery`。 |
 | `internal/modules/core/moderation` | 版块版主作用域、治理动作和审计。 |
 | `internal/platform/observability` | 有界指标、Admin 摘要、运行时与数据库池快照，以及默认关闭的 loopback Prometheus 导出。 |
@@ -29,7 +31,8 @@ browser
 | `internal/modules/features/personalspace` | 个人主页、头像、主页所有者风格和 Community 内容查询适配。 |
 | `internal/modules/features/appearance/stylepack`、`internal/modules/features/appearance/webtheme` | 目标作用域筛查、沙箱特效声明和管理员系统主题目录。 |
 | `internal/modules/features/richtext` | 富文本草稿、清洗、发布和图片资产。 |
-| `internal/modules/features/schedule` | 学期课表、日历计算和表格导入。 |
+| `internal/modules/features/schedule` | 受管学期课表、日历计算和表格导入；新版本以私有 Object 和乐观锁引用保存，JSON 仅保留为兼容镜像。 |
+| `internal/modules/features/personaldocuments` | 私有文档、不可变版本、回收站、认证下载与安全预览；版本提交同时写入最小化预览 Outbox 事件。未启用受审查 Converter Runner 时，内置安全降级消费者只校验允许字段并写 receipt，不读取内容或调用外部转换器。 |
 | `internal/modules/features/webhook`、`internal/modules/features/mcp`、`internal/modules/features/message` | 低风险外部集成。 |
 
 ## 权限模型
@@ -70,10 +73,10 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | 插件运行数据 | `data/plugin_data/<plugin>/`。 |
 | Built-in Feature 本地数据 | `data/module_data/<feature>/`。 |
 | 主题、首页和个人主页风格资源 | `data/resources/<type>/<package>/`。 |
-| 用户文件 | `data/personal-space/<user_id>/`。 |
+| 用户文件 | `data/personal-space/<user_id>/`；新文档/受管课表的元数据与 Object ID 位于 PostgreSQL，文件仍是私有 Local Provider payload。 |
 | 开发日志 | `.campusos/logs/`。 |
 
-数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的插件关系。修改 schema 前必须运行 `make database-check` 和 migration 验证；当前顺序 migration 为 `000001` 至 `000042`。`000039` 记录管理员准入状态变更，`000040` 增加服务端 MFA Session 强度、TOTP 加密信封、Ticket/恢复码摘要和管理员策略，`000041` 删除九个被同谓词复合索引严格左前缀覆盖的窄索引并启用 Schema 冗余门禁，`000042` 增加按用户覆盖的 User Storage 配额授权。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
+数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的插件关系。修改 schema 前必须运行 `make database-check` 和 migration 验证；当前顺序 migration 为 `000001` 至 `000049`。`000039` 记录管理员准入状态变更，`000040` 增加服务端 MFA Session 强度、TOTP 加密信封、Ticket/恢复码摘要和管理员策略，`000041` 删除九个被同谓词复合索引严格左前缀覆盖的窄索引并启用 Schema 冗余门禁，`000042` 增加按用户覆盖的 User Storage 配额授权，`000043` 为回复保存父楼层号快照；`000044-000049` 追加受管学期、对象/账户/Reservation、课表 Object 引用、个人文档版本/预览状态和兼容约束。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
 
 ## 页面扩展安全
 

@@ -8,6 +8,7 @@ import (
 type queryWindow struct {
 	startedAt time.Time
 	count     int
+	sequence  uint64
 }
 
 const defaultQueryLimiterIdentityCapacity = 4096
@@ -21,6 +22,7 @@ type queryLimiter struct {
 	capacity int
 	window   time.Duration
 	now      func() time.Time
+	sequence uint64
 	windows  map[string]queryWindow
 }
 
@@ -51,11 +53,13 @@ func (l *queryLimiter) Allow(key string) (bool, time.Duration) {
 	window, ok := l.windows[key]
 	if !ok {
 		l.prune(now)
-		l.windows[key] = queryWindow{startedAt: now, count: 1}
+		l.sequence++
+		l.windows[key] = queryWindow{startedAt: now, count: 1, sequence: l.sequence}
 		return true, 0
 	}
 	if now.Sub(window.startedAt) >= l.window {
-		l.windows[key] = queryWindow{startedAt: now, count: 1}
+		l.sequence++
+		l.windows[key] = queryWindow{startedAt: now, count: 1, sequence: l.sequence}
 		return true, 0
 	}
 	if window.count >= l.maximum {
@@ -87,7 +91,7 @@ func (l *queryLimiter) prune(now time.Time) {
 		var oldestAt time.Time
 		for key, window := range l.windows {
 			if oldestKey == "" || window.startedAt.Before(oldestAt) ||
-				(window.startedAt.Equal(oldestAt) && key < oldestKey) {
+				(window.startedAt.Equal(oldestAt) && window.sequence < l.windows[oldestKey].sequence) {
 				oldestKey = key
 				oldestAt = window.startedAt
 			}

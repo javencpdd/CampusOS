@@ -2,7 +2,9 @@ package storage
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -80,6 +82,58 @@ func TestContentImageStoreSavesUnderUserStorage(t *testing.T) {
 	}
 }
 
+func TestContentImageStoreListsOnlyTheCurrentOwnersImages(t *testing.T) {
+	adapter, err := NewLocalAdapterWithQuota(t.TempDir(), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := NewContentImageStore(adapter, adapter, 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Save("user-1", "first.png", bytes.NewReader(testPNG(t)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Save("user-2", "other.png", bytes.NewReader(testPNG(t))); err != nil {
+		t.Fatal(err)
+	}
+	items, err := store.ListOwned("user-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].FileName != first.FileName || !strings.Contains(items[0].FileURL, "/user-1/") {
+		t.Fatalf("owner media inventory leaked or omitted an image: %#v", items)
+	}
+	if items[0].CreatedAt.IsZero() {
+		t.Fatalf("listed media must include a safe upload timestamp: %#v", items[0])
+	}
+}
+
+func TestOptimizeImageReportsSourceDimensionsForSafeUserGuidance(t *testing.T) {
+	data := pngHeader(8000, 6000) // 48 MP; DecodeConfig succeeds without decoding a bitmap.
+	_, err := OptimizeImage(data)
+	if !errors.Is(err, ErrImageDimensions) {
+		t.Fatalf("expected decoded-pixel error, got %v", err)
+	}
+	var dimensions *ImageDimensionError
+	if !errors.As(err, &dimensions) || dimensions.Width != 8000 || dimensions.Height != 6000 || dimensions.MaxPixels != MaxDecodedImagePixels {
+		t.Fatalf("expected safe source dimensions, got %#v", dimensions)
+	}
+}
+
+func TestOptimizeImageRejectsOversizedWebPUsingHeaderDimensions(t *testing.T) {
+	data := webpVP8XHeader(8000, 6000) // 48 MP; WebP is never rasterized for this check.
+	_, err := OptimizeImage(data)
+	if !errors.Is(err, ErrImageDimensions) {
+		t.Fatalf("expected decoded-pixel error, got %v", err)
+	}
+	var dimensions *ImageDimensionError
+	if !errors.As(err, &dimensions) || dimensions.Width != 8000 || dimensions.Height != 6000 {
+		t.Fatalf("expected WebP dimensions in the error, got %#v", dimensions)
+	}
+}
+
 func TestContentImageStoreRejectsUnsupportedAndQuotaOverflow(t *testing.T) {
 	adapter, err := NewLocalAdapterWithQuota(t.TempDir(), 16)
 	if err != nil {
@@ -134,4 +188,39 @@ func TestContentImageHandlerRejectsOversizedBodyBeforeMultipartParsing(t *testin
 	if !strings.Contains(recorder.Body.String(), "74002") {
 		t.Fatalf("expected stable upload error code, body=%s", recorder.Body.String())
 	}
+	if !strings.Contains(recorder.Body.String(), "正文图片文件过大") || !strings.Contains(recorder.Body.String(), "max_bytes") {
+		t.Fatalf("expected actionable Chinese image-limit details, body=%s", recorder.Body.String())
+	}
+}
+
+func pngHeader(width, height uint32) []byte {
+	data := make([]byte, 0, 33)
+	data = append(data, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+	data = append(data, 0, 0, 0, 13, 'I', 'H', 'D', 'R')
+	chunk := make([]byte, 13)
+	binary.BigEndian.PutUint32(chunk[0:4], width)
+	binary.BigEndian.PutUint32(chunk[4:8], height)
+	chunk[8] = 8
+	chunk[9] = 6
+	data = append(data, chunk...)
+	crc := make([]byte, 4)
+	binary.BigEndian.PutUint32(crc, crc32.ChecksumIEEE(append([]byte("IHDR"), chunk...)))
+	return append(data, crc...)
+}
+
+func webpVP8XHeader(width, height uint32) []byte {
+	if width == 0 || height == 0 || width > 1<<24 || height > 1<<24 {
+		panic("test WebP dimensions must fit the VP8X 24-bit canvas fields")
+	}
+	data := make([]byte, 30)
+	copy(data[0:4], "RIFF")
+	binary.LittleEndian.PutUint32(data[4:8], 22) // WEBP + one 10-byte VP8X chunk.
+	copy(data[8:12], "WEBP")
+	copy(data[12:16], "VP8X")
+	binary.LittleEndian.PutUint32(data[16:20], 10)
+	canvasWidth := width - 1
+	canvasHeight := height - 1
+	data[24], data[25], data[26] = byte(canvasWidth), byte(canvasWidth>>8), byte(canvasWidth>>16)
+	data[27], data[28], data[29] = byte(canvasHeight), byte(canvasHeight>>8), byte(canvasHeight>>16)
+	return data
 }

@@ -465,6 +465,9 @@ func (s *LocalFileStore) SaveAvatar(userID, originalName string, reader io.Reade
 	}
 	optimized, err := corestorage.OptimizeImage(data)
 	if err != nil {
+		if errors.Is(err, corestorage.ErrImageDimensions) {
+			return "", 0, err
+		}
 		return "", 0, ErrSpaceFileUnsupportedType
 	}
 	data = optimized.Data

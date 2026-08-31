@@ -5,7 +5,7 @@ description: Maintain CampusOS repository-local Codex Skills, their portable `.a
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-skill-repository-sync canonical instructions](../../../skills/sources/campusos-skill-repository-sync/SKILL.md) completely before taking task actions, then follow them faithfully.
 

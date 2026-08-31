@@ -43,6 +43,43 @@
       "maximum_series": 1
     },
     {
+      "name": "campusos_document_preview_duration_seconds",
+      "help": "Document preview operation duration by format and bounded result.",
+      "type": "histogram",
+      "unit": "seconds",
+      "label_names": [
+        "format",
+        "result"
+      ],
+      "buckets": [
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10,
+        30
+      ],
+      "maximum_series": 32
+    },
+    {
+      "name": "campusos_document_preview_jobs",
+      "help": "Current document preview jobs by status and source format.",
+      "type": "gauge",
+      "unit": "jobs",
+      "label_names": [
+        "status",
+        "format"
+      ],
+      "maximum_series": 32
+    },
+    {
       "name": "campusos_email_delivery_duration_seconds",
       "help": "Email provider delivery duration.",
       "type": "histogram",
@@ -300,6 +337,37 @@
       "type": "gauge",
       "unit": "bytes",
       "maximum_series": 1
+    },
+    {
+      "name": "campusos_storage_objects",
+      "help": "Current User Storage objects by lifecycle state.",
+      "type": "gauge",
+      "unit": "objects",
+      "label_names": [
+        "status",
+        "provider"
+      ],
+      "maximum_series": 16
+    },
+    {
+      "name": "campusos_storage_reconcile_differences",
+      "help": "Latest explicit storage reconciliation differences by bounded kind.",
+      "type": "gauge",
+      "unit": "differences",
+      "label_names": [
+        "kind"
+      ],
+      "maximum_series": 32
+    },
+    {
+      "name": "campusos_storage_reservations",
+      "help": "Current User Storage reservations by lifecycle state.",
+      "type": "gauge",
+      "unit": "reservations",
+      "label_names": [
+        "status"
+      ],
+      "maximum_series": 8
     }
   ]
 }

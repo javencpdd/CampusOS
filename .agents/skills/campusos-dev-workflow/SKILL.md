@@ -5,7 +5,7 @@ description: Complete and locally commit one coherent CampusOS version-stage imp
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-dev-workflow canonical instructions](../../../skills/sources/campusos-dev-workflow/SKILL.md) completely before taking task actions, then follow them faithfully.
 

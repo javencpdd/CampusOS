@@ -128,7 +128,7 @@ services:
       - go-module-cache:/go-cache/modules
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/v1/health"]
-      interval: 5s
+      interval: ${CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL:-5s}
       timeout: 5s
       start_period: 60s
       retries: 30

@@ -7,4 +7,5 @@ description: "Safe paths, ownership, quota, content images, assets, and storage 
 kind: core
 activation_mode: always-on
 default_enabled: true
+dependencies: [core.identity, core.observability]
 implementation: internal/modules/core/userstorage

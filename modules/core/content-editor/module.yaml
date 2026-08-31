@@ -1,0 +1,10 @@
+schema: campusos.module/v1
+id: core.content-editor
+name: content-editor
+display_name: "Content Editor"
+version: "0.14.0-dev"
+description: "Pure CampusDoc, Markdown, and controlled HTML validation/rendering shared by built-in content features."
+kind: core
+activation_mode: always-on
+default_enabled: true
+implementation: internal/modules/core/contenteditor

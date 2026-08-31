@@ -5,7 +5,7 @@ description: Maintain and reorganize CampusOS repository documentation with a co
 
 # Repository Skill bridge
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-28
 
 Immediately read [campusos-readme-update canonical instructions](../../../skills/sources/campusos-readme-update/SKILL.md) completely before taking task actions, then follow them faithfully.
 

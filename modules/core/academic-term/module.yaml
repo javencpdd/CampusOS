@@ -1,0 +1,11 @@
+schema: campusos.module/v1
+id: core.academic-term
+name: academic-term
+display_name: "Academic Term"
+version: "0.14.0-dev"
+description: "Administrator-governed spring/fall academic-term directory shared by schedule and future campus services."
+kind: core
+activation_mode: always-on
+default_enabled: true
+dependencies: [core.identity]
+implementation: internal/modules/core/academicterm

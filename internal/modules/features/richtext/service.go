@@ -40,6 +40,13 @@ func (s *Service) SetAssetStore(store *LocalAssetStore) {
 	s.assets = store
 }
 
+func (s *Service) MaxAssetBytes() int64 {
+	if s == nil || s.assets == nil {
+		return defaultMaxAssetBytes
+	}
+	return s.assets.MaxAssetBytes()
+}
+
 // SetReliability makes RichText own one durable command around its detail and
 // the Community Thread write. The service still consumes only Community's
 // public content gateway; it never receives a Community repository or a DB
@@ -492,6 +499,19 @@ func (s *Service) UploadAsset(ctx context.Context, userID, originalName string, 
 		return nil, err
 	}
 	return asset, nil
+}
+
+// ListMyAssets provides the current user with a read-only view of images they
+// uploaded through the RichText feature. Deletion remains intentionally out of
+// scope because these files may be referenced by published articles.
+func (s *Service) ListMyAssets(ctx context.Context, userID string) ([]*Asset, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(userID) == "" {
+		return nil, ErrAssetInvalid
+	}
+	return s.store.ListAssetsByUploader(ctx, userID)
 }
 
 func (s *Service) AssetPath(userID, fileName string) (string, error) {

@@ -1,0 +1,24 @@
+# Optional v0.14 converter isolation profile. It is deliberately not included
+# by compose.dev.yml and receives neither the database/JWT/SMTP environment nor
+# the host personal-space directory. Deploy it only with a reviewed runner
+# image that implements the one-task input/output protocol.
+services:
+  converter:
+    image: ${CAMPUSOS_CONVERTER_IMAGE:?set a digest-pinned converter image}
+    profiles: ["converter"]
+    user: "65532:65532"
+    read_only: true
+    network_mode: "none"
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 1.0
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+      - /work:rw,noexec,nosuid,size=64m,mode=0700
+    environment:
+      CONVERTER_TASK_TIMEOUT: "60s"
+      CONVERTER_MAX_OUTPUT_BYTES: "52428800"
+    restart: "no"
