@@ -16,7 +16,8 @@
       @update:model-value="$emit('update:modelValue', $event)"
     />
     <p v-if="format === 'campusdoc'" class="document-content-editor__hint">
-      CampusDoc v1 使用 JSON：<code>version: 1</code> 与非空 <code>blocks</code>；图片块只能填写私有 Object ID，不能填写外部 URL。
+      CampusDoc v1 使用 JSON：<code>version: 1</code> 与非空 <code>blocks</code>；图片块只能填写私有 Object
+      ID，不能填写外部 URL。
     </p>
   </div>
 </template>
@@ -40,7 +41,11 @@ const emit = defineEmits<{
 }>()
 
 const placeholder = computed(() =>
-  props.format === 'campusdoc' ? '请输入 CampusDoc v1 JSON' : props.format === 'markdown' ? '请输入 Markdown 文本' : '请输入文本内容',
+  props.format === 'campusdoc'
+    ? '请输入 CampusDoc v1 JSON'
+    : props.format === 'markdown'
+      ? '请输入 Markdown 文本'
+      : '请输入文本内容',
 )
 
 const changeFormat = (format: DocumentFormat) => {
@@ -51,7 +56,19 @@ const changeFormat = (format: DocumentFormat) => {
 </script>
 
 <style scoped>
-.document-content-editor { display: grid; gap: 12px; margin-top: 12px; }
-.document-content-editor__input :deep(textarea) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; line-height: 1.65; }
-.document-content-editor__hint { margin: 0; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.6; }
+.document-content-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.document-content-editor__input :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1.65;
+}
+.document-content-editor__hint {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
 </style>

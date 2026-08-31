@@ -4,7 +4,7 @@ type TrustedModuleLoader = () => Promise<{ default: Component }>
 
 const trustedModuleLoaders: Record<string, TrustedModuleLoader> = {
   'core.schedule': () => import('@/modules/schedule/pages/ScheduleView.vue'),
-	'core.personal-documents': () => import('@/modules/personal-documents/pages/PersonalDocumentsView.vue'),
+  'core.personal-documents': () => import('@/modules/personal-documents/pages/PersonalDocumentsView.vue'),
   'core.personal-space': () => import('@/modules/space/pages/SpaceSettingsView.vue'),
   'core.richtext-editor': () => import('@/modules/community/pages/CreateThreadView.vue'),
   'core.appearance': () => import('@/modules/appearance/pages/AppearanceSettingsView.vue'),

@@ -15,8 +15,12 @@
         <el-tab-pane label="我的文档" name="documents">
           <div class="toolbar">
             <el-button @click="chooseUpload">上传文件</el-button>
-            <el-button :type="status === 'active' ? 'primary' : 'default'" plain @click="load('active')">我的文档</el-button>
-            <el-button :type="status === 'trashed' ? 'primary' : 'default'" plain @click="load('trashed')">回收站</el-button>
+            <el-button :type="status === 'active' ? 'primary' : 'default'" plain @click="load('active')"
+              >我的文档</el-button
+            >
+            <el-button :type="status === 'trashed' ? 'primary' : 'default'" plain @click="load('trashed')"
+              >回收站</el-button
+            >
             <input
               ref="uploadInput"
               class="hidden"
@@ -42,7 +46,9 @@
             <el-table-column label="操作" width="200">
               <template #default="{ row }">
                 <el-button link type="primary" @click.stop="download(row)">下载</el-button>
-                <el-button v-if="row.status === 'active'" link type="danger" @click.stop="changeStatus(row, true)">移入回收站</el-button>
+                <el-button v-if="row.status === 'active'" link type="danger" @click.stop="changeStatus(row, true)"
+                  >移入回收站</el-button
+                >
                 <el-button v-else link type="success" @click.stop="changeStatus(row, false)">恢复</el-button>
               </template>
             </el-table-column>
@@ -57,7 +63,14 @@
               show-icon
               title="这里汇总头像历史、普通帖子正文图片和图文文章图片。它们仍会计入个人空间，但可能已被帖子引用，因此本页只提供预览，不提供删除或移动。"
             />
-            <el-alert v-if="mediaLoadNotice" class="media-notice" type="warning" :closable="false" show-icon :title="mediaLoadNotice" />
+            <el-alert
+              v-if="mediaLoadNotice"
+              class="media-notice"
+              type="warning"
+              :closable="false"
+              show-icon
+              :title="mediaLoadNotice"
+            />
             <el-empty v-if="!mediaLoading && !mediaItems.length" description="暂时没有已上传的图片资源" />
             <el-table v-else :data="mediaItems" class="media-table">
               <el-table-column label="预览" width="92">
@@ -75,7 +88,9 @@
               </el-table-column>
               <el-table-column label="来源" width="140">
                 <template #default="{ row }">
-                  <el-tag :type="row.source === '头像历史' ? 'success' : 'info'" effect="plain">{{ row.source }}</el-tag>
+                  <el-tag :type="row.source === '头像历史' ? 'success' : 'info'" effect="plain">{{
+                    row.source
+                  }}</el-tag>
                   <span v-if="row.active" class="active-avatar">当前头像</span>
                 </template>
               </el-table-column>
@@ -97,12 +112,16 @@
               </el-table-column>
               <el-table-column label="操作" width="110">
                 <template #default="{ row }">
-                  <el-button v-if="row.source === '头像历史'" link type="primary" @click="goSpaceSettings">管理头像</el-button>
+                  <el-button v-if="row.source === '头像历史'" link type="primary" @click="goSpaceSettings"
+                    >管理头像</el-button
+                  >
                   <span v-else class="readonly-label">仅预览</span>
                 </template>
               </el-table-column>
             </el-table>
-            <p v-if="mediaItems.length" class="media-hint">为避免一次加载过多历史资源，本页每种图片来源最多展示最近 200 项。</p>
+            <p v-if="mediaItems.length" class="media-hint">
+              为避免一次加载过多历史资源，本页每种图片来源最多展示最近 200 项。
+            </p>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -135,7 +154,9 @@
         <el-table-column prop="version_number" label="版本" />
         <el-table-column prop="created_at" label="创建时间" />
         <el-table-column label="操作">
-          <template #default="{ row }"><el-button link type="primary" @click="restoreVersion(row)">恢复为新版本</el-button></template>
+          <template #default="{ row }"
+            ><el-button link type="primary" @click="restoreVersion(row)">恢复为新版本</el-button></template
+          >
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -155,7 +176,12 @@ import { richTextApi } from '@/modules/richtext/api'
 import { spaceApi } from '@/modules/space/api'
 import { personalDocumentsApi } from '../api'
 import DocumentContentEditor from '@/modules/content-editor/components/DocumentContentEditor.vue'
-import { defaultDocumentContent, documentNameForFormat, isEditableDocumentFormat, type DocumentFormat } from '@/modules/content-editor/document'
+import {
+  defaultDocumentContent,
+  documentNameForFormat,
+  isEditableDocumentFormat,
+  type DocumentFormat,
+} from '@/modules/content-editor/document'
 
 type MediaItem = {
   source: '头像历史' | '帖子正文图片' | '图文文章图片'
@@ -253,7 +279,8 @@ async function loadMedia(force = false) {
   else unavailableSources++
   // RichText may be disabled by the administrator. Its absence must not hide
   // avatar or normal-post images, so show one concise partial-result notice.
-  if (unavailableSources > 0) mediaLoadNotice.value = '部分图片资源暂时无法加载，可能是对应功能未启用或服务正在恢复；请稍后刷新重试。'
+  if (unavailableSources > 0)
+    mediaLoadNotice.value = '部分图片资源暂时无法加载，可能是对应功能未启用或服务正在恢复；请稍后刷新重试。'
   mediaLoaded.value = true
   mediaLoading.value = false
 }
@@ -286,10 +313,20 @@ async function save() {
   saving.value = true
   try {
     if (!editor.value.id) {
-      await personalDocumentsApi.create({ name: editor.value.name, format: editor.value.format, content: editor.value.content })
+      await personalDocumentsApi.create({
+        name: editor.value.name,
+        format: editor.value.format,
+        content: editor.value.content,
+      })
       ElMessage.success('文档已创建')
     } else {
-      const result = data(await personalDocumentsApi.save(editor.value.id, { expected_version: editor.value.version, name: editor.value.name, content: editor.value.content }))
+      const result = data(
+        await personalDocumentsApi.save(editor.value.id, {
+          expected_version: editor.value.version,
+          name: editor.value.name,
+          content: editor.value.content,
+        }),
+      )
       editor.value = result
       ElMessage.success('已保存为新版本')
     }
@@ -326,7 +363,11 @@ function download(row: any) {
 
 async function changeStatus(row: any, trash: boolean) {
   try {
-    await ElMessageBox.confirm(trash ? '文档和全部历史版本都会保留，可在回收站恢复。' : '恢复该文档？', trash ? '移入回收站' : '恢复文档', { type: 'warning' })
+    await ElMessageBox.confirm(
+      trash ? '文档和全部历史版本都会保留，可在回收站恢复。' : '恢复该文档？',
+      trash ? '移入回收站' : '恢复文档',
+      { type: 'warning' },
+    )
     await (trash ? personalDocumentsApi.trash(row.id, row.version) : personalDocumentsApi.restore(row.id, row.version))
     await load()
     ElMessage.success('操作成功')
@@ -399,30 +440,115 @@ onMounted(() => load())
 </script>
 
 <style scoped>
-.documents-view { max-width: 1200px; margin: 0 auto; padding: 20px; }
-.header { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
-.header h2 { margin: 0 0 6px; }
-.header span { color: var(--el-text-color-secondary); font-size: 13px; }
-.toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-.hidden { display: none; }
-.editor-actions { display: flex; gap: 8px; }
-.document-preview { font-size: 16px; line-height: 1.8; overflow-wrap: anywhere; }
-.document-preview :deep(pre) { overflow: auto; padding: 12px; background: var(--el-fill-color-light); }
-.document-preview :deep(table) { max-width: 100%; border-collapse: collapse; }
-.document-preview :deep(td) { padding: 6px; border: 1px solid var(--el-border-color); }
-.media-panel { min-height: 180px; }
-.media-notice { margin-top: 12px; }
-.media-table { margin-top: 14px; }
-.media-preview { width: 58px; height: 46px; border: 1px solid var(--el-border-color); border-radius: 5px; }
-.media-preview-fallback { display: grid; width: 100%; height: 100%; place-items: center; color: var(--el-text-color-secondary); font-size: 11px; text-align: center; }
-.file-name { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.media-table small { display: block; color: var(--el-text-color-secondary); margin-top: 3px; }
-.active-avatar { display: block; color: var(--el-color-success); font-size: 12px; margin-top: 4px; }
-.readonly-label { color: var(--el-text-color-secondary); font-size: 13px; }
-.media-hint { margin: 12px 0 0; color: var(--el-text-color-secondary); font-size: 13px; }
+.documents-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.header h2 {
+  margin: 0 0 6px;
+}
+.header span {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.hidden {
+  display: none;
+}
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+.document-preview {
+  font-size: 16px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.document-preview :deep(pre) {
+  overflow: auto;
+  padding: 12px;
+  background: var(--el-fill-color-light);
+}
+.document-preview :deep(table) {
+  max-width: 100%;
+  border-collapse: collapse;
+}
+.document-preview :deep(td) {
+  padding: 6px;
+  border: 1px solid var(--el-border-color);
+}
+.media-panel {
+  min-height: 180px;
+}
+.media-notice {
+  margin-top: 12px;
+}
+.media-table {
+  margin-top: 14px;
+}
+.media-preview {
+  width: 58px;
+  height: 46px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 5px;
+}
+.media-preview-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--el-text-color-secondary);
+  font-size: 11px;
+  text-align: center;
+}
+.file-name {
+  display: block;
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-table small {
+  display: block;
+  color: var(--el-text-color-secondary);
+  margin-top: 3px;
+}
+.active-avatar {
+  display: block;
+  color: var(--el-color-success);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.readonly-label {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.media-hint {
+  margin: 12px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
 @media (max-width: 600px) {
-  .documents-view { padding: 10px; }
-  .header { align-items: flex-start; }
-  .header span { display: none; }
+  .documents-view {
+    padding: 10px;
+  }
+  .header {
+    align-items: flex-start;
+  }
+  .header span {
+    display: none;
+  }
 }
 </style>

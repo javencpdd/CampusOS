@@ -151,12 +151,12 @@ v13-migration-check:
 	./scripts/test-v13-schema-index-hygiene-migration.sh
 
 v14-migration-check:
-	./scripts/test-v14-g0-baseline-migration.sh
-	./scripts/test-v14-academic-terms-migration.sh
-	./scripts/test-v14-storage-objects-migration.sh
-	./scripts/test-v14-schedule-term-references-migration.sh
-	./scripts/test-v14-personal-documents-migration.sh
-	./scripts/test-v14-schedule-object-bindings-migration.sh
+	bash scripts/test-v14-g0-baseline-migration.sh
+	bash scripts/test-v14-academic-terms-migration.sh
+	bash scripts/test-v14-storage-objects-migration.sh
+	bash scripts/test-v14-schedule-term-references-migration.sh
+	bash scripts/test-v14-personal-documents-migration.sh
+	bash scripts/test-v14-schedule-object-bindings-migration.sh
 	bash scripts/test-v14-historical-fixture-migration.sh
 
 v13-baseline-check:
