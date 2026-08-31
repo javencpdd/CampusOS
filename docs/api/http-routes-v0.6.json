@@ -1685,6 +1685,23 @@
       "stability": "experimental"
     },
     {
+      "method": "DELETE",
+      "path": "/api/v1/documents/:id",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.delete.api.v1.documents.id",
+      "legacy_aliases": [
+        "http.delete.api.v1.documents.id",
+        "httpapi.delete.api.v1.documents.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/documents/:id/trash",
       "handler": "d.PersonalDocuments",

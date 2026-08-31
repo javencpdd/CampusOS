@@ -24,7 +24,7 @@ func (h *Handler) ListOpen(c *gin.Context) {
 }
 
 func (h *Handler) ListAdmin(c *gin.Context) {
-	items, err := h.service.ListAll(c.Request.Context())
+	items, err := h.service.ListAdmin(c.Request.Context())
 	if err != nil {
 		response.WriteError(c, err)
 		return

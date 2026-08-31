@@ -40,9 +40,9 @@ func runStorage(args []string, stdout, stderr io.Writer) int {
 }
 
 func printStorageUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: campusosctl storage reconcile [--root path] [--dsn url] [--dry-run] [--apply --actor operator --reason reason]")
+	fmt.Fprintln(w, "usage: campusosctl storage reconcile [--root path] [--dsn url] [--dry-run] [--batch-size 200] [--checkpoint file] [--resume] [--max-differences 500] [--apply --actor operator --reason reason]")
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "The default is read-only. --apply only expires stale reservations and marks ready metadata whose provider file is absent as missing; unknown files and ledger mismatches are never changed automatically.")
+	fmt.Fprintln(w, "The default is read-only. Reconciliation reads metadata in keyset batches and can persist a resumable checkpoint after each batch. --apply only expires stale reservations and marks ready metadata whose provider file is absent as missing; unknown files and ledger mismatches are never changed automatically.")
 }
 
 func runStorageReconcile(args []string, stdout io.Writer) error {
@@ -54,8 +54,21 @@ func runStorageReconcile(args []string, stdout io.Writer) error {
 	apply := flags.Bool("apply", false, "apply the narrow safe repair set")
 	actor := flags.String("actor", "", "local authorized operator identity required with --apply")
 	reason := flags.String("reason", "", "operator reason required with --apply, up to 500 characters")
+	batchSize := flags.Int("batch-size", 200, "bounded database/object batch size (10..1000)")
+	checkpoint := flags.String("checkpoint", "", "optional resumable checkpoint JSON path")
+	resume := flags.Bool("resume", false, "resume the explicit checkpoint instead of starting a new scan")
+	maxDifferences := flags.Int("max-differences", 500, "maximum detailed differences retained in output; 0 means unlimited")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
-		return errors.New("usage: campusosctl storage reconcile [--root path] [--dsn url] [--dry-run] [--apply --actor operator --reason reason]")
+		return errors.New("usage: campusosctl storage reconcile [--root path] [--dsn url] [--dry-run] [--batch-size 200] [--checkpoint file] [--resume] [--max-differences 500] [--apply --actor operator --reason reason]")
+	}
+	if *batchSize < 10 || *batchSize > 1000 {
+		return errors.New("--batch-size must be between 10 and 1000")
+	}
+	if *maxDifferences < 0 || *maxDifferences > 100000 {
+		return errors.New("--max-differences must be between 0 and 100000")
+	}
+	if *resume && strings.TrimSpace(*checkpoint) == "" {
+		return errors.New("--resume requires an explicit --checkpoint path")
 	}
 	if *apply {
 		*dryRun = false
@@ -77,16 +90,22 @@ func runStorageReconcile(args []string, stdout io.Writer) error {
 	if err = pool.Ping(ctx); err != nil {
 		return errors.New("connect storage database")
 	}
-	snapshot, err := loadStorageSnapshot(ctx, pool)
-	if err != nil {
-		return fmt.Errorf("read storage metadata: %w", err)
-	}
-	report, err := storage.ReconcileLocal(*root, snapshot, time.Now().UTC())
+	report, truncated, err := reconcileStorageBatched(ctx, pool, storageReconcileBatchConfig{
+		Root:           *root,
+		BatchSize:      *batchSize,
+		CheckpointPath: strings.TrimSpace(*checkpoint),
+		Resume:         *resume,
+		MaxDifferences: *maxDifferences,
+		Now:            time.Now().UTC(),
+	})
 	if err != nil {
 		return fmt.Errorf("scan local provider: %w", err)
 	}
-	result := storageReconcileResult{DryRun: *dryRun, Report: report}
+	result := storageReconcileResult{DryRun: *dryRun, Report: report, DifferencesTruncated: truncated}
 	if *apply {
+		if truncated {
+			return errors.New("--apply refuses a truncated report; review the dry-run and rerun with an explicit larger --max-differences (or 0) before applying")
+		}
 		result.Actions, err = applyStorageReconcile(ctx, pool, report, strings.TrimSpace(*actor), strings.TrimSpace(*reason))
 		if err != nil {
 			return err
@@ -98,9 +117,10 @@ func runStorageReconcile(args []string, stdout io.Writer) error {
 }
 
 type storageReconcileResult struct {
-	DryRun  bool                    `json:"dry_run"`
-	Report  storage.ReconcileReport `json:"report"`
-	Actions map[string]int          `json:"actions,omitempty"`
+	DryRun               bool                    `json:"dry_run"`
+	Report               storage.ReconcileReport `json:"report"`
+	DifferencesTruncated bool                    `json:"differences_truncated,omitempty"`
+	Actions              map[string]int          `json:"actions,omitempty"`
 }
 
 func loadStorageSnapshot(ctx context.Context, pool *pgxpool.Pool) (storage.ReconcileSnapshot, error) {

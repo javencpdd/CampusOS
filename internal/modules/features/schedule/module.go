@@ -84,27 +84,17 @@ func (m *Module) Start(context.Context) error {
 	if m.config.Config != nil {
 		config = m.config.Config()
 	}
-	var svc *Service
-	var err error
-	if corestorage.NormalizeRoot(config.RootDir) == corestorage.DefaultRoot {
-		svc, err = NewServiceWithStorageAndTerms(config, m.storage, m.terms)
-	} else {
-		// Preserve a historical custom schedule root until an explicit User
-		// Storage migration moves its files. It must still obey the central
-		// AcademicTerm guard while the compatibility root is in use.
-		svc, err = NewService(config)
-		if svc != nil {
-			svc.academicTerms = m.terms
-		}
-	}
+	// The central User Storage provider owns every production schedule write.
+	// A historical plugin-level file_root is intentionally ignored here: it
+	// cannot bypass the durable Object/ledger boundary. Existing custom-root
+	// JSON remains a read/adoption concern, not a new-write destination.
+	svc, err := NewServiceWithStorageAndTerms(config, m.storage, m.terms)
 	if err != nil {
 		return fmt.Errorf("initialize schedule storage: %w", err)
 	}
 	svc.SetEnabledChecker(m.enabled)
 	svc.termReferences = m.references
-	if corestorage.NormalizeRoot(config.RootDir) == corestorage.DefaultRoot {
-		svc.SetObjectPort(m.objects)
-	}
+	svc.SetObjectPort(m.objects)
 	m.service = svc
 	m.handler = NewHandler(svc)
 	return nil

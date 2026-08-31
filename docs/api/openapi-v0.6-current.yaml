@@ -2360,6 +2360,36 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
   /api/v1/documents/{id}:
+    delete:
+      operationId: d_PersonalDocuments
+      summary: DELETE /api/v1/documents/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.personal-documents
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.documents.id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     get:
       operationId: d_PersonalDocuments
       summary: GET /api/v1/documents/:id

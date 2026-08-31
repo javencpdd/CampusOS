@@ -142,6 +142,113 @@ func TestManagedScheduleDualWritesImmutableObjectAfterCompatibilityJSON(t *testi
 	}
 }
 
+func TestManagedScheduleUsesReferenceVersionAndReadsClosedObjectFallback(t *testing.T) {
+	ctx := context.Background()
+	terms, err := academicterm.NewService(academicterm.NewMemoryRepository())
+	if err != nil {
+		t.Fatal(err)
+	}
+	term, err := terms.Create(ctx, "9001", academicterm.CreateRequest{
+		Year: 2028, Semester: academicterm.SemesterSpring, FirstWeekStart: "2028-02-21",
+		Status: academicterm.StatusOpen, IsDefault: true, Reason: "创建春季学期",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects, err := corestorage.NewObjectService(adapter, adapter, corestorage.NewMemoryObjectRepository(), adapter.DefaultQuotaBytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc, err := NewServiceWithStorageAndTerms(Config{RootDir: adapter.Root()}, adapter, terms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.termReferences = NewMemoryTermReferenceRepository()
+	svc.SetObjectPort(objects)
+
+	created, err := svc.Save(ctx, "1001", UpsertRequest{Settings: Settings{PeriodsPerDay: 12}, ExpectedVersion: 0})
+	if err != nil {
+		t.Fatalf("create governed schedule: %v", err)
+	}
+	if created.Schedule.AcademicTermID != term.ID || created.Schedule.TermStatus != academicterm.StatusOpen || created.Schedule.TermVersion != 1 {
+		t.Fatalf("governed schedule fields missing: %#v", created.Schedule)
+	}
+	if _, err := svc.Save(ctx, "1001", UpsertRequest{Settings: Settings{PeriodsPerDay: 12}, ExpectedVersion: 0}); !errors.Is(err, ErrTermReferenceConflict) {
+		t.Fatalf("stale schedule save must conflict, got %v", err)
+	}
+
+	compatibilityPath, err := svc.termSchedulePath("1001", term.Year, term.Semester)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(compatibilityPath); err != nil {
+		t.Fatalf("remove compatibility mirror: %v", err)
+	}
+	if _, err := terms.Close(ctx, "9001", term.ID, academicterm.TransitionRequest{ExpectedVersion: term.Version, Reason: "学期归档"}); err != nil {
+		t.Fatalf("close term: %v", err)
+	}
+	history, err := svc.GetTermByID(ctx, "1001", term.ID)
+	if err != nil {
+		t.Fatalf("closed schedule should fall back to current Object: %v", err)
+	}
+	if history.Schedule.TermStatus != academicterm.StatusClosed || history.Schedule.TermVersion != 1 {
+		t.Fatalf("closed historical schedule lost governed metadata: %#v", history.Schedule)
+	}
+	if _, err := svc.Save(ctx, "1001", UpsertRequest{TermYear: term.Year, Semester: term.Semester, Settings: Settings{PeriodsPerDay: 12}, ExpectedVersion: history.Schedule.TermVersion}); !errors.Is(err, academicterm.ErrClosed) {
+		t.Fatalf("closed schedule write must be rejected, got %v", err)
+	}
+}
+
+func TestManagedTermListDoesNotExposeUnreferencedJSON(t *testing.T) {
+	ctx := context.Background()
+	terms, err := academicterm.NewService(academicterm.NewMemoryRepository())
+	if err != nil {
+		t.Fatal(err)
+	}
+	term, err := terms.Create(ctx, "9001", academicterm.CreateRequest{
+		Year: 2028, Semester: academicterm.SemesterFall, FirstWeekStart: "2028-09-04",
+		Status: academicterm.StatusOpen, IsDefault: true, Reason: "创建秋季学期",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc, err := NewServiceWithStorageAndTerms(Config{RootDir: adapter.Root()}, adapter, terms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.termReferences = NewMemoryTermReferenceRepository()
+	path, err := svc.termSchedulePath("1001", term.Year, term.Semester)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsafe := Schedule{UserID: "1001", AcademicTermID: term.ID, TermYear: term.Year, Semester: term.Semester, FirstWeekStart: term.FirstWeekStart, Settings: Settings{PeriodsPerDay: 12}}
+	raw, err := json.Marshal(unsafe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := svc.ListTerms(ctx, "1001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Items) != 0 {
+		t.Fatalf("unreferenced compatibility JSON must not become a visible user term: %#v", listed.Items)
+	}
+}
+
 func TestScheduleDefaultsAndValidatesTerm(t *testing.T) {
 	svc, err := NewService(Config{RootDir: t.TempDir(), QuotaBytes: 1024 * 1024})
 	if err != nil {
@@ -239,7 +346,7 @@ func TestImportWritesIntoSelectedTermJSON(t *testing.T) {
 		t.Fatalf("new service: %v", err)
 	}
 	csvData := []byte("课程名称,时间,开始周,结束周\n离散数学,星期三 上午3-上午4,1,16\n")
-	result, err := svc.Import(context.Background(), "1001", "spring.csv", int64(len(csvData)), csvData, true, 2028, SemesterSpring)
+	result, err := svc.Import(context.Background(), "1001", "spring.csv", int64(len(csvData)), csvData, true, 2028, SemesterSpring, 0)
 	if err != nil {
 		t.Fatalf("import selected term: %v", err)
 	}
@@ -301,8 +408,8 @@ func TestLegacyScheduleMigratesToTermJSON(t *testing.T) {
 	if _, err := os.Stat(termPath); err != nil {
 		t.Fatalf("migrated term JSON missing: %v", err)
 	}
-	if _, err := os.Stat(legacyPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("legacy JSON should be removed after migration, got %v", err)
+	if _, err := os.Stat(legacyPath); err != nil {
+		t.Fatalf("legacy JSON must remain available for additive v14 adoption, got %v", err)
 	}
 }
 

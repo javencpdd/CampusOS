@@ -83,6 +83,17 @@ type PreviewMetricKey struct {
 	Format string
 }
 
+// PreviewRecord is an internal lifecycle record for a binary document
+// version. It deliberately has no owner, name, storage key, or source path:
+// those remain behind DocumentVersion/Object owner checks.
+type PreviewRecord struct {
+	ID                string
+	DocumentVersionID string
+	Status            string
+	ErrorCode         string
+	Format            string
+}
+
 type Repository interface {
 	Create(context.Context, Document, DocumentVersion) (DocumentDetail, error)
 	List(context.Context, string, ListFilter) ([]DocumentDetail, error)
@@ -91,4 +102,5 @@ type Repository interface {
 	AppendVersion(context.Context, string, string, int64, DocumentVersion, string) (DocumentDetail, error)
 	SetStatus(context.Context, string, string, int64, string) (DocumentDetail, error)
 	Version(context.Context, string, string, string) (DocumentVersion, error)
+	RecordPreview(context.Context, PreviewRecord) error
 }

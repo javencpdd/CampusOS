@@ -18,6 +18,10 @@ make error-contract-check
 make observability-check
 make v13-reliability-observability-check
 make v13-baseline-check
+make v14-baseline-check
+make v14-storage-check
+make v14-schedule-check
+make v14-documents-check
 make v13-capacity-check
 make appearance-delivery-check
 make docker-deploy-check

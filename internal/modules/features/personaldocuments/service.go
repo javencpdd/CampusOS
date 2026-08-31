@@ -1,7 +1,9 @@
 package personaldocuments
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +13,8 @@ import (
 
 	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/campusos/CampusOS/pkg/observability"
@@ -24,6 +28,7 @@ const (
 type Service struct {
 	repository Repository
 	objects    corestorage.ObjectPort
+	reliable   *reliability.Service
 	enabled    func() bool
 	now        func() time.Time
 	meter      observability.Meter
@@ -32,6 +37,24 @@ type Service struct {
 // SetMeter attaches optional aggregate operational telemetry. A nil meter is
 // valid for focused tests and isolated, non-server use.
 func (s *Service) SetMeter(meter observability.Meter) { s.meter = meter }
+
+// SetReliability makes document-version persistence and the preview request
+// one durable command.  The event carries only opaque identifiers and a
+// bounded target type; neither document content nor a provider path crosses
+// the Outbox boundary.
+//
+// Standalone unit tests may intentionally omit this port.  The production
+// module requires it, so normal deployed writes never fall back to a
+// post-commit best-effort enqueue.
+func (s *Service) SetReliability(reliable *reliability.Service) {
+	s.reliable = reliable
+	if reliable == nil || s.repository == nil {
+		return
+	}
+	if snapshotter, ok := s.repository.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+}
 
 func NewService(repo Repository, objects corestorage.ObjectPort) (*Service, error) {
 	if repo == nil || objects == nil {
@@ -70,6 +93,11 @@ func (s *Service) CreateText(ctx context.Context, owner string, req CreateReques
 	if !editable(format) {
 		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentInvalid, map[string]any{"field": "format", "allowed": []string{FormatText, FormatMarkdown, FormatCampusDoc}})
 	}
+	if strings.TrimSpace(req.Name) != "" {
+		if err := validateDocumentName(req.Name, format); err != nil {
+			return DocumentDetail{}, s.invalidUploadError(format, err.Error())
+		}
+	}
 	if e := validateContent(format, req.Content); e != nil {
 		return DocumentDetail{}, e
 	}
@@ -88,23 +116,16 @@ func (s *Service) Upload(ctx context.Context, owner, name, format, mime string, 
 	}
 	limit := limitFor(format)
 	if size < 0 || size > limit {
-		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": limit, "provided_bytes": size, "format": format})
+		return DocumentDetail{}, s.tooLargeError(format, limit, size)
 	}
-	if editable(format) {
-		raw, readErr := io.ReadAll(io.LimitReader(reader, limit+1))
-		if readErr != nil {
-			return DocumentDetail{}, readErr
-		}
-		if int64(len(raw)) > limit {
-			return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": limit, "provided_bytes": len(raw), "format": format})
-		}
-		if contentErr := validateContent(format, string(raw)); contentErr != nil {
-			return DocumentDetail{}, contentErr
-		}
-		size = int64(len(raw))
-		reader = strings.NewReader(string(raw))
+	raw, trustedMIME, e := s.validateUploadPayload(name, format, size, reader)
+	if e != nil {
+		return DocumentDetail{}, e
 	}
-	return s.createObjectAndDocument(ctx, owner, normalizeName(name, format), format, reader, size, mime)
+	// Never trust the multipart Content-Type. The bounded signature/structure
+	// validation above supplies the MIME persisted in Object metadata.
+	_ = mime
+	return s.createObjectAndDocument(ctx, owner, normalizeName(name, format), format, bytes.NewReader(raw), int64(len(raw)), trustedMIME)
 }
 func (s *Service) Save(ctx context.Context, owner, id string, req SaveRequest) (DocumentDetail, error) {
 	if e := s.enabledError(); e != nil {
@@ -120,6 +141,11 @@ func (s *Service) Save(ctx context.Context, owner, id string, req SaveRequest) (
 	if req.ExpectedVersion < 1 {
 		return DocumentDetail{}, s.public(ErrInvalid, apperror.PersonalDocumentInvalid, map[string]any{"field": "expected_version"})
 	}
+	if strings.TrimSpace(req.Name) != "" {
+		if err := validateDocumentName(req.Name, d.Format); err != nil {
+			return DocumentDetail{}, s.invalidUploadError(d.Format, err.Error())
+		}
+	}
 	if e := validateContent(d.Format, req.Content); e != nil {
 		return DocumentDetail{}, e
 	}
@@ -128,7 +154,9 @@ func (s *Service) Save(ctx context.Context, owner, id string, req SaveRequest) (
 		return DocumentDetail{}, e
 	}
 	version := DocumentVersion{ID: newID(), DocumentID: id, SourceObjectID: object.ID, Format: d.Format, SizeBytes: object.SizeBytes, SHA256: object.SHA256, CreatedAt: s.now().UTC()}
-	result, e := s.repository.AppendVersion(ctx, owner, id, req.ExpectedVersion, version, strings.TrimSpace(req.Name))
+	result, e := s.commitVersion(ctx, owner, id, version, func(commandCtx context.Context) (DocumentDetail, error) {
+		return s.repository.AppendVersion(commandCtx, owner, id, req.ExpectedVersion, version, strings.TrimSpace(req.Name))
+	})
 	if e != nil {
 		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
 		return DocumentDetail{}, s.translateError(e)
@@ -170,7 +198,9 @@ func (s *Service) RestoreVersion(ctx context.Context, owner, id, versionID strin
 		return DocumentDetail{}, e
 	}
 	next := DocumentVersion{ID: newID(), DocumentID: id, SourceObjectID: object.ID, Format: d.Format, SizeBytes: object.SizeBytes, SHA256: object.SHA256, RestoredFromVersionID: v.ID, CreatedAt: s.now().UTC()}
-	result, e := s.repository.AppendVersion(ctx, owner, id, expected, next, "")
+	result, e := s.commitVersion(ctx, owner, id, next, func(commandCtx context.Context) (DocumentDetail, error) {
+		return s.repository.AppendVersion(commandCtx, owner, id, expected, next, "")
+	})
 	if e != nil {
 		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
 		return DocumentDetail{}, s.translateError(e)
@@ -187,22 +217,40 @@ func (s *Service) SetStatus(ctx context.Context, owner, id string, expected int6
 	}
 	return x, nil
 }
-func (s *Service) OpenCurrent(ctx context.Context, owner, id string) (DocumentDetail, corestorage.ObjectReader, error) {
+
+// OpenVersion opens the current version when versionID is empty, or an
+// immutable historical version when it is supplied. Owner scoping happens
+// before resolving either object ID, so cross-user document/version probes are
+// indistinguishable from a missing document.
+func (s *Service) OpenVersion(ctx context.Context, owner, id, versionID string) (DocumentDetail, corestorage.ObjectReader, error) {
 	d, e := s.Get(ctx, owner, id)
 	if e != nil {
 		return DocumentDetail{}, corestorage.ObjectReader{}, e
 	}
-	if d.CurrentVersion == nil {
+	version := d.CurrentVersion
+	if strings.TrimSpace(versionID) != "" {
+		resolved, versionErr := s.repository.Version(ctx, owner, id, strings.TrimSpace(versionID))
+		if versionErr != nil {
+			return DocumentDetail{}, corestorage.ObjectReader{}, s.translateError(versionErr)
+		}
+		version = &resolved
+	}
+	if version == nil {
 		return DocumentDetail{}, corestorage.ObjectReader{}, s.public(ErrNotFound, apperror.PersonalDocumentNotFound, nil)
 	}
-	o, e := s.objects.Open(ctx, owner, d.CurrentVersion.SourceObjectID)
+	o, e := s.objects.Open(ctx, owner, version.SourceObjectID)
 	if e != nil {
 		return DocumentDetail{}, corestorage.ObjectReader{}, s.objectError(e, limitFor(d.Format), owner, 0)
 	}
 	return d, o, nil
 }
-func (s *Service) TextContent(ctx context.Context, owner, id string) (DocumentDetail, string, error) {
-	d, o, e := s.OpenCurrent(ctx, owner, id)
+
+func (s *Service) OpenCurrent(ctx context.Context, owner, id string) (DocumentDetail, corestorage.ObjectReader, error) {
+	return s.OpenVersion(ctx, owner, id, "")
+}
+
+func (s *Service) TextContentVersion(ctx context.Context, owner, id, versionID string) (DocumentDetail, string, error) {
+	d, o, e := s.OpenVersion(ctx, owner, id, versionID)
 	if e != nil {
 		return DocumentDetail{}, "", e
 	}
@@ -219,7 +267,12 @@ func (s *Service) TextContent(ctx context.Context, owner, id string) (DocumentDe
 	}
 	return d, string(raw), nil
 }
-func (s *Service) Preview(ctx context.Context, owner, id string) (PreviewStatus, error) {
+
+func (s *Service) TextContent(ctx context.Context, owner, id string) (DocumentDetail, string, error) {
+	return s.TextContentVersion(ctx, owner, id, "")
+}
+
+func (s *Service) PreviewVersion(ctx context.Context, owner, id, versionID string) (PreviewStatus, error) {
 	started := time.Now()
 	document, e := s.Get(ctx, owner, id)
 	if e != nil {
@@ -227,7 +280,7 @@ func (s *Service) Preview(ctx context.Context, owner, id string) (PreviewStatus,
 		return PreviewStatus{}, e
 	}
 	if editable(document.Format) {
-		_, content, contentErr := s.TextContent(ctx, owner, id)
+		_, content, contentErr := s.TextContentVersion(ctx, owner, id, versionID)
 		if contentErr != nil {
 			s.recordPreview(document.Format, "error", started)
 			return PreviewStatus{}, contentErr
@@ -244,6 +297,10 @@ func (s *Service) Preview(ctx context.Context, owner, id string) (PreviewStatus,
 	s.recordPreview(document.Format, "converter_unavailable", started)
 	_ = s.RefreshPreviewMetrics(ctx)
 	return PreviewStatus{Document: document, Status: "converter_unavailable", DownloadAvailable: true, Message: "当前部署未启用满足隔离要求的文档转换服务；原文件已安全保存，可下载后查看。"}, nil
+}
+
+func (s *Service) Preview(ctx context.Context, owner, id string) (PreviewStatus, error) {
+	return s.PreviewVersion(ctx, owner, id, "")
 }
 
 type previewSummaryReader interface {
@@ -293,20 +350,138 @@ func (s *Service) createObjectAndDocument(ctx context.Context, owner, name, form
 	now := s.now().UTC()
 	d := Document{ID: newID(), OwnerID: owner, Name: name, Format: format, Status: StatusActive, Version: 1, CreatedAt: now, UpdatedAt: now}
 	v := DocumentVersion{ID: newID(), DocumentID: d.ID, VersionNumber: 1, SourceObjectID: object.ID, Format: format, SizeBytes: object.SizeBytes, SHA256: object.SHA256, CreatedAt: now}
-	result, e := s.repository.Create(ctx, d, v)
+	result, e := s.commitVersion(ctx, owner, d.ID, v, func(commandCtx context.Context) (DocumentDetail, error) {
+		return s.repository.Create(commandCtx, d, v)
+	})
 	if e != nil {
 		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
 		return DocumentDetail{}, s.translateError(e)
 	}
 	return result, nil
 }
+
+const (
+	previewRequestedEvent  = "document.preview.requested.v1"
+	previewRequestConsumer = "feature.personal-documents.preview-gate"
+)
+
+var ErrInvalidPreviewRequest = errors.New("document preview request is invalid")
+
+// previewRequestPayload is deliberately an explicit allow-list.  In
+// particular, it contains no owner ID, name, URL, source bytes, storage key,
+// absolute path, JWT, or temporary download capability.
+type previewRequestPayload struct {
+	DocumentID        string `json:"document_id"`
+	DocumentVersionID string `json:"document_version_id"`
+	SourceObjectID    string `json:"source_object_id"`
+	TargetPreviewType string `json:"target_preview_type"`
+}
+
+// AcknowledgePreviewRequest is the v0.14 safe-fallback Outbox consumer.  It
+// intentionally does not fetch a document, source Object, or user data, and
+// it never invokes a converter in the API process.  The durable command has
+// already recorded the bounded PDF/DOCX "unsupported" state before this
+// event is visible.  A successful acknowledgement therefore means that a
+// deployment without a reviewed isolated Runner has applied its explicit,
+// safe fallback rather than accumulating retry/dead-letter noise.
+//
+// A future Converter Runner must use a different reviewed consumer and fetch
+// source content only through a narrowly scoped, authenticated read contract.
+func (s *Service) AcknowledgePreviewRequest(_ context.Context, event reliability.Event) error {
+	if s == nil || event.Type != previewRequestedEvent || event.AggregateType != "personal_document_version" || strings.TrimSpace(event.AggregateID) == "" {
+		return reliability.Permanent(ErrInvalidPreviewRequest)
+	}
+	var payload previewRequestPayload
+	decoder := json.NewDecoder(bytes.NewReader(event.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return reliability.Permanent(ErrInvalidPreviewRequest)
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF ||
+		strings.TrimSpace(payload.DocumentID) == "" ||
+		strings.TrimSpace(payload.DocumentVersionID) == "" ||
+		strings.TrimSpace(payload.SourceObjectID) == "" ||
+		strings.TrimSpace(payload.DocumentVersionID) != strings.TrimSpace(event.AggregateID) ||
+		(payload.TargetPreviewType != "native" && payload.TargetPreviewType != "converter") {
+		return reliability.Permanent(ErrInvalidPreviewRequest)
+	}
+	return nil
+}
+
+// commitVersion keeps a document row/version and its preview request in one
+// database transaction.  A failed outbox enqueue rolls the version change
+// back; the caller then deletes the newly created immutable source object as
+// normal compensation.  The object itself must remain outside the SQL
+// transaction because the Local Provider is a separate durable medium.
+func (s *Service) commitVersion(ctx context.Context, owner, documentID string, version DocumentVersion, action func(context.Context) (DocumentDetail, error)) (DocumentDetail, error) {
+	if s.reliable == nil {
+		return action(ctx)
+	}
+	if action == nil {
+		return DocumentDetail{}, errors.New("document version command action is required")
+	}
+	var result DocumentDetail
+	err := s.reliable.Execute(ctx, reliability.Command{
+		Code:           "personal_documents.preview.request",
+		ActorID:        owner,
+		ActorType:      "user",
+		ResourceType:   "personal_document",
+		ResourceID:     documentID,
+		OperationCode:  "document.preview.request",
+		IdempotencyKey: "document.preview.requested:" + version.ID,
+		EventFactory: func() (reliability.Event, error) {
+			return reliability.NewEvent(previewRequestedEvent, "personal_document_version", version.ID, previewRequestPayload{
+				DocumentID:        documentID,
+				DocumentVersionID: version.ID,
+				SourceObjectID:    version.SourceObjectID,
+				TargetPreviewType: previewTarget(version.Format),
+			})
+		},
+	}, func(commandCtx context.Context) error {
+		var commandErr error
+		result, commandErr = action(commandCtx)
+		if commandErr != nil {
+			return commandErr
+		}
+		return s.recordPreviewState(commandCtx, version)
+	})
+	if err != nil {
+		return DocumentDetail{}, err
+	}
+	return result, nil
+}
+
+func previewTarget(format string) string {
+	if normalizeFormat(format) == FormatPDF || normalizeFormat(format) == FormatDOCX {
+		return "converter"
+	}
+	return "native"
+}
+
+// recordPreviewState makes the current safe-degradation state explicit for
+// PDF/DOCX. Native text formats do not need a queued conversion record. A
+// future isolated Runner can transition this bounded row through pending /
+// processing / ready without changing document-version immutability.
+func (s *Service) recordPreviewState(ctx context.Context, version DocumentVersion) error {
+	if previewTarget(version.Format) != "converter" {
+		return nil
+	}
+	return s.repository.RecordPreview(ctx, PreviewRecord{
+		ID:                newID(),
+		DocumentVersionID: version.ID,
+		Status:            "unsupported",
+		ErrorCode:         "converter_unavailable",
+		Format:            normalizeFormat(version.Format),
+	})
+}
+
 func (s *Service) put(ctx context.Context, owner, name, format, mime string, size int64, reader io.Reader) (corestorage.Object, error) {
 	if strings.TrimSpace(owner) == "" {
 		return corestorage.Object{}, s.public(ErrInvalid, apperror.PersonalDocumentInvalid, map[string]any{"field": "owner"})
 	}
 	limit := limitFor(format)
 	if size < 0 || size > limit {
-		return corestorage.Object{}, s.public(ErrInvalid, apperror.PersonalDocumentTooLarge, map[string]any{"max_file_bytes": limit, "provided_bytes": size, "format": format})
+		return corestorage.Object{}, s.tooLargeError(format, limit, size)
 	}
 	object, e := s.objects.Put(ctx, owner, corestorage.PutRequest{Namespace: "personal-documents", Purpose: "source." + format, OriginalName: name, MimeType: normalizeMime(mime, format), SizeHint: size, Reader: io.LimitReader(reader, limit+1)})
 	if e != nil {

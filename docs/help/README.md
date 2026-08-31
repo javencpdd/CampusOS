@@ -135,7 +135,7 @@
 | `系统设计相关/v0.5回归Smoke测试说明.md` | v0.5 测试快照；当前发布门禁已扩展到数据库、恢复和浏览器矩阵 | [开发、验证与贡献指南](系统设计相关/开发运行与验证指南.md)、[构建与发布](../../docs-site/deployment/release.md) |
 | `系统设计相关/v0.5集成中心与低风险集成指南.md` | v0.5 能力边界快照 | [集成中心与能力边界](../../docs-site/operations/integrations.md) |
 | `系统设计相关/数据库v0.6体检与模型决策.md` | migration `000016` 时点的体检证据 | Admin `/architecture`、[当前架构概览](../architecture/当前架构概览.md) |
-| `系统设计相关/数据库管理指南.md` 的表清单部分 | 只统计到 migration `000018`，不再代表当前 43 个 migration | Admin `/architecture`、`migrations/`、`make database-check` |
+| `系统设计相关/数据库管理指南.md` 的表清单部分 | 只统计到 migration `000018`，不再代表当前 49 个 migration | Admin `/architecture`、`migrations/`、`make database-check` |
 | `系统设计相关/PostgreSQL双实例数据不一致说明.md` | 一次本机双实例事故复盘 | [Docker 部署与迁移](../../docs-site/deployment/docker.md)；仅在同类故障时查阅旧复盘 |
 | `系统设计相关/RBAC权限与版主管理说明.md` | v6 前后的权限模型快照 | [权限配置入门](../../docs-site/guide/permission-configuration.md)、[v11 权限与可靠审计](系统设计相关/v11权限管理与可靠审计设计入门.md) |
 | `系统设计相关/v10权限管理设计与使用入门.md` | v10 权限目录形成时的架构记录 | v11 文档和当前生成授权矩阵 |

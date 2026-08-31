@@ -105,6 +105,7 @@
 | `PUT` | `/api/v1/documents/:id` | `http.put.api.v1.documents.id` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/documents/:id/versions` | `http.get.api.v1.documents.id.versions` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |
 | `POST` | `/api/v1/documents/:id/versions/:version_id/restore` | `http.post.api.v1.documents.id.versions.version_id.restore` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
+| `DELETE` | `/api/v1/documents/:id` | `http.delete.api.v1.documents.id` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/documents/:id/trash` | `http.post.api.v1.documents.id.trash` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `POST` | `/api/v1/documents/:id/restore` | `http.post.api.v1.documents.id.restore` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log` |
 | `GET` | `/api/v1/documents/:id/download` | `http.get.api.v1.documents.id.download` | `feature.personal-documents` | `d.PersonalDocuments` | `jwt` | `-` | `handler-enforced` | `self-or-resource-owner` | `request-log-read` |

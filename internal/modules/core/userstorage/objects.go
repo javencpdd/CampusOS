@@ -84,3 +84,12 @@ type ObjectPort interface {
 	Delete(context.Context, string, string, int64) error
 	List(context.Context, string, ObjectFilter, PageRequest) (ObjectPage, error)
 }
+
+// CompatibilityLedger is intentionally narrower than ObjectPort. It exists
+// only while built-in features keep a readable compatibility copy beside
+// immutable Objects. Callers supply byte counts, never a filesystem path;
+// the provider updates the same durable quota ledger used by ObjectPort.
+// New feature data must not use this as a general file writer.
+type CompatibilityLedger interface {
+	ReplaceCompatibility(context.Context, string, int64, int64) error
+}

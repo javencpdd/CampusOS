@@ -234,6 +234,7 @@ func Build(d Dependencies) *Router {
 		authenticated.PUT("/documents/:id", d.PersonalDocuments.Save)
 		authenticated.GET("/documents/:id/versions", d.PersonalDocuments.Versions)
 		authenticated.POST("/documents/:id/versions/:version_id/restore", d.PersonalDocuments.RestoreVersion)
+		authenticated.DELETE("/documents/:id", d.PersonalDocuments.Trash)
 		authenticated.POST("/documents/:id/trash", d.PersonalDocuments.Trash)
 		authenticated.POST("/documents/:id/restore", d.PersonalDocuments.Restore)
 		authenticated.GET("/documents/:id/download", d.PersonalDocuments.Download)

@@ -31,6 +31,41 @@ func (s *Service) ListAll(ctx context.Context) ([]Term, error) {
 	return s.repository.List(ctx, ListFilter{})
 }
 
+// ListAdmin attaches one bounded, grouped reference count to each term so
+// administrators can understand why deletion is blocked before issuing a
+// destructive command. The count is a display projection; the database FK
+// still enforces the invariant under concurrent writes.
+func (s *Service) ListAdmin(ctx context.Context) ([]Term, error) {
+	items, err := s.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.ID)
+	}
+	counts, err := s.repository.CountSchedules(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for index := range items {
+		items[index].ScheduleReferenceCount = counts[items[index].ID]
+	}
+	return items, nil
+}
+
+// Get resolves a term for an owner-scoped historical read.  Unlike
+// GetAvailable it deliberately does not turn a closed term into an error;
+// callers must still use FindOpen/GetAvailable for every create or write
+// decision.
+func (s *Service) Get(ctx context.Context, id string) (Term, error) {
+	item, err := s.repository.Get(ctx, strings.TrimSpace(id))
+	if errors.Is(err, ErrNotFound) {
+		return Term{}, publicError(ErrNotFound, apperror.AcademicTermNotAvailable, nil)
+	}
+	return item, err
+}
+
 // FindOpen resolves a user-selectable academic term by its stable business
 // key. Features use this instead of inferring a term from the server clock.
 func (s *Service) FindOpen(ctx context.Context, year int, semester string) (Term, error) {

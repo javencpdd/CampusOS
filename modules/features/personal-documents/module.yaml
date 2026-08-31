@@ -8,7 +8,7 @@ description: "Private, versioned personal documents backed by the User Storage O
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.content-editor, core.identity, core.user-storage, core.feature-registry, core.observability]
+dependencies: [core.content-editor, core.identity, core.user-storage, core.reliability, core.feature-registry, core.observability]
 implementation: internal/modules/features/personaldocuments
 ui:
   contract_version: campusos.ui/v1

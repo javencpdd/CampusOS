@@ -12,6 +12,7 @@ export type AcademicTerm = {
   created_at: string
   updated_at: string
   closed_at?: string
+  schedule_reference_count?: number
 }
 
 export const academicTermApi = {

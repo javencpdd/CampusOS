@@ -23,6 +23,7 @@ type ObjectService struct {
 	maxBytes   int64
 	meter      observability.Meter
 }
+
 func (s *ObjectService) SetMeter(meter observability.Meter) { s.meter = meter }
 
 func NewObjectService(storage Port, quota Quota, repository ObjectRepository, maxBytes int64) (*ObjectService, error) {
@@ -45,22 +46,29 @@ func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (
 	if mime == "" {
 		mime = "application/octet-stream"
 	}
-	observed, err := s.storage.Usage(owner)
-	if err != nil {
+	if _, err := s.ensureAccount(ctx, owner); err != nil {
 		return Object{}, err
 	}
 	id := strconv.FormatInt(idgen.New(), 10)
-	item, res, err := s.repository.Reserve(ctx, storedObject{Object: Object{ID: id, OwnerID: owner, Namespace: namespace, Purpose: purpose, OriginalName: name, MimeType: mime}, storageKey: id + ".bin"}, req.SizeHint, s.quota.QuotaBytes(owner), observed)
+	item, res, err := s.repository.Reserve(ctx, storedObject{Object: Object{ID: id, OwnerID: owner, Namespace: namespace, Purpose: purpose, OriginalName: name, MimeType: mime}, storageKey: id + ".bin"}, req.SizeHint, s.quota.QuotaBytes(owner), 0)
 	if err != nil {
 		return Object{}, err
 	}
+	var path string
 	committed := false
+	renamed := false
 	defer func() {
 		if !committed {
+			if renamed {
+				// A database commit can fail after the provider rename. Keep the
+				// object pending/aborted state and attempt immediate local cleanup;
+				// if cleanup itself fails, reconcile will report the orphan.
+				_ = os.Remove(path)
+			}
 			_ = s.repository.Abort(context.Background(), item.ID, res)
 		}
 	}()
-	path, err := s.objectPath(owner, item.storageKey)
+	path, err = s.objectPath(owner, item.storageKey)
 	if err != nil {
 		return Object{}, err
 	}
@@ -90,6 +98,7 @@ func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (
 	if err = os.Rename(tempPath, path); err != nil {
 		return Object{}, err
 	}
+	renamed = true
 	item, err = s.repository.Commit(ctx, item.ID, res, written, hex.EncodeToString(hash.Sum(nil)), item.storageKey)
 	if err != nil {
 		return Object{}, err
@@ -146,21 +155,52 @@ func (s *ObjectService) List(ctx context.Context, owner string, filter ObjectFil
 	}
 	return s.repository.ListOwned(ctx, owner, filter, page)
 }
-func (s *ObjectService) Usage(_ context.Context, owner string) (ObjectUsage, error) {
+func (s *ObjectService) Usage(ctx context.Context, owner string) (ObjectUsage, error) {
 	if !SafeSegment(owner) {
 		return ObjectUsage{}, ErrUnsafePath
 	}
-	used, err := s.storage.Usage(owner)
+	account, err := s.ensureAccount(ctx, owner)
 	if err != nil {
 		return ObjectUsage{}, err
 	}
 	quota := s.quota.QuotaBytes(owner)
-	remaining := quota - used
+	remaining := quota - account.UsedBytes - account.ReservedBytes
 	if remaining < 0 {
 		remaining = 0
 	}
-	return ObjectUsage{UsedBytes: used, QuotaBytes: quota, RemainingBytes: remaining}, nil
+	return ObjectUsage{UsedBytes: account.UsedBytes, QuotaBytes: quota, RemainingBytes: remaining}, nil
 }
+
+// ReplaceCompatibility accounts for a built-in feature's explicitly retained
+// legacy copy. It is deliberately not part of ObjectPort: callers cannot use
+// it to obtain paths or store arbitrary new business files.
+func (s *ObjectService) ReplaceCompatibility(ctx context.Context, owner string, previousBytes, nextBytes int64) error {
+	if !SafeSegment(owner) || previousBytes < 0 || nextBytes < 0 {
+		return ErrUnsafePath
+	}
+	if _, err := s.ensureAccount(ctx, owner); err != nil {
+		return err
+	}
+	return s.repository.AdjustUsage(ctx, owner, nextBytes-previousBytes, s.quota.QuotaBytes(owner), 0)
+}
+
+// ensureAccount bridges legacy directory usage into the durable ledger once.
+// Normal ObjectPort calls must not recursively walk a user's files.
+func (s *ObjectService) ensureAccount(ctx context.Context, owner string) (objectAccount, error) {
+	if !SafeSegment(owner) {
+		return objectAccount{}, ErrUnsafePath
+	}
+	account, exists, err := s.repository.Account(ctx, owner)
+	if err != nil || exists {
+		return account, err
+	}
+	observed, err := s.storage.Usage(owner)
+	if err != nil {
+		return objectAccount{}, err
+	}
+	return s.repository.EnsureAccount(ctx, owner, observed)
+}
+
 // RefreshMetrics updates only aggregate lifecycle gauges. It is safe to call
 // after a successful mutation or at module startup; metrics failure never
 // changes an object write result.

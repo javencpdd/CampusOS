@@ -15,6 +15,10 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$POSTGRES_CONTAINER" && \
 fi
 DB_USER="${DB_USER:-campusos}"
 DB_PASSWORD="${DB_PASSWORD:-${POSTGRES_PASSWORD:-campusos_dev}}"
+# The Docker development compose file publishes PostgreSQL on 55432 by
+# default. Production/other environments can still provide DB_PORT explicitly.
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-${CAMPUSOS_DEV_POSTGRES_PORT:-55432}}"
 drill_db="campusos_restore_drill_$(date -u +%Y%m%d%H%M%S)"
 work_dir="$(mktemp -d)"
 archive=""
@@ -52,4 +56,21 @@ test -f "$work_dir/extracted/files/data/resources/themes/campus-canvas/resource.
 test -d "$work_dir/extracted/files/data/personal-space"
 grep -qx 'v14_storage_tables=8' "$work_dir/restored-counts.txt"
 grep -qx 'v14_schedule_binding_columns=3' "$work_dir/restored-counts.txt"
-echo "single-node restore drill passed: database, modules, plugins, resources, user assets, v14 object metadata and schedule bindings restored in isolation"
+
+# Restore validity is not established by table counts alone. Re-run the
+# read-only provider/database reconciliation against the restored file tree
+# and isolated database, then require the high-value Object facts to agree.
+# Legacy compatibility files may still be reported as legacy_unclassified;
+# this drill intentionally never deletes or rewrites them.
+reconcile_report="$work_dir/storage-reconcile.json"
+reconcile_dsn="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${drill_db}?sslmode=disable"
+DATABASE_DSN="$reconcile_dsn" go run ./cmd/campusosctl storage reconcile \
+  --root "$work_dir/extracted/files/data/personal-space" \
+  --dsn "$reconcile_dsn" --dry-run >"$reconcile_report"
+for difference in metadata_missing_physical physical_without_metadata payload_hash_or_size_mismatch ledger_mismatch; do
+  if grep -Eq "\"${difference}\"[[:space:]]*:[[:space:]]*[1-9][0-9]*" "$reconcile_report"; then
+    echo "restored storage reconciliation reported ${difference}; inspect $reconcile_report" >&2
+    exit 1
+  fi
+done
+echo "single-node restore drill passed: database, modules, plugins, resources, user assets, v14 object metadata and schedule bindings restored in isolation; restored Object metadata/file/hash/ledger checks have zero differences"

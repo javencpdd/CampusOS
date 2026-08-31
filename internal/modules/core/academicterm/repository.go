@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 type Repository interface {
 	List(context.Context, ListFilter) ([]Term, error)
+	CountSchedules(context.Context, []string) (map[string]int64, error)
 	Get(context.Context, string) (Term, error)
 	Create(context.Context, Term) (Term, error)
 	UpdateFirstWeek(context.Context, string, int64, time.Time, string) (Term, error)
@@ -45,6 +47,17 @@ func (r *MemoryRepository) List(_ context.Context, filter ListFilter) ([]Term, e
 	}
 	sortTerms(items)
 	return items, nil
+}
+
+func (r *MemoryRepository) CountSchedules(_ context.Context, termIDs []string) (map[string]int64, error) {
+	// The memory AcademicTerm adapter is intentionally isolated from the
+	// Schedule feature. It truthfully reports no external references in its
+	// standalone test profile; deployed PostgreSQL uses the durable table.
+	counts := make(map[string]int64, len(termIDs))
+	for _, id := range termIDs {
+		counts[id] = 0
+	}
+	return counts, nil
 }
 
 func (r *MemoryRepository) Get(_ context.Context, id string) (Term, error) {
@@ -215,6 +228,42 @@ func (r *PgRepository) List(ctx context.Context, filter ListFilter) ([]Term, err
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+// CountSchedules is deliberately a single grouped query rather than an N+1
+// query from the administrator list. The count is informative UI data only;
+// Delete still relies on the RESTRICT FK under the actual write transaction.
+func (r *PgRepository) CountSchedules(ctx context.Context, termIDs []string) (map[string]int64, error) {
+	counts := make(map[string]int64, len(termIDs))
+	if len(termIDs) == 0 {
+		return counts, nil
+	}
+	ids := make([]int64, 0, len(termIDs))
+	for _, id := range termIDs {
+		parsed, err := strconv.ParseInt(id, 10, 64)
+		if err != nil || parsed <= 0 {
+			continue
+		}
+		ids = append(ids, parsed)
+	}
+	if len(ids) == 0 {
+		return counts, nil
+	}
+	rows, err := r.db(ctx).Query(ctx, `SELECT academic_term_id::text,COUNT(*)::bigint
+		FROM user_schedule_terms WHERE academic_term_id=ANY($1::bigint[]) GROUP BY academic_term_id`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var count int64
+		if err := rows.Scan(&id, &count); err != nil {
+			return nil, err
+		}
+		counts[id] = count
+	}
+	return counts, rows.Err()
 }
 
 func (r *PgRepository) Get(ctx context.Context, id string) (Term, error) {

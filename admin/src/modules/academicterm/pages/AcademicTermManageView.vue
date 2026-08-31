@@ -33,6 +33,11 @@
           <el-tag v-if="row.is_default" type="warning" effect="plain" class="default-tag">默认</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="课表引用" width="105" align="center">
+        <template #default="{ row }">
+          <el-tag :type="row.schedule_reference_count ? 'warning' : 'info'" effect="plain">{{ row.schedule_reference_count || 0 }} 个</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="版本" width="92" align="center"><template #default="{ row }">v{{ row.version }}</template></el-table-column>
       <el-table-column label="更新时间" min-width="175"><template #default="{ row }">{{ formatTime(row.updated_at) }}</template></el-table-column>
       <el-table-column label="操作" min-width="320" fixed="right">
@@ -41,7 +46,7 @@
           <el-button v-if="row.status === 'open'" size="small" type="warning" plain @click="transition(row, 'close')">关闭</el-button>
           <el-button v-else size="small" type="success" plain @click="transition(row, 'open')">重新开放</el-button>
           <el-button v-if="row.status === 'open' && !row.is_default" size="small" type="primary" plain @click="transition(row, 'default')">设为默认</el-button>
-          <el-button size="small" type="danger" text @click="transition(row, 'delete')">删除</el-button>
+          <el-button size="small" type="danger" text :disabled="Boolean(row.schedule_reference_count)" :title="row.schedule_reference_count ? '已有用户课表引用，不能删除' : '删除学期'" @click="transition(row, 'delete')">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

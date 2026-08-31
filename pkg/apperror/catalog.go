@@ -55,6 +55,8 @@ var (
 	AcademicTermDefaultUnavailable  = descriptor("academic-term", "academic_term.default_unavailable", 74005, 409, "当前没有可用的默认学期", false)
 	AcademicTermVersionConflict     = descriptor("academic-term", "academic_term.version_conflict", 74006, 409, "学期已被其他管理员更新，请刷新后重试", false)
 	AcademicTermHasSchedules        = descriptor("academic-term", "academic_term.has_schedules", 74007, 409, "该学期已有课表数据，不能删除", false)
+	ScheduleObjectUnavailable       = descriptor("personal-schedule", "schedule.object_unavailable", 74008, 503, "课表数据暂时无法读取，请稍后重试", true)
+	PersonalScheduleDisabled        = descriptor("personal-schedule", "schedule.feature_disabled", 74009, 503, "个人课表功能暂未启用", true)
 	UserStorageQuotaExceeded        = descriptor("user-storage", "user_storage.quota_exceeded", 76001, 409, "个人空间不足，无法保存文件", false)
 	PersonalDocumentDisabled        = descriptor("personal-documents", "personal_document.feature_disabled", 77001, 503, "我的文档功能暂未启用", true)
 	PersonalDocumentInvalid         = descriptor("personal-documents", "personal_document.invalid", 77002, 400, "文档请求无效", false)
@@ -108,6 +110,7 @@ var catalog = []Descriptor{
 	IdentityMFAStepUpRequired,
 	AcademicTermInvalid, AcademicTermNotAvailable, AcademicTermAlreadyExists, AcademicTermClosed,
 	AcademicTermDefaultUnavailable, AcademicTermVersionConflict, AcademicTermHasSchedules,
+	ScheduleObjectUnavailable, PersonalScheduleDisabled,
 	UserStorageQuotaExceeded, PersonalDocumentDisabled, PersonalDocumentInvalid, PersonalDocumentNotFound,
 	PersonalDocumentTooLarge, PersonalDocumentVersionConflict, PersonalDocumentNotEditable,
 	MutualAidFeatureDisabled, MutualAidNotFound, MutualAidForbidden, MutualAidInvalidInput,

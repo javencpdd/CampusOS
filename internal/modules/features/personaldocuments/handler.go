@@ -1,6 +1,7 @@
 package personaldocuments
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 )
 
 type Handler struct{ service *Service }
+
+const maxDocumentMultipartBytes = maxBinaryBytes + 1024*1024
 
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 func (h *Handler) List(c *gin.Context) {
@@ -50,8 +53,16 @@ func (h *Handler) Upload(c *gin.Context) {
 	if !ok {
 		return
 	}
+	// FormFile otherwise lets multipart parsing consume an unbounded request
+	// before Service can enforce the per-format limit.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxDocumentMultipartBytes)
 	file, e := c.FormFile("file")
 	if e != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(e, &maxErr) {
+			response.WriteError(c, h.service.tooLargeError("document", maxBinaryBytes, maxDocumentMultipartBytes))
+			return
+		}
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "file", "reason": "请选择要上传的文件"})
 		return
 	}
@@ -94,7 +105,7 @@ func (h *Handler) Content(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, content, e := h.service.TextContent(c.Request.Context(), owner, c.Param("id"))
+	item, content, e := h.service.TextContentVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
 		response.WriteError(c, e)
 		return
@@ -106,7 +117,7 @@ func (h *Handler) Preview(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, e := h.service.Preview(c.Request.Context(), owner, c.Param("id"))
+	item, e := h.service.PreviewVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
 		response.WriteError(c, e)
 		return
@@ -183,7 +194,7 @@ func (h *Handler) Download(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, object, e := h.service.OpenCurrent(c.Request.Context(), owner, c.Param("id"))
+	item, object, e := h.service.OpenVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
 		response.WriteError(c, e)
 		return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ var (
 	ErrObjectVersion     = errors.New("storage object version conflict")
 	ErrObjectQuota       = errors.New("storage object exceeds quota")
 	ErrObjectUnavailable = errors.New("storage object is unavailable")
+	ErrObjectPageCursor  = errors.New("storage object page cursor is invalid")
 )
 
 type storedObject struct {
@@ -32,6 +34,13 @@ type reservation struct {
 	Status        string
 }
 
+// objectAccount is the persisted quota ledger for one owner. It stays
+// provider-internal: callers receive only the safe usage projection.
+type objectAccount struct {
+	UsedBytes     int64
+	ReservedBytes int64
+}
+
 // ObjectSummary is an aggregate-only, provider-internal operational view. It
 // never includes an owner, object ID, path, filename, or byte payload.
 type ObjectSummary struct {
@@ -40,6 +49,9 @@ type ObjectSummary struct {
 }
 
 type ObjectRepository interface {
+	Account(context.Context, string) (objectAccount, bool, error)
+	EnsureAccount(context.Context, string, int64) (objectAccount, error)
+	AdjustUsage(context.Context, string, int64, int64, int64) error
 	Reserve(context.Context, storedObject, int64, int64, int64) (storedObject, reservation, error)
 	Commit(context.Context, string, reservation, int64, string, string) (storedObject, error)
 	Abort(context.Context, string, reservation) error
@@ -64,6 +76,47 @@ type storageAccount struct {
 
 func NewMemoryObjectRepository() *MemoryObjectRepository {
 	return &MemoryObjectRepository{objects: map[string]storedObject{}, reservations: map[string]reservation{}, accounts: map[string]storageAccount{}}
+}
+
+func (r *MemoryObjectRepository) Account(_ context.Context, owner string) (objectAccount, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	account, ok := r.accounts[owner]
+	if !ok || !account.initialized {
+		return objectAccount{}, false, nil
+	}
+	return objectAccount{UsedBytes: account.used, ReservedBytes: account.reserved}, true, nil
+}
+
+func (r *MemoryObjectRepository) EnsureAccount(_ context.Context, owner string, observed int64) (objectAccount, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	account := r.accounts[owner]
+	if !account.initialized {
+		account.used = maxInt64(0, observed)
+		account.initialized = true
+		r.accounts[owner] = account
+	}
+	return objectAccount{UsedBytes: account.used, ReservedBytes: account.reserved}, nil
+}
+
+func (r *MemoryObjectRepository) AdjustUsage(_ context.Context, owner string, delta, quota, observed int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	account := r.accounts[owner]
+	if !account.initialized {
+		account.used = maxInt64(0, observed)
+		account.initialized = true
+	}
+	if delta > 0 && account.used+account.reserved+delta > quota {
+		return ErrObjectQuota
+	}
+	account.used += delta
+	if account.used < 0 {
+		account.used = 0
+	}
+	r.accounts[owner] = account
+	return nil
 }
 
 func (r *MemoryObjectRepository) Reserve(_ context.Context, item storedObject, requested, quota, observed int64) (storedObject, reservation, error) {
@@ -140,14 +193,26 @@ func (r *MemoryObjectRepository) GetOwned(_ context.Context, owner, id string) (
 func (r *MemoryObjectRepository) ListOwned(_ context.Context, owner string, filter ObjectFilter, page PageRequest) (ObjectPage, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	cursor, err := parseObjectPageCursor(page.Cursor)
+	if err != nil {
+		return ObjectPage{}, err
+	}
 	items := []Object{}
 	for _, item := range r.objects {
-		if item.OwnerID != owner || (!filter.IncludeDeleted && item.Status == ObjectStatusDeleted) || (filter.Namespace != "" && item.Namespace != filter.Namespace) || (filter.Purpose != "" && item.Purpose != filter.Purpose) || (page.Cursor != "" && item.ID >= page.Cursor) {
+		itemID, idErr := parseObjectPageCursor(item.ID)
+		if idErr != nil {
+			return ObjectPage{}, idErr
+		}
+		if item.OwnerID != owner || (!filter.IncludeDeleted && item.Status == ObjectStatusDeleted) || (filter.Namespace != "" && item.Namespace != filter.Namespace) || (filter.Purpose != "" && item.Purpose != filter.Purpose) || (cursor > 0 && itemID >= cursor) {
 			continue
 		}
 		items = append(items, item.Object)
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].ID > items[j].ID })
+	sort.Slice(items, func(i, j int) bool {
+		left, _ := parseObjectPageCursor(items[i].ID)
+		right, _ := parseObjectPageCursor(items[j].ID)
+		return left > right
+	})
 	limit := normalizePageLimit(page.Limit)
 	next := ""
 	if len(items) > limit {
@@ -227,6 +292,60 @@ func NewPgObjectRepository(pool *pgxpool.Pool) *PgObjectRepository {
 
 func (r *PgObjectRepository) db(ctx context.Context) transaction.Executor {
 	return transaction.ExecutorFor(ctx, r.pool)
+}
+
+// Account reads the durable ledger without inspecting the provider tree. A
+// missing row is normal before the one-time legacy adoption handoff.
+func (r *PgObjectRepository) Account(ctx context.Context, owner string) (objectAccount, bool, error) {
+	var account objectAccount
+	err := r.db(ctx).QueryRow(ctx, `SELECT used_bytes,reserved_bytes FROM user_storage_accounts WHERE user_id=$1::bigint`, owner).Scan(&account.UsedBytes, &account.ReservedBytes)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return objectAccount{}, false, nil
+	}
+	if err != nil {
+		return objectAccount{}, false, err
+	}
+	return account, true, nil
+}
+
+// EnsureAccount performs the one-time legacy observation handoff. Once an
+// account exists, normal ObjectPort reads and writes use it as quota fact.
+func (r *PgObjectRepository) EnsureAccount(ctx context.Context, owner string, observed int64) (objectAccount, error) {
+	var account objectAccount
+	err := r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		if _, err := db.Exec(txCtx, `INSERT INTO user_storage_accounts (user_id,used_bytes,reserved_bytes,version,created_at,updated_at)
+			VALUES ($1::bigint,$2,0,1,NOW(),NOW()) ON CONFLICT (user_id) DO NOTHING`, owner, maxInt64(0, observed)); err != nil {
+			return err
+		}
+		return db.QueryRow(txCtx, `SELECT used_bytes,reserved_bytes FROM user_storage_accounts WHERE user_id=$1::bigint`, owner).Scan(&account.UsedBytes, &account.ReservedBytes)
+	})
+	if err != nil {
+		return objectAccount{}, err
+	}
+	return account, nil
+}
+
+// AdjustUsage applies the byte delta of an explicitly retained compatibility
+// copy. It keeps legacy JSON/index files in the same transactional quota
+// ledger without making normal ObjectPort calls rescan a user's directory.
+func (r *PgObjectRepository) AdjustUsage(ctx context.Context, owner string, delta, quota, observed int64) error {
+	return r.transactions.Within(ctx, func(txCtx context.Context) error {
+		db := r.db(txCtx)
+		if _, err := db.Exec(txCtx, `INSERT INTO user_storage_accounts (user_id,used_bytes,reserved_bytes,version,created_at,updated_at)
+			VALUES ($1::bigint,$2,0,1,NOW(),NOW()) ON CONFLICT (user_id) DO NOTHING`, owner, maxInt64(0, observed)); err != nil {
+			return err
+		}
+		var used, reserved int64
+		if err := db.QueryRow(txCtx, `SELECT used_bytes,reserved_bytes FROM user_storage_accounts WHERE user_id=$1::bigint FOR UPDATE`, owner).Scan(&used, &reserved); err != nil {
+			return err
+		}
+		if delta > 0 && used+reserved+delta > quota {
+			return ErrObjectQuota
+		}
+		_, err := db.Exec(txCtx, `UPDATE user_storage_accounts SET used_bytes=GREATEST(0,used_bytes+$2),version=version+1,updated_at=NOW() WHERE user_id=$1::bigint`, owner, delta)
+		return err
+	})
 }
 
 func (r *PgObjectRepository) Reserve(ctx context.Context, item storedObject, requested, quota, observed int64) (storedObject, reservation, error) {
@@ -319,7 +438,11 @@ func (r *PgObjectRepository) GetOwned(ctx context.Context, owner, id string) (st
 }
 func (r *PgObjectRepository) ListOwned(ctx context.Context, owner string, filter ObjectFilter, page PageRequest) (ObjectPage, error) {
 	limit := normalizePageLimit(page.Limit)
-	rows, err := r.db(ctx).Query(ctx, `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE owner_user_id=$1 AND ($2='' OR namespace=$2) AND ($3='' OR purpose=$3) AND ($4 OR status<>'deleted') AND ($5='' OR id::text<$5) ORDER BY id DESC LIMIT $6`, owner, filter.Namespace, filter.Purpose, filter.IncludeDeleted, page.Cursor, limit+1)
+	cursor, err := parseObjectPageCursor(page.Cursor)
+	if err != nil {
+		return ObjectPage{}, err
+	}
+	rows, err := r.db(ctx).Query(ctx, `SELECT id::text,owner_user_id::text,namespace,purpose,storage_key,original_name,mime_type,size_bytes,sha256,status,version,created_at,updated_at,deleted_at FROM storage_objects WHERE owner_user_id=$1 AND ($2='' OR namespace=$2) AND ($3='' OR purpose=$3) AND ($4 OR status<>'deleted') AND ($5::bigint=0 OR id<$5::bigint) ORDER BY id DESC LIMIT $6`, owner, filter.Namespace, filter.Purpose, filter.IncludeDeleted, cursor, limit+1)
 	if err != nil {
 		return ObjectPage{}, err
 	}
@@ -419,6 +542,23 @@ func normalizePageLimit(value int) int {
 	}
 	return value
 }
+
+// parseObjectPageCursor preserves the numeric order of Snowflake-style object
+// IDs. Comparing id::text would order values lexicographically and prevent
+// PostgreSQL from using the (owner_user_id, id DESC) keyset index reliably on
+// large catalogs.
+func parseObjectPageCursor(value string) (int64, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed <= 0 {
+		return 0, ErrObjectPageCursor
+	}
+	return parsed, nil
+}
+
 func normalizeObjectText(value string) string { return strings.TrimSpace(value) }
 
 func maxInt64(left, right int64) int64 {

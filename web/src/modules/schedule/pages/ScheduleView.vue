@@ -23,8 +23,20 @@
       </template>
 
       <el-alert v-if="disabled" type="warning" :closable="false" show-icon title="个人课表插件当前未启用" />
-      <el-alert v-else-if="!availableTerms.length" type="info" :closable="false" show-icon title="管理员尚未开放教学学期；暂不能新建或编辑课表。" />
-      <el-alert v-else-if="termReadOnly" type="info" :closable="false" show-icon title="当前为已关闭或历史学期，只读查看；请切换到开放学期后编辑。" />
+      <el-alert
+        v-else-if="!availableTerms.length"
+        type="info"
+        :closable="false"
+        show-icon
+        title="管理员尚未开放教学学期；暂不能新建或编辑课表。"
+      />
+      <el-alert
+        v-else-if="termReadOnly"
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前为已关闭或历史学期，只读查看；请切换到开放学期后编辑。"
+      />
 
       <div class="toolbar">
         <el-tooltip content="选择本人已保存的学期；关闭学期仅可读取" placement="top">
@@ -43,12 +55,24 @@
           </el-select>
         </el-tooltip>
         <el-tooltip content="只显示管理员开放的春季或秋季学期；选中后可打开或新建自己的课表" placement="top">
-          <el-select v-model="selectedAvailableTermKey" class="term-select" placeholder="选择平台开放学期" @change="selectAvailableTerm">
-            <el-option v-for="term in availableTerms" :key="termKey(term.year, term.semester)" :label="availableTermLabel(term)" :value="termKey(term.year, term.semester)" />
+          <el-select
+            v-model="selectedAvailableTermKey"
+            class="term-select"
+            placeholder="选择平台开放学期"
+            @change="selectAvailableTerm"
+          >
+            <el-option
+              v-for="term in availableTerms"
+              :key="termKey(term.year, term.semester)"
+              :label="availableTermLabel(term)"
+              :value="termKey(term.year, term.semester)"
+            />
           </el-select>
         </el-tooltip>
         <el-tooltip content="只可为管理员开放的学期打开或新建课表，第一周开始日期由平台目录设定" placement="top">
-          <el-button type="primary" :disabled="!selectedAvailableTermKey" @click="openTerm" :loading="termSwitching">打开/新建受管课表</el-button>
+          <el-button type="primary" :disabled="!selectedAvailableTermKey" @click="openTerm" :loading="termSwitching"
+            >打开/新建受管课表</el-button
+          >
         </el-tooltip>
         <el-tooltip content="设置每天显示的课程节数" placement="top">
           <el-input-number
@@ -253,7 +277,6 @@
         <el-button type="primary" @click="applyJson">应用</el-button>
       </div>
     </el-drawer>
-
   </div>
 </template>
 
@@ -283,6 +306,9 @@ interface Course {
 type Semester = 'spring' | 'fall'
 
 interface TermSummary {
+  academic_term_id: string
+  term_status: 'open' | 'closed'
+  version: number
   term_year: number
   semester: Semester
   first_week_start: string
@@ -328,6 +354,9 @@ const termDraft = reactive({
   semester: 'spring' as Semester,
 })
 const schedule = reactive({
+  academic_term_id: '',
+  term_status: '' as '' | 'open' | 'closed',
+  term_version: 0,
   term_year: new Date().getFullYear(),
   semester: 'spring' as Semester,
   first_week_start: '',
@@ -368,7 +397,7 @@ const periods = computed(() =>
 const formatTermLabel = (termYear: number, semester: Semester) =>
   `${termYear} 年${semester === 'fall' ? '秋季' : '春季'}学期`
 const termLabel = computed(() => formatTermLabel(schedule.term_year, schedule.semester))
-const termReadOnly = computed(() => !availableTerms.value.some((term) => termKey(term.year, term.semester) === termKey(schedule.term_year, schedule.semester)))
+const termReadOnly = computed(() => schedule.term_status !== 'open')
 const weekRangeText = computed(() => {
   const start = weekDate(selectedWeek.value, 0)
   const end = weekDate(selectedWeek.value, 6)
@@ -420,6 +449,9 @@ const applyPayload = (payload: any) => {
   disabled.value = payload?.enabled === false
   const value = payload?.schedule || payload
   const fallbackDate = new Date()
+  schedule.academic_term_id = String(value?.academic_term_id || '')
+  schedule.term_status = value?.term_status === 'closed' ? 'closed' : value?.term_status === 'open' ? 'open' : ''
+  schedule.term_version = Number(value?.term_version || 0)
   schedule.term_year = Number(value?.term_year || fallbackDate.getFullYear())
   schedule.semester = value?.semester === 'fall' ? 'fall' : 'spring'
   termDraft.term_year = schedule.term_year
@@ -445,6 +477,9 @@ const applyPayload = (payload: any) => {
 
 const applyTerms = (payload: any) => {
   terms.value = (payload?.items || []).map((term: any) => ({
+    academic_term_id: String(term.academic_term_id || ''),
+    term_status: term.term_status === 'closed' ? 'closed' : 'open',
+    version: Number(term.version || 0),
     term_year: Number(term.term_year),
     semester: term.semester === 'fall' ? 'fall' : 'spring',
     first_week_start: term.first_week_start || '',
@@ -468,8 +503,10 @@ const applyAvailableTerms = (payload: any) => {
   }))
   const current = termKey(schedule.term_year, schedule.semester)
   const defaultTerm = availableTerms.value.find((term) => term.is_default)
-  if (availableTerms.value.some((term) => termKey(term.year, term.semester) === current)) selectedAvailableTermKey.value = current
-  else if (!selectedAvailableTermKey.value && defaultTerm) selectedAvailableTermKey.value = termKey(defaultTerm.year, defaultTerm.semester)
+  if (availableTerms.value.some((term) => termKey(term.year, term.semester) === current))
+    selectedAvailableTermKey.value = current
+  else if (!selectedAvailableTermKey.value && defaultTerm)
+    selectedAvailableTermKey.value = termKey(defaultTerm.year, defaultTerm.semester)
 }
 
 const loadTerms = async () => {
@@ -480,13 +517,16 @@ const loadTerms = async () => {
 const termKey = (termYear: number, semester: Semester) => `${termYear}-${semester}`
 
 const termOptionLabel = (term: TermSummary) =>
-  `${term.term_year} 年${term.semester === 'fall' ? '秋季' : '春季'}学期 (${term.course_count} 门)`
-const availableTermLabel = (term: AvailableTerm) => `${term.display_name}${term.is_default ? '（默认）' : ''} · 第一周 ${term.first_week_start}`
+  `${term.term_year} 年${term.semester === 'fall' ? '秋季' : '春季'}学期 (${term.course_count} 门)${term.term_status === 'closed' ? ' · 已关闭，只读' : ''}`
+const availableTermLabel = (term: AvailableTerm) =>
+  `${term.display_name}${term.is_default ? '（默认）' : ''} · 第一周 ${term.first_week_start}`
 
 const confirmTermSwitch = () => !dirty.value || window.confirm('当前课表还有未保存的修改，确定切换吗？')
 
 const openTerm = async () => {
-  const selected = availableTerms.value.find((term) => termKey(term.year, term.semester) === selectedAvailableTermKey.value)
+  const selected = availableTerms.value.find(
+    (term) => termKey(term.year, term.semester) === selectedAvailableTermKey.value,
+  )
   if (!selected) {
     ElMessage.warning('请选择管理员开放的教学学期')
     return
@@ -508,8 +548,7 @@ const openTerm = async () => {
   try {
     const payload = unwrap(
       await scheduleApi.activate({
-        term_year: termYear,
-        semester,
+        academic_term_id: selected.id,
       }),
     )
     applyPayload(payload)
@@ -529,7 +568,8 @@ const selectSavedTerm = (value: string) => {
   if (!term) return
   if (!confirmTermSwitch()) return
   termSwitching.value = true
-  void scheduleApi.me({ term_year: term.term_year, semester: term.semester })
+  void scheduleApi
+    .me({ academic_term_id: term.academic_term_id })
     .then((result) => {
       applyPayload(unwrap(result))
       dirty.value = false
@@ -538,7 +578,9 @@ const selectSavedTerm = (value: string) => {
       selectedTermKey.value = termKey(schedule.term_year, schedule.semester)
       ElMessage.error(error?.msg || '读取已保存课表失败')
     })
-    .finally(() => { termSwitching.value = false })
+    .finally(() => {
+      termSwitching.value = false
+    })
 }
 
 const selectAvailableTerm = (value: string) => {
@@ -554,6 +596,7 @@ const saveSchedule = async () => {
     const payload = {
       term_year: schedule.term_year,
       semester: schedule.semester,
+      expected_version: schedule.term_version,
       first_week_start: schedule.first_week_start,
       settings: schedule.settings,
       courses: schedule.courses,
@@ -585,6 +628,7 @@ const handleImport = async (event: Event) => {
         {
           term_year: schedule.term_year,
           semester: schedule.semester,
+          expected_version: schedule.term_version,
         },
         replaceImport.value,
       ),

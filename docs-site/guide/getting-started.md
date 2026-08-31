@@ -122,10 +122,11 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 
 1. 在 `http://localhost:3000` 注册普通用户或登录已有用户。
 2. 打开版块，创建普通文本或富文本帖子。
-3. 点击头像进入个人主页、个人主页设置或个人课表。
-4. 在 `/schedule` 新建学期，设置第一周，手工录入或导入 Excel/CSV/JSON。
-5. 在 `/appearance` 选择管理员提供的系统主题。
-6. 在 `/plugins` 查看管理员发布的外部插件并明确授权。
+3. 点击头像进入个人主页、个人主页设置、个人课表或“我的文档”。
+4. 管理员先在 `/academic-terms` 创建开放学期；用户随后在 `/schedule` 选择开放学期，手工录入或导入 Excel/CSV/JSON。关闭的历史学期只能查看。
+5. 在 `/documents` 新建或上传私有文档；TXT、Markdown 和 CampusDoc 可编辑，PDF/DOCX 在未启用隔离转换服务时仅支持安全下载。
+6. 在 `/appearance` 选择管理员提供的系统主题。
+7. 在 `/plugins` 查看管理员发布的外部插件并明确授权。
 
 按钮是否显示只是前端体验。后端仍会检查身份、稳定 Permission Code、资源所有权或板块作用域以及操作约束。
 
@@ -138,6 +139,7 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | 身份与权限 | `internal/modules/core/identity/` |
 | 帖子、版块和内容治理 | `internal/modules/core/community/` |
 | 个人课表 | `internal/modules/features/schedule/` |
+| 个人文档 | `internal/modules/features/personaldocuments/` |
 | User Storage | `internal/modules/core/userstorage/` |
 | 插件平台 | `internal/plugin/` |
 | 风格包与 Appearance | `internal/modules/features/appearance/runtime/`、`internal/modules/features/appearance/stylepack/`、`internal/modules/features/appearance/webtheme/` |

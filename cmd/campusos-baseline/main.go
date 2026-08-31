@@ -26,7 +26,7 @@ import (
 
 // baselineSchema is deliberately versioned so a stored G0 snapshot can be
 // interpreted without guessing which evidence fields were available.
-const baselineSchema = "campusos.v14-g0-baseline/v1"
+const baselineSchema = "campusos.v14-g0-baseline/v2"
 
 type snapshot struct {
 	Schema             string              `json:"schema"`
@@ -42,12 +42,14 @@ type snapshot struct {
 	Tooling            toolingSnapshot     `json:"tooling"`
 	UserStorage        storageSnapshot     `json:"user_storage"`
 	Schedules          scheduleSnapshot    `json:"schedules"`
+	Bundles            []bundleSnapshot    `json:"bundles"`
 	StructuredQueries  []querySnapshot     `json:"structured_queries"`
 	HTTP               []httpSnapshot      `json:"http,omitempty"`
 }
 
 type gitSnapshot struct {
 	Commit string `json:"commit"`
+	Branch string `json:"branch"`
 	Dirty  bool   `json:"dirty"`
 }
 
@@ -60,10 +62,14 @@ type environmentSnapshot struct {
 }
 
 type contractSnapshot struct {
-	Version        string         `json:"version"`
-	Routes         int            `json:"routes"`
-	AudienceCounts map[string]int `json:"audience_counts"`
-	SHA256         string         `json:"sha256"`
+	Version                 string         `json:"version"`
+	Routes                  int            `json:"routes"`
+	AudienceCounts          map[string]int `json:"audience_counts"`
+	SHA256                  string         `json:"sha256"`
+	SchemaSHA256            string         `json:"schema_sha256"`
+	OpenAPISHA256           string         `json:"openapi_sha256"`
+	RouteOperationSHA256    string         `json:"route_operation_sha256"`
+	PermissionCatalogSHA256 string         `json:"permission_catalog_sha256"`
 }
 
 type databaseSnapshot struct {
@@ -73,10 +79,11 @@ type databaseSnapshot struct {
 }
 
 type moduleSnapshot struct {
-	Count      int            `json:"count"`
-	KindCounts map[string]int `json:"kind_counts"`
-	IDs        []string       `json:"ids"`
-	SHA256     string         `json:"sha256"`
+	Count          int            `json:"count"`
+	KindCounts     map[string]int `json:"kind_counts"`
+	IDs            []string       `json:"ids"`
+	SHA256         string         `json:"sha256"`
+	ManifestSHA256 string         `json:"manifest_sha256"`
 }
 
 type pluginSnapshot struct {
@@ -131,6 +138,20 @@ type scheduleSnapshot struct {
 	ValidTermKeys           []string `json:"valid_term_keys"`
 	MalformedFileCount      int      `json:"malformed_file_count"`
 	MissingActiveIndexCount int      `json:"missing_active_index_count"`
+}
+
+// bundleSnapshot captures build evidence only when an existing dist tree is
+// present.  The collector never runs a build itself, because a G0 record must
+// distinguish "not built on this host" from a measured bundle size.
+type bundleSnapshot struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	JSBytes    int64  `json:"js_bytes,omitempty"`
+	CSSBytes   int64  `json:"css_bytes,omitempty"`
+	JSBudget   int64  `json:"js_budget,omitempty"`
+	CSSBudget  int64  `json:"css_budget,omitempty"`
+	LargestJS  string `json:"largest_js,omitempty"`
+	LargestCSS string `json:"largest_css,omitempty"`
 }
 
 type querySnapshot struct {
@@ -238,6 +259,7 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 	if result.Schedules, err = collectSchedules(absRoot); err != nil {
 		return nil, err
 	}
+	result.Bundles = collectBundles(absRoot)
 	if live {
 		if samples < 3 || samples > 100 {
 			return nil, errors.New("samples must be between 3 and 100")
@@ -432,12 +454,16 @@ func collectGit(root string) (gitSnapshot, error) {
 	if err != nil {
 		return gitSnapshot{}, err
 	}
-	return gitSnapshot{Commit: commit, Dirty: status != ""}, nil
+	branch, err := commandOutput(root, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return gitSnapshot{}, err
+	}
+	return gitSnapshot{Commit: commit, Branch: branch, Dirty: status != ""}, nil
 }
 
 func collectContracts(root string) (contractSnapshot, error) {
-	path := filepath.Join(root, "docs/api/http-routes-v0.6.json")
-	payload, err := os.ReadFile(path)
+	routesPath := filepath.Join(root, "docs/api/http-routes-v0.6.json")
+	payload, err := os.ReadFile(routesPath)
 	if err != nil {
 		return contractSnapshot{}, err
 	}
@@ -449,7 +475,35 @@ func collectContracts(root string) (contractSnapshot, error) {
 	for _, route := range contract.Routes {
 		counts[route.Audience]++
 	}
-	return contractSnapshot{Version: contract.Version, Routes: len(contract.Routes), AudienceCounts: counts, SHA256: digestBytes(payload)}, nil
+	schema, err := os.ReadFile(filepath.Join(root, "scripts/schema-contract.sql"))
+	if err != nil {
+		return contractSnapshot{}, err
+	}
+	openAPI, err := os.ReadFile(filepath.Join(root, "docs/api/openapi-v0.6-current.yaml"))
+	if err != nil {
+		return contractSnapshot{}, err
+	}
+	permissionFiles := []string{
+		filepath.Join(root, "internal/modules/core/identity/permissioncode/permissioncode.go"),
+		filepath.Join(root, "internal/plugin/permission_catalog.go"),
+		filepath.Join(root, "docs/api/plugin-permissions-v1.json"),
+		filepath.Join(root, "docs/api/plugin-permissions-v2.json"),
+	}
+	for _, path := range permissionFiles {
+		if _, err := os.Stat(path); err != nil {
+			return contractSnapshot{}, err
+		}
+	}
+	return contractSnapshot{
+		Version:                 contract.Version,
+		Routes:                  len(contract.Routes),
+		AudienceCounts:          counts,
+		SHA256:                  digestBytes(payload),
+		SchemaSHA256:            digestBytes(schema),
+		OpenAPISHA256:           digestBytes(openAPI),
+		RouteOperationSHA256:    digestBytes(payload),
+		PermissionCatalogSHA256: digestFiles(root, permissionFiles),
+	}, nil
 }
 
 func collectMigrations(root string) (databaseSnapshot, error) {
@@ -466,7 +520,8 @@ func collectModules(root string) (moduleSnapshot, error) {
 	if err != nil {
 		return moduleSnapshot{}, err
 	}
-	result := moduleSnapshot{Count: len(paths), KindCounts: map[string]int{}, SHA256: digestFiles(root, paths)}
+	manifestHash := digestFiles(root, paths)
+	result := moduleSnapshot{Count: len(paths), KindCounts: map[string]int{}, SHA256: manifestHash, ManifestSHA256: manifestHash}
 	for _, path := range paths {
 		var manifest moduleManifest
 		if err := decodeYAML(path, &manifest); err != nil {
@@ -477,6 +532,58 @@ func collectModules(root string) (moduleSnapshot, error) {
 	}
 	sort.Strings(result.IDs)
 	return result, nil
+}
+
+func collectBundles(root string) []bundleSnapshot {
+	return []bundleSnapshot{
+		collectBundle(root, "web", 500_000, 400_000),
+		collectBundle(root, "admin", 250_000, 400_000),
+		collectBundle(root, "docs-site", 0, 0),
+	}
+}
+
+func collectBundle(root, name string, jsBudget, cssBudget int64) bundleSnapshot {
+	result := bundleSnapshot{Name: name, Status: "not-built", JSBudget: jsBudget, CSSBudget: cssBudget}
+	// Vite emits <app>/dist/assets, while VitePress emits its static site under
+	// <app>/.vitepress/dist/assets.  G0 must measure both rather than report a
+	// freshly built docs site as "not-built".
+	assetRoots := []string{filepath.Join(root, name, "dist", "assets")}
+	if name == "docs-site" {
+		assetRoots = []string{
+			filepath.Join(root, name, ".vitepress", "dist", "assets"),
+			filepath.Join(root, name, "dist", "assets"),
+		}
+	}
+	for _, assetsRoot := range assetRoots {
+		entries, err := os.ReadDir(assetsRoot)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			result.Status = "unreadable"
+			return result
+		}
+		result.Status = "measured"
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			info, infoErr := entry.Info()
+			if infoErr != nil {
+				result.Status = "unreadable"
+				continue
+			}
+			assetName := entry.Name()
+			switch {
+			case strings.HasSuffix(assetName, ".js") && info.Size() > result.JSBytes:
+				result.JSBytes, result.LargestJS = info.Size(), assetName
+			case strings.HasSuffix(assetName, ".css") && info.Size() > result.CSSBytes:
+				result.CSSBytes, result.LargestCSS = info.Size(), assetName
+			}
+		}
+		return result
+	}
+	return result
 }
 
 func collectPlugins(root string) (pluginSnapshot, error) {

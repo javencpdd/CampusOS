@@ -44,6 +44,10 @@ type Term struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ClosedAt       *time.Time `json:"closed_at,omitempty"`
+	// ScheduleReferenceCount is an administrator-only operational projection.
+	// It is never used for authorization: PostgreSQL foreign keys remain the
+	// source of truth that prevents deletion of an in-use term.
+	ScheduleReferenceCount int64 `json:"schedule_reference_count,omitempty"`
 }
 
 type CreateRequest struct {
@@ -73,6 +77,11 @@ type ListFilter struct {
 // Port is the stable read boundary for built-in features. Management commands
 // stay on Service so a feature cannot bypass administrator lifecycle rules.
 type Port interface {
+	// Get returns a directory fact regardless of lifecycle state.  It is a
+	// read-only operation used by owner-scoped historical consumers (for
+	// example, a user reading their already-created closed-term schedule).
+	// Write paths must continue to use one of the Open methods below.
+	Get(context.Context, string) (Term, error)
 	ListOpen(context.Context) ([]Term, error)
 	FindOpen(context.Context, int, string) (Term, error)
 	GetAvailable(context.Context, string) (Term, error)

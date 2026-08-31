@@ -23,10 +23,50 @@ type MemoryRepository struct {
 	mu       sync.RWMutex
 	docs     map[string]Document
 	versions map[string][]DocumentVersion
+	previews map[string]PreviewRecord
+}
+
+type memoryRepositorySnapshot struct {
+	docs     map[string]Document
+	versions map[string][]DocumentVersion
+	previews map[string]PreviewRecord
 }
 
 func NewMemoryRepository() *MemoryRepository {
-	return &MemoryRepository{docs: map[string]Document{}, versions: map[string][]DocumentVersion{}}
+	return &MemoryRepository{docs: map[string]Document{}, versions: map[string][]DocumentVersion{}, previews: map[string]PreviewRecord{}}
+}
+
+// Snapshot/Restore lets Reliability's deterministic memory transaction roll
+// a document/version change back if writing the paired Outbox event fails.
+// PostgreSQL uses its real SQL transaction instead.
+func (r *MemoryRepository) Snapshot() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	copyDocs := make(map[string]Document, len(r.docs))
+	for id, item := range r.docs {
+		copyDocs[id] = item
+	}
+	copyVersions := make(map[string][]DocumentVersion, len(r.versions))
+	for id, items := range r.versions {
+		copyVersions[id] = append([]DocumentVersion(nil), items...)
+	}
+	copyPreviews := make(map[string]PreviewRecord, len(r.previews))
+	for versionID, item := range r.previews {
+		copyPreviews[versionID] = item
+	}
+	return memoryRepositorySnapshot{docs: copyDocs, versions: copyVersions, previews: copyPreviews}
+}
+
+func (r *MemoryRepository) Restore(value any) {
+	snapshot, ok := value.(memoryRepositorySnapshot)
+	if !ok {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.docs = snapshot.docs
+	r.versions = snapshot.versions
+	r.previews = snapshot.previews
 }
 func (r *MemoryRepository) Create(_ context.Context, d Document, v DocumentVersion) (DocumentDetail, error) {
 	r.mu.Lock()
@@ -149,11 +189,27 @@ func (r *MemoryRepository) Version(_ context.Context, owner, id, vid string) (Do
 	return DocumentVersion{}, ErrNotFound
 }
 
+func (r *MemoryRepository) RecordPreview(_ context.Context, item PreviewRecord) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, exists := r.previews[item.DocumentVersionID]; exists {
+		return nil
+	}
+	r.previews[item.DocumentVersionID] = item
+	return nil
+}
+
 // PreviewSummary implements the optional operational reader used by Service.
-// The in-memory development adapter has no converter queue, so all bounded
-// lifecycle gauges are reported as zero by the caller.
+// It preserves only bounded status/format aggregates; the development adapter
+// still has no executable converter runner.
 func (r *MemoryRepository) PreviewSummary(context.Context) (map[PreviewMetricKey]int64, error) {
-	return map[PreviewMetricKey]int64{}, nil
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	summary := map[PreviewMetricKey]int64{}
+	for _, item := range r.previews {
+		summary[PreviewMetricKey{Status: item.Status, Format: item.Format}]++
+	}
+	return summary, nil
 }
 
 type PgRepository struct {
@@ -282,6 +338,18 @@ func (r *PgRepository) Version(ctx context.Context, owner, id, vid string) (Docu
 		return DocumentVersion{}, ErrNotFound
 	}
 	return x, e
+}
+
+// RecordPreview creates the lifecycle row inside the caller's active command
+// transaction. The current implementation records binary formats as
+// unsupported until an independently reviewed Converter Runner is installed;
+// it never starts a converter from the API process.
+func (r *PgRepository) RecordPreview(ctx context.Context, item PreviewRecord) error {
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO personal_document_previews
+		(id,document_version_id,preview_object_id,status,error_code,attempts,created_at,updated_at)
+		VALUES ($1::bigint,$2::bigint,NULL,$3,$4,0,NOW(),NOW())
+		ON CONFLICT (document_version_id) DO NOTHING`, item.ID, item.DocumentVersionID, item.Status, item.ErrorCode)
+	return err
 }
 
 // PreviewSummary is deliberately aggregate-only. It is used for operational

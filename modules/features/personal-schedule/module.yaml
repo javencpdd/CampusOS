@@ -3,12 +3,12 @@ id: feature.personal-schedule
 feature_id: personal-schedule
 name: personal-schedule
 display_name: "Personal Schedule"
-version: "0.11.0"
+version: "0.14.0-dev"
 description: "Term schedules, spreadsheet import, week view, and calendar browsing backed by User Storage."
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.identity, core.user-storage, core.feature-registry]
+dependencies: [core.identity, core.academic-term, core.user-storage, core.feature-registry]
 implementation: internal/modules/features/schedule
 compatibility_aliases:
   - name: personal-schedule
