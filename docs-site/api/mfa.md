@@ -1,6 +1,6 @@
 # 多因素认证 API
 
-CampusOS v13 的 MFA 使用标准 TOTP 和一次性恢复码。它不把邮箱验证码当作第二因子，也不向插件、资源包或前端暴露 TOTP Secret。
+CampusOS v0.13 的 MFA 使用标准 TOTP 和一次性恢复码。它不把邮箱验证码当作第二因子，也不向插件、资源包或前端暴露 TOTP Secret。
 
 ## 登录流程
 
@@ -15,7 +15,7 @@ CampusOS v13 的 MFA 使用标准 TOTP 和一次性恢复码。它不把邮箱�
 - `DELETE /api/v1/auth/mfa/totp`：当前密码加第二因子关闭 MFA，并撤销全部登录设备。
 - `POST /api/v1/auth/mfa/step-up`：在当前 Session 上完成近期 MFA 验证。
 
-这些接口使用既有认证和 CSRF 机制。请求字段、错误码和完整示例见仓库中的 [v13 多因素认证 API](https://github.com/javencpdd/CampusOS/blob/main/docs/api/v13%E5%A4%9A%E5%9B%A0%E7%B4%A0%E8%AE%A4%E8%AF%81API.md)。
+这些接口使用既有认证和 CSRF 机制。请求字段、错误码和完整示例见仓库中的 [v0.13 多因素认证 API](https://github.com/javencpdd/CampusOS/blob/main/docs/api/v13%E5%A4%9A%E5%9B%A0%E7%B4%A0%E8%AE%A4%E8%AF%81API.md)。
 
 ## 管理员接口
 

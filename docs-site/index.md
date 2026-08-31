@@ -17,7 +17,7 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
   <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
   <a href="/operations/reliable-tasks"><strong>可靠任务与 Webhook</strong><span>查看持久事件、失败队列、重放边界和安全投递配置。</span></a>
-  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>理解 v1-v14 演进、v14-dev 已实现范围与尚未跨越的 Final 门禁。</span></a>
+  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>理解 v0.1-v0.14 演进、v0.14-dev 已实现范围与尚未跨越的 Final 门禁。</span></a>
 </div>
 
 ## 当前界面
@@ -65,6 +65,6 @@ Linux Containers，不支持原生 Windows Containers。
 - [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
 - [编写第一个插件](/plugins/create-first-plugin)
 - [构建与发布](/deployment/release)
-- [v1-v14 版本演进](/project/version-evolution)
+- [v0.1-v0.14 版本演进](/project/version-evolution)
 - [文档状态与历史替代](/project/document-lifecycle)
 - [当前规划与后续路线](/project/current-roadmap)

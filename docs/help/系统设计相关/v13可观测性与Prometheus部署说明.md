@@ -1,4 +1,4 @@
-# CampusOS v13 可观测性与 Prometheus 部署说明
+# CampusOS v0.13 可观测性与 Prometheus 部署说明
 
 ## 1. 两个入口分别做什么
 

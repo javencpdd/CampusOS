@@ -130,7 +130,7 @@ func metricsCatalogMarkdown(items []observability.MetricDescriptor) []byte {
 
 func errorCatalogMarkdown(items []apperror.Descriptor) []byte {
 	var out strings.Builder
-	out.WriteString("# CampusOS v13 统一错误合同\n\n")
+	out.WriteString("# CampusOS v0.13 统一错误合同\n\n")
 	out.WriteString("> 由 `go run ./cmd/campusos-contracts --write` 从 `pkg/apperror` 生成。旧顶层 `code`、`msg`、`data`、`request_id` 保持兼容；新客户端应优先读取 `error.code`。\n\n")
 	out.WriteString("## 响应包络\n\n```json\n{\n  \"code\": 10001,\n  \"msg\": \"invalid request\",\n  \"error\": {\n    \"code\": \"request.invalid\",\n    \"message\": \"invalid request\",\n    \"details\": {},\n    \"request_id\": \"...\",\n    \"retryable\": false\n  },\n  \"request_id\": \"...\"\n}\n```\n\n")
 	out.WriteString("未知错误与 panic 只能返回 `internal.error`，原始 cause 只进入服务端日志。客户端不得依赖内部错误文本。\n\n")

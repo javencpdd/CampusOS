@@ -25,4 +25,4 @@ OpenAPI 当前保证路由的方法、认证、稳定权限 Code、Operation、�
 
 生成器测试会解析 YAML、检查路径参数与分页参数只能出现一个 `parameters` 块，并要求核心 request schema、结构化错误和请求体数量达到门槛。`make contracts-check` 负责阻止生成产物漂移。
 
-v11 新增的可靠任务接口位于 `/platform/reliability/*`，使用独立的查看、重放和保留预演 Permission Code；使用说明见 [可靠任务与 Webhook](/operations/reliable-tasks)。
+v0.11 新增的可靠任务接口位于 `/platform/reliability/*`，使用独立的查看、重放和保留预演 Permission Code；使用说明见 [可靠任务与 Webhook](/operations/reliable-tasks)。

@@ -102,7 +102,7 @@ Resource Package 不能包含 `plugin.yaml`、Go/Cargo Runtime、migration 或�
 
 ## 从旧布局迁移
 
-旧版把 Built-in 描述符和风格包放在 `data/plugins`、`data/plugin_data`。v10
+旧版把 Built-in 描述符和风格包放在 `data/plugins`、`data/plugin_data`。v0.10
 提供可回滚迁移：
 
 ```bash

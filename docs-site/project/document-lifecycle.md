@@ -36,8 +36,8 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 | `v0.5集成中心与低风险集成指南.md` | 是 v0.5 边界快照 | [集成中心与能力边界](/operations/integrations) |
 | `数据库v0.6体检与模型决策.md` | 只记录 migration `000016` 时点 | [系统架构](/guide/architecture) 和 Admin 只读架构 |
 | `数据库管理指南.md` 的静态表清单 | 表数量只更新到早期 migration | 当前 `migrations/`、Admin 只读架构和数据库检查器 |
-| `RBAC权限与版主管理说明.md` | v10 前后的权限快照 | [权限配置入门](/guide/permission-configuration) |
-| `v10权限管理设计与使用入门.md` | 已被 v11 权限、作用域和可靠审计模型扩展 | [权限配置入门](/guide/permission-configuration) |
+| `RBAC权限与版主管理说明.md` | v0.10 前后的权限快照 | [权限配置入门](/guide/permission-configuration) |
+| `v0.10权限管理设计与使用入门.md` | 已被 v0.11 权限、作用域和可靠审计模型扩展 | [权限配置入门](/guide/permission-configuration) |
 | `插件开发与工具链v0.6.md` | 只覆盖 Manifest v1 和旧工具链 | [插件体系](/plugins/overview)、[课表插件教程](/plugins/schedule-plugin-tutorial) |
 | `插件包治理与回滚说明.md` | 早期导入流程 | [打包、导入与更新](/plugins/package-import) |
 | `个人主页风格包说明.md` | 旧 Personal Space 风格合同 | [风格包与沙箱 SDK](/plugins/style-packs) |
@@ -57,18 +57,19 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 
 ## 已失去当前执行作用的计划
 
-- v1-v3 计划只作早期蓝图和实现快照，不再指导当前目录、端口、数据库或插件开发。
-- v4 原计划没有全量闭合，应以 v4 实现状态总结为历史结论。
-- v5 第一版已被第二版替代；v6 早期计划已被第三版替代。
-- v7-v13 正式计划均已封版。它们仍是架构和验收历史，但不再接收新任务。
+- v0.1-v0.3 计划只作早期蓝图和实现快照，不再指导当前目录、端口、数据库或插件开发。
+- v0.4 原计划没有全量闭合，应以 v0.4 实现状态总结为历史结论。
+- v0.5 第一版已被第二版替代；v0.6 早期计划已被第三版替代。
+- v0.7-v0.13 正式计划均已封版。它们仍是架构和验收历史，但不再接收新任务。
 - 名称含“计划思路”“提示词”的文件是原始输入，不是正式范围或完成证明。
 
-当前版本结论见 [v1-v14 版本演进](/project/version-evolution)，后续候选见
+当前版本结论见 [v0.1-v0.14 版本演进](/project/version-evolution)，后续候选见
 [当前规划与后续路线](/project/current-roadmap)。
 
-v14-dev 的 P0/P1 已有实际代码、migration 与进度证据；它既不是纯“规划参考”，也尚未成为发布版本。当前应以
-仓库 `docs/进度/v0.14-dev/v0.14.9-dev.md` 判断当前实现与审查事实（P0/P1 代码证据见 `v0.14.5-dev.md`），以仓库
-`docs/项目计划v14/00-v14版本计划书.md` 判断未通过的 Final 门禁。
+v0.14-dev 的 P0/P1 已有实际代码、migration 与进度证据；项目所有者已确认当前代码验证完成并完成开发收尾，
+但它尚未成为发布版本。当前应以仓库 `docs/进度/v0.14-dev/v0.14.11-dev.md` 判断开发收尾与命名事实，以
+`v0.14.9-dev.md` 判断实现与审查事实（P0/P1 代码证据见 `v0.14.5-dev.md`），以仓库
+`docs/项目计划v0.14/00-v0.14版本计划书.md` 判断未通过的 Final 门禁。
 
 仓库贡献者还可以从 `docs/help/计划书总结/README.md` 进入逐版计划有效性和未来规划导读；原始计划与
 验收证据继续保存在 `docs/项目计划v*/` 和 `docs/进度/`。

@@ -1,4 +1,4 @@
-# v12 会话与 Token 安全流程
+# v0.12 会话与 Token 安全流程
 
 > 阶段：A6 Session 与 Token 轮换  
 > 状态：已实施，等待阶段总体验收  
@@ -12,7 +12,7 @@
 的 JWT。每次受保护请求都同时校验签名、Session 状态、用户状态和 `auth_version`。
 
 这意味着旧 JWT、没有 Session ID 的 JWT、Refresh 凭据和已撤销 Session 对应的 Access Token
-都不能作为 API 登录凭据。v12 上线会要求现有用户重新登录。
+都不能作为 API 登录凭据。v0.12 上线会要求现有用户重新登录。
 
 ## 2. 端点
 
@@ -74,8 +74,8 @@ forward-fix，down migration 只用于隔离演练，因为原始 Refresh Token 
 - 不得向 External Plugin、MCP、Agent 或日志暴露 Refresh Token、Session Repository 或 JWT Secret。
 - 不得以 Cookie 是否存在作为认证结论；业务 API 仍必须验证短期 Access JWT 和 Session。
 - 不得把任何 Token 放入本地存储、页面 URL、错误提示、Outbox payload 或管理端列表。
-- 不得把 v11 JWT 重新解释为 v12 Session；升级后需要重新登录。
+- 不得把 v0.11 JWT 重新解释为 v0.12 Session；升级后需要重新登录。
 
 管理员专用入口不会建立第二套密码或 Token。凭据仍由 `accounts` 验证，随后还必须通过
 `identity_admin_accounts` 管理平面准入检查；每个 Admin API 再校验 Session、准入状态和 Permission Code。
-详见 [v12 管理员账号与管理平面准入说明](../help/系统设计相关/v12管理员账号与管理平面准入说明.md)。
+详见 [v0.12 管理员账号与管理平面准入说明](../help/系统设计相关/v12管理员账号与管理平面准入说明.md)。

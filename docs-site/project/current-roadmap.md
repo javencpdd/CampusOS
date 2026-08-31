@@ -2,19 +2,20 @@
 
 > 当前发布基线：`v0.13.0`
 > 更新日期：2026-08-31
-> 状态：v14-dev 已完成 AcademicTerm、对象账本、课表 Object 引用/历史采用命令、个人文档 MVP、共享内容编辑安全核心、版本提交 Outbox 与安全 Converter 降级；Windows Docker 的全量 Go、隔离 migration/恢复和认证浏览器工作流已有实际证据，Final 发布门禁尚未通过
+> 状态：项目所有者已确认 v0.14-dev 当前代码验证完成并完成开发收尾；AcademicTerm、对象账本、课表 Object 引用/历史采用命令、个人文档 MVP、共享内容编辑安全核心、版本提交 Outbox 与安全 Converter 降级均已实现。Windows Docker 的全量 Go、隔离 migration/恢复和认证浏览器工作流已有实际证据，Final 发布门禁尚未通过
 
-CampusOS v13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
-单主机 Docker 交付。v14 选择“学期治理与个人工作区基础”作为有限主线，不改变当前四类能力和单主机边界。
+CampusOS v0.13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
+单主机 Docker 交付。v0.14 选择“学期治理与个人工作区基础”作为有限主线，不改变当前四类能力和单主机边界。
 
-仓库中的完整计划位于 `docs/项目计划v14/00-v14版本计划书.md`。本文是公开摘要；计划不等于功能已经上线，
-实际完成情况必须以 `docs/进度/v0.14-dev/`、运行代码和发布证据为准。
+仓库中的完整计划位于 `docs/项目计划v0.14/00-v0.14版本计划书.md`。本文是公开摘要；计划不等于功能已经上线，
+实际完成情况必须以 `docs/进度/v0.14-dev/`、运行代码和发布证据为准；最新开发收尾记录为
+`v0.14.11-dev.md`。
 
-## v14 正式范围
+## v0.14 正式范围
 
 | 主线 | 目标 | 关键保护 |
 | --- | --- | --- |
-| G0 基线 | 历史 `000043` 事实快照与隔离 down/up 已保留；当前采集器已可分别记录 Schema/OpenAPI/Route/Permission/Module hash 与 bundle 预算 | 早期 `v14-g0.json` 是 v1 历史证据，未含后续补充的拆分 hash/bundle 字段；Final 前须在受控发布工作树重新采集并审阅 v2 快照，不能把当前 v14 工作树输出回填成历史事实 |
+| G0 基线 | 历史 `000043` 事实快照与隔离 down/up 已保留；当前采集器已可分别记录 Schema/OpenAPI/Route/Permission/Module hash 与 bundle 预算 | 早期 `v14-g0.json` 是 v1 历史证据，未含后续补充的拆分 hash/bundle 字段；Final 前须在受控发布工作树重新采集并审阅 v2 快照，不能把当前 v0.14 工作树输出回填成历史事实 |
 | AcademicTerm | 已交付管理员 spring/fall、open/closed/default、第一周和版本控制 | `000044` CHECK、单默认、版本冲突、管理 API 与 Admin 控制台 |
 | Schedule | 已交付服务端受管学期 Guard、旧 JSON + immutable Object 双写及历史采用命令；关闭学期仍可读取 | `000046`/`000049` 记录用户/学期、当前对象、第一周和偏好；旧 JSON 不重命名 |
 | User Storage Object | 已交付 Object ID、owner、metadata、Quota Reservation、Local Provider 原子写与默认只读 reconcile | `000045` 对象/账户/预留账本；对账使用 keyset 批次和可恢复 checkpoint，详细差异有界采样且采样截断时拒绝 apply。低基数指标只输出固定聚合键，受审计 apply 只收敛过期 Reservation 和缺物理文件 metadata，未知文件不自动改写 |
@@ -41,16 +42,16 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 - 旧 `year + semester` 请求在兼容期只能解析为已存在 AcademicTerm，不能绕过 Guard 创建学期。
 - Feature Disable、Converter Disable 和紧急回退均保留对象、课表、文档与版本。
 
-## v14 非目标
+## v0.14 非目标
 
 - 多人协作文档、分享链接、跨用户 ACL、完整 Office/PDF 编辑。
 - S3/OSS/WebDAV 生产 Provider、云盘同步、全文/向量搜索和 AI 文档能力。
 - 标准 MCP、真实 protobuf gRPC、远程插件市场、Agent Runner。
 - 多节点 API/Worker、数据库 HA、自动 TLS。
 
-这些方向仍需独立威胁模型、资源隔离、迁移、回滚和目标环境证据，不能从 v14 的接口预留推断为已交付。仓库内的逐项代码审查、验证证据和 Final 未决项见 `docs/项目计划v14/01-v14计划逐项审查与项目回顾.md`。
+这些方向仍需独立威胁模型、资源隔离、迁移、回滚和目标环境证据，不能从 v0.14 的接口预留推断为已交付。仓库内的逐项代码审查、验证证据和 Final 未决项见 `docs/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`。
 
-## v15 及以后候选
+## v1.1 及以后候选
 
 - 真实 Windows/arm64 发行认证、SBOM、镜像签名和目标环境长稳。
 - S3/OSS/WebDAV Provider 与多实例对象/配额一致性。

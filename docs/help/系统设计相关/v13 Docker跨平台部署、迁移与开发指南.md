@@ -1,4 +1,4 @@
-# CampusOS v13 Docker 跨平台部署、迁移与开发指南
+# CampusOS v0.13 Docker 跨平台部署、迁移与开发指南
 
 > 适用版本：`v0.13.0`  
 > 适用宿主：Windows 10/11 + Docker Desktop Linux Containers，或支持 Docker Engine 与 Compose v2 的现代 Linux  
@@ -12,7 +12,7 @@
 2. 开发者不安装宿主 Go/Node/PostgreSQL，也能绑定源码、热更新和运行测试。
 
 容器仍是 Linux 容器。Windows 通过 Docker Desktop 的 WSL2 backend 运行，不支持原生 Windows
-Containers、32 位系统或没有 Compose v2 的旧 Docker。v13 不把单主机 Compose 描述为高可用、自动 TLS、
+Containers、32 位系统或没有 Compose v2 的旧 Docker。v0.13 不把单主机 Compose 描述为高可用、自动 TLS、
 跨区域备份或多节点生产集群。本轮真实整栈与恢复证据来自 Linux `amd64`；Windows Docker Desktop 与
 Linux `arm64` 具备同一静态合同，但正式发行仍需在目标平台 Runner 重复验收。
 
@@ -363,4 +363,4 @@ Docker 构建成功不等于 SMTP、TLS、外部告警、真实生产负载或�
 - 文档站：[Docker 单主机部署与迁移](../../../docs-site/deployment/docker.md)
 - [初始管理员安全](v12部署与初始管理员安全.md)
 - [备份恢复说明](备份恢复说明.md)
-- [v13 容量基线与回归门禁](v13容量基线与回归门禁.md)
+- [v0.13 容量基线与回归门禁](v13容量基线与回归门禁.md)

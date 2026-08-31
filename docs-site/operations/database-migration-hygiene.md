@@ -50,7 +50,7 @@ make v13-migration-check
 
 该门禁在独立临时数据库执行 `000041` up/down/up，不修改正在使用的数据库。
 
-v14 还需执行：
+v0.14 还需执行：
 
 ```bash
 make v14-migration-check
@@ -58,7 +58,7 @@ make v14-migration-check
 bash ./scripts/test-v14-historical-fixture-migration.sh
 ```
 
-v14 门禁覆盖空库、`000044-000049` 的关键 up/down/up，以及一个从 `000043` 历史数据库开始、保留原始课表 JSON
+v0.14 门禁覆盖空库、`000044-000049` 的关键 up/down/up，以及一个从 `000043` 历史数据库开始、保留原始课表 JSON
 hash 的隔离采用/对账 fixture。它创建并清理时间戳命名的测试数据库和临时个人空间目录；不替代真实历史数据的
 `schedule adopt --apply` 授权流程。
 
@@ -75,7 +75,7 @@ make database-check
 
 索引删除不会删除表数据。生产环境出现问题时优先 forward-fix，不建议运行 down 重新制造写放大。
 
-v14 引入对象、文档或课表数据后，生产回退同样优先关闭 Feature 或 forward-fix；`000045`、`000047`、`000049`
+v0.14 引入对象、文档或课表数据后，生产回退同样优先关闭 Feature 或 forward-fix；`000045`、`000047`、`000049`
 的 down 文件仅用于隔离演练，不能作为删除真实用户对象或版本的发布回滚手段。
 
 ## 不应误删的兼容事实

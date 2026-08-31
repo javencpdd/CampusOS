@@ -3,7 +3,7 @@ CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容
 
 ## 当前状态
 
-当前发布版本为 `v0.13.0`。v13 在 v12 的可信账号、结构化社区和可靠命令基础上补齐统一错误合同、低基数指标与可靠任务运行闭环、管理员准入、TOTP MFA、容量回归门禁，以及系统主题和个人主页风格包的强制双端交付。
+当前发布版本为 `v0.13.0`。v0.13 在 v0.12 的可信账号、结构化社区和可靠命令基础上补齐统一错误合同、低基数指标与可靠任务运行闭环、管理员准入、TOTP MFA、容量回归门禁，以及系统主题和个人主页风格包的强制双端交付。
 
 - 内容：普通文本与富文本共用发布、审核、下架、整改、回收站和清除状态合同；公开列表、个人主页和只读集成使用 Community 内容事实源。
 - 权限：使用稳定 Permission Code、路由 Operation、全局/板块作用域、自定义角色、越权防护、最后管理员并发保护和授权审计。
@@ -12,7 +12,7 @@ CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容
 - 扩展：区分 External Plugin、Built-in Feature、Resource Package 与 Integration；支持 Wasm 和进程 Runtime、Host API v1/v2、受管数据/文件、用户授权与本地插件目录。
 - 前端：Web 与 Admin 按布局能力适配多类视口；分组聚合帖子、二手小数价格、回复/下架通知、50 MB 用户空间、头像历史与受保护的后台用户邮箱目录均由服务端合同约束，核心页面会预加载以避免首次进入模块时的假刷新感。
 
-v13 同时提供 Windows/Linux 通用 Docker 开发栈和经过门禁检查的单主机 Compose 交付，但仍不提供生产级高可用、多节点自动故障转移或自动 TLS。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实 Discord/OneBot 生产适配器和远程公共插件市场仍属于后续范围；历史名为 `runtime: grpc` 的进程 Runtime 当前通过受限 loopback HTTP Extension 合同通信。
+v0.13 同时提供 Windows/Linux 通用 Docker 开发栈和经过门禁检查的单主机 Compose 交付，但仍不提供生产级高可用、多节点自动故障转移或自动 TLS。标准 MCP Server、标准 protobuf gRPC 扩展协议、真实 Discord/OneBot 生产适配器和远程公共插件市场仍属于后续范围；历史名为 `runtime: grpc` 的进程 Runtime 当前通过受限 loopback HTTP Extension 合同通信。
 
 ## 快速开始
 
@@ -172,7 +172,7 @@ head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数�
 | 权限与可靠审计 | [权限配置入门](docs-site/guide/permission-configuration.md)、[可靠任务与 Webhook](docs-site/operations/reliable-tasks.md) |
 | 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件体系](docs-site/plugins/overview.md) |
 | Help 文档状态 | [Help 索引、历史文档与替代关系](docs/help/README.md) |
-| 当前版本与后续 | [v13 最终专业审计](docs/项目计划v13/02-v13最终专业审计与后续路线.md)、[v1-v13 计划总结](docs/计划书总结/README.md)、[公开规划页](docs-site/project/current-roadmap.md) |
+| 当前版本与后续 | [v0.13 最终专业审计](docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md)、[v0.1-v0.14 计划总结](docs/计划书总结/README.md)、[v0.14 开发收尾](docs/进度/v0.14-dev/v0.14.11-dev.md)、[公开规划页](docs-site/project/current-roadmap.md) |
 
 ## License
 

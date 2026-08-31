@@ -1,4 +1,4 @@
-# v13 可靠任务指标、告警与故障恢复 Runbook
+# v0.13 可靠任务指标、告警与故障恢复 Runbook
 
 > 适用版本：CampusOS v0.13-dev。本文用于诊断 Outbox Worker、邮件投递、Challenge 和 Session
 > 的运行异常。所有恢复操作都必须保留 Consumer Receipt、Attempt 和命令审计。
@@ -93,7 +93,7 @@ make v13-reliability-observability-check
 ## 8. 回滚
 
 1. 可先设置 `OBSERVABILITY_PROMETHEUS_ENABLED=false` 并重启，业务内计数和可靠任务处理不受影响。
-2. 可从 Prometheus 移除 v13 rules；这只撤销告警，不改变 Outbox 数据。
+2. 可从 Prometheus 移除 v0.13 rules；这只撤销告警，不改变 Outbox 数据。
 3. 不得通过回滚删除 Attempt、Receipt、审计或 dead 事件。
 4. 如果需要回滚应用版本，先停止新 Worker，再等待 lease 到期并启动兼容版本；不得让不同状态机版本
    长期并行领取同一队列。

@@ -1,4 +1,4 @@
-# v13 管理员准入 API
+# v0.13 管理员准入 API
 
 > 适用 migration：`000039_v13_admin_admission_operations`
 
@@ -32,5 +32,5 @@ identity.admin_admission.last_active
 ```
 
 响应不会包含密码、Session、Refresh Token、MFA Secret 或恢复码。完整运营流程见
-[`v13管理员准入管理与本地恢复`](../help/系统设计相关/v13管理员准入管理与本地恢复.md)。
+[`v0.13管理员准入管理与本地恢复`](../help/系统设计相关/v13管理员准入管理与本地恢复.md)。
 
