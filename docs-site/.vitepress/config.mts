@@ -114,7 +114,7 @@ export default defineConfig({
       {
         text: '版本与规划',
         items: [
-          { text: 'v1-v14 版本演进', link: '/project/version-evolution' },
+          { text: 'v0.1-v0.14 版本演进', link: '/project/version-evolution' },
           { text: '文档状态与历史替代', link: '/project/document-lifecycle' },
           { text: '当前规划与后续路线', link: '/project/current-roadmap' },
         ],
