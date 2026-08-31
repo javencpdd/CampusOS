@@ -51,6 +51,7 @@ docs-site/.vitepress/.temp/
 .env.*.local
 
 # ─── 环境变量与密钥 ───
+deploy/docker/.env.dev.local
 .env
 .env.docker
 .env.components/

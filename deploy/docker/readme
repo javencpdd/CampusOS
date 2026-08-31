@@ -1,0 +1,128 @@
+# Docker 开发配置说明
+
+将 `deploy/docker/.env.dev.example` 复制为 `deploy/docker/.env.dev.local`，并根据本机环境修改其中的变量。`deploy/docker/.env.dev.local` 是实际启动时读取的最终配置文件，通常不应提交到版本控制。
+
+## 1. 核心原则：后端服务必须保持 Loopback
+
+开发堆栈使用固定的开发凭证，这些凭证只适合本机开发测试，不能直接暴露到局域网或公网。
+
+- `CAMPUSOS_DEV_BIND=127.0.0.1` 必须保持不变。
+- 这个变量控制 API、PostgreSQL、Redis、NATS、pgAdmin 等数据和后端服务的绑定地址。
+- 不要将它改成 `0.0.0.0`，否则脚本会拒绝启动。
+
+## 2. 局域网访问 Web/Admin/Docs 的正确方式
+
+如果你需要让同一可信局域网内的其他设备访问开发 UI，可以按下面方式启用：
+
+```dotenv
+CAMPUSOS_DEV_ALLOW_LAN=true
+CAMPUSOS_DEV_WEB_BIND=0.0.0.0
+CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
+CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
+```
+
+这只会把 Web、Admin、Docs 这三个 UI 服务公开到局域网，后端服务仍然保持在本机可访问。
+
+> 注意：`CAMPUSOS_DEV_BIND` 仍然必须是 `127.0.0.1`。
+
+## 3. 主要绑定与端口变量说明
+
+- `CAMPUSOS_DEV_BIND`：后端服务（API、数据库、缓存、消息总线、pgAdmin）的默认绑定地址，必须为 `127.0.0.1`。
+- `CAMPUSOS_DEV_ALLOW_LAN`：是否允许 `Web/Admin/Docs` 在局域网暴露，必须为 `true` 或 `false`。
+- `CAMPUSOS_DEV_WEB_BIND`：Web UI 的绑定地址，`127.0.0.1` 或 `0.0.0.0`。
+- `CAMPUSOS_DEV_ADMIN_BIND`：Admin UI 的绑定地址，`127.0.0.1` 或 `0.0.0.0`。
+- `CAMPUSOS_DEV_DOCS_BIND`：Docs UI 的绑定地址，`127.0.0.1` 或 `0.0.0.0`。
+
+端口配置：
+
+- `CAMPUSOS_DEV_WEB_PORT`：Web UI 端口，默认 `3000`
+- `CAMPUSOS_DEV_ADMIN_PORT`：Admin UI 端口，默认 `3001`
+- `CAMPUSOS_DEV_DOCS_PORT`：Docs UI 端口，默认 `3002`
+- `CAMPUSOS_DEV_API_PORT`：后端 API 端口，默认 `8080`
+- `CAMPUSOS_DEV_POSTGRES_PORT`：PostgreSQL 映射端口，默认 `55432`
+- `CAMPUSOS_DEV_REDIS_PORT`：Redis 映射端口，默认 `56379`
+- `CAMPUSOS_DEV_NATS_PORT`：NATS 端口，默认 `54222`
+- `CAMPUSOS_DEV_NATS_MONITOR_PORT`：NATS 监控端口，默认 `58222`
+- `CAMPUSOS_DEV_PGADMIN_PORT`：pgAdmin 访问端口，默认 `5050`
+
+## 4. UID/GID 与宿主用户配置
+
+- `CAMPUSOS_DEV_UID` 和 `CAMPUSOS_DEV_GID` 控制容器内文件写入时的所有者。
+- Bash 脚本会默认使用当前 Linux/WSL 用户的 UID/GID；Windows PowerShell 使用 Docker Desktop 的容器节点用户。
+
+## 5. 开发环境凭证与安全提醒
+
+本文件包含开发环境专用凭证：
+
+- `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD`
+- `JWT_SECRET`、JWT 过期时间和身份配置
+- `AUTH_*` 开发模式凭证
+- 默认开发邮箱配置
+
+这些值仅用于本地开发测试，不能直接当作生产环境配置。生产环境必须替换为安全、唯一的值。
+
+## 6. 邮件配置
+
+`EMAIL_PROVIDER` 控制邮件发送方式：
+
+- `fake`：本地自包含模式，注册请求成功但不发送邮件。
+- `smtp`：通过 SMTP 发送真实邮件。
+
+如果你需要真实的注册/重置邮件，请填写：
+
+```dotenv
+EMAIL_PROVIDER=smtp
+EMAIL_SMTP_HOST=...
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USERNAME=...
+EMAIL_SMTP_PASSWORD=...
+EMAIL_SMTP_FROM=...
+EMAIL_SMTP_TIMEOUT=10s
+EMAIL_SMTP_STARTTLS=true
+```
+
+## 7. 修改后如何生效
+
+修改 `deploy/docker/.env.dev.local` 后，必须重新执行：
+
+```bash
+./scripts/docker-dev.sh up
+```
+
+不要只用 `docker restart`，因为它不会重新读取 `.env.dev.local`。
+
+如果你更喜欢标准 Compose 调用，也可以直接使用：
+
+```bash
+docker compose \
+  --env-file deploy/docker/.env.dev.local \
+  -f compose.dev.yml \
+  up -d --no-build --wait --wait-timeout 600
+```
+
+## 8. 小结
+
+- `CAMPUSOS_DEV_BIND=127.0.0.1`：后端服务必须保留本机绑定。
+- `CAMPUSOS_DEV_ALLOW_LAN=true` + UI `*_BIND=0.0.0.0`：允许局域网访问 Web/Admin/Docs。
+- 修改后必须重新执行 `./scripts/docker-dev.sh up`。
+- 生产环境请不要使用开发凭证。
+开发堆栈使用固定的开发凭证，因此必须保持：
+
+CAMPUSOS_DEV_BIND=127.0.0.1
+
+不要把 CAMPUSOS_DEV_BIND 改为 0.0.0.0。它控制 API、PostgreSQL、Redis、NATS 和 pgAdmin 等后端服务，只能保留在 loopback 上。
+
+如果你需要让局域网中的其他机器访问 Web/Admin/Docs 界面，正确的设置是：
+
+CAMPUSOS_DEV_ALLOW_LAN=true
+CAMPUSOS_DEV_WEB_BIND=0.0.0.0
+CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
+CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
+
+这会把 UI 服务公开到局域网，而后端服务仍然仅在本机可用。
+
+修改 .env.dev.local 后，重新运行：
+
+./scripts/docker-dev.sh up
+
+不要仅用 docker restart，因为那不会重新读取环境文件。
