@@ -8,7 +8,7 @@ Use this order:
 
 1. Explicit user request, for example `v0.13-dev`.
 2. Existing progress directory under `docs/进度/`, sorted by version.
-3. Existing project plan directory under `docs/项目计划v0.*`, sorted by plan version, after confirming it is not closed.
+3. Existing project plan directory under `docs/项目计划书v0/项目计划v0.*`, sorted by plan version, after confirming it is not closed.
 4. Ask a concise clarification only if no defensible active stage can be inferred.
 
 Current stage state:
@@ -33,8 +33,8 @@ docs/进度/v0.13-dev/v0.13.35-dev.md
 
 | Implementation stage | Preferred plan path |
 | --- | --- |
-| Historical stages | Matching `docs/项目计划v0.N/` and `docs/进度/v0.N-dev/` for traceability |
-| Latest completed `v0.14-dev` | `docs/项目计划v0.14/00-v0.14版本计划书.md` plus `docs/进度/v0.14-dev/v0.14.11-dev.md` |
+| Historical stages | Matching `docs/项目计划书v0/项目计划v0.N/` and `docs/进度/v0.N-dev/` for traceability |
+| Latest completed `v0.14-dev` | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` plus `docs/进度/v0.14-dev/v0.14.11-dev.md` |
 | Reserved `v1.1` and later | Read `docs/计划书总结/README.md`; do not create a task, progress directory or plan from inference alone |
 
 If the exact plan file is unknown, list files in the plan directory and read the most relevant top-level plan first.
@@ -107,7 +107,7 @@ Prefer concise tables over long prose.
 
 The release baseline remains `v0.13.0`; the worktree has migrations through `000049`. Project ownership has confirmed the
 current code verification for `v0.14-dev`, whose development closure is recorded in `docs/进度/v0.14-dev/v0.14.11-dev.md`.
-Its formal plan is `docs/项目计划v0.14/00-v0.14版本计划书.md`; the implementation audit remains
+Its formal plan is `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md`; the implementation audit remains
 `v0.14.9-dev.md`（P1 代码与测试证据见 `v0.14.5-dev`）。AcademicTerm, Storage Object, Schedule Guard, historical dry-run/adoption tooling,
 recoverable batched reconcile, Personal Documents safe degradation and receipt acknowledgement, the shared Content Editor Core, a trusted owner-scoped Document ReadPort
 draft, and low-cardinality operating metrics are implemented. `v0.14.0 Final` still requires an authorized operator decision for real historical-data apply plus Linux target release,

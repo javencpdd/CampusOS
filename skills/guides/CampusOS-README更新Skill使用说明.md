@@ -35,7 +35,7 @@
 | HTTP/Host API、权限和错误契约 | `docs/api/` |
 | 模块、数据、存储和安全边界 | `docs/architecture/` |
 | 已完成任务和验证结果 | `docs/进度/<stage>/` |
-| 后续范围、优先级和验收 | `docs/项目计划v*/` |
+| 后续范围、优先级和验收 | `docs/项目计划书v0/项目计划v0.*/` |
 
 详细规则见 `skills/sources/campusos-readme-update/references/documentation-routing.md`。
 

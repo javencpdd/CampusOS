@@ -29,7 +29,7 @@ drive, home directory, or operating system.
 Common version-stage paths:
 
 ```text
-docs/项目计划v0.14/
+docs/项目计划书v0/项目计划v0.14/
 docs/进度/v0.14-dev/
 ```
 
@@ -52,7 +52,7 @@ Determine the stage in this order:
 
 1. Use the explicit user request when it names a stage, such as `v0.13-dev`.
 2. Use the latest active progress directory under `docs/进度/`.
-3. Use the latest project plan directory under `docs/项目计划v0.*`, but first confirm it is still an active implementation authority.
+3. Use the latest project plan directory under `docs/项目计划书v0/项目计划v0.*`, but first confirm it is still an active implementation authority.
 4. If still unclear, ask one concise question before editing.
 
 ### 2. Read Context
@@ -63,7 +63,7 @@ Examples:
 
 ```bash
 find docs/进度/v0.13-dev -maxdepth 1 -type f | sort -V
-sed -n '1,240p' docs/项目计划v0.13/00-v0.13版本计划书.md
+sed -n '1,240p' docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md
 ```
 
 For historical compatibility work, read that stage's plan and progress only after confirming it is not the current
@@ -79,7 +79,7 @@ Examples:
 - SDK/CLI work belongs under `sdk/`, `cmd/campusosctl`, and relevant docs.
 - Frontend user experience work belongs under `web/` or `admin/`.
 - Progress documentation belongs under `docs/进度/<stage>/`.
-- User-facing plan updates belong under `docs/项目计划v*/` only when plan scope or status changes.
+- User-facing plan updates belong under `docs/项目计划书v0/项目计划v0.*/` only when plan scope or status changes.
 
 ### 4. Progress Documentation
 

@@ -7,7 +7,7 @@
 > Migrations: `000001` through `000049`
 
 The latest development-closure evidence is `docs/进度/v0.14-dev/v0.14.11-dev.md`. The implementation audit remains
-`docs/进度/v0.14-dev/v0.14.9-dev.md` and `docs/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`: they record
+`docs/进度/v0.14-dev/v0.14.9-dev.md` and `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`: they record
 the plan audit, batched recoverable reconciliation, the personal-document preview safe-fallback receipt, and documentation
 synchronization. P0/P1 implementation evidence remains in `v0.14.5-dev.md`; v0.14 Final gates remain unchanged. `v1.1`
 is reserved for the separately planned next major-series stage and is not an active task.
@@ -172,10 +172,10 @@ Read these before a new task:
 | Version evolution and plan validity | `docs/计划书总结/README.md` |
 | Current candidate roadmap | `docs/计划书总结/01-当前项目规划与后续路线.md` |
 | Current architecture | `docs/architecture/当前架构概览.md` |
-| v0.13 plan and audit | `docs/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
-| v0.14 implementation plan | `docs/项目计划v0.14/00-v0.14版本计划书.md` |
+| v0.13 plan and audit | `docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
+| v0.14 implementation plan | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` |
 | Current evidence | latest files in `docs/进度/v0.14-dev/` |
-| v0.13 final baseline | `docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
+| v0.13 final baseline | `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
 
 Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation
 instructions. Planned capabilities must not be reported as implemented without live code and test evidence.

@@ -51,7 +51,7 @@ sed -n '1,220p' docs/README.md
 find docs -maxdepth 2 -type d | sort
 find docs/help skills/guides docs/api docs/architecture -maxdepth 2 -type f 2>/dev/null | sort
 find docs/进度 -maxdepth 2 -type f | sort -V | tail -n 20
-find docs/项目计划v* -maxdepth 2 -type f | sort -V
+find docs/项目计划书v0/项目计划v0.* -maxdepth 2 -type f | sort -V
 ```
 
 Verify claims against source files only as needed:
@@ -87,7 +87,7 @@ Use `references/documentation-routing.md`. Important defaults:
 - `docs/api/`: HTTP/Host API contracts, route groups, errors, permissions, and examples.
 - `docs/architecture/`: boundaries, topology, data ownership, storage, and security design.
 - `docs/进度/`: completed task evidence and validation results.
-- `docs/项目计划v*/`: planned scope, sequencing, acceptance, and deferred work.
+- `docs/项目计划书v0/项目计划v0.*/`: planned scope, sequencing, acceptance, and deferred work.
 - `docs-site/`: public, current user/developer documentation; keep it synchronized when a behavior is part of the official
   supported workflow.
 

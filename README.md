@@ -172,7 +172,7 @@ head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数�
 | 权限与可靠审计 | [权限配置入门](docs-site/guide/permission-configuration.md)、[可靠任务与 Webhook](docs-site/operations/reliable-tasks.md) |
 | 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件体系](docs-site/plugins/overview.md) |
 | Help 文档状态 | [Help 索引、历史文档与替代关系](docs/help/README.md) |
-| 当前版本与后续 | [v0.13 最终专业审计](docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md)、[v0.1-v0.14 计划总结](docs/计划书总结/README.md)、[v0.14 开发收尾](docs/进度/v0.14-dev/v0.14.11-dev.md)、[公开规划页](docs-site/project/current-roadmap.md) |
+| 当前版本与后续 | [v0.13 最终专业审计](docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md)、[v0.1-v0.14 计划总结](docs/计划书总结/README.md)、[v0.14 开发收尾](docs/进度/v0.14-dev/v0.14.11-dev.md)、[公开规划页](docs-site/project/current-roadmap.md) |
 
 ## License
 
