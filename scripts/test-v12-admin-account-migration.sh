@@ -105,4 +105,4 @@ test "$(scalar "SELECT count(*) FROM user_roles WHERE user_id=9938001 AND role_i
 run_file "$repo_root/migrations/000038_v12_admin_accounts.up.sql" >/dev/null
 test "$(scalar "SELECT status FROM identity_admin_accounts WHERE user_id=9938001")" = "active"
 
-echo "v12 independent administrator account migration up/down/up drill passed"
+echo "v0.12 independent administrator account migration up/down/up drill passed"

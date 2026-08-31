@@ -59,13 +59,13 @@ if ! (
   tail -n 80 "$log_file" >&2
   exit 1
 fi
-[[ "$(scalar "SELECT count(*) FROM schema_migrations")" == "43" ]] || { echo "v13 fixture did not stop at migration 43" >&2; exit 1; }
+[[ "$(scalar "SELECT count(*) FROM schema_migrations")" == "43" ]] || { echo "v0.13 fixture did not stop at migration 43" >&2; exit 1; }
 
-# This is deliberately a pre-v14 database state. The account already exists
-# in the historical schema; no v14 table or record is inserted before the
+# This is deliberately a pre-v0.14 database state. The account already exists
+# in the historical schema; no v0.14 table or record is inserted before the
 # append-only migrations are applied.
 fixture_user="$(scalar "SELECT id FROM users ORDER BY id LIMIT 1")"
-[[ -n "$fixture_user" ]] || { echo "v13 fixture has no user" >&2; exit 1; }
+[[ -n "$fixture_user" ]] || { echo "v0.13 fixture has no user" >&2; exit 1; }
 
 if ! (
   cd "$repo_root"
@@ -74,7 +74,7 @@ if ! (
   tail -n 80 "$log_file" >&2
   exit 1
 fi
-[[ "$(scalar "SELECT count(*) FROM schema_migrations")" == "49" ]] || { echo "v14 migrations did not reach 49" >&2; exit 1; }
+[[ "$(scalar "SELECT count(*) FROM schema_migrations")" == "49" ]] || { echo "v0.14 migrations did not reach 49" >&2; exit 1; }
 
 schedule_dir="$fixture_root/$fixture_user/file/schedule/terms"
 mkdir -p "$schedule_dir"
@@ -88,7 +88,7 @@ JSON
 source_hash="$(sha256sum "$schedule_file" | awk '{print $1}')"
 fixture_dsn="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${drill_db}?sslmode=disable"
 
-adoption_output="$(cd "$repo_root" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" DATABASE_DSN="$fixture_dsn" go run ./cmd/campusosctl schedule adopt --root "$fixture_root" --dsn "$fixture_dsn" --apply --actor "$fixture_user" --reason "v14 historical fixture adoption")"
+adoption_output="$(cd "$repo_root" && GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" DATABASE_DSN="$fixture_dsn" go run ./cmd/campusosctl schedule adopt --root "$fixture_root" --dsn "$fixture_dsn" --apply --actor "$fixture_user" --reason "v0.14 historical fixture adoption")"
 [[ "$adoption_output" == *'"objects_created": 1'* ]] || { echo "historical schedule object was not created: $adoption_output" >&2; exit 1; }
 [[ "$(scalar "SELECT count(*) FROM user_schedule_terms WHERE user_id=$fixture_user")" == "1" ]] || { echo "historical schedule binding is missing" >&2; exit 1; }
 [[ "$(scalar "SELECT count(*) FROM user_schedule_preferences WHERE user_id=$fixture_user")" == "1" ]] || { echo "historical schedule preference is missing" >&2; exit 1; }
@@ -104,4 +104,4 @@ for difference in metadata_missing_physical physical_without_metadata payload_ha
   fi
 done
 
-echo "v14 historical v13-db + legacy-schedule fixture migration/adoption/reconcile drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 historical v0.13-db + legacy-schedule fixture migration/adoption/reconcile drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

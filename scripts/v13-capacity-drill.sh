@@ -123,7 +123,7 @@ capture_phase() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
-    echo "v13 capacity drill requires $1" >&2
+    echo "v0.13 capacity drill requires $1" >&2
     exit 127
   }
 }
@@ -138,7 +138,7 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$POSTGRES_CONTAINER"; then
   exit 127
 fi
 
-echo "==> creating isolated v13 capacity database"
+echo "==> creating isolated v0.13 capacity database"
 docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" createdb -U "$DB_USER" "$drill_db"
 PSQL_MODE=docker DB_NAME="$drill_db" DB_PASSWORD="$DB_PASSWORD" POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
   ./scripts/migrate.sh up >"$work_dir/migrations.log"
@@ -178,4 +178,4 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity comp
   --candidate "$work_dir/candidate.json" \
   --budget docs/项目计划v0.13/evidence/v0.13-capacity-drill-budget.json
 
-echo "v13 isolated capacity drill passed: clean database, fixed public/admin reads, runtime and reliability budgets"
+echo "v0.13 isolated capacity drill passed: clean database, fixed public/admin reads, runtime and reliability budgets"

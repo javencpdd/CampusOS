@@ -17,4 +17,4 @@ grep -q 'CampusOSReliabilityWorkerStopped' deploy/prometheus/campusos-v13.rules.
 grep -q 'CampusOSEmailDeliveryDegraded' deploy/prometheus/campusos-v13.rules.yml
 grep -q 'CampusOSRefreshTokenReuseDetected' deploy/prometheus/campusos-v13.rules.yml
 
-echo "v13 reliability observability fault checks passed"
+echo "v0.13 reliability observability fault checks passed"

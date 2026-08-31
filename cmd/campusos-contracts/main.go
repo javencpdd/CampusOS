@@ -86,9 +86,9 @@ func main() {
 		{filepath.Join(root, "docs/api/plugin-permissions-v2.json"), permissionJSON},
 		{filepath.Join(root, "docs/api/Host-API-v1权限目录.md"), permissionMarkdown()},
 		{filepath.Join(root, "docs/api/error-catalog-v0.13.json"), errorJSON},
-		{filepath.Join(root, "docs/api/v13统一错误合同.md"), errorCatalogMarkdown(errorCatalog)},
+		{filepath.Join(root, "docs/api/v0.13统一错误合同.md"), errorCatalogMarkdown(errorCatalog)},
 		{filepath.Join(root, "docs/api/metrics-catalog-v0.13.json"), metricsJSON},
-		{filepath.Join(root, "docs/api/v13可观测性指标目录.md"), metricsCatalogMarkdown(metricCatalog)},
+		{filepath.Join(root, "docs/api/v0.13可观测性指标目录.md"), metricsCatalogMarkdown(metricCatalog)},
 	}
 	for _, item := range artifacts {
 		if *write {
@@ -114,7 +114,7 @@ func main() {
 
 func metricsCatalogMarkdown(items []observability.MetricDescriptor) []byte {
 	var out strings.Builder
-	out.WriteString("# CampusOS v13 可观测性指标目录\n\n")
+	out.WriteString("# CampusOS v0.13 可观测性指标目录\n\n")
 	out.WriteString("> 由 `go run ./cmd/campusos-contracts --write` 从 `pkg/observability` 生成。指标名、类型、单位、标签和 series 上限属于稳定合同。\n\n")
 	out.WriteString("| 指标 | 类型 | 单位 | 标签白名单 | Series 上限 | 说明 |\n| --- | --- | --- | --- | ---: | --- |\n")
 	for _, item := range items {

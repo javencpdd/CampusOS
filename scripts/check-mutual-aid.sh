@@ -21,4 +21,4 @@ if rg -n 'NewPg(Thread|Category|Post)Repository|pgxpool' internal/modules/featur
   exit 1
 fi
 
-echo "v12 mutual aid checks passed"
+echo "v0.12 mutual aid checks passed"

@@ -77,4 +77,4 @@ UPDATE platform_outbox_attempts SET status='failed' WHERE id='migration-finalize
 SQL
 test "$(scalar "SELECT status FROM platform_outbox_attempts WHERE id='migration-finalize-attempt'")" = "failed"
 
-echo "v12 reliability worker convergence migration and PostgreSQL Claim drill passed"
+echo "v0.12 reliability worker convergence migration and PostgreSQL Claim drill passed"

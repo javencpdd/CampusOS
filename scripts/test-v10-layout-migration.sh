@@ -58,4 +58,4 @@ test -f "$fixture/data/plugin_data/personal-space/styles/legacy.space-style.json
 test -f "$fixture/data/plugin_data/personal-space/style-packs/custom-space/style.yaml"
 test ! -e "$fixture/data/resources/space-style-packs/custom-space"
 
-echo "v10 module/plugin layout migration and rollback drill passed"
+echo "v0.10 module/plugin layout migration and rollback drill passed"

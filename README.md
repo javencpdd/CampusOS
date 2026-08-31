@@ -75,7 +75,7 @@ curl -fsS http://localhost:8080/api/v1/health
 | 认识架构边界 | [系统架构](http://localhost:3002/guide/architecture) | [当前架构概览](docs/architecture/当前架构概览.md) |
 | 掌握 Docker 开发 | [Docker 跨平台开发](http://localhost:3002/deployment/docker-development) | [开发运行指南](docs/help/系统设计相关/开发运行与验证指南.md) |
 | 编写插件 | [课表插件教程](http://localhost:3002/plugins/schedule-plugin-tutorial) | [插件文档入口](docs/help/插件相关/插件分级与生命周期说明.md) |
-| 理解权限 | [权限配置入门](http://localhost:3002/guide/permission-configuration) | [权限与可靠审计](docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
+| 理解权限 | [权限配置入门](http://localhost:3002/guide/permission-configuration) | [权限与可靠审计](docs/help/系统设计相关/v0.11权限管理与可靠审计设计入门.md) |
 | 准备贡献 | [贡献与 CI 工作流](http://localhost:3002/contributing/workflow) | [开发、验证与贡献指南](docs/help/系统设计相关/开发运行与验证指南.md) |
 
 官方文档后续部署到公网时，开发者只需替换站点域名；仓库内 `docs/` 继续作为离线文档、机器合同和历史验收证据入口。
@@ -113,7 +113,7 @@ git switch -c feat/my-change
 git diff --check && python scripts/check-line-endings.py --include-untracked
 ```
 
-专项检查和 Docker/宿主热更新切换见[贡献与 CI 工作流](docs-site/contributing/workflow.md)和 [Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)。开发结束后使用 `docker-dev.* down` 停止容器并保留数据。
+专项检查和 Docker/宿主热更新切换见[贡献与 CI 工作流](docs-site/contributing/workflow.md)和 [Docker 跨平台部署、迁移与开发指南](docs/help/系统设计相关/v0.13%20Docker跨平台部署、迁移与开发指南.md)。开发结束后使用 `docker-dev.* down` 停止容器并保留数据。
 
 ## 提交改动与创建 Pull Request
 

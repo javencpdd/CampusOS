@@ -124,4 +124,4 @@ run_file "$repo_root/migrations/000031_v12_identity_recovery_cases.up.sql" >/dev
 test "$(scalar "SELECT to_regclass('public.uk_identity_recovery_case_public_id') IS NOT NULL")" = "t"
 test "$(scalar "SELECT count(*) FROM role_permissions rp JOIN permission_definitions pd ON pd.id=rp.permission_id JOIN roles r ON r.id=rp.role_id WHERE r.name='admin' AND rp.deleted_at IS NULL AND pd.code='identity.account.recovery.override'")" = "1"
 
-echo "v12 identity recovery migration up/down/up drill passed"
+echo "v0.12 identity recovery migration up/down/up drill passed"

@@ -1057,9 +1057,9 @@ user1 发布图文
 ### 输出
 
 ```text
-docs/architecture/v10-current-inventory.md
-docs/architecture/v10-target-architecture.md
-docs/database/v10-schema-catalog.md
+docs/architecture/v0.10-current-inventory.md
+docs/architecture/v0.10-target-architecture.md
+docs/database/v0.10-schema-catalog.md
 docs/adr/
 ```
 

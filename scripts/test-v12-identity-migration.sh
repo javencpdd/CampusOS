@@ -92,4 +92,4 @@ run_file "$repo_root/migrations/000028_v12_identity_account_state.up.sql" >/dev/
 test "$(scalar "SELECT to_regclass('public.uk_accounts_email_normalized') IS NOT NULL")" = "t"
 test "$(scalar "SELECT verification_state FROM accounts WHERE id=9928006")" = "legacy_accepted"
 
-echo "v12 identity account migration preflight and up/down/up drill passed"
+echo "v0.12 identity account migration preflight and up/down/up drill passed"

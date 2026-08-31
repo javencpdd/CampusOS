@@ -17,4 +17,4 @@ make v13-capacity-check
 
 工具不接受命令行 Token，也不会调用登录、验证码或写 API。需要观测快照时，临时授权文件必须是 `0600`，并在采样后按本机安全流程移除。
 
-完整步骤、预算和故障处理见仓库中的 [v0.13 容量基线与回归门禁](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v13%E5%AE%B9%E9%87%8F%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81.md)。
+完整步骤、预算和故障处理见仓库中的 [v0.13 容量基线与回归门禁](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v0.13%E5%AE%B9%E9%87%8F%E5%9F%BA%E7%BA%BF%E4%B8%8E%E5%9B%9E%E5%BD%92%E9%97%A8%E7%A6%81.md)。

@@ -81,4 +81,4 @@ run_file "$repo_root/migrations/000036_v12_identity_challenge_policy.up.sql" >/d
 test "$(scalar "SELECT to_regclass('public.identity_challenge_policies') IS NOT NULL")" = "t"
 test "$(scalar "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='identity_challenge_policies'::regclass AND conname='chk_identity_challenge_policy_email_limit')")" = "t"
 
-echo "v12 identity challenge policy migration up/down/up drill passed"
+echo "v0.12 identity challenge policy migration up/down/up drill passed"

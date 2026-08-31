@@ -65,7 +65,7 @@ make v14-migration-check
 python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 if [[ "${RUN_V13_CAPACITY_DRILL:-true}" == "true" ]]; then
-  echo "==> isolated v13 capacity drill"
+  echo "==> isolated v0.13 capacity drill"
   make v13-capacity-drill
 fi
 

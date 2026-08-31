@@ -84,7 +84,7 @@ preview_images:
 
 后端和 `campusosctl resource inspect/adopt` 会统一检查双端声明、断点响应式规则、两张预览、目标 CSS 作用域、配置绑定、颜色对比度以及动效的 `prefers-reduced-motion` 降级。历史包可以继续读取和导出，但会标为 `legacy-readonly`，不能绕过检查再次应用。
 
-发布前的浏览器矩阵固定检查 `1440 x 1000`、`390 x 844` 与 `768 x 1024`。系统主题和个人主页包在用户端都有 Desktop/Mobile 分段预览；失败包不会显示可应用操作。完整操作说明见仓库中的 `docs/help/系统设计相关/v13风格包双端交付标准.md`。
+发布前的浏览器矩阵固定检查 `1440 x 1000`、`390 x 844` 与 `768 x 1024`。系统主题和个人主页包在用户端都有 Desktop/Mobile 分段预览；失败包不会显示可应用操作。完整操作说明见仓库中的 `docs/help/系统设计相关/v0.13风格包双端交付标准.md`。
 
 `effects/` 是可选目录。TypeScript 仅作为开发源码，运行前必须编译为 `main.js`。
 

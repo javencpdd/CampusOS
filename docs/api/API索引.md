@@ -65,7 +65,7 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 
 `color` 只接受 `#RRGGBB` 或 `#RRGGBBAA`。并发修改返回 `409`，客户端应重新读取管理视图后再提交。
 板块移动不会授予任何父级权限，版主仍只能治理显式分配的 board。详细状态、错误和迁移规则见
-[v0.12 两级板块与可靠管理流程](v12两级板块与可靠管理流程.md)。
+[v0.12 两级板块与可靠管理流程](v0.12两级板块与可靠管理流程.md)。
 
 ## 4. 结构化帖子类型与板块策略 API
 
@@ -93,12 +93,12 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 类型化 Feature API 创建 `mutual_aid`；二手信息使用其独立 Feature API 创建 `secondhand`。所有这些入口均不接受通用
 Detail JSON。结构化 Participant 是编译内 Built-in Feature 合同，External Plugin、SDK、MCP 和 Agent Runner
 不会获得事务参与能力。详细说明见
-[v0.12 结构化帖子类型与板块策略](../help/系统设计相关/v12结构化帖子类型与板块策略.md)。
+[v0.12 结构化帖子类型与板块策略](../help/系统设计相关/v0.12结构化帖子类型与板块策略.md)。
 
 互助与二手正文可以使用兼容 `markdown` 纯文本或 `safe_html` 图文格式。`safe_html` 保存前由 Community
 Core 清洗，正文图片经 `POST /content/assets/images` 保存到当前用户的 User Storage；
 `POST /content/preview` 使用相同清洗规则。完整图文文章仍使用 `richtext_article` 和独立 Article Detail。
-详见 [v0.12 分组导航与结构化图文发布](../help/系统设计相关/v12分组导航与结构化图文发布.md)。
+详见 [v0.12 分组导航与结构化图文发布](../help/系统设计相关/v0.12分组导航与结构化图文发布.md)。
 
 ## 5. 校园互助 API
 
@@ -117,7 +117,7 @@ Core 清洗，正文图片经 `POST /content/assets/images` 保存到当前用�
 
 状态只能按 `open -> in_progress/resolved/closed`、`in_progress -> open/resolved/closed`、
 `resolved -> closed` 转换。发生 `409` 时客户端必须重新读取后再提交，不能用旧版本覆盖新修改。详情字段和
-安全边界见 [v0.12 校园互助发布与状态管理](../help/系统设计相关/v12校园互助发布与状态管理.md)。
+安全边界见 [v0.12 校园互助发布与状态管理](../help/系统设计相关/v0.12校园互助发布与状态管理.md)。
 编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
 互助状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。创建和编辑请求可附带
 `content_format: "safe_html"`；省略时继续按历史纯文本处理。
@@ -141,7 +141,7 @@ Core 清洗，正文图片经 `POST /content/assets/images` 保存到当前用�
 会继续返回 `enabled=false`，其余二手路径由 Feature Gate 拒绝。状态只能按
 `available -> reserved/sold/closed`、`reserved -> available/sold/closed` 转换，`sold` 和
 `closed` 是终态。详情和安全边界见
-[v0.12 校园二手发布与交易状态管理](../help/系统设计相关/v12校园二手发布与交易状态管理.md)。
+[v0.12 校园二手发布与交易状态管理](../help/系统设计相关/v0.12校园二手发布与交易状态管理.md)。
 编辑或状态更新要求基础 Thread 仍处于 active（未回收）状态；作者已回收的内容返回 `409 / 40009`，不会产生新的
 交易状态、审计或 Outbox。未分类服务端错误统一返回 `500 / 10006` 与通用错误文案。创建和编辑请求可附带
 `content_format: "safe_html"`；省略时继续按历史纯文本处理。
@@ -150,7 +150,7 @@ Core 清洗，正文图片经 `POST /content/assets/images` 保存到当前用�
 
 v0.12 登录以短期 Access JWT 配合服务端可撤销 Session 实现。浏览器 Refresh Token 位于
 `HttpOnly` Cookie，响应中的 Access Token 只应放在进程内存。详细流程见
-[v0.12 会话与 Token 安全流程](v12会话与Token安全流程.md)。
+[v0.12 会话与 Token 安全流程](v0.12会话与Token安全流程.md)。
 
 | 方法 | 路径 | 认证 | 说明 |
 | --- | --- | --- | --- |
@@ -203,7 +203,7 @@ v0.10 使用稳定 Permission Code。旧的 `resource:action` 仍作为兼容映
 | `GET` | `/identity/challenge-policy` | `identity.challenge_policy.read` | 读取始终启用的验证码窗口与次数策略。 |
 | `PUT` | `/identity/challenge-policy` | `identity.challenge_policy.update` | 使用 `expected_version` 热更新策略并写 required audit。 |
 
-HTTP Handler 缺少已认证操作者上下文时直接返回 `401`，不会回退到受信任内部调用。`member`、`guest` 是保护角色；系统角色矩阵只读，版主只能使用 category 作用域。完整设计见 [v0.10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)。
+HTTP Handler 缺少已认证操作者上下文时直接返回 `401`，不会回退到受信任内部调用。`member`、`guest` 是保护角色；系统角色矩阵只读，版主只能使用 category 作用域。完整设计见 [v0.10 权限管理设计与使用入门](../help/系统设计相关/v0.10权限管理设计与使用入门.md)。
 
 ## 10. 版主管理 API
 
@@ -230,7 +230,7 @@ Moderation Core 始终保留权限策略、板块作用域、审计和数据完�
 | `POST` | `/platform/reliability/events/:id/replay` | `platform.reliability.replay` | 仅重放 dead-letter；要求认证 actor 与 `Idempotency-Key`。 |
 | `GET`/`POST` | `/platform/reliability/retention-preview`、`/retention-runs`、`/retention-runs/preview` | `platform.retention.preview` | 仅计算和保存 dry-run，不执行物理删除。 |
 
-详细请求、错误与 Webhook 补充见 [v0.11 可靠任务与 Webhook 合同](v11可靠任务与Webhook合同.md)。
+详细请求、错误与 Webhook 补充见 [v0.11 可靠任务与 Webhook 合同](v0.11可靠任务与Webhook合同.md)。
 
 ## 12. 兼容性规则
 
@@ -253,13 +253,13 @@ Runtime Manifest 不是授权替代。页面隐藏和 Action 过滤只是减少�
 ## 14. 关联文档
 
 - [接口协议适配器标准说明](../help/系统设计相关/接口协议适配器标准说明.md)
-- [v0.10 权限管理设计与使用入门](../help/系统设计相关/v10权限管理设计与使用入门.md)
-- [v0.11 权限管理与可靠审计设计入门](../help/系统设计相关/v11权限管理与可靠审计设计入门.md)
-- [v0.11 可靠任务与 Webhook 合同](v11可靠任务与Webhook合同.md)
-- [v0.12 会话与 Token 安全流程](v12会话与Token安全流程.md)
-- [v0.12 结构化帖子类型与板块策略](../help/系统设计相关/v12结构化帖子类型与板块策略.md)
-- [v0.12 校园互助发布与状态管理](../help/系统设计相关/v12校园互助发布与状态管理.md)
-- [v0.12 校园二手发布与交易状态管理](../help/系统设计相关/v12校园二手发布与交易状态管理.md)
+- [v0.10 权限管理设计与使用入门](../help/系统设计相关/v0.10权限管理设计与使用入门.md)
+- [v0.11 权限管理与可靠审计设计入门](../help/系统设计相关/v0.11权限管理与可靠审计设计入门.md)
+- [v0.11 可靠任务与 Webhook 合同](v0.11可靠任务与Webhook合同.md)
+- [v0.12 会话与 Token 安全流程](v0.12会话与Token安全流程.md)
+- [v0.12 结构化帖子类型与板块策略](../help/系统设计相关/v0.12结构化帖子类型与板块策略.md)
+- [v0.12 校园互助发布与状态管理](../help/系统设计相关/v0.12校园互助发布与状态管理.md)
+- [v0.12 校园二手发布与交易状态管理](../help/系统设计相关/v0.12校园二手发布与交易状态管理.md)
 - [RBAC 权限与版主管理说明（历史兼容）](../help/系统设计相关/RBAC权限与版主管理说明.md)
 - [v0.6 API 契约计划](../项目计划v0.6/01-v0.6版本计划书.md)
 - [v0.6 第三版计划](../项目计划v0.6/02-v0.6版本计划书第三版.md)

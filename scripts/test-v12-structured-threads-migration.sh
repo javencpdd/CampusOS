@@ -99,4 +99,4 @@ run_file "$repo_root/migrations/000033_v12_structured_threads.up.sql" >/dev/null
 test "$(scalar "SELECT to_regclass('public.idx_threads_thread_type_created') IS NOT NULL")" = "t"
 test "$(scalar "SELECT count(*) FROM role_permissions rp JOIN permission_definitions pd ON pd.id=rp.permission_id JOIN roles r ON r.id=rp.role_id WHERE r.name='admin' AND rp.deleted_at IS NULL AND pd.code='community.category.configure_thread_types'")" = "1"
 
-echo "v12 structured thread migration preflight and up/down/up drill passed"
+echo "v0.12 structured thread migration preflight and up/down/up drill passed"

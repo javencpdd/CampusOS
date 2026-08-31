@@ -84,4 +84,4 @@ run_file "$repo_root/migrations/000030_v12_identity_sessions.up.sql" >/dev/null
 test "$(scalar "SELECT count(*) FROM sessions WHERE refresh_token IS NOT NULL")" = "0"
 test "$(scalar "SELECT count(*) FROM sessions WHERE revoked_at IS NULL")" = "0"
 
-echo "v12 identity session migration up/down/up drill passed"
+echo "v0.12 identity session migration up/down/up drill passed"
