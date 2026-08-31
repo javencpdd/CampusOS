@@ -1,6 +1,6 @@
-# v13 多因素认证 API
+# v0.13 多因素认证 API
 
-> 当前机器可读契约仍由 `docs/api/openapi-v0.6-current.yaml` 和 `docs/api/http-routes-v0.6.json` 生成；本页解释 v13 MFA 的请求顺序与安全约束。
+> 当前机器可读契约仍由 `docs/api/openapi-v0.6-current.yaml` 和 `docs/api/http-routes-v0.6.json` 生成；本页解释 v0.13 MFA 的请求顺序与安全约束。
 
 ## 登录顺序
 

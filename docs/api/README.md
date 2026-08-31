@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | 当前机器合同 | `openapi-v0.6-current.yaml`、`http-routes-v0.6.json`、`error-catalog-v0.13.json` | 客户端生成和 CI 漂移检查的优先依据 |
 | 权限与插件合同 | `Host-API-v2受管数据合同.md`、`plugin-manifest-v2.schema.json`、`plugin-permissions-v2.json` | External Plugin 只能使用声明并获批的能力 |
-| 业务专项说明 | `v12会话与Token安全流程.md`、`v13管理员准入API.md`、`v13多因素认证API.md` | 与 OpenAPI 一起阅读，不单独推断隐藏字段 |
+| 业务专项说明 | `v0.12会话与Token安全流程.md`、`v0.13管理员准入API.md`、`v0.13多因素认证API.md` | 与 OpenAPI 一起阅读，不单独推断隐藏字段 |
 | 历史兼容合同 | `openapi-v0.3-pre.yaml`、Host API v1 | 只用于旧客户端迁移和行为比较 |
 
 ## 变更规则

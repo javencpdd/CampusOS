@@ -1,4 +1,4 @@
-# v11 Webhook 可靠投递与安全模型
+# v0.11 Webhook 可靠投递与安全模型
 
 > 基线：`v0.11.0`  
 > Owner：Webhook Built-in Feature；可靠任务由 Reliability Core 执行。
@@ -70,7 +70,7 @@ URL、截图、错误页或 Resource Package。
 | 超过重试次数 | child event dead-letter；投递记录写 `failed` 与 dead-letter 时间。 |
 | endpoint 被停用/删除或事件不再匹配 | 不再发送；已存在历史记录保持可查。 |
 
-endpoint 可配置 `max_concurrent`（1-16）和 `rate_limit_per_minute`（1-600）。v11 的
+endpoint 可配置 `max_concurrent`（1-16）和 `rate_limit_per_minute`（1-600）。v0.11 的
 限流器是单进程防护层；多实例全局配额需要共享 limiter，属于后续版本，不能把当前
 数值理解为集群级强制限额。
 
@@ -85,4 +85,4 @@ endpoint 可配置 `max_concurrent`（1-16）和 `rate_limit_per_minute`（1-600
 - dead-letter 重放只对 Reliability queue 中 `dead` 事件开放，要求二次确认和
   `Idempotency-Key`，并写入 command audit。不要用重复点击“测试”代替故障恢复。
 
-详细运维步骤见 [v11 可靠任务与 Webhook 安全运维](../help/系统设计相关/v11可靠任务与Webhook安全运维.md)。
+详细运维步骤见 [v0.11 可靠任务与 Webhook 安全运维](../help/系统设计相关/v11可靠任务与Webhook安全运维.md)。

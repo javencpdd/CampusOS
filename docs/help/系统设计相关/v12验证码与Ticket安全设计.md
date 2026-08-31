@@ -1,4 +1,4 @@
-# v12 验证码与 Ticket 安全设计
+# v0.12 验证码与 Ticket 安全设计
 
 > 适用阶段：v0.12 A3-A4  
 > 状态：Challenge、Ticket、持久限流、Core 邮件投递和验证式用户注册已实施。

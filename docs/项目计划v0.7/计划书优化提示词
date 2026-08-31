@@ -1,6 +1,6 @@
 请先审查并修订现有计划书：
 
-`/home/jack/bbs/bbs01/CampusOS/docs/项目计划v7/00-v7版本计划书.md`
+`/home/jack/bbs/bbs01/CampusOS/docs/项目计划v0.7/00-v7版本计划书.md`
 
 当前计划整体方向正确，但范围偏大、部分阶段顺序和验收标准需要优化。请先完善计划书，再继续实施，不要直接进行一次性大规模重构。
 
@@ -229,7 +229,7 @@ Plugin Manager 最终只管理真正的 External Plugin。
 * API、路由、配置和数据变化已记录
 * 兼容路径和回滚路径已验证
 * 对应进度文档已生成
-* v7 计划书状态和证据已同步
+* v0.7 计划书状态和证据已同步
 
 没有完整证据时，不得标记为已验收。
 
@@ -255,7 +255,7 @@ Plugin Manager 最终只管理真正的 External Plugin。
 
 同时持续更新：
 
-`/home/jack/bbs/bbs01/CampusOS/docs/项目计划v7/00-v7版本计划书.md`
+`/home/jack/bbs/bbs01/CampusOS/docs/项目计划v0.7/00-v7版本计划书.md`
 
 确保计划、代码、测试和进度文档保持一致。
 

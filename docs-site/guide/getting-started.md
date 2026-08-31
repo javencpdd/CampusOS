@@ -205,11 +205,11 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 | 调用 HTTP API | [接口约定](/api/overview) |
 | 编写风格包 | [风格包、特效与 CampusStyleSDK](/plugins/style-packs) |
 | 配置角色、权限或版主 | [权限配置入门](/guide/permission-configuration) |
-| 设计新的权限能力 | [系统架构](/guide/architecture) 和仓库内 `v10权限管理设计与使用入门.md` |
+| 设计新的权限能力 | [系统架构](/guide/architecture) 和仓库内 `v0.10权限管理设计与使用入门.md` |
 | 准备发布 | [构建与发布](/deployment/release) |
 | 在 Windows/Linux 用 Docker 开发 | [Docker 跨平台开发环境](/deployment/docker-development) |
 | 单主机部署或迁移 | [Docker 单主机部署与迁移](/deployment/docker) |
-| 理解历史计划、文档有效性和下一步 | [v1-v14 版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、[当前规划与后续路线](/project/current-roadmap) |
+| 理解历史计划、文档有效性和下一步 | [v0.1-v0.14 版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、[当前规划与后续路线](/project/current-roadmap) |
 | 准备提交代码 | [贡献、Pull Request 与 CI/CD](/contributing/workflow) |
 
 ## 9. 常见启动问题

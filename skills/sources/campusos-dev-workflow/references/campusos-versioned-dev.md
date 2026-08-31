@@ -1,6 +1,6 @@
 # CampusOS Versioned Development Reference
 
-> 更新时间：2026-08-03
+> 更新时间：2026-08-31 12:49（Asia/Shanghai）
 
 ## Stage Detection
 
@@ -8,13 +8,13 @@ Use this order:
 
 1. Explicit user request, for example `v0.13-dev`.
 2. Existing progress directory under `docs/进度/`, sorted by version.
-3. Existing project plan directory under `docs/项目计划v*`, sorted by plan version.
-4. Ask a concise clarification only if no defensible stage can be inferred.
+3. Existing project plan directory under `docs/项目计划v0.*`, sorted by plan version, after confirming it is not closed.
+4. Ask a concise clarification only if no defensible active stage can be inferred.
 
-Current stage name:
+Current stage state:
 
 ```text
-v0.13-dev
+No active implementation stage. `v0.14-dev` is the latest completed development stage; `v1.1` is reserved but has not been formally planned.
 ```
 
 Progress documents use:
@@ -33,9 +33,9 @@ docs/进度/v0.13-dev/v0.13.35-dev.md
 
 | Implementation stage | Preferred plan path |
 | --- | --- |
-| Historical stages | Matching `docs/项目计划vN/` and `docs/进度/v0.N-dev/` for traceability |
-| `v0.13-dev` | `docs/项目计划v13/` plus the latest numbered `docs/进度/v0.13-dev/` record |
-| Future stages | `docs/计划书总结/README.md`, then the latest matching plan or user-provided plan |
+| Historical stages | Matching `docs/项目计划v0.N/` and `docs/进度/v0.N-dev/` for traceability |
+| Latest completed `v0.14-dev` | `docs/项目计划v0.14/00-v0.14版本计划书.md` plus `docs/进度/v0.14-dev/v0.14.11-dev.md` |
+| Reserved `v1.1` and later | Read `docs/计划书总结/README.md`; do not create a task, progress directory or plan from inference alone |
 
 If the exact plan file is unknown, list files in the plan directory and read the most relevant top-level plan first.
 
@@ -43,10 +43,10 @@ If the exact plan file is unknown, list files in the plan directory and read the
 
 When the user says to continue the next task:
 
-1. Read the current stage plan.
-2. Read the latest progress document for that stage.
-3. Prefer the next incomplete P0 item.
-4. If P0 is complete, choose the next P1 item with clear acceptance criteria.
+1. Read the explicitly selected stage plan and the latest progress document.
+2. Confirm that the selected plan is still open before choosing incomplete P0/P1 work.
+3. If the latest plan is closed, treat a new request as maintenance unless the user explicitly opens a new stage.
+4. Do not infer `v1.1` work from its reserved name; require a formal plan or explicit user scope.
 5. Avoid large mixed tasks. Split unrelated implementation, documentation, and cleanup unless they must ship together.
 
 ## Progress Document Numbering
@@ -105,6 +105,7 @@ Prefer concise tables over long prose.
 
 ## Current Baseline
 
-The release baseline is `v0.13.0` with migrations through `000042`. Treat old v0.3-v0.12 plans as historical unless a
-compatibility task explicitly targets them. Current candidate directions live under `docs/计划书总结/`; they are not an
-approved v14 plan until a new plan file is created.
+The release baseline remains `v0.13.0`; migrations run through `000049`. `v0.14-dev` is the latest completed development
+stage, with closure evidence in `docs/进度/v0.14-dev/v0.14.11-dev.md`; do not describe this as `v0.14.0 Final`.
+Treat v0.1-v0.13 plans as historical unless a compatibility task explicitly targets them. `v1.1` is reserved for the next
+major-series stage and needs a formal plan before implementation starts.

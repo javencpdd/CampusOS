@@ -27,4 +27,4 @@ iframe、事件属性和危险链接不会进入发布正文。
 `secondhand` 类型。
 
 完整接口、安全边界、目录和兼容规则见仓库文档
-[`v12分组导航与结构化图文发布.md`](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v12%E5%88%86%E7%BB%84%E5%AF%BC%E8%88%AA%E4%B8%8E%E7%BB%93%E6%9E%84%E5%8C%96%E5%9B%BE%E6%96%87%E5%8F%91%E5%B8%83.md)。
+[`v0.12分组导航与结构化图文发布.md`](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v12%E5%88%86%E7%BB%84%E5%AF%BC%E8%88%AA%E4%B8%8E%E7%BB%93%E6%9E%84%E5%8C%96%E5%9B%BE%E6%96%87%E5%8F%91%E5%B8%83.md)。
