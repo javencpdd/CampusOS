@@ -14,8 +14,8 @@ rg -q 'executeAuthorCommand' internal/modules/core/community/service/thread_serv
 rg -q 'executeArticleCommand' internal/modules/features/richtext/service.go
 rg -q 'transaction.ExecutorFor' internal/modules/features/richtext/store.go
 if rg -q 'richtext_create_rollback' internal/modules/features/richtext/service.go; then
-  echo "v12 failure injection check failed: RichText must not compensate with a trashed Thread" >&2
+  echo "v0.12 failure injection check failed: RichText must not compensate with a trashed Thread" >&2
   exit 1
 fi
 
-echo "v12 content failure-injection checks passed"
+echo "v0.12 content failure-injection checks passed"

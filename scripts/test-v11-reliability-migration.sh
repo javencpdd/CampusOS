@@ -74,4 +74,4 @@ test "$(scalar "SELECT count(*) FROM permission_definitions WHERE code IN ('plat
 test "$(scalar "SELECT max_concurrent || ':' || rate_limit_per_minute FROM webhook_endpoints WHERE id=9911001")" = "2:60"
 test "$(scalar "SELECT count(*) FROM webhook_endpoints WHERE id=9911001")" = "1"
 
-echo "v11 reliability migration up/down/up drill passed"
+echo "v0.11 reliability migration up/down/up drill passed"

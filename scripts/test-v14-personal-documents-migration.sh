@@ -16,4 +16,4 @@ scalar(){ docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U
 docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000047_v14_personal_documents.down.sql" >/dev/null
 [[ "$(scalar "SELECT to_regclass('public.personal_documents') IS NULL")" == "t" ]] || { echo "personal document table remained after down" >&2; exit 1; }
 docker exec -i -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" psql -U "$DB_USER" -d "$drill_db" -v ON_ERROR_STOP=1 <"$repo_root/migrations/000047_v14_personal_documents.up.sql" >/dev/null
-echo "v14 personal-document empty migration and 000047 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 personal-document empty migration and 000047 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

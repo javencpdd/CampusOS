@@ -87,4 +87,4 @@ require_equals "posts.parent_floor_number after down" "$(scalar "SELECT count(*)
 run_file "$repo_root/migrations/000043_v13_post_parent_floor.up.sql" >/dev/null
 require_equals "posts.parent_floor_number after re-up" "$(scalar "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='parent_floor_number')")" "t"
 
-echo "v14 G0 empty migration and 000043 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 G0 empty migration and 000043 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

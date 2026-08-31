@@ -39,7 +39,7 @@ AUTH_CHALLENGE_IP_HASH_SECRET=<独立随机 Secret>
 [验证码策略配置](/guide/challenge-policy)。
 
 完整运维说明见仓库的
-`docs/help/系统设计相关/v12验证码与Ticket安全设计.md`。
+`docs/help/系统设计相关/v0.12验证码与Ticket安全设计.md`。
 
 SMTP 配置、Fake Provider 限制和脱敏排障见[邮件投递与 SMTP](./email-delivery.md)。
 公开 API 的调用顺序见[注册邮箱验证](../api/registration.md)。

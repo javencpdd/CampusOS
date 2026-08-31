@@ -73,4 +73,4 @@ for difference in metadata_missing_physical physical_without_metadata payload_ha
     exit 1
   fi
 done
-echo "single-node restore drill passed: database, modules, plugins, resources, user assets, v14 object metadata and schedule bindings restored in isolation; restored Object metadata/file/hash/ledger checks have zero differences"
+echo "single-node restore drill passed: database, modules, plugins, resources, user assets, v0.14 object metadata and schedule bindings restored in isolation; restored Object metadata/file/hash/ledger checks have zero differences"

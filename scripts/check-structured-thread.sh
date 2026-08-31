@@ -18,4 +18,4 @@ if rg -n 'CreateStructuredThread' sdk examples/plugins internal/plugin internal/
   exit 1
 fi
 
-echo "v12 structured thread checks passed"
+echo "v0.12 structured thread checks passed"

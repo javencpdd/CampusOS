@@ -106,4 +106,4 @@ run_file "$repo_root/migrations/000040_v13_identity_mfa.up.sql" >/dev/null
 test "$(scalar "SELECT to_regclass('public.identity_mfa_tickets') IS NOT NULL")" = "t"
 test "$(scalar "SELECT status FROM identity_admin_accounts WHERE user_id=9913001")" = "suspended"
 
-echo "v13 administrator admission and MFA migration up/down/up drill passed"
+echo "v0.13 administrator admission and MFA migration up/down/up drill passed"

@@ -124,4 +124,4 @@ run_file "$repo_root/migrations/000041_v13_schema_index_hygiene.up.sql" >/dev/nu
 test "$(scalar "SELECT count(*) FROM pg_class WHERE relkind='i' AND relname IN ($redundant_indexes)")" = "0"
 run_file "$repo_root/scripts/migration-hygiene.sql" >/dev/null
 
-echo "v13 schema index hygiene migration and up/down/up drill passed"
+echo "v0.13 schema index hygiene migration and up/down/up drill passed"

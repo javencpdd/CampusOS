@@ -34,4 +34,4 @@ campusosctl identity reset-password
 ```
 
 命令要求明确确认和两次隐藏密码输入，不接受密码参数或管道输入。详细接口、权限和排障请阅读仓库的
-[账号恢复与邮箱绑定说明](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v12%E8%B4%A6%E5%8F%B7%E6%81%A2%E5%A4%8D%E4%B8%8E%E9%82%AE%E7%AE%B1%E7%BB%91%E5%AE%9A%E8%AF%B4%E6%98%8E.md)。
+[账号恢复与邮箱绑定说明](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v0.12%E8%B4%A6%E5%8F%B7%E6%81%A2%E5%A4%8D%E4%B8%8E%E9%82%AE%E7%AE%B1%E7%BB%91%E5%AE%9A%E8%AF%B4%E6%98%8E.md)。

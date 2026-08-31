@@ -18,4 +18,4 @@ if rg -n 'NewPg(Thread|Category|Post)Repository|pgxpool' internal/modules/featur
 fi
 
 GOCACHE=/tmp/campusos-go-cache go test ./internal/modules/features/secondhand -count=1
-echo "v12 secondhand checks passed"
+echo "v0.12 secondhand checks passed"

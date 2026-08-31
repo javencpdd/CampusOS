@@ -146,4 +146,4 @@ test "$(scalar "SELECT to_regclass('public.secondhand_details') IS NOT NULL")" =
 test "$(scalar "SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='secondhand_details'::regclass AND tgname='trg_secondhand_detail_guard' AND NOT tgisinternal)")" = "t"
 test "$(scalar "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='secondhand_details'::regclass AND conname='chk_secondhand_details_currency')")" = "t"
 
-echo "v12 secondhand migration up/down/up drill passed"
+echo "v0.12 secondhand migration up/down/up drill passed"

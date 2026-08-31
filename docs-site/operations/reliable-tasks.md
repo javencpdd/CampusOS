@@ -96,7 +96,7 @@ WEBHOOK_ALLOWED_HOSTS=hooks.example.edu
 WEBHOOK_ALLOW_PRIVATE_NETWORK=false
 ```
 
-仓库内的 `docs/help/系统设计相关/v11可靠任务与Webhook安全运维.md`、
-`docs/architecture/v11Webhook可靠投递与安全模型.md` 和
-`docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md` 记录了面向维护者的完整恢复、
+仓库内的 `docs/help/系统设计相关/v0.11可靠任务与Webhook安全运维.md`、
+`docs/architecture/v0.11Webhook可靠投递与安全模型.md` 和
+`docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md` 记录了面向维护者的完整恢复、
 Prometheus 规则和故障演练；此文档站页面保留日常操作所需的公开说明。

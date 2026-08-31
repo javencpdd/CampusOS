@@ -4,7 +4,7 @@
 > 适用基线：CampusOS `v0.13.0`
 > 实操类型：Windows 开发环境、Docker Desktop WSL 2 后端、Linux Containers
 > 配套入口：[`compose.dev.yml`](../../compose.dev.yml)、[`docker-dev.ps1`](../../scripts/docker-dev.ps1)
-> 权威通用指南：[CampusOS v0.13 Docker 跨平台部署、迁移与开发指南](系统设计相关/v13%20Docker跨平台部署、迁移与开发指南.md)
+> 权威通用指南：[CampusOS v0.13 Docker 跨平台部署、迁移与开发指南](系统设计相关/v0.13%20Docker跨平台部署、迁移与开发指南.md)
 
 ## 1. 报告目的和结论
 

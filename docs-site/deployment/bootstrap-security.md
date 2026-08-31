@@ -42,5 +42,5 @@ AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN=false
 
 Admin 前端使用 `/api/v1/auth/admin/login`。登录和每个全局管理 API 都要求有效 Session、活动管理员
 准入和具体权限；普通用户登录入口不具备管理平面准入能力。详情可见仓库中的
-`docs/help/系统设计相关/v12部署与初始管理员安全.md` 和
-`docs/help/系统设计相关/v12管理员账号与管理平面准入说明.md`。
+`docs/help/系统设计相关/v0.12部署与初始管理员安全.md` 和
+`docs/help/系统设计相关/v0.12管理员账号与管理平面准入说明.md`。

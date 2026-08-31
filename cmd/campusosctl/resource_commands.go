@@ -57,7 +57,7 @@ func runResourceAdopt(args []string, stdout io.Writer) error {
 	source := flags.String("source", "v10-layout-migration", "resource source")
 	entry := flags.String("entry", "style.yaml", "resource entry file")
 	force := flags.Bool("force", false, "replace an existing resource.json")
-	legacyReadOnly := flags.Bool("legacy-readonly", false, "preserve a safe pre-v13 appearance package as non-applicable legacy data")
+	legacyReadOnly := flags.Bool("legacy-readonly", false, "preserve a safe pre-v0.13 appearance package as non-applicable legacy data")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func runResourceAdopt(args []string, stdout io.Writer) error {
 	return nil
 }
 
-// runResourceAdoptLegacy exists only for the v10 layout migration. It preserves
+// runResourceAdoptLegacy exists only for the v0.10 layout migration. It preserves
 // a safe old Appearance package as legacy-readonly; it never makes that package
 // eligible for import or application.
 func runResourceAdoptLegacy(args []string, stdout io.Writer) error {
@@ -212,6 +212,6 @@ func printResourceUsage(writer io.Writer) {
 	fmt.Fprintln(writer, "")
 	fmt.Fprintln(writer, "commands:")
 	fmt.Fprintln(writer, "  adopt    add or refresh a validated resource.json")
-	fmt.Fprintln(writer, "  adopt-legacy  preserve a safe v10 Appearance package as legacy-readonly during layout migration")
+	fmt.Fprintln(writer, "  adopt-legacy  preserve a safe v0.10 Appearance package as legacy-readonly during layout migration")
 	fmt.Fprintln(writer, "  inspect  validate and print a Resource Package manifest and Appearance delivery status")
 }

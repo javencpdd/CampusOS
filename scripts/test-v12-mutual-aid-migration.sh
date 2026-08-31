@@ -105,4 +105,4 @@ test "$(scalar "SELECT to_regclass('public.mutual_aid_details') IS NULL")" = "t"
 run_file "$repo_root/migrations/000034_v12_mutual_aid.up.sql" >/dev/null
 test "$(scalar "SELECT to_regclass('public.mutual_aid_details') IS NOT NULL")" = "t"
 
-echo "v12 mutual aid migration up/down/up drill passed"
+echo "v0.12 mutual aid migration up/down/up drill passed"

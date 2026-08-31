@@ -75,4 +75,4 @@ test "$(scalar "SELECT count(*) FROM plugins WHERE runtime='builtin' AND deleted
 test "$(scalar "SELECT count(*) FROM permission_definitions WHERE code LIKE 'platform.feature.%'")" = "3"
 test "$(scalar "SELECT count(*) FROM builtin_feature_states WHERE feature_id IN ('personal-space','controlled-richtext-article','personal-schedule','appearance')")" = "4"
 
-echo "v10 module/plugin separation migration up/down/up drill passed"
+echo "v0.10 module/plugin separation migration up/down/up drill passed"

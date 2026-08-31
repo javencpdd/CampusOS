@@ -21,7 +21,7 @@ log() {
 }
 
 fail() {
-  printf 'v10 layout migration: %s\n' "$*" >&2
+  printf 'v0.10 layout migration: %s\n' "$*" >&2
   exit 1
 }
 

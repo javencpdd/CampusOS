@@ -30,4 +30,4 @@ run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.down.sql" >/
 [[ "$(scalar "SELECT to_regclass('public.user_schedule_preferences') IS NULL")" == "t" ]] || { echo "schedule preferences remained after down" >&2; exit 1; }
 run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.up.sql" >/dev/null
 [[ "$(scalar "SELECT to_regclass('public.user_schedule_preferences') IS NOT NULL")" == "t" ]] || { echo "schedule preferences missing after re-up" >&2; exit 1; }
-echo "v14 schedule-object-binding empty migration and 000049 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 schedule-object-binding empty migration and 000049 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

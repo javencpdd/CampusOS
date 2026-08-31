@@ -36,4 +36,4 @@ require_equals "storage objects after re-up" "$(scalar "SELECT to_regclass('publ
 run_file "$repo_root/migrations/000047_v14_personal_documents.up.sql" >/dev/null
 run_file "$repo_root/migrations/000049_v14_schedule_object_bindings.up.sql" >/dev/null
 if ! (cd "$repo_root" && POSTGRES_CONTAINER="$POSTGRES_CONTAINER" DB_NAME="$drill_db" ./scripts/database-check.sh all) >"$migration_log" 2>&1; then tail -n 80 "$migration_log" >&2; exit 1; fi
-echo "v14 storage-object empty migration and 000045 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 storage-object empty migration and 000045 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

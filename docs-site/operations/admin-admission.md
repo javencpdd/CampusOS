@@ -33,5 +33,5 @@ campusosctl identity restore-admin-admission --user-id 123 --reason "approved in
 Secret 参数或管道输入。恢复后旧 Session 仍然撤销，应重设密码、核验角色并完成 MFA 注册。
 
 详细的权限、API、迁移和故障处理说明见仓库
-[`v0.13 管理员准入管理与本地恢复`](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v13%E7%AE%A1%E7%90%86%E5%91%98%E5%87%86%E5%85%A5%E7%AE%A1%E7%90%86%E4%B8%8E%E6%9C%AC%E5%9C%B0%E6%81%A2%E5%A4%8D.md)。
+[`v0.13 管理员准入管理与本地恢复`](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v0.13%E7%AE%A1%E7%90%86%E5%91%98%E5%87%86%E5%85%A5%E7%AE%A1%E7%90%86%E4%B8%8E%E6%9C%AC%E5%9C%B0%E6%81%A2%E5%A4%8D.md)。
 

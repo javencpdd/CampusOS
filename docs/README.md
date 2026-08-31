@@ -25,13 +25,13 @@
 | 本机 Go/Node 开发 | [开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md) |
 | Windows/Linux Docker 开发 | [Docker 开发](../docs-site/deployment/docker-development.md) |
 | 单主机部署、备份和迁移 | [Docker 部署](../docs-site/deployment/docker.md)、[备份恢复](help/系统设计相关/备份恢复说明.md) |
-| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[可靠命令与数据所有权](architecture/v11可靠命令事件与数据所有权.md) |
+| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
 | HTTP API | [API 与机器合同](api/README.md)、[接口约定](../docs-site/api/overview.md) |
 | Web/Admin 前端 | [官方完整入门](../docs-site/guide/getting-started.md)、[权限配置](../docs-site/guide/permission-configuration.md) |
 | External Plugin | [插件体系](../docs-site/plugins/overview.md)、[课表插件教程](../docs-site/plugins/schedule-plugin-tutorial.md) |
-| Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v13风格包双端交付标准.md) |
-| 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v11权限管理与可靠审计设计入门.md) |
-| 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md) |
+| Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v0.13风格包双端交付标准.md) |
+| 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v0.11权限管理与可靠审计设计入门.md) |
+| 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md) |
 | Skill 使用和维护 | [仓库 Skills 索引](../skills/guides/README.md) |
 | 版本历史和未来路线 | [Help 版计划总结](help/计划书总结/README.md)、[详细计划治理](计划书总结/README.md) |
 | 判断文档是否仍有效 | [Help 生命周期](help/README.md)、[文档审计与整理](help/文档审计与整理说明.md) |
@@ -83,8 +83,13 @@
 v0.1-v0.13 都已退出待执行状态，v0.13 是当前发布基线但也已封版；项目所有者已确认 v0.14-dev 当前代码
 验证完成并完成开发收尾，发布基线仍保持 `v0.13.0`：
 
+版本命名规则：面向开发者和使用者的项目计划、进度标题、Help/API/架构文档路径及 UI 展示统一使用
+`v0.N`（例如 `v0.14`）。迁移文件名、测试/Make 命令、基线 schema、数据库夹具、API/Host API/Manifest/
+CampusDoc 协议版本等技术标识保持其既有写法，例如 `000044_v14_academic_terms`、`test-v14-*`、
+`campusos.v14-g0-baseline/v1`、`/api/v1`；下一主线预留的 `v1.1` 也不属于历史 `v0.N` 命名空间。
+
 - [v0.14 正式项目计划](项目计划v0.14/00-v0.14版本计划书.md)
-- [v0.14 学期治理与个人文档使用说明](help/系统设计相关/v14学期治理与个人文档使用说明.md)
+- [v0.14 学期治理与个人文档使用说明](help/系统设计相关/v0.14学期治理与个人文档使用说明.md)
 - [v0.1-v0.13 迭代内容与有效性](help/计划书总结/01-v0.1-v0.13迭代内容与有效性.md)
 - [当前项目状态与未来规划](help/计划书总结/02-当前项目状态与未来规划.md)
 - [v0.13 最终专业审计](项目计划v0.13/02-v0.13最终专业审计与后续路线.md)

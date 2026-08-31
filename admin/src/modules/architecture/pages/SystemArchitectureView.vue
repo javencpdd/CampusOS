@@ -392,7 +392,7 @@ const databaseTables: DbTable[] = [
     purpose: "声明不能被新注册、绑定或找回流程使用的规范化身份标识及其原因。",
     fields: ["identifier_type", "identifier_normalized", "reason", "created_at"],
     migration: "000028",
-    relationshipNote: "独立策略表；v12 首项用于阻止历史共享邮箱被作为个人邮箱重新注册。",
+    relationshipNote: "独立策略表；v0.12 首项用于阻止历史共享邮箱被作为个人邮箱重新注册。",
   },
   {
     name: "identity_email_challenges",
@@ -486,7 +486,7 @@ const databaseTables: DbTable[] = [
     fields: ["id", "name", "is_system"],
     migration: "000002",
     relationshipNote:
-      "user_roles 保存额外授权；permissions 是兼容期旧授权，role_permissions 绑定 v10 权限目录。",
+      "user_roles 保存额外授权；permissions 是兼容期旧授权，role_permissions 绑定 v0.10 权限目录。",
   },
   {
     name: "user_roles",
@@ -524,7 +524,7 @@ const databaseTables: DbTable[] = [
     name: "role_permissions",
     title: "角色权限绑定",
     domain: "identity",
-    purpose: "将角色与 v10 权限目录多对多关联，支持软删除的历史保留。",
+    purpose: "将角色与 v0.10 权限目录多对多关联，支持软删除的历史保留。",
     fields: ["id", "role_id", "permission_id", "created_by", "deleted_at"],
     migration: "000025",
     relationshipNote:
@@ -632,7 +632,7 @@ const databaseTables: DbTable[] = [
     name: "platform_retention_runs",
     title: "保留策略预演",
     domain: "system",
-    purpose: "记录受控 dry-run 的目标、截止时间和候选数量；v11 不执行删除。",
+    purpose: "记录受控 dry-run 的目标、截止时间和候选数量；v0.11 不执行删除。",
     fields: ["target", "before_at", "eligible_rows", "mode", "status"],
     migration: "000027",
     relationshipNote: "当前只允许 dry-run，正式清理由后续经审批的分批任务实现。",
@@ -663,7 +663,7 @@ const databaseTables: DbTable[] = [
     title: "主题 / 文章入口",
     domain: "community",
     purpose:
-      "普通帖子和富文本文章共用的顶层内容实体；thread_type 表达业务类型，v10 三维状态决定可见性。",
+      "普通帖子和富文本文章共用的顶层内容实体；thread_type 表达业务类型，v0.10 三维状态决定可见性。",
     fields: [
       "id",
       "author_id",
@@ -2221,7 +2221,7 @@ const migrations = [
   {
     version: "000021",
     file: "000021_v09_plugin_market.up.sql",
-    title: "v9 受管插件市场数据",
+    title: "v0.9 受管插件市场数据",
     scope: "插件平台",
     summary:
       "建立受管记录、文件元数据、用户 Grant、本地目录、申请、发布记录和市场审计。",
@@ -2246,7 +2246,7 @@ const migrations = [
   {
     version: "000023",
     file: "000023_v10_content_governance.up.sql",
-    title: "v10 内容治理状态机",
+    title: "v0.10 内容治理状态机",
     scope: "内容治理",
     summary:
       "为 threads 追加发布、治理和删除维度，并建立内容修订、审核案例和治理动作记录。",
@@ -2261,7 +2261,7 @@ const migrations = [
   {
     version: "000024",
     file: "000024_v10_plugin_catalog_experience.up.sql",
-    title: "v10 插件用户体验元数据",
+    title: "v0.10 插件用户体验元数据",
     scope: "插件平台",
     summary:
       "为本地插件目录增加普通用户可读的用途、数据、风险、关闭后行为和维护者信息。",
@@ -2270,7 +2270,7 @@ const migrations = [
   {
     version: "000025",
     file: "000025_v10_authorization_catalog.up.sql",
-    title: "v10 稳定权限与路由目录",
+    title: "v0.10 稳定权限与路由目录",
     scope: "身份与治理",
     summary:
       "建立权限定义、角色权限、路由操作、路由权限绑定和结构化授权审计，保留旧 permissions 兼容。",
@@ -2285,7 +2285,7 @@ const migrations = [
   {
     version: "000026",
     file: "000026_v10_module_plugin_separation.up.sql",
-    title: "v10 模块、插件与资源分离",
+    title: "v0.10 模块、插件与资源分离",
     scope: "模块化单体与插件平台",
     summary:
       "将历史 Built-in 状态和配置迁入 Feature Store，合并 Appearance，软删除外部插件目录中的历史 Built-in 活跃行，并补充 Feature 权限。",
@@ -2300,7 +2300,7 @@ const migrations = [
   {
     version: "000027",
     file: "000027_v11_reliable_commands_and_outbox.up.sql",
-    title: "v11 可靠命令与持久事件",
+    title: "v0.11 可靠命令与持久事件",
     scope: "平台可靠性与 Webhook",
     summary:
       "建立事务性 Outbox、消费凭证、尝试记录、Worker 心跳、可恢复操作、兼容遥测和 dry-run 保留记录，并收紧 Webhook 投递元数据。",
@@ -2323,7 +2323,7 @@ const migrations = [
   {
     version: "000028",
     file: "000028_v12_identity_account_state.up.sql",
-    title: "v12 邮箱身份事实与历史账号状态",
+    title: "v0.12 邮箱身份事实与历史账号状态",
     scope: "身份与账号安全",
     summary:
       "将邮箱登录事实收敛到 accounts 的规范化标识和验证状态，保留 users.email 兼容投影，并建立历史共享邮箱占位标记和保留标识策略。",
@@ -2337,7 +2337,7 @@ const migrations = [
   {
     version: "000029",
     file: "000029_v12_identity_challenges.up.sql",
-    title: "v12 邮箱 Challenge、Ticket 与持久限流",
+    title: "v0.12 邮箱 Challenge、Ticket 与持久限流",
     scope: "身份与账号安全",
     summary:
       "建立 HMAC 验证码重建元数据、一次性 Ticket 摘要和基于 keyed digest 的持久限流窗口；验证码和原始 Ticket 不入库。",
@@ -2346,7 +2346,7 @@ const migrations = [
   {
     version: "000030",
     file: "000030_v12_identity_sessions.up.sql",
-    title: "v12 会话权威与 Refresh 轮换",
+    title: "v0.12 会话权威与 Refresh 轮换",
     scope: "身份与账号安全",
     summary:
       "清除历史原始 Refresh Token，新增摘要、家族、轮换、撤销和 IP 摘要字段；旧会话显式失效。",
@@ -2355,7 +2355,7 @@ const migrations = [
   {
     version: "000031",
     file: "000031_v12_identity_recovery_cases.up.sql",
-    title: "v12 账号恢复 Case 与细粒度权限",
+    title: "v0.12 账号恢复 Case 与细粒度权限",
     scope: "身份与账号安全",
     summary:
       "建立管理员辅助恢复工作流、关联约束和恢复/会话/邮件投递权限；敏感凭据不入库。",
@@ -2364,7 +2364,7 @@ const migrations = [
   {
     version: "000032",
     file: "000032_v12_category_hierarchy.up.sql",
-    title: "v12 两级板块与可靠管理",
+    title: "v0.12 两级板块与可靠管理",
     scope: "社区与权限",
     summary:
       "在既有 categories 表追加 group/board、active/archived、版本与颜色约束，并以触发器保护两级层级和活动父级规则；同时追加细粒度板块管理权限。",
@@ -2373,7 +2373,7 @@ const migrations = [
   {
     version: "000033",
     file: "000033_v12_structured_threads.up.sql",
-    title: "v12 结构化帖子类型与板块策略",
+    title: "v0.12 结构化帖子类型与板块策略",
     scope: "社区与内容",
     summary:
       "为 threads 追加固定业务类型，回填历史 RichText article，并建立 board 类型策略、约束、触发器与配置权限。",
@@ -2382,7 +2382,7 @@ const migrations = [
   {
     version: "000034",
     file: "000034_v12_mutual_aid.up.sql",
-    title: "v12 校园互助结构化详情",
+    title: "v0.12 校园互助结构化详情",
     scope: "社区与内容",
     summary:
       "建立校园互助业务详情、状态/联系方式/位置约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
@@ -2391,7 +2391,7 @@ const migrations = [
   {
     version: "000035",
     file: "000035_v12_secondhand.up.sql",
-    title: "v12 校园二手结构化详情",
+    title: "v0.12 校园二手结构化详情",
     scope: "社区与内容",
     summary:
       "建立校园二手的 CNY 分价、物品状态、交付方式、交易状态约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
@@ -2400,7 +2400,7 @@ const migrations = [
   {
     version: "000036",
     file: "000036_v12_identity_challenge_policy.up.sql",
-    title: "v12 验证码频率策略",
+    title: "v0.12 验证码频率策略",
     scope: "身份与账号安全",
     summary:
       "将邮箱和 IP 请求限制改为有边界、可审计、可热更新的滑动窗口策略，同时保留旧计数 Scope 兼容读取。",
@@ -2409,7 +2409,7 @@ const migrations = [
   {
     version: "000037",
     file: "000037_v12_outbox_worker_convergence.up.sql",
-    title: "v12 可靠事件 Worker 收敛",
+    title: "v0.12 可靠事件 Worker 收敛",
     scope: "平台可靠性",
     summary:
       "为系统最终化阶段增加 failed 尝试证据；Worker 与 Store 同步收紧最大领取次数，并让耗尽的非终态事件收敛到 dead。",
@@ -2418,7 +2418,7 @@ const migrations = [
   {
     version: "000038",
     file: "000038_v12_admin_accounts.up.sql",
-    title: "v12 管理员账号与管理平面准入",
+    title: "v0.12 管理员账号与管理平面准入",
     scope: "身份与后台安全",
     summary:
       "建立独立管理员准入账号表，将管理平面准入与普通用户主体、登录凭据及 RBAC 授权分层，并以触发器同步全局 admin 角色生命周期。",
@@ -2427,7 +2427,7 @@ const migrations = [
   {
     version: "000039",
     file: "000039_v13_admin_admission_operations.up.sql",
-    title: "v13 管理员准入运营操作",
+    title: "v0.13 管理员准入运营操作",
     scope: "身份与后台安全",
     summary:
       "为独立管理员准入追加状态原因、变更操作者和时间、状态索引及暂停/恢复权限；角色同步保持 suspended 状态不会被静默恢复。",
@@ -2436,7 +2436,7 @@ const migrations = [
   {
     version: "000040",
     file: "000040_v13_identity_mfa.up.sql",
-    title: "v13 TOTP MFA 与受控恢复",
+    title: "v0.13 TOTP MFA 与受控恢复",
     scope: "身份与后台安全",
     summary:
       "为 Session 追加服务端 MFA 强度，并建立加密 TOTP 信封、单用途 Ticket 摘要、恢复码摘要和管理员 MFA 策略；不存储明文认证器材料。",
@@ -2445,7 +2445,7 @@ const migrations = [
   {
     version: "000041",
     file: "000041_v13_schema_index_hygiene.up.sql",
-    title: "v13 Schema 索引收敛",
+    title: "v0.13 Schema 索引收敛",
     scope: "数据库维护",
     summary:
       "保留全部历史迁移和业务数据，通过前向迁移删除九个已被同谓词复合 B-tree 严格左前缀覆盖的窄索引，并把重复索引、重复约束和冗余前缀检测接入数据库门禁。",
@@ -2454,7 +2454,7 @@ const migrations = [
   {
     version: "000042",
     file: "000042_v13_user_storage_quotas.up.sql",
-    title: "v13 用户空间配额授权",
+    title: "v0.13 用户空间配额授权",
     scope: "个人空间与存储",
     summary:
       "建立按用户覆盖的 User Storage 配额记录，保留 50 MB 系统默认值，并记录最近授权管理员和时间；文件仍位于 data/personal-space。",
@@ -2463,7 +2463,7 @@ const migrations = [
   {
     version: "000043",
     file: "000043_v13_post_parent_floor.up.sql",
-    title: "v13 回复父楼层快照",
+    title: "v0.13 回复父楼层快照",
     scope: "社区回复",
     summary:
       "为 posts 增加 parent_floor_number 创建时快照并从父回复回填存量数据，父回复删除或跨分页时引用楼层显示保持稳定。",
@@ -2472,7 +2472,7 @@ const migrations = [
   {
     version: "000044",
     file: "000044_v14_academic_terms.up.sql",
-    title: "v14 管理员治理学期目录",
+    title: "v0.14 管理员治理学期目录",
     scope: "个人课表与系统目录",
     summary:
       "建立 spring/fall 学期、第一周星期一约束、open/closed/default 生命周期、乐观锁与管理员管理权限；课表对象绑定将在后续 migration 追加。",
@@ -2481,7 +2481,7 @@ const migrations = [
   {
     version: "000045",
     file: "000045_v14_storage_objects.up.sql",
-    title: "v14 私有对象存储账本",
+    title: "v0.14 私有对象存储账本",
     scope: "个人空间与文件一致性",
     summary: "建立对象元数据、账户已用/预留字节和 Reservation；Local Provider 以 staging + 原子 rename 写入。",
     tables: ["user_storage_accounts", "storage_objects", "user_storage_reservations", "users"],
@@ -2489,7 +2489,7 @@ const migrations = [
   {
     version: "000046",
     file: "000046_v14_schedule_term_references.up.sql",
-    title: "v14 课表学期引用保护",
+    title: "v0.14 课表学期引用保护",
     scope: "个人课表",
     summary: "登记用户课表已使用的 AcademicTerm，使用 RESTRICT 外键阻止错误删除有课表数据的学期。",
     tables: ["user_schedule_terms", "academic_terms", "users"],
@@ -2497,7 +2497,7 @@ const migrations = [
   {
     version: "000047",
     file: "000047_v14_personal_documents.up.sql",
-    title: "v14 私有文档与不可变版本",
+    title: "v0.14 私有文档与不可变版本",
     scope: "个人空间",
     summary: "建立个人文档、不可变版本与预览状态；源文件只通过私有 storage object 访问。",
     tables: ["personal_documents", "personal_document_versions", "personal_document_previews", "storage_objects", "users"],
@@ -2505,7 +2505,7 @@ const migrations = [
   {
     version: "000048",
     file: "000048_v14_storage_constraint_names.up.sql",
-    title: "v14 对象账本约束名称兼容",
+    title: "v0.14 对象账本约束名称兼容",
     scope: "数据库合同",
     summary: "仅无损统一早期开发库自动生成的对象账本 CHECK 约束名称；新空库保持 no-op，生产不执行 down。",
     tables: ["user_storage_accounts", "storage_objects", "user_storage_reservations"],
@@ -2513,7 +2513,7 @@ const migrations = [
   {
     version: "000049",
     file: "000049_v14_schedule_object_bindings.up.sql",
-    title: "v14 课表对象绑定与查看偏好",
+    title: "v0.14 课表对象绑定与查看偏好",
     scope: "个人课表与对象兼容",
     summary: "为用户课表学期引用补充当前 Object、第一周快照、版本与查看偏好；旧 JSON 保持只读兼容并由显式采用命令登记。",
     tables: ["user_schedule_terms", "user_schedule_preferences", "storage_objects", "academic_terms", "users"],

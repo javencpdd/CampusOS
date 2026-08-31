@@ -491,4 +491,4 @@ CampusOS 中有三套彼此独立的授权：
 | 插件用户数据授权 | [插件中心、受管数据与签名](/plugins/market-managed-data) |
 | 系统模块和安全边界 | [系统架构](/guide/architecture) |
 
-仓库中的 `docs/help/系统设计相关/v11权限管理与可靠审计设计入门.md` 提供面向系统设计者的权限、命令、事务、兼容和恢复说明；[可靠任务与 Webhook](/operations/reliable-tasks) 提供日常运维步骤。本页则作为管理员第一次配置权限时的主操作路径。
+仓库中的 `docs/help/系统设计相关/v0.11权限管理与可靠审计设计入门.md` 提供面向系统设计者的权限、命令、事务、兼容和恢复说明；[可靠任务与 Webhook](/operations/reliable-tasks) 提供日常运维步骤。本页则作为管理员第一次配置权限时的主操作路径。

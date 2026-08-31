@@ -69,4 +69,4 @@ test "$(scalar "SELECT to_regclass('public.identity_challenge_rate_limits') IS N
 run_file "$repo_root/migrations/000029_v12_identity_challenges.up.sql" >/dev/null
 test "$(scalar "SELECT to_regclass('public.uk_identity_email_challenge_public_id') IS NOT NULL")" = "t"
 
-echo "v12 identity challenge migration up/down/up drill passed"
+echo "v0.12 identity challenge migration up/down/up drill passed"

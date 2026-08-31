@@ -84,7 +84,7 @@ const resources = [
   },
   {
     title: '版本演进与当前规划',
-    description: '查看 v1-v13 的迭代主线、历史计划有效性和下一阶段候选边界。',
+    description: '查看 v0.1–v0.14 的迭代主线、历史计划有效性和下一阶段候选边界。',
     url: `${docsUrl}/project/current-roadmap`,
     icon: Document,
     tone: 'tone-roadmap',

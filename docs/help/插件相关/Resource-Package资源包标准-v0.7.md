@@ -8,7 +8,7 @@
 
 导入顺序是：解压到临时目录、路径和大小检查、manifest 检查、入口检查、类型专用安全检查、checksum、写入仓库、应用偏好。任何一步失败都不能应用。
 
-从 v0.13 起，Theme、Homepage Pack 和 Space Style Pack 还必须满足 `campusos.appearance-delivery/v1` 双端交付合同；旧包只能以 `legacy-readonly` 兼容读取，不能重新应用。请同时阅读 [v0.13 风格包双端交付标准](../系统设计相关/v13风格包双端交付标准.md)。
+从 v0.13 起，Theme、Homepage Pack 和 Space Style Pack 还必须满足 `campusos.appearance-delivery/v1` 双端交付合同；旧包只能以 `legacy-readonly` 兼容读取，不能重新应用。请同时阅读 [v0.13 风格包双端交付标准](../系统设计相关/v0.13风格包双端交付标准.md)。
 
 现有目录可以使用 CLI 纳管和检查：
 

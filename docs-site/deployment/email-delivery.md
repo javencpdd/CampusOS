@@ -55,7 +55,7 @@ EMAIL_SMTP_STARTTLS=true
 
 授权码不得进入文档、Git、Issue、聊天记录或截图。配置后重启服务并重新申请验证码；已经由 Fake Provider
 标记为 `published` 的旧事件不会自动补发。完整步骤和错误排查见仓库文档
-`docs/help/系统设计相关/v12邮件投递与SMTP部署说明.md`。
+`docs/help/系统设计相关/v0.12邮件投递与SMTP部署说明.md`。
 
 ## 运维状态
 
@@ -69,6 +69,6 @@ SMTP 失败后任务会以 at-least-once 语义重试。修复网络或 Provider
 通过日志或数据库恢复验证码。
 
 仓库内的完整排障说明见
-`docs/help/系统设计相关/v12邮件投递与SMTP部署说明.md`。
+`docs/help/系统设计相关/v0.12邮件投递与SMTP部署说明.md`。
 验证码是否允许创建由 Identity Core 的独立安全策略决定；默认每邮箱 10 分钟 5 次。管理端配置见
 [验证码策略配置](/guide/challenge-policy)。该策略不会替代 SMTP 配置。

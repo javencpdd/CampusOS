@@ -24,7 +24,7 @@ groups:
           severity: critical
         annotations:
           summary: CampusOS reliable-event worker is not claiming queued events
-          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+          runbook: docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md
       - alert: CampusOSReliabilityBacklogOld
         expr: campusos_reliability_oldest_pending_age_seconds > 300
         for: 5m
@@ -32,7 +32,7 @@ groups:
           severity: warning
         annotations:
           summary: CampusOS reliable-event backlog is older than five minutes
-          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+          runbook: docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md
       - alert: CampusOSReliabilityDeadLetterGrowth
         expr: increase(campusos_reliability_operations_total{operation="dead_letter",result="success"}[10m]) > 0
         for: 1m
@@ -40,7 +40,7 @@ groups:
           severity: warning
         annotations:
           summary: CampusOS dead-letter events are increasing
-          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+          runbook: docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md
       - alert: CampusOSEmailDeliveryDegraded
         expr: increase(campusos_email_delivery_total{result="unavailable"}[5m]) >= 3
         for: 2m
@@ -48,7 +48,7 @@ groups:
           severity: warning
         annotations:
           summary: CampusOS email delivery has repeated transient failures
-          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+          runbook: docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md
       - alert: CampusOSRefreshTokenReuseDetected
         expr: increase(campusos_identity_sessions_total{operation="refresh",result="reuse"}[10m]) > 0
         for: 1m
@@ -56,4 +56,4 @@ groups:
           severity: critical
         annotations:
           summary: CampusOS detected refresh-token reuse
-          runbook: docs/help/系统设计相关/v13可靠任务指标告警与故障恢复Runbook.md
+          runbook: docs/help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md

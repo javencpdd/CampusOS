@@ -116,4 +116,4 @@ if ! (
   exit 1
 fi
 
-echo "v14 academic-term empty migration and 000044 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"
+echo "v0.14 academic-term empty migration and 000044 down/up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

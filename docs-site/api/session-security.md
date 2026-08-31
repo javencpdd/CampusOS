@@ -45,6 +45,6 @@ Access Token。一个已经轮换的 Refresh Token 再次出现时，系统会�
 脚本和插件都不得把 Access 或 Refresh Token 放进 localStorage、URL、日志或导出文件。
 
 详细接口、兼容窗口和迁移演练见仓库的
-[v0.12 会话与 Token 安全流程](https://github.com/javencpdd/CampusOS/blob/main/docs/api/v12%E4%BC%9A%E8%AF%9D%E4%B8%8EToken%E5%AE%89%E5%85%A8%E6%B5%81%E7%A8%8B.md)。
+[v0.12 会话与 Token 安全流程](https://github.com/javencpdd/CampusOS/blob/main/docs/api/v0.12%E4%BC%9A%E8%AF%9D%E4%B8%8EToken%E5%AE%89%E5%85%A8%E6%B5%81%E7%A8%8B.md)。
 管理员账号的数据边界见
-[v0.12 管理员账号与管理平面准入说明](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v12%E7%AE%A1%E7%90%86%E5%91%98%E8%B4%A6%E5%8F%B7%E4%B8%8E%E7%AE%A1%E7%90%86%E5%B9%B3%E9%9D%A2%E5%87%86%E5%85%A5%E8%AF%B4%E6%98%8E.md)。
+[v0.12 管理员账号与管理平面准入说明](https://github.com/javencpdd/CampusOS/blob/main/docs/help/%E7%B3%BB%E7%BB%9F%E8%AE%BE%E8%AE%A1%E7%9B%B8%E5%85%B3/v0.12%E7%AE%A1%E7%90%86%E5%91%98%E8%B4%A6%E5%8F%B7%E4%B8%8E%E7%AE%A1%E7%90%86%E5%B9%B3%E9%9D%A2%E5%87%86%E5%85%A5%E8%AF%B4%E6%98%8E.md)。
