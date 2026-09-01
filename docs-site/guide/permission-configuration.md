@@ -96,14 +96,15 @@ curl -fsS http://localhost:8080/api/v1/health
 make migrate-status
 ```
 
-权限目录依赖 migration `000025_v10_authorization_catalog`。如果权限页提示“权限目录迁移尚未完成”，先执行：
+权限目录由 clean baseline 的 `000003_v1_reference_data` 写入。如果权限页提示“权限目录迁移尚未完成”，先执行：
 
 ```bash
 make migrate-up
 make migrate-status
 ```
 
-不要为了让页面临时可用而直接修改 `roles`、`permissions` 或 `role_permissions` 表。直接改表会绕过防越权检查和授权审计。
+不要为了让页面临时可用而直接修改 `roles`、`permission_definitions` 或 `role_permissions` 表。旧
+`permissions` 表已经删除；直接改表会绕过防越权检查和授权审计。
 
 ### 3.2 准备两个测试账号
 
@@ -202,7 +203,7 @@ Permission Code 使用以下格式：
 | --- | --- | --- |
 | 权限 Code 格式无效 | 选择或提交了目录中不存在的 Code | 刷新权限页后重新选择 |
 | 超出当前操作者权限范围 | 当前管理员自己没有准备授予的权限 | 换用有权管理员，或减少角色权限 |
-| 权限目录迁移尚未完成 | `000025` 未应用 | 执行 migration 并重启 API |
+| 权限目录迁移尚未完成 | `000003` 未应用 | 执行 migration 并重启 API |
 | 角色标识不合法 | 使用了大写、空格、连字符或中文 | 改用小写字母、数字和下划线 |
 
 ## 6. 第三步：调整角色权限

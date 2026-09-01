@@ -176,6 +176,6 @@ capture_phase candidate
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go run ./cmd/campusos-capacity compare \
   --baseline "$work_dir/baseline.json" \
   --candidate "$work_dir/candidate.json" \
-  --budget docs/项目计划v0.13/evidence/v0.13-capacity-drill-budget.json
+  --budget docs/项目计划书v0/项目计划v0.13/evidence/v0.13-capacity-drill-budget.json
 
 echo "v0.13 isolated capacity drill passed: clean database, fixed public/admin reads, runtime and reliability budgets"

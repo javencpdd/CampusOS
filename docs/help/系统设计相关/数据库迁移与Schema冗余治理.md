@@ -1,114 +1,99 @@
 # 数据库迁移与 Schema 冗余治理
 
-> 当前基线：顺序 migration `000001-000042`。本文重点说明 `000041` 的索引治理；`000042` 追加用户空间配额授权，不改变本页的冗余审计结论。
+> 当前合同：v1.0 clean baseline
+> 更新时间：2026-09-01
+> 权威来源：`migrations/`、`scripts/schema-contract.sql`、Admin `/architecture`
 
-## 1. 结论
+## 1. 为什么本次可以压平
 
-对空库完整应用 `000001-000040` 后，PostgreSQL 系统目录审计得到：
+项目所有者已明确说明全部现存数据为测试数据，并要求不保留旧版本数据库兼容。因此历史
+`000001-000049` 不再是部署合同，已由三段新建库链替代。这个许可只适用于本次 clean baseline 决策；
+`000001-000003` 进入共享分支后重新冻结，后续必须从 `000004` 追加。
 
-- 完全相同的重复索引：0。
-- 完全相同的重复约束：0。
-- 数据审计：78 项检查、0 条违规。
-- 同表、同谓词、同访问方法且被更长 B-tree 严格左前缀覆盖的普通索引：9 个。
+当前结构和逐步影响见
+[v1.0 数据库全面重构方案](../../项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md)。
 
-因此没有证据支持删除业务表、业务列、约束、种子记录或旧 migration。可确认的冗余仅是九个维护成本重复的
-窄索引，现由 `000041_v13_schema_index_hygiene` 前向迁移删除。
+## 2. 当前治理结构
 
-## 2. 为什么不修改或合并旧 migration
-
-`000001-000040` 已可能记录在部署实例的 `schema_migrations` 中。旧文件中的建表、补列、数据回填、
-约束修复和种子更新共同描述从任意历史版本升级到当前版本的顺序；即使最终 Schema 中某些中间状态已经被
-后续迁移取代，也不能据此删除、改名或重写旧文件。
-
-项目继续采用：
-
-1. 历史 migration 不变。
-2. 优化通过新编号前向迁移完成。
-3. 生产故障优先 forward-fix；down 文件只用于隔离演练。
-4. 不把“空库可以直接建成最终结构”误当成“旧实例可以跳过历史数据迁移”。
-
-## 3. 本次删除的九个索引
-
-| 删除的窄索引 | 保留的覆盖索引 | 共同查询前缀 |
-| --- | --- | --- |
-| `idx_notifications_user_id` | `idx_notifications_user_read` | `user_id` |
-| `idx_plugin_permissions_plugin` | `uk_plugin_permissions` | `plugin_name` |
-| `idx_plugin_records_search` | `idx_plugin_records_owner_collection_updated` | `plugin_name, owner_type, owner_id` |
-| `idx_posts_thread_id` | `idx_posts_thread_floor` | `thread_id` |
-| `idx_role_permissions_role` | `uk_role_permissions_active` | `role_id` |
-| `idx_sessions_user_id` | `idx_sessions_user_active` | `user_id` |
-| `idx_threads_author_id` | `idx_threads_author_visibility_v10` | `author_id` |
-| `idx_user_roles_user_id` | `idx_user_roles_scope_lookup` | `user_id` |
-| `idx_webhook_deliveries_status` | `idx_webhook_deliveries_status_created` | `status` |
-
-这些索引的较长版本具有相同的表、B-tree 方法和 partial predicate。PostgreSQL 可以用复合索引的左前缀执行
-原窄索引查询；保留两份会让 INSERT、UPDATE、DELETE、VACUUM、备份和缓存同时维护重复结构。
-
-`000041` 使用 `DROP INDEX CONCURRENTLY`，必须通过项目迁移器执行，不要手工包在 `BEGIN/COMMIT` 中。
-
-## 4. 看起来重复但当前必须保留的数据
-
-| 现象 | 当前决策 |
+| 层 | 责任 |
 | --- | --- |
-| `users.email` 与 `accounts(type=email)` 都保存邮箱 | `accounts` 是权威登录事实，`users.email` 是旧 API 的兼容投影；Identity 在同一命令中同步，当前不能直接删列。 |
-| `permissions` 与 `permission_definitions/role_permissions` 并存 | 前者是旧资源/动作目录，后者是当前稳定权限代码目录；兼容调用和迁移遥测完成前不能物理删除。 |
-| `threads.status` 与 publication/moderation/deletion 三轴并存 | `status` 仍服务旧接口和领域兼容，三轴是当前治理事实；只能由 Community 归一化写入。 |
-| `plugins.status` 与 backend/frontend/health 三轴并存 | 单值状态仍承担旧读取兼容，三轴表达当前 Runtime 状态，不能当作重复列直接删除。 |
-| 后续 migration 重复出现 `INSERT ... ON CONFLICT` 或 `UPDATE` | 这是版本化种子和历史数据回填，不是重复业务行；唯一约束和审计负责阻止真实重复。 |
+| `000001_v1_schema_baseline` | 76 张现行业务表及其关系、约束、索引、函数和触发器 |
+| `000002_v1_plugin_authorization_foundation` | 8 张 v1 插件身份/版本/授权/Secret 表 |
+| `000003_v1_reference_data` | 无用户凭据的稳定角色、Permission Code 和安全策略 |
+| `schema_migrations` | version、name、SHA-256、execution_ms、executor、applied_at |
+| `schema_migration_locks` | 跨进程互斥，避免两个 migration 同时改变 Schema |
+| `schema-contract.sql` | 必需表、列、约束和索引合同 |
+| `database-audit.sql` | 当前数据状态、孤儿、重复和业务不变量 |
+| `migration-hygiene.sql` | 重复索引、冗余 B-tree 前缀和重复约束 |
 
-删除这些兼容事实需要先完成读写调用清单、遥测退出标准、API 兼容窗口和独立数据迁移，不属于本次索引治理。
+## 3. 已消除的冗余
 
-## 5. 自动检查
+- 删除旧 `permissions` 表，角色授权只读取 `permission_definitions + role_permissions`。
+- 历史补列、约束重命名、修复 seed 和 no-op migration 被吸收到最终 Schema。
+- migration 不再保存默认管理员、邮箱、密码哈希、默认版块或真实历史标识。
+- 时间点统一为 `TIMESTAMPTZ`，消除部分表有时区、部分表无时区的语义差异。
+- 历史 v10-v14 migration drill 的命令入口统一转发到当前 baseline drill，不再读取不存在的旧 SQL。
+- Admin 数据架构页只展示三段当前 migration，不模拟已经删除的升级历史。
 
-完整数据库检查：
+当前 hygiene 会拒绝：
 
-```bash
-./scripts/database-check.sh all
-```
+1. 完全相同的索引；
+2. 相同表、字段、类型和定义的重复约束；
+3. 被相同谓词、表达式和排序选项的复合 B-tree 严格左前缀覆盖的普通窄索引。
 
-只检查 Schema 冗余：
+## 4. checksum 与并发
 
-```bash
-./scripts/database-check.sh hygiene
-```
+每个 `up.sql` 应用前计算 SHA-256。已执行版本的文件名或 checksum 与数据库记录不一致时，
+`up/status/check` 立即失败，不会静默接受被修改的 migration。
 
-`scripts/migration-hygiene.sql` 会拒绝：
-
-- 定义完全相同的索引；
-- 同一表和谓词下，被同键唯一索引或更长 B-tree 严格左前缀覆盖的非唯一索引；
-- 定义完全相同的约束。
-
-迁移回归：
-
-```bash
-make v13-migration-check
-```
-
-其中 `test-v13-schema-index-hygiene-migration.sh` 在独立临时数据库执行 `000001-000040`、`000041`
-up/down/up、数据审计、Schema 合同和冗余门禁，不接触现有业务数据库。
-
-## 6. 部署与回滚
-
-升级前照常备份数据库并确认恢复路径：
+执行开始时向 `schema_migration_locks(id=1)` 插入 owner；冲突表示另一个执行器正在工作。正常成功、失败或中断会尝试释放。
+只有已经通过进程和数据库活动确认锁确实遗留时，才允许：
 
 ```bash
-make migrate-up
-make migrate-status
-make database-check
+CAMPUSOS_MIGRATION_LOCK_FORCE=true ./scripts/migrate.sh up
 ```
 
-索引删除不删除表中数据。虽然使用 concurrent 模式降低写阻塞，仍应观察数据库锁、I/O、复制延迟和迁移日志。
-若迁移中断，不要手工修改 `schema_migrations`；先检查无效索引并重试同一前向迁移。生产环境不建议执行
-`000041.down.sql`，因为重新建立九个索引只会恢复额外写放大；down 仅用于隔离兼容演练。
+`check` 是只读校验，不获取也不清理执行锁；只有 `up`/`down` 会处理该锁。不能把强制清锁作为日常命令，
+命令结束后应立即清除环境变量。
 
-## 7. 后续新增索引规则
+## 5. reset 安全边界
 
-新增索引必须同时提供：
+`reset` 执行 `DROP SCHEMA public CASCADE`，只接受：
 
-1. 对应 Repository 查询或明确运维查询。
-2. 与现有索引的列顺序、谓词、排序和唯一性比较。
-3. 代表性数据上的 `EXPLAIN (ANALYZE, BUFFERS)` 证据。
-4. migration up/down/up 和 `database-check.sh hygiene` 结果。
-5. 对写放大、构建锁、磁盘与回滚的说明。
+- `CAMPUSOS_ENV=development` 或 `test`；
+- `CAMPUSOS_RESET_CONFIRM` 与解析后的 `DB_NAME` 完全相同。
 
-低数据量环境的 `pg_stat_user_indexes.idx_scan=0` 不能单独作为删索引依据；必须结合查询合同和覆盖关系判断。
+旧三列 `schema_migrations` 会被明确识别为不兼容。确认开发数据可删除后应 reset，而不是手工补 checksum 列。
+
+生产/共享数据库不允许使用 reset。未来真实数据升级必须从当前 `000001-000003` 基线向前追加 migration。
+
+## 6. 新 migration 审查清单
+
+1. 六位连续编号，up/down 成对，文件名表达一个业务变化。
+2. 先写数据模型和业务不变量，再决定字段、约束、外键、索引与回滚。
+3. 时间点用 `TIMESTAMPTZ`；金额用最小单位整数；Secret/Token 只存摘要或密文。
+4. JSONB 约束顶层类型；状态、计数、版本、字节数有 CHECK。
+5. 外键明确 `CASCADE/RESTRICT/SET NULL`。
+6. 索引必须对应唯一性、外键清理、真实列表/Worker 查询；无查询证据不增加。
+7. migration 内不植入环境账号或测试业务数据。
+8. 同步 schema contract、Admin 架构页、帮助、计划/进度文档。
+9. 运行零建库、down/up、checksum drift、audit、hygiene、Go/前端影响测试。
+10. 合并后文件不可改写，修复只能新增前向 migration。
+
+## 7. 验证命令
+
+```bash
+./scripts/migrate.sh check
+POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/database-check.sh all
+python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
+```
+
+Windows 使用对应 `.\scripts\migrate.ps1`。baseline drill 使用固定隔离数据库，并验证：
+
+- 84 张业务表、2 张 migration 系统表；
+- 无测试用户/账号/管理员凭据；
+- 旧 `permissions` 表不存在；
+- 全库时间点已统一；
+- checksum 漂移失败；
+- 单步 down、全链 down、重新 up 和显式 reset 可重复。

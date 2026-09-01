@@ -76,7 +76,10 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | 用户文件 | `data/personal-space/<user_id>/`；新文档/受管课表的元数据与 Object ID 位于 PostgreSQL，文件仍是私有 Local Provider payload。 |
 | 开发日志 | `.campusos/logs/`。 |
 
-数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的插件关系。修改 schema 前必须运行 `make database-check` 和 migration 验证；当前顺序 migration 为 `000001` 至 `000049`。`000039` 记录管理员准入状态变更，`000040` 增加服务端 MFA Session 强度、TOTP 加密信封、Ticket/恢复码摘要和管理员策略，`000041` 删除九个被同谓词复合索引严格左前缀覆盖的窄索引并启用 Schema 冗余门禁，`000042` 增加按用户覆盖的 User Storage 配额授权，`000043` 为回复保存父楼层号快照；`000044-000049` 追加受管学期、对象/账户/Reservation、课表 Object 引用、个人文档版本/预览状态和兼容约束。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
+数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的当前插件关系。
+当前 clean baseline 为 `000001-000003`：76 张现行业务表、8 张 v1 插件身份/版本/三层授权基础表，以及不含用户凭据的稳定参考数据；
+执行器另管理 checksum 和互斥锁。修改 Schema 前必须运行 `make v1-database-baseline-check`、`make database-check`
+和架构同步检查。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
 
 ## 页面扩展安全
 

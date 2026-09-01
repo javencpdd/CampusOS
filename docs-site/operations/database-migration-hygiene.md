@@ -1,95 +1,93 @@
-# 数据库迁移与 Schema 冗余治理
+# 数据库迁移与 Schema 治理
 
-CampusOS 当前按 `000001-000049` 顺序升级 PostgreSQL。`000041` 负责索引治理，`000042` 增加按用户
-空间配额授权，`000043` 为回复保存父楼层快照，`000044-000049` 追加受管学期、对象账本、课表引用、个人文档
-版本/预览状态和兼容约束。历史 migration 是已部署实例的数据升级合同，不能为了让目录看起来更短而合并、改写或删除。
+CampusOS 当前使用 v1.0 clean baseline，而不是历史 `000001-000049` 增量链。项目所有者确认全部旧数据为测试数据后，
+数据库从当前业务模型重新构建；旧开发库不能原地升级，必须经过明确的 development/test reset。
 
-## 当前审计结果
+## 当前结构
 
-在独立空库应用 `000001-000040` 后：
-
-- 78 项数据一致性审计全部为 0 违规；
-- 没有定义完全相同的重复索引或重复约束；
-- 存在九个被同表、同谓词复合 B-tree 严格左前缀覆盖的普通索引。
-
-`000041_v13_schema_index_hygiene` 只删除这九个索引，不删除业务数据、列、约束或历史 migration：
-
-| 删除 | 保留的覆盖索引 |
+| migration | 内容 |
 | --- | --- |
-| `idx_notifications_user_id` | `idx_notifications_user_read` |
-| `idx_plugin_permissions_plugin` | `uk_plugin_permissions` |
-| `idx_plugin_records_search` | `idx_plugin_records_owner_collection_updated` |
-| `idx_posts_thread_id` | `idx_posts_thread_floor` |
-| `idx_role_permissions_role` | `uk_role_permissions_active` |
-| `idx_sessions_user_id` | `idx_sessions_user_active` |
-| `idx_threads_author_id` | `idx_threads_author_visibility_v10` |
-| `idx_user_roles_user_id` | `idx_user_roles_scope_lookup` |
-| `idx_webhook_deliveries_status` | `idx_webhook_deliveries_status_created` |
+| `000001_v1_schema_baseline` | 76 张现行业务表、外键、CHECK、索引、函数和触发器 |
+| `000002_v1_plugin_authorization_foundation` | 8 张插件身份、版本、三层授权、Delegation、Secret 和判定证据表 |
+| `000003_v1_reference_data` | 4 个系统角色、76 个 Permission Code、最小角色矩阵和身份安全策略 |
 
-复合 B-tree 可以使用左侧列执行这些查询。清理后减少写入、VACUUM、备份和缓存需要维护的重复索引结构。
+执行器另建 `schema_migrations`、`schema_migration_locks`。最终为 84 张业务表和 2 张系统表。
+migration 不创建用户、管理员、邮箱、默认密码或默认版块。
 
-## 执行检查
+旧 `permissions(resource, action)` 已删除，RBAC 统一使用
+`permission_definitions + role_permissions`。所有时间点字段统一为 `TIMESTAMPTZ`。
+
+## 常用命令
+
+Linux / Git Bash：
 
 ```bash
-./scripts/database-check.sh all
+./scripts/migrate.sh status
+./scripts/migrate.sh check
+./scripts/migrate.sh up
+./scripts/migrate.sh down
 ```
 
-只运行索引和约束冗余检查：
+Windows PowerShell：
+
+```powershell
+.\scripts\migrate.ps1 status
+.\scripts\migrate.ps1 check
+.\scripts\migrate.ps1 up
+.\scripts\migrate.ps1 down
+```
+
+- `check` 检查版本、up/down 配对和已执行文件 SHA-256；
+- `up` 在单 migration 事务中同时提交 SQL 与版本记录；
+- `down` 一次只回滚最新版本；
+- 数据库锁阻止并发 migration；
+- checksum 漂移或旧格式 `schema_migrations` 会直接失败。
+
+## 重置旧开发库
+
+只允许确认可丢弃的 development/test 数据。示例：
 
 ```bash
+CAMPUSOS_ENV=development \
+CAMPUSOS_RESET_CONFIRM=campusos \
+./scripts/migrate.sh reset
+```
+
+确认值必须与真实 `DB_NAME` 完全一致。reset 会删除整个 `public` schema；production/staging 禁止使用。
+Windows 使用相同环境变量执行 `.\scripts\migrate.ps1 reset`。
+
+重置后管理员由安全 bootstrap/CLI 创建，不存在 migration 默认凭据。
+
+## Schema、数据和冗余门禁
+
+```bash
+./scripts/database-check.sh audit
+./scripts/database-check.sh schema
 ./scripts/database-check.sh hygiene
+POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+make architecture-check
 ```
 
-检查器会拒绝完全重复索引、完全重复约束，以及同表同谓词下被同键唯一索引或更长 B-tree 严格左前缀
-覆盖的普通索引。
-迁移回归使用：
+- audit 检查重复、孤儿、非法状态和业务不变量；
+- schema 检查必需表、列、约束和索引；
+- hygiene 拒绝重复索引、相同谓词下被复合 B-tree 覆盖的窄索引和重复约束；
+- baseline drill 在隔离库验证零建库、无测试凭据、checksum drift、单步/全链 down、重新 up 和 reset；
+- architecture-check 确认 Admin `/architecture` 与 86 张当前表完全对齐。
 
-```bash
-make v13-migration-check
-```
+## 后续 migration
 
-该门禁在独立临时数据库执行 `000041` up/down/up，不修改正在使用的数据库。
+下一编号是 `000004`。进入共享分支后的 `000001-000003` 不得修改；任何修复都必须新增前向 migration。
 
-v0.14 还需执行：
+新增 Schema 时必须同步：
 
-```bash
-make v14-migration-check
-# 没有 make 的 Windows Git Bash，可逐项运行：
-bash ./scripts/test-v14-historical-fixture-migration.sh
-```
+1. up/down SQL；
+2. `scripts/schema-contract.sql` 和必要的数据审计；
+3. Admin 数据架构视图；
+4. migration README、架构/帮助和进度证据；
+5. 受影响 Repository/Service、Go、前端和浏览器测试。
 
-v0.14 门禁覆盖空库、`000044-000049` 的关键 up/down/up，以及一个从 `000043` 历史数据库开始、保留原始课表 JSON
-hash 的隔离采用/对账 fixture。它创建并清理时间戳命名的测试数据库和临时个人空间目录；不替代真实历史数据的
-`schedule adopt --apply` 授权流程。
+金额使用最小货币单位整数，时间点使用 `TIMESTAMPTZ`，JSONB 约束顶层类型，Token/验证码只存摘要，
+Secret 只存密文和 Key 版本，外键必须显式选择删除语义。
 
-## 升级注意事项
-
-```bash
-make migrate-up
-make migrate-status
-make database-check
-```
-
-`000041` 使用 `DROP INDEX CONCURRENTLY`；项目迁移器不会在文件外增加事务。不要手工把该迁移包进
-`BEGIN/COMMIT`。升级前仍需完成数据库备份和恢复验证，并观察锁、I/O 与复制延迟。
-
-索引删除不会删除表数据。生产环境出现问题时优先 forward-fix，不建议运行 down 重新制造写放大。
-
-v0.14 引入对象、文档或课表数据后，生产回退同样优先关闭 Feature 或 forward-fix；`000045`、`000047`、`000049`
-的 down 文件仅用于隔离演练，不能作为删除真实用户对象或版本的发布回滚手段。
-
-## 不应误删的兼容事实
-
-- `accounts(type=email)` 是登录邮箱权威事实，`users.email` 暂为旧 API 兼容投影。
-- `permission_definitions/role_permissions` 是当前权限代码目录，旧 `permissions` 仍处于兼容窗口。
-- Thread 和 Plugin 的单值状态仍服务旧读取，当前多轴状态才表达完整治理或 Runtime 事实。
-- 后续 migration 中的种子 upsert 和历史回填用于升级旧实例，不等同于重复业务行。
-
-这些对象只有在读写调用、兼容遥测、API 窗口和独立迁移全部闭合后才能删除。仓库内更完整的对象级分析见
-`docs/help/系统设计相关/数据库迁移与Schema冗余治理.md`。
-
-## 新增索引要求
-
-新增索引应提供对应查询、与现有索引的列/谓词比较、代表性数据上的
-`EXPLAIN (ANALYZE, BUFFERS)`、写放大说明和 up/down/up 证据。仅凭开发库
-`pg_stat_user_indexes.idx_scan=0` 不能判定索引无用。
+更完整的模型、需求和每一步影响见仓库
+`docs/项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md`。

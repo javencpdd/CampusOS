@@ -1,16 +1,16 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-08-31 12:49（Asia/Shanghai）
+> Snapshot date: 2026-09-01（Asia/Shanghai）
 > Repository: active CampusOS workspace (Windows or Linux)
-> Current release baseline: `v0.13.0`
-> Latest completed implementation stage: `v0.14-dev` (project ownership confirmed current code verification; G0, AcademicTerm, Storage Object, Schedule Guard, historical adoption/reconciliation, Personal Documents MVP, shared Content Editor Core and low-cardinality operational summaries implemented; Final gates remain)
-> Migrations: `000001` through `000049`
+> Current release baseline: `v0.14.0`
+> Latest implementation stage: `v1.0-dev` (clean database foundation implemented; plugin authorization services and UI remain planned)
+> Migrations: clean baseline `000001` through `000003`; next append-only version is `000004`
 
-The latest development-closure evidence is `docs/进度/v0.14-dev/v0.14.11-dev.md`. The implementation audit remains
-`docs/进度/v0.14-dev/v0.14.9-dev.md` and `docs/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`: they record
-the plan audit, batched recoverable reconciliation, the personal-document preview safe-fallback receipt, and documentation
-synchronization. P0/P1 implementation evidence remains in `v0.14.5-dev.md`; v0.14 Final gates remain unchanged. `v1.1`
-is reserved for the separately planned next major-series stage and is not an active task.
+The v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
+`docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`. The v1.0 formal plan is
+`docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`; its clean database foundation is documented in
+`01-v1.0数据库全面重构方案.md` and `docs/进度/v1.0-dev/v1.0.1-dev.md`. Do not treat the new plugin tables as proof that
+AuthorizationService, Admin Grant UI, User Consent UI or Host API v3 are complete.
 
 This file is an orientation snapshot. Before changing code, verify claims against the live worktree, generated contracts,
 migrations, the latest progress evidence, and `docs/计划书总结/README.md`.
@@ -55,6 +55,7 @@ The four extension categories are not interchangeable:
 | Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
 | Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
 | Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
+| Database | 84 application tables plus checksum/lock metadata; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
 
 ## 3. Important Boundaries
 
@@ -147,6 +148,7 @@ make docs-links
 make architecture-check
 make data-governance-check
 make database-check
+make v1-database-baseline-check
 make docker-deploy-check
 ```
 
@@ -172,10 +174,11 @@ Read these before a new task:
 | Version evolution and plan validity | `docs/计划书总结/README.md` |
 | Current candidate roadmap | `docs/计划书总结/01-当前项目规划与后续路线.md` |
 | Current architecture | `docs/architecture/当前架构概览.md` |
-| v0.13 plan and audit | `docs/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
-| v0.14 implementation plan | `docs/项目计划v0.14/00-v0.14版本计划书.md` |
-| Current evidence | latest files in `docs/进度/v0.14-dev/` |
-| v0.13 final baseline | `docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
+| v0.13 plan and audit | `docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
+| v0.14 implementation plan | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` |
+| v1.0 formal plan and DB design | `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`, `01-v1.0数据库全面重构方案.md` |
+| Current evidence | latest files in `docs/进度/v1.0-dev/` |
+| v0.13 final baseline | `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
 
 Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation
 instructions. Planned capabilities must not be reported as implemented without live code and test evidence.
@@ -186,6 +189,6 @@ instructions. Planned capabilities must not be reported as implemented without l
 2. Run `scripts/context_snapshot.sh` from this Skill.
 3. Classify the task as Core, Built-in Feature, External Plugin or Resource Package.
 4. Inspect the owning module, Port, migration and frontend route before editing.
-5. Keep API/data compatibility unless the task provides a migration and rollback path.
+5. Keep API/data compatibility unless the task explicitly authorizes a reset boundary and supplies a replacement migration/rollback path.
 6. Run impact-specific checks plus full Go tests.
 7. Update the canonical guide, current progress evidence and generated contracts when behavior changes.

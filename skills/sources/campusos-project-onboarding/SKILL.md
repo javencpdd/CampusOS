@@ -5,7 +5,7 @@ description: Quickly onboard an agent to the CampusOS repository, current versio
 
 # CampusOS Project Onboarding
 
-> 更新时间：2026-08-29
+> 更新时间：2026-09-01
 
 ## Purpose
 
@@ -21,8 +21,9 @@ The snapshot is useful, but it is not a substitute for checking live files. Trea
 3. Run `scripts/context_snapshot.sh` when current git status, migrations, docs, or skill inventory matters.
 4. Read only the task-relevant source files after the snapshot:
    - Version status: `docs/计划书总结/README.md`, `docs/计划书总结/01-当前项目规划与后续路线.md`
-   - Current plan: `docs/项目计划v0.14/00-v0.14版本计划书.md`
-   - Release baseline: `docs/项目计划v0.13/02-v0.13最终专业审计与后续路线.md`
+   - Next formal plan: `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md` (planned, implementation not started)
+   - Latest completed implementation plan: `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md`
+   - Release baseline: `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md`
    - Current progress: the latest numerically versioned files in the active `docs/进度/v0.X-dev/` directory
    - Documentation status: `docs/help/README.md`, `docs/README.md`
    - Runtime setup: `README.md`, `.env.example`, `Makefile`, `compose.dev.yml`, `compose.deploy.yml`, `scripts/`

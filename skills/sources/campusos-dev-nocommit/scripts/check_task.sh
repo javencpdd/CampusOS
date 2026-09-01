@@ -44,9 +44,10 @@ echo "==> stage"
 echo "$stage"
 
 echo "==> plan docs"
-stage_minor="${stage#v0.}"
-stage_minor="${stage_minor%-dev}"
-plan_dir="docs/项目计划v${stage_minor}"
+stage_version="${stage#v}"
+stage_version="${stage_version%-dev}"
+stage_major="${stage_version%%.*}"
+plan_dir="docs/项目计划书v${stage_major}/项目计划v${stage_version}"
 if [[ -d "$plan_dir" ]]; then
   find "$plan_dir" -maxdepth 1 -type f | sort -V
 else

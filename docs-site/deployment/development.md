@@ -108,16 +108,11 @@ SKIP_INFRA=true SKIP_MIGRATE=true make dev-all
 - `WEB_PORT`、`ADMIN_PORT`、`DOCS_PORT`、`SERVER_PORT`：覆盖默认端口。
 - `CAMPUSOS_DEV_INFRA_MODE=legacy`：使用旧 `docker-compose.yml` 独立数据源；不与 Docker 开发卷共享。
 
-## 开发账号
+## 开发管理员
 
-默认管理员由 migration 和后端启动兜底逻辑创建：
-
-| 项目 | 值 |
-| --- | --- |
-| 邮箱 | `admin@campusos.local` |
-| 默认密码 | `Admin@123456` |
-
-该账号只用于本地开发。任何面向共享环境的部署都必须修改默认密码和敏感配置。
+clean baseline migration 不创建默认用户、邮箱或密码。首次管理员由后端安全 bootstrap 或受控 CLI 创建，
+凭据必须通过当前环境的 `AUTH_BOOTSTRAP_ADMIN_SECRET` 等安全配置提供。不要依赖历史
+`admin@campusos.local / Admin@123456`，也不要把任何开发密码写回 migration、文档或 fixture。
 
 ## 验证改动
 

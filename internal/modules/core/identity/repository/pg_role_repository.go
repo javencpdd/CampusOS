@@ -318,11 +318,12 @@ func (r *PgRoleRepository) RevokeRoleUnlessLastGlobal(ctx context.Context, userI
 func (r *PgRoleRepository) HasPermission(ctx context.Context, userID string, resource, action string) (bool, error) {
 	query := `SELECT EXISTS (
 		SELECT 1
-		FROM permissions p
-		INNER JOIN roles r ON r.id = p.role_id AND r.deleted_at IS NULL
-		WHERE p.resource = $2
-		  AND p.action = $3
-		  AND p.deleted_at IS NULL
+		FROM role_permissions rp
+		INNER JOIN permission_definitions pd ON pd.id = rp.permission_id AND pd.deprecated_at IS NULL
+		INNER JOIN roles r ON r.id = rp.role_id AND r.deleted_at IS NULL
+		WHERE pd.resource = $2
+		  AND pd.action = $3
+		  AND rp.deleted_at IS NULL
 		  AND (
 				(r.name = 'member' AND EXISTS (
 					SELECT 1 FROM users u WHERE u.id = $1 AND u.deleted_at IS NULL
@@ -352,13 +353,14 @@ func (r *PgRoleRepository) HasPermission(ctx context.Context, userID string, res
 func (r *PgRoleRepository) HasScopedPermission(ctx context.Context, userID string, resource, action, scopeType string, scopeID int64) (bool, error) {
 	query := `SELECT EXISTS (
 		SELECT 1
-		FROM permissions p
-		INNER JOIN roles r ON r.id = p.role_id AND r.deleted_at IS NULL
+		FROM role_permissions rp
+		INNER JOIN permission_definitions pd ON pd.id = rp.permission_id AND pd.deprecated_at IS NULL
+		INNER JOIN roles r ON r.id = rp.role_id AND r.deleted_at IS NULL
 		INNER JOIN user_roles ur ON ur.role_id = r.id AND ur.deleted_at IS NULL
 		WHERE ur.user_id = $1
-		  AND p.resource = $2
-		  AND p.action = $3
-		  AND p.deleted_at IS NULL
+		  AND pd.resource = $2
+		  AND pd.action = $3
+		  AND rp.deleted_at IS NULL
 			  AND (
 					(ur.scope_type = 'global' AND ur.scope_id IS NULL)
 					OR (ur.scope_type = $4 AND ur.scope_id = $5)

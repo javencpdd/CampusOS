@@ -1,13 +1,13 @@
 # 当前规划与后续路线
 
-> 当前发布基线：`v0.13.0`
-> 更新日期：2026-08-31
-> 状态：项目所有者已确认 v0.14-dev 当前代码验证完成并完成开发收尾；AcademicTerm、对象账本、课表 Object 引用/历史采用命令、个人文档 MVP、共享内容编辑安全核心、版本提交 Outbox 与安全 Converter 降级均已实现。Windows Docker 的全量 Go、隔离 migration/恢复和认证浏览器工作流已有实际证据，Final 发布门禁尚未通过
+> 当前应用启动/合同版本：`v0.13.0`
+> 更新日期：2026-09-01
+> 状态：v0.14-dev 已由项目所有者确认开发收尾；v1.0 插件生态进入开发，clean database foundation 已实施
 
 CampusOS v0.13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
 单主机 Docker 交付。v0.14 选择“学期治理与个人工作区基础”作为有限主线，不改变当前四类能力和单主机边界。
 
-仓库中的完整计划位于 `docs/项目计划v0.14/00-v0.14版本计划书.md`。本文是公开摘要；计划不等于功能已经上线，
+仓库中的完整计划位于 `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md`。本文是公开摘要；计划不等于功能已经上线，
 实际完成情况必须以 `docs/进度/v0.14-dev/`、运行代码和发布证据为准；最新开发收尾记录为
 `v0.14.11-dev.md`。
 
@@ -36,7 +36,7 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 
 ## 迁移与兼容
 
-- 当前 migration 为 `000001-000049`；`000048` 无损统一早期对象账本的约束名称，`000049` 增加课表对象绑定和查看偏好。生产回滚应关闭 Feature 并 forward-fix，不能用 down 删除用户对象或文档。
+- 当前 migration 为 `000001-000003` clean baseline，共 84 张业务表和 2 张执行器系统表；旧测试库不支持原地升级，必须经过 development/test 双确认 reset。后续从 `000004` 追加，生产回滚仍优先关闭 Feature 并 forward-fix。
 - 文件迁移采用 `shadow -> dual -> enforce`，旧头像、图片、RichText 资产和课表先盘点再登记。
 - 未知文件只报告或隔离，不在启动时自动删除。
 - 旧 `year + semester` 请求在兼容期只能解析为已存在 AcademicTerm，不能绕过 Guard 创建学期。
@@ -49,15 +49,19 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 - 标准 MCP、真实 protobuf gRPC、远程插件市场、Agent Runner。
 - 多节点 API/Worker、数据库 HA、自动 TLS。
 
-这些方向仍需独立威胁模型、资源隔离、迁移、回滚和目标环境证据，不能从 v0.14 的接口预留推断为已交付。仓库内的逐项代码审查、验证证据和 Final 未决项见 `docs/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`。
+这些方向仍需独立威胁模型、资源隔离、迁移、回滚和目标环境证据，不能从 v0.14 的接口预留推断为已交付。仓库内的逐项代码审查、验证证据和 Final 未决项见 `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`。
 
-## v1.1 及以后候选
+## v1.0 已正式规划
 
-- 真实 Windows/arm64 发行认证、SBOM、镜像签名和目标环境长稳。
-- S3/OSS/WebDAV Provider 与多实例对象/配额一致性。
-- OAuth/OIDC、Passkey、实时通知。
-- 标准 MCP/进程扩展协议、远程插件目录。
-- 隔离 Agent Runner 和多节点高可用。
+下一主线聚焦插件生态与三层授权：在当前 Manifest v2、Host API v1/v2、用户 Grant、本地插件目录、受管数据和
+签名预检之上，建立 Capability Catalog、稳定插件身份、管理员逐能力 Grant、用户逐能力 Consent、统一授权判定、
+升级 diff 和即时撤销，并把事件、后台任务、Secret 与 Process Runtime 纳入同一边界。
+
+仓库中的完整范围、迁移策略、排期、风险和验收见
+`docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`；数据库重构见
+`01-v1.0数据库全面重构方案.md`。当前只完成数据库基础，不应把三层授权服务和 UI 写成已上线能力。
+
+远程公共市场、完整进程沙箱、标准 protobuf gRPC/MCP、Agent Runner 和多节点高可用保持为 P2 或后续候选。
 
 相关页面：[版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、
 [完整入门路径](/guide/getting-started)、[构建与发布](/deployment/release)。

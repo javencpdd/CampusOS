@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">迁移 000001 - 000049</el-tag>
+      <el-tag type="info" effect="plain">干净基线 000001 - 000003</el-tag>
     </section>
 
     <el-alert
@@ -331,10 +331,29 @@ const databaseTables: DbTable[] = [
     name: "schema_migrations",
     title: "迁移执行记录",
     domain: "system",
-    purpose: "迁移脚本创建的系统表，记录每个 migration 是否已执行。",
-    fields: ["version", "name", "applied_at"],
+    purpose:
+      "记录已执行版本、文件 SHA-256、执行耗时、执行者和时间；发现文件漂移时拒绝继续。",
+    fields: [
+      "version",
+      "name",
+      "checksum",
+      "execution_ms",
+      "executor",
+      "applied_at",
+    ],
     migration: "scripts/migrate.sh / migrate.ps1",
     relationshipNote: "只用于 schema 版本管理，不与业务表建立关系。",
+  },
+  {
+    name: "schema_migration_locks",
+    title: "迁移互斥锁",
+    domain: "system",
+    purpose:
+      "为跨进程 migration 执行提供数据库级互斥；正常完成或失败退出后由执行器释放。",
+    fields: ["id", "owner_name", "acquired_at"],
+    migration: "scripts/migrate.sh / migrate.ps1",
+    relationshipNote:
+      "固定 id=1；异常遗留锁只能在确认没有迁移进程后显式强制释放。",
   },
   {
     name: "users",
@@ -342,7 +361,7 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose: "系统中的用户主体，社区、个人空间、权限和上传资源的归属起点。",
     fields: ["id", "username", "email", "status", "auth_version"],
-    migration: "000001 + 000016 + 000028",
+    migration: "000001",
     relationshipNote:
       "通过受外键约束的 user_id、author_id、created_by、uploader_id 等字段被多个业务表引用。",
   },
@@ -350,10 +369,18 @@ const databaseTables: DbTable[] = [
     name: "accounts",
     title: "登录凭据",
     domain: "identity",
-    purpose: "保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据；邮箱使用规范化标识和显式验证状态。",
-    fields: ["id", "user_id", "type", "identifier_normalized", "verification_state"],
-    migration: "000001 + 000016 + 000028",
-    relationshipNote: "一个用户可有多个登录账号；邮箱账户以规范化标识全局唯一，user_id 由外键保护。",
+    purpose:
+      "保存邮箱、手机号或 OAuth 标识及密码哈希等认证凭据；邮箱使用规范化标识和显式验证状态。",
+    fields: [
+      "id",
+      "user_id",
+      "type",
+      "identifier_normalized",
+      "verification_state",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "一个用户可有多个登录账号；邮箱账户以规范化标识全局唯一，user_id 由外键保护。",
   },
   {
     name: "identity_admin_accounts",
@@ -372,7 +399,7 @@ const databaseTables: DbTable[] = [
       "last_authenticated_at",
       "version",
     ],
-    migration: "000038 + 000039",
+    migration: "000001",
     relationshipNote:
       "user_id 与 credential_account_id 均由外键保护；全局 admin 角色变更通过数据库触发器同步 active/revoked，suspended 不会被普通角色刷新静默恢复。",
   },
@@ -380,46 +407,85 @@ const databaseTables: DbTable[] = [
     name: "identity_legacy_email_placeholders",
     title: "历史邮箱占位标记",
     domain: "identity",
-    purpose: "保存历史共享邮箱的迁移标记，不是登录凭据、验证目的地或用户邮箱绑定。",
-    fields: ["id", "user_id", "placeholder_email", "migration_source", "resolved_at"],
-    migration: "000028",
-    relationshipNote: "user_id 由外键指向 users；未解决标记每个用户最多一条，不参与 accounts 登录和找回。",
+    purpose:
+      "保存历史共享邮箱的迁移标记，不是登录凭据、验证目的地或用户邮箱绑定。",
+    fields: [
+      "id",
+      "user_id",
+      "placeholder_email",
+      "migration_source",
+      "resolved_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "user_id 由外键指向 users；未解决标记每个用户最多一条，不参与 accounts 登录和找回。",
   },
   {
     name: "identity_reserved_identifiers",
     title: "保留身份标识",
     domain: "identity",
     purpose: "声明不能被新注册、绑定或找回流程使用的规范化身份标识及其原因。",
-    fields: ["identifier_type", "identifier_normalized", "reason", "created_at"],
-    migration: "000028",
-    relationshipNote: "独立策略表；v0.12 首项用于阻止历史共享邮箱被作为个人邮箱重新注册。",
+    fields: [
+      "identifier_type",
+      "identifier_normalized",
+      "reason",
+      "created_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "独立策略表；v0.12 首项用于阻止历史共享邮箱被作为个人邮箱重新注册。",
   },
   {
     name: "identity_email_challenges",
     title: "邮箱验证挑战",
     domain: "identity",
-    purpose: "保存验证码的用途、HMAC 重建元数据、尝试次数和一次性 Ticket 摘要；不保存验证码或原始 Ticket。",
-    fields: ["id", "public_id", "purpose", "account_id", "ticket_digest", "expires_at"],
-    migration: "000029",
-    relationshipNote: "account_id 可空外键指向 accounts；Outbox 只保存 challenge_id，邮件正文、验证码和 Secret 不进入该表以外的日志或队列。",
+    purpose:
+      "保存验证码的用途、HMAC 重建元数据、尝试次数和一次性 Ticket 摘要；不保存验证码或原始 Ticket。",
+    fields: [
+      "id",
+      "public_id",
+      "purpose",
+      "account_id",
+      "ticket_digest",
+      "expires_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "account_id 可空外键指向 accounts；Outbox 只保存 challenge_id，邮件正文、验证码和 Secret 不进入该表以外的日志或队列。",
   },
   {
     name: "identity_challenge_rate_limits",
     title: "验证请求限流窗口",
     domain: "identity",
-    purpose: "按规范化邮箱或 IP 的 HMAC 摘要保存滑动窗口请求计数，跨进程保持一致。",
-    fields: ["scope", "subject_digest", "window_started_at", "request_count", "updated_at"],
-    migration: "000029 + 000036",
-    relationshipNote: "subject_digest 不是原始邮箱或 IP；通过事务级锁与 Challenge 创建在同一事务内更新，没有业务外键。",
+    purpose:
+      "按规范化邮箱或 IP 的 HMAC 摘要保存滑动窗口请求计数，跨进程保持一致。",
+    fields: [
+      "scope",
+      "subject_digest",
+      "window_started_at",
+      "request_count",
+      "updated_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "subject_digest 不是原始邮箱或 IP；通过事务级锁与 Challenge 创建在同一事务内更新，没有业务外键。",
   },
   {
     name: "identity_challenge_policies",
     title: "验证码频率策略",
     domain: "identity",
     purpose: "保存不可关闭、可由管理员热更新的邮箱与 IP 滑动窗口和次数上限。",
-    fields: ["id", "email_window_minutes", "email_max_requests", "ip_window_minutes", "ip_max_requests", "version"],
-    migration: "000036",
-    relationshipNote: "updated_by 可空外键指向 users；策略更新使用版本检查、required audit 和非敏感 Outbox 事件。",
+    fields: [
+      "id",
+      "email_window_minutes",
+      "email_max_requests",
+      "ip_window_minutes",
+      "ip_max_requests",
+      "version",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "updated_by 可空外键指向 users；策略更新使用版本检查、required audit 和非敏感 Outbox 事件。",
   },
   {
     name: "identity_account_recovery_cases",
@@ -427,8 +493,16 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "记录经过线下核验后发起的受控恢复流程；不保存密码、验证码、Ticket 或线下证明原文。",
-    fields: ["id", "public_id", "user_id", "account_id", "challenge_id", "status", "expires_at"],
-    migration: "000031",
+    fields: [
+      "id",
+      "public_id",
+      "user_id",
+      "account_id",
+      "challenge_id",
+      "status",
+      "expires_at",
+    ],
+    migration: "000001",
     relationshipNote:
       "关联用户、原账号、邮件 Challenge 和可选创建人；管理端仅显示脱敏目标邮箱，证明材料只保留非敏感编号。",
   },
@@ -436,46 +510,97 @@ const databaseTables: DbTable[] = [
     name: "sessions",
     title: "刷新会话",
     domain: "identity",
-    purpose: "保存不透明 Refresh Token 的摘要、设备、轮换家族、撤销状态与服务端 MFA 认证强度，不保存原始凭据。",
-    fields: ["id", "user_id", "refresh_token_digest", "token_family_id", "authentication_strength", "mfa_authenticated_at", "revoked_at", "expires_at"],
-    migration: "000001 + 000016 + 000030 + 000040",
-    relationshipNote: "一个用户可在多个设备保持会话；user_id 由外键保护，密码恢复、邮箱绑定、管理员暂停或 MFA 关闭会撤销对应会话。",
+    purpose:
+      "保存不透明 Refresh Token 的摘要、设备、轮换家族、撤销状态与服务端 MFA 认证强度，不保存原始凭据。",
+    fields: [
+      "id",
+      "user_id",
+      "refresh_token_digest",
+      "token_family_id",
+      "authentication_strength",
+      "mfa_authenticated_at",
+      "revoked_at",
+      "expires_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "一个用户可在多个设备保持会话；user_id 由外键保护，密码恢复、邮箱绑定、管理员暂停或 MFA 关闭会撤销对应会话。",
   },
   {
     name: "identity_mfa_totp_methods",
     title: "TOTP 认证器",
     domain: "identity",
-    purpose: "保存用户认证器的加密信封、状态和最近接受时间步；不保存明文 TOTP Secret、二维码或手工密钥。",
-    fields: ["id", "user_id", "status", "key_id", "nonce", "ciphertext", "last_accepted_step", "enrollment_expires_at"],
-    migration: "000040",
-    relationshipNote: "user_id 由外键指向 users；每个用户最多一个 active 和一个 pending 认证器，重放保护依赖 last_accepted_step。",
+    purpose:
+      "保存用户认证器的加密信封、状态和最近接受时间步；不保存明文 TOTP Secret、二维码或手工密钥。",
+    fields: [
+      "id",
+      "user_id",
+      "status",
+      "key_id",
+      "nonce",
+      "ciphertext",
+      "last_accepted_step",
+      "enrollment_expires_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "user_id 由外键指向 users；每个用户最多一个 active 和一个 pending 认证器，重放保护依赖 last_accepted_step。",
   },
   {
     name: "identity_mfa_tickets",
     title: "MFA 登录 Ticket",
     domain: "identity",
-    purpose: "保存密码成功后的短期单用途 MFA Ticket 摘要、用途、受众与失败次数；不保存原始 Ticket。",
-    fields: ["id", "user_id", "audience", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
-    migration: "000040",
-    relationshipNote: "user_id 由外键指向 users；digest 全局唯一，消费和失败次数在事务中更新，不能用作长期会话。",
+    purpose:
+      "保存密码成功后的短期单用途 MFA Ticket 摘要、用途、受众与失败次数；不保存原始 Ticket。",
+    fields: [
+      "id",
+      "user_id",
+      "audience",
+      "purpose",
+      "ticket_digest",
+      "expires_at",
+      "consumed_at",
+      "attempts",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "user_id 由外键指向 users；digest 全局唯一，消费和失败次数在事务中更新，不能用作长期会话。",
   },
   {
     name: "identity_mfa_recovery_codes",
     title: "MFA 恢复码摘要",
     domain: "identity",
-    purpose: "保存一次性恢复码的不可逆摘要和使用时间；页面只在生成时显示原始恢复码一次。",
-    fields: ["id", "user_id", "method_id", "code_digest", "used_at", "created_at"],
-    migration: "000040",
-    relationshipNote: "user_id 与 method_id 分别由外键指向 users 和 identity_mfa_totp_methods；一条摘要只能消费一次。",
+    purpose:
+      "保存一次性恢复码的不可逆摘要和使用时间；页面只在生成时显示原始恢复码一次。",
+    fields: [
+      "id",
+      "user_id",
+      "method_id",
+      "code_digest",
+      "used_at",
+      "created_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "user_id 与 method_id 分别由外键指向 users 和 identity_mfa_totp_methods；一条摘要只能消费一次。",
   },
   {
     name: "identity_mfa_policies",
     title: "管理员 MFA 策略",
     domain: "identity",
-    purpose: "保存管理员 MFA 的 off、注册宽限期或 required 策略、版本和更新人；不保存个人认证器材料。",
-    fields: ["id", "mode", "grace_ends_at", "version", "updated_by", "updated_at"],
-    migration: "000040",
-    relationshipNote: "固定 admin 策略行；updated_by 可空外键指向 users，策略更新使用版本检查和 required audit。",
+    purpose:
+      "保存管理员 MFA 的 off、注册宽限期或 required 策略、版本和更新人；不保存个人认证器材料。",
+    fields: [
+      "id",
+      "mode",
+      "grace_ends_at",
+      "version",
+      "updated_by",
+      "updated_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "固定 admin 策略行；updated_by 可空外键指向 users，策略更新使用版本检查和 required audit。",
   },
   {
     name: "roles",
@@ -484,9 +609,9 @@ const databaseTables: DbTable[] = [
     purpose:
       "定义 admin、moderator、member、guest 等系统角色；member 是有效用户的隐式基础角色。",
     fields: ["id", "name", "is_system"],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
-      "user_roles 保存额外授权；permissions 是兼容期旧授权，role_permissions 绑定 v0.10 权限目录。",
+      "user_roles 保存用户额外角色；role_permissions 绑定唯一权威 Permission Code 目录。",
   },
   {
     name: "user_roles",
@@ -495,19 +620,9 @@ const databaseTables: DbTable[] = [
     purpose:
       "用户与额外角色的关联；管理员使用 global 作用域，版主使用一个或多个 category 作用域。",
     fields: ["user_id", "role_id", "scope_type", "scope_id"],
-    migration: "000002 + 000014 - 000016",
+    migration: "000001",
     relationshipNote:
       "user_id 和 role_id 由外键保护；版主 scope_id 逻辑指向 categories.id，跨版块请求由后端拒绝。",
-  },
-  {
-    name: "permissions",
-    title: "角色权限",
-    domain: "identity",
-    purpose: "为角色声明资源和动作权限；角色管理与各管理域使用独立 action。",
-    fields: ["role_id", "resource", "action"],
-    migration: "000002 + 000014 - 000017",
-    relationshipNote:
-      "role_id 由外键保护；版主权限还必须匹配 user_roles 中的 category scope。",
   },
   {
     name: "permission_definitions",
@@ -516,9 +631,9 @@ const databaseTables: DbTable[] = [
     purpose:
       "定义稳定 Permission Code、风险等级、允许作用域和审计等级；不以 URL 或数字 ID 表达业务权限。",
     fields: ["id", "code", "domain", "resource", "action", "risk_level"],
-    migration: "000025",
+    migration: "000001",
     relationshipNote:
-      "由 role_permissions 和 route_permission_bindings 关联；旧 permissions 在兼容期仍保留。",
+      "由 role_permissions 和 route_permission_bindings 关联；旧 resource/action permissions 表已在 v1 基线中删除。",
   },
   {
     name: "role_permissions",
@@ -526,7 +641,7 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose: "将角色与 v0.10 权限目录多对多关联，支持软删除的历史保留。",
     fields: ["id", "role_id", "permission_id", "created_by", "deleted_at"],
-    migration: "000025",
+    migration: "000001",
     relationshipNote:
       "role_id 和 permission_id 都有外键；系统角色矩阵由服务端保护。",
   },
@@ -536,7 +651,7 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose: "记录 API 的稳定操作 ID、模块所有者、HTTP 方法、路径与兼容别名。",
     fields: ["id", "operation_code", "module_owner", "method", "path_template"],
-    migration: "000025",
+    migration: "000001",
     relationshipNote:
       "启动时从 Route Registry 同步；一个操作可绑定一个或多个权限定义。",
   },
@@ -546,7 +661,7 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose: "连接路由操作和权限定义，避免以路径字符串直接充当权限。",
     fields: ["id", "route_operation_id", "permission_id", "deleted_at"],
-    migration: "000025",
+    migration: "000001",
     relationshipNote: "两端均有外键；最终资源范围仍由 Service 从真实数据验证。",
   },
   {
@@ -561,7 +676,7 @@ const databaseTables: DbTable[] = [
       "scope_type",
       "outcome",
     ],
-    migration: "000025",
+    migration: "000001",
     relationshipNote:
       "记录 request_id、原因和资源摘要，不保存 Session、Token、JWT 私钥或 Secret。",
   },
@@ -570,36 +685,55 @@ const databaseTables: DbTable[] = [
     title: "持久事件队列",
     domain: "system",
     purpose: "可靠命令提交后的事务性事件源，Worker 以 lease 领取并处理。",
-    fields: ["id", "event_type", "schema_version", "status", "attempts", "lease_generation"],
-    migration: "000027",
-    relationshipNote: "命令审计、消费凭证和投递尝试通过 event_id 关联；payload 不得保存 Token、Secret 或密码。",
+    fields: [
+      "id",
+      "event_type",
+      "schema_version",
+      "status",
+      "attempts",
+      "lease_generation",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "命令审计、消费凭证和投递尝试通过 event_id 关联；payload 不得保存 Token、Secret 或密码。",
   },
   {
     name: "outbox_consumer_receipts",
     title: "事件消费凭证",
     domain: "system",
-    purpose: "保存指定消费者已成功确认的事件，缩小 Worker 崩溃后的重复副作用窗口。",
+    purpose:
+      "保存指定消费者已成功确认的事件，缩小 Worker 崩溃后的重复副作用窗口。",
     fields: ["consumer_name", "event_id", "attempt", "delivered_at"],
-    migration: "000027",
-    relationshipNote: "event_id 由外键指向 platform_outbox；外部 HTTP 仍是至少一次语义。",
+    migration: "000001",
+    relationshipNote:
+      "event_id 由外键指向 platform_outbox；外部 HTTP 仍是至少一次语义。",
   },
   {
     name: "platform_outbox_attempts",
     title: "事件消费尝试",
     domain: "system",
-    purpose: "记录每个 Worker 消费尝试、lease generation、消费者结果和系统最终化证据，供 dead-letter 重放审查。",
+    purpose:
+      "记录每个 Worker 消费尝试、lease generation、消费者结果和系统最终化证据，供 dead-letter 重放审查。",
     fields: ["event_id", "consumer_name", "worker_id", "attempt", "status"],
-    migration: "000027 + 000037",
-    relationshipNote: "event_id 由外键指向 platform_outbox；system:outbox-finalize 可记录 failed 状态，但不复制业务 payload。",
+    migration: "000001",
+    relationshipNote:
+      "event_id 由外键指向 platform_outbox；system:outbox-finalize 可记录 failed 状态，但不复制业务 payload。",
   },
   {
     name: "platform_command_audits",
     title: "可靠命令审计",
     domain: "system",
     purpose: "关联 command、操作者、权限、资源、请求和持久事件的最小审计封套。",
-    fields: ["command_id", "command_code", "permission_code", "event_id", "created_at"],
-    migration: "000027",
-    relationshipNote: "event_id 可空外键指向 platform_outbox；业务写入、required audit 和事件在同一事务内提交。",
+    fields: [
+      "command_id",
+      "command_code",
+      "permission_code",
+      "event_id",
+      "created_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "event_id 可空外键指向 platform_outbox；业务写入、required audit 和事件在同一事务内提交。",
   },
   {
     name: "platform_worker_leases",
@@ -607,26 +741,36 @@ const databaseTables: DbTable[] = [
     domain: "system",
     purpose: "显示可靠 Worker 的最近心跳，用于识别积压和处理器不可用。",
     fields: ["worker_id", "last_heartbeat_at", "updated_at"],
-    migration: "000027",
+    migration: "000001",
     relationshipNote: "独立运行状态表，不保存用户或事件 payload。",
   },
   {
     name: "platform_operation_runs",
     title: "可恢复操作",
     domain: "system",
-    purpose: "保存插件包和资源应用等跨文件系统工作流的 intent、结果和补偿失败证据。",
+    purpose:
+      "保存插件包和资源应用等跨文件系统工作流的 intent、结果和补偿失败证据。",
     fields: ["kind", "subject_type", "subject_id", "status", "idempotency_key"],
-    migration: "000027",
-    relationshipNote: "不把文件替换、进程或网络调用伪装成数据库事务；失败状态可供管理员检查。",
+    migration: "000001",
+    relationshipNote:
+      "不把文件替换、进程或网络调用伪装成数据库事务；失败状态可供管理员检查。",
   },
   {
     name: "platform_compatibility_usage",
     title: "兼容路径遥测",
     domain: "system",
-    purpose: "统计遗留资源目录、Manifest 或兼容入口的实际使用量，为删除决策提供证据。",
-    fields: ["usage_key", "usage_kind", "first_seen", "last_seen", "usage_count"],
-    migration: "000027",
-    relationshipNote: "只保存兼容路径摘要，不保存用户 Token、请求正文或 Secret。",
+    purpose:
+      "统计遗留资源目录、Manifest 或兼容入口的实际使用量，为删除决策提供证据。",
+    fields: [
+      "usage_key",
+      "usage_kind",
+      "first_seen",
+      "last_seen",
+      "usage_count",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "只保存兼容路径摘要，不保存用户 Token、请求正文或 Secret。",
   },
   {
     name: "platform_retention_runs",
@@ -634,16 +778,26 @@ const databaseTables: DbTable[] = [
     domain: "system",
     purpose: "记录受控 dry-run 的目标、截止时间和候选数量；v0.11 不执行删除。",
     fields: ["target", "before_at", "eligible_rows", "mode", "status"],
-    migration: "000027",
-    relationshipNote: "当前只允许 dry-run，正式清理由后续经审批的分批任务实现。",
+    migration: "000001",
+    relationshipNote:
+      "当前只允许 dry-run，正式清理由后续经审批的分批任务实现。",
   },
   {
     name: "categories",
     title: "版块",
     domain: "community",
-    purpose: "社区内容分区；支持根级 group、board、默认标签和可审计的归档状态。",
-    fields: ["id", "parent_id", "node_kind", "lifecycle_status", "version", "color", "default_tags"],
-    migration: "000001 + 000012 + 000016 + 000032",
+    purpose:
+      "社区内容分区；支持根级 group、board、默认标签和可审计的归档状态。",
+    fields: [
+      "id",
+      "parent_id",
+      "node_kind",
+      "lifecycle_status",
+      "version",
+      "color",
+      "default_tags",
+    ],
+    migration: "000001",
     relationshipNote:
       "group 只位于根级，board 只能挂到活动 group；parent_id、threads.category_id 和 user_space_contents.category_id 由约束或外键保护。",
   },
@@ -654,7 +808,7 @@ const databaseTables: DbTable[] = [
     purpose:
       "限定一个 board 可以新建的固定结构化帖子类型；策略只影响新建，不删除或隐藏已有内容。",
     fields: ["category_id", "thread_type", "enabled", "updated_at"],
-    migration: "000033",
+    migration: "000001",
     relationshipNote:
       "category_id 由外键指向 board；数据库触发器拒绝 group、已删除或不存在的板块策略。",
   },
@@ -674,7 +828,7 @@ const databaseTables: DbTable[] = [
       "moderation_status",
       "deletion_status",
     ],
-    migration: "000001 + 000016 + 000023 + 000033",
+    migration: "000001",
     relationshipNote:
       "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。",
   },
@@ -684,8 +838,17 @@ const databaseTables: DbTable[] = [
     domain: "community",
     purpose:
       "互助帖的类型、业务状态、截止时间、位置范围和联系约定；不保存身份、支付或完整住宿敏感信息。",
-    fields: ["thread_id", "aid_type", "aid_status", "deadline", "location_scope", "contact_mode", "version", "created_by"],
-    migration: "000034",
+    fields: [
+      "thread_id",
+      "aid_type",
+      "aid_status",
+      "deadline",
+      "location_scope",
+      "contact_mode",
+      "version",
+      "created_by",
+    ],
+    migration: "000001",
     relationshipNote:
       "thread_id 一对一关联 mutual_aid 类型主题，created_by 必须匹配主题作者；业务状态不改变 Community 的发布、审核或回收站状态。",
   },
@@ -695,8 +858,18 @@ const databaseTables: DbTable[] = [
     domain: "community",
     purpose:
       "二手帖的分价金额、CNY 币种、物品成色、交付方式、交易进度和位置范围；不保存支付、订单或仲裁数据。",
-    fields: ["thread_id", "price_minor", "currency", "item_condition", "trade_method", "trade_status", "location_scope", "version", "created_by"],
-    migration: "000035",
+    fields: [
+      "thread_id",
+      "price_minor",
+      "currency",
+      "item_condition",
+      "trade_method",
+      "trade_status",
+      "location_scope",
+      "version",
+      "created_by",
+    ],
+    migration: "000001",
     relationshipNote:
       "thread_id 一对一关联 secondhand 类型主题，created_by 必须匹配主题作者；交易业务状态不改变 Community 的发布、审核或回收站状态。",
   },
@@ -713,7 +886,7 @@ const databaseTables: DbTable[] = [
       "action",
       "created_by",
     ],
-    migration: "000023",
+    migration: "000001",
     relationshipNote: "thread_id 与 threads 关联；同一主题的 version 唯一。",
   },
   {
@@ -722,7 +895,7 @@ const databaseTables: DbTable[] = [
     domain: "community",
     purpose: "保存下架、整改和审核流程的案例状态、原因与处理人。",
     fields: ["id", "thread_id", "status", "reason", "opened_by", "resolved_by"],
-    migration: "000023",
+    migration: "000001",
     relationshipNote: "thread_id 指向内容事实；开放案例与审核动作按时间关联。",
   },
   {
@@ -739,7 +912,7 @@ const databaseTables: DbTable[] = [
       "before_state",
       "after_state",
     ],
-    migration: "000023",
+    migration: "000001",
     relationshipNote: "case_id 可为空；thread_id 是治理资源的稳定归属。",
   },
   {
@@ -755,7 +928,7 @@ const databaseTables: DbTable[] = [
       "parent_floor_number",
       "floor_number",
     ],
-    migration: "000001 + 000016 + 000043",
+    migration: "000001",
     relationshipNote:
       "thread_id、author_id 和 parent_id 由外键保护；parent_floor_number 是创建时快照，父回复删除后引用楼层仍稳定。",
   },
@@ -811,7 +984,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "独立管理用户或插件使用的 API Key。",
     fields: ["key", "user_id", "plugin_name", "permissions"],
-    migration: "000003",
+    migration: "000001",
     relationshipNote: "可关联用户或插件名称，两者属于可选逻辑归属。",
   },
   {
@@ -830,9 +1003,135 @@ const databaseTables: DbTable[] = [
       "manifest",
       "config",
     ],
-    migration: "000003 + 000011 + 000018",
+    migration: "000001",
     relationshipNote:
       "通过 plugin_name 与插件权限、日志和 API Key 形成名称关联。",
+  },
+  {
+    name: "plugin_publishers",
+    title: "插件发布者身份",
+    domain: "plugin",
+    purpose: "保存发布者稳定标识、信任状态、签名密钥引用和扩展元数据。",
+    fields: ["id", "slug", "trust_status", "signing_key_id", "metadata"],
+    migration: "000002",
+    relationshipNote:
+      "plugins.publisher_id 通过外键指向本表；created_by 可追溯到 users。",
+  },
+  {
+    name: "plugin_versions",
+    title: "不可变插件版本",
+    domain: "plugin",
+    purpose: "按插件保存包摘要、签名状态、API 版本、权限指纹和生命周期。",
+    fields: [
+      "plugin_id",
+      "version",
+      "package_digest",
+      "signature_state",
+      "permission_fingerprint",
+      "lifecycle_status",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "plugin_id 外键指向 plugins；一个插件最多一个 active 版本。",
+  },
+  {
+    name: "plugin_capability_declarations",
+    title: "插件能力声明",
+    domain: "plugin",
+    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级。",
+    fields: [
+      "plugin_version_id",
+      "capability_code",
+      "purpose",
+      "risk_level",
+      "resource_scope",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源。",
+  },
+  {
+    name: "plugin_admin_grants",
+    title: "管理员平台授权",
+    domain: "plugin",
+    purpose: "记录管理员对某版本能力的批准、拒绝或撤销、作用域、版本与原因。",
+    fields: [
+      "plugin_version_id",
+      "capability_code",
+      "status",
+      "granted_scope",
+      "policy_revision",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "联合外键指向能力声明；每项能力只允许一条未 supersede 的当前决策。",
+  },
+  {
+    name: "plugin_user_consents",
+    title: "用户数据同意",
+    domain: "plugin",
+    purpose: "记录用户对具体插件版本和能力的同意状态、用途摘要、作用域与撤销。",
+    fields: [
+      "user_id",
+      "plugin_version_id",
+      "capability_code",
+      "status",
+      "purpose_hash",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "用户同意不能扩大管理员 Grant；用途变化通过 purpose_hash 触发重新确认。",
+  },
+  {
+    name: "plugin_delegations",
+    title: "短期委托凭证",
+    domain: "plugin",
+    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态。",
+    fields: [
+      "plugin_version_id",
+      "subject_user_id",
+      "token_digest",
+      "granted_capabilities",
+      "expires_at",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "不保存明文 Token；权限不得超过管理员 Grant 与用户 Consent 的交集。",
+  },
+  {
+    name: "plugin_secret_values",
+    title: "插件密文 Secret",
+    domain: "plugin",
+    purpose: "保存由宿主管理的密文、nonce、密钥版本和轮换状态，禁止明文落库。",
+    fields: [
+      "plugin_id",
+      "owner_user_id",
+      "secret_name",
+      "key_version",
+      "ciphertext",
+      "nonce",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "支持系统级和用户级 Secret；active 名称使用 NULLS NOT DISTINCT 唯一索引。",
+  },
+  {
+    name: "plugin_authorization_decisions",
+    title: "插件授权判定证据",
+    domain: "plugin",
+    purpose:
+      "追加保存每次三层授权判定所依据的 Grant、Consent、Delegation 和拒绝原因。",
+    fields: [
+      "request_id",
+      "plugin_version_id",
+      "user_id",
+      "capability_code",
+      "outcome",
+      "policy_revision",
+    ],
+    migration: "000002",
+    relationshipNote:
+      "request_id 全局唯一；高风险拒绝与错误可按插件、用户和时间检索。",
   },
   {
     name: "builtin_feature_states",
@@ -848,7 +1147,7 @@ const databaseTables: DbTable[] = [
       "config",
       "updated_at",
     ],
-    migration: "000019/000020",
+    migration: "000001",
     relationshipNote:
       "feature_id 对应 Built-in Feature Registry 的稳定 ID；旧插件状态和配置仅在首次迁移时作为兼容来源。",
   },
@@ -858,7 +1157,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "保存插件声明或同步后的 Host API 权限。",
     fields: ["plugin_name", "permission_type", "permission_value"],
-    migration: "000005",
+    migration: "000001",
     relationshipNote: "plugin_name 逻辑指向 plugins.name。",
   },
   {
@@ -867,7 +1166,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "保存插件运行、事件和 Host API 日志。",
     fields: ["plugin_name", "level", "event_type", "trace_id"],
-    migration: "000005",
+    migration: "000001",
     relationshipNote: "plugin_name 逻辑指向 plugins.name。",
   },
   {
@@ -884,7 +1183,7 @@ const databaseTables: DbTable[] = [
       "record_key",
       "version",
     ],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name 逻辑指向 plugins.name；owner_id 由 Host 注入，system 或 user 所有者均不接受插件伪造。",
   },
@@ -900,7 +1199,7 @@ const databaseTables: DbTable[] = [
       "size_bytes",
       "retention",
     ],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name 和 owner_id 是逻辑归属；实际文件位于个人空间 plugins 子目录。",
   },
@@ -910,7 +1209,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "保存用户对 v2 插件个人数据能力的精确版本化授权或撤销状态。",
     fields: ["plugin_name", "user_id", "version", "permissions", "status"],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name 和 user_id 是逻辑关系；每次 Gateway 调用均重新核验。",
   },
@@ -928,7 +1227,7 @@ const databaseTables: DbTable[] = [
       "user_permissions",
       "experience",
     ],
-    migration: "000021 + 000022 + 000024",
+    migration: "000001",
     relationshipNote:
       "plugin_name 逻辑指向 plugins.name；目录下架不卸载插件或删除用户数据。",
   },
@@ -938,7 +1237,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "记录用户请求管理员发布或审核本地目录插件的说明和结果。",
     fields: ["plugin_name", "user_id", "status", "reviewed_by"],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name、user_id 和 reviewed_by 为逻辑关系；批准不自动安装宿主代码。",
   },
@@ -954,7 +1253,7 @@ const databaseTables: DbTable[] = [
       "signature_state",
       "rollout_state",
     ],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name 逻辑指向 plugins.name；verified 状态只能来自实际包签名校验。",
   },
@@ -964,7 +1263,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "记录目录、授权、数据删除和发布治理动作的结果与最小元数据。",
     fields: ["plugin_name", "actor_id", "action", "outcome", "created_at"],
-    migration: "000021",
+    migration: "000001",
     relationshipNote:
       "plugin_name 和 actor_id 为逻辑关系；审计不会保存用户文件正文或 Secret。",
   },
@@ -974,7 +1273,7 @@ const databaseTables: DbTable[] = [
     domain: "integration",
     purpose: "记录模型提供方、用量、耗时和失败原因。",
     fields: ["provider", "model", "source", "status"],
-    migration: "000006",
+    migration: "000001",
     relationshipNote: "按调用来源记录，不强制绑定用户或帖子。",
   },
   {
@@ -983,23 +1282,26 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose: "保存用户公开主页、同步设置、样式和禁用状态。",
     fields: ["user_id", "visibility", "style_name", "sync_enabled"],
-    migration: "000007 + 000009 + 000011 + 000016",
+    migration: "000001",
     relationshipNote: "一个用户最多一份个人主页配置；user_id 由外键保护。",
   },
   {
     name: "user_storage_quotas",
     title: "用户空间配额授权",
     domain: "space",
-    purpose: "只保存管理员对单个用户授予的 User Storage 配额覆盖；没有记录时使用系统默认 50 MB。",
+    purpose:
+      "只保存管理员对单个用户授予的 User Storage 配额覆盖；没有记录时使用系统默认 50 MB。",
     fields: ["user_id", "quota_bytes", "updated_by", "updated_at"],
-    migration: "000042",
-    relationshipNote: "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。",
+    migration: "000001",
+    relationshipNote:
+      "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。",
   },
   {
     name: "academic_terms",
     title: "学期目录",
     domain: "space",
-    purpose: "保存由管理员治理的春/秋学期、第一周、开放状态、默认项与乐观锁版本；不是用户课表正文。",
+    purpose:
+      "保存由管理员治理的春/秋学期、第一周、开放状态、默认项与乐观锁版本；不是用户课表正文。",
     fields: [
       "id",
       "year",
@@ -1011,7 +1313,7 @@ const databaseTables: DbTable[] = [
       "created_by",
       "updated_by",
     ],
-    migration: "000044",
+    migration: "000001",
     relationshipNote:
       "year + semester 全局唯一；仅 open 学期可为默认；created_by 与 updated_by 是可空外键，关闭状态保留 closed_at 证据。",
   },
@@ -1019,72 +1321,138 @@ const databaseTables: DbTable[] = [
     name: "user_storage_accounts",
     title: "对象存储账户账本",
     domain: "space",
-    purpose: "保存用户对象存储的已用字节、预留字节与版本，避免并发写入绕过个人空间配额。",
-    fields: ["user_id", "used_bytes", "reserved_bytes", "version", "updated_at"],
-    migration: "000045",
-    relationshipNote: "每个用户至多一行；仅 User Storage Object Core 在事务内更新。",
+    purpose:
+      "保存用户对象存储的已用字节、预留字节与版本，避免并发写入绕过个人空间配额。",
+    fields: [
+      "user_id",
+      "used_bytes",
+      "reserved_bytes",
+      "version",
+      "updated_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "每个用户至多一行；仅 User Storage Object Core 在事务内更新。",
   },
   {
     name: "storage_objects",
     title: "私有存储对象",
     domain: "space",
-    purpose: "登记所有者、用途、大小、hash、状态与乐观锁；不向业务层暴露 provider key 或宿主路径。",
-    fields: ["id", "owner_user_id", "namespace", "purpose", "size_bytes", "sha256", "status", "version"],
-    migration: "000045",
-    relationshipNote: "owner_user_id 外键保护；provider + storage_key 唯一，ready 对象必须有完整 payload。",
+    purpose:
+      "登记所有者、用途、大小、hash、状态与乐观锁；不向业务层暴露 provider key 或宿主路径。",
+    fields: [
+      "id",
+      "owner_user_id",
+      "namespace",
+      "purpose",
+      "size_bytes",
+      "sha256",
+      "status",
+      "version",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "owner_user_id 外键保护；provider + storage_key 唯一，ready 对象必须有完整 payload。",
   },
   {
     name: "user_storage_reservations",
     title: "对象写入预留",
     domain: "space",
-    purpose: "记录 pending 对象的容量预留、有效期和最终状态，用于故障对账而非公开文件索引。",
-    fields: ["id", "user_id", "object_id", "reserved_bytes", "status", "expires_at"],
-    migration: "000045",
-    relationshipNote: "每个对象至多一个 Reservation；过期或异常状态由显式对账任务处理。",
+    purpose:
+      "记录 pending 对象的容量预留、有效期和最终状态，用于故障对账而非公开文件索引。",
+    fields: [
+      "id",
+      "user_id",
+      "object_id",
+      "reserved_bytes",
+      "status",
+      "expires_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "每个对象至多一个 Reservation；过期或异常状态由显式对账任务处理。",
   },
   {
     name: "user_schedule_terms",
     title: "用户课表学期引用",
     domain: "space",
-    purpose: "登记用户/受管学期、最近成功的不可变课表对象和复制后的第一周，保护 AcademicTerm 不能在已有课表数据后被删除。",
-    fields: ["user_id", "academic_term_id", "current_object_id", "first_week_start", "version"],
-    migration: "000046 + 000049",
-    relationshipNote: "(user_id, academic_term_id) 联合主键；current_object_id 只指向成功登记的私有对象，旧 JSON 保持兼容读取。",
+    purpose:
+      "登记用户/受管学期、最近成功的不可变课表对象和复制后的第一周，保护 AcademicTerm 不能在已有课表数据后被删除。",
+    fields: [
+      "user_id",
+      "academic_term_id",
+      "current_object_id",
+      "first_week_start",
+      "version",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "(user_id, academic_term_id) 联合主键；current_object_id 只指向成功登记的私有对象，旧 JSON 保持兼容读取。",
   },
   {
     name: "user_schedule_preferences",
     title: "用户课表查看偏好",
     domain: "space",
-    purpose: "保存用户当前查看的受管学期；历史 index.json 采用后仅写入此受限引用。",
+    purpose:
+      "保存用户当前查看的受管学期；历史 index.json 采用后仅写入此受限引用。",
     fields: ["user_id", "academic_term_id", "updated_at"],
-    migration: "000049",
-    relationshipNote: "每用户一行；academic_term_id 受 RESTRICT 外键保护，不能指向任意 JSON 或文件路径。",
+    migration: "000001",
+    relationshipNote:
+      "每用户一行；academic_term_id 受 RESTRICT 外键保护，不能指向任意 JSON 或文件路径。",
   },
   {
     name: "personal_documents",
     title: "私有个人文档",
     domain: "space",
-    purpose: "保存文档元数据、当前不可变版本指针、回收站状态与乐观锁，不保存正文或宿主文件路径。",
-    fields: ["id", "owner_user_id", "name", "document_type", "current_version_id", "status", "version"],
-    migration: "000047",
-    relationshipNote: "用户只能访问自己的文档；回收站是软状态，历史对象和版本不会自动删除。",
+    purpose:
+      "保存文档元数据、当前不可变版本指针、回收站状态与乐观锁，不保存正文或宿主文件路径。",
+    fields: [
+      "id",
+      "owner_user_id",
+      "name",
+      "document_type",
+      "current_version_id",
+      "status",
+      "version",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "用户只能访问自己的文档；回收站是软状态，历史对象和版本不会自动删除。",
   },
   {
     name: "personal_document_versions",
     title: "个人文档不可变版本",
     domain: "space",
-    purpose: "每次保存或恢复都追加一条版本，引用私有 storage object 并保留 hash、大小和来源类型。",
-    fields: ["id", "document_id", "version_number", "source_object_id", "source_type", "sha256", "restored_from_version_id"],
-    migration: "000047",
-    relationshipNote: "(document_id, version_number) 唯一；恢复历史版本会新建版本而不回写旧行。",
+    purpose:
+      "每次保存或恢复都追加一条版本，引用私有 storage object 并保留 hash、大小和来源类型。",
+    fields: [
+      "id",
+      "document_id",
+      "version_number",
+      "source_object_id",
+      "source_type",
+      "sha256",
+      "restored_from_version_id",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "(document_id, version_number) 唯一；恢复历史版本会新建版本而不回写旧行。",
   },
   {
     name: "personal_document_previews",
     title: "个人文档预览任务",
     domain: "space",
-    purpose: "预留隔离 Converter 的异步预览状态与输出对象引用；v0.14-dev 默认不启用 DOCX/PDF Converter。",
-    fields: ["id", "document_version_id", "preview_object_id", "status", "error_code", "attempts"],
-    migration: "000047",
+    purpose:
+      "预留隔离 Converter 的异步预览状态与输出对象引用；v0.14-dev 默认不启用 DOCX/PDF Converter。",
+    fields: [
+      "id",
+      "document_version_id",
+      "preview_object_id",
+      "status",
+      "error_code",
+      "attempts",
+    ],
+    migration: "000001",
     relationshipNote: "仅保存有界状态和错误类别，不保存文档内容或下载 Token。",
   },
   {
@@ -1093,7 +1461,7 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose: "缓存同步到个人主页的主题摘要和展示信息。",
     fields: ["user_id", "thread_id", "category_id", "synced_at"],
-    migration: "000008 + 000016",
+    migration: "000001",
     relationshipNote:
       "用户、主题和版块均由外键保护；thread_id 在当前表中唯一。",
   },
@@ -1103,7 +1471,7 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose: "在应用风格前保存可回滚的个人主页样式状态。",
     fields: ["user_id", "snapshot_type", "style_name", "style_manifest"],
-    migration: "000011",
+    migration: "000001",
     relationshipNote: "按 user_id 保存历史快照。",
   },
   {
@@ -1112,7 +1480,7 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose: "保存受控富文本文章 HTML/JSON、封面和发布状态。",
     fields: ["thread_id", "created_by", "status", "content_html"],
-    migration: "000013 + 000016",
+    migration: "000001",
     relationshipNote: "thread_id、created_by 和 updated_by 由外键保护。",
   },
   {
@@ -1121,7 +1489,7 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose: "保存图片文件元数据，实际文件位于用户个人空间。",
     fields: ["thread_id", "article_content_id", "uploader_id", "file_url"],
-    migration: "000013 + 000016",
+    migration: "000001",
     relationshipNote: "主题、富文本正文和上传用户均由外键保护。",
   },
   {
@@ -1129,18 +1497,34 @@ const databaseTables: DbTable[] = [
     title: "Webhook 端点",
     domain: "integration",
     purpose: "保存外部订阅地址、签名密钥、事件和重试设置。",
-    fields: ["name", "url", "events", "enabled", "max_concurrent", "rate_limit_per_minute"],
-    migration: "000011 + 000027",
-    relationshipNote: "一个端点可产生多条投递记录；生产默认拒绝私网和未复核重定向。",
+    fields: [
+      "name",
+      "url",
+      "events",
+      "enabled",
+      "max_concurrent",
+      "rate_limit_per_minute",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "一个端点可产生多条投递记录；生产默认拒绝私网和未复核重定向。",
   },
   {
     name: "webhook_deliveries",
     title: "Webhook 投递",
     domain: "integration",
     purpose: "记录投递状态、重试次数、响应状态和错误信息。",
-    fields: ["endpoint_id", "event_type", "status", "attempts", "outbox_event_id", "delivery_key"],
-    migration: "000011 + 000016 + 000027",
-    relationshipNote: "endpoint_id 和 outbox_event_id 由外键保护；delivery_key 约束同一端点和事件的记录更新。",
+    fields: [
+      "endpoint_id",
+      "event_type",
+      "status",
+      "attempts",
+      "outbox_event_id",
+      "delivery_key",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "endpoint_id 和 outbox_event_id 由外键保护；delivery_key 约束同一端点和事件的记录更新。",
   },
   {
     name: "mcp_audit_logs",
@@ -1148,7 +1532,7 @@ const databaseTables: DbTable[] = [
     domain: "integration",
     purpose: "记录内部 MCP-like 工具调用、参数和结果。",
     fields: ["user_id", "tool", "arguments", "success"],
-    migration: "000011",
+    migration: "000001",
     relationshipNote: "user_id 为调用主体标识，当前以字符串保存。",
   },
   {
@@ -1157,7 +1541,7 @@ const databaseTables: DbTable[] = [
     domain: "integration",
     purpose: "绑定 CampusOS 用户与外部平台账号。",
     fields: ["user_id", "platform", "external_user_id"],
-    migration: "000011",
+    migration: "000001",
     relationshipNote: "user_id 为 CampusOS 用户标识，当前以字符串保存。",
   },
   {
@@ -1166,7 +1550,7 @@ const databaseTables: DbTable[] = [
     domain: "integration",
     purpose: "记录 local adapter 或未来外部适配器的消息方向和原始负载。",
     fields: ["platform", "conversation_id", "sender_id", "direction"],
-    migration: "000011",
+    migration: "000001",
     relationshipNote: "按平台和会话索引，不直接强制关联用户。",
   },
 ];
@@ -1459,15 +1843,6 @@ const relations: Relation[] = [
     targetCardinality: "N",
     label: "id -> category scope_id",
     domains: ["identity", "community"],
-  },
-  {
-    id: "roles-permissions",
-    source: "roles",
-    target: "permissions",
-    sourceCardinality: "1",
-    targetCardinality: "N",
-    label: "id -> role_id",
-    domains: ["identity"],
   },
   {
     id: "roles-role-permissions",
@@ -1928,6 +2303,78 @@ const relations: Relation[] = [
     label: "name -> plugin_name",
     domains: ["plugin"],
   },
+  {
+    id: "publishers-plugins",
+    source: "plugin_publishers",
+    target: "plugins",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> publisher_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "plugins-versions-v1",
+    source: "plugins",
+    target: "plugin_versions",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "versions-capabilities-v1",
+    source: "plugin_versions",
+    target: "plugin_capability_declarations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_version_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "capabilities-admin-grants-v1",
+    source: "plugin_capability_declarations",
+    target: "plugin_admin_grants",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "version + code",
+    domains: ["plugin"],
+  },
+  {
+    id: "capabilities-user-consents-v1",
+    source: "plugin_capability_declarations",
+    target: "plugin_user_consents",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "version + code",
+    domains: ["identity", "plugin"],
+  },
+  {
+    id: "versions-delegations-v1",
+    source: "plugin_versions",
+    target: "plugin_delegations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_version_id",
+    domains: ["identity", "plugin"],
+  },
+  {
+    id: "plugins-secrets-v1",
+    source: "plugins",
+    target: "plugin_secret_values",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "versions-decisions-v1",
+    source: "plugin_versions",
+    target: "plugin_authorization_decisions",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_version_id",
+    domains: ["identity", "plugin"],
+  },
 ];
 
 const storageRows = [
@@ -2036,7 +2483,8 @@ const storageRows = [
     path: ".campusos/logs/",
     category: "开发期日志",
     type: "info",
-    purpose: "原生和 Docker 开发启动脚本写入 API、Web、Admin 和 Docs 的本地输出。",
+    purpose:
+      "原生和 Docker 开发启动脚本写入 API、Web、Admin 和 Docs 的本地输出。",
     contents: ["api.log", "web.log", "admin.log", "docs.log"],
     note: "Docker stdout 通过 tee 同步到固定来源供管理端实时 follow；这不是集中日志系统。",
   },
@@ -2045,481 +2493,47 @@ const storageRows = [
 const migrations = [
   {
     version: "000001",
-    file: "000001_init_schema.up.sql",
-    title: "核心身份、社区与系统表",
-    scope: "核心",
-    summary: "建立用户、认证、社区内容、通知、审计和配置基础。",
-    tables: [
-      "users",
-      "accounts",
-      "sessions",
-      "categories",
-      "threads",
-      "posts",
-      "tags",
-      "likes",
-      "audit_logs",
-      "notifications",
-      "configurations",
-    ],
+    file: "000001_v1_schema_baseline.up.sql",
+    title: "v1 干净业务 Schema 基线",
+    scope: "全域",
+    summary:
+      "从已验证的 v0.14 最终结构重建 76 张当前业务表，统一 TIMESTAMPTZ，并删除旧 permissions 双轨模型；不导入任何测试用户或凭据。",
+    tables: ["identity / community / storage / integration / runtime tables"],
   },
   {
     version: "000002",
-    file: "000002_add_roles.up.sql",
-    title: "RBAC 角色权限",
-    scope: "身份",
-    summary: "建立角色、用户角色关联和角色权限，并写入系统角色种子。",
-    tables: ["roles", "user_roles", "permissions"],
-  },
-  {
-    version: "000003 / 000005",
-    file: "add_plugins + schema_alignment",
-    title: "插件持久化与日志",
-    scope: "插件",
-    summary: "建立插件元数据、API Key、权限声明和插件运行日志。",
-    tables: ["plugins", "api_keys", "plugin_permissions", "plugin_logs"],
-  },
-  {
-    version: "000004",
-    file: "000004_seed_admin.up.sql",
-    title: "默认管理员与版块种子",
-    scope: "种子数据",
-    summary: "写入默认管理员账号、管理员角色和默认版块，不新增数据表。",
-    tables: ["users", "accounts", "user_roles", "categories"],
-  },
-  {
-    version: "000006",
-    file: "000006_add_ai_call_logs.up.sql",
-    title: "AI Gateway 调用日志",
-    scope: "集成",
-    summary: "记录 provider、模型、token、耗时和错误。",
-    tables: ["ai_call_logs"],
-  },
-  {
-    version: "000007 - 000009",
-    file: "add_user_spaces + contents + styles",
-    title: "个人主页与同步内容",
-    scope: "个人空间",
-    summary: "建立个人主页配置、主题同步内容，并给主页增加风格状态。",
-    tables: ["user_spaces", "user_space_contents"],
-  },
-  {
-    version: "000010",
-    file: "000010_fix_admin_seed_password.up.sql",
-    title: "默认管理员密码修正",
-    scope: "种子数据",
-    summary: "修正默认管理员密码哈希，不新增数据表。",
-    tables: ["accounts"],
-  },
-  {
-    version: "000011",
-    file: "000011_v05_operational_features.up.sql",
-    title: "运营化与低风险集成",
-    scope: "v0.5",
-    summary: "增加主页风格快照、Webhook、MCP 审计、消息绑定和消息日志。",
-    tables: [
-      "user_space_style_snapshots",
-      "webhook_endpoints",
-      "webhook_deliveries",
-      "mcp_audit_logs",
-      "message_bindings",
-      "message_logs",
-    ],
-  },
-  {
-    version: "000012",
-    file: "000012_category_default_tags.up.sql",
-    title: "版块默认标签",
-    scope: "社区",
-    summary: "为 categories 增加 default_tags 数组字段和索引。",
-    tables: ["categories"],
-  },
-  {
-    version: "000013",
-    file: "000013_controlled_richtext_article.up.sql",
-    title: "受控富文本图文文章",
-    scope: "内容",
-    summary: "将富文本正文和图片元数据关联到既有 threads。",
-    tables: ["richtext_article_contents", "richtext_article_assets"],
-  },
-  {
-    version: "000014",
-    file: "000014_role_assignment_permissions.up.sql",
-    title: "角色分配修复与细粒度权限",
-    scope: "身份",
-    summary:
-      "修复 user_roles 全局角色唯一性，分离角色读取、分配和撤销权限，不新增数据表。",
-    tables: ["user_roles", "permissions"],
-  },
-  {
-    version: "000015",
-    file: "000015_category_moderation_scope.up.sql",
-    title: "版块版主作用域",
-    scope: "身份与治理",
-    summary:
-      "停用历史全局版主授权，约束 global/category 作用域形状，并补充主题锁定权限。",
-    tables: ["user_roles", "permissions"],
-  },
-  {
-    version: "000016",
-    file: "000016_v06_core_integrity.up.sql",
-    title: "核心数据完整性",
-    scope: "数据库",
-    summary: "在数据预检后增加核心状态与计数检查、稳定关系外键和关键查询索引。",
-    tables: [
-      "users",
-      "accounts",
-      "sessions",
-      "categories",
-      "threads",
-      "posts",
-      "user_roles",
-      "permissions",
-      "user_spaces",
-      "user_space_contents",
-      "richtext_article_contents",
-      "richtext_article_assets",
-      "webhook_deliveries",
-    ],
-  },
-  {
-    version: "000017",
-    file: "000017_v06_admin_permission_split.up.sql",
-    title: "管理权限细分",
-    scope: "身份与治理",
-    summary:
-      "将插件、富文本、集成、空间、日志和首页管理从粗粒度角色权限拆分为资源动作权限。",
-    tables: ["permissions"],
-  },
-  {
-    version: "000018",
-    file: "000018_plugin_ui_runtime.up.sql",
-    title: "插件 UI Runtime 状态",
-    scope: "插件",
-    summary:
-      "持久化 BackendState、FrontendState、Health 和 UI revision，并用 CHECK 约束状态集合。",
-    tables: ["plugins"],
-  },
-  {
-    version: "000019",
-    file: "000019_builtin_feature_state.up.sql",
-    title: "内置功能状态",
-    scope: "模块化单体",
-    summary:
-      "建立 Built-in Feature 独立状态表，并从历史 builtin plugin 状态一次性初始化。",
-    tables: ["builtin_feature_states"],
-  },
-  {
-    version: "000020",
-    file: "000020_builtin_feature_config.up.sql",
-    title: "内置功能配置",
-    scope: "模块化单体",
-    summary:
-      "为 Built-in Feature 状态表增加权威 JSON 配置，旧插件配置只在首次缺失时导入。",
-    tables: ["builtin_feature_states"],
-  },
-  {
-    version: "000021",
-    file: "000021_v09_plugin_market.up.sql",
-    title: "v0.9 受管插件市场数据",
+    file: "000002_v1_plugin_authorization_foundation.up.sql",
+    title: "插件身份、版本与三层授权基础",
     scope: "插件平台",
     summary:
-      "建立受管记录、文件元数据、用户 Grant、本地目录、申请、发布记录和市场审计。",
+      "新增发布者、不可变版本、能力声明、管理员 Grant、用户 Consent、短期 Delegation、密文 Secret 和授权判定证据。",
     tables: [
-      "plugin_records",
-      "plugin_file_metadata",
-      "plugin_user_grants",
-      "plugin_catalog_entries",
-      "plugin_install_requests",
-      "plugin_releases",
-      "plugin_market_audits",
+      "plugin_publishers",
+      "plugin_versions",
+      "plugin_capability_declarations",
+      "plugin_admin_grants",
+      "plugin_user_consents",
+      "plugin_delegations",
+      "plugin_secret_values",
+      "plugin_authorization_decisions",
     ],
   },
   {
-    version: "000022",
-    file: "000022_v09_plugin_catalog_permissions.up.sql",
-    title: "目录用户权限说明",
-    scope: "插件平台",
-    summary: "为本地目录增加用户权限的用途、风险和可撤销声明。",
-    tables: ["plugin_catalog_entries"],
-  },
-  {
-    version: "000023",
-    file: "000023_v10_content_governance.up.sql",
-    title: "v0.10 内容治理状态机",
-    scope: "内容治理",
+    version: "000003",
+    file: "000003_v1_reference_data.up.sql",
+    title: "稳定参考数据",
+    scope: "权限与安全策略",
     summary:
-      "为 threads 追加发布、治理和删除维度，并建立内容修订、审核案例和治理动作记录。",
+      "只写入 4 个系统角色、76 个 Permission Code、默认最小授权矩阵和身份安全策略；不写用户、邮箱、管理员密码或默认版块。",
     tables: [
-      "threads",
-      "content_revisions",
-      "content_moderation_cases",
-      "content_moderation_actions",
-      "richtext_article_contents",
-    ],
-  },
-  {
-    version: "000024",
-    file: "000024_v10_plugin_catalog_experience.up.sql",
-    title: "v0.10 插件用户体验元数据",
-    scope: "插件平台",
-    summary:
-      "为本地插件目录增加普通用户可读的用途、数据、风险、关闭后行为和维护者信息。",
-    tables: ["plugin_catalog_entries"],
-  },
-  {
-    version: "000025",
-    file: "000025_v10_authorization_catalog.up.sql",
-    title: "v0.10 稳定权限与路由目录",
-    scope: "身份与治理",
-    summary:
-      "建立权限定义、角色权限、路由操作、路由权限绑定和结构化授权审计，保留旧 permissions 兼容。",
-    tables: [
+      "roles",
       "permission_definitions",
       "role_permissions",
-      "route_operations",
-      "route_permission_bindings",
-      "authorization_audits",
+      "identity_challenge_policies",
+      "identity_mfa_policies",
     ],
-  },
-  {
-    version: "000026",
-    file: "000026_v10_module_plugin_separation.up.sql",
-    title: "v0.10 模块、插件与资源分离",
-    scope: "模块化单体与插件平台",
-    summary:
-      "将历史 Built-in 状态和配置迁入 Feature Store，合并 Appearance，软删除外部插件目录中的历史 Built-in 活跃行，并补充 Feature 权限。",
-    tables: [
-      "builtin_feature_states",
-      "plugins",
-      "permissions",
-      "permission_definitions",
-      "role_permissions",
-    ],
-  },
-  {
-    version: "000027",
-    file: "000027_v11_reliable_commands_and_outbox.up.sql",
-    title: "v0.11 可靠命令与持久事件",
-    scope: "平台可靠性与 Webhook",
-    summary:
-      "建立事务性 Outbox、消费凭证、尝试记录、Worker 心跳、可恢复操作、兼容遥测和 dry-run 保留记录，并收紧 Webhook 投递元数据。",
-    tables: [
-      "platform_outbox",
-      "outbox_consumer_receipts",
-      "platform_outbox_attempts",
-      "platform_command_audits",
-      "platform_worker_leases",
-      "platform_operation_runs",
-      "platform_compatibility_usage",
-      "platform_retention_runs",
-      "webhook_endpoints",
-      "webhook_deliveries",
-      "authorization_audits",
-      "permission_definitions",
-      "role_permissions",
-    ],
-  },
-  {
-    version: "000028",
-    file: "000028_v12_identity_account_state.up.sql",
-    title: "v0.12 邮箱身份事实与历史账号状态",
-    scope: "身份与账号安全",
-    summary:
-      "将邮箱登录事实收敛到 accounts 的规范化标识和验证状态，保留 users.email 兼容投影，并建立历史共享邮箱占位标记和保留标识策略。",
-    tables: [
-      "users",
-      "accounts",
-      "identity_legacy_email_placeholders",
-      "identity_reserved_identifiers",
-    ],
-  },
-  {
-    version: "000029",
-    file: "000029_v12_identity_challenges.up.sql",
-    title: "v0.12 邮箱 Challenge、Ticket 与持久限流",
-    scope: "身份与账号安全",
-    summary:
-      "建立 HMAC 验证码重建元数据、一次性 Ticket 摘要和基于 keyed digest 的持久限流窗口；验证码和原始 Ticket 不入库。",
-    tables: ["identity_email_challenges", "identity_challenge_rate_limits"],
-  },
-  {
-    version: "000030",
-    file: "000030_v12_identity_sessions.up.sql",
-    title: "v0.12 会话权威与 Refresh 轮换",
-    scope: "身份与账号安全",
-    summary:
-      "清除历史原始 Refresh Token，新增摘要、家族、轮换、撤销和 IP 摘要字段；旧会话显式失效。",
-    tables: ["sessions"],
-  },
-  {
-    version: "000031",
-    file: "000031_v12_identity_recovery_cases.up.sql",
-    title: "v0.12 账号恢复 Case 与细粒度权限",
-    scope: "身份与账号安全",
-    summary:
-      "建立管理员辅助恢复工作流、关联约束和恢复/会话/邮件投递权限；敏感凭据不入库。",
-    tables: ["identity_account_recovery_cases", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000032",
-    file: "000032_v12_category_hierarchy.up.sql",
-    title: "v0.12 两级板块与可靠管理",
-    scope: "社区与权限",
-    summary:
-      "在既有 categories 表追加 group/board、active/archived、版本与颜色约束，并以触发器保护两级层级和活动父级规则；同时追加细粒度板块管理权限。",
-    tables: ["categories", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000033",
-    file: "000033_v12_structured_threads.up.sql",
-    title: "v0.12 结构化帖子类型与板块策略",
-    scope: "社区与内容",
-    summary:
-      "为 threads 追加固定业务类型，回填历史 RichText article，并建立 board 类型策略、约束、触发器与配置权限。",
-    tables: ["threads", "category_thread_type_policies", "richtext_article_contents", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000034",
-    file: "000034_v12_mutual_aid.up.sql",
-    title: "v0.12 校园互助结构化详情",
-    scope: "社区与内容",
-    summary:
-      "建立校园互助业务详情、状态/联系方式/位置约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
-    tables: ["mutual_aid_details", "threads", "users"],
-  },
-  {
-    version: "000035",
-    file: "000035_v12_secondhand.up.sql",
-    title: "v0.12 校园二手结构化详情",
-    scope: "社区与内容",
-    summary:
-      "建立校园二手的 CNY 分价、物品状态、交付方式、交易状态约束、作者一致性触发器和查询索引；Community 仍拥有主题治理状态。",
-    tables: ["secondhand_details", "threads", "users"],
-  },
-  {
-    version: "000036",
-    file: "000036_v12_identity_challenge_policy.up.sql",
-    title: "v0.12 验证码频率策略",
-    scope: "身份与账号安全",
-    summary:
-      "将邮箱和 IP 请求限制改为有边界、可审计、可热更新的滑动窗口策略，同时保留旧计数 Scope 兼容读取。",
-    tables: ["identity_challenge_policies", "identity_challenge_rate_limits", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000037",
-    file: "000037_v12_outbox_worker_convergence.up.sql",
-    title: "v0.12 可靠事件 Worker 收敛",
-    scope: "平台可靠性",
-    summary:
-      "为系统最终化阶段增加 failed 尝试证据；Worker 与 Store 同步收紧最大领取次数，并让耗尽的非终态事件收敛到 dead。",
-    tables: ["platform_outbox", "platform_outbox_attempts", "outbox_consumer_receipts"],
-  },
-  {
-    version: "000038",
-    file: "000038_v12_admin_accounts.up.sql",
-    title: "v0.12 管理员账号与管理平面准入",
-    scope: "身份与后台安全",
-    summary:
-      "建立独立管理员准入账号表，将管理平面准入与普通用户主体、登录凭据及 RBAC 授权分层，并以触发器同步全局 admin 角色生命周期。",
-    tables: ["identity_admin_accounts", "users", "accounts", "user_roles", "roles"],
-  },
-  {
-    version: "000039",
-    file: "000039_v13_admin_admission_operations.up.sql",
-    title: "v0.13 管理员准入运营操作",
-    scope: "身份与后台安全",
-    summary:
-      "为独立管理员准入追加状态原因、变更操作者和时间、状态索引及暂停/恢复权限；角色同步保持 suspended 状态不会被静默恢复。",
-    tables: ["identity_admin_accounts", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000040",
-    file: "000040_v13_identity_mfa.up.sql",
-    title: "v0.13 TOTP MFA 与受控恢复",
-    scope: "身份与后台安全",
-    summary:
-      "为 Session 追加服务端 MFA 强度，并建立加密 TOTP 信封、单用途 Ticket 摘要、恢复码摘要和管理员 MFA 策略；不存储明文认证器材料。",
-    tables: ["sessions", "identity_mfa_totp_methods", "identity_mfa_tickets", "identity_mfa_recovery_codes", "identity_mfa_policies", "permission_definitions", "role_permissions"],
-  },
-  {
-    version: "000041",
-    file: "000041_v13_schema_index_hygiene.up.sql",
-    title: "v0.13 Schema 索引收敛",
-    scope: "数据库维护",
-    summary:
-      "保留全部历史迁移和业务数据，通过前向迁移删除九个已被同谓词复合 B-tree 严格左前缀覆盖的窄索引，并把重复索引、重复约束和冗余前缀检测接入数据库门禁。",
-    tables: ["notifications", "plugin_permissions", "plugin_records", "posts", "role_permissions", "sessions", "threads", "user_roles", "webhook_deliveries"],
-  },
-  {
-    version: "000042",
-    file: "000042_v13_user_storage_quotas.up.sql",
-    title: "v0.13 用户空间配额授权",
-    scope: "个人空间与存储",
-    summary:
-      "建立按用户覆盖的 User Storage 配额记录，保留 50 MB 系统默认值，并记录最近授权管理员和时间；文件仍位于 data/personal-space。",
-    tables: ["user_storage_quotas", "users"],
-  },
-  {
-    version: "000043",
-    file: "000043_v13_post_parent_floor.up.sql",
-    title: "v0.13 回复父楼层快照",
-    scope: "社区回复",
-    summary:
-      "为 posts 增加 parent_floor_number 创建时快照并从父回复回填存量数据，父回复删除或跨分页时引用楼层显示保持稳定。",
-    tables: ["posts"],
-  },
-  {
-    version: "000044",
-    file: "000044_v14_academic_terms.up.sql",
-    title: "v0.14 管理员治理学期目录",
-    scope: "个人课表与系统目录",
-    summary:
-      "建立 spring/fall 学期、第一周星期一约束、open/closed/default 生命周期、乐观锁与管理员管理权限；课表对象绑定将在后续 migration 追加。",
-    tables: ["academic_terms", "permission_definitions", "role_permissions", "users"],
-  },
-  {
-    version: "000045",
-    file: "000045_v14_storage_objects.up.sql",
-    title: "v0.14 私有对象存储账本",
-    scope: "个人空间与文件一致性",
-    summary: "建立对象元数据、账户已用/预留字节和 Reservation；Local Provider 以 staging + 原子 rename 写入。",
-    tables: ["user_storage_accounts", "storage_objects", "user_storage_reservations", "users"],
-  },
-  {
-    version: "000046",
-    file: "000046_v14_schedule_term_references.up.sql",
-    title: "v0.14 课表学期引用保护",
-    scope: "个人课表",
-    summary: "登记用户课表已使用的 AcademicTerm，使用 RESTRICT 外键阻止错误删除有课表数据的学期。",
-    tables: ["user_schedule_terms", "academic_terms", "users"],
-  },
-  {
-    version: "000047",
-    file: "000047_v14_personal_documents.up.sql",
-    title: "v0.14 私有文档与不可变版本",
-    scope: "个人空间",
-    summary: "建立个人文档、不可变版本与预览状态；源文件只通过私有 storage object 访问。",
-    tables: ["personal_documents", "personal_document_versions", "personal_document_previews", "storage_objects", "users"],
-  },
-  {
-    version: "000048",
-    file: "000048_v14_storage_constraint_names.up.sql",
-    title: "v0.14 对象账本约束名称兼容",
-    scope: "数据库合同",
-    summary: "仅无损统一早期开发库自动生成的对象账本 CHECK 约束名称；新空库保持 no-op，生产不执行 down。",
-    tables: ["user_storage_accounts", "storage_objects", "user_storage_reservations"],
-  },
-  {
-    version: "000049",
-    file: "000049_v14_schedule_object_bindings.up.sql",
-    title: "v0.14 课表对象绑定与查看偏好",
-    scope: "个人课表与对象兼容",
-    summary: "为用户课表学期引用补充当前 Object、第一周快照、版本与查看偏好；旧 JSON 保持只读兼容并由显式采用命令登记。",
-    tables: ["user_schedule_terms", "user_schedule_preferences", "storage_objects", "academic_terms", "users"],
   },
 ];
-
 const tableByName = (name: string) =>
   databaseTables.find((table) => table.name === name) || databaseTables[0];
 const currentTable = computed(() => tableByName(selectedTable.value));
@@ -2811,10 +2825,9 @@ watch(domainFilter, () => {
 }
 .data-flow {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(80px, 0.25fr) minmax(
-      180px,
-      1fr
-    ) minmax(80px, 0.25fr) minmax(230px, 1.4fr);
+  grid-template-columns:
+    minmax(150px, 0.8fr) minmax(80px, 0.25fr) minmax(180px, 1fr)
+    minmax(80px, 0.25fr) minmax(230px, 1.4fr);
   align-items: center;
   gap: 12px;
   padding: 28px 0;

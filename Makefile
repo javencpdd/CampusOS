@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v12-migration-check v13-migration-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v14-migration-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v1-database-baseline-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status migrate-check docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -104,7 +104,7 @@ identity-recovery-check:
 	./scripts/check-identity-recovery.sh
 
 identity-admin-account-check:
-	./scripts/test-v12-admin-account-migration.sh
+	go test ./internal/modules/core/identity/... -count=1
 
 email-delivery-check:
 	./scripts/check-email-delivery.sh
@@ -131,33 +131,8 @@ data-governance-check:
 generated-files-check:
 	python3 scripts/check-generated-files.py
 
-v12-migration-check:
-	./scripts/test-v10-module-separation-migration.sh
-	./scripts/test-v11-reliability-migration.sh
-	./scripts/test-v12-identity-migration.sh
-	./scripts/test-v12-identity-challenge-migration.sh
-	./scripts/test-v12-identity-session-migration.sh
-	./scripts/test-v12-identity-recovery-migration.sh
-	./scripts/test-v12-category-hierarchy-migration.sh
-	./scripts/test-v12-structured-threads-migration.sh
-	./scripts/test-v12-mutual-aid-migration.sh
-	./scripts/test-v12-secondhand-migration.sh
-	./scripts/test-v12-identity-challenge-policy-migration.sh
-	./scripts/test-v12-reliability-worker-convergence-migration.sh
-	./scripts/test-v12-admin-account-migration.sh
-
-v13-migration-check:
-	./scripts/test-v13-identity-security-migrations.sh
-	./scripts/test-v13-schema-index-hygiene-migration.sh
-
-v14-migration-check:
-	bash scripts/test-v14-g0-baseline-migration.sh
-	bash scripts/test-v14-academic-terms-migration.sh
-	bash scripts/test-v14-storage-objects-migration.sh
-	bash scripts/test-v14-schedule-term-references-migration.sh
-	bash scripts/test-v14-personal-documents-migration.sh
-	bash scripts/test-v14-schedule-object-bindings-migration.sh
-	bash scripts/test-v14-historical-fixture-migration.sh
+v1-database-baseline-check:
+	bash scripts/test-v1-database-baseline.sh
 
 v13-baseline-check:
 	go test ./cmd/campusos-baseline -count=1
@@ -180,9 +155,7 @@ v14-documents-check:
 
 database-check:
 	./scripts/database-check.sh all
-	$(MAKE) v12-migration-check
-	$(MAKE) v13-migration-check
-	$(MAKE) v14-migration-check
+	$(MAKE) v1-database-baseline-check
 
 backup:
 	./scripts/backup.sh
@@ -209,6 +182,9 @@ migrate-reset:
 
 migrate-status:
 	./scripts/migrate.sh status
+
+migrate-check:
+	./scripts/migrate.sh check
 
 # Docker
 docker-up:

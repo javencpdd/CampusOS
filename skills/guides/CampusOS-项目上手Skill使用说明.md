@@ -1,8 +1,8 @@
 # CampusOS 项目上手 Skill 使用说明
 
-> 更新时间：2026-08-31 01:32（Asia/Shanghai）
+> 更新时间：2026-09-01（Asia/Shanghai）
 > Skill：`campusos-project-onboarding`
-> 发布基线：`v0.13.0`；最新完成的实施阶段：`v0.14-dev`（下一主线 `v1.1` 尚未立项）
+> 发布基线：`v0.13.0`；最新完成的实施阶段：`v0.14-dev`（`v1.0` 已正式规划，尚未实施）
 
 ## 1. 什么时候使用
 
