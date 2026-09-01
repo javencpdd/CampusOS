@@ -10,9 +10,12 @@ import sys
 from pathlib import Path
 
 
-CREATE_TABLE = re.compile(r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
+CREATE_TABLE = re.compile(
+    r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+    re.IGNORECASE,
+)
 FOREIGN_KEY = re.compile(
-    r"FOREIGN\s+KEY\s*\((?P<columns>[^)]+)\)\s*REFERENCES\s+(?P<table>[A-Za-z_][A-Za-z0-9_]*)",
+    r"FOREIGN\s+KEY\s*\((?P<columns>[^)]+)\)\s*REFERENCES\s+(?:public\.)?(?P<table>[A-Za-z_][A-Za-z0-9_]*)",
     re.IGNORECASE,
 )
 
@@ -52,7 +55,12 @@ def migration_schema(root: Path) -> tuple[set[str], list[dict[str, str]], list[s
 def system_tables(root: Path) -> set[str]:
     migration_scripts = [root / "scripts/migrate.sh", root / "scripts/migrate.ps1"]
     sources = [read(path) for path in migration_scripts if path.exists()]
-    return {"schema_migrations"} if "schema_migrations" in "\n".join(sources) else set()
+    combined = "\n".join(sources)
+    return {
+        table
+        for table in ("schema_migrations", "schema_migration_locks")
+        if table in combined
+    }
 
 
 def architecture_view(root: Path) -> tuple[str, set[str], list[tuple[str, str, str]]]:
@@ -83,7 +91,7 @@ def report(root: Path) -> dict[str, object]:
     ]
     connected = {name for _, source, target in relations for name in (source, target)}
     latest_version = versions[-1]
-    advertised = re.search(r"迁移\s+000001\s+-\s+(\d{6})", view_source)
+    advertised = re.search(r"(?:迁移|干净基线)\s+000001\s+-\s+(\d{6})", view_source)
     return {
         "migration_count": len(versions),
         "migration_versions": versions,

@@ -16,7 +16,7 @@ Use this reference to select one canonical owner for content removed from `READM
 | HTTP API, Host API, errors, auth, permissions, request/response examples | `docs/api/` | Keep one API index link. |
 | Module boundaries, topology, database/file ownership, security design | `docs/architecture/` | Keep one architecture overview link. |
 | Completed task evidence and exact verification output | `docs/进度/<stage>/` | Root README links only the latest relevant progress record when useful. |
-| Planned scope, priorities, deferred work, acceptance | `docs/项目计划书v0/项目计划v0.*/` | Keep only current plan/next-stage link. |
+| Planned scope, priorities, deferred work, acceptance | `docs/项目计划书v<major>/项目计划v<version>/` | Keep only current plan/next-stage link. |
 | Cross-version evolution, plan validity, current candidate roadmap | `docs/计划书总结/` | Link the summary, not a long list of historical plans. |
 | Release notes and upgrade notes | `docs/releases/` | Do not duplicate a release history in README. |
 | Unscheduled ideas and raw samples | `docs/Todo/` | Do not present as current product capability. |

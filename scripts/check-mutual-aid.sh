@@ -10,7 +10,7 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
   -count=1
 
 rg -q 'feature.mutual-aid' modules/features/mutual-aid/module.yaml
-rg -q 'mutual_aid_details' migrations/000034_v12_mutual_aid.up.sql
+rg -q 'CREATE TABLE public\.mutual_aid_details' migrations/000001_v1_schema_baseline.up.sql
 rg -q 'CreateStructuredThread' internal/modules/features/mutualaid/service.go
 rg -q 'ErrThreadNotEditable' internal/modules/features/mutualaid/service.go
 rg -Fq 'response.WriteError(c, errorTranslator.Translate(err))' internal/modules/features/mutualaid/handler.go
@@ -21,4 +21,4 @@ if rg -n 'NewPg(Thread|Category|Post)Repository|pgxpool' internal/modules/featur
   exit 1
 fi
 
-echo "v0.12 mutual aid checks passed"
+echo "mutual aid checks passed against the v1 database baseline"

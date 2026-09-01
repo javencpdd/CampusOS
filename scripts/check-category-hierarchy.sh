@@ -10,9 +10,9 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
   ./internal/projectaudit \
   -count=1
 
-rg -q 'node_kind VARCHAR\(16\)' migrations/000032_v12_category_hierarchy.up.sql
-rg -q 'campusos_guard_category_hierarchy' migrations/000032_v12_category_hierarchy.up.sql
-rg -q 'community.category.move' migrations/000032_v12_category_hierarchy.up.sql
+rg -q 'node_kind character varying\(16\)' migrations/000001_v1_schema_baseline.up.sql
+rg -q 'campusos_guard_category_hierarchy' migrations/000001_v1_schema_baseline.up.sql
+rg -q 'community.category.move' migrations/000003_v1_reference_data.up.sql
 rg -q 'UpdateIfVersion' internal/modules/core/community/repository/category_repository.go
 rg -q 'ArchiveLegacyForActor' internal/modules/core/community/service/category_service.go
 rg -q 'validatePostingCategory' internal/modules/core/community/service/post_service.go

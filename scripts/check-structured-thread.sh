@@ -12,10 +12,10 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
 
 rg -q 'CreateStructuredThread' internal/modules/core/community/port/port.go
 rg -q 'PersistThreadDetail' internal/modules/core/community/service/thread_service.go
-rg -q 'category_thread_type_policies' migrations/000033_v12_structured_threads.up.sql
+rg -q 'CREATE TABLE public\.category_thread_type_policies' migrations/000001_v1_schema_baseline.up.sql
 if rg -n 'CreateStructuredThread' sdk examples/plugins internal/plugin internal/modules/features/mcp 2>/dev/null; then
   echo "structured thread check failed: External Plugin, SDK, or MCP boundary exposes transaction participation" >&2
   exit 1
 fi
 
-echo "v0.12 structured thread checks passed"
+echo "structured thread checks passed against the v1 database baseline"

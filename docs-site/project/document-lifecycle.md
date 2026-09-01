@@ -1,7 +1,7 @@
 # 文档状态与历史替代
 
 > 当前基线：`v0.13.0`  
-> 最近审查：2026-08-31
+> 最近审查：2026-09-01
 
 CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策与迁移旧实例。但“文件仍存在”不表示它仍是
 当前操作标准。本页说明如何判断文档是否有效，以及旧文档应由什么入口替代。
@@ -35,7 +35,7 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 | `v0.5回归Smoke测试说明.md` | 只覆盖 v0.5 Smoke | [构建与发布](/deployment/release) |
 | `v0.5集成中心与低风险集成指南.md` | 是 v0.5 边界快照 | [集成中心与能力边界](/operations/integrations) |
 | `数据库v0.6体检与模型决策.md` | 只记录 migration `000016` 时点 | [系统架构](/guide/architecture) 和 Admin 只读架构 |
-| `数据库管理指南.md` 的静态表清单 | 表数量只更新到早期 migration | 当前 `migrations/`、Admin 只读架构和数据库检查器 |
+| `数据库v0.6体检与模型决策.md` 的静态表清单 | 只覆盖旧 `000016` 时点 | 当前 [数据库迁移治理](/operations/database-migration-hygiene)、`migrations/README.md` 与 Admin 只读架构 |
 | `RBAC权限与版主管理说明.md` | v0.10 前后的权限快照 | [权限配置入门](/guide/permission-configuration) |
 | `v0.10权限管理设计与使用入门.md` | 已被 v0.11 权限、作用域和可靠审计模型扩展 | [权限配置入门](/guide/permission-configuration) |
 | `插件开发与工具链v0.6.md` | 只覆盖 Manifest v1 和旧工具链 | [插件体系](/plugins/overview)、[课表插件教程](/plugins/schedule-plugin-tutorial) |
@@ -66,10 +66,9 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 当前版本结论见 [v0.1-v0.14 版本演进](/project/version-evolution)，后续候选见
 [当前规划与后续路线](/project/current-roadmap)。
 
-v0.14-dev 的 P0/P1 已有实际代码、migration 与进度证据；项目所有者已确认当前代码验证完成并完成开发收尾，
-但它尚未成为发布版本。当前应以仓库 `docs/进度/v0.14-dev/v0.14.11-dev.md` 判断开发收尾与命名事实，以
-`v0.14.9-dev.md` 判断实现与审查事实（P0/P1 代码证据见 `v0.14.5-dev.md`），以仓库
-`docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` 判断未通过的 Final 门禁。
+v0.14 已由项目所有者确认收尾。v1.0-dev 当前完成了数据库 clean baseline 与插件授权数据基础；应以仓库
+`docs/进度/v1.0-dev/v1.0.1-dev.md` 判断实现证据，以
+`docs/项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md` 判断数据模型和后续迁移规范。
 
 仓库贡献者还可以从 `docs/help/计划书总结/README.md` 进入逐版计划有效性和未来规划导读；原始计划与
 验收证据继续保存在 `docs/项目计划v*/` 和 `docs/进度/`。

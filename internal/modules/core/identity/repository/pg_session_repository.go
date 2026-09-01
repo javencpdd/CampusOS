@@ -30,13 +30,13 @@ func (r *PgSessionRepository) Create(ctx context.Context, session *domain.Sessio
 		return errors.New("identity session requires id, user, refresh digest and family")
 	}
 	_, err := r.db(ctx).Exec(ctx, `INSERT INTO sessions (
-		id, user_id, refresh_token, refresh_token_digest, token_family_id,
+		id, user_id, refresh_token_digest, token_family_id,
 		rotated_from_id, rotated_to_id, device_id, device_name, device_type,
-		ip_address, ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at,
+		ip_hash, user_agent, authentication_strength, mfa_authenticated_at, last_active_at, expires_at,
 		revoked_at, revoke_reason, created_at, updated_at
 	) VALUES (
-		$1, $2, NULL, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9,
-		'', $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+		$1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9,
+		$10, $11, $12, $13, $14, $15, $16, $17, $18, $19
 	)`, session.ID, session.UserID, session.RefreshTokenDigest, session.TokenFamilyID,
 		session.RotatedFromID, session.RotatedToID, session.DeviceID, session.DeviceName, session.DeviceType,
 		session.IPHash, session.UserAgent, session.AuthenticationStrength, session.MFAAuthenticatedAt, session.LastActiveAt, session.ExpiresAt,
@@ -100,7 +100,7 @@ func (r *PgSessionRepository) Update(ctx context.Context, session *domain.Sessio
 	}
 	tag, err := r.db(ctx).Exec(ctx, `UPDATE sessions SET
 		refresh_token_digest=$1, token_family_id=$2, rotated_from_id=NULLIF($3, ''), rotated_to_id=NULLIF($4, ''),
-		device_id=$5, device_name=$6, device_type=$7, ip_address='', ip_hash=$8, user_agent=$9,
+		device_id=$5, device_name=$6, device_type=$7, ip_hash=$8, user_agent=$9,
 		authentication_strength=$10, mfa_authenticated_at=$11, last_active_at=$12, expires_at=$13, revoked_at=$14, revoke_reason=$15, updated_at=$16
 		WHERE id=$17 AND deleted_at IS NULL`,
 		session.RefreshTokenDigest, session.TokenFamilyID, session.RotatedFromID, session.RotatedToID,

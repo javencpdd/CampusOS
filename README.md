@@ -1,4 +1,5 @@
 # CampusOS
+
 CampusOS 是一个基于 Go 与 Vue 3 的校园社区系统，提供社区内容、管理后台、个人空间、课表、可治理插件平台和受控集成能力。
 
 ## 当前状态
@@ -86,10 +87,10 @@ curl -fsS http://localhost:8080/api/v1/health
 
 | 改动内容 | 是否手工加载 | 实际行为 |
 | --- | --- | --- |
-| Go：`cmd/`、`internal/`、`pkg/`、`sdk/`、`go.mod`、`go.sum` | 不需要 | API 每秒检测，先构建候选程序、执行新 migration，再自动切换；失败时保留上一次成功进程。 |
+| Go：`cmd/`、`internal/`、`pkg/`、`sdk/`、`go.mod`、`go.sum` | 不需要 | API 每秒检测，先构建候选程序、执行尚未应用的新 migration，再自动切换；失败时保留上一次成功进程。 |
 | Web/Admin 的 `.vue`、`.ts`、`.css` 等 | 不需要 | Vite HMR 自动更新页面；必要时浏览器只会做一次页面刷新。 |
 | `docs-site/` | 不需要 | VitePress 自动重载；仓库 `docs/`、README 等静态文档无需运行时加载。 |
-| 新增 migration、修改 module YAML | 不需要 | API 检测后自动构建并执行向前 migration；已执行的旧 migration 不得原地修改。 |
+| 新增 migration、修改 module YAML | 不需要 | API 检测后自动构建并执行向前 migration；已记录的 migration 受 SHA-256 校验保护，不得原地修改。 |
 | `.env.dev.local` | 需要执行 `up` | Compose 重新创建受影响容器并读取新环境；`docker restart` 不会重读该文件。 |
 | 前端 `package.json`/lockfile、`Dockerfile.dev`、Compose 构建项、`deploy/docker/dev-*.sh` | 需要执行 `rebuild` | 显式访问镜像/依赖源，重建镜像并启动。 |
 
@@ -172,7 +173,7 @@ head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数�
 | 权限与可靠审计 | [权限配置入门](docs-site/guide/permission-configuration.md)、[可靠任务与 Webhook](docs-site/operations/reliable-tasks.md) |
 | 插件与资源包 | [课表插件完整教程](docs-site/plugins/schedule-plugin-tutorial.md)、[插件体系](docs-site/plugins/overview.md) |
 | Help 文档状态 | [Help 索引、历史文档与替代关系](docs/help/README.md) |
-| 当前版本与后续 | [v0.13 最终专业审计](docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md)、[v0.1-v0.14 计划总结](docs/计划书总结/README.md)、[v0.14 开发收尾](docs/进度/v0.14-dev/v0.14.11-dev.md)、[公开规划页](docs-site/project/current-roadmap.md) |
+| 当前版本与后续 | [v0.13 最终专业审计](docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md)、[v0.14 开发收尾](docs/进度/v0.14-dev/v0.14.11-dev.md)、[v1.0 正式计划](docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md)、[公开规划页](docs-site/project/current-roadmap.md) |
 
 ## License
 

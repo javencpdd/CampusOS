@@ -1,6 +1,6 @@
 # CampusOS Skill 适用性审计与规划
 
-> 更新时间：2026-08-03
+> 更新时间：2026-09-01
 > 审计范围：`skills/sources/*/SKILL.md`、Bundled Resources、`agents/openai.yaml`、`skills/guides/` 与 v0.13.21–v0.13.34 近期任务
 
 ## 1. 审计结论
@@ -40,8 +40,9 @@ Docker/WSL2/Linux；它不会把跳过写成通过。任务相关的 Windows 定
 
 - GitHub/PR：现有 `sh/git_*`、Help 和 `gh` 流程已确定，单独 Skill 的复用收益不足。
 - OpenAPI 单项：已有 contracts/generated-files 门禁；等接口版本治理成为独立主线再评估。
-- 生产发布/安全供应链：后续路线尚未正式立项 v0.14，当前创建会把候选计划误写成已承诺流程。
-- 插件市场/MCP/Agent Runner：仍是受控或候选范围，必须等协议和安全边界正式立项。
+- 生产发布/安全供应链：仍不是独立正式主线，当前创建会把候选计划误写成已承诺流程。
+- v1.0 插件生态已经正式规划，但现有开发、WebUI、数据架构和文档 Skill 能覆盖启动阶段；标准 MCP、完整
+  Process Sandbox、远程公共市场和 Agent Runner 仍是 P2/候选，只有形成独立重复工作流后再评估新 Skill。
 
 ## 5. 维护规则
 

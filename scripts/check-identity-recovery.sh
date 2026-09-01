@@ -12,7 +12,7 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
   ./internal/transport/httpapi \
   -count=1
 
-rg -q 'identity_account_recovery_cases' migrations/000031_v12_identity_recovery_cases.up.sql
+rg -q 'CREATE TABLE public\.identity_account_recovery_cases' migrations/000001_v1_schema_baseline.up.sql
 rg -q 'BumpAuthVersion' internal/modules/core/identity/service/recovery_service.go
 rg -q 'RevokeByUser' internal/modules/core/identity/service/recovery_service.go
 rg -q 'interactive terminal input is required' cmd/campusosctl/identity_commands.go
