@@ -3,92 +3,128 @@
     {
       "method": "CheckPermission",
       "resource": "permission",
-      "action": "check"
+      "action": "check",
+      "capability_code": ""
     },
     {
       "method": "GetConfig",
       "resource": "config",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "GetReply",
       "resource": "reply",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
+    },
+    {
+      "method": "GetSystemSecret",
+      "resource": "secret",
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "GetThread",
       "resource": "thread",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "GetUser",
       "resource": "user",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
+    },
+    {
+      "method": "GetUserContact",
+      "resource": "user_contact",
+      "action": "read",
+      "capability_code": ""
+    },
+    {
+      "method": "GetUserSecret",
+      "resource": "secret",
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "Log",
       "resource": "log",
-      "action": "write"
+      "action": "write",
+      "capability_code": ""
     },
     {
       "method": "PublishEvent",
       "resource": "event",
-      "action": "publish"
+      "action": "publish",
+      "capability_code": ""
     },
     {
       "method": "QueryThreads",
       "resource": "thread",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "RecordCreate",
       "resource": "managed_data",
-      "action": "write"
+      "action": "write",
+      "capability_code": ""
     },
     {
       "method": "RecordDelete",
       "resource": "managed_data",
-      "action": "delete"
+      "action": "delete",
+      "capability_code": ""
     },
     {
       "method": "RecordGet",
       "resource": "managed_data",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "RecordList",
       "resource": "managed_data",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "RecordUpdate",
       "resource": "managed_data",
-      "action": "write"
+      "action": "write",
+      "capability_code": ""
     },
     {
       "method": "SendNotification",
       "resource": "notification",
-      "action": "send"
+      "action": "send",
+      "capability_code": ""
     },
     {
       "method": "SetConfig",
       "resource": "config",
-      "action": "write"
+      "action": "write",
+      "capability_code": ""
     },
     {
       "method": "StorageDelete",
       "resource": "storage",
-      "action": "delete"
+      "action": "delete",
+      "capability_code": ""
     },
     {
       "method": "StorageGet",
       "resource": "storage",
-      "action": "read"
+      "action": "read",
+      "capability_code": ""
     },
     {
       "method": "StorageSet",
       "resource": "storage",
-      "action": "write"
+      "action": "write",
+      "capability_code": ""
     }
   ],
   "host_api_version": "v1",

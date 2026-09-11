@@ -145,8 +145,7 @@ BEGIN
         'chk_plugins_backend_state', 'chk_plugins_frontend_state', 'chk_plugins_health_state',
         'fk_plugins_publisher', 'chk_plugin_publishers_trust', 'chk_plugin_versions_lifecycle',
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
-        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome',
-        'fk_plugin_authorization_declaration'
+        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated

@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">干净基线 000001 - 000003</el-tag>
+      <el-tag type="info" effect="plain">当前迁移 000001 - 000005</el-tag>
     </section>
 
     <el-alert
@@ -2532,6 +2532,24 @@ const migrations = [
       "identity_challenge_policies",
       "identity_mfa_policies",
     ],
+  },
+  {
+    version: "000004",
+    file: "000004_v1_authorization_runtime_corrections.up.sql",
+    title: "授权运行期约束修正",
+    scope: "插件授权",
+    summary:
+      "以追加迁移修正活动 Secret 唯一索引，并允许保留能力未声明时的拒绝审计；不改写已经执行的授权基础 checksum。",
+    tables: ["plugin_secret_values", "plugin_authorization_decisions"],
+  },
+  {
+    version: "000005",
+    file: "000005_v1_process_runtime.up.sql",
+    title: "Process Runtime 数据库合同",
+    scope: "插件运行时",
+    summary:
+      "数据库正式接受 Manifest v3 的 process Runtime；grpc 在 v1 兼容窗口内继续可用，回滚时自动映射。",
+    tables: ["plugins"],
   },
 ];
 const tableByName = (name: string) =>

@@ -39,7 +39,7 @@ type pluginProcess struct {
 func NewGRPCRuntime() *GRPCRuntime {
 	return &GRPCRuntime{
 		processes:  make(map[string]*pluginProcess),
-		httpClient: http.DefaultClient,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -259,7 +259,7 @@ func parseLoopbackEndpoint(pluginName, field, rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
+func (r *GRPCRuntime) HealthCheck(ctx context.Context, pluginName string) error {
 	r.mu.RLock()
 	proc, ok := r.processes[pluginName]
 	r.mu.RUnlock()
@@ -283,6 +283,31 @@ func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
 		err := proc.cmd.Process.Signal(syscall.Signal(0))
 		if err != nil {
 			return fmt.Errorf("plugin '%s' process not alive: %w", pluginName, err)
+		}
+	}
+	if proc.plugin != nil && proc.plugin.Manifest != nil && proc.plugin.Manifest.Runtime == "process" {
+		rawURL, _ := proc.plugin.Manifest.Config["health_url"].(string)
+		endpoint, err := parseLoopbackEndpoint(pluginName, "health_url", rawURL)
+		if err != nil {
+			return err
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+		if err != nil {
+			return err
+		}
+		request.Header.Set("X-CampusOS-Process-Contract", plugin.ProcessContractVersion)
+		request.Header.Set("X-CampusOS-Plugin", proc.plugin.Manifest.Name)
+		request.Header.Set("X-CampusOS-Plugin-Token", proc.plugin.HostToken)
+		response, err := r.client().Do(request)
+		if err != nil {
+			return fmt.Errorf("plugin '%s' process health request failed: %w", pluginName, err)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			return fmt.Errorf("plugin '%s' process health returned HTTP %d", pluginName, response.StatusCode)
+		}
+		if response.Header.Get("X-CampusOS-Process-Contract") != plugin.ProcessContractVersion {
+			return fmt.Errorf("plugin '%s' process contract handshake mismatch", pluginName)
 		}
 	}
 	return nil

@@ -1,35 +1,50 @@
 package campusos
 
 type Event struct {
-	Type    string      `json:"type"`
-	Source  string      `json:"source"`
-	Subject string      `json:"subject"`
-	Data    interface{} `json:"data"`
+	SpecVersion string      `json:"spec_version"`
+	ID          string      `json:"id"`
+	Type        string      `json:"type"`
+	Source      string      `json:"source"`
+	Subject     string      `json:"subject"`
+	Time        string      `json:"time"`
+	TraceID     string      `json:"trace_id"`
+	Actor       interface{} `json:"actor,omitempty"`
+	DataSchema  string      `json:"data_schema,omitempty"`
+	Data        interface{} `json:"data"`
+}
+
+type CapabilityRequest struct {
+	Code     string                 `json:"code" yaml:"code"`
+	Required bool                   `json:"required" yaml:"required"`
+	Purpose  string                 `json:"purpose" yaml:"purpose"`
+	Scope    string                 `json:"scope" yaml:"scope"`
+	Limits   map[string]interface{} `json:"limits,omitempty" yaml:"limits,omitempty"`
 }
 
 type Manifest struct {
-	APIVersion     string                 `json:"api_version" yaml:"api_version"`
-	HostAPIVersion string                 `json:"host_api_version" yaml:"host_api_version"`
-	Name           string                 `json:"name" yaml:"name"`
-	DisplayName    string                 `json:"display_name" yaml:"display_name"`
-	Version        string                 `json:"version" yaml:"version"`
-	Description    string                 `json:"description" yaml:"description"`
-	Author         string                 `json:"author" yaml:"author"`
-	Runtime        string                 `json:"runtime" yaml:"runtime"`
-	Scope          string                 `json:"scope" yaml:"scope"`
-	Capabilities   []string               `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
-	Compatibility  CompatibilityConfig    `json:"compatibility,omitempty" yaml:"compatibility,omitempty"`
-	Lifecycle      LifecycleConfig        `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
-	UI             UIContribution         `json:"ui,omitempty" yaml:"ui,omitempty"`
-	Type           string                 `json:"type,omitempty" yaml:"type,omitempty"`
-	ManagedData    ManagedDataConfig      `json:"managed_data,omitempty" yaml:"managed_data,omitempty"`
-	Files          FileCapability         `json:"files,omitempty" yaml:"files,omitempty"`
-	Release        ReleaseConfig          `json:"release,omitempty" yaml:"release,omitempty"`
-	Events         EventsConfig           `json:"events" yaml:"events"`
-	Permissions    PermissionsConfig      `json:"permissions" yaml:"permissions"`
-	Storage        StorageConfig          `json:"storage" yaml:"storage"`
-	Config         map[string]interface{} `json:"config,omitempty" yaml:"config,omitempty"`
-	ConfigSchema   *ConfigSchema          `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
+	APIVersion             string                 `json:"api_version" yaml:"api_version"`
+	HostAPIVersion         string                 `json:"host_api_version" yaml:"host_api_version"`
+	Name                   string                 `json:"name" yaml:"name"`
+	DisplayName            string                 `json:"display_name" yaml:"display_name"`
+	Version                string                 `json:"version" yaml:"version"`
+	Description            string                 `json:"description" yaml:"description"`
+	Author                 string                 `json:"author" yaml:"author"`
+	Runtime                string                 `json:"runtime" yaml:"runtime"`
+	Scope                  string                 `json:"scope" yaml:"scope"`
+	Capabilities           []string               `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	CapabilityDeclarations []CapabilityRequest    `json:"capability_declarations,omitempty" yaml:"capability_declarations,omitempty"`
+	Compatibility          CompatibilityConfig    `json:"compatibility,omitempty" yaml:"compatibility,omitempty"`
+	Lifecycle              LifecycleConfig        `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
+	UI                     UIContribution         `json:"ui,omitempty" yaml:"ui,omitempty"`
+	Type                   string                 `json:"type,omitempty" yaml:"type,omitempty"`
+	ManagedData            ManagedDataConfig      `json:"managed_data,omitempty" yaml:"managed_data,omitempty"`
+	Files                  FileCapability         `json:"files,omitempty" yaml:"files,omitempty"`
+	Release                ReleaseConfig          `json:"release,omitempty" yaml:"release,omitempty"`
+	Events                 EventsConfig           `json:"events" yaml:"events"`
+	Permissions            PermissionsConfig      `json:"permissions" yaml:"permissions"`
+	Storage                StorageConfig          `json:"storage" yaml:"storage"`
+	Config                 map[string]interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+	ConfigSchema           *ConfigSchema          `json:"config_schema,omitempty" yaml:"config_schema,omitempty"`
 }
 
 type LifecycleConfig struct {

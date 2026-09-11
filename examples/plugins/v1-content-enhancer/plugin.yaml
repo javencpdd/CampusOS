@@ -1,0 +1,31 @@
+name: v1-content-enhancer
+api_version: campusos.plugin/v3
+host_api_version: v3
+type: external
+display_name: "内容增强参考插件"
+version: "1.0.0"
+description: "演示系统公开内容读取与事件处理，不申请用户联系信息。"
+author: "CampusOS"
+runtime: process
+scope: user
+compatibility:
+  campusos: ">=1.0.0 <2.0.0"
+  host_api: "v3"
+events:
+  subscribe: ["thread.created"]
+capability_declarations:
+  - code: thread.system.read
+    required: true
+    purpose: "读取公开帖子稳定投影以生成摘要"
+    scope: system
+  - code: event.system.subscribe
+    required: true
+    purpose: "在公开帖子创建后生成增强内容"
+    scope: system
+storage: { type: none }
+config:
+  command: "./plugin"
+  process_contract: campusos.process/v1
+  health_url: "http://127.0.0.1:39103/health"
+  extension_url: "http://127.0.0.1:39103/events"
+  event_timeout_ms: 1000

@@ -5308,6 +5308,298 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugin-authorizations/:name
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_authorizations.name
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}/delegations/{delegation_id}:
+    delete:
+      operationId: d_Plugin
+      summary: DELETE /api/v1/plugin-authorizations/:name/delegations/:delegation_id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.plugin_authorizations.name.delegations.delegation_id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: delegation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}/secrets:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugin-authorizations/:name/secrets
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_authorizations.name.secrets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}/secrets/{secret}:
+    delete:
+      operationId: d_Plugin
+      summary: DELETE /api/v1/plugin-authorizations/:name/secrets/:secret
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.delete.api.v1.plugin_authorizations.name.secrets.secret
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secret
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: d_Plugin
+      summary: PUT /api/v1/plugin-authorizations/:name/secrets/:secret
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.plugin_authorizations.name.secrets.secret
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secret
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}/versions/{version_id}/consents/{capability}:
+    put:
+      operationId: d_Plugin
+      summary: PUT /api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.put.api.v1.plugin_authorizations.name.versions.version_id.consents.capability
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: capability
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-authorizations/{name}/versions/{version_id}/delegations:
+    post:
+      operationId: d_Plugin
+      summary: POST /api/v1/plugin-authorizations/:name/versions/:version_id/delegations
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.plugin_authorizations.name.versions.version_id.delegations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-capabilities:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugin-capabilities
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_capabilities
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market:
     get:
       operationId: d_Plugin
@@ -6323,6 +6615,112 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/authorization:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugins/:name/authorization
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.plugins.name.authorization
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/authorization/decisions:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugins/:name/authorization/decisions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.plugins.name.authorization.decisions
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/authorization/sync:
+    post:
+      operationId: d_Plugin
+      summary: POST /api/v1/plugins/:name/authorization/sync
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.post.api.v1.plugins.name.authorization.sync
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.configure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/config:
     put:
       operationId: d_Plugin
@@ -6589,6 +6987,121 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/secrets:
+    get:
+      operationId: d_Plugin
+      summary: GET /api/v1/plugins/:name/secrets
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.plugins.name.secrets
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.configure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/secrets/{secret}:
+    delete:
+      operationId: d_Plugin
+      summary: DELETE /api/v1/plugins/:name/secrets/:secret
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.delete.api.v1.plugins.name.secrets.secret
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.configure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secret
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      operationId: d_Plugin
+      summary: PUT /api/v1/plugins/:name/secrets/:secret
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.put.api.v1.plugins.name.secrets.secret
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.configure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: secret
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/snapshots:
     get:
       operationId: d_Plugin
@@ -6609,6 +7122,56 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins/{name}/versions/{version_id}/grants/{capability}:
+    put:
+      operationId: d_Plugin
+      summary: PUT /api/v1/plugins/:name/versions/:version_id/grants/:capability
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.put.api.v1.plugins.name.versions.version_id.grants.capability
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.configure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: capability
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
       responses:
         '200':
           description: Success

@@ -54,7 +54,7 @@ docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" \
 run_migrate reset >/dev/null
 run_migrate check >/dev/null
 
-require_equals "migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "3"
+require_equals "migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "5"
 require_equals "public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "86"
 require_equals "legacy permission table removed" "$(psql_scalar "SELECT to_regclass('public.permissions') IS NULL;")" "t"
 require_equals "raw session secret columns removed" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='sessions' AND column_name IN ('refresh_token','ip_address');")" "0"
@@ -67,11 +67,14 @@ require_equals "permission definition count" "$(psql_scalar "SELECT count(*) FRO
 require_equals "admin permission count" "$(psql_scalar "SELECT count(*) FROM role_permissions WHERE role_id=1 AND deleted_at IS NULL;")" "76"
 require_equals "timestamp normalization" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND data_type='timestamp without time zone';")" "0"
 require_equals "v1 plugin foundation" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('plugin_publishers','plugin_versions','plugin_capability_declarations','plugin_admin_grants','plugin_user_consents','plugin_delegations','plugin_secret_values','plugin_authorization_decisions');")" "8"
+require_equals "process runtime accepted" "$(psql_scalar "INSERT INTO plugins(id,name,display_name,version,runtime,status,config,installed_at,updated_at) VALUES(900000000001,'runtime-contract-probe','Runtime Contract Probe','1.0.0','process','installed','{}'::jsonb,NOW(),NOW()); DELETE FROM plugins WHERE id=900000000001; SELECT 'ok';")" "ok"
 require_equals "foreign-key leading index coverage" "$(psql_scalar "SELECT count(*) FROM pg_constraint fk WHERE fk.contype='f' AND fk.connamespace='public'::regnamespace AND NOT EXISTS (SELECT 1 FROM pg_index idx WHERE idx.indrelid=fk.conrelid AND idx.indisvalid AND (idx.indkey::smallint[])[0:cardinality(fk.conkey)-1] @> fk.conkey);")" "0"
 
 POSTGRES_CONTAINER="$POSTGRES_CONTAINER" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$drill_db" \
   ./scripts/database-check.sh all >/dev/null
 
+run_migrate down >/dev/null
+run_migrate down >/dev/null
 run_migrate down >/dev/null
 require_equals "reference-data rollback migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "2"
 require_equals "reference-data rollback permission count" "$(psql_scalar "SELECT count(*) FROM permission_definitions;")" "0"
@@ -92,11 +95,13 @@ temp_migrations=""
 run_migrate down >/dev/null
 run_migrate down >/dev/null
 run_migrate down >/dev/null
+run_migrate down >/dev/null
+run_migrate down >/dev/null
 require_equals "full rollback migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "0"
 require_equals "full rollback keeps only migration metadata" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "2"
 
 run_migrate up >/dev/null
-require_equals "up/down/up migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "3"
+require_equals "up/down/up migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "5"
 require_equals "up/down/up public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "86"
 
 echo "v1 clean database baseline reset/checksum/up-down-up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

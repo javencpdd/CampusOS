@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `name` | 是 | 插件唯一名称。 |
 | `version` | 是 | 建议使用语义化版本。 |
-| `runtime` | 是 | External Plugin 使用 `wasm` 或 `grpc`（受管进程兼容名）。 |
+| `runtime` | 是 | v3 External Plugin 使用 `process` 或 `wasm`；`grpc` 是受管进程兼容名。 |
 | `scope` | 建议 | `system` 或 `user`。第三方默认使用 `user`。 |
 | `lifecycle` | 否 | 后端 `restart/plugin-restart/hot` 与前端 `hot`；缺省值按 Runtime 推导。 |
 | `ui` | 否 | `campusos.ui/v1` Route、Navigation、Slot、Surface 和 Action。 |
@@ -20,7 +20,7 @@
 | `config` | 视 Runtime | 当前配置。 |
 | `config_schema` | 否 | 管理端配置表单和后端归一化规则。 |
 
-v2 外部插件还可声明 `api_version`、`host_api_version`、`type`、`managed_data`、`files`、`permissions.user` 和 `release`。受管数据示例和字段规则见 [插件中心、受管数据与签名](/plugins/market-managed-data)。工具可使用仓库中的 [`plugin-manifest-v2.schema.json`](../../docs/api/plugin-manifest-v2.schema.json) 进行结构预检；提交导入时仍必须通过 CampusOS 服务端的完整 Manifest 校验。
+v2 外部插件还可声明 `api_version`、`host_api_version`、`type`、`managed_data`、`files`、`permissions.user` 和 `release`。v3 改用逐项 `capability_declarations`，禁止通配符，并把用途、required/optional 与 `self/system` Scope 绑定到不可变版本。新插件优先阅读 [Manifest v3 与三层授权](/plugins/authorization-v3)。受管数据示例和字段规则见 [插件中心、受管数据与签名](/plugins/market-managed-data)。
 
 ## Runtime 配置
 
@@ -36,18 +36,20 @@ config:
 
 `module` 必须是插件目录内的相对路径，不能使用绝对路径或 `../`。
 
-受管进程（历史兼容名称 `grpc`）：
+受管进程：
 
 ```yaml
-runtime: grpc
+runtime: process
 config:
   command: ./plugin
+  process_contract: campusos.process/v1
+  health_url: http://127.0.0.1:19091/health
   extension_url: http://127.0.0.1:19091/extension
   event_url: http://127.0.0.1:19091/event # 可选；未配置时事件只记录、不误探测端口
   event_timeout_ms: 1000
 ```
 
-当前 Runtime 只启动插件目录内的 `plugin` 可执行文件，并只接受显式的 loopback HTTP 端点。`grpc` 是兼容标识，不是标准 protobuf gRPC 协议承诺。
+当前 Runtime 只启动插件目录内的 `plugin` 可执行文件，并只接受显式的 loopback HTTP 端点。`grpc` 是 `process` 的兼容标识，不是标准 protobuf gRPC 协议承诺。
 
 `runtime: builtin` 只为旧 Manifest 检查和迁移保留解析能力。CLI、目录扫描、
 Plugin Manager 和插件包导入都会拒绝它。内置功能使用
@@ -137,6 +139,6 @@ PUT /api/v1/plugins/:name/config
 
 ## 版本变更
 
-修改插件包内容后应更新 `version`。覆盖导入会比较版本和 checksum，但当前仍需要管理员判断变更是否兼容。
+修改插件包内容、用途或能力范围后必须更新 `version`。同一版本的 package digest 和能力指纹不可变；覆盖导入会在写入前拒绝冲突，并以五类 diff 提示是否需要重新授权。
 
 页面风格包使用独立的 `style.yaml`，其 `target`、CSS 根作用域、`effect` 和 `capabilities` 不属于普通 `plugin.yaml` Host API 权限。参见 [风格包、特效与 CampusStyleSDK](/plugins/style-packs)。

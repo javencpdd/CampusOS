@@ -37,6 +37,9 @@ func (m *Manager) RecordCompatibility(ctx context.Context, key, kind string, det
 func (m *Manager) SetPluginLogRepository(repo PluginLogRepository) {
 	m.audit.SetRepository(repo)
 }
+func (m *Manager) SetAuthorizationService(service *AuthorizationService) {
+	m.events.SetAuthorizationService(service)
+}
 func (m *Manager) RegisterRuntime(runtimeType string, runtime Runtime) {
 	if err := m.runtimes.Register(runtimeType, runtime); err != nil {
 		panic(err)

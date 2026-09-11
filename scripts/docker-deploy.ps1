@@ -43,6 +43,7 @@ function Initialize-Environment {
     $Content = $Content.Replace("__CHALLENGE_IP_HASH_SECRET__", (New-Hex 32))
     $Content = $Content.Replace("__SESSION_IP_HASH_SECRET__", (New-Hex 32))
     $Content = $Content.Replace("__MFA_ENCRYPTION_SECRET__", (New-Hex 32))
+    $Content = $Content.Replace("__PLUGIN_SECRET_KEY__", (New-Hex 32))
     $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($EnvFile, $Content, $Utf8NoBom)
     if ($IsLinux -or $IsMacOS) {

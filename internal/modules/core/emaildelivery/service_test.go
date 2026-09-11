@@ -190,8 +190,28 @@ func TestDeliverChallengeProviderFailureIsRedactedAndRetryable(t *testing.T) {
 		t.Fatalf("delivery error leaked sensitive data: %v", err)
 	}
 	status := service.Status()
-	if status.State != "degraded" || status.LastError != "email provider delivery failed" {
+	if status.State != "degraded" || status.LastError != "邮件服务暂时不可用，请稍后重试；管理员可根据可靠任务事件编号排查。" {
 		t.Fatalf("unexpected redacted status: %#v", status)
+	}
+}
+
+func TestProviderFailureMessageExplainsSMTPStageWithoutLeakingCause(t *testing.T) {
+	tests := map[string]string{
+		"connect":      "无法连接 SMTP 服务器",
+		"starttls":     "SMTP 加密连接失败",
+		"authenticate": "SMTP 身份验证失败",
+		"sender":       "SMTP 服务器拒绝发件地址",
+		"recipient":    "SMTP 服务器拒绝收件地址",
+		"message":      "SMTP 服务器未接受邮件",
+	}
+	for stage, expected := range tests {
+		message := providerFailureMessage(wrapSMTPFailure(stage, errors.New("recipient@example.test token=654321")))
+		if !strings.Contains(message, expected) {
+			t.Fatalf("stage %s message = %q, want %q", stage, message, expected)
+		}
+		if strings.Contains(message, "recipient@example.test") || strings.Contains(message, "654321") {
+			t.Fatalf("stage %s leaked provider cause: %q", stage, message)
+		}
 	}
 }
 

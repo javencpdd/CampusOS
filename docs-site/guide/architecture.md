@@ -56,7 +56,8 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | Runtime | 运行方式 | 适用场景 |
 | --- | --- | --- |
 | `wasm` | 由 wazero 在受控 Runtime 中加载模块。 | 小型事件逻辑和隔离执行。 |
-| `grpc`（兼容名称） | CampusOS 启停外部进程；Extension/Event 仅访问显式声明并校验的 loopback HTTP 端点。 | 当前受管进程扩展；不是标准 protobuf gRPC。 |
+| `process` | CampusOS 按 process/v1 合同启停外部进程；Extension/Event 仅访问显式声明并校验的 loopback HTTP 端点。 | 当前受管进程扩展。 |
+| `grpc`（兼容名称） | 旧 Manifest 的进程 Runtime 别名。 | 兼容旧插件；不是标准 protobuf gRPC。 |
 
 历史 `runtime: builtin` 只作为旧 Manifest 到 Built-in Feature/Core 的兼容映射，不是第三方动态安装进程内 Go 代码的入口。
 
@@ -77,7 +78,7 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | 开发日志 | `.campusos/logs/`。 |
 
 数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的当前插件关系。
-当前 clean baseline 为 `000001-000003`：76 张现行业务表、8 张 v1 插件身份/版本/三层授权基础表，以及不含用户凭据的稳定参考数据；
+当前数据库为 `000001-000003` clean baseline 加 `000004-000005` 前向修正：76 张现行业务表、8 张 v1 插件身份/版本/三层授权基础表，以及不含用户凭据的稳定参考数据；`000004` 修正 Secret 轮换与拒绝审计，`000005` 正式接纳 `process` Runtime；
 执行器另管理 checksum 和互斥锁。修改 Schema 前必须运行 `make v1-database-baseline-check`、`make database-check`
 和架构同步检查。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
 

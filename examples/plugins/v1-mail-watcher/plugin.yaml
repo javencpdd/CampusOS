@@ -1,0 +1,29 @@
+name: v1-mail-watcher
+api_version: campusos.plugin/v3
+host_api_version: v3
+type: external
+display_name: "邮件观察参考插件"
+version: "1.0.0"
+description: "演示个人 Secret、撤销和最小通知权限。"
+author: "CampusOS"
+runtime: process
+scope: user
+compatibility:
+  campusos: ">=1.0.0 <2.0.0"
+  host_api: "v3"
+capability_declarations:
+  - code: secret.self.read
+    required: true
+    purpose: "在运行期读取当前用户保存的邮箱应用专用密钥"
+    scope: self
+  - code: notification.self.send
+    required: false
+    purpose: "向当前用户发送新邮件摘要通知"
+    scope: self
+storage: { type: none }
+config:
+  command: "./plugin"
+  process_contract: campusos.process/v1
+  health_url: "http://127.0.0.1:39102/health"
+  extension_url: "http://127.0.0.1:39102/events"
+  event_timeout_ms: 1000
