@@ -45,29 +45,37 @@ type PackageInfo struct {
 }
 
 type PackagePrecheck struct {
-	Manifest                *Manifest `json:"manifest,omitempty"`
-	Checksum                string    `json:"checksum"`
-	PackageSize             int64     `json:"package_size"`
-	Files                   []string  `json:"files"`
-	Permissions             []string  `json:"permissions"`
-	Events                  []string  `json:"events"`
-	Conflict                bool      `json:"conflict"`
-	TargetDir               string    `json:"target_dir,omitempty"`
-	Allowed                 bool      `json:"allowed"`
-	Warnings                []string  `json:"warnings,omitempty"`
-	Errors                  []string  `json:"errors,omitempty"`
-	RiskLevel               string    `json:"risk_level"`
-	RiskScore               int       `json:"risk_score"`
-	RiskReasons             []string  `json:"risk_reasons,omitempty"`
-	ExistingVersion         string    `json:"existing_version,omitempty"`
-	ImportVersion           string    `json:"import_version,omitempty"`
-	VersionChange           string    `json:"version_change,omitempty"`
-	AddedPermissions        []string  `json:"added_permissions,omitempty"`
-	RemovedPermissions      []string  `json:"removed_permissions,omitempty"`
-	RequiresReauthorization bool      `json:"requires_reauthorization"`
-	DataSchemaChange        string    `json:"data_schema_change,omitempty"`
-	SignatureStatus         string    `json:"signature_status"`
-	SignatureFiles          []string  `json:"signature_files,omitempty"`
+	Manifest                *Manifest          `json:"manifest,omitempty"`
+	Checksum                string             `json:"checksum"`
+	PackageSize             int64              `json:"package_size"`
+	Files                   []string           `json:"files"`
+	Permissions             []string           `json:"permissions"`
+	Events                  []string           `json:"events"`
+	Conflict                bool               `json:"conflict"`
+	TargetDir               string             `json:"target_dir,omitempty"`
+	Allowed                 bool               `json:"allowed"`
+	Warnings                []string           `json:"warnings,omitempty"`
+	Errors                  []string           `json:"errors,omitempty"`
+	RiskLevel               string             `json:"risk_level"`
+	RiskScore               int                `json:"risk_score"`
+	RiskReasons             []string           `json:"risk_reasons,omitempty"`
+	ExistingVersion         string             `json:"existing_version,omitempty"`
+	ImportVersion           string             `json:"import_version,omitempty"`
+	VersionChange           string             `json:"version_change,omitempty"`
+	AddedPermissions        []string           `json:"added_permissions,omitempty"`
+	RemovedPermissions      []string           `json:"removed_permissions,omitempty"`
+	RequiresReauthorization bool               `json:"requires_reauthorization"`
+	DataSchemaChange        string             `json:"data_schema_change,omitempty"`
+	SignatureStatus         string             `json:"signature_status"`
+	SignatureFiles          []string           `json:"signature_files,omitempty"`
+	CapabilityChanges       []CapabilityChange `json:"capability_changes,omitempty"`
+}
+
+type CapabilityChange struct {
+	Code   string             `json:"code"`
+	Type   string             `json:"type"`
+	Before *CapabilityRequest `json:"before,omitempty"`
+	After  *CapabilityRequest `json:"after,omitempty"`
 }
 
 func PluginsDirFromEnv() string {
@@ -388,6 +396,12 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 				}
 			}
 			result.DataSchemaChange = schemaVersionChange(existingManifest.Release.DataSchemaVersion, manifest.Release.DataSchemaVersion)
+			result.CapabilityChanges = capabilityDiff(existingManifest, manifest)
+			for _, change := range result.CapabilityChanges {
+				if change.Type == "Added" || change.Type == "Expanded" || change.Type == "Purpose Changed" {
+					result.RequiresReauthorization = true
+				}
+			}
 		} else {
 			result.ExistingVersion = existingPluginVersion(targetDir)
 			result.Warnings = append(result.Warnings, "installed manifest could not be read for permission and data schema diff")
@@ -434,6 +448,56 @@ func PrecheckPluginPackage(packagePath, pluginsDir string) (*PackagePrecheck, er
 		result.Warnings = append(result.Warnings, "high-risk plugin package; review permissions and runtime carefully before import")
 	}
 	return result, nil
+}
+
+func capabilityDiff(before, after *Manifest) []CapabilityChange {
+	previous, current := map[string]CapabilityRequest{}, map[string]CapabilityRequest{}
+	if before != nil {
+		for _, item := range before.CapabilityDeclarations {
+			previous[item.Code] = item
+		}
+	}
+	if after != nil {
+		for _, item := range after.CapabilityDeclarations {
+			current[item.Code] = item
+		}
+	}
+	changes := []CapabilityChange{}
+	for code, oldValue := range previous {
+		newValue, exists := current[code]
+		if !exists {
+			copyOld := oldValue
+			changes = append(changes, CapabilityChange{Code: code, Type: "Removed", Before: &copyOld})
+			continue
+		}
+		if strings.TrimSpace(oldValue.Purpose) != strings.TrimSpace(newValue.Purpose) {
+			copyOld, copyNew := oldValue, newValue
+			changes = append(changes, CapabilityChange{Code: code, Type: "Purpose Changed", Before: &copyOld, After: &copyNew})
+		}
+		if oldValue.Required != newValue.Required || canonicalJSON(oldValue.Limits) != canonicalJSON(newValue.Limits) {
+			changeType := "Expanded"
+			if oldValue.Required && !newValue.Required {
+				changeType = "Reduced"
+			} else if !oldValue.Required && !newValue.Required && len(newValue.Limits) < len(oldValue.Limits) {
+				changeType = "Reduced"
+			}
+			copyOld, copyNew := oldValue, newValue
+			changes = append(changes, CapabilityChange{Code: code, Type: changeType, Before: &copyOld, After: &copyNew})
+		}
+	}
+	for code, newValue := range current {
+		if _, exists := previous[code]; !exists {
+			copyNew := newValue
+			changes = append(changes, CapabilityChange{Code: code, Type: "Added", After: &copyNew})
+		}
+	}
+	sort.Slice(changes, func(i, j int) bool {
+		if changes[i].Code == changes[j].Code {
+			return changes[i].Type < changes[j].Type
+		}
+		return changes[i].Code < changes[j].Code
+	})
+	return changes
 }
 
 func FileSHA256(filePath string) (string, int64, error) {
@@ -928,9 +992,9 @@ func assessPackageRisk(manifest *Manifest, packageSize int64, conflict bool, ver
 	score := 0
 	reasons := []string{}
 	switch manifest.Runtime {
-	case "grpc":
+	case "grpc", "process":
 		score += 25
-		reasons = append(reasons, "grpc runtime can execute a local plugin process")
+		reasons = append(reasons, "process runtime can execute a local plugin process")
 	case "wasm":
 		score += 12
 		reasons = append(reasons, "wasm runtime has sandboxing but still needs Host API permission review")

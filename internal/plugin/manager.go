@@ -328,6 +328,42 @@ func (m *Manager) RequestDisable(name string) error {
 	return m.lifecycle.RequestDisable(name)
 }
 
+// Quarantine prevents a package that failed an identity or authorization
+// integrity check from starting. The error is persisted so Admin can explain
+// the recovery action instead of showing a silently disabled plugin.
+func (m *Manager) Quarantine(name, reason string) error {
+	return m.lifecycle.Quarantine(name, reason)
+}
+
+func (m *LifecycleService) Quarantine(name, reason string) error {
+	m.catalog.mu.Lock()
+	p, ok := m.catalog.plugins[name]
+	if !ok {
+		m.catalog.mu.Unlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	p.Status = StatusError
+	p.BackendState = BackendError
+	p.FrontendState = FrontendUnloaded
+	p.Health = HealthUnavailable
+	p.DesiredEnabled = false
+	p.ErrorMsg = reason
+	p.HostToken = ""
+	p.HostTokenExpiresAt = time.Time{}
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
+	m.persistPluginStatus(context.Background(), name, StatusError, reason)
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "error",
+		Message:    "plugin quarantined before startup",
+		Metadata: map[string]interface{}{
+			"reason": reason,
+		},
+	})
+	return nil
+}
+
 func (m *LifecycleService) requestDisable(name string) error {
 	m.catalog.mu.RLock()
 	p, ok := m.catalog.plugins[name]
@@ -513,6 +549,32 @@ func (m *LifecycleService) start(name string) error {
 		})
 		return fmt.Errorf("start plugin '%s': %w", name, err)
 	}
+	// campusos.process/v1 makes startup success contingent on an authenticated
+	// protocol handshake, rather than merely observing that an OS process was
+	// spawned. Give a freshly started process a short, bounded warm-up window.
+	if runtimeType == "process" {
+		deadline := time.Now().Add(5 * time.Second)
+		var healthErr error
+		for {
+			probeCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+			healthErr = runtime.HealthCheck(probeCtx, name)
+			cancel()
+			if healthErr == nil || time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		if healthErr != nil {
+			_ = runtime.Stop(context.Background(), name)
+			m.catalog.mu.Lock()
+			p.Status, p.BackendState, p.Health = StatusError, BackendError, HealthUnavailable
+			p.ErrorMsg, p.HostToken, p.HostTokenExpiresAt = "process handshake failed: "+healthErr.Error(), "", time.Time{}
+			m.ui.Bump()
+			m.catalog.mu.Unlock()
+			m.persistPluginStatus(context.Background(), name, StatusError, p.ErrorMsg)
+			return fmt.Errorf("start plugin '%s': process handshake: %w", name, healthErr)
+		}
+	}
 
 	m.catalog.mu.Lock()
 	p.Status = StatusRunning
@@ -632,11 +694,18 @@ func (m *HostAccessService) Authorize(name, token string) (*Plugin, bool) {
 
 // DispatchBeforeEvent 分发 .before 事件（同步，可被插件拦截）
 func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMessage) *PluginResponse {
+	event.Normalize()
 	beforeEvent := &EventMessage{
-		Type:    event.Type + ".before",
-		Source:  event.Source,
-		Subject: event.Subject,
-		Data:    event.Data,
+		SpecVersion: event.SpecVersion,
+		ID:          event.ID,
+		Type:        event.Type + ".before",
+		Source:      event.Source,
+		Subject:     event.Subject,
+		Time:        event.Time,
+		TraceID:     event.TraceID,
+		Actor:       event.Actor,
+		DataSchema:  event.DataSchema,
+		Data:        event.Data,
 	}
 
 	pluginNames := m.Subscribers(event.Type)
@@ -650,6 +719,13 @@ func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMes
 	m.catalog.mu.RUnlock()
 
 	for _, p := range plugins {
+		if m.authorization != nil {
+			decision := m.authorization.Authorize(ctx, AuthorizationInput{PluginName: p.Manifest.Name, PluginVersion: p.Manifest.Version, CapabilityCode: "event.system.subscribe", OperationCode: "event.subscribe." + beforeEvent.Type, TraceID: beforeEvent.TraceID})
+			if !decision.Allow {
+				m.logPlugin(ctx, &PluginLogRecord{PluginName: p.ID, Level: "warn", Message: "plugin event authorization denied", EventType: beforeEvent.Type, TraceID: beforeEvent.TraceID, Metadata: map[string]interface{}{"reason_code": decision.ReasonCode}})
+				continue
+			}
+		}
 		runtimeType := p.Manifest.Runtime
 		runtime, ok := m.runtimes.Get(runtimeType)
 		if !ok {
@@ -693,6 +769,7 @@ func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMes
 
 // DispatchEvent 分发 .after 事件到所有订阅的插件（异步）
 func (m *EventRegistry) DispatchEvent(ctx context.Context, event *EventMessage) {
+	event.Normalize()
 	pluginNames := m.Subscribers(event.Type)
 	m.catalog.mu.RLock()
 	plugins := make([]*Plugin, 0, len(pluginNames))
@@ -705,6 +782,13 @@ func (m *EventRegistry) DispatchEvent(ctx context.Context, event *EventMessage) 
 
 	for _, p := range plugins {
 		go func(pl *Plugin) {
+			if m.authorization != nil {
+				decision := m.authorization.Authorize(ctx, AuthorizationInput{PluginName: pl.Manifest.Name, PluginVersion: pl.Manifest.Version, CapabilityCode: "event.system.subscribe", OperationCode: "event.subscribe." + event.Type, TraceID: event.TraceID})
+				if !decision.Allow {
+					m.logPlugin(ctx, &PluginLogRecord{PluginName: pl.ID, Level: "warn", Message: "plugin event authorization denied", EventType: event.Type, TraceID: event.TraceID, Metadata: map[string]interface{}{"reason_code": decision.ReasonCode}})
+					return
+				}
+			}
 			runtimeType := pl.Manifest.Runtime
 			runtime, ok := m.runtimes.Get(runtimeType)
 			if !ok {

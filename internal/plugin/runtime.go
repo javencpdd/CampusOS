@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // PluginStatus 插件状态
@@ -101,10 +103,34 @@ type ExtensionRuntime interface {
 
 // EventMessage 传递给插件的事件消息
 type EventMessage struct {
-	Type    string      `json:"type"`
-	Source  string      `json:"source"`
-	Subject string      `json:"subject"`
-	Data    interface{} `json:"data"`
+	SpecVersion string      `json:"spec_version"`
+	ID          string      `json:"id"`
+	Type        string      `json:"type"`
+	Source      string      `json:"source"`
+	Subject     string      `json:"subject"`
+	Time        time.Time   `json:"time"`
+	TraceID     string      `json:"trace_id,omitempty"`
+	Actor       string      `json:"actor,omitempty"`
+	DataSchema  string      `json:"data_schema,omitempty"`
+	Data        interface{} `json:"data"`
+}
+
+func (e *EventMessage) Normalize() {
+	if e == nil {
+		return
+	}
+	if e.SpecVersion == "" {
+		e.SpecVersion = "campusos.event/v1"
+	}
+	if e.ID == "" {
+		e.ID = uuid.NewString()
+	}
+	if e.Time.IsZero() {
+		e.Time = time.Now().UTC()
+	}
+	if e.TraceID == "" {
+		e.TraceID = e.ID
+	}
 }
 
 // PluginResponse 插件对事件的响应

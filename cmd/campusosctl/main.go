@@ -120,6 +120,24 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
+	case "doctor":
+		if err := runPluginDoctor(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin doctor: %v\n", err)
+			return 1
+		}
+		return 0
+	case "conformance":
+		if err := runPluginConformance(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin conformance: %v\n", err)
+			return 1
+		}
+		return 0
+	case "watch":
+		if err := runPluginWatch(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin watch: %v\n", err)
+			return 1
+		}
+		return 0
 	case "help", "-h", "--help":
 		printPluginUsage(stdout)
 		return 0
@@ -133,7 +151,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 func runPluginInit(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("plugin init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	runtime := fs.String("runtime", "wasm", "external plugin runtime: wasm or grpc")
+	runtime := fs.String("runtime", "wasm", "external plugin runtime: wasm, process or grpc (legacy)")
 	dir := fs.String("dir", "", "target directory; defaults to the plugin name")
 	name := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -145,17 +163,17 @@ func runPluginInit(args []string, stdout io.Writer) error {
 	}
 	if name == "" {
 		if fs.NArg() != 1 {
-			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+			return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|process|grpc] [--dir path]")
 		}
 		name = fs.Arg(0)
 	} else if fs.NArg() != 0 {
-		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|grpc] [--dir path]")
+		return errors.New("usage: campusosctl plugin init <name> [--runtime wasm|process|grpc] [--dir path]")
 	}
 	if err := plugin.ValidatePluginName(name); err != nil {
 		return err
 	}
-	if *runtime != "wasm" && *runtime != "grpc" {
-		return fmt.Errorf("runtime must be wasm or grpc; compiled features use modules/*/module.yaml, got %q", *runtime)
+	if *runtime != "wasm" && *runtime != "process" && *runtime != "grpc" {
+		return fmt.Errorf("runtime must be wasm, process or grpc; compiled features use modules/*/module.yaml, got %q", *runtime)
 	}
 	targetDir := *dir
 	if targetDir == "" {
@@ -336,11 +354,43 @@ func pluginManifestTemplate(name, runtime string) string {
       type: "number"
       required: true
       default: 1000`
+	} else if runtime == "process" {
+		config = `  command: "./plugin"
+  process_contract: "campusos.process/v1"
+  health_url: "http://127.0.0.1:39090/health"
+  extension_url: "http://127.0.0.1:39090/events"
+  event_timeout_ms: 1000`
+		configSchema = `  fields:
+    - key: "event_timeout_ms"
+      label: "Event timeout"
+      type: "number"
+      required: true
+      default: 1000
+      min: 100
+      max: 10000`
+	}
+	apiVersion, hostVersion := "campusos.plugin/v1", "v1"
+	capabilities := ""
+	compatibility := ">=0.6.0 <0.14.0"
+	if runtime == "process" {
+		apiVersion, hostVersion = plugin.ManifestAPIVersionV3, plugin.HostAPIVersionV3
+		compatibility = ">=1.0.0 <2.0.0"
+		capabilities = `
+capability_declarations:
+  - code: "config.system.read"
+    required: true
+    purpose: "读取本插件的非敏感运行配置"
+    scope: "system"
+  - code: "event.system.subscribe"
+    required: true
+    purpose: "接收 Manifest 中明确声明的事件"
+    scope: "system"
+`
 	}
 	return strings.TrimSpace(fmt.Sprintf(`
 name: %s
-api_version: campusos.plugin/v1
-host_api_version: v1
+api_version: %s
+host_api_version: %s
 display_name: "%s"
 version: "0.1.0"
 description: "CampusOS plugin"
@@ -349,8 +399,8 @@ runtime: %s
 scope: %s
 
 compatibility:
-  campusos: ">=0.6.0 <0.14.0"
-  host_api: "v1"
+  campusos: "%s"
+  host_api: "%s"
   sdk_go: "%s"
 
 events:
@@ -361,6 +411,7 @@ permissions:
   api:
     - resource: "config"
       actions: ["read"]
+%s
 
 storage:
   type: none
@@ -370,7 +421,7 @@ config:
 
 config_schema:
 %s
-`, name, name, runtime, scope, campusossdk.SDKVersion, config, configSchema)) + "\n"
+`, name, apiVersion, hostVersion, name, runtime, scope, compatibility, hostVersion, campusossdk.SDKVersion, capabilities, config, configSchema)) + "\n"
 }
 
 func pluginReadmeTemplate(name string) string {
@@ -412,4 +463,7 @@ func printPluginUsage(w io.Writer) {
 	fmt.Fprintln(w, "  verify    verify a directory or package for CI/install")
 	fmt.Fprintln(w, "  install   install a packaged plugin")
 	fmt.Fprintln(w, "  dev       run test, build and verify as one local loop")
+	fmt.Fprintln(w, "  doctor    diagnose manifest, capability and runtime-contract issues")
+	fmt.Fprintln(w, "  watch     rerun the development loop when source files change")
+	fmt.Fprintln(w, "  conformance run the v1 manifest/runtime/package conformance suite")
 }

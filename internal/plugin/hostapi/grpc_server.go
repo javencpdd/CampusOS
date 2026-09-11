@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -97,7 +98,10 @@ func (s *HostAPIServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := HandleHostAPIRequestForPlugin(s.hostAPI, manifest, method, body)
+	result, err := HandleHostAPIRequestForPluginContext(s.hostAPI, manifest, method, body, TrustedPluginCall{
+		DelegationToken: strings.TrimSpace(r.Header.Get("X-CampusOS-Delegation")),
+		TraceID:         strings.TrimSpace(r.Header.Get("X-CampusOS-Trace-ID")),
+	})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		if errors.Is(err, ErrHostAPIPermissionDenied) {
@@ -384,12 +388,14 @@ func (s *NotificationService) Send(ctx context.Context, userID, title, content, 
 // HostAPIv2 增强版 Host API（含 Notification 和 Storage）
 type HostAPIv2 struct {
 	*HostAPI
-	notification *NotificationService
-	storage      KVStore
-	market       *plugin.MarketService
-	logRepo      plugin.PluginLogRepository
-	configRepo   plugin.PluginRepository
-	permission   PermissionChecker
+	notification  *NotificationService
+	storage       KVStore
+	market        *plugin.MarketService
+	logRepo       plugin.PluginLogRepository
+	configRepo    plugin.PluginRepository
+	permission    PermissionChecker
+	authorization *plugin.AuthorizationService
+	secrets       *plugin.SecretService
 }
 
 type PermissionChecker interface {
@@ -450,6 +456,17 @@ func (h *HostAPIv2) SetPermissionChecker(permission PermissionChecker) {
 	h.permission = permission
 }
 
+func (h *HostAPIv2) SetAuthorizationService(service *plugin.AuthorizationService) {
+	h.authorization = service
+}
+func (h *HostAPIv2) SetSecretService(service *plugin.SecretService) { h.secrets = service }
+
+type TrustedPluginCall struct {
+	ActorUserID     string
+	DelegationToken string
+	TraceID         string
+}
+
 // HandleHostAPIRequest 处理来自插件的 Host API 请求。
 //
 // Deprecated: use HandleHostAPIRequestForPlugin so Host API calls are checked
@@ -460,10 +477,32 @@ func HandleHostAPIRequest(hostAPI *HostAPIv2, method string, body []byte) ([]byt
 
 // HandleHostAPIRequestForPlugin 处理来自指定插件的 Host API 请求。
 func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest, method string, body []byte) ([]byte, error) {
+	return HandleHostAPIRequestForPluginContext(hostAPI, manifest, method, body, TrustedPluginCall{})
+}
+
+func HandleHostAPIRequestForPluginContext(hostAPI *HostAPIv2, manifest *plugin.Manifest, method string, body []byte, call TrustedPluginCall) ([]byte, error) {
 	ctx := context.Background()
 	if err := CheckHostAPIPermission(manifest, method); err != nil {
 		hostAPI.logPermissionDenied(ctx, manifest, method, err)
 		return nil, err
+	}
+	if hostAPI != nil && hostAPI.authorization != nil {
+		permission, known := PermissionForMethod(method)
+		if !known {
+			return nil, fmt.Errorf("%w: %s", ErrHostAPIPermissionDenied, plugin.ReasonUnknownOperation)
+		}
+		ownerID := resourceOwnerFromBody(body)
+		decision := hostAPI.authorization.Authorize(ctx, plugin.AuthorizationInput{
+			PluginName: manifest.Name, PluginVersion: manifest.Version,
+			CapabilityCode: permission.CapabilityCode, OperationCode: "hostapi." + method,
+			ActorUserID: call.ActorUserID, ResourceOwnerID: ownerID,
+			DelegationToken: call.DelegationToken, Background: call.DelegationToken != "", TraceID: call.TraceID,
+		})
+		if !decision.Allow {
+			err := fmt.Errorf("%w: %s: %s", ErrHostAPIPermissionDenied, decision.ReasonCode, decision.Message)
+			hostAPI.logPermissionDenied(ctx, manifest, method, err)
+			return nil, err
+		}
 	}
 
 	switch method {
@@ -477,6 +516,17 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 			return nil, fmt.Errorf("user not found: %w", err)
 		}
 		return json.Marshal(user)
+
+	case "GetUserContact":
+		var req GetUserRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		contact, err := hostAPI.Identity().GetUserContact(ctx, req.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("user contact not found: %w", err)
+		}
+		return json.Marshal(contact)
 
 	case "GetThread":
 		var req GetThreadRequest
@@ -736,9 +786,56 @@ func HandleHostAPIRequestForPlugin(hostAPI *HostAPIv2, manifest *plugin.Manifest
 		}
 		return json.Marshal(map[string]bool{"success": true})
 
+	case "GetSystemSecret", "GetUserSecret":
+		if hostAPI.secrets == nil || hostAPI.authorization == nil {
+			return nil, errors.New("secret service is not configured")
+		}
+		var req struct {
+			SecretName string `json:"secret_name"`
+			UserID     string `json:"user_id,omitempty"`
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+		version, err := hostAPI.authorization.ActiveVersion(ctx, manifest.Name)
+		if err != nil {
+			return nil, fmt.Errorf("resolve plugin version: %w", err)
+		}
+		var owner *int64
+		if method == "GetUserSecret" {
+			parsed, parseErr := strconv.ParseInt(req.UserID, 10, 64)
+			if parseErr != nil || parsed <= 0 {
+				return nil, errors.New("valid user_id is required")
+			}
+			owner = &parsed
+		}
+		value, err := hostAPI.secrets.Resolve(ctx, version.PluginID, owner, req.SecretName)
+		if err != nil {
+			return nil, fmt.Errorf("resolve plugin secret: %w", err)
+		}
+		return json.Marshal(map[string]interface{}{"secret_name": req.SecretName, "value": value})
+
 	default:
 		return nil, errors.New("unknown method: " + method)
 	}
+}
+
+func resourceOwnerFromBody(body []byte) string {
+	var value map[string]interface{}
+	if json.Unmarshal(body, &value) != nil {
+		return ""
+	}
+	for _, key := range []string{"user_id", "owner_id", "subject_user_id"} {
+		if raw, ok := value[key]; ok {
+			switch typed := raw.(type) {
+			case string:
+				return typed
+			case float64:
+				return fmt.Sprintf("%.0f", typed)
+			}
+		}
+	}
+	return ""
 }
 
 func (h *HostAPIv2) logPermissionDenied(ctx context.Context, manifest *plugin.Manifest, method string, permissionErr error) {

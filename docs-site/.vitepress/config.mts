@@ -82,6 +82,7 @@ export default defineConfig({
           { text: '课表插件完整教程', link: '/plugins/schedule-plugin-tutorial' },
           { text: '编写第一个插件', link: '/plugins/create-first-plugin' },
           { text: 'Manifest 与配置', link: '/plugins/manifest' },
+          { text: 'Manifest v3 与三层授权', link: '/plugins/authorization-v3' },
           { text: '打包、导入与更新', link: '/plugins/package-import' },
           { text: '生命周期与数据', link: '/plugins/lifecycle' },
           { text: '前端运行时与 Gateway', link: '/plugins/frontend-runtime' },

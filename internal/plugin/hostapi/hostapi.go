@@ -67,9 +67,17 @@ func (api *IdentityAPI) GetUser(ctx context.Context, userID string) (map[string]
 		"id":       user.ID,
 		"username": user.Username,
 		"nickname": user.Nickname,
-		"email":    user.Email,
-		"status":   user.Status,
 	}, nil
+}
+
+// GetUserContact is intentionally separate from the public profile. Callers
+// must pass the dedicated user.contact.read capability decision first.
+func (api *IdentityAPI) GetUserContact(ctx context.Context, userID string) (map[string]interface{}, error) {
+	user, err := api.users.GetUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{"id": user.ID, "email": user.Email}, nil
 }
 
 // DataAPI 数据查询接口

@@ -9,8 +9,11 @@
 | `CheckPermission` | `permission/check` |
 | `GetConfig` | `config/read` |
 | `GetReply` | `reply/read` |
+| `GetSystemSecret` | `secret/read` |
 | `GetThread` | `thread/read` |
 | `GetUser` | `user/read` |
+| `GetUserContact` | `user_contact/read` |
+| `GetUserSecret` | `secret/read` |
 | `Log` | `log/write` |
 | `PublishEvent` | `event/publish` |
 | `QueryThreads` | `thread/read` |

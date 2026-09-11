@@ -32,11 +32,15 @@ Windows PowerShell 不依赖 Make：
 000001_v1_schema_baseline
 000002_v1_plugin_authorization_foundation
 000003_v1_reference_data
+000004_v1_authorization_runtime_corrections
+000005_v1_process_runtime
 ```
 
 - `000001` 创建当前业务 Schema。
 - `000002` 创建 v1 插件生态与三层授权的数据基础。
 - `000003` 写入角色、Permission Code 和认证策略，不创建用户或默认管理员。
+- `000004` 修正 Secret 轮换索引与未声明能力拒绝审计。
+- `000005` 允许 Manifest v3 `process` Runtime，保留 `grpc` 兼容。
 
 已有旧 `000001-000049` 开发库不能直接 `up`。必须先备份需要保留的数据，再按第 6 节显式重置。
 
@@ -122,15 +126,15 @@ $env:DB_NAME = 'campusos'
 
 ## 7. 新增后续 migration
 
-从 `000004` 开始追加成对文件：
+当前已追加至 `000005`，下一次从 `000006` 开始追加成对文件：
 
 ```text
-migrations/000004_descriptive_name.up.sql
-migrations/000004_descriptive_name.down.sql
+migrations/000006_descriptive_name.up.sql
+migrations/000006_descriptive_name.down.sql
 ```
 
 新文件应满足：稳定主键、明确数据所有权、`TIMESTAMPTZ`、可验证约束、以真实查询为依据的索引、可逆 down，
-并同步更新 Schema 合同、Admin `/architecture`、系统设计文档和进度证据。已共享的 `000001-000003` 禁止修改。
+并同步更新 Schema 合同、Admin `/architecture`、系统设计文档和进度证据。任何已执行并记录 checksum 的 migration 禁止修改。
 
 ## 8. 验证
 

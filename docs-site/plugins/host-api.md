@@ -1,6 +1,6 @@
 # Host API 与权限
 
-Host API 只监听配置的内部地址，默认 `127.0.0.1:18080`。每个调用同时检查运行中插件身份、启动时签发的短期随机令牌和 Manifest 权限。令牌会在重载时轮换、停用时撤销，并通过进程环境变量交给受管插件；插件不应记录它。
+Host API 只监听配置的内部地址，默认 `127.0.0.1:18080`。每个调用同时检查运行中插件身份、启动时签发的短期随机令牌和授权事实。v3 还检查 Capability Declaration、管理员 Grant、用户 Consent、版本、Scope、系统策略与后台 Delegation。令牌会在重载时轮换、停用时撤销，并通过进程环境变量交给受管插件；插件不应记录它。
 
 ## 请求身份
 
@@ -35,3 +35,9 @@ Manifest 默认没有权限。方法与权限对应关系由 `docs/api/plugin-pe
 插件权限和系统用户 RBAC 是两个不同层次。插件声明只表示它可请求某类 Host 能力；涉及具体用户、个人空间、课表或版主管理时，Host 仍需检查用户归属、scope 和可见性。
 
 系统级与用户级插件使用同一最小权限原则。`restart`、`plugin-restart` 或 `hot` 都不会自动扩大权限，也不会绕过权限复核。
+
+## Host API v3
+
+Host API v3 的每个已知方法都映射到 `campusos.capability/v1` Catalog；未知方法默认拒绝。`GetUser` 只返回最小公开 DTO，邮箱等联系信息必须通过独立 `GetUserContact` 与高风险能力读取。事件订阅、受管记录/文件、Secret 与后台任务使用同一个 AuthorizationService，而不是各自维护权限旁路。
+
+完整的三层授权和操作流程见 [Manifest v3 与三层授权](/plugins/authorization-v3)。

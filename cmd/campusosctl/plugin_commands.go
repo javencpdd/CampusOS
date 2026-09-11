@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -99,6 +100,115 @@ func runPluginDev(args []string, stdout io.Writer) error {
 	return writeCommandResult(stdout, jsonOutput, commandResult{Command: "dev", Plugin: manifest.Name, Runtime: manifest.Runtime, Status: "pass", Steps: steps, Artifact: artifact})
 }
 
+func runPluginDoctor(args []string, stdout io.Writer) error {
+	dir, jsonOutput, err := parsePluginDirCommand("plugin doctor", args)
+	if err != nil {
+		return err
+	}
+	manifest, err := plugin.ValidatePluginPackageDir(dir)
+	if err != nil {
+		return err
+	}
+	if err := plugin.ValidateCapabilityCatalog(); err != nil {
+		return err
+	}
+	steps := []string{"manifest", "capability-catalog", "configuration-schema", "runtime-contract"}
+	if manifest.Runtime == "grpc" {
+		steps = append(steps, "warning: grpc is a compatibility alias; migrate to process")
+	}
+	return writeCommandResult(stdout, jsonOutput, commandResult{Command: "doctor", Plugin: manifest.Name, Runtime: manifest.Runtime, Status: "pass", Steps: steps})
+}
+
+func runPluginConformance(args []string, stdout io.Writer) error {
+	dir, jsonOutput, err := parsePluginDirCommand("plugin conformance", args)
+	if err != nil {
+		return err
+	}
+	manifest, testSteps, err := testPlugin(dir)
+	if err != nil {
+		return fmt.Errorf("runtime tests: %w", err)
+	}
+	_, artifact, buildSteps, err := buildPlugin(dir)
+	if err != nil {
+		return fmt.Errorf("runtime build: %w", err)
+	}
+	if _, err := verifyPlugin(dir); err != nil {
+		return fmt.Errorf("package contract: %w", err)
+	}
+	if err := plugin.ValidateCapabilityCatalog(); err != nil {
+		return fmt.Errorf("capability contract: %w", err)
+	}
+	steps := append(testSteps, buildSteps...)
+	steps = append(steps, "manifest-v3", "capability-catalog", "unknown-operation-default-deny", "package-safety")
+	return writeCommandResult(stdout, jsonOutput, commandResult{Command: "conformance", Plugin: manifest.Name, Runtime: manifest.Runtime, Status: "pass", Steps: steps, Artifact: artifact})
+}
+
+func runPluginWatch(args []string, stdout io.Writer) error {
+	fs := flag.NewFlagSet("plugin watch", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	once := fs.Bool("once", false, "run one development cycle and exit")
+	interval := fs.Duration("interval", time.Second, "poll interval")
+	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
+		return errors.New("usage: campusosctl plugin watch <plugin-dir> [--once] [--interval 1s]")
+	}
+	dir := fs.Arg(0)
+	runCycle := func() error { return runPluginDev([]string{dir}, stdout) }
+	if err := runCycle(); err != nil || *once {
+		return err
+	}
+	last, err := pluginTreeStamp(dir)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	ticker := time.NewTicker(*interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			stamp, err := pluginTreeStamp(dir)
+			if err != nil {
+				return err
+			}
+			if stamp != last {
+				last = stamp
+				if err := runCycle(); err != nil {
+					fmt.Fprintf(stdout, "watch cycle failed: %v\n", err)
+				}
+			}
+		}
+	}
+}
+
+func pluginTreeStamp(dir string) (string, error) {
+	latest := int64(0)
+	count := int64(0)
+	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == "node_modules") && path != dir {
+			return filepath.SkipDir
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		count++
+		if value := info.ModTime().UnixNano(); value > latest {
+			latest = value
+		}
+		return nil
+	})
+	return fmt.Sprintf("%d:%d", latest, count), err
+}
+
 func parsePluginDirCommand(name string, args []string) (string, bool, error) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -128,7 +238,7 @@ func buildPlugin(dir string) (*plugin.Manifest, string, []string, error) {
 		return nil, "", nil, err
 	}
 	switch manifest.Runtime {
-	case "grpc":
+	case "grpc", "process":
 		if err := runCommand(dir, nil, "go", "build", "-o", "plugin", "."); err != nil {
 			return nil, "", nil, err
 		}
@@ -193,7 +303,7 @@ func verifyPlugin(target string) (*plugin.Manifest, error) {
 	}
 	if statErr == nil && info.IsDir() {
 		switch manifest.Runtime {
-		case "grpc":
+		case "grpc", "process":
 			artifact, err := grpcArtifactPath(target)
 			if err != nil {
 				return nil, fmt.Errorf("grpc runtime requires executable artifact %s", artifact)

@@ -163,22 +163,26 @@ func (m *featureRegistryModule) Catalog() *modulecatalog.Catalog     { return m.
 func (m *featureRegistryModule) Handler() *platformfeature.Handler   { return m.handler }
 
 type pluginPlatformModule struct {
-	owner       *Server
-	events      *eventBusModule
-	features    *featureRegistryModule
-	app         *platformmodule.AppContext
-	repository  plugin.PluginRepository
-	marketStore plugin.MarketStore
-	manager     *plugin.Manager
-	market      *plugin.MarketService
-	grpcRuntime *plugingrpc.GRPCRuntime
-	handler     *plugin.Handler
-	hostAPI     *hostapi.HostAPIServer
-	cancel      context.CancelFunc
+	owner              *Server
+	events             *eventBusModule
+	features           *featureRegistryModule
+	app                *platformmodule.AppContext
+	repository         plugin.PluginRepository
+	marketStore        plugin.MarketStore
+	authorizationStore plugin.AuthorizationStore
+	authorization      *plugin.AuthorizationService
+	secretStore        plugin.SecretStore
+	secrets            *plugin.SecretService
+	manager            *plugin.Manager
+	market             *plugin.MarketService
+	grpcRuntime        *plugingrpc.GRPCRuntime
+	handler            *plugin.Handler
+	hostAPI            *hostapi.HostAPIServer
+	cancel             context.CancelFunc
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore, authorizationStore plugin.AuthorizationStore, secretStore plugin.SecretStore) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore, authorizationStore: authorizationStore, secretStore: secretStore}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
@@ -202,6 +206,7 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	}
 	m.grpcRuntime = plugingrpc.NewGRPCRuntime()
 	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
+	m.manager.RegisterRuntime("process", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
@@ -242,6 +247,33 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
 	}
+	m.authorization = plugin.NewAuthorizationService(m.authorizationStore, m.repository, func(name string) bool {
+		installed, found := m.manager.GetPlugin(name)
+		return found && installed != nil && installed.Status == plugin.StatusRunning
+	})
+	m.manager.SetAuthorizationService(m.authorization)
+	if secrets, err := plugin.NewSecretServiceFromEnv(m.secretStore); err != nil {
+		log.Printf("⚠️ 插件 Secret Store 未启用: %v", err)
+	} else {
+		m.secrets = secrets
+	}
+	for _, installed := range m.manager.ListPlugins() {
+		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" {
+			continue
+		}
+		if _, err := m.authorization.SyncInstalled(ctx, installed, ""); err != nil {
+			// A semantic version is an immutable security identity. A changed package
+			// must never inherit the grants recorded for the old digest, but one bad
+			// development package must not take the whole CampusOS API offline. Keep
+			// the plugin disabled and let an administrator install a bumped version.
+			reason := "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+			if disableErr := m.manager.Quarantine(installed.Manifest.Name, reason); disableErr != nil {
+				log.Printf("⚠️  插件 %s 授权事实校验失败，且无法自动停用: %v（原始错误: %v）", installed.Manifest.Name, disableErr, err)
+			} else {
+				log.Printf("⚠️  插件 %s 已隔离：同版本包内容或能力声明发生变化，请提升插件版本后重新安装（%v）", installed.Manifest.Name, err)
+			}
+		}
+	}
 	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
 	m.manager.StartDesiredPlugins(plugin.ScopeUser)
 	storageValue, ok := m.app.Lookup("storage.user")
@@ -263,10 +295,11 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		installed, found := m.manager.GetPlugin(name)
 		return found && installed != nil && installed.Status == plugin.StatusRunning
 	})
+	m.market.SetAuthorizationService(m.authorization)
 	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
 		return fmt.Errorf("sync plugin market catalog: %w", err)
 	}
-	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market))
+	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market), plugin.WithAuthorizationService(m.authorization), plugin.WithSecretService(m.secrets))
 	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
 		return err
 	}
@@ -342,6 +375,8 @@ func (m *pluginPlatformModule) startHostAPI() error {
 	}
 	api.SetPermissionChecker(permission)
 	api.SetMarketService(m.market)
+	api.SetAuthorizationService(m.authorization)
+	api.SetSecretService(m.secrets)
 	server := hostapi.NewHostAPIServer(api, m.owner.cfg.HostAPI.Addr, m.manager.GetPlugin)
 	server.SetPluginAuthenticator(m.manager.AuthorizeHostAPI)
 	if err := server.Start(); err != nil {

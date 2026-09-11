@@ -206,11 +206,12 @@ type ManifestResolver func(name string) (*Manifest, bool)
 type PluginActiveResolver func(name string) bool
 
 type MarketService struct {
-	store     MarketStore
-	storage   corestorage.Port
-	manifests ManifestResolver
-	active    PluginActiveResolver
-	now       func() time.Time
+	store         MarketStore
+	storage       corestorage.Port
+	manifests     ManifestResolver
+	active        PluginActiveResolver
+	authorization *AuthorizationService
+	now           func() time.Time
 }
 
 func NewMarketService(store MarketStore, storage corestorage.Port, manifests ManifestResolver) *MarketService {
@@ -223,6 +224,13 @@ func NewMarketService(store MarketStore, storage corestorage.Port, manifests Man
 // use this gate.
 func (s *MarketService) SetPluginActiveResolver(resolver PluginActiveResolver) {
 	s.active = resolver
+}
+
+// SetAuthorizationService switches Manifest v3 user-data calls to the unified
+// declaration/admin-grant/user-consent decision path. Manifest v1/v2 keep the
+// time-limited legacy grant adapter during the compatibility window.
+func (s *MarketService) SetAuthorizationService(service *AuthorizationService) {
+	s.authorization = service
 }
 
 func (s *MarketService) Available() bool {
@@ -242,7 +250,7 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		visibilityByPlugin[entry.PluginName] = entry.Visibility
 	}
 	for _, installed := range plugins {
-		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" || !installed.Manifest.IsV2() {
+		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" || (!installed.Manifest.IsV2() && !installed.Manifest.IsV3()) {
 			continue
 		}
 		manifest := installed.Manifest
@@ -906,7 +914,7 @@ func (s *MarketService) SaveRelease(ctx context.Context, release PluginRelease, 
 // signature state. Its inputs come from the host package precheck, never from
 // an administrator-supplied release form.
 func (s *MarketService) RecordImportedRelease(ctx context.Context, manifest *Manifest, checksum, signatureState, actorID string) (PluginRelease, error) {
-	if manifest == nil || !manifest.IsV2() || manifest.Runtime == "builtin" || checksum == "" {
+	if manifest == nil || (!manifest.IsV2() && !manifest.IsV3()) || manifest.Runtime == "builtin" || checksum == "" {
 		return PluginRelease{}, fmt.Errorf("%w: imported release metadata is incomplete", ErrMarketInvalidInput)
 	}
 	if signatureState != "verified" && signatureState != "unsigned" && signatureState != "untrusted" && signatureState != "invalid" {
@@ -946,7 +954,7 @@ func (s *MarketService) userManifest(pluginName string) (*Manifest, error) {
 	if !ok || manifest == nil {
 		return nil, ErrMarketNotFound
 	}
-	if !manifest.IsV2() || manifest.Runtime == "builtin" {
+	if (!manifest.IsV2() && !manifest.IsV3()) || manifest.Runtime == "builtin" {
 		return nil, ErrMarketUnsupported
 	}
 	return manifest, nil
@@ -984,13 +992,41 @@ func (s *MarketService) requireUserGrant(ctx context.Context, pluginName, userID
 		s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "catalog_not_published"})
 		return ErrMarketDenied
 	}
+	manifest, err := s.userManifest(pluginName)
+	if err != nil {
+		return ErrMarketDenied
+	}
+	if manifest.IsV3() {
+		capability := ""
+		parts := strings.SplitN(permission, ":", 2)
+		if len(parts) == 2 {
+			capability = legacyUserCapabilityCode(parts[0], parts[1])
+		}
+		if capability == "" || s.authorization == nil {
+			s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "unified_authorization_unavailable"})
+			return ErrMarketDenied
+		}
+		decision := s.authorization.Authorize(ctx, AuthorizationInput{
+			PluginName:      pluginName,
+			PluginVersion:   manifest.Version,
+			CapabilityCode:  capability,
+			OperationCode:   "managed-rest." + permission,
+			ActorUserID:     userID,
+			ResourceOwnerID: userID,
+			ResourceScope:   map[string]interface{}{"scope": "self"},
+		})
+		if !decision.Allow {
+			s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"capability": capability, "reason_code": decision.ReasonCode, "request_id": decision.RequestID})
+			return fmt.Errorf("%w: %s", ErrMarketDenied, decision.Message)
+		}
+		return nil
+	}
 	grant, err := s.store.GetGrant(ctx, pluginName, userID)
 	if err != nil {
 		s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "grant_missing"})
 		return ErrMarketDenied
 	}
-	manifest, err := s.userManifest(pluginName)
-	if err != nil || grant.Status != GrantEnabled || grant.Version != manifest.Version || !containsString(grant.Permissions, permission) {
+	if grant.Status != GrantEnabled || grant.Version != manifest.Version || !containsString(grant.Permissions, permission) {
 		reason := "permission_missing"
 		if grant.Status != GrantEnabled {
 			reason = "grant_revoked"

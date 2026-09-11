@@ -1,14 +1,14 @@
 # 数据库迁移与 Schema 冗余治理
 
 > 当前合同：v1.0 clean baseline
-> 更新时间：2026-09-01
+> 更新时间：2026-09-11
 > 权威来源：`migrations/`、`scripts/schema-contract.sql`、Admin `/architecture`
 
 ## 1. 为什么本次可以压平
 
 项目所有者已明确说明全部现存数据为测试数据，并要求不保留旧版本数据库兼容。因此历史
-`000001-000049` 不再是部署合同，已由三段新建库链替代。这个许可只适用于本次 clean baseline 决策；
-`000001-000003` 进入共享分支后重新冻结，后续必须从 `000004` 追加。
+`000001-000049` 不再是部署合同，已由三段 clean baseline 替代。这个许可只适用于本次决策；
+基线冻结后已经以 `000004-000005` 前向修正，后续必须从 `000006` 追加。
 
 当前结构和逐步影响见
 [v1.0 数据库全面重构方案](../../项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md)。
@@ -20,6 +20,8 @@
 | `000001_v1_schema_baseline` | 76 张现行业务表及其关系、约束、索引、函数和触发器 |
 | `000002_v1_plugin_authorization_foundation` | 8 张 v1 插件身份/版本/授权/Secret 表 |
 | `000003_v1_reference_data` | 无用户凭据的稳定角色、Permission Code 和安全策略 |
+| `000004_v1_authorization_runtime_corrections` | Secret 轮换唯一性与未声明能力拒绝审计修正 |
+| `000005_v1_process_runtime` | `process` Runtime 数据库约束与 `grpc` 回滚兼容 |
 | `schema_migrations` | version、name、SHA-256、execution_ms、executor、applied_at |
 | `schema_migration_locks` | 跨进程互斥，避免两个 migration 同时改变 Schema |
 | `schema-contract.sql` | 必需表、列、约束和索引合同 |
@@ -33,7 +35,7 @@
 - migration 不再保存默认管理员、邮箱、密码哈希、默认版块或真实历史标识。
 - 时间点统一为 `TIMESTAMPTZ`，消除部分表有时区、部分表无时区的语义差异。
 - 历史 v10-v14 migration drill 的命令入口统一转发到当前 baseline drill，不再读取不存在的旧 SQL。
-- Admin 数据架构页只展示三段当前 migration，不模拟已经删除的升级历史。
+- Admin 数据架构页展示五段当前 migration，不模拟已经删除的升级历史。
 
 当前 hygiene 会拒绝：
 
@@ -65,7 +67,7 @@ CAMPUSOS_MIGRATION_LOCK_FORCE=true ./scripts/migrate.sh up
 
 旧三列 `schema_migrations` 会被明确识别为不兼容。确认开发数据可删除后应 reset，而不是手工补 checksum 列。
 
-生产/共享数据库不允许使用 reset。未来真实数据升级必须从当前 `000001-000003` 基线向前追加 migration。
+生产/共享数据库不允许使用 reset。未来真实数据升级必须从当前 `000001-000005` 向前追加 migration。
 
 ## 6. 新 migration 审查清单
 

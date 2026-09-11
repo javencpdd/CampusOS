@@ -1,0 +1,35 @@
+name: v1-schedule-reminder
+api_version: campusos.plugin/v3
+host_api_version: v3
+type: external
+display_name: "课表提醒参考插件"
+version: "1.0.0"
+description: "演示用户同意、短期后台委托、事件订阅和通知能力。"
+author: "CampusOS"
+runtime: process
+scope: user
+compatibility:
+  campusos: ">=1.0.0 <2.0.0"
+  host_api: "v3"
+events:
+  subscribe: ["schedule.changed"]
+capability_declarations:
+  - code: schedule.self.read
+    required: true
+    purpose: "读取当前用户课表并计算提醒时间"
+    scope: self
+  - code: notification.self.send
+    required: false
+    purpose: "向当前用户发送其启用的上课提醒"
+    scope: self
+  - code: event.system.subscribe
+    required: true
+    purpose: "在课表变化后重新计算提醒"
+    scope: system
+storage: { type: none }
+config:
+  command: "./plugin"
+  process_contract: campusos.process/v1
+  health_url: "http://127.0.0.1:39101/health"
+  extension_url: "http://127.0.0.1:39101/events"
+  event_timeout_ms: 1000

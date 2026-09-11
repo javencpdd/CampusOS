@@ -47,6 +47,37 @@ export const pluginApi = {
       `/plugin-market/admin/releases/${encodeURIComponent(name)}`,
       release,
     ),
+  authorization: (name: string) =>
+    api.get(`/plugins/${encodeURIComponent(name)}/authorization`),
+  authorizationDecisions: (name: string, limit = 100) =>
+    api.get(`/plugins/${encodeURIComponent(name)}/authorization/decisions`, {
+      params: { limit },
+    }),
+  syncAuthorization: (name: string) =>
+    api.post(`/plugins/${encodeURIComponent(name)}/authorization/sync`),
+  setCapabilityGrant: (
+    name: string,
+    versionId: number,
+    capability: string,
+    status: "granted" | "denied" | "revoked",
+    reason: string,
+    scope: Record<string, any>,
+  ) =>
+    api.put(
+      `/plugins/${encodeURIComponent(name)}/versions/${versionId}/grants/${encodeURIComponent(capability)}`,
+      { status, reason, scope },
+    ),
+  systemSecrets: (name: string) =>
+    api.get(`/plugins/${encodeURIComponent(name)}/secrets`),
+  setSystemSecret: (name: string, secret: string, value: string) =>
+    api.put(
+      `/plugins/${encodeURIComponent(name)}/secrets/${encodeURIComponent(secret)}`,
+      { value },
+    ),
+  revokeSystemSecret: (name: string, secret: string) =>
+    api.delete(
+      `/plugins/${encodeURIComponent(name)}/secrets/${encodeURIComponent(secret)}`,
+    ),
 };
 
 function withFile(path: string, file: File, replace?: boolean) {

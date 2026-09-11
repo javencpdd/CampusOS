@@ -112,7 +112,7 @@ func (s *Service) DeliverMFALocalRecovery(ctx context.Context, event reliability
 	}
 	if err := s.sender.Send(ctx, message); err != nil {
 		result = "unavailable"
-		s.markDegraded()
+		s.markDegraded(providerFailureMessage(err))
 		return reliability.Retryable(ErrDeliveryUnavailable, 30*time.Second)
 	}
 	result = "delivered"
@@ -144,13 +144,13 @@ func (s *Service) DeliverChallenge(ctx context.Context, event reliability.Event)
 	}
 	if err != nil {
 		result = "unavailable"
-		s.markDegraded()
+		s.markDegraded("暂时无法读取待发送的验证码，请稍后重试；管理员可根据可靠任务事件编号排查。")
 		return reliability.Retryable(ErrDeliveryUnavailable, 30*time.Second)
 	}
 	message := challengeMessage(dispatch)
 	if err := s.sender.Send(ctx, message); err != nil {
 		result = "unavailable"
-		s.markDegraded()
+		s.markDegraded(providerFailureMessage(err))
 		return reliability.Retryable(ErrDeliveryUnavailable, 30*time.Second)
 	}
 	result = "delivered"
@@ -197,11 +197,35 @@ func (s *Service) markSkipped() {
 	s.mu.Unlock()
 }
 
-func (s *Service) markDegraded() {
+func (s *Service) markDegraded(message string) {
 	s.mu.Lock()
 	s.status.State = "degraded"
-	s.status.LastError = "email provider delivery failed"
+	s.status.LastError = strings.TrimSpace(message)
+	if s.status.LastError == "" {
+		s.status.LastError = "邮件服务暂时不可用，请稍后重试；管理员可根据可靠任务事件编号排查。"
+	}
 	s.mu.Unlock()
+}
+
+func providerFailureMessage(err error) string {
+	var failure *smtpFailure
+	if !errors.As(err, &failure) {
+		return "邮件服务暂时不可用，请稍后重试；管理员可根据可靠任务事件编号排查。"
+	}
+	switch failure.stage {
+	case "connect":
+		return "无法连接 SMTP 服务器，请检查 SMTP 主机、端口、网络和 Docker 代理配置。"
+	case "session", "starttls":
+		return "SMTP 加密连接失败，请核对端口与 STARTTLS 设置；587 通常启用 STARTTLS，465 通常使用隐式 TLS。"
+	case "authenticate":
+		return "SMTP 身份验证失败，请确认用户名与邮箱一致，并填写邮件服务商生成的 SMTP 授权码（不是邮箱登录密码）。"
+	case "sender":
+		return "SMTP 服务器拒绝发件地址，请确认 EMAIL_SMTP_FROM 与已授权账号一致。"
+	case "recipient":
+		return "SMTP 服务器拒绝收件地址，请检查用户填写的邮箱地址是否有效。"
+	default:
+		return "SMTP 服务器未接受邮件，请稍后重试；若持续失败，请核对服务商限制并根据可靠任务事件编号排查。"
+	}
 }
 
 func challengeMessage(dispatch identityport.ChallengeDispatch) Message {

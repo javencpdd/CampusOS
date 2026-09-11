@@ -164,6 +164,37 @@ runtime: wasm
 	}
 }
 
+func TestQuarantinePersistsVisibleIntegrityFailure(t *testing.T) {
+	dir := writePluginManifest(t, `name: integrity-conflict
+version: 0.1.0
+runtime: wasm
+`)
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	manager.RegisterRuntime("wasm", newFakeRuntime())
+	installed, err := manager.Install(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Quarantine("integrity-conflict", "same version digest changed"); err != nil {
+		t.Fatal(err)
+	}
+	if installed.Status != StatusError || installed.BackendState != BackendError || installed.Health != HealthUnavailable {
+		t.Fatalf("unexpected quarantine state: %+v", installed)
+	}
+	if installed.DesiredEnabled || installed.ErrorMsg == "" {
+		t.Fatalf("quarantine must disable startup and expose recovery reason: %+v", installed)
+	}
+	record, err := repo.GetByName(context.Background(), "integrity-conflict")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Status != string(StatusError) || record.ErrorMsg == "" {
+		t.Fatalf("quarantine was not persisted: %+v", record)
+	}
+}
+
 func TestManagerPersistsLifecycleStatus(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: persisted-lifecycle

@@ -10,6 +10,8 @@ CampusOS 当前使用 v1.0 clean baseline，而不是历史 `000001-000049` 增�
 | `000001_v1_schema_baseline` | 76 张现行业务表、外键、CHECK、索引、函数和触发器 |
 | `000002_v1_plugin_authorization_foundation` | 8 张插件身份、版本、三层授权、Delegation、Secret 和判定证据表 |
 | `000003_v1_reference_data` | 4 个系统角色、76 个 Permission Code、最小角色矩阵和身份安全策略 |
+| `000004_v1_authorization_runtime_corrections` | 修正 Secret 活跃版本轮换索引，并允许记录未声明能力的拒绝判定 |
+| `000005_v1_process_runtime` | 将 `process` 加入插件 Runtime 数据库约束，保留 `grpc` 兼容值 |
 
 执行器另建 `schema_migrations`、`schema_migration_locks`。最终为 84 张业务表和 2 张系统表。
 migration 不创建用户、管理员、邮箱、默认密码或默认版块。
@@ -76,7 +78,7 @@ make architecture-check
 
 ## 后续 migration
 
-下一编号是 `000004`。进入共享分支后的 `000001-000003` 不得修改；任何修复都必须新增前向 migration。
+下一编号是 `000006`。已经进入共享分支的 `000001-000005` 不得修改；任何修复都必须新增前向 migration。
 
 新增 Schema 时必须同步：
 

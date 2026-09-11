@@ -1,13 +1,13 @@
 # CampusOS 数据库迁移
 
 > 当前基线：v1.0 clean baseline
-> 更新时间：2026-09-01
+> 更新时间：2026-09-11
 > 数据库：PostgreSQL 16+
 > 兼容边界：不支持从旧 `000001-000049` 链原地升级；现有开发/测试库必须显式重置
 
 ## 1. 本次重构结论
 
-原 49 组增量 migration 已压缩为一个可重复零建库的业务 Schema 基线、一个插件三层授权基础和一个不含账号凭据的参考数据 migration。当前结果是：
+原 49 组增量 migration 已压缩为三段 clean baseline；基线冻结后以两段前向 migration 修正运行期约束。当前结果是：
 
 - 84 张业务表，另有执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
 - 所有时间点字段统一为 `TIMESTAMPTZ`，日期类字段继续使用 `DATE`；
@@ -17,7 +17,7 @@
 - 不再 migration 内置默认管理员、邮箱、密码哈希、默认版块或任何历史测试数据；
 - 为 v1 插件生态预建发布者、不可变版本、能力声明、管理员 Grant、用户 Consent、短期 Delegation、密文 Secret 与判定证据；
 - migration 文件使用 SHA-256 防篡改，执行使用数据库互斥锁，单个 migration 与版本记录在同一事务提交；
-- 当前 97 个外键均有可用的引用端前导索引，Schema 合同会阻止后续新增无索引外键；
+- 当前 93 个物理外键均有可用的引用端前导索引，Schema 合同会阻止后续新增无索引外键；
 - `down` 一次只回滚最新版本；全量清库只能走带环境和数据库名双确认的 `reset`。
 
 ## 2. 当前 migration
@@ -27,8 +27,20 @@
 | `000001` | `000001_v1_schema_baseline.*.sql` | 从零创建当前 76 张业务表、约束、索引、函数与触发器 | 取代全部旧建表/补列/修复链；删除旧权限双轨；时间统一为带时区 |
 | `000002` | `000002_v1_plugin_authorization_foundation.*.sql` | 新增 8 张 v1 插件身份与三层授权基础表，并为 `plugins` 增加 `publisher_id` | 为后续授权服务、密钥托管、版本升级和判定审计提供稳定数据边界 |
 | `000003` | `000003_v1_reference_data.*.sql` | 写入 4 个系统角色、76 个权限定义、最小角色矩阵、验证码和管理员 MFA 策略 | 不写入用户、账号、邮箱、管理员凭据或业务测试记录 |
+| `000004` | `000004_v1_authorization_runtime_corrections.*.sql` | 修正活动 Secret 唯一索引并允许记录“能力未声明”的拒绝证据 | 保留冻结基线 checksum；轮换可重复，拒绝审计不依赖声明外键 |
+| `000005` | `000005_v1_process_runtime.*.sql` | 把 Manifest v3 的 `process` 纳入插件 Runtime 数据库约束 | `grpc` 继续作为兼容别名；回滚时自动映射为 `grpc` |
 
-已进入本基线的旧业务结构不再保留原 migration 编号。管理端 `/architecture` 按当前三段结构展示，而不是模拟历史 49 段升级过程。
+已进入本基线的旧业务结构不再保留原 migration 编号。管理端 `/architecture` 按当前五段结构展示，而不是模拟历史 49 段升级过程。
+
+### 自动生成 ER 图
+
+```bash
+python migrations/tools/generate_er.py
+python migrations/tools/generate_er.py --check
+```
+
+工具从 UP migration 生成 [PNG、SVG 与中文实体关系说明](../docs/architecture/database-er/CampusOS数据库实体关系说明.md)，
+不连接或修改数据库。Windows/Linux 包装脚本、关系判定规则与依赖安装见 [工具 README](tools/README.md)。
 
 ## 3. 数据域清单
 
@@ -94,7 +106,7 @@ Remove-Item Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM
 
 ## 5. 后续 migration 规范
 
-从 `000004` 起只追加新 migration，不再修改已经进入共享分支的 `000001-000003`：
+从 `000004` 起只追加新 migration，不再修改已经进入共享分支的 `000001-000003`。当前已追加至 `000005`，下一次从 `000006` 开始：
 
 1. 文件名使用六位连续编号和清晰业务名，必须同时提供 `.up.sql`、`.down.sql`。
 2. 一个 migration 只表达一个可审查的 Schema/参考数据变化；结构和大规模数据回填应拆开。
@@ -124,7 +136,7 @@ baseline drill 在固定的隔离测试库中验证：
 - 76 个稳定权限定义与最小角色矩阵；
 - 旧 `permissions` 表已移除；
 - Session 不存在明文 Refresh Token/原始 IP 列，摘要为必填且全局唯一；
-- 97 个外键均有引用端前导索引，索引/约束 hygiene 问题为 0；
+- 93 个物理外键均有引用端前导索引，索引/约束 hygiene 问题为 0；
 - 全库不存在 `timestamp without time zone`；
 - checksum 漂移会失败；
 - 最新版本回滚、全链回滚、重新 up 和显式 reset 均可重复。

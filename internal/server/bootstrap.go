@@ -41,15 +41,17 @@ import (
 )
 
 type infrastructureBootstrap struct {
-	runtime     *platformruntime.Runtime
-	modules     *platformmodule.Registry
-	bus         eventbus.EventBus
-	memoryBus   *eventbus.MemoryEventBus
-	cache       cache.Cache
-	metrics     *observability.Collector
-	database    *pgxpool.Pool
-	databaseErr error
-	pluginRepo  plugin.PluginRepository
+	runtime                  *platformruntime.Runtime
+	modules                  *platformmodule.Registry
+	bus                      eventbus.EventBus
+	memoryBus                *eventbus.MemoryEventBus
+	cache                    cache.Cache
+	metrics                  *observability.Collector
+	database                 *pgxpool.Pool
+	databaseErr              error
+	pluginRepo               plugin.PluginRepository
+	pluginAuthorizationStore plugin.AuthorizationStore
+	pluginSecretStore        plugin.SecretStore
 }
 
 func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
@@ -97,14 +99,18 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	}
 	pluginRepo := plugin.PluginRepository(plugin.NewMemoryPluginRepository())
 	marketStore := plugin.MarketStore(plugin.NewMemoryMarketStore())
+	authorizationStore := plugin.AuthorizationStore(plugin.NewMemoryAuthorizationStore())
+	secretStore := plugin.SecretStore(plugin.NewMemorySecretStore())
 	if pool != nil {
 		pluginRepo = plugin.NewPgPluginRepository(pool)
 		marketStore = plugin.NewPgMarketStore(pool)
+		authorizationStore = plugin.NewPgAuthorizationStore(pool)
+		secretStore = authorizationStore.(plugin.SecretStore)
 	}
 	events := newEventBusModule(s.cfg)
 	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
-	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore)
+	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore)
 	identityModule := identitycore.NewModule(identitycore.Config{
 		JWT:                   s.newJWTManager(),
 		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,
@@ -350,7 +356,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.appContext = appRuntime.AppContext()
 	s.modules = appRuntime.Registry()
 	s.bus = events.EventBus()
-	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo}, nil
+	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
 }
 func (b *infrastructureBootstrap) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

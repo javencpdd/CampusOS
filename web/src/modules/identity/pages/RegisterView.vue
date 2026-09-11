@@ -106,7 +106,7 @@ const formRef = ref<FormInstance>()
 const challengeId = ref('')
 const registrationTicket = ref('')
 const cooldown = ref(0)
-let countdownTimer: ReturnType<typeof setInterval> | undefined
+let countdownTimer: number | undefined
 
 const form = reactive({
   username: '',

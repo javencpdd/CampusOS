@@ -16,7 +16,7 @@ import (
 const (
 	DefaultHostAPIBaseURL = "http://127.0.0.1:18080"
 	SDKVersion            = "v0.13"
-	HostAPIVersion        = "v2"
+	HostAPIVersion        = "v3"
 )
 
 var ErrPermissionDenied = errors.New("campusos host api permission denied")
@@ -49,10 +49,11 @@ func (e *HostAPIError) Unwrap() error {
 }
 
 type HostClient struct {
-	baseURL     string
-	pluginName  string
-	pluginToken string
-	httpClient  *http.Client
+	baseURL         string
+	pluginName      string
+	pluginToken     string
+	delegationToken string
+	httpClient      *http.Client
 }
 
 type HostClientOption func(*HostClient)
@@ -78,6 +79,10 @@ func WithTimeout(timeout time.Duration) HostClientOption {
 
 func WithPluginToken(token string) HostClientOption {
 	return func(c *HostClient) { c.pluginToken = strings.TrimSpace(token) }
+}
+
+func WithDelegationToken(token string) HostClientOption {
+	return func(c *HostClient) { c.delegationToken = strings.TrimSpace(token) }
 }
 
 func NewHostClient(pluginName string, opts ...HostClientOption) *HostClient {
@@ -119,6 +124,9 @@ func (c *HostClient) Call(ctx context.Context, method string, request interface{
 	}
 	if c.pluginToken != "" {
 		req.Header.Set("X-CampusOS-Plugin-Token", c.pluginToken)
+	}
+	if c.delegationToken != "" {
+		req.Header.Set("X-CampusOS-Delegation", c.delegationToken)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -203,6 +211,12 @@ type GetUserRequest struct {
 func (c *HostClient) GetUser(ctx context.Context, userID string) (map[string]interface{}, error) {
 	var response map[string]interface{}
 	err := c.Call(ctx, "GetUser", GetUserRequest{UserID: userID}, &response)
+	return response, err
+}
+
+func (c *HostClient) GetUserContact(ctx context.Context, userID string) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.Call(ctx, "GetUserContact", GetUserRequest{UserID: userID}, &response)
 	return response, err
 }
 
@@ -450,4 +464,24 @@ func (c *HostClient) StorageSet(ctx context.Context, key, value string) error {
 
 func (c *HostClient) StorageDelete(ctx context.Context, key string) error {
 	return c.Call(ctx, "StorageDelete", StorageDeleteRequest{PluginName: c.pluginName, Key: key}, nil)
+}
+
+type SecretRequest struct {
+	SecretName string `json:"secret_name"`
+	UserID     string `json:"user_id,omitempty"`
+}
+type SecretResponse struct {
+	SecretName string `json:"secret_name"`
+	Value      string `json:"value"`
+}
+
+func (c *HostClient) GetSystemSecret(ctx context.Context, name string) (string, error) {
+	var response SecretResponse
+	err := c.Call(ctx, "GetSystemSecret", SecretRequest{SecretName: name}, &response)
+	return response.Value, err
+}
+func (c *HostClient) GetUserSecret(ctx context.Context, userID, name string) (string, error) {
+	var response SecretResponse
+	err := c.Call(ctx, "GetUserSecret", SecretRequest{SecretName: name, UserID: userID}, &response)
+	return response.Value, err
 }

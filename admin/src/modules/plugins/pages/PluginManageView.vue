@@ -4,8 +4,10 @@
       <template #header>
         <div class="card-header">
           <div class="header-title">
-			<span>外部插件</span>
-            <el-tag type="info" size="small">已安装 {{ plugins.length }} 个插件</el-tag>
+            <span>外部插件</span>
+            <el-tag type="info" size="small"
+              >已安装 {{ plugins.length }} 个插件</el-tag
+            >
           </div>
           <div class="header-actions">
             <el-switch
@@ -35,14 +37,20 @@
       </template>
 
       <el-alert
-		 title="这里只管理可独立安装、升级、停用和卸载的 External Plugin；系统核心与内置功能请在“内置功能”页面管理。"
+        title="这里只管理可独立安装、升级、停用和卸载的 External Plugin；系统核心与内置功能请在“内置功能”页面管理。"
         type="info"
         show-icon
         :closable="false"
         class="lifecycle-alert"
       />
 
-      <el-table :data="plugins" v-loading="loading" stripe border style="width: 100%">
+      <el-table
+        :data="plugins"
+        v-loading="loading"
+        stripe
+        border
+        style="width: 100%"
+      >
         <el-table-column prop="name" label="插件名称" width="180">
           <template #default="{ row }">
             <div class="plugin-name">
@@ -57,34 +65,78 @@
             <el-tag size="small" effect="plain">v{{ row.version }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="runtime" label="运行时" width="100" align="center">
+        <el-table-column
+          prop="description"
+          label="描述"
+          min-width="250"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="runtime"
+          label="运行时"
+          width="100"
+          align="center"
+        >
           <template #default="{ row }">
-            <el-tag :type="row.runtime === 'grpc' ? 'success' : 'warning'" size="small">
-              {{ row.runtime?.toUpperCase() || 'N/A' }}
+            <el-tag
+              :type="row.runtime === 'grpc' ? 'success' : 'warning'"
+              size="small"
+            >
+              {{ row.runtime?.toUpperCase() || "N/A" }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="级别" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="isSystemPlugin(row) ? 'warning' : 'success'" size="small" effect="plain">
+            <el-tag
+              :type="isSystemPlugin(row) ? 'warning' : 'success'"
+              size="small"
+              effect="plain"
+            >
               {{ scopeLabel(row.scope) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="生效方式" width="110" align="center">
           <template #default="{ row }">
-            <span class="activation-mode">{{ activationModeLabel(row.backend_activation_mode || row.activation_mode) }}</span>
+            <span class="activation-mode">{{
+              activationModeLabel(
+                row.backend_activation_mode || row.activation_mode,
+              )
+            }}</span>
           </template>
         </el-table-column>
-		<el-table-column label="后端 / 前端" width="170" align="center">
-		  <template #default="{ row }"><div class="state-pair"><el-tag size="small" :type="stateTag(row.backend_state)">{{ row.backend_state || 'unknown' }}</el-tag><el-tag size="small" effect="plain">{{ row.frontend_state || 'unloaded' }}</el-tag></div></template>
-		</el-table-column>
-		<el-table-column label="健康" width="100" align="center">
-		  <template #default="{ row }"><el-tag size="small" :type="healthTag(row.health)">{{ row.health || 'unknown' }}</el-tag></template>
-		</el-table-column>
-		<el-table-column prop="ui_revision" label="UI Revision" width="105" align="center" />
-        <el-table-column prop="checksum" label="Checksum" width="180" show-overflow-tooltip />
+        <el-table-column label="后端 / 前端" width="170" align="center">
+          <template #default="{ row }"
+            ><div class="state-pair">
+              <el-tag size="small" :type="stateTag(row.backend_state)">{{
+                row.backend_state || "unknown"
+              }}</el-tag
+              ><el-tag size="small" effect="plain">{{
+                row.frontend_state || "unloaded"
+              }}</el-tag>
+            </div></template
+          >
+        </el-table-column>
+        <el-table-column label="健康" width="100" align="center">
+          <template #default="{ row }"
+            ><el-tag size="small" :type="healthTag(row.health)">{{
+              row.health || "unknown"
+            }}</el-tag></template
+          >
+        </el-table-column>
+        <el-table-column
+          prop="ui_revision"
+          label="UI Revision"
+          width="105"
+          align="center"
+        />
+        <el-table-column
+          prop="checksum"
+          label="Checksum"
+          width="180"
+          show-overflow-tooltip
+        />
         <el-table-column prop="status" label="状态" width="130" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTag(row)" size="small">
@@ -92,9 +144,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="590" align="center" fixed="right">
+        <el-table-column label="操作" width="650" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" plain @click="showLogs(row.name)">
+            <el-button
+              type="primary"
+              size="small"
+              plain
+              @click="showLogs(row.name)"
+            >
               <el-icon><Document /></el-icon>
               日志
             </el-button>
@@ -102,6 +159,13 @@
               <el-icon><Setting /></el-icon>
               配置
             </el-button>
+            <el-button
+              v-if="!isSystemPlugin(row)"
+              size="small"
+              plain
+              @click="openAuthorization(row.name)"
+              >授权</el-button
+            >
             <el-button type="success" size="small" plain @click="doExport(row)">
               <el-icon><Upload /></el-icon>
               导出
@@ -114,9 +178,14 @@
               @click="reloadUserPlugin(row)"
             >
               <el-icon><Refresh /></el-icon>
-              {{ isPluginEnabled(row) ? '重载' : '加载' }}
+              {{ isPluginEnabled(row) ? "重载" : "加载" }}
             </el-button>
-            <el-button v-if="!isSystemPlugin(row)" size="small" plain @click="openSnapshots(row.name)">
+            <el-button
+              v-if="!isSystemPlugin(row)"
+              size="small"
+              plain
+              @click="openSnapshots(row.name)"
+            >
               <el-icon><Clock /></el-icon>
               版本
             </el-button>
@@ -140,35 +209,69 @@
                 <el-button type="danger" size="small" plain>卸载</el-button>
               </template>
             </el-popconfirm>
-            <el-tag v-else type="info" size="small" effect="plain">随服务部署</el-tag>
+            <el-tag v-else type="info" size="small" effect="plain"
+              >随服务部署</el-tag
+            >
           </template>
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!loading && plugins.length === 0" description="暂无已安装的插件" />
+      <el-empty
+        v-if="!loading && plugins.length === 0"
+        description="暂无已安装的插件"
+      />
     </el-card>
 
-    <el-dialog v-model="logDialogVisible" :title="`${selectedPluginName} 运行日志`" width="860px">
+    <el-dialog
+      v-model="logDialogVisible"
+      :title="`${selectedPluginName} 运行日志`"
+      width="860px"
+    >
       <div class="log-toolbar">
         <el-button size="small" @click="loadLogs" :loading="logsLoading">
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
       </div>
-      <el-table :data="pluginLogs" v-loading="logsLoading" stripe border style="width: 100%">
+      <el-table
+        :data="pluginLogs"
+        v-loading="logsLoading"
+        stripe
+        border
+        style="width: 100%"
+      >
         <el-table-column prop="created_at" label="时间" width="170">
-          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+          <template #default="{ row }">{{
+            formatTime(row.created_at)
+          }}</template>
         </el-table-column>
         <el-table-column prop="level" label="级别" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="logLevelTag(row.level)" size="small">{{ row.level || 'info' }}</el-tag>
+            <el-tag :type="logLevelTag(row.level)" size="small">{{
+              row.level || "info"
+            }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="message" label="消息" min-width="210" show-overflow-tooltip />
-        <el-table-column prop="event_type" label="事件" width="150" show-overflow-tooltip />
+        <el-table-column
+          prop="message"
+          label="消息"
+          min-width="210"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          prop="event_type"
+          label="事件"
+          width="150"
+          show-overflow-tooltip
+        />
         <el-table-column label="元数据" width="100" align="center">
           <template #default="{ row }">
-            <el-popover v-if="row.metadata" placement="left" width="420" trigger="click">
+            <el-popover
+              v-if="row.metadata"
+              placement="left"
+              width="420"
+              trigger="click"
+            >
               <pre class="metadata-pre">{{ formatMetadata(row.metadata) }}</pre>
               <template #reference>
                 <el-button type="primary" size="small" text>查看</el-button>
@@ -178,10 +281,17 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!logsLoading && pluginLogs.length === 0" description="暂无插件日志" />
+      <el-empty
+        v-if="!logsLoading && pluginLogs.length === 0"
+        description="暂无插件日志"
+      />
     </el-dialog>
 
-    <el-dialog v-model="snapshotDialogVisible" :title="`${selectedPluginName} 版本快照`" width="820px">
+    <el-dialog
+      v-model="snapshotDialogVisible"
+      :title="`${selectedPluginName} 版本快照`"
+      width="820px"
+    >
       <el-alert
         title="快照在覆盖更新前自动创建；回滚会先保存当前版本，再恢复所选包并按原启用状态热加载。"
         type="warning"
@@ -189,13 +299,25 @@
         show-icon
         class="lifecycle-alert"
       />
-      <el-table :data="pluginSnapshots" v-loading="snapshotsLoading" stripe border>
+      <el-table
+        :data="pluginSnapshots"
+        v-loading="snapshotsLoading"
+        stripe
+        border
+      >
         <el-table-column prop="version" label="版本" width="100" />
         <el-table-column prop="created_at" label="创建时间" width="180">
-          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+          <template #default="{ row }">{{
+            formatTime(row.created_at)
+          }}</template>
         </el-table-column>
         <el-table-column prop="source" label="来源" width="130" />
-        <el-table-column prop="checksum" label="Checksum" min-width="220" show-overflow-tooltip />
+        <el-table-column
+          prop="checksum"
+          label="Checksum"
+          min-width="220"
+          show-overflow-tooltip
+        />
         <el-table-column label="操作" width="100" align="center">
           <template #default="{ row }">
             <el-popconfirm
@@ -205,46 +327,90 @@
               @confirm="rollbackSnapshot(row.id)"
             >
               <template #reference>
-                <el-button type="warning" size="small" :loading="rollbackSnapshotID === row.id">恢复</el-button>
+                <el-button
+                  type="warning"
+                  size="small"
+                  :loading="rollbackSnapshotID === row.id"
+                  >恢复</el-button
+                >
               </template>
             </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!snapshotsLoading && pluginSnapshots.length === 0" description="暂无更新前快照" />
+      <el-empty
+        v-if="!snapshotsLoading && pluginSnapshots.length === 0"
+        description="暂无更新前快照"
+      />
     </el-dialog>
 
-    <el-dialog v-model="precheckDialogVisible" title="插件包导入预检" width="820px">
+    <el-dialog
+      v-model="precheckDialogVisible"
+      title="插件包导入预检"
+      width="820px"
+    >
       <div v-if="pendingPrecheck" class="precheck-panel">
         <div class="precheck-summary">
           <el-descriptions :column="2" border size="small">
-            <el-descriptions-item label="插件">{{ pendingPrecheck.manifest?.name || '未知' }}</el-descriptions-item>
+            <el-descriptions-item label="插件">{{
+              pendingPrecheck.manifest?.name || "未知"
+            }}</el-descriptions-item>
             <el-descriptions-item label="级别">
-              <el-tag :type="pendingPrecheck.manifest?.scope === 'system' ? 'warning' : 'success'" effect="plain">
+              <el-tag
+                :type="
+                  pendingPrecheck.manifest?.scope === 'system'
+                    ? 'warning'
+                    : 'success'
+                "
+                effect="plain"
+              >
                 {{ scopeLabel(pendingPrecheck.manifest?.scope) }}
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="版本变化">
-              {{ pendingPrecheck.existing_version || '无' }} -> {{ pendingPrecheck.import_version || '未知' }}
-              <el-tag size="small" effect="plain">{{ versionChangeLabel(pendingPrecheck.version_change) }}</el-tag>
+              {{ pendingPrecheck.existing_version || "无" }} ->
+              {{ pendingPrecheck.import_version || "未知" }}
+              <el-tag size="small" effect="plain">{{
+                versionChangeLabel(pendingPrecheck.version_change)
+              }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="风险等级">
-              <el-tag :type="riskTag(pendingPrecheck.risk_level)" effect="plain">
-                {{ riskLabel(pendingPrecheck.risk_level) }} / {{ pendingPrecheck.risk_score || 0 }}
+              <el-tag
+                :type="riskTag(pendingPrecheck.risk_level)"
+                effect="plain"
+              >
+                {{ riskLabel(pendingPrecheck.risk_level) }} /
+                {{ pendingPrecheck.risk_score || 0 }}
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="签名">
-              <el-tag :type="signatureTag(pendingPrecheck.signature_status)" effect="plain">
+              <el-tag
+                :type="signatureTag(pendingPrecheck.signature_status)"
+                effect="plain"
+              >
                 {{ signatureLabel(pendingPrecheck.signature_status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="数据 Schema">{{ pendingPrecheck.data_schema_change || '新安装' }}</el-descriptions-item>
+            <el-descriptions-item label="数据 Schema">{{
+              pendingPrecheck.data_schema_change || "新安装"
+            }}</el-descriptions-item>
             <el-descriptions-item label="用户重新授权">
-              <el-tag :type="pendingPrecheck.requires_reauthorization ? 'warning' : 'success'" effect="plain">
-                {{ pendingPrecheck.requires_reauthorization ? '需要' : '不需要' }}
+              <el-tag
+                :type="
+                  pendingPrecheck.requires_reauthorization
+                    ? 'warning'
+                    : 'success'
+                "
+                effect="plain"
+              >
+                {{
+                  pendingPrecheck.requires_reauthorization ? "需要" : "不需要"
+                }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="Checksum" :span="2">{{ pendingPrecheck.checksum }}</el-descriptions-item>
+            <el-descriptions-item label="Checksum" :span="2">{{
+              pendingPrecheck.checksum
+            }}</el-descriptions-item>
           </el-descriptions>
         </div>
         <el-alert
@@ -268,27 +434,63 @@
         <el-collapse class="precheck-collapse">
           <el-collapse-item title="权限风险" name="permissions">
             <div class="tag-list">
-              <el-tag v-for="perm in pendingPrecheck.permissions || []" :key="perm" type="warning" effect="plain">
+              <el-tag
+                v-for="perm in pendingPrecheck.permissions || []"
+                :key="perm"
+                type="warning"
+                effect="plain"
+              >
                 {{ perm }}
               </el-tag>
-              <span v-if="!pendingPrecheck.permissions?.length" class="empty-text">未声明 Host API 权限</span>
+              <span
+                v-if="!pendingPrecheck.permissions?.length"
+                class="empty-text"
+                >未声明 Host API 权限</span
+              >
             </div>
             <ul class="risk-reasons">
-              <li v-for="reason in pendingPrecheck.risk_reasons || []" :key="reason">{{ reason }}</li>
+              <li
+                v-for="reason in pendingPrecheck.risk_reasons || []"
+                :key="reason"
+              >
+                {{ reason }}
+              </li>
             </ul>
             <h4>新增权限</h4>
             <div class="tag-list">
-              <el-tag v-for="perm in pendingPrecheck.added_permissions || []" :key="`added-${perm}`" type="danger" effect="plain">{{ perm }}</el-tag>
-              <span v-if="!pendingPrecheck.added_permissions?.length" class="empty-text">无</span>
+              <el-tag
+                v-for="perm in pendingPrecheck.added_permissions || []"
+                :key="`added-${perm}`"
+                type="danger"
+                effect="plain"
+                >{{ perm }}</el-tag
+              >
+              <span
+                v-if="!pendingPrecheck.added_permissions?.length"
+                class="empty-text"
+                >无</span
+              >
             </div>
             <h4>移除权限</h4>
             <div class="tag-list">
-              <el-tag v-for="perm in pendingPrecheck.removed_permissions || []" :key="`removed-${perm}`" type="info" effect="plain">{{ perm }}</el-tag>
-              <span v-if="!pendingPrecheck.removed_permissions?.length" class="empty-text">无</span>
+              <el-tag
+                v-for="perm in pendingPrecheck.removed_permissions || []"
+                :key="`removed-${perm}`"
+                type="info"
+                effect="plain"
+                >{{ perm }}</el-tag
+              >
+              <span
+                v-if="!pendingPrecheck.removed_permissions?.length"
+                class="empty-text"
+                >无</span
+              >
             </div>
           </el-collapse-item>
           <el-collapse-item title="包内文件" name="files">
-            <pre class="metadata-pre">{{ (pendingPrecheck.files || []).join('\n') }}</pre>
+            <pre class="metadata-pre">{{
+              (pendingPrecheck.files || []).join("\n")
+            }}</pre>
           </el-collapse-item>
         </el-collapse>
       </div>
@@ -296,7 +498,10 @@
         <el-button @click="clearPendingImport">取消</el-button>
         <el-button
           type="primary"
-          :disabled="pendingPrecheck?.allowed === false || (pendingPrecheck?.conflict && !replaceOnImport)"
+          :disabled="
+            pendingPrecheck?.allowed === false ||
+            (pendingPrecheck?.conflict && !replaceOnImport)
+          "
           :loading="importing"
           @click="confirmImport"
         >
@@ -305,7 +510,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="configDialogVisible" :title="`${selectedPluginName} 插件配置`" width="720px">
+    <el-dialog
+      v-model="configDialogVisible"
+      :title="`${selectedPluginName} 插件配置`"
+      width="720px"
+    >
       <el-alert
         v-if="configDescription"
         :title="configDescription"
@@ -314,11 +523,24 @@
         :closable="false"
         class="config-alert"
       />
-      <div v-if="selectedPluginName === 'homepage-customizer'" class="style-pack-box">
+      <div
+        v-if="selectedPluginName === 'homepage-customizer'"
+        class="style-pack-box"
+      >
         <div class="style-pack-header">
           <strong>首页拓展风格包</strong>
-          <el-tag v-if="homeStylePackValidation?.valid" type="success" effect="plain">筛查通过</el-tag>
-          <el-tag v-else-if="homeStylePackValidation" type="danger" effect="plain">筛查失败</el-tag>
+          <el-tag
+            v-if="homeStylePackValidation?.valid"
+            type="success"
+            effect="plain"
+            >筛查通过</el-tag
+          >
+          <el-tag
+            v-else-if="homeStylePackValidation"
+            type="danger"
+            effect="plain"
+            >筛查失败</el-tag
+          >
         </div>
         <div class="style-pack-actions">
           <input
@@ -332,15 +554,32 @@
             <el-icon><Upload /></el-icon>
             选择 zip
           </el-button>
-          <span class="pack-file-name">{{ homeStylePackFile?.name || '未选择文件' }}</span>
-          <el-button size="small" @click="downloadHomeStylePackExample" :loading="homeStylePackGenerating">
+          <span class="pack-file-name">{{
+            homeStylePackFile?.name || "未选择文件"
+          }}</span>
+          <el-button
+            size="small"
+            @click="downloadHomeStylePackExample"
+            :loading="homeStylePackGenerating"
+          >
             <el-icon><Download /></el-icon>
             当前示例
           </el-button>
-          <el-button size="small" @click="validateHomeStylePack" :loading="homeStylePackValidating" :disabled="!homeStylePackFile">
+          <el-button
+            size="small"
+            @click="validateHomeStylePack"
+            :loading="homeStylePackValidating"
+            :disabled="!homeStylePackFile"
+          >
             筛查
           </el-button>
-          <el-button size="small" type="primary" @click="applyHomeStylePack" :loading="homeStylePackApplying" :disabled="!homeStylePackFile">
+          <el-button
+            size="small"
+            type="primary"
+            @click="applyHomeStylePack"
+            :loading="homeStylePackApplying"
+            :disabled="!homeStylePackFile"
+          >
             应用
           </el-button>
         </div>
@@ -362,13 +601,21 @@
             >
               <div class="source-pack-option">
                 <span>{{ sourceStylePackLabel(pack) }}</span>
-                <el-tag :type="pack.validation.valid ? 'success' : 'danger'" size="small" effect="plain">
-                  {{ pack.validation.valid ? '可应用' : '需修复' }}
+                <el-tag
+                  :type="pack.validation.valid ? 'success' : 'danger'"
+                  size="small"
+                  effect="plain"
+                >
+                  {{ pack.validation.valid ? "可应用" : "需修复" }}
                 </el-tag>
               </div>
             </el-option>
           </el-select>
-          <el-button size="small" @click="loadHomeSourceStylePacks" :loading="homeSourceStylePackLoading">
+          <el-button
+            size="small"
+            @click="loadHomeSourceStylePacks"
+            :loading="homeSourceStylePackLoading"
+          >
             刷新列表
           </el-button>
           <el-button
@@ -381,7 +628,13 @@
           >
             应用源码目录
           </el-button>
-          <el-button size="small" type="warning" plain @click="rollbackHomeStylePack" :loading="homeStylePackRollbacking">
+          <el-button
+            size="small"
+            type="warning"
+            plain
+            @click="rollbackHomeStylePack"
+            :loading="homeStylePackRollbacking"
+          >
             回滚
           </el-button>
         </div>
@@ -424,7 +677,11 @@
             :max="1000000"
             controls-position="right"
           />
-          <el-select v-else-if="field.type === 'select'" v-model="configForm[field.key]" style="width: 100%">
+          <el-select
+            v-else-if="field.type === 'select'"
+            v-model="configForm[field.key]"
+            style="width: 100%"
+          >
             <el-option
               v-for="option in field.options || []"
               :key="String(option.value)"
@@ -439,79 +696,247 @@
             :rows="field.type === 'json' ? 6 : 3"
           />
           <el-input v-else v-model="configForm[field.key]" />
-          <p v-if="field.description" class="field-description">{{ field.description }}</p>
+          <p v-if="field.description" class="field-description">
+            {{ field.description }}
+          </p>
         </el-form-item>
       </el-form>
-      <el-empty v-if="!configLoading && configFields.length === 0" description="该插件没有声明可编辑配置" />
+      <el-empty
+        v-if="!configLoading && configFields.length === 0"
+        description="该插件没有声明可编辑配置"
+      />
       <template #footer>
         <el-button @click="configDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveConfig" :loading="configSaving" :disabled="configFields.length === 0">
+        <el-button
+          type="primary"
+          @click="saveConfig"
+          :loading="configSaving"
+          :disabled="configFields.length === 0"
+        >
           保存配置
         </el-button>
       </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="authorizationDialogVisible"
+      :title="`${selectedPluginName} · 三层授权`"
+      width="900px"
+    >
+      <el-alert
+        title="Manifest 只是能力申请；管理员授予后，个人数据能力仍需用户逐项同意。撤销后下一次敏感调用立即拒绝。"
+        type="info"
+        show-icon
+        :closable="false"
+      />
+      <el-table
+        :data="authorizationRows"
+        v-loading="authorizationLoading"
+        border
+        stripe
+        style="margin-top: 16px"
+      >
+        <el-table-column
+          prop="capability_code"
+          label="Capability"
+          min-width="210"
+        />
+        <el-table-column prop="purpose" label="用途" min-width="220" />
+        <el-table-column prop="risk_level" label="风险" width="80" />
+        <el-table-column label="当前决策" width="100">
+          <template #default="{ row }"
+            ><el-tag>{{ row.grant?.status || "未授予" }}</el-tag></template
+          >
+        </el-table-column>
+        <el-table-column label="操作" width="210">
+          <template #default="{ row }">
+            <el-button
+              size="small"
+              type="success"
+              @click="setAuthorizationGrant(row, 'granted')"
+              >授予</el-button
+            >
+            <el-button
+              size="small"
+              type="warning"
+              @click="setAuthorizationGrant(row, 'denied')"
+              >拒绝</el-button
+            >
+            <el-button
+              size="small"
+              type="danger"
+              plain
+              @click="setAuthorizationGrant(row, 'revoked')"
+              >撤销</el-button
+            >
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-input
+        v-model="authorizationReason"
+        type="textarea"
+        :rows="2"
+        maxlength="500"
+        show-word-limit
+        placeholder="必填：记录授予、拒绝或撤销原因"
+        style="margin-top: 16px"
+      />
+      <h3>最近授权判定</h3>
+      <el-table :data="authorizationDecisions" size="small" max-height="240">
+        <el-table-column prop="created_at" label="时间" width="170" />
+        <el-table-column
+          prop="capability_code"
+          label="Capability"
+          min-width="190"
+        />
+        <el-table-column prop="outcome" label="结果" width="80" />
+        <el-table-column prop="reason_code" label="原因码" min-width="210" />
+        <el-table-column
+          prop="trace_id"
+          label="Trace"
+          min-width="180"
+          show-overflow-tooltip
+        />
+      </el-table>
+      <h3>系统 Secret</h3>
+      <el-alert
+        title="Secret 由宿主加密保存，保存后只显示掩码；再次保存同名 Secret 即完成轮换。"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+      <div class="secret-editor">
+        <el-input
+          v-model="systemSecretName"
+          maxlength="128"
+          placeholder="名称，例如 SMTP_PASSWORD"
+        />
+        <el-input
+          v-model="systemSecretValue"
+          type="password"
+          show-password
+          maxlength="65536"
+          placeholder="Secret 值（1～65536 字节）"
+        />
+        <el-button
+          type="primary"
+          :loading="secretSaving"
+          @click="saveSystemSecret"
+        >
+          保存/轮换
+        </el-button>
+      </div>
+      <el-table
+        :data="systemSecrets"
+        size="small"
+        empty-text="尚未配置系统 Secret"
+      >
+        <el-table-column prop="secret_name" label="名称" min-width="190" />
+        <el-table-column prop="masked_value" label="值" width="120" />
+        <el-table-column prop="key_version" label="密钥版本" width="110" />
+        <el-table-column prop="created_at" label="更新时间" min-width="170" />
+        <el-table-column label="操作" width="90">
+          <template #default="{ row }">
+            <el-button
+              type="danger"
+              link
+              @click="revokeSystemSecret(row.secret_name)"
+              >撤销</el-button
+            >
+          </template>
+        </el-table-column>
+      </el-table>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { UploadFile } from 'element-plus'
-import { Clock, Connection, Document, Download, Refresh, Setting, Upload } from '@element-plus/icons-vue'
-import { homeStylePackApi } from '@/modules/appearance/api'
-import { pluginApi } from '@/modules/plugins/api'
+import { computed, ref, onMounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import type { UploadFile } from "element-plus";
+import {
+  Clock,
+  Connection,
+  Document,
+  Download,
+  Refresh,
+  Setting,
+  Upload,
+} from "@element-plus/icons-vue";
+import { homeStylePackApi } from "@/modules/appearance/api";
+import { pluginApi } from "@/modules/plugins/api";
 
 interface SourceStylePack {
-  name: string
-  path: string
-  target?: string
-  version?: string
-  display_name?: string
-  description?: string
+  name: string;
+  path: string;
+  target?: string;
+  version?: string;
+  display_name?: string;
+  description?: string;
   validation: {
-    valid: boolean
-    errors?: string[]
-    warnings?: string[]
-  }
+    valid: boolean;
+    errors?: string[];
+    warnings?: string[];
+  };
 }
 
-const plugins = ref<any[]>([])
-const loading = ref(false)
-const importing = ref(false)
-const reloadingPluginName = ref('')
-const replaceOnImport = ref(false)
-const logDialogVisible = ref(false)
-const logsLoading = ref(false)
-const selectedPluginName = ref('')
-const pluginLogs = ref<any[]>([])
-const snapshotDialogVisible = ref(false)
-const snapshotsLoading = ref(false)
-const pluginSnapshots = ref<any[]>([])
-const rollbackSnapshotID = ref('')
-const configDialogVisible = ref(false)
-const configLoading = ref(false)
-const configSaving = ref(false)
-const configFields = ref<any[]>([])
-const configForm = ref<Record<string, any>>({})
-const configDescription = ref('')
-const homeStylePackInput = ref<HTMLInputElement | null>(null)
-const homeStylePackFile = ref<File | null>(null)
-const homeStylePackValidation = ref<any | null>(null)
-const homeStylePackGenerating = ref(false)
-const homeStylePackValidating = ref(false)
-const homeStylePackApplying = ref(false)
-const homeStylePackRollbacking = ref(false)
-const homeSourceStylePackName = ref('campus-hero')
-const homeSourceStylePackApplying = ref(false)
-const homeSourceStylePackLoading = ref(false)
-const homeSourceStylePacks = ref<SourceStylePack[]>([])
-const precheckDialogVisible = ref(false)
-const pendingImportFile = ref<File | null>(null)
-const pendingPrecheck = ref<any | null>(null)
+const plugins = ref<any[]>([]);
+const loading = ref(false);
+const importing = ref(false);
+const reloadingPluginName = ref("");
+const replaceOnImport = ref(false);
+const logDialogVisible = ref(false);
+const logsLoading = ref(false);
+const selectedPluginName = ref("");
+const pluginLogs = ref<any[]>([]);
+const snapshotDialogVisible = ref(false);
+const snapshotsLoading = ref(false);
+const pluginSnapshots = ref<any[]>([]);
+const rollbackSnapshotID = ref("");
+const configDialogVisible = ref(false);
+const configLoading = ref(false);
+const configSaving = ref(false);
+const configFields = ref<any[]>([]);
+const configForm = ref<Record<string, any>>({});
+const configDescription = ref("");
+const authorizationDialogVisible = ref(false);
+const authorizationLoading = ref(false);
+const authorizationOverview = ref<any>({ declarations: [], admin_grants: [] });
+const authorizationDecisions = ref<any[]>([]);
+const authorizationReason = ref("");
+const systemSecrets = ref<any[]>([]);
+const systemSecretName = ref("");
+const systemSecretValue = ref("");
+const secretSaving = ref(false);
+const authorizationRows = computed(() =>
+  (authorizationOverview.value.declarations || []).map((declaration: any) => ({
+    ...declaration,
+    grant: (authorizationOverview.value.admin_grants || []).find(
+      (grant: any) => grant.capability_code === declaration.capability_code,
+    ),
+  })),
+);
+const homeStylePackInput = ref<HTMLInputElement | null>(null);
+const homeStylePackFile = ref<File | null>(null);
+const homeStylePackValidation = ref<any | null>(null);
+const homeStylePackGenerating = ref(false);
+const homeStylePackValidating = ref(false);
+const homeStylePackApplying = ref(false);
+const homeStylePackRollbacking = ref(false);
+const homeSourceStylePackName = ref("campus-hero");
+const homeSourceStylePackApplying = ref(false);
+const homeSourceStylePackLoading = ref(false);
+const homeSourceStylePacks = ref<SourceStylePack[]>([]);
+const precheckDialogVisible = ref(false);
+const pendingImportFile = ref<File | null>(null);
+const pendingPrecheck = ref<any | null>(null);
 
-const selectedHomeSourceStylePack = computed(() =>
-  homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value) || null,
-)
+const selectedHomeSourceStylePack = computed(
+  () =>
+    homeSourceStylePacks.value.find(
+      (pack) => pack.name === homeSourceStylePackName.value,
+    ) || null,
+);
 
 const responseItems = (payload: any): any[] => {
   const candidates = [
@@ -519,462 +944,642 @@ const responseItems = (payload: any): any[] => {
     payload?.items,
     payload?.data,
     payload,
-  ]
+  ];
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate
+    if (Array.isArray(candidate)) return candidate;
   }
-  return []
-}
+  return [];
+};
 
-const unwrap = (payload: any) => payload?.data || payload
+const unwrap = (payload: any) => payload?.data || payload;
 
 const load = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const r = (await pluginApi.list()) as any
-		plugins.value = responseItems(r).filter((item) => item?.capability_class === 'external-plugin')
+    const r = (await pluginApi.list()) as any;
+    plugins.value = responseItems(r).filter(
+      (item) => item?.capability_class === "external-plugin",
+    );
   } catch {
     // 插件接口可能不可用，静默处理
-    plugins.value = []
+    plugins.value = [];
   }
-  loading.value = false
-}
+  loading.value = false;
+};
 
 const togglePlugin = async (row: any, enabled: boolean) => {
   try {
     if (enabled) {
-      const payload = unwrap(await pluginApi.enable(row.name))
-      ElMessage.success(payload?.message || (isSystemPlugin(row) ? `插件 ${row.name} 将在重启后启用` : `插件 ${row.name} 已加载`))
+      const payload = unwrap(await pluginApi.enable(row.name));
+      ElMessage.success(
+        payload?.message ||
+          (isSystemPlugin(row)
+            ? `插件 ${row.name} 将在重启后启用`
+            : `插件 ${row.name} 已加载`),
+      );
     } else {
-      const payload = unwrap(await pluginApi.disable(row.name))
-      ElMessage.success(payload?.message || (isSystemPlugin(row) ? `插件 ${row.name} 将在重启后停用` : `插件 ${row.name} 已停止`))
+      const payload = unwrap(await pluginApi.disable(row.name));
+      ElMessage.success(
+        payload?.message ||
+          (isSystemPlugin(row)
+            ? `插件 ${row.name} 将在重启后停用`
+            : `插件 ${row.name} 已停止`),
+      );
     }
-    await load()
+    await load();
   } catch {
-    ElMessage.error('操作失败')
+    ElMessage.error("操作失败");
   }
-}
+};
 
 const onTogglePlugin = (row: any, enabled: boolean | string | number) => {
-  togglePlugin(row, Boolean(enabled))
-}
+  togglePlugin(row, Boolean(enabled));
+};
 
 const reloadUserPlugin = async (row: any) => {
-  reloadingPluginName.value = row.name
+  reloadingPluginName.value = row.name;
   try {
-    const payload = unwrap(await pluginApi.reload(row.name))
-    ElMessage.success(payload?.message || `插件 ${row.name} 已加载`)
-    await load()
+    const payload = unwrap(await pluginApi.reload(row.name));
+    ElMessage.success(payload?.message || `插件 ${row.name} 已加载`);
+    await load();
   } catch (error: any) {
-    ElMessage.error(error?.msg || error?.message || '用户级插件加载失败')
+    ElMessage.error(error?.msg || error?.message || "用户级插件加载失败");
   } finally {
-    reloadingPluginName.value = ''
+    reloadingPluginName.value = "";
   }
-}
+};
 
 const doUninstall = async (name: string) => {
   try {
-    await pluginApi.uninstall(name)
-    ElMessage.success('插件已卸载')
-    load()
+    await pluginApi.uninstall(name);
+    ElMessage.success("插件已卸载");
+    load();
   } catch {
-    ElMessage.error('卸载失败')
+    ElMessage.error("卸载失败");
   }
-}
+};
 
 const doExport = async (row: any) => {
   try {
-    const blob = (await pluginApi.exportPackage(row.name)) as any
-    const downloadBlob = blob instanceof Blob ? blob : new Blob([blob])
-    const url = URL.createObjectURL(downloadBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${row.name}-${row.version || '0.0.0'}.campusos-plugin.tar.gz`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    ElMessage.success('插件包已导出')
+    const blob = (await pluginApi.exportPackage(row.name)) as any;
+    const downloadBlob = blob instanceof Blob ? blob : new Blob([blob]);
+    const url = URL.createObjectURL(downloadBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${row.name}-${row.version || "0.0.0"}.campusos-plugin.tar.gz`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    ElMessage.success("插件包已导出");
   } catch {
-    ElMessage.error('导出插件包失败')
+    ElMessage.error("导出插件包失败");
   }
-}
+};
 
 const openSnapshots = async (name: string) => {
-  selectedPluginName.value = name
-  snapshotDialogVisible.value = true
-  snapshotsLoading.value = true
+  selectedPluginName.value = name;
+  snapshotDialogVisible.value = true;
+  snapshotsLoading.value = true;
   try {
-    pluginSnapshots.value = responseItems(await pluginApi.snapshots(name))
+    pluginSnapshots.value = responseItems(await pluginApi.snapshots(name));
   } catch (error: any) {
-    pluginSnapshots.value = []
-    ElMessage.error(error?.msg || error?.message || '加载版本快照失败')
+    pluginSnapshots.value = [];
+    ElMessage.error(error?.msg || error?.message || "加载版本快照失败");
   } finally {
-    snapshotsLoading.value = false
+    snapshotsLoading.value = false;
   }
-}
+};
 
 const rollbackSnapshot = async (snapshotID: string) => {
-  rollbackSnapshotID.value = snapshotID
+  rollbackSnapshotID.value = snapshotID;
   try {
-    await pluginApi.rollback(selectedPluginName.value, snapshotID)
-    ElMessage.success('插件版本已恢复')
-    await openSnapshots(selectedPluginName.value)
-    await load()
+    await pluginApi.rollback(selectedPluginName.value, snapshotID);
+    ElMessage.success("插件版本已恢复");
+    await openSnapshots(selectedPluginName.value);
+    await load();
   } catch (error: any) {
-    ElMessage.error(error?.msg || error?.message || '插件版本恢复失败')
+    ElMessage.error(error?.msg || error?.message || "插件版本恢复失败");
   } finally {
-    rollbackSnapshotID.value = ''
+    rollbackSnapshotID.value = "";
   }
-}
+};
 
 const handleImportChange = async (uploadFile: UploadFile) => {
-  if (!uploadFile.raw) return
-  importing.value = true
+  if (!uploadFile.raw) return;
+  importing.value = true;
   try {
-    const precheckRes = (await pluginApi.precheckPackage(uploadFile.raw)) as any
-    const precheck = precheckRes?.data || precheckRes
-    pendingImportFile.value = uploadFile.raw
-    pendingPrecheck.value = precheck
-    precheckDialogVisible.value = true
+    const precheckRes = (await pluginApi.precheckPackage(
+      uploadFile.raw,
+    )) as any;
+    const precheck = precheckRes?.data || precheckRes;
+    pendingImportFile.value = uploadFile.raw;
+    pendingPrecheck.value = precheck;
+    precheckDialogVisible.value = true;
     if (precheck?.allowed === false) {
-      ElMessage.error(`插件包预检失败：${(precheck.errors || []).join('；') || '未知错误'}`)
-      return
+      ElMessage.error(
+        `插件包预检失败：${(precheck.errors || []).join("；") || "未知错误"}`,
+      );
+      return;
     }
     if (precheck?.conflict && !replaceOnImport.value) {
-      ElMessage.warning('检测到同名插件，请开启“覆盖”后再导入')
-      return
+      ElMessage.warning("检测到同名插件，请开启“覆盖”后再导入");
+      return;
     }
   } catch (error: any) {
-    ElMessage.error(error?.message || '插件包预检失败')
+    ElMessage.error(error?.message || "插件包预检失败");
   } finally {
-    importing.value = false
+    importing.value = false;
   }
-}
+};
 
 const clearPendingImport = () => {
-  precheckDialogVisible.value = false
-  pendingImportFile.value = null
-  pendingPrecheck.value = null
-}
+  precheckDialogVisible.value = false;
+  pendingImportFile.value = null;
+  pendingPrecheck.value = null;
+};
 
 const confirmImport = async () => {
-  if (!pendingImportFile.value || !pendingPrecheck.value) return
-  importing.value = true
+  if (!pendingImportFile.value || !pendingPrecheck.value) return;
+  importing.value = true;
   try {
-    const payload = unwrap(await pluginApi.importPackage(pendingImportFile.value, replaceOnImport.value))
-    const suffix = payload?.hot_reloaded ? '，已热更新并重新加载' : ''
-    ElMessage.success(`插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ''}${suffix}`)
-    clearPendingImport()
-    await load()
+    const payload = unwrap(
+      await pluginApi.importPackage(
+        pendingImportFile.value,
+        replaceOnImport.value,
+      ),
+    );
+    const suffix = payload?.hot_reloaded ? "，已热更新并重新加载" : "";
+    ElMessage.success(
+      `插件包已导入${pendingPrecheck.value?.checksum ? `：${pendingPrecheck.value.checksum}` : ""}${suffix}`,
+    );
+    clearPendingImport();
+    await load();
   } catch (error: any) {
-    ElMessage.error(error?.msg || error?.message || '导入插件包失败')
+    ElMessage.error(error?.msg || error?.message || "导入插件包失败");
   } finally {
-    importing.value = false
+    importing.value = false;
   }
-}
+};
 
 const showLogs = async (name: string) => {
-  selectedPluginName.value = name
-  logDialogVisible.value = true
-  await loadLogs()
-}
+  selectedPluginName.value = name;
+  logDialogVisible.value = true;
+  await loadLogs();
+};
+
+const openAuthorization = async (name: string) => {
+  selectedPluginName.value = name;
+  authorizationDialogVisible.value = true;
+  authorizationLoading.value = true;
+  try {
+    await pluginApi.syncAuthorization(name);
+    authorizationOverview.value =
+      unwrap(await pluginApi.authorization(name)) || {};
+    authorizationDecisions.value = responseItems(
+      await pluginApi.authorizationDecisions(name),
+    );
+    systemSecrets.value = responseItems(await pluginApi.systemSecrets(name));
+  } catch (error: any) {
+    ElMessage.error(error?.message || "加载插件授权信息失败");
+  } finally {
+    authorizationLoading.value = false;
+  }
+};
+
+const saveSystemSecret = async () => {
+  const name = systemSecretName.value.trim();
+  if (!/^[A-Za-z][A-Za-z0-9_.-]{0,127}$/.test(name)) {
+    ElMessage.warning(
+      "Secret 名称需以字母开头，只能包含字母、数字、点、下划线和连字符",
+    );
+    return;
+  }
+  if (!systemSecretValue.value) {
+    ElMessage.warning("请输入 Secret 值");
+    return;
+  }
+  secretSaving.value = true;
+  try {
+    await pluginApi.setSystemSecret(
+      selectedPluginName.value,
+      name,
+      systemSecretValue.value,
+    );
+    systemSecretValue.value = "";
+    systemSecrets.value = responseItems(
+      await pluginApi.systemSecrets(selectedPluginName.value),
+    );
+    ElMessage.success("Secret 已加密保存；页面不会回显明文");
+  } catch (error: any) {
+    ElMessage.error(error?.message || "保存 Secret 失败");
+  } finally {
+    secretSaving.value = false;
+  }
+};
+
+const revokeSystemSecret = async (name: string) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认撤销系统 Secret“${name}”？使用它的插件调用将失败。`,
+      "撤销 Secret",
+      {
+        type: "warning",
+        confirmButtonText: "确认撤销",
+        cancelButtonText: "取消",
+      },
+    );
+    await pluginApi.revokeSystemSecret(selectedPluginName.value, name);
+    systemSecrets.value = responseItems(
+      await pluginApi.systemSecrets(selectedPluginName.value),
+    );
+    ElMessage.success("Secret 已撤销");
+  } catch (error: any) {
+    if (error !== "cancel" && error !== "close")
+      ElMessage.error(error?.message || "撤销 Secret 失败");
+  }
+};
+
+const setAuthorizationGrant = async (
+  row: any,
+  status: "granted" | "denied" | "revoked",
+) => {
+  const reason = authorizationReason.value.trim();
+  if (!reason) {
+    ElMessage.warning("请先填写操作原因");
+    return;
+  }
+  try {
+    await pluginApi.setCapabilityGrant(
+      selectedPluginName.value,
+      authorizationOverview.value.version.id,
+      row.capability_code,
+      status,
+      reason,
+      row.resource_scope || {},
+    );
+    ElMessage.success("授权决策已保存并立即生效");
+    await openAuthorization(selectedPluginName.value);
+  } catch (error: any) {
+    ElMessage.error(error?.message || "保存授权决策失败");
+  }
+};
 
 const openConfig = async (row: any) => {
-  selectedPluginName.value = row.name
-  configDialogVisible.value = true
-  configLoading.value = true
-  configFields.value = []
-  configForm.value = {}
-  configDescription.value = ''
-  homeStylePackFile.value = null
-  homeStylePackValidation.value = null
+  selectedPluginName.value = row.name;
+  configDialogVisible.value = true;
+  configLoading.value = true;
+  configFields.value = [];
+  configForm.value = {};
+  configDescription.value = "";
+  homeStylePackFile.value = null;
+  homeStylePackValidation.value = null;
   try {
-    const r = (await pluginApi.get(row.name)) as any
-    const detail = r?.data || r
-    const fields = detail?.config_schema?.fields || []
-    const config = detail?.config || {}
-    configDescription.value = detail?.description || ''
-    configFields.value = fields
-    const next: Record<string, any> = {}
+    const r = (await pluginApi.get(row.name)) as any;
+    const detail = r?.data || r;
+    const fields = detail?.config_schema?.fields || [];
+    const config = detail?.config || {};
+    configDescription.value = detail?.description || "";
+    configFields.value = fields;
+    const next: Record<string, any> = {};
     for (const field of fields) {
-      const value = config[field.key] ?? field.default ?? defaultValueForField(field)
-      next[field.key] = normalizeFieldValue(field, value)
+      const value =
+        config[field.key] ?? field.default ?? defaultValueForField(field);
+      next[field.key] = normalizeFieldValue(field, value);
     }
-    configForm.value = next
-    if (row.name === 'homepage-customizer') {
-      await loadHomeSourceStylePacks(false)
-      const active = String(config.active_style_pack || '').trim()
-      if (active && homeSourceStylePacks.value.some((pack) => pack.name === active && pack.validation.valid)) {
-        homeSourceStylePackName.value = active
+    configForm.value = next;
+    if (row.name === "homepage-customizer") {
+      await loadHomeSourceStylePacks(false);
+      const active = String(config.active_style_pack || "").trim();
+      if (
+        active &&
+        homeSourceStylePacks.value.some(
+          (pack) => pack.name === active && pack.validation.valid,
+        )
+      ) {
+        homeSourceStylePackName.value = active;
       } else {
-        homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+        homeSourceStylePackName.value =
+          homeSourceStylePacks.value.find((pack) => pack.validation.valid)
+            ?.name || "";
       }
     }
   } catch (error: any) {
-    ElMessage.error(error?.msg || '加载插件配置失败')
+    ElMessage.error(error?.msg || "加载插件配置失败");
   } finally {
-    configLoading.value = false
+    configLoading.value = false;
   }
-}
+};
 
 const chooseHomeStylePack = () => {
-  homeStylePackInput.value?.click()
-}
+  homeStylePackInput.value?.click();
+};
 
 const selectHomeStylePack = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  homeStylePackFile.value = input.files?.[0] || null
-  homeStylePackValidation.value = null
-}
+  const input = event.target as HTMLInputElement;
+  homeStylePackFile.value = input.files?.[0] || null;
+  homeStylePackValidation.value = null;
+};
 
 const validateHomeStylePack = async () => {
-  if (!homeStylePackFile.value) return
-  homeStylePackValidating.value = true
+  if (!homeStylePackFile.value) return;
+  homeStylePackValidating.value = true;
   try {
-    const r = (await homeStylePackApi.validate(homeStylePackFile.value)) as any
-    const payload = r?.data || r
-    homeStylePackValidation.value = payload.validation
+    const r = (await homeStylePackApi.validate(homeStylePackFile.value)) as any;
+    const payload = r?.data || r;
+    homeStylePackValidation.value = payload.validation;
     if (payload.validation?.valid) {
-      ElMessage.success(`筛查通过：${payload.package?.manifest?.name || homeStylePackFile.value.name}`)
+      ElMessage.success(
+        `筛查通过：${payload.package?.manifest?.name || homeStylePackFile.value.name}`,
+      );
     } else {
-      ElMessage.warning('首页拓展风格包筛查失败')
+      ElMessage.warning("首页拓展风格包筛查失败");
     }
   } catch (error: any) {
-    ElMessage.error(error?.msg || '首页拓展风格包筛查失败')
+    ElMessage.error(error?.msg || "首页拓展风格包筛查失败");
   } finally {
-    homeStylePackValidating.value = false
+    homeStylePackValidating.value = false;
   }
-}
+};
 
 const applyHomeStylePack = async () => {
-  if (!homeStylePackFile.value) return
-  homeStylePackApplying.value = true
+  if (!homeStylePackFile.value) return;
+  homeStylePackApplying.value = true;
   try {
-    await homeStylePackApi.apply(homeStylePackFile.value)
-    ElMessage.success('首页拓展风格包已应用')
-    await openConfig({ name: 'homepage-customizer' })
+    await homeStylePackApi.apply(homeStylePackFile.value);
+    ElMessage.success("首页拓展风格包已应用");
+    await openConfig({ name: "homepage-customizer" });
   } catch (error: any) {
-    ElMessage.error(error?.msg || '应用首页拓展风格包失败')
+    ElMessage.error(error?.msg || "应用首页拓展风格包失败");
   } finally {
-    homeStylePackApplying.value = false
+    homeStylePackApplying.value = false;
   }
-}
+};
 
 const loadHomeSourceStylePacks = async (showMessage = true) => {
-  homeSourceStylePackLoading.value = true
+  homeSourceStylePackLoading.value = true;
   try {
-    const r = (await homeStylePackApi.sources()) as any
-    const payload = r?.data || r
-    homeSourceStylePacks.value = payload?.items || []
-    const current = homeSourceStylePacks.value.find((pack) => pack.name === homeSourceStylePackName.value && pack.validation.valid)
+    const r = (await homeStylePackApi.sources()) as any;
+    const payload = r?.data || r;
+    homeSourceStylePacks.value = payload?.items || [];
+    const current = homeSourceStylePacks.value.find(
+      (pack) =>
+        pack.name === homeSourceStylePackName.value && pack.validation.valid,
+    );
     if (!current) {
-      homeSourceStylePackName.value = homeSourceStylePacks.value.find((pack) => pack.validation.valid)?.name || ''
+      homeSourceStylePackName.value =
+        homeSourceStylePacks.value.find((pack) => pack.validation.valid)
+          ?.name || "";
     }
     if (showMessage) {
-      ElMessage.success('源码目录风格包列表已刷新')
+      ElMessage.success("源码目录风格包列表已刷新");
     }
   } catch (error: any) {
-    homeSourceStylePacks.value = []
-    homeSourceStylePackName.value = ''
+    homeSourceStylePacks.value = [];
+    homeSourceStylePackName.value = "";
     if (showMessage) {
-      ElMessage.error(error?.msg || '加载源码目录风格包失败')
+      ElMessage.error(error?.msg || "加载源码目录风格包失败");
     }
   } finally {
-    homeSourceStylePackLoading.value = false
+    homeSourceStylePackLoading.value = false;
   }
-}
+};
 
 const sourceStylePackLabel = (pack: SourceStylePack) => {
-  const title = pack.display_name || pack.name
-  return `${title} (${pack.name}${pack.version ? ` v${pack.version}` : ''})`
-}
+  const title = pack.display_name || pack.name;
+  return `${title} (${pack.name}${pack.version ? ` v${pack.version}` : ""})`;
+};
 
 const applyHomeSourceStylePack = async () => {
-  if (!selectedHomeSourceStylePack.value?.validation.valid) return
-  homeSourceStylePackApplying.value = true
+  if (!selectedHomeSourceStylePack.value?.validation.valid) return;
+  homeSourceStylePackApplying.value = true;
   try {
-    await homeStylePackApi.applySource(homeSourceStylePackName.value)
-    ElMessage.success('首页源码目录风格包已应用')
-    await openConfig({ name: 'homepage-customizer' })
+    await homeStylePackApi.applySource(homeSourceStylePackName.value);
+    ElMessage.success("首页源码目录风格包已应用");
+    await openConfig({ name: "homepage-customizer" });
   } catch (error: any) {
-    ElMessage.error(error?.msg || '应用首页源码目录风格包失败')
+    ElMessage.error(error?.msg || "应用首页源码目录风格包失败");
   } finally {
-    homeSourceStylePackApplying.value = false
+    homeSourceStylePackApplying.value = false;
   }
-}
+};
 
 const rollbackHomeStylePack = async () => {
-  homeStylePackRollbacking.value = true
+  homeStylePackRollbacking.value = true;
   try {
-    await homeStylePackApi.rollback()
-    ElMessage.success('首页风格已回滚到上一份配置')
-    await openConfig({ name: 'homepage-customizer' })
+    await homeStylePackApi.rollback();
+    ElMessage.success("首页风格已回滚到上一份配置");
+    await openConfig({ name: "homepage-customizer" });
   } catch (error: any) {
-    ElMessage.error(error?.msg || '首页风格回滚失败')
+    ElMessage.error(error?.msg || "首页风格回滚失败");
   } finally {
-    homeStylePackRollbacking.value = false
+    homeStylePackRollbacking.value = false;
   }
-}
+};
 
 const downloadHomeStylePackExample = async () => {
-  homeStylePackGenerating.value = true
+  homeStylePackGenerating.value = true;
   try {
-    const blob = await homeStylePackApi.exampleZip()
-    downloadBlob(blob as Blob, 'homepage-style-pack.zip', 'application/zip')
-    ElMessage.success('首页示例拓展风格包已生成')
+    const blob = await homeStylePackApi.exampleZip();
+    downloadBlob(blob as Blob, "homepage-style-pack.zip", "application/zip");
+    ElMessage.success("首页示例拓展风格包已生成");
   } catch (error: any) {
-    ElMessage.error(error?.msg || '生成首页示例失败')
+    ElMessage.error(error?.msg || "生成首页示例失败");
   } finally {
-    homeStylePackGenerating.value = false
+    homeStylePackGenerating.value = false;
   }
-}
+};
 
 const saveConfig = async () => {
-  if (!selectedPluginName.value) return
-  configSaving.value = true
+  if (!selectedPluginName.value) return;
+  configSaving.value = true;
   try {
-    const payload: Record<string, any> = {}
+    const payload: Record<string, any> = {};
     for (const field of configFields.value) {
-      payload[field.key] = normalizeFieldValue(field, configForm.value[field.key])
+      payload[field.key] = normalizeFieldValue(
+        field,
+        configForm.value[field.key],
+      );
     }
-    await pluginApi.updateConfig(selectedPluginName.value, payload)
-    ElMessage.success('插件配置已保存')
-    configDialogVisible.value = false
-    await load()
+    await pluginApi.updateConfig(selectedPluginName.value, payload);
+    ElMessage.success("插件配置已保存");
+    configDialogVisible.value = false;
+    await load();
   } catch (error: any) {
-    ElMessage.error(error?.msg || '保存插件配置失败')
+    ElMessage.error(error?.msg || "保存插件配置失败");
   } finally {
-    configSaving.value = false
+    configSaving.value = false;
   }
-}
+};
 
 const defaultValueForField = (field: any) => {
-  if (field.type === 'boolean') return false
-  if (field.type === 'number') return 0
-  return ''
-}
+  if (field.type === "boolean") return false;
+  if (field.type === "number") return 0;
+  return "";
+};
 
 const normalizeFieldValue = (field: any, value: any) => {
-  if (field.type === 'boolean') {
-    if (typeof value === 'string') return ['true', '1', 'yes', 'on'].includes(value.trim().toLowerCase())
-    return Boolean(value)
+  if (field.type === "boolean") {
+    if (typeof value === "string")
+      return ["true", "1", "yes", "on"].includes(value.trim().toLowerCase());
+    return Boolean(value);
   }
-  if (field.type === 'number') {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
+  if (field.type === "number") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
-  return value ?? ''
-}
+  return value ?? "";
+};
 
 const loadLogs = async () => {
-  if (!selectedPluginName.value) return
-  logsLoading.value = true
+  if (!selectedPluginName.value) return;
+  logsLoading.value = true;
   try {
-    const r = (await pluginApi.logs(selectedPluginName.value, { limit: 100 })) as any
-    pluginLogs.value = responseItems(r)
+    const r = (await pluginApi.logs(selectedPluginName.value, {
+      limit: 100,
+    })) as any;
+    pluginLogs.value = responseItems(r);
   } catch {
-    pluginLogs.value = []
-    ElMessage.error('加载插件日志失败')
+    pluginLogs.value = [];
+    ElMessage.error("加载插件日志失败");
   }
-  logsLoading.value = false
-}
+  logsLoading.value = false;
+};
 
-const isSystemPlugin = (row: any) => row?.scope === 'system'
-const requiresRestart = (row: any) => (row?.backend_activation_mode || row?.activation_mode) === 'restart'
-const canReload = (row: any) => !requiresRestart(row)
-const activationModeLabel = (mode?: string) => ({ restart: '整站重启', 'plugin-restart': '插件重启', hot: '热更新' } as Record<string, string>)[mode || ''] || '兼容默认'
-const stateTag = (state?: string) => state === 'running' ? 'success' : state === 'error' ? 'danger' : state === 'pending_restart' ? 'warning' : 'info'
-const healthTag = (health?: string) => health === 'healthy' ? 'success' : health === 'degraded' ? 'warning' : health === 'unavailable' ? 'danger' : 'info'
+const isSystemPlugin = (row: any) => row?.scope === "system";
+const requiresRestart = (row: any) =>
+  (row?.backend_activation_mode || row?.activation_mode) === "restart";
+const canReload = (row: any) => !requiresRestart(row);
+const activationModeLabel = (mode?: string) =>
+  (
+    ({
+      restart: "整站重启",
+      "plugin-restart": "插件重启",
+      hot: "热更新",
+    }) as Record<string, string>
+  )[mode || ""] || "兼容默认";
+const stateTag = (state?: string) =>
+  state === "running"
+    ? "success"
+    : state === "error"
+      ? "danger"
+      : state === "pending_restart"
+        ? "warning"
+        : "info";
+const healthTag = (health?: string) =>
+  health === "healthy"
+    ? "success"
+    : health === "degraded"
+      ? "warning"
+      : health === "unavailable"
+        ? "danger"
+        : "info";
 
 const isPluginEnabled = (row: any) => {
-  if (typeof row?.desired_enabled === 'boolean') return row.desired_enabled
-  return row?.status === 'enabled' || row?.status === 'running'
-}
+  if (typeof row?.desired_enabled === "boolean") return row.desired_enabled;
+  return row?.status === "enabled" || row?.status === "running";
+};
 
-const scopeLabel = (scope?: string) => scope === 'system' ? '系统级' : '用户级'
+const scopeLabel = (scope?: string) =>
+  scope === "system" ? "系统级" : "用户级";
 
 const statusLabel = (row: any) => {
-  if (row?.pending_restart) return row?.desired_enabled ? '待重启启用' : '待重启停用'
-  const status = row?.status
-  if (status === 'enabled' || status === 'running') return '已启用'
-  if (status === 'error') return '异常'
-  if (status === 'installed') return '未启用'
-  if (status === 'stopped') return '已禁用'
-  return status || '未知'
-}
+  if (row?.pending_restart)
+    return row?.desired_enabled ? "待重启启用" : "待重启停用";
+  const status = row?.status;
+  if (status === "enabled" || status === "running") return "已启用";
+  if (status === "error") return "异常";
+  if (status === "installed") return "未启用";
+  if (status === "stopped") return "已禁用";
+  return status || "未知";
+};
 
 const statusTag = (row: any) => {
-  if (row?.pending_restart) return 'warning'
-  const status = row?.status
-  if (status === 'enabled' || status === 'running') return 'success'
-  if (status === 'error') return 'danger'
-  if (status === 'installed') return 'info'
-  return 'warning'
-}
+  if (row?.pending_restart) return "warning";
+  const status = row?.status;
+  if (status === "enabled" || status === "running") return "success";
+  if (status === "error") return "danger";
+  if (status === "installed") return "info";
+  return "warning";
+};
 
 const logLevelTag = (level: string) => {
-  if (level === 'error') return 'danger'
-  if (level === 'warn') return 'warning'
-  if (level === 'info') return 'success'
-  return 'info'
-}
+  if (level === "error") return "danger";
+  if (level === "warn") return "warning";
+  if (level === "info") return "success";
+  return "info";
+};
 
 const riskTag = (level: string) => {
-  if (level === 'high') return 'danger'
-  if (level === 'medium') return 'warning'
-  if (level === 'low') return 'success'
-  return 'info'
-}
+  if (level === "high") return "danger";
+  if (level === "medium") return "warning";
+  if (level === "low") return "success";
+  return "info";
+};
 
 const riskLabel = (level: string) => {
-  if (level === 'high') return '高风险'
-  if (level === 'medium') return '中风险'
-  if (level === 'low') return '低风险'
-  return '未知'
-}
+  if (level === "high") return "高风险";
+  if (level === "medium") return "中风险";
+  if (level === "low") return "低风险";
+  return "未知";
+};
 
-const signatureLabel = (status: string) => ({ verified: '已验证', unsigned: '未签名', untrusted: '签名者未受信', invalid: '签名无效' } as Record<string, string>)[status] || status || '未知'
-const signatureTag = (status: string) => status === 'verified' ? 'success' : status === 'invalid' ? 'danger' : 'warning'
+const signatureLabel = (status: string) =>
+  (
+    ({
+      verified: "已验证",
+      unsigned: "未签名",
+      untrusted: "签名者未受信",
+      invalid: "签名无效",
+    }) as Record<string, string>
+  )[status] ||
+  status ||
+  "未知";
+const signatureTag = (status: string) =>
+  status === "verified"
+    ? "success"
+    : status === "invalid"
+      ? "danger"
+      : "warning";
 
 const versionChangeLabel = (change: string) => {
-  if (change === 'new') return '新安装'
-  if (change === 'upgrade') return '升级'
-  if (change === 'downgrade') return '降级'
-  if (change === 'same') return '同版本'
-  return '未知'
-}
+  if (change === "new") return "新安装";
+  if (change === "upgrade") return "升级";
+  if (change === "downgrade") return "降级";
+  if (change === "same") return "同版本";
+  return "未知";
+};
 
 const formatTime = (value: string) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString()
-}
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
 
 const formatMetadata = (metadata: any) => {
-  if (!metadata) return '无'
-  if (typeof metadata === 'string') {
+  if (!metadata) return "无";
+  if (typeof metadata === "string") {
     try {
-      return JSON.stringify(JSON.parse(metadata), null, 2)
+      return JSON.stringify(JSON.parse(metadata), null, 2);
     } catch {
-      return metadata
+      return metadata;
     }
   }
-  return JSON.stringify(metadata, null, 2)
-}
+  return JSON.stringify(metadata, null, 2);
+};
 
 const downloadBlob = (blob: Blob, filename: string, type: string) => {
-  const fileBlob = blob.type ? blob : new Blob([blob], { type })
-  const url = URL.createObjectURL(fileBlob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
+  const fileBlob = blob.type ? blob : new Blob([blob], { type });
+  const url = URL.createObjectURL(fileBlob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
-onMounted(load)
+onMounted(load);
 </script>
 
 <style scoped>
@@ -1000,7 +1605,12 @@ onMounted(load)
   display: flex;
   align-items: center;
 }
-.state-pair { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+.state-pair {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 
 .lifecycle-alert {
   margin-bottom: 14px;
@@ -1119,8 +1729,16 @@ onMounted(load)
   color: #a8abb2;
 }
 
+.secret-editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(260px, 1.3fr) auto;
+  gap: 10px;
+  margin: 14px 0;
+}
+
 @media (max-width: 720px) {
-  .style-pack-source-row {
+  .style-pack-source-row,
+  .secret-editor {
     grid-template-columns: 1fr;
   }
 }

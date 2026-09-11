@@ -206,6 +206,11 @@ type EventRegistry struct {
 	runtimes      *RuntimeRegistry
 	audit         *AuditLogService
 	lifecycle     *LifecycleService
+	authorization *AuthorizationService
+}
+
+func (r *EventRegistry) SetAuthorizationService(service *AuthorizationService) {
+	r.authorization = service
 }
 
 func NewEventRegistry(catalog *PluginCatalog, runtimes *RuntimeRegistry, audit *AuditLogService, lifecycle *LifecycleService) *EventRegistry {

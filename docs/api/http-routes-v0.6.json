@@ -2451,6 +2451,142 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/plugin-capabilities",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_capabilities",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_capabilities",
+        "httpapi.get.api.v1.plugin_capabilities"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-authorizations/:name",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_authorizations.name",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_authorizations.name",
+        "httpapi.get.api.v1.plugin_authorizations.name"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.plugin_authorizations.name.versions.version_id.consents.capability",
+      "legacy_aliases": [
+        "http.put.api.v1.plugin_authorizations.name.versions.version_id.consents.capability",
+        "httpapi.put.api.v1.plugin_authorizations.name.versions.version_id.consents.capability"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/delegations",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_authorizations.name.versions.version_id.delegations",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_authorizations.name.versions.version_id.delegations",
+        "httpapi.post.api.v1.plugin_authorizations.name.versions.version_id.delegations"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/plugin-authorizations/:name/delegations/:delegation_id",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.delete.api.v1.plugin_authorizations.name.delegations.delegation_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_authorizations.name.delegations.delegation_id",
+        "httpapi.delete.api.v1.plugin_authorizations.name.delegations.delegation_id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-authorizations/:name/secrets",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_authorizations.name.secrets",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_authorizations.name.secrets",
+        "httpapi.get.api.v1.plugin_authorizations.name.secrets"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.put.api.v1.plugin_authorizations.name.secrets.secret",
+      "legacy_aliases": [
+        "http.put.api.v1.plugin_authorizations.name.secrets.secret",
+        "httpapi.put.api.v1.plugin_authorizations.name.secrets.secret"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.delete.api.v1.plugin_authorizations.name.secrets.secret",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_authorizations.name.secrets.secret",
+        "httpapi.delete.api.v1.plugin_authorizations.name.secrets.secret"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/plugin-market/me",
       "handler": "d.Plugin",
       "module_owner": "core.plugin-platform",
@@ -3470,6 +3606,139 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugins/:name/authorization",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name.authorization",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.authorization",
+        "httpapi.get.api.v1.plugins.name.authorization"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugins/:name/authorization/decisions",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugins.name.authorization.decisions",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.authorization.decisions",
+        "httpapi.get.api.v1.plugins.name.authorization.decisions"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugins/:name/authorization/sync",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.post.api.v1.plugins.name.authorization.sync",
+      "legacy_aliases": [
+        "http.post.api.v1.plugins.name.authorization.sync",
+        "httpapi.post.api.v1.plugins.name.authorization.sync"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/plugins/:name/versions/:version_id/grants/:capability",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.put.api.v1.plugins.name.versions.version_id.grants.capability",
+      "legacy_aliases": [
+        "http.put.api.v1.plugins.name.versions.version_id.grants.capability",
+        "httpapi.put.api.v1.plugins.name.versions.version_id.grants.capability"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugins/:name/secrets",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.get.api.v1.plugins.name.secrets",
+      "legacy_aliases": [
+        "http.get.api.v1.plugins.name.secrets",
+        "httpapi.get.api.v1.plugins.name.secrets"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/plugins/:name/secrets/:secret",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.put.api.v1.plugins.name.secrets.secret",
+      "legacy_aliases": [
+        "http.put.api.v1.plugins.name.secrets.secret",
+        "httpapi.put.api.v1.plugins.name.secrets.secret"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/plugins/:name/secrets/:secret",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.delete.api.v1.plugins.name.secrets.secret",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugins.name.secrets.secret",
+        "httpapi.delete.api.v1.plugins.name.secrets.secret"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

@@ -25,7 +25,7 @@
 | 本机 Go/Node 开发 | [开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md) |
 | Windows/Linux Docker 开发 | [Docker 开发](../docs-site/deployment/docker-development.md) |
 | 单主机部署、备份和迁移 | [Docker 部署](../docs-site/deployment/docker.md)、[备份恢复](help/系统设计相关/备份恢复说明.md) |
-| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
+| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[数据库 ER 图与关系说明](architecture/database-er/CampusOS数据库实体关系说明.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
 | HTTP API | [API 与机器合同](api/README.md)、[接口约定](../docs-site/api/overview.md) |
 | Web/Admin 前端 | [官方完整入门](../docs-site/guide/getting-started.md)、[权限配置](../docs-site/guide/permission-configuration.md) |
 | External Plugin | [插件体系](../docs-site/plugins/overview.md)、[课表插件教程](../docs-site/plugins/schedule-plugin-tutorial.md) |
@@ -45,7 +45,7 @@
 | `architecture/` | [模块边界、数据所有权和安全设计](architecture/README.md) | 当前概览有效；带旧版本号的是决策历史 |
 | `../skills/sources/`、`../skills/guides/` | 项目 Skills 的规范源文件与调用维护说明 | 当前；`.agents/skills/` 提供仓库发现入口 |
 | [项目计划书v0/](项目计划书v0/README.md) | v0.1-v0.14 原始计划、回顾、输入材料和迁移说明 | 已封版，不是当前待办 |
-| [项目计划书v1/](项目计划书v1/README.md) | v1.0 正式计划、数据库重构方案、原始输入和后续实施入口 | 当前实施；数据库基础已完成，插件业务继续开发 |
+| [项目计划书v1/](项目计划书v1/README.md) | v1.0 正式计划、数据库重构、威胁模型和逐条审查 | 代码收尾/Release Candidate；目标环境证据待收集 |
 | `计划书总结/` | 计划有效性、逐版推理和候选路线 | 当前治理入口 |
 | `进度/` | [每阶段实现、测试、兼容和回滚证据](进度/README.md) | 对应版本的历史证据 |
 | `Todo/` | [未排期需求、思考草稿和样例](Todo/README.md) | 不是产品承诺 |
@@ -91,8 +91,9 @@ v0.1-v0.14 都已退出待执行状态；项目所有者已确认 v0.14 当前�
 CampusDoc 协议版本等技术标识保持其既有写法，例如 `/api/v1`。数据库重构后的 migration 技术编号重新从
 `000001_v1_schema_baseline` 开始；这不改变产品版本命名。
 
-- [v1.0 插件生态与三层授权体系正式项目计划](项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md)；数据库基础已实施，其余功能进行中
+- [v1.0 插件生态与三层授权体系正式项目计划](项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md)；P0/P1 仓库实现已完成，发布证据待收集
 - [v1.0 数据库全面重构方案](项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md)
+- [v1.0 计划逐条审查与项目回顾](项目计划书v1/项目计划v1.0/03-v1.0计划逐条审查与项目回顾.md)
 - [v1.0 插件三层授权与运行安全说明](help/系统设计相关/v1.0插件三层授权与运行安全说明.md)
 - [v1.0 插件平台数据模型与开发库重置说明](help/系统设计相关/v1.0插件平台数据模型与开发库重置说明.md)
 - [v0.14 正式项目计划](项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md)

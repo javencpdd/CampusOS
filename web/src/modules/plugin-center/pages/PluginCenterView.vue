@@ -114,6 +114,7 @@
           </div>
         </dl>
         <div class="plugin-actions">
+          <el-button plain @click="openFineAuthorization(entry)">精细授权</el-button>
           <template v-if="isEnabled(entry.plugin_name)"
             ><el-button @click="exportData(entry.plugin_name)"
               ><el-icon><Download /></el-icon>导出数据</el-button
@@ -163,12 +164,87 @@
         ><el-button type="primary" :loading="granting" @click="grant">确认授权</el-button></template
       >
     </el-dialog>
+
+    <el-dialog v-model="fineAuthorizationDialog" title="插件精细授权" width="min(760px, calc(100vw - 24px))">
+      <el-alert
+        title="每项能力都绑定当前插件版本和用途。管理员未授予的能力无法由用户自行开启；撤销后下一次调用立即失效。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+      <el-table :data="fineAuthorizationRows" v-loading="fineAuthorizationLoading" style="margin-top: 14px">
+        <el-table-column prop="capability_code" label="能力" min-width="200" />
+        <el-table-column prop="purpose" label="用途" min-width="220" />
+        <el-table-column label="风险/范围" width="120"
+          ><template #default="{ row }"
+            >{{ row.descriptor?.risk || row.risk_level }} · {{ row.descriptor?.scope || 'system' }}</template
+          ></el-table-column
+        >
+        <el-table-column label="管理员" width="90"
+          ><template #default="{ row }"
+            ><el-tag size="small">{{ row.admin?.status || '未授予' }}</el-tag></template
+          ></el-table-column
+        >
+        <el-table-column label="我的选择" width="110"
+          ><template #default="{ row }">
+            <el-switch
+              v-if="row.descriptor?.consent_required"
+              :model-value="row.consent?.status === 'granted'"
+              :disabled="row.admin?.status !== 'granted'"
+              @change="setFineConsent(row, Boolean($event))"
+            />
+            <span v-else>无需用户同意</span>
+          </template></el-table-column
+        >
+      </el-table>
+      <h3>短期后台委托</h3>
+      <p class="security-hint">仅把一次性令牌交给当前插件运行时。委托默认 15 分钟，且不能超过你已同意的能力范围。</p>
+      <el-button
+        type="primary"
+        plain
+        :disabled="delegatableCapabilities.length === 0"
+        :loading="delegationIssuing"
+        @click="issueDelegation"
+        >生成 15 分钟委托</el-button
+      >
+      <div v-if="issuedDelegationToken" class="delegation-result">
+        <el-alert title="令牌只显示这一次，请勿发送给其他人。" type="warning" :closable="false" show-icon />
+        <el-input :model-value="issuedDelegationToken" readonly>
+          <template #append><el-button @click="copyDelegationToken">复制</el-button></template>
+        </el-input>
+        <el-button type="danger" link @click="revokeIssuedDelegation">立即撤销本次委托</el-button>
+      </div>
+
+      <h3>我的插件 Secret</h3>
+      <p class="security-hint">宿主加密保存并且不回显明文；保存同名 Secret 会轮换旧值。</p>
+      <div class="secret-editor">
+        <el-input v-model="userSecretName" maxlength="128" placeholder="名称，例如 API_TOKEN" />
+        <el-input
+          v-model="userSecretValue"
+          type="password"
+          show-password
+          maxlength="65536"
+          placeholder="Secret 值（1～65536 字节）"
+        />
+        <el-button type="primary" :loading="secretSaving" @click="saveUserSecret">保存/轮换</el-button>
+      </div>
+      <el-table :data="userSecrets" size="small" empty-text="尚未配置个人 Secret">
+        <el-table-column prop="secret_name" label="名称" min-width="190" />
+        <el-table-column prop="masked_value" label="值" width="120" />
+        <el-table-column prop="created_at" label="更新时间" min-width="170" />
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button type="danger" link @click="revokeUserSecret(row.secret_name)">撤销</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Box, Delete, Download, Refresh } from '@element-plus/icons-vue'
 import { pluginCenterApi } from '../api'
 
@@ -205,6 +281,16 @@ const catalog = ref<CatalogEntry[]>([]),
   granting = ref(false),
   requesting = ref(false),
   consentDialog = ref(false),
+  fineAuthorizationDialog = ref(false),
+  fineAuthorizationLoading = ref(false),
+  fineAuthorizationOverview = ref<any>({ declarations: [], catalog: [], admin_grants: [], user_consents: [] }),
+  userSecrets = ref<any[]>([]),
+  userSecretName = ref(''),
+  userSecretValue = ref(''),
+  secretSaving = ref(false),
+  delegationIssuing = ref(false),
+  issuedDelegationToken = ref(''),
+  issuedDelegationId = ref<number | null>(null),
   selected = ref<CatalogEntry | null>(null),
   selectedPermissions = ref<string[]>([]),
   requestName = ref(''),
@@ -257,6 +343,140 @@ const openConsent = (entry: CatalogEntry) => {
   selected.value = entry
   selectedPermissions.value = entry.user_permissions?.map(permissionKey) || []
   consentDialog.value = true
+}
+const fineAuthorizationRows = computed(() =>
+  (fineAuthorizationOverview.value.declarations || []).map((declaration: any) => ({
+    ...declaration,
+    descriptor: (fineAuthorizationOverview.value.catalog || []).find(
+      (item: any) => item.code === declaration.capability_code,
+    ),
+    admin: (fineAuthorizationOverview.value.admin_grants || []).find(
+      (item: any) => item.capability_code === declaration.capability_code,
+    ),
+    consent: (fineAuthorizationOverview.value.user_consents || []).find(
+      (item: any) => item.capability_code === declaration.capability_code,
+    ),
+  })),
+)
+const delegatableCapabilities = computed(() =>
+  fineAuthorizationRows.value
+    .filter(
+      (row: any) =>
+        row.admin?.status === 'granted' && (!row.descriptor?.consent_required || row.consent?.status === 'granted'),
+    )
+    .map((row: any) => row.capability_code),
+)
+const openFineAuthorization = async (entry: CatalogEntry) => {
+  selected.value = entry
+  fineAuthorizationDialog.value = true
+  fineAuthorizationLoading.value = true
+  issuedDelegationToken.value = ''
+  issuedDelegationId.value = null
+  try {
+    const [authorization, secrets] = await Promise.all([
+      pluginCenterApi.authorization(entry.plugin_name),
+      pluginCenterApi.secrets(entry.plugin_name),
+    ])
+    fineAuthorizationOverview.value = unwrap(authorization) || {}
+    userSecrets.value = unwrap(secrets).items || []
+  } catch (error: any) {
+    ElMessage.error(error?.message || '加载精细授权失败')
+  } finally {
+    fineAuthorizationLoading.value = false
+  }
+}
+const issueDelegation = async () => {
+  if (!selected.value || !fineAuthorizationOverview.value.version?.id) return
+  delegationIssuing.value = true
+  try {
+    const result = unwrap(
+      await pluginCenterApi.issueDelegation(
+        selected.value.plugin_name,
+        fineAuthorizationOverview.value.version.id,
+        delegatableCapabilities.value,
+      ),
+    )
+    issuedDelegationToken.value = result.token || ''
+    issuedDelegationId.value = result.delegation?.id || null
+    ElMessage.success('短期委托已生成，将在 15 分钟后自动失效')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '生成后台委托失败')
+  } finally {
+    delegationIssuing.value = false
+  }
+}
+const copyDelegationToken = async () => {
+  try {
+    await navigator.clipboard.writeText(issuedDelegationToken.value)
+    ElMessage.success('委托令牌已复制')
+  } catch {
+    ElMessage.warning('浏览器未允许复制，请手动选择令牌')
+  }
+}
+const revokeIssuedDelegation = async () => {
+  if (!selected.value || !issuedDelegationId.value) return
+  try {
+    await pluginCenterApi.revokeDelegation(selected.value.plugin_name, issuedDelegationId.value)
+    issuedDelegationToken.value = ''
+    issuedDelegationId.value = null
+    ElMessage.success('本次委托已撤销')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '撤销后台委托失败')
+  }
+}
+const saveUserSecret = async () => {
+  if (!selected.value) return
+  const name = userSecretName.value.trim()
+  if (!/^[A-Za-z][A-Za-z0-9_.-]{0,127}$/.test(name)) {
+    ElMessage.warning('Secret 名称需以字母开头，只能包含字母、数字、点、下划线和连字符')
+    return
+  }
+  if (!userSecretValue.value) {
+    ElMessage.warning('请输入 Secret 值')
+    return
+  }
+  secretSaving.value = true
+  try {
+    await pluginCenterApi.setSecret(selected.value.plugin_name, name, userSecretValue.value)
+    userSecretValue.value = ''
+    userSecrets.value = unwrap(await pluginCenterApi.secrets(selected.value.plugin_name)).items || []
+    ElMessage.success('Secret 已加密保存；页面不会回显明文')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '保存 Secret 失败')
+  } finally {
+    secretSaving.value = false
+  }
+}
+const revokeUserSecret = async (name: string) => {
+  if (!selected.value) return
+  try {
+    await ElMessageBox.confirm(`确认撤销个人 Secret“${name}”？使用它的插件调用将失败。`, '撤销 Secret', {
+      type: 'warning',
+      confirmButtonText: '确认撤销',
+      cancelButtonText: '取消',
+    })
+    await pluginCenterApi.revokeSecret(selected.value.plugin_name, name)
+    userSecrets.value = unwrap(await pluginCenterApi.secrets(selected.value.plugin_name)).items || []
+    ElMessage.success('Secret 已撤销')
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.message || '撤销 Secret 失败')
+  }
+}
+const setFineConsent = async (row: any, enabled: boolean) => {
+  if (!selected.value) return
+  try {
+    await pluginCenterApi.setConsent(
+      selected.value.plugin_name,
+      fineAuthorizationOverview.value.version.id,
+      row.capability_code,
+      enabled ? 'granted' : 'revoked',
+      row.resource_scope || { scope: 'self' },
+    )
+    ElMessage.success(enabled ? '已同意该项用途' : '已撤销该项授权')
+    await openFineAuthorization(selected.value)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '更新授权失败')
+  }
 }
 const grant = async () => {
   if (!selected.value) return
@@ -519,6 +739,22 @@ h2 {
   color: #687385;
   line-height: 1.5;
 }
+.security-hint {
+  color: var(--campus-muted-color, #687385);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.delegation-result {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.secret-editor {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(240px, 1.3fr) auto;
+  gap: 10px;
+  margin: 12px 0;
+}
 .loading-state {
   padding: 18px;
   border: 1px solid var(--campus-border-color, #dfe3e8);
@@ -550,6 +786,9 @@ h2 {
   .experience-list div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
+  }
+  .secret-editor {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
