@@ -22,6 +22,7 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 | v0.13 | 可运营、双端和可移植交付 | 错误合同、指标、MFA、外观双端门禁、响应式、通知/批量治理和 Docker |
 | v0.14 | 学期治理与个人工作区基础 | AcademicTerm、对象账本、受管课表、私有文档版本、安全内容编辑核心与受限运营摘要；项目所有者确认版本收尾 |
 | v1.0 | 插件生态与三层授权 | clean baseline、统一授权服务、Grant/Consent/Delegation/Secret UI、Host API v3、process runtime、SDK/CLI 与受管数据闭环已实现；目标环境发布证据待收集 |
+| v1.1 | 图文附件与 PDF 插件 | 已形成最小 User Asset、文章附件、Plugin UI v2、认证 Range 和第一方 PDF Viewer 正式计划；代码尚未实施 |
 
 ## 如何阅读历史计划
 
