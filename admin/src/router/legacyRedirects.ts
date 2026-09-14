@@ -1,0 +1,25 @@
+// Compatibility-only paths for pre-v1 Admin bookmarks. Keeping this catalog
+// outside router composition makes the active route tree easier to audit.
+export const legacyAdminRedirects = [
+  "/admin",
+  "/admin/users",
+  "/admin/moderators",
+  "/admin/threads",
+  "/admin/categories",
+  "/admin/docs",
+  "/admin/architecture",
+  "/admin/academic-terms",
+  "/admin/plugins",
+  "/admin/plugin-center",
+  "/admin/features",
+  "/admin/appearance",
+  "/admin/extensions",
+  "/admin/permissions",
+  "/admin/admin-admission",
+  "/admin/integrations",
+  "/admin/reviews",
+  "/admin/events",
+  "/admin/platform-logs",
+  "/admin/challenge-policy",
+  "/admin/asset-governance",
+];

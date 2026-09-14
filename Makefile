@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check database-er database-er-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v1-database-baseline-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status migrate-check docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check database-er database-er-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v1-database-baseline-check v11-attachment-migration-check v11-asset-governance-migration-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status migrate-check docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -144,6 +144,12 @@ generated-files-check:
 	python3 scripts/check-generated-files.py
 
 v1-database-baseline-check:
+	bash scripts/test-v1-database-baseline.sh
+
+v11-attachment-migration-check:
+	bash scripts/test-v1-database-baseline.sh
+
+v11-asset-governance-migration-check:
 	bash scripts/test-v1-database-baseline.sh
 
 v13-baseline-check:

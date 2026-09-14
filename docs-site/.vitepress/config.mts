@@ -86,6 +86,7 @@ export default defineConfig({
           { text: '打包、导入与更新', link: '/plugins/package-import' },
           { text: '生命周期与数据', link: '/plugins/lifecycle' },
           { text: '前端运行时与 Gateway', link: '/plugins/frontend-runtime' },
+          { text: 'Plugin UI v2 Surface', link: '/plugins/ui-v2' },
           { text: '风格包与沙箱 SDK', link: '/plugins/style-packs' },
           { text: 'Host API 与权限', link: '/plugins/host-api' },
           { text: '插件中心、受管数据与签名', link: '/plugins/market-managed-data' },

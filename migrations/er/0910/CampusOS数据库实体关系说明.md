@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=fef1c0df7fd6770643c9942efbc561c0768e27e9cef2e8ef8d0c3e57835aef84;tables=84;foreign_keys=93 -->
+<!-- campusos-er:schema_sha256=1e025c58f823244a46b7b83633d148c8a788716371bcdcca1b596b2d96624430;tables=87;foreign_keys=102 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**84**
-- 物理外键：**93**
-- 一对一/可选一对一关系：**11**
-- 一对多关系：**82**
-- 推断的逻辑多对多关系：**4**
-- Schema 指纹：`fef1c0df7fd6770643c9942efbc561c0768e27e9cef2e8ef8d0c3e57835aef84`
+- 实体表：**87**
+- 物理外键：**102**
+- 一对一/可选一对一关系：**12**
+- 一对多关系：**90**
+- 推断的逻辑多对多关系：**5**
+- Schema 指纹：`1e025c58f823244a46b7b83633d148c8a788716371bcdcca1b596b2d96624430`
 
 ## 1. 生成范围与判定规则
 
@@ -22,6 +22,9 @@
 - `000003_v1_reference_data.up.sql`
 - `000004_v1_authorization_runtime_corrections.up.sql`
 - `000005_v1_process_runtime.up.sql`
+- `000006_v1_1_article_attachments.up.sql`
+- `000007_v1_1_plugin_ui_invocations.up.sql`
+- `000008_v1_1_attachment_cutover.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -52,15 +55,16 @@
 | 身份与访问控制 | `roles` | 7 | `id` | 0 | 2 |
 | 身份与访问控制 | `sessions` | 20 | `id` | 1 | 0 |
 | 身份与访问控制 | `user_roles` | 7 | `id` | 2 | 0 |
-| 身份与访问控制 | `users` | 12 | `id` | 0 | 45 |
+| 身份与访问控制 | `users` | 12 | `id` | 0 | 47 |
 | 社区与内容 | `categories` | 18 | `id` | 1 | 4 |
 | 社区与内容 | `category_thread_type_policies` | 5 | `category_id, thread_type` | 1 | 0 |
 | 社区与内容 | `likes` | 7 | `id` | 1 | 0 |
 | 社区与内容 | `mutual_aid_details` | 10 | `thread_id` | 2 | 0 |
 | 社区与内容 | `notifications` | 12 | `id` | 1 | 0 |
 | 社区与内容 | `posts` | 15 | `id` | 3 | 1 |
-| 社区与内容 | `richtext_article_assets` | 11 | `id` | 3 | 0 |
-| 社区与内容 | `richtext_article_contents` | 15 | `id` | 3 | 1 |
+| 社区与内容 | `richtext_article_assets` | 12 | `id` | 4 | 0 |
+| 社区与内容 | `richtext_article_attachments` | 7 | `id` | 2 | 1 |
+| 社区与内容 | `richtext_article_contents` | 15 | `id` | 3 | 3 |
 | 社区与内容 | `secondhand_details` | 11 | `thread_id` | 2 | 0 |
 | 社区与内容 | `threads` | 29 | `id` | 2 | 6 |
 | 学期与日程 | `academic_terms` | 12 | `id` | 2 | 2 |
@@ -72,7 +76,7 @@
 | 个人空间与文档 | `user_space_contents` | 13 | `id` | 3 | 0 |
 | 个人空间与文档 | `user_space_style_snapshots` | 9 | `id` | 0 | 0 |
 | 个人空间与文档 | `user_spaces` | 23 | `id` | 1 | 0 |
-| 统一存储 | `storage_objects` | 15 | `id` | 1 | 4 |
+| 统一存储 | `storage_objects` | 15 | `id` | 1 | 5 |
 | 统一存储 | `user_storage_accounts` | 6 | `user_id` | 1 | 0 |
 | 统一存储 | `user_storage_quotas` | 5 | `user_id` | 2 | 0 |
 | 统一存储 | `user_storage_reservations` | 8 | `id` | 2 | 0 |
@@ -90,6 +94,7 @@
 | 插件生态与授权 | `plugin_records` | 12 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_releases` | 8 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_secret_values` | 14 | `id` | 3 | 0 |
+| 插件生态与授权 | `plugin_ui_invocations` | 14 | `id` | 4 | 0 |
 | 插件生态与授权 | `plugin_user_consents` | 13 | `id` | 2 | 1 |
 | 插件生态与授权 | `plugin_user_grants` | 9 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 3 |
@@ -117,6 +122,7 @@
 | 其他平台数据 | `route_operations` | 8 | `id` | 0 | 1 |
 | 其他平台数据 | `route_permission_bindings` | 5 | `id` | 2 | 0 |
 | 其他平台数据 | `tags` | 9 | `id` | 0 | 0 |
+| 其他平台数据 | `user_assets` | 13 | `id` | 2 | 3 |
 
 ## 3. 一对一与可选一对一
 
@@ -129,6 +135,7 @@
 | `personal_document_versions` | `personal_document_previews` | `personal_document_previews_document_version_id_fkey` | `document_version_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `threads` | `richtext_article_contents` | `fk_richtext_contents_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `threads` | `secondhand_details` | `fk_secondhand_details_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `storage_objects` | `user_assets` | `fk_user_assets_storage_object` | `storage_object_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `user_schedule_preferences` | `user_schedule_preferences_user_id_fkey` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `user_storage_accounts` | `user_storage_accounts_user_id_fkey` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `user_storage_quotas` | `user_storage_quotas_user_id_fkey` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -184,6 +191,10 @@
 | `plugins` | `plugin_secret_values` | `plugin_secret_values_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_secret_values` | `plugin_secret_values_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_secret_values` | `plugin_secret_values_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
+| `users` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `richtext_article_contents` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_article` | `article_content_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `user_assets` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `richtext_article_attachments` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_attachment` | `attachment_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `plugin_user_consents` | `plugin_user_consents_user_id_fkey` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `plugin_capability_declarations` | `plugin_user_consents` | `fk_plugin_user_consent_declaration` | `plugin_version_id, capability_code` → `plugin_version_id, capability_code` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `plugins` | `plugin_versions` | `plugin_versions_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -195,6 +206,9 @@
 | `richtext_article_contents` | `richtext_article_assets` | `fk_richtext_assets_content` | `article_content_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `threads` | `richtext_article_assets` | `fk_richtext_assets_thread` | `thread_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `richtext_article_assets` | `fk_richtext_assets_uploader` | `uploader_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `user_assets` | `richtext_article_assets` | `fk_richtext_article_assets_user_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `richtext_article_contents` | `richtext_article_attachments` | `fk_richtext_article_attachments_article` | `article_content_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `user_assets` | `richtext_article_attachments` | `fk_richtext_article_attachments_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `richtext_article_contents` | `fk_richtext_contents_created_by` | `created_by` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `richtext_article_contents` | `fk_richtext_contents_updated_by` | `updated_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `permission_definitions` | `role_permissions` | `fk_v10_role_permissions_permission` | `permission_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -206,6 +220,7 @@
 | `users` | `storage_objects` | `storage_objects_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `threads` | `fk_threads_author` | `author_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `categories` | `threads` | `fk_threads_category` | `category_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `users` | `user_assets` | `fk_user_assets_owner` | `owner_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `roles` | `user_roles` | `fk_user_roles_role` | `role_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `user_roles` | `fk_user_roles_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `academic_terms` | `user_schedule_preferences` | `user_schedule_preferences_academic_term_id_fkey` | `academic_term_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -229,6 +244,7 @@
 | `permission_definitions` | `route_operations` | `route_permission_bindings` | 按关联实体命名与双外键推断（非唯一性保证） |
 | `roles` | `users` | `user_roles` | 按关联实体命名与双外键推断（非唯一性保证） |
 | `academic_terms` | `users` | `user_schedule_terms` | 关联列受主键/唯一约束共同约束 |
+| `richtext_article_contents` | `user_assets` | `richtext_article_attachments` | 关联列受主键/唯一约束共同约束 |
 
 ## 6. 各实体字段与约束
 
@@ -668,7 +684,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：45
+- 出站外键：0；入站外键：47
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -839,7 +855,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：3；入站外键：0
+- 出站外键：4；入站外键：0
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -854,18 +870,41 @@
 | `width` | `integer` | NN | 否 | `0` |
 | `height` | `integer` | NN | 否 | `0` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `IF` | `NOT EXISTS asset_id bigint` | — | 是 | `—` |
 
 外键明细：
 
 - `fk_richtext_assets_content`：`richtext_article_assets(article_content_id)` → `richtext_article_contents(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 - `fk_richtext_assets_thread`：`richtext_article_assets(thread_id)` → `threads(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 - `fk_richtext_assets_uploader`：`richtext_article_assets(uploader_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_richtext_article_assets_user_asset`：`richtext_article_assets(asset_id)` → `user_assets(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `richtext_article_attachments`
+
+- 主键：`id`
+- 唯一列集：(article_content_id, asset_id)；(article_content_id, display_order)
+- 出站外键：2；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `bigint` | PK/NN | 否 | `—` |
+| `article_content_id` | `bigint` | FK/NN | 否 | `—` |
+| `asset_id` | `bigint` | FK/NN | 否 | `—` |
+| `display_name` | `varchar(255)` | NN | 否 | `—` |
+| `display_order` | `integer` | NN | 否 | `0` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `updated_at` | `timestamptz` | NN | 否 | `now()` |
+
+外键明细：
+
+- `fk_richtext_article_attachments_article`：`richtext_article_attachments(article_content_id)` → `richtext_article_contents(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+- `fk_richtext_article_attachments_asset`：`richtext_article_attachments(asset_id)` → `user_assets(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 #### `richtext_article_contents`
 
 - 主键：`id`
 - 唯一列集：(thread_id)
-- 出站外键：3；入站外键：1
+- 出站外键：3；入站外键：3
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -1188,7 +1227,7 @@
 
 - 主键：`id`
 - 唯一列集：(provider, storage_key)
-- 出站外键：1；入站外键：4
+- 出站外键：1；入站外键：5
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -1578,6 +1617,36 @@
 - `plugin_secret_values_plugin_id_fkey`：`plugin_secret_values(plugin_id)` → `plugins(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
 - `plugin_secret_values_owner_user_id_fkey`：`plugin_secret_values(owner_user_id)` → `users(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
 - `plugin_secret_values_created_by_fkey`：`plugin_secret_values(created_by)` → `users(id)`；ON DELETE `SET NULL`；ON UPDATE `NO ACTION`。
+
+#### `plugin_ui_invocations`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：4；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `bigint` | PK/NN | 否 | `—` |
+| `user_id` | `bigint` | FK/NN | 否 | `—` |
+| `plugin_key` | `varchar(120)` | NN | 否 | `—` |
+| `surface_id` | `varchar(160)` | NN | 否 | `—` |
+| `article_content_id` | `bigint` | FK/NN | 否 | `—` |
+| `asset_id` | `bigint` | FK | 是 | `—` |
+| `attachment_id` | `bigint` | FK | 是 | `—` |
+| `presentation` | `varchar(20)` | NN | 否 | `—` |
+| `purpose` | `varchar(80)` | NN | 否 | `—` |
+| `context_digest` | `varchar(128)` | NN | 否 | `''::character varying` |
+| `expires_at` | `timestamptz` | NN | 否 | `—` |
+| `opened_at` | `timestamptz` | — | 是 | `—` |
+| `revoked_at` | `timestamptz` | — | 是 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+
+外键明细：
+
+- `fk_plugin_ui_invocations_user`：`plugin_ui_invocations(user_id)` → `users(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+- `fk_plugin_ui_invocations_article`：`plugin_ui_invocations(article_content_id)` → `richtext_article_contents(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+- `fk_plugin_ui_invocations_asset`：`plugin_ui_invocations(asset_id)` → `user_assets(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_plugin_ui_invocations_attachment`：`plugin_ui_invocations(attachment_id)` → `richtext_article_attachments(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 #### `plugin_user_consents`
 
@@ -2145,6 +2214,33 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+
+#### `user_assets`
+
+- 主键：`id`
+- 唯一列集：(storage_object_id)
+- 出站外键：2；入站外键：3
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `bigint` | PK/NN | 否 | `—` |
+| `owner_user_id` | `bigint` | FK/NN | 否 | `—` |
+| `kind` | `varchar(32)` | NN | 否 | `—` |
+| `original_name` | `varchar(255)` | NN | 否 | `—` |
+| `storage_object_id` | `bigint` | FK/UQ/NN | 否 | `—` |
+| `mime_type` | `varchar(160)` | NN | 否 | `—` |
+| `size_bytes` | `bigint` | NN | 否 | `—` |
+| `status` | `varchar(20)` | NN | 否 | `'active'::character varying` |
+| `version` | `bigint` | NN | 否 | `1` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `updated_at` | `timestamptz` | NN | 否 | `now()` |
+| `trashed_at` | `timestamptz` | — | 是 | `—` |
+| `deleted_at` | `timestamptz` | — | 是 | `—` |
+
+外键明细：
+
+- `fk_user_assets_owner`：`user_assets(owner_user_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_user_assets_storage_object`：`user_assets(storage_object_id)` → `storage_objects(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 ## 7. 一致性与更新方式
 

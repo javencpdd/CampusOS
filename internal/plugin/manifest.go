@@ -66,7 +66,8 @@ const (
 	ActivationRestart       = "restart"
 	ActivationPluginRestart = "plugin-restart"
 	ActivationHot           = "hot"
-	CurrentUIContract       = "campusos.ui/v1"
+	LegacyUIContract        = "campusos.ui/v1"
+	CurrentUIContract       = "campusos.ui/v2"
 )
 
 type LifecycleConfig struct {

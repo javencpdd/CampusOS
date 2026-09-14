@@ -8,7 +8,9 @@ import (
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 const ModuleID = "feature.controlled-richtext-article"
@@ -18,6 +20,7 @@ const portStore = "feature.controlled-richtext-article.adapter.store"
 type ModuleConfig struct {
 	AssetStoreConfig func() AssetStoreConfig
 	Enabled          func() bool
+	PDFViewerEnabled func() bool
 }
 
 // Module composes controlled rich-text through the public Community and User
@@ -29,6 +32,8 @@ type Module struct {
 	store     Store
 	community communityport.ContentGateway
 	storage   corestorage.Port
+	objects   corestorage.ObjectPort
+	meter     observability.Meter
 	service   *Service
 	handler   *Handler
 }
@@ -38,7 +43,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID}
+	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID, platformobservability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -70,11 +75,27 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
 	}
 	m.app, m.store, m.community, m.storage = app, store, community, storage
+	objectsValue, ok := app.Lookup("storage.objects")
+	if !ok {
+		return errors.New("user storage object port is unavailable")
+	}
+	objects, ok := objectsValue.(corestorage.ObjectPort)
+	if !ok || objects == nil {
+		return fmt.Errorf("user storage object port has incompatible type %T", objectsValue)
+	}
+	m.objects = objects
+	if value, exists := app.Lookup(platformobservability.PortMeter); exists {
+		meter, compatible := value.(observability.Meter)
+		if !compatible || meter == nil {
+			return fmt.Errorf("richtext observability meter has incompatible type %T", value)
+		}
+		m.meter = meter
+	}
 	return nil
 }
 
-func (m *Module) Start(context.Context) error {
-	if m.app == nil || m.store == nil || m.community == nil || m.storage == nil {
+func (m *Module) Start(ctx context.Context) error {
+	if m.app == nil || m.store == nil || m.community == nil || m.storage == nil || m.objects == nil {
 		return errors.New("richtext module is not registered")
 	}
 	reliabilityValue, ok := m.app.Lookup("platform.reliability.service")
@@ -88,6 +109,7 @@ func (m *Module) Start(context.Context) error {
 	svc := NewService(m.store, m.community)
 	svc.SetReliability(reliable)
 	svc.SetEnabledChecker(m.enabled)
+	svc.SetPDFViewerEnabledChecker(m.pdfViewerEnabled)
 	config := AssetStoreConfig{}
 	if m.config.AssetStoreConfig != nil {
 		config = m.config.AssetStoreConfig()
@@ -105,6 +127,9 @@ func (m *Module) Start(context.Context) error {
 		return fmt.Errorf("initialize richtext asset store: %w", err)
 	}
 	svc.SetAssetStore(assets)
+	svc.SetObjectPort(m.objects)
+	svc.SetMeter(m.meter)
+	svc.refreshAssetMetrics(ctx)
 	m.service = svc
 	m.handler = NewHandler(svc)
 	return nil
@@ -124,4 +149,8 @@ func (m *Module) Service() *Service { return m.service }
 
 func (m *Module) enabled() bool {
 	return m.config.Enabled == nil || m.config.Enabled()
+}
+
+func (m *Module) pdfViewerEnabled() bool {
+	return m.config.PDFViewerEnabled == nil || m.config.PDFViewerEnabled()
 }

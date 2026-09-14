@@ -57,7 +57,9 @@ Token、`AppContext` 或内部 Service。
 
 ## UI Runtime
 
-外部插件可以声明 Route、Navigation、Surface 和 Action。业务 Action 通过：
+外部插件可以声明 Route、Navigation、Surface 和 Action。`campusos.ui/v1` 继续兼容；新建需要弹窗、抽屉、
+全屏层或同源新标签页的界面应使用 `campusos.ui/v2`。v2 的插件只请求命名 Surface 和允许的 Presentation，
+宿主最终决定怎样打开；不能提交任意 URL、直接调用 `window.open()` 或取得 Session Token。业务 Action 通过：
 
 ```text
 /api/v1/extensions/:plugin/*path
@@ -79,3 +81,6 @@ Core 注入可信调用者上下文，插件不能相信请求正文中的伪造
 
 下一步：[课表插件完整教程](/plugins/schedule-plugin-tutorial) 或
 [编写第一个插件](/plugins/create-first-plugin)。
+
+v2 Surface 的清单、信任边界和验收命令见
+[Plugin UI v2 Surface](/plugins/ui-v2)。

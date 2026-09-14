@@ -1,15 +1,15 @@
 # CampusOS 数据库迁移
 
-> 当前基线：v1.0 clean baseline
-> 更新时间：2026-09-11
+> 当前基线：v1.1 article attachments, owner-scoped PDF viewer and asset lifecycle governance
+> 更新时间：2026-09-12
 > 数据库：PostgreSQL 16+
 > 兼容边界：不支持从旧 `000001-000049` 链原地升级；现有开发/测试库必须显式重置
 
 ## 1. 本次重构结论
 
-原 49 组增量 migration 已压缩为三段 clean baseline；基线冻结后以两段前向 migration 修正运行期约束。当前结果是：
+原 49 组增量 migration 已压缩为 clean baseline；基线冻结后持续以追加 migration 演进。当前结果是：
 
-- 84 张业务表，另有执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
+- 88 张业务表，另有执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
 - 所有时间点字段统一为 `TIMESTAMPTZ`，日期类字段继续使用 `DATE`；
 - 删除旧 `permissions(resource, action)` 表，RBAC 只保留 `permission_definitions + role_permissions`；
 - `sessions` 删除明文 `refresh_token` 与原始 `ip_address` 列，只保留必填 SHA-256 摘要和 `ip_hash`；
@@ -17,7 +17,7 @@
 - 不再 migration 内置默认管理员、邮箱、密码哈希、默认版块或任何历史测试数据；
 - 为 v1 插件生态预建发布者、不可变版本、能力声明、管理员 Grant、用户 Consent、短期 Delegation、密文 Secret 与判定证据；
 - migration 文件使用 SHA-256 防篡改，执行使用数据库互斥锁，单个 migration 与版本记录在同一事务提交；
-- 当前 93 个物理外键均有可用的引用端前导索引，Schema 合同会阻止后续新增无索引外键；
+- 当前 104 个物理外键均有可用的引用端前导索引，Schema 合同会阻止后续新增无索引外键；
 - `down` 一次只回滚最新版本；全量清库只能走带环境和数据库名双确认的 `reset`。
 
 ## 2. 当前 migration
@@ -29,8 +29,13 @@
 | `000003` | `000003_v1_reference_data.*.sql` | 写入 4 个系统角色、76 个权限定义、最小角色矩阵、验证码和管理员 MFA 策略 | 不写入用户、账号、邮箱、管理员凭据或业务测试记录 |
 | `000004` | `000004_v1_authorization_runtime_corrections.*.sql` | 修正活动 Secret 唯一索引并允许记录“能力未声明”的拒绝证据 | 保留冻结基线 checksum；轮换可重复，拒绝审计不依赖声明外键 |
 | `000005` | `000005_v1_process_runtime.*.sql` | 把 Manifest v3 的 `process` 纳入插件 Runtime 数据库约束 | `grpc` 继续作为兼容别名；回滚时自动映射为 `grpc` |
+| `000006` | `000006_v1_1_article_attachments.*.sql` | 最小 User Asset、图文文章附件绑定、状态和索引 | 附件字节仍只由 `storage_objects` 管理；不迁移测试数据 |
+| `000007` | `000007_v1_1_plugin_ui_invocations.*.sql` | PDF Viewer 等受控 Surface 的短期服务端 Invocation Context | 不保存 JWT、路径或公开下载链接；到期与撤销可立即生效 |
+| `000008` | `000008_v1_1_attachment_cutover.*.sql` | 为旧 RichText 图片元数据预留显式 Asset 关联 | 新非图片附件只能使用 `richtext_article_attachments` |
+| `000009` | `000009_v1_1_asset_governance.*.sql` | 资产隔离/恢复/清除状态、低敏生命周期审计和最小管理权限 | 不保存文件名、路径或载荷；对象仍经 Object Port 清除 |
+| `000010` | `000010_v1_1_personal_asset_preview.*.sql` | 将短期 PDF Invocation 区分为文章附件或 owner-only 个人附件上下文 | 个人预览不绑定文章；回滚只删除短期个人预览上下文后恢复旧文章必填合同 |
 
-已进入本基线的旧业务结构不再保留原 migration 编号。管理端 `/architecture` 按当前五段结构展示，而不是模拟历史 49 段升级过程。
+已进入本基线的旧业务结构不再保留原 migration 编号。管理端 `/architecture` 按当前十段结构展示，而不是模拟历史 49 段升级过程。
 
 ### 自动生成 ER 图
 
@@ -39,7 +44,7 @@ python migrations/tools/generate_er.py
 python migrations/tools/generate_er.py --check
 ```
 
-工具从 UP migration 生成 [PNG、SVG 与中文实体关系说明](../docs/architecture/database-er/CampusOS数据库实体关系说明.md)，
+工具从 UP migration 生成 [PNG、SVG 与中文实体关系说明](er/current/CampusOS数据库实体关系说明.md)，
 不连接或修改数据库。Windows/Linux 包装脚本、关系判定规则与依赖安装见 [工具 README](tools/README.md)。
 
 ## 3. 数据域清单
@@ -48,8 +53,9 @@ python migrations/tools/generate_er.py --check
 | --- | --- |
 | 身份、认证与授权 | `users`、`accounts`、`sessions`、`roles`、`user_roles`、`permission_definitions`、`role_permissions`、`route_operations`、`route_permission_bindings`、`authorization_audits` |
 | 管理员准入与身份安全 | `identity_admin_accounts`、`identity_email_challenges`、`identity_challenge_rate_limits`、`identity_challenge_policies`、`identity_account_recovery_cases`、`identity_legacy_email_placeholders`、`identity_reserved_identifiers`、`identity_mfa_totp_methods`、`identity_mfa_tickets`、`identity_mfa_recovery_codes`、`identity_mfa_policies` |
-| 社区与内容治理 | `categories`、`category_thread_type_policies`、`threads`、`posts`、`tags`、`likes`、`notifications`、`content_revisions`、`content_moderation_cases`、`content_moderation_actions`、`richtext_article_contents`、`richtext_article_assets`、`mutual_aid_details`、`secondhand_details` |
-| 用户空间、对象与文档 | `user_spaces`、`user_space_contents`、`user_space_style_snapshots`、`user_storage_quotas`、`user_storage_accounts`、`user_storage_reservations`、`storage_objects`、`personal_documents`、`personal_document_versions`、`personal_document_previews` |
+| 社区与内容治理 | `categories`、`category_thread_type_policies`、`threads`、`posts`、`tags`、`likes`、`notifications`、`content_revisions`、`content_moderation_cases`、`content_moderation_actions`、`richtext_article_contents`、`richtext_article_assets`、`richtext_article_attachments`、`mutual_aid_details`、`secondhand_details` |
+| 用户空间、对象与文档 | `user_spaces`、`user_space_contents`、`user_space_style_snapshots`、`user_storage_quotas`、`user_storage_accounts`、`user_storage_reservations`、`storage_objects`、`user_assets`、`asset_lifecycle_audits`、`personal_documents`、`personal_document_versions`、`personal_document_previews` |
+| Plugin UI 调用上下文 | `plugin_ui_invocations` |
 | 学期与课表 | `academic_terms`、`user_schedule_terms`、`user_schedule_preferences` |
 | 当前插件 Runtime/市场 | `plugins`、`api_keys`、`plugin_permissions`、`plugin_logs`、`plugin_records`、`plugin_file_metadata`、`plugin_user_grants`、`plugin_catalog_entries`、`plugin_install_requests`、`plugin_releases`、`plugin_market_audits` |
 | v1 插件授权基础 | `plugin_publishers`、`plugin_versions`、`plugin_capability_declarations`、`plugin_admin_grants`、`plugin_user_consents`、`plugin_delegations`、`plugin_secret_values`、`plugin_authorization_decisions` |
@@ -106,7 +112,7 @@ Remove-Item Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM
 
 ## 5. 后续 migration 规范
 
-从 `000004` 起只追加新 migration，不再修改已经进入共享分支的 `000001-000003`。当前已追加至 `000005`，下一次从 `000006` 开始：
+从 `000004` 起只追加新 migration，不再修改已经进入共享分支的 `000001-000003`。当前已追加至 `000010`，下一次从 `000011` 开始：
 
 1. 文件名使用六位连续编号和清晰业务名，必须同时提供 `.up.sql`、`.down.sql`。
 2. 一个 migration 只表达一个可审查的 Schema/参考数据变化；结构和大规模数据回填应拆开。
@@ -125,18 +131,22 @@ Remove-Item Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM
 
 ```bash
 POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
-POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos_v1_database_baseline_drill ./scripts/database-check.sh all
+POSTGRES_CONTAINER=campusos-dev-postgres-1 make v11-asset-governance-migration-check
+CAMPUSOS_SKIP_DOTENV=true POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos_v1_database_baseline_drill ./scripts/database-check.sh all
 python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 ```
 
 baseline drill 在固定的隔离测试库中验证：
 
 - 从零建库、无测试用户/账号/管理员凭据；
-- 84 张业务表和 2 张 migration 系统表；
-- 76 个稳定权限定义与最小角色矩阵；
+- 88 张业务表和 2 张 migration 系统表；
+- 78 个稳定权限定义与最小角色矩阵；
 - 旧 `permissions` 表已移除；
 - Session 不存在明文 Refresh Token/原始 IP 列，摘要为必填且全局唯一；
-- 93 个物理外键均有引用端前导索引，索引/约束 hygiene 问题为 0；
+- 104 个物理外键均有引用端前导索引，索引/约束 hygiene 问题为 0；
 - 全库不存在 `timestamp without time zone`；
 - checksum 漂移会失败；
 - 最新版本回滚、全链回滚、重新 up 和显式 reset 均可重复。
+
+`database-check.sh` 默认会读取仓库 `.env` 以便本地使用；在隔离 drill、CI 或任何显式指定 `DB_NAME` 的命令中，
+应设置 `CAMPUSOS_SKIP_DOTENV=true`，以防 `.env` 覆盖已经确认的目标数据库。

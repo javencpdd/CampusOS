@@ -160,6 +160,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
 		},
+		PDFViewerEnabled: func() bool {
+			return features.Registry() != nil && features.Registry().Enabled("pdf-viewer")
+		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{
 		Config: func() schedule.Config {

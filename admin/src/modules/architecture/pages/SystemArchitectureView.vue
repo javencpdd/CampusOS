@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">当前迁移 000001 - 000005</el-tag>
+      <el-tag type="info" effect="plain">当前迁移 000001 - 000010</el-tag>
     </section>
 
     <el-alert
@@ -1493,6 +1493,81 @@ const databaseTables: DbTable[] = [
     relationshipNote: "主题、富文本正文和上传用户均由外键保护。",
   },
   {
+    name: "user_assets",
+    title: "用户附件资产",
+    domain: "space",
+    purpose:
+      "为图文文章附件提供 owner、状态、大小和 Storage Object 的稳定业务身份；不保存宿主路径。",
+    fields: [
+      "id",
+      "owner_user_id",
+      "kind",
+      "storage_object_id",
+      "mime_type",
+      "size_bytes",
+      "status",
+    ],
+    migration: "000006",
+    relationshipNote:
+      "一个 Asset 只引用一个 Storage Object；回收、隔离和删除状态由业务层立即参与访问判断。",
+  },
+  {
+    name: "asset_lifecycle_audits",
+    title: "附件生命周期审计",
+    domain: "system",
+    purpose:
+      "以追加记录保存回收、隔离、恢复与清除的低敏治理事实；不保存文件名、对象路径、正文或载荷。",
+    fields: [
+      "id",
+      "asset_id",
+      "actor_user_id",
+      "actor_type",
+      "action",
+      "reason",
+      "created_at",
+    ],
+    migration: "000009",
+    relationshipNote:
+      "资产或操作者被删除时保留审计记录并将关联置空；仅管理端聚合查看，不作为文件浏览入口。",
+  },
+  {
+    name: "richtext_article_attachments",
+    title: "图文文章附件绑定",
+    domain: "space",
+    purpose:
+      "把文章与附件资产显式绑定，并保存显示名称和稳定排序；附件不会写入 HTML 正文。",
+    fields: [
+      "id",
+      "article_content_id",
+      "asset_id",
+      "display_name",
+      "display_order",
+    ],
+    migration: "000006",
+    relationshipNote:
+      "(article_content_id, asset_id) 与排序均唯一；删除文章只级联删除绑定，不静默删除用户资产。",
+  },
+  {
+    name: "plugin_ui_invocations",
+    title: "插件界面短期调用上下文",
+    domain: "plugin",
+    purpose:
+      "保存 PDF 预览的用户、上下文类型、文章或 owner-only 资产、Surface、展示方式和到期时间；不保存 JWT、路径或公开下载链接。",
+    fields: [
+      "id",
+      "user_id",
+      "surface_id",
+      "context_kind",
+      "article_content_id",
+      "asset_id",
+      "attachment_id",
+      "expires_at",
+    ],
+    migration: "000007 / 000010",
+    relationshipNote:
+      "article_attachment 必须同时绑定文章、Asset 和 Attachment；personal_asset 只绑定 owner 的 Asset。每次内容读取仍回到对应访问策略；过期、撤销或停用后预览立即拒绝。",
+  },
+  {
     name: "webhook_endpoints",
     title: "Webhook 端点",
     domain: "integration",
@@ -2178,6 +2253,96 @@ const relations: Relation[] = [
     domains: ["identity", "space"],
   },
   {
+    id: "users-user-assets",
+    source: "users",
+    target: "user_assets",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> owner_user_id",
+    domains: ["identity", "space"],
+  },
+  {
+    id: "storage-objects-user-assets",
+    source: "storage_objects",
+    target: "user_assets",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> storage_object_id",
+    domains: ["space"],
+  },
+  {
+    id: "user-assets-lifecycle-audits",
+    source: "user_assets",
+    target: "asset_lifecycle_audits",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id (SET NULL)",
+    domains: ["space", "system"],
+  },
+  {
+    id: "users-lifecycle-audits",
+    source: "users",
+    target: "asset_lifecycle_audits",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> actor_user_id (SET NULL)",
+    domains: ["identity", "system"],
+  },
+  {
+    id: "richtext-article-attachments",
+    source: "richtext_article_contents",
+    target: "richtext_article_attachments",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> article_content_id",
+    domains: ["space"],
+  },
+  {
+    id: "user-assets-richtext-attachments",
+    source: "user_assets",
+    target: "richtext_article_attachments",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id",
+    domains: ["space"],
+  },
+  {
+    id: "users-plugin-ui-invocations",
+    source: "users",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> user_id",
+    domains: ["identity", "plugin"],
+  },
+  {
+    id: "richtext-plugin-ui-invocations",
+    source: "richtext_article_contents",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> article_content_id",
+    domains: ["space", "plugin"],
+  },
+  {
+    id: "user-assets-plugin-ui-invocations",
+    source: "user_assets",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id",
+    domains: ["space", "plugin"],
+  },
+  {
+    id: "attachments-plugin-ui-invocations",
+    source: "richtext_article_attachments",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> attachment_id",
+    domains: ["space", "plugin"],
+  },
+  {
     id: "plugins-permissions",
     source: "plugins",
     target: "plugin_permissions",
@@ -2399,9 +2564,10 @@ const storageRows = [
       "img/avatars/：头像源文件，默认保留最近 3 个并可切换，只有新上传才按 FIFO 清理",
       "img/content/：普通帖子、校园互助和二手正文图片；仅当前上传者可在“我的文档 → 已上传资源”中查看清单，文件仍可能被公开帖子引用",
       "img/richtext/：图文文章图片；JPEG/PNG 优化后计入配额",
+      "file/objects/<storage_object_id>.bin：Object Port 原子落盘的受管附件字节；文件名和 MIME 只保存在 PostgreSQL 元数据",
       "file/schedule/terms/<year>-<semester>.json：每学期课表",
       "plugins/<plugin>/：v2 插件受控附件",
-      "file/、excel/、word/、pdf/：按用途/后缀分类的文件",
+      "file/：兼容文件与受管 Object 边界；不得按原始文件名或平铺目录查找附件",
     ],
     note: "数据库只保存 URL 或元数据；“已上传资源”是只读库存，不会把兼容图片迁入私有文档版本，也不会提供删除，以免破坏已发布内容；恢复时必须与数据库同时恢复。",
   },
@@ -2550,6 +2716,51 @@ const migrations = [
     summary:
       "数据库正式接受 Manifest v3 的 process Runtime；grpc 在 v1 兼容窗口内继续可用，回滚时自动映射。",
     tables: ["plugins"],
+  },
+  {
+    version: "000006",
+    file: "000006_v1_1_article_attachments.up.sql",
+    title: "v1.1 用户资产与文章附件",
+    scope: "图文与用户存储",
+    summary:
+      "新增最小 User Asset 与显式 Article Attachment Binding；附件字节继续受 storage_objects 和配额控制。",
+    tables: ["user_assets", "richtext_article_attachments"],
+  },
+  {
+    version: "000007",
+    file: "000007_v1_1_plugin_ui_invocations.up.sql",
+    title: "v1.1 插件界面调用上下文",
+    scope: "插件 UI 与 PDF 预览",
+    summary:
+      "新增短期、服务端保存的 Invocation Context，绑定用户、文章、附件和受宿主控制的展示方式。",
+    tables: ["plugin_ui_invocations"],
+  },
+  {
+    version: "000008",
+    file: "000008_v1_1_attachment_cutover.up.sql",
+    title: "v1.1 图文附件切换护栏",
+    scope: "富文本资源",
+    summary:
+      "为 legacy RichText 图片元数据预留显式 Asset 关联；新非图片附件只能经 Attachment Binding 写入。",
+    tables: ["richtext_article_assets"],
+  },
+  {
+    version: "000009",
+    file: "000009_v1_1_asset_governance.up.sql",
+    title: "v1.1 附件生命周期治理",
+    scope: "用户资产与运维",
+    summary:
+      "新增低敏生命周期审计、隔离/恢复/清除状态和最小管理权限；物理对象仍由 Object Port 管理。",
+    tables: ["asset_lifecycle_audits", "user_assets"],
+  },
+  {
+    version: "000010",
+    file: "000010_v1_1_personal_asset_preview.up.sql",
+    title: "v1.1 个人附件预览上下文",
+    scope: "PDF Viewer 与个人空间",
+    summary:
+      "为短期 Invocation 增加显式上下文类型：文章附件仍受文章访问策略保护，个人附件仅允许 owner 预览；回滚会删除短期个人预览上下文后恢复旧合同。",
+    tables: ["plugin_ui_invocations"],
   },
 ];
 const tableByName = (name: string) =>

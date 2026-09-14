@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ACTION="${1:-all}"
-if [[ -f .env ]]; then
+if [[ "${CAMPUSOS_SKIP_DOTENV:-false}" != "true" && -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
   source .env

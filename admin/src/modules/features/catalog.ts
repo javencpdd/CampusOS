@@ -24,6 +24,14 @@ export const builtinFeatureDefinitions: FeatureRow[] = [
     configSources: [{ name: 'controlled-richtext-article', label: '文章配置' }],
   },
   {
+    id: 'pdf-viewer',
+    label: 'PDF 文档预览',
+    description: '内置受信任预览功能：为已发布图文文章中的 PDF 附件提供受权限保护的在线阅读。',
+    representative: 'pdf-viewer',
+    parentId: 'controlled-richtext-article',
+    configSources: [],
+  },
+  {
     id: 'mutual-aid',
     label: '校园互助',
     description: '复用安全图文正文和用户图片资产，保留独立的互助类型与状态。',

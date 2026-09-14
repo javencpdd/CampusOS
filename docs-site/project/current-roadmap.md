@@ -1,7 +1,7 @@
 # 当前规划与后续路线
 
 > 当前应用启动/合同版本：`v0.13.0`
-> 更新日期：2026-09-11
+> 更新日期：2026-09-12
 > 状态：v0.14-dev 已由项目所有者确认开发收尾；v1.0 P0/P1 仓库实现已完成审查，目标环境证据待收集
 
 CampusOS v0.13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
@@ -63,15 +63,16 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 
 远程公共市场、完整进程沙箱、标准 protobuf gRPC/MCP、Agent Runner 和多节点高可用保持为 P2 或后续候选。
 
-## v1.1 已正式规划（尚未实施）
+## v1.1 已完成仓库实现（待 Final 发布证据）
 
 v1.1 已聚焦图文文章附件和 PDF Viewer：图片继续用于封面/正文排版，PDF、MP3/MP4、Office、ZIP/RAR 只作为
 附件；本版只为 PDF 提供在线预览。实现使用最小 User Asset、文章附件绑定、认证 Range，以及向后兼容的
 Plugin UI v2，由宿主控制 modal/fullscreen/同源 new-tab 和短期 Invocation。第一方 PDF Viewer 使用受信任模块；
 第三方 UI Bundle 沙箱、音视频预览和跨用户分享不属于本版。
 
-正式范围位于 `docs/项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md`。当前尚无 v1.1 migration、API 或 UI
-完成结论；功能是否可用必须以后续 `docs/进度/v1.1-dev/` 和发布证据为准。
+正式范围位于 `docs/项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md`。`000006`–`000009`、附件 API、
+受控用户资产、Plugin UI v2、第一方 PDF Viewer、Web/Admin 入口均已进入 v1.1-dev 仓库实现；当前完成状态和
+运行验证以 `docs/进度/v1.1-dev/` 为准。目标 Linux 浏览器矩阵、容量与恢复演练仍是 `v1.1 Final` 的发布门禁。
 
 相关页面：[版本演进](/project/version-evolution)、[文档状态与历史替代](/project/document-lifecycle)、
 [完整入门路径](/guide/getting-started)、[构建与发布](/deployment/release)。

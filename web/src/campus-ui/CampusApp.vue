@@ -195,6 +195,7 @@
         />
       </template>
     </AppShell>
+    <PluginSurfaceHost />
   </ThemeRoot>
 </template>
 
@@ -215,6 +216,7 @@ import NotificationCenter from '@/modules/notifications/components/NotificationC
 import AppShell from './AppShell.vue'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import ThemeRoot from './ThemeRoot.vue'
+import PluginSurfaceHost from './PluginSurfaceHost.vue'
 import { buildCategoryNavigation, type CategoryNavigationNode, type PublicCategory } from './categoryNavigation'
 import { preloadCoreViews } from '@/router/preload'
 

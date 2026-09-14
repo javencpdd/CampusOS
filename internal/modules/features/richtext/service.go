@@ -10,22 +10,27 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/idgen"
+	"github.com/campusos/CampusOS/pkg/observability"
 )
 
 type Service struct {
-	store     Store
-	community communityport.ContentGateway
-	assets    *LocalAssetStore
-	enabled   func() bool
-	reliable  *reliability.Service
+	store            Store
+	community        communityport.ContentGateway
+	assets           *LocalAssetStore
+	objects          corestorage.ObjectPort
+	enabled          func() bool
+	pdfViewerEnabled func() bool
+	reliable         *reliability.Service
+	meter            observability.Meter
 }
 
 func NewService(store Store, community communityport.ContentGateway) *Service {
-	return &Service{store: store, community: community, enabled: func() bool { return true }}
+	return &Service{store: store, community: community, enabled: func() bool { return true }, pdfViewerEnabled: func() bool { return true }}
 }
 
 func (s *Service) SetEnabledChecker(checker func() bool) {
@@ -36,8 +41,56 @@ func (s *Service) SetEnabledChecker(checker func() bool) {
 	s.enabled = checker
 }
 
+// SetPDFViewerEnabledChecker lets the host feature registry withdraw the
+// trusted viewer without weakening the authenticated download path.
+func (s *Service) SetPDFViewerEnabledChecker(checker func() bool) {
+	if checker == nil {
+		s.pdfViewerEnabled = func() bool { return true }
+		return
+	}
+	s.pdfViewerEnabled = checker
+}
+
+func (s *Service) ensurePDFViewerEnabled() error {
+	if s.pdfViewerEnabled == nil || !s.pdfViewerEnabled() {
+		return ErrPluginDisabled
+	}
+	return nil
+}
+
 func (s *Service) SetAssetStore(store *LocalAssetStore) {
 	s.assets = store
+}
+
+// SetObjectPort establishes the only byte boundary for v1.1 article
+// attachments.  It is intentionally separate from the legacy image store,
+// which remains compatible while image cutover is completed.
+func (s *Service) SetObjectPort(objects corestorage.ObjectPort) { s.objects = objects }
+
+// SetMeter receives only the bounded platform meter. Asset names, owners,
+// storage keys and invocation IDs are never metrics labels.
+func (s *Service) SetMeter(meter observability.Meter) { s.meter = meter }
+
+func (s *Service) refreshAssetMetrics(ctx context.Context) {
+	if s == nil || s.meter == nil || s.store == nil {
+		return
+	}
+	summary, err := s.store.AssetGovernanceSummary(ctx, time.Now().UTC())
+	if err != nil {
+		return
+	}
+	for _, status := range []string{AssetStatusActive, AssetStatusTrashed, AssetStatusQuarantined, AssetStatusPurging, AssetStatusDeleted} {
+		var count, bytes int64
+		for _, item := range summary.Statuses {
+			if item.Status == status {
+				count, bytes = item.Count, item.SizeBytes
+				break
+			}
+		}
+		_ = s.meter.SetGauge("campusos_richtext_assets", observability.Labels{"status": status}, float64(count))
+		_ = s.meter.SetGauge("campusos_richtext_asset_bytes", observability.Labels{"status": status}, float64(bytes))
+	}
+	_ = s.meter.SetGauge("campusos_richtext_expired_invocations", nil, float64(summary.ExpiredInvocations))
 }
 
 func (s *Service) MaxAssetBytes() int64 {
@@ -472,9 +525,23 @@ func (s *Service) GetArticle(ctx context.Context, threadID, viewerID string) (*A
 		return nil, ErrArticleNotFound
 	}
 	if thread.IsPublic() {
+		// 附件本身始终由受保护的附件接口读取。匿名浏览公开文章时不
+		// 返回附件元数据，避免将用户资产目录暴露为公开内容的一部分。
+		if viewerID != "" {
+			attachments, listErr := s.store.ListAttachments(ctx, article.ID)
+			if listErr != nil {
+				return nil, listErr
+			}
+			article.Attachments = attachments
+		}
 		return article, nil
 	}
 	if viewerID != "" && article.CreatedBy == viewerID && thread.IsAuthorVisible(viewerID) {
+		attachments, listErr := s.store.ListAttachments(ctx, article.ID)
+		if listErr != nil {
+			return nil, listErr
+		}
+		article.Attachments = attachments
 		return article, nil
 	}
 	return nil, ErrArticleNotFound
