@@ -1,7 +1,7 @@
 # 当前规划与后续路线
 
 > 当前应用启动/合同版本：`v0.13.0`
-> 更新日期：2026-09-12
+> 更新日期：2026-09-16
 > 状态：v0.14-dev 已由项目所有者确认开发收尾；v1.0 P0/P1 仓库实现已完成审查，目标环境证据待收集
 
 CampusOS v0.13 已完成模块化单体、可信账号、可靠任务、可观测、响应式、内容治理和 Windows/Linux
@@ -36,7 +36,7 @@ DOCX Preview 可以在隔离条件不足时降级为上传与下载。
 
 ## 迁移与兼容
 
-- 当前 migration 为 `000001-000005`：三段 clean baseline 加授权运行修正与 `process` Runtime 约束，共 84 张业务表和 2 张执行器系统表；旧测试库不支持原地升级，必须经过 development/test 双确认 reset。下一次从 `000006` 追加，生产回滚仍优先关闭 Feature 并 forward-fix。
+- 当前 migration 为单一 `000001_v1_1_schema_baseline`：完整 v1.1 Schema、稳定参考数据、插件授权、附件和三种 PDF Invocation 上下文共 88 张业务表及 2 张执行器系统表。旧测试库不支持原地升级，必须经过 development/test 双确认 reset；下一项结构变更从 `000002` 追加，生产回滚仍优先关闭 Feature 并 forward-fix。
 - 文件迁移采用 `shadow -> dual -> enforce`，旧头像、图片、RichText 资产和课表先盘点再登记。
 - 未知文件只报告或隔离，不在启动时自动删除。
 - 旧 `year + semester` 请求在兼容期只能解析为已存在 AcademicTerm，不能绕过 Guard 创建学期。
@@ -70,7 +70,7 @@ v1.1 已聚焦图文文章附件和 PDF Viewer：图片继续用于封面/正文
 Plugin UI v2，由宿主控制 modal/fullscreen/同源 new-tab 和短期 Invocation。第一方 PDF Viewer 使用受信任模块；
 第三方 UI Bundle 沙箱、音视频预览和跨用户分享不属于本版。
 
-正式范围位于 `docs/项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md`。`000006`–`000009`、附件 API、
+正式范围位于 `docs/项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md`。单一 v1.1 baseline、附件 API、
 受控用户资产、Plugin UI v2、第一方 PDF Viewer、Web/Admin 入口均已进入 v1.1-dev 仓库实现；当前完成状态和
 运行验证以 `docs/进度/v1.1-dev/` 为准。目标 Linux 浏览器矩阵、容量与恢复演练仍是 `v1.1 Final` 的发布门禁。
 

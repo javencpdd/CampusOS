@@ -11,8 +11,8 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
   ./internal/transport/httpapi \
   -count=1
 
-grep -q 'refresh_token_digest' migrations/000001_v1_schema_baseline.up.sql
-if grep -Eq '^[[:space:]]+refresh_token[[:space:]]' migrations/000001_v1_schema_baseline.up.sql; then
+grep -q 'refresh_token_digest' migrations/000001_v1_1_schema_baseline.up.sql
+if grep -Eq '^[[:space:]]+refresh_token[[:space:]]' migrations/000001_v1_1_schema_baseline.up.sql; then
   echo "identity session check failed: raw refresh_token column remains in the v1 baseline" >&2
   exit 1
 fi

@@ -33,7 +33,7 @@
             type="info"
             :closable="false"
             show-icon
-            title="文本、Markdown 和 CampusDoc 支持在线编辑；PDF 与 DOCX 保留为私有下载，未配置隔离转换器时不会在服务器中预览。"
+            title="文本、Markdown 和 CampusDoc 支持在线编辑；PDF 可通过第一方 PDF 阅读器在线预览，DOCX 保持私有下载，不在服务器中转换。"
           />
           <el-empty v-if="!items.length" description="暂时没有文档" />
           <el-table v-else :data="items" @row-click="openDocument">
@@ -45,6 +45,9 @@
             <el-table-column prop="updated_at" label="更新时间" min-width="160" />
             <el-table-column label="操作" width="200">
               <template #default="{ row }">
+                <el-button v-if="row.format === 'pdf'" link type="primary" @click.stop="previewPDF(row)"
+                  >预览</el-button
+                >
                 <el-button link type="primary" @click.stop="download(row)">下载</el-button>
                 <el-button v-if="row.status === 'active'" link type="danger" @click.stop="changeStatus(row, true)"
                   >移入回收站</el-button
@@ -176,6 +179,8 @@ import { richTextApi } from '@/modules/richtext/api'
 import { spaceApi } from '@/modules/space/api'
 import { personalDocumentsApi } from '../api'
 import DocumentContentEditor from '@/modules/content-editor/components/DocumentContentEditor.vue'
+import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
+import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
 import {
   defaultDocumentContent,
   documentNameForFormat,
@@ -291,6 +296,10 @@ function createDocument() {
 }
 
 async function openDocument(row: any) {
+  if (row.format === 'pdf') {
+    await previewPDF(row)
+    return
+  }
   editor.value = { ...row, content: '' }
   editorVisible.value = true
   if (['text', 'markdown', 'campusdoc'].includes(row.format)) {
@@ -357,8 +366,39 @@ async function upload(event: Event) {
   }
 }
 
-function download(row: any) {
-  window.open(personalDocumentsApi.downloadURL(row.id), '_blank', 'noopener')
+async function download(row: any) {
+  try {
+    const result: any = await personalDocumentsApi.download(row.id)
+    const blob = result?.data || result
+    if (!(blob instanceof Blob)) throw new Error('下载内容不可用')
+    const url = URL.createObjectURL(blob)
+    const link = window.document.createElement('a')
+    link.href = url
+    link.download = row.name || 'document'
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('已开始下载个人文档')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || error?.message || '个人文档下载失败，请刷新后重试')
+  }
+}
+
+async function previewPDF(row: any) {
+  const presentation: SurfacePresentation = 'modal'
+  try {
+    await ensurePDFViewerConsent('personal_space_file.self.read')
+    const result: any = await personalDocumentsApi.createPDFInvocation(row.id, presentation)
+    const invocation = data(result)
+    if (!invocation?.id) throw new Error('服务器未返回有效的 PDF 预览上下文')
+    await openPluginSurface({
+      surfaceID: 'builtin.pdf-viewer.preview',
+      invocationID: invocation.id,
+      presentation,
+    })
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载后使用本地阅读器打开。')
+  }
 }
 
 async function changeStatus(row: any, trash: boolean) {

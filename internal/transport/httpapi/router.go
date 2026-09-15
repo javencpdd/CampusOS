@@ -231,6 +231,7 @@ func Build(d Dependencies) *Router {
 		authenticated.GET("/documents/:id", d.PersonalDocuments.Get)
 		authenticated.GET("/documents/:id/content", d.PersonalDocuments.Content)
 		authenticated.GET("/documents/:id/preview", d.PersonalDocuments.Preview)
+		authenticated.POST("/documents/:id/pdf-invocations", d.PersonalDocuments.CreatePDFInvocation)
 		authenticated.PUT("/documents/:id", d.PersonalDocuments.Save)
 		authenticated.GET("/documents/:id/versions", d.PersonalDocuments.Versions)
 		authenticated.POST("/documents/:id/versions/:version_id/restore", d.PersonalDocuments.RestoreVersion)

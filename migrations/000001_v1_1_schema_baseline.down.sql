@@ -1,7 +1,7 @@
--- CampusOS v1.0 baseline rollback.
--- `migrate down` only reaches this file after reference data and the v1 plugin
--- foundation have been rolled back. Migration metadata tables are intentionally
--- retained so the executor can record the rollback.
+-- CampusOS v1.1 clean baseline rollback.
+-- This is permitted only for disposable development/test databases. All public
+-- application tables (including reference data and v1.1 attachment metadata)
+-- are removed; migration metadata tables stay so the executor can record it.
 DO $$
 DECLARE
     target record;
@@ -23,4 +23,3 @@ DROP FUNCTION IF EXISTS public.campusos_guard_mutual_aid_detail() CASCADE;
 DROP FUNCTION IF EXISTS public.campusos_guard_secondhand_detail() CASCADE;
 DROP FUNCTION IF EXISTS public.sync_identity_admin_account_for_user(bigint, bigint) CASCADE;
 DROP FUNCTION IF EXISTS public.sync_identity_admin_account_from_role() CASCADE;
-

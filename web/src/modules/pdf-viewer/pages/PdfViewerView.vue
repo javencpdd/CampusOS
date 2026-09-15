@@ -3,7 +3,7 @@
     <header class="pdf-toolbar">
       <div>
         <strong>{{ attachment?.display_name || 'PDF 附件' }}</strong>
-        <p>受当前文章或个人空间访问权限保护；预览不会生成公开链接。</p>
+        <p>受当前文章、个人附件或个人文档的访问权限保护；预览不会生成公开链接。</p>
       </div>
       <div class="pdf-actions">
         <el-button size="small" :disabled="pageNumber <= 1" @click="goToPage(pageNumber - 1)">上一页</el-button>
@@ -54,17 +54,21 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dist'
 import pdfWorkerURL from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { richTextApi } from '@/modules/richtext/api'
 import { getAccessToken } from '@/modules/identity/session'
+import { pluginCenterApi } from '@/modules/plugin-center/api'
+import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
 
 const props = defineProps<{ invocationId?: string }>()
 const attachment = ref<any>(null)
+const invocation = ref<any>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
-const document = ref<PDFDocumentProxy | null>(null)
+// PDF.js instances contain private fields and must not be wrapped in Vue proxies.
+const document = shallowRef<PDFDocumentProxy | null>(null)
 const loading = ref(false)
 const error = ref('')
 const pageNumber = ref(1)
@@ -74,6 +78,11 @@ const searchQuery = ref('')
 const searching = ref(false)
 const outlineItems = ref<Array<{ title: string; page: number }>>([])
 let renderingTask: { cancel: () => void; promise: Promise<void> } | null = null
+let loadingTask: ReturnType<typeof getDocument> | null = null
+let loadRevision = 0
+let renderRevision = 0
+let readingPositionTimer: number | undefined
+const readingPosition = ref<{ key: string; version: number } | null>(null)
 
 GlobalWorkerOptions.workerSrc = pdfWorkerURL
 
@@ -81,15 +90,76 @@ const invocationID = () =>
   String(props.invocationId || new URLSearchParams(window.location.search).get('invocation') || '').trim()
 
 const readingPositionKey = () => {
-  const attachmentID = String(attachment.value?.id || '').trim()
-  return attachmentID ? `campusos.pdf-viewer.last-page.v1:${attachmentID}` : ''
+  const sourceID = String(attachment.value?.asset?.storage_object_id || '').trim()
+  if (!sourceID) return ''
+  const contextKind = String(invocation.value?.context_kind || '').trim()
+  const kind =
+    contextKind === 'article_attachment'
+      ? 'a'
+      : contextKind === 'personal_asset'
+        ? 's'
+        : contextKind === 'personal_document'
+          ? 'd'
+          : ''
+  // `plugin_records` validates record keys. Use a stable object-version key,
+  // not the short-lived invocation ID or a browser-local storage key.
+  return kind ? `pdf-${kind}-${sourceID}` : ''
 }
 
-const restoreReadingPosition = () => {
+const unwrap = (payload: any) => payload?.data ?? payload
+const isNotFound = (cause: any) => Number(cause?.response?.status || cause?.status || 0) === 404
+
+const restoreReadingPosition = async () => {
   const key = readingPositionKey()
   if (!key) return
-  const saved = Number(window.localStorage.getItem(key))
-  if (Number.isInteger(saved) && saved >= 1 && saved <= pageCount.value) pageNumber.value = saved
+  try {
+    // Reading position is optional personal plugin data. A declined/revoked
+    // consent must not block authenticated PDF reading or fall back to browser
+    // localStorage/IndexedDB.
+    await ensurePDFViewerConsent('plugin_record.self.read')
+    await ensurePDFViewerConsent('plugin_record.self.write')
+    let record: any
+    try {
+      record = unwrap(await pluginCenterApi.getRecord('builtin.pdf-viewer', 'reading_positions', key))
+    } catch (cause: any) {
+      if (!isNotFound(cause)) throw cause
+      // The first visit has no record yet. Keep the server-approved namespace
+      // and create the record only after the reader actually changes page.
+      readingPosition.value = { key, version: 0 }
+      return
+    }
+    const saved = Number(record?.data?.page)
+    if (Number.isInteger(saved) && saved >= 1 && saved <= pageCount.value) pageNumber.value = saved
+    if (Number(record?.version) > 0) readingPosition.value = { key, version: Number(record.version) }
+  } catch {
+    readingPosition.value = null
+  }
+}
+
+const persistReadingPosition = async () => {
+  const state = readingPosition.value
+  if (!state || !Number.isInteger(pageNumber.value) || pageNumber.value < 1) return
+  try {
+    const record =
+      state.version > 0
+        ? unwrap(
+            await pluginCenterApi.updateRecord('builtin.pdf-viewer', 'reading_positions', state.key, {
+              version: state.version,
+              data: { page: pageNumber.value },
+            }),
+          )
+        : unwrap(
+            await pluginCenterApi.createRecord('builtin.pdf-viewer', 'reading_positions', {
+              record_key: state.key,
+              data: { page: pageNumber.value },
+            }),
+          )
+    if (Number(record?.version) > 0) readingPosition.value = { ...state, version: Number(record.version) }
+  } catch {
+    // A revoked grant, stale optimistic version or a transient API error only
+    // disables page memory; it must not affect the open PDF stream.
+    readingPosition.value = null
+  }
 }
 
 const loadOutline = async (pdf: any) => {
@@ -110,37 +180,48 @@ const loadOutline = async (pdf: any) => {
       }
     }
     await visit(roots)
-    outlineItems.value = flattened
+    if (pdf === document.value) outlineItems.value = flattened
   } catch {
     // A malformed or destination-less outline must not prevent safe reading.
-    outlineItems.value = []
+    if (pdf === document.value) outlineItems.value = []
   }
 }
 
 const clearDocument = async () => {
+  renderRevision += 1
   renderingTask?.cancel()
   renderingTask = null
+  const pending = loadingTask
+  loadingTask = null
   const current = document.value
   document.value = null
   pageCount.value = 0
   outlineItems.value = []
-  if (current) await current.destroy()
+  if (pending) await pending.destroy()
+  else if (current) await current.destroy()
 }
 
 const load = async () => {
+  const revision = ++loadRevision
   await clearDocument()
+  if (revision !== loadRevision) return
   error.value = ''
   attachment.value = null
+  invocation.value = null
+  readingPosition.value = null
   pageNumber.value = 1
   const id = invocationID()
   if (!id) {
+    loading.value = false
     error.value = '缺少安全预览上下文。请返回文章详情或个人空间后重新点击“预览”。'
     return
   }
   loading.value = true
   try {
     const summary: any = await richTextApi.getPDFInvocation(id)
+    if (revision !== loadRevision) return
     attachment.value = summary?.data?.attachment || summary?.attachment
+    invocation.value = summary?.data?.invocation || summary?.invocation || null
     // PDF.js carries normal authenticated headers and therefore consumes the
     // API's Range/ETag path instead of receiving a public file URL.
     const token = getAccessToken()
@@ -152,26 +233,38 @@ const load = async () => {
       disableRange: false,
       disableStream: false,
       disableAutoFetch: false,
+      isEvalSupported: false,
     })
-    document.value = await task.promise
+    loadingTask = task
+    const pdf = await task.promise
+    if (revision !== loadRevision) return
+    document.value = pdf
     pageCount.value = document.value.numPages
-    restoreReadingPosition()
+    await restoreReadingPosition()
     await loadOutline(document.value)
+    if (revision !== loadRevision) return
+    // The canvas is behind v-else-if and is absent until Vue flushes the DOM.
+    await nextTick()
     await renderPage()
   } catch (cause: any) {
+    if (revision !== loadRevision) return
     error.value = cause?.msg || 'PDF 预览暂不可用。你可以下载附件后使用本地阅读器打开。'
   } finally {
-    loading.value = false
+    if (revision === loadRevision) loading.value = false
   }
 }
 
 const renderPage = async () => {
+  const revision = ++renderRevision
   const current = document.value
   if (!current || !canvas.value) return
   const safePage = Math.max(1, Math.min(pageNumber.value, current.numPages))
   pageNumber.value = safePage
-  renderingTask?.cancel()
+  const previous = renderingTask
+  previous?.cancel()
+  if (previous) await previous.promise.catch(() => undefined)
   const page: PDFPageProxy = await current.getPage(safePage)
+  if (revision !== renderRevision || current !== document.value || !canvas.value) return
   const viewport = page.getViewport({ scale: scale.value })
   const target = canvas.value
   const context = target.getContext('2d')
@@ -257,10 +350,15 @@ const download = async () => {
 onMounted(load)
 watch(() => props.invocationId, load)
 watch(pageNumber, (value) => {
-  const key = readingPositionKey()
-  if (key && Number.isInteger(value) && value >= 1) window.localStorage.setItem(key, String(value))
+  if (!readingPosition.value || !Number.isInteger(value) || value < 1) return
+  if (readingPositionTimer) window.clearTimeout(readingPositionTimer)
+  readingPositionTimer = window.setTimeout(() => void persistReadingPosition(), 250)
 })
-onBeforeUnmount(() => void clearDocument())
+onBeforeUnmount(() => {
+  loadRevision += 1
+  if (readingPositionTimer) window.clearTimeout(readingPositionTimer)
+  void clearDocument()
+})
 </script>
 
 <style scoped>

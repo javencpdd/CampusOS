@@ -19,14 +19,31 @@ import (
 )
 
 type Service struct {
-	store            Store
-	community        communityport.ContentGateway
-	assets           *LocalAssetStore
-	objects          corestorage.ObjectPort
-	enabled          func() bool
-	pdfViewerEnabled func() bool
-	reliable         *reliability.Service
-	meter            observability.Meter
+	store                  Store
+	community              communityport.ContentGateway
+	assets                 *LocalAssetStore
+	objects                corestorage.ObjectPort
+	enabled                func() bool
+	pdfViewerEnabled       func() bool
+	pdfViewerAuthorize     func(context.Context, PDFViewerAuthorizationInput) error
+	personalDocumentReader PersonalDocumentPDFReader
+	reliable               *reliability.Service
+	meter                  observability.Meter
+}
+
+// PersonalDocumentPDFReader is a deliberately narrow composition seam for the
+// first-party PDF Viewer. RichText only receives an owner-scoped, already
+// authenticated document stream; it never receives the Personal Documents
+// repository, a storage path, or a Plugin Manager.
+type PersonalDocumentPDFReader interface {
+	OpenOwnPDFDocument(context.Context, string, string) (PersonalDocumentPDF, error)
+}
+
+type PersonalDocumentPDF struct {
+	ID     string
+	Name   string
+	Format string
+	Object corestorage.ObjectReader
 }
 
 func NewService(store Store, community communityport.ContentGateway) *Service {
@@ -49,6 +66,30 @@ func (s *Service) SetPDFViewerEnabledChecker(checker func() bool) {
 		return
 	}
 	s.pdfViewerEnabled = checker
+}
+
+// SetPDFViewerAuthorizer supplies the composition-layer adapter to the
+// plugin authorization service. It is intentionally a narrow callback: the
+// feature never receives a Plugin Manager, a grant store, or a file path.
+func (s *Service) SetPDFViewerAuthorizer(authorizer func(context.Context, PDFViewerAuthorizationInput) error) {
+	s.pdfViewerAuthorize = authorizer
+}
+
+func (s *Service) SetPersonalDocumentPDFReader(reader PersonalDocumentPDFReader) {
+	s.personalDocumentReader = reader
+}
+
+func (s *Service) authorizePDFViewer(ctx context.Context, input PDFViewerAuthorizationInput) error {
+	if s.pdfViewerAuthorize == nil {
+		// NewService is also the isolated unit-test constructor. Production
+		// composition always supplies the callback below; keeping this default
+		// preserves existing feature-only tests without creating a host bypass.
+		return nil
+	}
+	if err := s.pdfViewerAuthorize(ctx, input); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) ensurePDFViewerEnabled() error {

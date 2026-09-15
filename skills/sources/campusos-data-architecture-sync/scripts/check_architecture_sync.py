@@ -91,7 +91,10 @@ def report(root: Path) -> dict[str, object]:
     ]
     connected = {name for _, source, target in relations for name in (source, target)}
     latest_version = versions[-1]
-    advertised = re.search(r"(?:迁移|干净基线)\s+000001\s+-\s+(\d{6})", view_source)
+    advertised = re.search(
+        r"(?:迁移|干净基线)\s+(?:000001\s+-\s+)?(\d{6})",
+        view_source,
+    )
     return {
         "migration_count": len(versions),
         "migration_versions": versions,

@@ -442,6 +442,7 @@ import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/modules/space/api'
 import { richTextApi } from '@/modules/richtext/api'
 import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
+import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
 import { useUserStore } from '@/modules/identity/store'
 
@@ -745,6 +746,7 @@ const downloadPersonalAsset = async (asset: PersonalAsset) => {
 const previewPersonalAssetPDF = async (asset: PersonalAsset) => {
   const presentation: SurfacePresentation = 'modal'
   try {
+    await ensurePDFViewerConsent('personal_space_file.self.read')
     const response: any = await richTextApi.createPersonalAssetPDFInvocation(asset.id, presentation)
     const invocation = response?.data || response
     openPluginSurface({
@@ -753,7 +755,8 @@ const previewPersonalAssetPDF = async (asset: PersonalAsset) => {
       presentation,
     })
   } catch (error: any) {
-    ElMessage.warning(error?.msg || 'PDF 预览暂不可用，请下载后使用本地阅读器打开。')
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载后使用本地阅读器打开。')
   }
 }
 

@@ -5,9 +5,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
@@ -22,6 +24,16 @@ const (
 	MaxArticleAttachmentCount            = 10
 	pluginUIInvocationTTL                = 10 * time.Minute
 )
+
+// Keep the existing positive BIGINT contract, but do not expose timestamp-based
+// sequence IDs in preview URLs. This ID is still not an authorization credential.
+func newPDFInvocationID() (string, error) {
+	value, err := rand.Int(rand.Reader, big.NewInt(9223372036854775807))
+	if err != nil {
+		return "", ErrAssetUnavailable
+	}
+	return value.Add(value, big.NewInt(1)).String(), nil
+}
 
 type AttachmentOpen struct {
 	Attachment ArticleAttachment
@@ -439,8 +451,18 @@ func (s *Service) CreatePDFInvocation(ctx context.Context, userID, threadID, att
 	if opened.Attachment.Asset.MimeType != "application/pdf" {
 		return nil, ErrAttachmentType
 	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, CapabilityCode: "article_attachment.self.preview", OperationCode: "invocation.create", Purpose: "article_attachment_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "plugin_ui.surface.open", OperationCode: "surface.open", Purpose: "article_attachment_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	invocationID, err := newPDFInvocationID()
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
-	invocation := &PluginUIInvocation{ID: fmt.Sprintf("%d", idgen.New()), UserID: userID, PluginKey: PDFViewerPluginKey,
+	invocation := &PluginUIInvocation{ID: invocationID, UserID: userID, PluginKey: PDFViewerPluginKey,
 		SurfaceID: PDFViewerSurfaceID, ContextKind: InvocationContextArticleAttachment, ArticleContentID: opened.Attachment.ArticleContentID, AssetID: opened.Attachment.AssetID,
 		AttachmentID: opened.Attachment.ID, Presentation: presentation, Purpose: "article_attachment_pdf_preview", ExpiresAt: now.Add(pluginUIInvocationTTL), CreatedAt: now}
 	if err := s.store.CreateInvocation(ctx, invocation); err != nil {
@@ -467,14 +489,70 @@ func (s *Service) CreatePersonalAssetPDFInvocation(ctx context.Context, userID, 
 	if opened.Attachment.Asset.MimeType != "application/pdf" {
 		return nil, ErrAttachmentType
 	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "personal_space_file.self.read", OperationCode: "invocation.create", Purpose: "personal_asset_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "plugin_ui.surface.open", OperationCode: "surface.open", Purpose: "personal_asset_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	invocationID, err := newPDFInvocationID()
+	if err != nil {
+		return nil, err
+	}
 	now := time.Now().UTC()
-	invocation := &PluginUIInvocation{ID: fmt.Sprintf("%d", idgen.New()), UserID: userID, PluginKey: PDFViewerPluginKey,
+	invocation := &PluginUIInvocation{ID: invocationID, UserID: userID, PluginKey: PDFViewerPluginKey,
 		SurfaceID: PDFViewerSurfaceID, ContextKind: InvocationContextPersonalAsset, AssetID: opened.Attachment.AssetID,
 		Presentation: presentation, Purpose: "personal_asset_pdf_preview", ExpiresAt: now.Add(pluginUIInvocationTTL), CreatedAt: now}
 	if err := s.store.CreateInvocation(ctx, invocation); err != nil {
 		return nil, err
 	}
 	return invocation, nil
+}
+
+// CreatePersonalDocumentPDFInvocation opens the existing first-party PDF
+// Viewer Surface for one owner-scoped Personal Documents PDF. The document
+// remains in its original module and Object Port namespace; this method only
+// records the short-lived plugin context and never creates a duplicate Asset.
+func (s *Service) CreatePersonalDocumentPDFInvocation(ctx context.Context, userID, documentID, presentation string) (*PluginUIInvocation, error) {
+	if err := s.ensurePDFViewerEnabled(); err != nil {
+		return nil, err
+	}
+	if !allowedPresentation(presentation) {
+		return nil, ErrInvocationPresentation
+	}
+	document, err := s.openPersonalDocumentPDF(ctx, userID, documentID)
+	if err != nil {
+		return nil, err
+	}
+	_ = document.Object.Reader.Close()
+	if document.Format != "pdf" || document.Object.Object.MimeType != "application/pdf" {
+		return nil, ErrAttachmentType
+	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "personal_space_file.self.read", OperationCode: "invocation.create", Purpose: "personal_document_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	if err := s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "plugin_ui.surface.open", OperationCode: "surface.open", Purpose: "personal_document_pdf_preview"}); err != nil {
+		return nil, err
+	}
+	invocationID, err := newPDFInvocationID()
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	invocation := &PluginUIInvocation{ID: invocationID, UserID: userID, PluginKey: PDFViewerPluginKey,
+		SurfaceID: PDFViewerSurfaceID, ContextKind: InvocationContextPersonalDocument, PersonalDocumentID: document.ID,
+		Presentation: presentation, Purpose: "personal_document_pdf_preview", ExpiresAt: now.Add(pluginUIInvocationTTL), CreatedAt: now}
+	if err := s.store.CreateInvocation(ctx, invocation); err != nil {
+		return nil, err
+	}
+	return invocation, nil
+}
+
+func (s *Service) openPersonalDocumentPDF(ctx context.Context, userID, documentID string) (PersonalDocumentPDF, error) {
+	if s.personalDocumentReader == nil {
+		return PersonalDocumentPDF{}, ErrAssetUnavailable
+	}
+	return s.personalDocumentReader.OpenOwnPDFDocument(ctx, userID, documentID)
 }
 
 func (s *Service) OpenPDFInvocation(ctx context.Context, userID, invocationID string) (AttachmentOpen, *PluginUIInvocation, error) {
@@ -505,15 +583,39 @@ func (s *Service) OpenPDFInvocation(ctx context.Context, userID, invocationID st
 		opened, err = s.OpenAttachment(ctx, userID, article.ThreadID, invocation.AttachmentID)
 	case InvocationContextPersonalAsset:
 		opened, err = s.OpenMyUserAsset(ctx, userID, invocation.AssetID)
+	case InvocationContextPersonalDocument:
+		var document PersonalDocumentPDF
+		document, err = s.openPersonalDocumentPDF(ctx, userID, invocation.PersonalDocumentID)
+		if err == nil {
+			opened = AttachmentOpen{
+				Attachment: ArticleAttachment{ID: document.ID, DisplayName: document.Name, Asset: UserAsset{
+					OwnerID: userID, OriginalName: document.Name, MimeType: document.Object.Object.MimeType,
+					SizeBytes: document.Object.Object.SizeBytes, StorageObjectID: document.Object.Object.ID,
+				}},
+				Object: document.Object.Object,
+				Reader: document.Object.Reader,
+			}
+		}
 	default:
 		return AttachmentOpen{}, nil, ErrInvocationNotFound
 	}
 	if err != nil {
 		return AttachmentOpen{}, nil, err
 	}
-	if opened.Attachment.Asset.MimeType != "application/pdf" || opened.Attachment.AssetID != invocation.AssetID {
+	if opened.Attachment.Asset.MimeType != "application/pdf" ||
+		(invocation.ContextKind == InvocationContextPersonalDocument && opened.Attachment.ID != invocation.PersonalDocumentID) ||
+		(invocation.ContextKind != InvocationContextPersonalDocument && opened.Attachment.AssetID != invocation.AssetID) {
 		_ = opened.Reader.Close()
 		return AttachmentOpen{}, nil, ErrInvocationNotFound
+	}
+	if invocation.ContextKind == InvocationContextArticleAttachment {
+		err = s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, CapabilityCode: "article_attachment.self.preview", OperationCode: "content.read", Purpose: invocation.Purpose})
+	} else {
+		err = s.authorizePDFViewer(ctx, PDFViewerAuthorizationInput{UserID: userID, ResourceOwnerID: userID, CapabilityCode: "personal_space_file.self.read", OperationCode: "content.read", Purpose: invocation.Purpose})
+	}
+	if err != nil {
+		_ = opened.Reader.Close()
+		return AttachmentOpen{}, nil, err
 	}
 	return opened, invocation, nil
 }

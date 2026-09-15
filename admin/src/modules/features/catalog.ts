@@ -26,7 +26,7 @@ export const builtinFeatureDefinitions: FeatureRow[] = [
   {
     id: 'pdf-viewer',
     label: 'PDF 文档预览',
-    description: '内置受信任预览功能：为已发布图文文章中的 PDF 附件提供受权限保护的在线阅读。',
+    description: 'PDF Viewer 的兼容性总开关；实际生命周期、授权与预览入口由第一方受管插件 builtin.pdf-viewer 管理。',
     representative: 'pdf-viewer',
     parentId: 'controlled-richtext-article',
     configSources: [],

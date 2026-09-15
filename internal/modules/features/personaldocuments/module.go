@@ -15,7 +15,10 @@ import (
 
 const portRepository = "personal-documents.adapter.repository"
 
-type ModuleConfig struct{ Enabled func() bool }
+type ModuleConfig struct {
+	Enabled           func() bool
+	PDFPreviewInvoker PDFPreviewInvoker
+}
 type Module struct {
 	config     ModuleConfig
 	repository Repository
@@ -75,6 +78,7 @@ func (m *Module) Start(ctx context.Context) error {
 		return e
 	}
 	svc.SetEnabledChecker(m.config.Enabled)
+	svc.SetPDFPreviewInvoker(m.config.PDFPreviewInvoker)
 	svc.SetReliability(m.reliable)
 	svc.SetMeter(m.meter)
 	m.reliable.RegisterConsumer(previewRequestedEvent, previewRequestConsumer, svc.AcknowledgePreviewRequest)

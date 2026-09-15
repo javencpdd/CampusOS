@@ -75,7 +75,7 @@ BEGIN
         'personal_document_previews.id', 'personal_document_previews.document_version_id', 'personal_document_previews.preview_object_id', 'personal_document_previews.status', 'personal_document_previews.attempts',
         'user_assets.id', 'user_assets.owner_user_id', 'user_assets.kind', 'user_assets.storage_object_id', 'user_assets.mime_type', 'user_assets.size_bytes', 'user_assets.status', 'user_assets.version',
         'richtext_article_attachments.id', 'richtext_article_attachments.article_content_id', 'richtext_article_attachments.asset_id', 'richtext_article_attachments.display_name', 'richtext_article_attachments.display_order',
-        'plugin_ui_invocations.id', 'plugin_ui_invocations.user_id', 'plugin_ui_invocations.plugin_key', 'plugin_ui_invocations.surface_id', 'plugin_ui_invocations.context_kind', 'plugin_ui_invocations.article_content_id', 'plugin_ui_invocations.presentation', 'plugin_ui_invocations.expires_at',
+        'plugin_ui_invocations.id', 'plugin_ui_invocations.user_id', 'plugin_ui_invocations.plugin_key', 'plugin_ui_invocations.surface_id', 'plugin_ui_invocations.context_kind', 'plugin_ui_invocations.article_content_id', 'plugin_ui_invocations.personal_document_id', 'plugin_ui_invocations.presentation', 'plugin_ui_invocations.expires_at',
         'asset_lifecycle_audits.id', 'asset_lifecycle_audits.asset_id', 'asset_lifecycle_audits.actor_user_id', 'asset_lifecycle_audits.actor_type', 'asset_lifecycle_audits.action', 'asset_lifecycle_audits.created_at',
         'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
         'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
@@ -154,7 +154,7 @@ BEGIN
         'chk_plugins_backend_state', 'chk_plugins_frontend_state', 'chk_plugins_health_state',
         'fk_plugins_publisher', 'chk_plugin_publishers_trust', 'chk_plugin_versions_lifecycle',
         'fk_user_assets_owner', 'fk_user_assets_storage_object', 'fk_richtext_article_attachments_article', 'fk_richtext_article_attachments_asset',
-        'fk_plugin_ui_invocations_user', 'fk_plugin_ui_invocations_article', 'fk_plugin_ui_invocations_asset', 'fk_plugin_ui_invocations_attachment',
+        'fk_plugin_ui_invocations_user', 'fk_plugin_ui_invocations_article', 'fk_plugin_ui_invocations_asset', 'fk_plugin_ui_invocations_attachment', 'fk_plugin_ui_invocations_personal_document',
         'fk_asset_lifecycle_audits_asset', 'fk_asset_lifecycle_audits_actor',
         'fk_richtext_article_assets_user_asset',
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
@@ -199,7 +199,7 @@ BEGIN
         'idx_plugin_authorization_declaration'
         ,'uq_user_assets_storage_object', 'idx_user_assets_owner_status_updated', 'idx_user_assets_owner_kind_updated',
         'uq_richtext_article_attachment_asset', 'uq_richtext_article_attachment_order', 'idx_richtext_article_attachments_article_order', 'idx_richtext_article_attachments_asset_article',
-        'idx_plugin_ui_invocations_expiry', 'idx_plugin_ui_invocations_user_plugin_expiry', 'idx_plugin_ui_invocations_article', 'idx_plugin_ui_invocations_asset', 'idx_plugin_ui_invocations_attachment',
+        'idx_plugin_ui_invocations_expiry', 'idx_plugin_ui_invocations_user_plugin_expiry', 'idx_plugin_ui_invocations_article', 'idx_plugin_ui_invocations_asset', 'idx_plugin_ui_invocations_attachment', 'idx_plugin_ui_invocations_personal_document',
         'idx_asset_lifecycle_audits_created_action', 'idx_asset_lifecycle_audits_asset_created', 'idx_asset_lifecycle_audits_actor_created',
         'idx_richtext_article_assets_asset_id'
     ]) expected
@@ -226,7 +226,7 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v1.1-personal-asset-preview-v1',
+    'schema_contract', 'v1.1-personal-document-preview-v1',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'

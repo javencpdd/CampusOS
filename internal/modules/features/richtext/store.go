@@ -52,9 +52,9 @@ type PgStore struct {
 // In particular, $2 is also used in hashtextextended. Without the casts in
 // the INSERT projection PostgreSQL infers it as text there and rejects the
 // insert into article_content_id (bigint) at runtime.
-const createAttachmentSQL = `WITH locked AS (
-			SELECT pg_advisory_xact_lock(hashtextextended('richtext-attachment:' || $2::text, 0))
-		), budget AS (
+const attachmentAdmissionLockSQL = `SELECT pg_advisory_xact_lock(hashtextextended('richtext-attachment:' || $1::text, 0))`
+
+const createAttachmentSQL = `WITH budget AS (
 			SELECT count(*)::int AS attachment_count,
 				COALESCE(sum(u.size_bytes), 0)::bigint AS total_bytes,
 				COALESCE(max(a.display_order), -1)::int AS max_display_order,
@@ -66,7 +66,7 @@ const createAttachmentSQL = `WITH locked AS (
 		INSERT INTO richtext_article_attachments
 			(id, article_content_id, asset_id, display_name, display_order, created_at, updated_at)
 		SELECT $1::bigint, $2::bigint, $3::bigint, $4, budget.max_display_order+1, $5, $6
-		FROM budget CROSS JOIN locked
+		FROM budget
 		WHERE budget.attachment_count < $7
 			AND budget.total_bytes + $8 <= $9
 			AND NOT COALESCE(budget.already_bound, false)
@@ -311,10 +311,18 @@ func (s *PgStore) CreateAttachment(ctx context.Context, attachment *ArticleAttac
 	if attachment == nil {
 		return ErrAttachmentNotFound
 	}
-	// The advisory lock serializes the short admission calculation per article.
-	// It prevents two simultaneous uploads from both observing the same count,
-	// total size, or next display order. The lock is scoped to this one INSERT
-	// statement, so it never survives a failed request.
+	return transaction.NewPostgreSQL(s.pool).Within(ctx, func(ctx context.Context) error {
+		// Acquire the lock in a separate statement. Under READ COMMITTED the
+		// following INSERT then sees commits made by the previous lock holder;
+		// putting the lock in an INSERT CTE would retain a pre-wait snapshot.
+		if _, err := s.db(ctx).Exec(ctx, attachmentAdmissionLockSQL, attachment.ArticleContentID); err != nil {
+			return err
+		}
+		return s.createAttachmentLocked(ctx, attachment)
+	})
+}
+
+func (s *PgStore) createAttachmentLocked(ctx context.Context, attachment *ArticleAttachment) error {
 	err := s.db(ctx).QueryRow(ctx, createAttachmentSQL, attachment.ID, attachment.ArticleContentID, attachment.AssetID, attachment.DisplayName,
 		attachment.CreatedAt, attachment.UpdatedAt, MaxArticleAttachmentCount, attachment.Asset.SizeBytes, MaxArticleAttachmentTotalBytes).
 		Scan(&attachment.DisplayOrder)
@@ -482,18 +490,18 @@ func (s *PgStore) AssetGovernanceSummary(ctx context.Context, now time.Time) (As
 }
 
 const createInvocationSQL = `INSERT INTO plugin_ui_invocations
-	(id, user_id, plugin_key, surface_id, context_kind, article_content_id, asset_id, attachment_id, presentation, purpose, context_digest, expires_at, opened_at, revoked_at, created_at)
-	VALUES ($1,$2,$3,$4,$5,NULLIF($6,'')::bigint,NULLIF($7,'')::bigint,NULLIF($8,'')::bigint,$9,$10,'',$11,$12,$13,$14)`
+	(id, user_id, plugin_key, surface_id, context_kind, article_content_id, asset_id, attachment_id, personal_document_id, presentation, purpose, context_digest, expires_at, opened_at, revoked_at, created_at)
+	VALUES ($1,$2,$3,$4,$5,NULLIF($6,'')::bigint,NULLIF($7,'')::bigint,NULLIF($8,'')::bigint,NULLIF($9,'')::bigint,$10,$11,'',$12,$13,$14,$15)`
 
 const getInvocationSQL = `SELECT id::text,user_id::text,plugin_key,surface_id,context_kind,COALESCE(article_content_id::text,''),COALESCE(asset_id::text,''),COALESCE(attachment_id::text,''),
-	presentation,purpose,expires_at,opened_at,revoked_at,created_at FROM plugin_ui_invocations WHERE id=$1`
+	COALESCE(personal_document_id::text,''),presentation,purpose,expires_at,opened_at,revoked_at,created_at FROM plugin_ui_invocations WHERE id=$1`
 
 func (s *PgStore) CreateInvocation(ctx context.Context, item *PluginUIInvocation) error {
 	if item == nil {
 		return ErrInvocationNotFound
 	}
 	_, err := s.db(ctx).Exec(ctx, createInvocationSQL,
-		item.ID, item.UserID, item.PluginKey, item.SurfaceID, item.ContextKind, item.ArticleContentID, item.AssetID, item.AttachmentID, item.Presentation, item.Purpose,
+		item.ID, item.UserID, item.PluginKey, item.SurfaceID, item.ContextKind, item.ArticleContentID, item.AssetID, item.AttachmentID, item.PersonalDocumentID, item.Presentation, item.Purpose,
 		item.ExpiresAt, item.OpenedAt, item.RevokedAt, item.CreatedAt)
 	return err
 }
@@ -501,7 +509,7 @@ func (s *PgStore) CreateInvocation(ctx context.Context, item *PluginUIInvocation
 func (s *PgStore) GetInvocation(ctx context.Context, invocationID string) (*PluginUIInvocation, error) {
 	item := &PluginUIInvocation{}
 	err := s.db(ctx).QueryRow(ctx, getInvocationSQL, invocationID).
-		Scan(&item.ID, &item.UserID, &item.PluginKey, &item.SurfaceID, &item.ContextKind, &item.ArticleContentID, &item.AssetID, &item.AttachmentID, &item.Presentation, &item.Purpose, &item.ExpiresAt, &item.OpenedAt, &item.RevokedAt, &item.CreatedAt)
+		Scan(&item.ID, &item.UserID, &item.PluginKey, &item.SurfaceID, &item.ContextKind, &item.ArticleContentID, &item.AssetID, &item.AttachmentID, &item.PersonalDocumentID, &item.Presentation, &item.Purpose, &item.ExpiresAt, &item.OpenedAt, &item.RevokedAt, &item.CreatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, ErrInvocationNotFound
 	}

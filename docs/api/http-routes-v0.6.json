@@ -1634,6 +1634,23 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/documents/:id/pdf-invocations",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.id.pdf_invocations",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.id.pdf_invocations",
+        "httpapi.post.api.v1.documents.id.pdf_invocations"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "PUT",
       "path": "/api/v1/documents/:id",
       "handler": "d.PersonalDocuments",

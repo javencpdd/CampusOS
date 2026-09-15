@@ -190,6 +190,49 @@ func TestMarketServiceRequiresPublishedCatalogForNewConsent(t *testing.T) {
 	}
 }
 
+func TestMarketCatalogMarksCompiledBuiltinWithoutPersistingTrust(t *testing.T) {
+	manifest := NewPDFViewerBuiltinManifest()
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest}}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := service.Catalog(context.Background(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].PluginName != PDFViewerPluginName || !entries[0].TrustedBuiltin {
+		t.Fatalf("catalog must derive trusted builtin from compiled manifest: %#v", entries)
+	}
+}
+
+func TestMarketServiceAllowsOnlyManagedBuiltinToUseDeclaredUserRecords(t *testing.T) {
+	manifest := NewPDFViewerBuiltinManifest()
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if _, err := service.userManifest(PDFViewerPluginName); err != nil {
+		t.Fatalf("managed builtin must be eligible for host-managed records: %v", err)
+	}
+	spoofed := *manifest
+	spoofed.Scope = ScopeUser
+	service = NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return &spoofed, name == spoofed.Name
+	})
+	if _, err := service.userManifest(PDFViewerPluginName); !errors.Is(err, ErrMarketUnsupported) {
+		t.Fatalf("unmanaged builtin shape = %v, want unsupported", err)
+	}
+}
+
 func TestMarketServiceRejectsSpoofedFileMIMEAndDetectsOrphan(t *testing.T) {
 	manifest := mustV2MarketManifest(t)
 	storage, err := corestorage.NewLocalAdapter(t.TempDir())

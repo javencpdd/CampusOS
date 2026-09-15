@@ -236,6 +236,7 @@ import ThreadTaxonomy from '@/modules/community/components/ThreadTaxonomy.vue'
 import { richTextApi } from '@/modules/richtext/api'
 import { useUserStore } from '@/modules/identity/store'
 import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
+import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
 
 const route = useRoute()
 const router = useRouter()
@@ -447,6 +448,7 @@ const downloadAttachment = async (attachment: any) => {
 const previewPDF = async (attachment: any, requested: string) => {
   const presentation = requested as SurfacePresentation
   try {
+    await ensurePDFViewerConsent('article_attachment.self.preview')
     const response: any = await richTextApi.createPDFInvocation(threadID(), attachment.id, presentation)
     const invocation = response?.data || response
     openPluginSurface({
@@ -455,7 +457,8 @@ const previewPDF = async (attachment: any, requested: string) => {
       presentation,
     })
   } catch (error: any) {
-    ElMessage.warning(error?.msg || 'PDF 预览暂不可用，请下载附件后使用本地阅读器打开。')
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载附件后使用本地阅读器打开。')
   }
 }
 

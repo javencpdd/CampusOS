@@ -3,7 +3,9 @@
     <div class="page-heading">
       <div>
         <h1 id="plugin-center-title">插件中心</h1>
-        <p>管理已安装 v2 外部插件的目录可见性、用户请求和发布记录。</p>
+        <p>
+          管理 v2 外部插件与第一方受管插件的目录可见性、用户请求和发布记录。
+        </p>
       </div>
       <el-button :loading="loading" @click="load">
         <el-icon><Refresh /></el-icon>
@@ -12,7 +14,7 @@
     </div>
 
     <el-alert
-      title="目录只展示通过受管数据合同的外部插件。用户授权、文件和记录均由宿主保存，插件不能直接访问数据库。"
+      title="目录展示通过受管数据合同的外部插件，以及随 CampusOS 交付的第一方受管插件。用户授权、文件和记录均由宿主保存，插件不能直接访问数据库。"
       type="info"
       show-icon
       :closable="false"
@@ -46,7 +48,14 @@
             ><strong>{{
               row.catalog.display_name || row.catalog.plugin_name
             }}</strong
-            ><small>{{ row.catalog.plugin_name }}</small></template
+            ><small>{{ row.catalog.plugin_name }}</small
+            ><el-tag
+              v-if="row.catalog.trusted_builtin"
+              type="success"
+              size="small"
+              effect="plain"
+              >第一方受管</el-tag
+            ></template
           >
         </el-table-column>
         <el-table-column label="版本 / 运行时" min-width="155"
@@ -163,7 +172,7 @@
       </div>
       <el-empty
         v-if="!loading && !items.length"
-        description="没有可管理的 v2 外部插件"
+        description="没有可管理的 v2 受管插件"
       />
     </section>
 

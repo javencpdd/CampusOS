@@ -693,6 +693,13 @@ func writeAttachmentError(c *gin.Context, err error, providedBytes int64, usages
 		response.Error(c, http.StatusBadRequest, 73002, "预览展示方式无效，请使用弹窗、抽屉、全屏或新标签页重新打开。")
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusServiceUnavailable, 73001, "PDF 预览插件当前未启用。你仍可下载有权访问的附件后使用本地阅读器打开。")
+	case errors.Is(err, ErrPluginAuthorization):
+		message := "PDF 预览尚未获得所需授权。请在插件中心确认个人数据用途，或联系管理员授予 PDF Viewer 权限。"
+		var authorizationErr *PDFViewerAuthorizationError
+		if errors.As(err, &authorizationErr) && strings.TrimSpace(authorizationErr.Message) != "" {
+			message = authorizationErr.Message
+		}
+		response.Error(c, http.StatusForbidden, 73003, message)
 	case errors.Is(err, ErrPermissionDenied):
 		response.Error(c, http.StatusForbidden, 73003, "当前无权访问该文章附件。")
 	case errors.Is(err, ErrAttachmentNotFound), errors.Is(err, ErrAssetNotFound), errors.Is(err, ErrArticleNotFound):
@@ -713,6 +720,13 @@ func writePersonalAssetError(c *gin.Context, err error) {
 		response.Error(c, http.StatusBadRequest, 73002, "预览展示方式无效，请使用弹窗、抽屉、全屏或新标签页重新打开。")
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusServiceUnavailable, 73001, "PDF 预览插件当前未启用。你仍可下载自己的个人附件后使用本地阅读器打开。")
+	case errors.Is(err, ErrPluginAuthorization):
+		message := "PDF 预览尚未获得读取你个人空间文件的授权。请在插件中心确认授权，或联系管理员授予 PDF Viewer 权限。"
+		var authorizationErr *PDFViewerAuthorizationError
+		if errors.As(err, &authorizationErr) && strings.TrimSpace(authorizationErr.Message) != "" {
+			message = authorizationErr.Message
+		}
+		response.Error(c, http.StatusForbidden, 73003, message)
 	case errors.Is(err, ErrAssetUnavailable):
 		response.Error(c, http.StatusServiceUnavailable, 10006, "个人附件存储暂不可用，请稍后重试。")
 	default:

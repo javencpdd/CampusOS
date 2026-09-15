@@ -12,10 +12,21 @@ export const pluginCenterApi = {
   deleteData: (name: string) => api.delete(`/plugin-market/${encodeURIComponent(name)}/data`),
   search: (plugin: string, collection: string, query: string) =>
     api.get('/plugin-market/search', { params: { plugin, collection, q: query } }),
+  getRecord: (name: string, collection: string, key: string) =>
+    api.get(
+      `/plugin-market/${encodeURIComponent(name)}/records/${encodeURIComponent(collection)}/${encodeURIComponent(key)}`,
+    ),
+  createRecord: (name: string, collection: string, data: { record_key: string; data: Record<string, any> }) =>
+    api.post(`/plugin-market/${encodeURIComponent(name)}/records/${encodeURIComponent(collection)}`, data),
+  updateRecord: (name: string, collection: string, key: string, data: { version: number; data: Record<string, any> }) =>
+    api.put(
+      `/plugin-market/${encodeURIComponent(name)}/records/${encodeURIComponent(collection)}/${encodeURIComponent(key)}`,
+      data,
+    ),
   authorization: (name: string) => api.get(`/plugin-authorizations/${encodeURIComponent(name)}`),
   setConsent: (
     name: string,
-    versionId: number,
+    versionId: string,
     capability: string,
     status: 'granted' | 'revoked',
     scope: Record<string, any>,
@@ -24,13 +35,13 @@ export const pluginCenterApi = {
       `/plugin-authorizations/${encodeURIComponent(name)}/versions/${versionId}/consents/${encodeURIComponent(capability)}`,
       { status, scope },
     ),
-  issueDelegation: (name: string, versionId: number, capabilities: string[], ttlSeconds = 900) =>
+  issueDelegation: (name: string, versionId: string, capabilities: string[], ttlSeconds = 900) =>
     api.post(`/plugin-authorizations/${encodeURIComponent(name)}/versions/${versionId}/delegations`, {
       capabilities,
       scope: { scope: 'self' },
       ttl_seconds: ttlSeconds,
     }),
-  revokeDelegation: (name: string, delegationId: number) =>
+  revokeDelegation: (name: string, delegationId: string) =>
     api.delete(`/plugin-authorizations/${encodeURIComponent(name)}/delegations/${delegationId}`),
   secrets: (name: string) => api.get(`/plugin-authorizations/${encodeURIComponent(name)}/secrets`),
   setSecret: (name: string, secret: string, value: string) =>

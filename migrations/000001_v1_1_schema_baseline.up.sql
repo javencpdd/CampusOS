@@ -1,6 +1,7 @@
--- CampusOS v1.0 clean database baseline
--- Generated from the verified v0.14 final schema on 2026-09-01, then normalized for the v1 reset.
--- This baseline intentionally does not preserve compatibility with the former 000001-000049 chain.
+-- CampusOS v1.1 clean database baseline
+-- Generated from the verified v0.14 schema and consolidated with the v1.0/v1.1
+-- final contracts on 2026-09-16.
+-- This baseline intentionally does not preserve compatibility with prior migration chains.
 -- All temporal instants use TIMESTAMPTZ; future schema changes must be appended as new migrations.
 
 SET statement_timeout = 0;
@@ -14,6 +15,14 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- CampusOS v1.1 clean schema baseline.
+--
+-- This file is deliberately rebuilt for the disposable development/test
+-- environment. It contains the final v1.1 schema, reference data, constraints,
+-- indexes and runtime contracts that were previously split across 000001–000011.
+-- Do not apply it to a database that records any prior chain: reset that test
+-- database first, then let the migration executor record this single checksum.
 --
 -- Name: campusos_guard_category_hierarchy(); Type: FUNCTION; Schema: public; Owner: -
 --
@@ -4273,3 +4282,662 @@ CREATE INDEX idx_webhook_deliveries_outbox ON public.webhook_deliveries (outbox_
 --
 -- PostgreSQL database dump complete
 --
+
+-- The dump intentionally used an empty search_path while defining fully
+-- qualified objects. The integrated reference and extension SQL uses its
+-- original unqualified names, so restore the explicit safe application path
+-- for the remainder of this one transaction.
+SET search_path = public, pg_catalog;
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000002_v1_plugin_authorization_foundation.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- CampusOS v1.0 plugin identity, version and three-layer authorization foundation.
+-- Existing plugin market/runtime tables remain current operational models; these
+-- normalized tables provide the target write model for the v1 authorization work.
+
+CREATE TABLE plugin_publishers (
+    id BIGINT PRIMARY KEY,
+    slug VARCHAR(128) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    trust_status VARCHAR(16) NOT NULL DEFAULT 'pending',
+    signing_key_id VARCHAR(255) NOT NULL DEFAULT '',
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    CONSTRAINT chk_plugin_publishers_slug CHECK (slug ~ '^[a-z0-9][a-z0-9._-]{1,126}[a-z0-9]$'),
+    CONSTRAINT chk_plugin_publishers_trust CHECK (trust_status IN ('pending', 'trusted', 'suspended', 'revoked')),
+    CONSTRAINT chk_plugin_publishers_metadata CHECK (jsonb_typeof(metadata) = 'object')
+);
+CREATE UNIQUE INDEX uk_plugin_publishers_slug_active ON plugin_publishers(slug) WHERE deleted_at IS NULL;
+CREATE INDEX idx_plugin_publishers_created_by ON plugin_publishers(created_by);
+
+ALTER TABLE plugins
+    ADD COLUMN publisher_id BIGINT,
+    ADD CONSTRAINT fk_plugins_publisher FOREIGN KEY (publisher_id) REFERENCES plugin_publishers(id) ON DELETE SET NULL;
+CREATE INDEX idx_plugins_publisher ON plugins(publisher_id);
+
+CREATE TABLE plugin_versions (
+    id BIGINT PRIMARY KEY,
+    plugin_id BIGINT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+    version VARCHAR(64) NOT NULL,
+    package_digest CHAR(64) NOT NULL,
+    signature_state VARCHAR(16) NOT NULL DEFAULT 'unsigned',
+    channel VARCHAR(16) NOT NULL DEFAULT 'stable',
+    lifecycle_status VARCHAR(16) NOT NULL DEFAULT 'staged',
+    manifest_api_version VARCHAR(32) NOT NULL,
+    host_api_version VARCHAR(32) NOT NULL,
+    permission_fingerprint CHAR(64) NOT NULL,
+    manifest JSONB NOT NULL DEFAULT '{}'::jsonb,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    activated_at TIMESTAMPTZ,
+    retired_at TIMESTAMPTZ,
+    CONSTRAINT chk_plugin_versions_version CHECK (version ~ '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'),
+    CONSTRAINT chk_plugin_versions_digest CHECK (package_digest ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_plugin_versions_permission_fingerprint CHECK (permission_fingerprint ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_plugin_versions_signature CHECK (signature_state IN ('unsigned', 'verified', 'rejected', 'revoked')),
+    CONSTRAINT chk_plugin_versions_channel CHECK (channel IN ('stable', 'beta', 'canary')),
+    CONSTRAINT chk_plugin_versions_lifecycle CHECK (lifecycle_status IN ('staged', 'active', 'retired', 'rejected')),
+    CONSTRAINT chk_plugin_versions_manifest CHECK (jsonb_typeof(manifest) = 'object'),
+    CONSTRAINT chk_plugin_versions_metadata CHECK (jsonb_typeof(metadata) = 'object'),
+    CONSTRAINT uk_plugin_versions_version UNIQUE (plugin_id, version),
+    CONSTRAINT uk_plugin_versions_digest UNIQUE (plugin_id, package_digest)
+);
+CREATE INDEX idx_plugin_versions_plugin_status ON plugin_versions(plugin_id, lifecycle_status, created_at DESC);
+CREATE INDEX idx_plugin_versions_created_by ON plugin_versions(created_by);
+CREATE UNIQUE INDEX uk_plugin_versions_active ON plugin_versions(plugin_id) WHERE lifecycle_status = 'active';
+
+CREATE TABLE plugin_capability_declarations (
+    id BIGINT PRIMARY KEY,
+    plugin_version_id BIGINT NOT NULL REFERENCES plugin_versions(id) ON DELETE CASCADE,
+    capability_code VARCHAR(160) NOT NULL,
+    purpose TEXT NOT NULL,
+    risk_level VARCHAR(16) NOT NULL DEFAULT 'low',
+    required BOOLEAN NOT NULL DEFAULT FALSE,
+    resource_scope JSONB NOT NULL DEFAULT '{}'::jsonb,
+    data_classification VARCHAR(16) NOT NULL DEFAULT 'internal',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_plugin_capability_code CHECK (capability_code ~ '^[a-z0-9_]+(\.[a-z0-9_]+){2,}$'),
+    CONSTRAINT chk_plugin_capability_risk CHECK (risk_level IN ('low', 'medium', 'high')),
+    CONSTRAINT chk_plugin_capability_scope CHECK (jsonb_typeof(resource_scope) = 'object'),
+    CONSTRAINT chk_plugin_capability_data_class CHECK (data_classification IN ('public', 'internal', 'sensitive', 'restricted')),
+    CONSTRAINT uk_plugin_capability_declaration UNIQUE (plugin_version_id, capability_code)
+);
+CREATE INDEX idx_plugin_capability_risk ON plugin_capability_declarations(risk_level, plugin_version_id);
+
+CREATE TABLE plugin_admin_grants (
+    id BIGINT PRIMARY KEY,
+    plugin_version_id BIGINT NOT NULL,
+    capability_code VARCHAR(160) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    granted_scope JSONB NOT NULL DEFAULT '{}'::jsonb,
+    policy_revision BIGINT NOT NULL DEFAULT 1,
+    decided_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    expires_at TIMESTAMPTZ,
+    superseded_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_plugin_admin_grant_declaration FOREIGN KEY (plugin_version_id, capability_code)
+        REFERENCES plugin_capability_declarations(plugin_version_id, capability_code) ON DELETE CASCADE,
+    CONSTRAINT chk_plugin_admin_grants_status CHECK (status IN ('granted', 'denied', 'revoked')),
+    CONSTRAINT chk_plugin_admin_grants_scope CHECK (jsonb_typeof(granted_scope) = 'object'),
+    CONSTRAINT chk_plugin_admin_grants_revision CHECK (policy_revision > 0)
+);
+CREATE UNIQUE INDEX uk_plugin_admin_grants_current ON plugin_admin_grants(plugin_version_id, capability_code) WHERE superseded_at IS NULL;
+CREATE INDEX idx_plugin_admin_grants_declaration ON plugin_admin_grants(plugin_version_id, capability_code);
+CREATE INDEX idx_plugin_admin_grants_status_expiry ON plugin_admin_grants(status, expires_at);
+CREATE INDEX idx_plugin_admin_grants_decided_by ON plugin_admin_grants(decided_by);
+
+CREATE TABLE plugin_user_consents (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plugin_version_id BIGINT NOT NULL,
+    capability_code VARCHAR(160) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    consent_scope JSONB NOT NULL DEFAULT '{}'::jsonb,
+    purpose_hash CHAR(64) NOT NULL,
+    policy_revision BIGINT NOT NULL DEFAULT 1,
+    decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    superseded_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    CONSTRAINT fk_plugin_user_consent_declaration FOREIGN KEY (plugin_version_id, capability_code)
+        REFERENCES plugin_capability_declarations(plugin_version_id, capability_code) ON DELETE CASCADE,
+    CONSTRAINT chk_plugin_user_consents_status CHECK (status IN ('granted', 'denied', 'revoked')),
+    CONSTRAINT chk_plugin_user_consents_scope CHECK (jsonb_typeof(consent_scope) = 'object'),
+    CONSTRAINT chk_plugin_user_consents_purpose_hash CHECK (purpose_hash ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_plugin_user_consents_revision CHECK (policy_revision > 0),
+    CONSTRAINT chk_plugin_user_consents_metadata CHECK (jsonb_typeof(metadata) = 'object')
+);
+CREATE UNIQUE INDEX uk_plugin_user_consents_current ON plugin_user_consents(user_id, plugin_version_id, capability_code) WHERE superseded_at IS NULL;
+CREATE INDEX idx_plugin_user_consents_user_status ON plugin_user_consents(user_id, status, expires_at);
+CREATE INDEX idx_plugin_user_consents_declaration ON plugin_user_consents(plugin_version_id, capability_code);
+
+CREATE TABLE plugin_delegations (
+    id BIGINT PRIMARY KEY,
+    plugin_version_id BIGINT NOT NULL REFERENCES plugin_versions(id) ON DELETE CASCADE,
+    subject_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_digest CHAR(64) NOT NULL,
+    granted_capabilities JSONB NOT NULL DEFAULT '[]'::jsonb,
+    resource_scope JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status VARCHAR(16) NOT NULL DEFAULT 'active',
+    not_before TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_plugin_delegations_digest CHECK (token_digest ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT chk_plugin_delegations_capabilities CHECK (jsonb_typeof(granted_capabilities) = 'array'),
+    CONSTRAINT chk_plugin_delegations_scope CHECK (jsonb_typeof(resource_scope) = 'object'),
+    CONSTRAINT chk_plugin_delegations_status CHECK (status IN ('active', 'expired', 'revoked')),
+    CONSTRAINT chk_plugin_delegations_window CHECK (expires_at > not_before)
+);
+CREATE UNIQUE INDEX uk_plugin_delegations_token_digest ON plugin_delegations(token_digest);
+CREATE INDEX idx_plugin_delegations_subject_status ON plugin_delegations(subject_user_id, status, expires_at);
+CREATE INDEX idx_plugin_delegations_version ON plugin_delegations(plugin_version_id);
+CREATE INDEX idx_plugin_delegations_created_by ON plugin_delegations(created_by);
+
+CREATE TABLE plugin_secret_values (
+    id BIGINT PRIMARY KEY,
+    plugin_id BIGINT NOT NULL REFERENCES plugins(id) ON DELETE CASCADE,
+    owner_user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    secret_name VARCHAR(128) NOT NULL,
+    key_version VARCHAR(64) NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    ciphertext BYTEA NOT NULL,
+    nonce BYTEA NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'active',
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    rotated_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    CONSTRAINT chk_plugin_secret_values_name CHECK (secret_name ~ '^[A-Za-z][A-Za-z0-9_.-]{0,127}$'),
+    CONSTRAINT chk_plugin_secret_values_status CHECK (status IN ('active', 'rotated', 'revoked')),
+    CONSTRAINT chk_plugin_secret_values_payload CHECK (octet_length(ciphertext) > 0 AND octet_length(nonce) >= 12),
+    CONSTRAINT chk_plugin_secret_values_metadata CHECK (jsonb_typeof(metadata) = 'object')
+);
+CREATE UNIQUE INDEX uk_plugin_secret_values_active ON plugin_secret_values(plugin_id, owner_user_id, secret_name) NULLS NOT DISTINCT WHERE revoked_at IS NULL;
+CREATE INDEX idx_plugin_secret_values_plugin_status ON plugin_secret_values(plugin_id, status);
+CREATE INDEX idx_plugin_secret_values_owner ON plugin_secret_values(owner_user_id);
+CREATE INDEX idx_plugin_secret_values_created_by ON plugin_secret_values(created_by);
+
+CREATE TABLE plugin_authorization_decisions (
+    id BIGINT PRIMARY KEY,
+    request_id UUID NOT NULL,
+    plugin_version_id BIGINT NOT NULL REFERENCES plugin_versions(id) ON DELETE RESTRICT,
+    user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    capability_code VARCHAR(160) NOT NULL,
+    operation_code VARCHAR(160) NOT NULL,
+    resource_scope JSONB NOT NULL DEFAULT '{}'::jsonb,
+    admin_grant_id BIGINT REFERENCES plugin_admin_grants(id) ON DELETE SET NULL,
+    user_consent_id BIGINT REFERENCES plugin_user_consents(id) ON DELETE SET NULL,
+    delegation_id BIGINT REFERENCES plugin_delegations(id) ON DELETE SET NULL,
+    outcome VARCHAR(16) NOT NULL,
+    reason_code VARCHAR(80) NOT NULL,
+    policy_revision BIGINT NOT NULL,
+    trace_id VARCHAR(64) NOT NULL DEFAULT '',
+    context JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_plugin_authorization_outcome CHECK (outcome IN ('allow', 'deny', 'error')),
+    CONSTRAINT fk_plugin_authorization_declaration FOREIGN KEY (plugin_version_id, capability_code)
+        REFERENCES plugin_capability_declarations(plugin_version_id, capability_code) ON DELETE RESTRICT,
+    CONSTRAINT chk_plugin_authorization_scope CHECK (jsonb_typeof(resource_scope) = 'object'),
+    CONSTRAINT chk_plugin_authorization_context CHECK (jsonb_typeof(context) = 'object'),
+    CONSTRAINT chk_plugin_authorization_revision CHECK (policy_revision > 0),
+    CONSTRAINT uk_plugin_authorization_request UNIQUE (request_id)
+);
+CREATE INDEX idx_plugin_authorization_plugin_created ON plugin_authorization_decisions(plugin_version_id, created_at DESC);
+CREATE INDEX idx_plugin_authorization_declaration ON plugin_authorization_decisions(plugin_version_id, capability_code);
+CREATE INDEX idx_plugin_authorization_user_created ON plugin_authorization_decisions(user_id, created_at DESC) WHERE user_id IS NOT NULL;
+CREATE INDEX idx_plugin_authorization_denied_created ON plugin_authorization_decisions(created_at DESC) WHERE outcome <> 'allow';
+CREATE INDEX idx_plugin_authorization_admin_grant ON plugin_authorization_decisions(admin_grant_id);
+CREATE INDEX idx_plugin_authorization_user_consent ON plugin_authorization_decisions(user_consent_id);
+CREATE INDEX idx_plugin_authorization_delegation ON plugin_authorization_decisions(delegation_id);
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000003_v1_reference_data.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- CampusOS v1.0 reference data.
+-- No user, account, administrator credential, category, email address or test row is seeded here.
+
+INSERT INTO roles (id, name, description, is_system, created_at, updated_at)
+VALUES
+    (1, 'admin', '系统管理员，拥有全部权限', TRUE, NOW(), NOW()),
+    (2, 'moderator', '版主，管理帖子和用户', TRUE, NOW(), NOW()),
+    (3, 'member', '普通会员，发帖回帖', TRUE, NOW(), NOW()),
+    (4, 'guest', '未登录用户，只读浏览', TRUE, NOW(), NOW());
+
+INSERT INTO permission_definitions
+    (id, code, domain, resource, action, description, risk_level, allowed_scope_types, audit_level)
+VALUES
+(900000000000000001, 'ai.ai.read', 'ai', 'ai', 'read', 'ai.ai.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000002, 'appearance.homepage.configure', 'appearance', 'homepage', 'configure', 'appearance.homepage.configure', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000003, 'community.category.delete', 'community', 'category', 'delete', 'community.category.delete', 'high', '["global", "category"]'::jsonb, 'required'),
+    (900000000000000004, 'community.category.read', 'community', 'category', 'read', 'community.category.read', 'low', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000005, 'community.category.write', 'community', 'category', 'write', 'community.category.write', 'medium', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000006, 'community.post.delete', 'community', 'post', 'delete', 'community.post.delete', 'high', '["global", "category"]'::jsonb, 'required'),
+    (900000000000000007, 'community.post.read', 'community', 'post', 'read', 'community.post.read', 'low', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000008, 'community.post.write', 'community', 'post', 'write', 'community.post.write', 'medium', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000009, 'community.richtext.moderate', 'community', 'richtext', 'moderate', 'community.richtext.moderate', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000010, 'community.thread.delete', 'community', 'thread', 'delete', 'community.thread.delete', 'high', '["global", "category"]'::jsonb, 'required'),
+    (900000000000000011, 'community.thread.lock', 'community', 'thread', 'lock', 'community.thread.lock', 'medium', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000012, 'community.thread.pin', 'community', 'thread', 'pin', 'community.thread.pin', 'medium', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000013, 'community.thread.read', 'community', 'thread', 'read', 'community.thread.read', 'low', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000014, 'community.thread.write', 'community', 'thread', 'write', 'community.thread.write', 'medium', '["global", "category"]'::jsonb, 'standard'),
+    (900000000000000015, 'identity.role.assign', 'identity', 'role', 'assign', 'identity.role.assign', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000016, 'identity.role.manage', 'identity', 'role', 'manage', 'identity.role.manage', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000017, 'identity.role.read', 'identity', 'role', 'read', 'identity.role.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000018, 'identity.role.revoke', 'identity', 'role', 'revoke', 'identity.role.revoke', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000019, 'identity.user.delete', 'identity', 'user', 'delete', 'identity.user.delete', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000020, 'identity.user.read', 'identity', 'user', 'read', 'identity.user.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000021, 'identity.user.suspend', 'identity', 'user', 'suspend', 'identity.user.suspend', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000022, 'identity.user.write', 'identity', 'user', 'write', 'identity.user.write', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000023, 'integration.integration.read', 'integration', 'integration', 'read', 'integration.integration.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000024, 'integration.mcp.call', 'integration', 'mcp', 'call', 'integration.mcp.call', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000025, 'integration.mcp.configure', 'integration', 'mcp', 'configure', 'integration.mcp.configure', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000026, 'integration.mcp.read', 'integration', 'mcp', 'read', 'integration.mcp.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000027, 'integration.message.read', 'integration', 'message', 'read', 'integration.message.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000028, 'integration.message.write', 'integration', 'message', 'write', 'integration.message.write', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000029, 'integration.webhook.execute', 'integration', 'webhook', 'execute', 'integration.webhook.execute', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000030, 'integration.webhook.read', 'integration', 'webhook', 'read', 'integration.webhook.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000031, 'integration.webhook.write', 'integration', 'webhook', 'write', 'integration.webhook.write', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000032, 'personal_space.space.manage', 'personal_space', 'space', 'manage', 'personal_space.space.manage', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000033, 'platform.metrics.read', 'platform', 'metrics', 'read', 'platform.metrics.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000034, 'platform.platform_log.read', 'platform', 'platform_log', 'read', 'platform.platform_log.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000035, 'plugin.plugin.configure', 'plugin', 'plugin', 'configure', 'plugin.plugin.configure', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000036, 'plugin.plugin.install', 'plugin', 'plugin', 'install', 'plugin.plugin.install', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000000037, 'plugin.plugin.lifecycle', 'plugin', 'plugin', 'lifecycle', 'plugin.plugin.lifecycle', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000000038, 'plugin.plugin.read', 'plugin', 'plugin', 'read', 'plugin.plugin.read', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000000039, 'plugin.plugin.uninstall', 'plugin', 'plugin', 'uninstall', 'plugin.plugin.uninstall', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001001, 'community.thread.take_down', 'community', 'thread', 'take_down', '下架帖子', 'high', '["global", "category"]'::jsonb, 'required'),
+    (900000000000001002, 'community.thread.review', 'community', 'thread', 'review', '审核帖子', 'high', '["global", "category"]'::jsonb, 'required'),
+    (900000000000001003, 'community.thread.direct_restore', 'community', 'thread', 'direct_restore', '直接恢复帖子', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001004, 'community.thread.restore', 'community', 'thread', 'restore', '从回收站恢复帖子', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001005, 'community.thread.purge', 'community', 'thread', 'purge', '永久清除帖子', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001006, 'community.thread.trash', 'community', 'thread', 'trash', '移入帖子回收站', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001007, 'identity.role.create', 'identity', 'role', 'create', '创建自定义角色', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001008, 'identity.role.update_permissions', 'identity', 'role', 'update_permissions', '调整角色权限矩阵', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001009, 'identity.role.read_audit', 'identity', 'role', 'read_audit', '查看授权审计', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001010, 'platform.reliability.read', 'platform', 'reliability', 'read', '查看可靠任务状态', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001011, 'platform.reliability.replay', 'platform', 'reliability', 'replay', '重放可靠任务', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001012, 'platform.retention.preview', 'platform', 'retention', 'preview', '执行保留策略预演', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001020, 'identity.account.recovery.override', 'identity', 'account', 'recovery_override', '创建或取消管理员辅助账号恢复', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001021, 'identity.session.read', 'identity', 'session', 'read', '查看指定用户的安全会话投影', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001022, 'identity.session.revoke', 'identity', 'session', 'revoke', '撤销指定用户的全部会话', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001023, 'platform.email_delivery.read', 'platform', 'email_delivery', 'read', '查看邮件投递的脱敏运行状态', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000001024, 'identity.challenge_policy.read', 'identity', 'challenge_policy', 'read', '查看验证码请求频率策略', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001025, 'identity.challenge_policy.update', 'identity', 'challenge_policy', 'update', '修改验证码请求频率策略', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001026, 'identity.admin_account.read', 'identity', 'admin_account', 'read', '查看管理平面准入账号状态', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001027, 'identity.admin_account.suspend', 'identity', 'admin_account', 'suspend', '暂停管理平面准入并撤销会话', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001028, 'identity.admin_account.restore', 'identity', 'admin_account', 'restore', '恢复被暂停的管理平面准入', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001029, 'identity.admin_account.read_audit', 'identity', 'admin_account', 'read_audit', '查看管理平面准入变更审计', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001030, 'community.category.create', 'community', 'category', 'create', '创建版块或分组', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001031, 'community.category.update', 'community', 'category', 'update', '更新版块展示与基础设置', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001032, 'community.category.move', 'community', 'category', 'move', '移动版块层级', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001033, 'community.category.archive', 'community', 'category', 'archive', '归档版块或分组', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001034, 'community.category.restore', 'community', 'category', 'restore', '恢复已归档版块或分组', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001035, 'community.category.configure_thread_types', 'community', 'category', 'configure_thread_types', '配置板块允许发布的帖子类型', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001040, 'identity.mfa_policy.read', 'identity', 'mfa_policy', 'read', '查看管理员 MFA 强制策略与聚合覆盖率', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001041, 'identity.mfa_policy.update', 'identity', 'mfa_policy', 'update', '修改管理员 MFA 强制策略', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001042, 'identity.mfa.local_recovery', 'identity', 'mfa', 'local_recovery', '本机受控 MFA 恢复审计代码，不授予 Web 角色', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001060, 'schedule.academic_term.read', 'schedule', 'academic_term', 'read', '查看系统学期目录', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001061, 'schedule.academic_term.manage', 'schedule', 'academic_term', 'manage', '创建、修改、关闭、开放或设定默认学期', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001062, 'schedule.academic_term.delete', 'schedule', 'academic_term', 'delete', '删除未被课表引用的学期', 'high', '["global"]'::jsonb, 'required'),
+    (900000000000001101, 'platform.feature.read', 'platform', 'feature', 'read', '查看内置功能与核心模块配置', 'low', '["global"]'::jsonb, 'standard'),
+    (900000000000001102, 'platform.feature.configure', 'platform', 'feature', 'configure', '修改内置功能或核心策略配置', 'medium', '["global"]'::jsonb, 'required'),
+    (900000000000001103, 'platform.feature.lifecycle', 'platform', 'feature', 'lifecycle', '调整内置功能目标启停状态', 'high', '["global"]'::jsonb, 'required');
+
+-- Administrators receive the complete non-deprecated platform permission catalog.
+INSERT INTO role_permissions (id, role_id, permission_id, created_by, created_at)
+SELECT 910000000000000000 + ROW_NUMBER() OVER (ORDER BY pd.id), 1, pd.id, 'v1-baseline', NOW()
+FROM permission_definitions pd
+WHERE pd.deprecated_at IS NULL;
+
+-- Non-admin defaults are deliberately minimal; additional assignments are explicit admin actions.
+WITH grants(role_name, permission_code) AS (
+    VALUES
+        ('moderator', 'community.post.delete'),
+        ('moderator', 'community.post.read'),
+        ('moderator', 'community.thread.lock'),
+        ('moderator', 'community.thread.pin'),
+        ('moderator', 'community.thread.read'),
+        ('moderator', 'community.thread.take_down'),
+        ('moderator', 'identity.user.read'),
+        ('member', 'community.post.read'),
+        ('member', 'community.post.write'),
+        ('member', 'community.thread.read'),
+        ('member', 'community.thread.write'),
+        ('guest', 'community.category.read'),
+        ('guest', 'community.post.read'),
+        ('guest', 'community.thread.read')
+), resolved AS (
+    SELECT r.id AS role_id, pd.id AS permission_id,
+           ROW_NUMBER() OVER (ORDER BY r.id, pd.id) AS ordinal
+    FROM grants g
+    JOIN roles r ON r.name = g.role_name AND r.deleted_at IS NULL
+    JOIN permission_definitions pd ON pd.code = g.permission_code AND pd.deprecated_at IS NULL
+)
+INSERT INTO role_permissions (id, role_id, permission_id, created_by, created_at)
+SELECT 920000000000000000 + ordinal, role_id, permission_id, 'v1-baseline', NOW()
+FROM resolved;
+
+INSERT INTO identity_challenge_policies
+    (id, email_window_minutes, email_max_requests, ip_window_minutes, ip_max_requests, version, updated_at)
+VALUES ('email_verification', 10, 5, 60, 10, 1, NOW());
+
+INSERT INTO identity_mfa_policies (id, mode, grace_ends_at, version, updated_at)
+VALUES ('admin', 'off', NULL, 1, NOW());
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000004_v1_authorization_runtime_corrections.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- Authorization corrections retained as part of the consolidated v1.1 contract.
+
+DROP INDEX IF EXISTS uk_plugin_secret_values_active;
+CREATE UNIQUE INDEX uk_plugin_secret_values_active
+    ON plugin_secret_values(plugin_id, owner_user_id, secret_name) NULLS NOT DISTINCT
+    WHERE status = 'active';
+
+-- Denied attempts for a catalog-known but undeclared capability are security
+-- evidence. Retain the plugin-version FK, but allow that denial to be recorded.
+ALTER TABLE plugin_authorization_decisions
+    DROP CONSTRAINT IF EXISTS fk_plugin_authorization_declaration;
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000005_v1_process_runtime.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- Manifest v3 names the external process runtime explicitly. Historical
+-- `grpc` remains accepted as a compatibility alias during the v1 window.
+ALTER TABLE plugins DROP CONSTRAINT IF EXISTS chk_plugins_runtime;
+ALTER TABLE plugins
+    ADD CONSTRAINT chk_plugins_runtime
+    CHECK (runtime IN ('builtin', 'grpc', 'process', 'wasm'));
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000006_v1_1_article_attachments.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- CampusOS v1.1: owner-scoped assets and explicit rich-text attachment bindings.
+-- Existing migrations are immutable.  This migration deliberately does not
+-- backfill test-only legacy directory data; the v1.1 cutover is forward-only.
+
+CREATE TABLE public.user_assets (
+    id bigint NOT NULL,
+    owner_user_id bigint NOT NULL,
+    kind character varying(32) NOT NULL,
+    original_name character varying(255) NOT NULL,
+    storage_object_id bigint NOT NULL,
+    mime_type character varying(160) NOT NULL,
+    size_bytes bigint NOT NULL,
+    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    version bigint DEFAULT 1 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    trashed_at timestamp with time zone,
+    deleted_at timestamp with time zone,
+    CONSTRAINT user_assets_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_user_assets_storage_object UNIQUE (storage_object_id),
+    CONSTRAINT chk_user_assets_kind CHECK (((kind)::text = ANY ((ARRAY['article_attachment'::character varying, 'richtext_image'::character varying])::text[]))),
+    CONSTRAINT chk_user_assets_size CHECK ((size_bytes >= 0)),
+    CONSTRAINT chk_user_assets_status CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'trashed'::character varying, 'quarantined'::character varying, 'deleted'::character varying])::text[]))),
+    CONSTRAINT chk_user_assets_version CHECK ((version >= 1)),
+    CONSTRAINT chk_user_assets_deleted_at CHECK (((((status)::text = 'deleted'::text) AND (deleted_at IS NOT NULL)) OR ((status)::text <> 'deleted'::text)))
+);
+
+ALTER TABLE ONLY public.user_assets
+    ADD CONSTRAINT fk_user_assets_owner FOREIGN KEY (owner_user_id) REFERENCES public.users(id) ON DELETE RESTRICT;
+ALTER TABLE ONLY public.user_assets
+    ADD CONSTRAINT fk_user_assets_storage_object FOREIGN KEY (storage_object_id) REFERENCES public.storage_objects(id) ON DELETE RESTRICT;
+
+CREATE INDEX idx_user_assets_owner_status_updated ON public.user_assets USING btree (owner_user_id, status, updated_at DESC, id DESC);
+CREATE INDEX idx_user_assets_owner_kind_updated ON public.user_assets USING btree (owner_user_id, kind, updated_at DESC, id DESC);
+
+CREATE TABLE public.richtext_article_attachments (
+    id bigint NOT NULL,
+    article_content_id bigint NOT NULL,
+    asset_id bigint NOT NULL,
+    display_name character varying(255) NOT NULL,
+    display_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT richtext_article_attachments_pkey PRIMARY KEY (id),
+    CONSTRAINT uq_richtext_article_attachment_asset UNIQUE (article_content_id, asset_id),
+    CONSTRAINT uq_richtext_article_attachment_order UNIQUE (article_content_id, display_order),
+    CONSTRAINT chk_richtext_article_attachment_name CHECK ((length(btrim((display_name)::text)) > 0)),
+    CONSTRAINT chk_richtext_article_attachment_order CHECK ((display_order >= 0))
+);
+
+ALTER TABLE ONLY public.richtext_article_attachments
+    ADD CONSTRAINT fk_richtext_article_attachments_article FOREIGN KEY (article_content_id) REFERENCES public.richtext_article_contents(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.richtext_article_attachments
+    ADD CONSTRAINT fk_richtext_article_attachments_asset FOREIGN KEY (asset_id) REFERENCES public.user_assets(id) ON DELETE RESTRICT;
+
+CREATE INDEX idx_richtext_article_attachments_article_order ON public.richtext_article_attachments USING btree (article_content_id, display_order, id);
+CREATE INDEX idx_richtext_article_attachments_asset_article ON public.richtext_article_attachments USING btree (asset_id, article_content_id);
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000007_v1_1_plugin_ui_invocations.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- Short-lived, server-side UI invocation contexts for first-party and future
+-- governed plugin surfaces.  Values are opaque random identifiers; no token,
+-- storage key, path, or byte payload is stored here.
+
+CREATE TABLE public.plugin_ui_invocations (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    plugin_key character varying(120) NOT NULL,
+    surface_id character varying(160) NOT NULL,
+    article_content_id bigint NOT NULL,
+    asset_id bigint,
+    attachment_id bigint,
+    presentation character varying(20) NOT NULL,
+    purpose character varying(80) NOT NULL,
+    context_digest character varying(128) DEFAULT ''::character varying NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    opened_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT plugin_ui_invocations_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_plugin_ui_invocations_presentation CHECK (((presentation)::text = ANY ((ARRAY['modal'::character varying, 'drawer'::character varying, 'fullscreen'::character varying, 'new-tab'::character varying])::text[]))),
+    CONSTRAINT chk_plugin_ui_invocations_purpose CHECK ((length(btrim((purpose)::text)) > 0)),
+    CONSTRAINT chk_plugin_ui_invocations_expiry CHECK ((expires_at > created_at))
+);
+
+ALTER TABLE ONLY public.plugin_ui_invocations
+    ADD CONSTRAINT fk_plugin_ui_invocations_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.plugin_ui_invocations
+    ADD CONSTRAINT fk_plugin_ui_invocations_article FOREIGN KEY (article_content_id) REFERENCES public.richtext_article_contents(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.plugin_ui_invocations
+    ADD CONSTRAINT fk_plugin_ui_invocations_asset FOREIGN KEY (asset_id) REFERENCES public.user_assets(id) ON DELETE RESTRICT;
+ALTER TABLE ONLY public.plugin_ui_invocations
+    ADD CONSTRAINT fk_plugin_ui_invocations_attachment FOREIGN KEY (attachment_id) REFERENCES public.richtext_article_attachments(id) ON DELETE RESTRICT;
+
+CREATE INDEX idx_plugin_ui_invocations_expiry ON public.plugin_ui_invocations USING btree (expires_at);
+CREATE INDEX idx_plugin_ui_invocations_user_plugin_expiry ON public.plugin_ui_invocations USING btree (user_id, plugin_key, expires_at);
+CREATE INDEX idx_plugin_ui_invocations_article ON public.plugin_ui_invocations USING btree (article_content_id);
+CREATE INDEX idx_plugin_ui_invocations_asset ON public.plugin_ui_invocations USING btree (asset_id) WHERE asset_id IS NOT NULL;
+CREATE INDEX idx_plugin_ui_invocations_attachment ON public.plugin_ui_invocations USING btree (attachment_id) WHERE attachment_id IS NOT NULL;
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000008_v1_1_attachment_cutover.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- v1.1 cutover guard.  New RichText non-image attachments must use
+-- richtext_article_attachments -> user_assets -> storage_objects.  Legacy
+-- image rows remain readable while their separate image migration is planned.
+
+ALTER TABLE public.richtext_article_assets
+    ADD COLUMN IF NOT EXISTS asset_id bigint;
+
+ALTER TABLE ONLY public.richtext_article_assets
+    ADD CONSTRAINT fk_richtext_article_assets_user_asset
+    FOREIGN KEY (asset_id) REFERENCES public.user_assets(id) ON DELETE RESTRICT;
+
+CREATE INDEX IF NOT EXISTS idx_richtext_article_assets_asset_id
+    ON public.richtext_article_assets USING btree (asset_id)
+    WHERE asset_id IS NOT NULL;
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000009_v1_1_asset_governance.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- CampusOS v1.1: asset lifecycle governance.  This is deliberately append-only
+-- and stores no filename, provider path, object key, payload or free-form file metadata.
+
+ALTER TABLE public.user_assets
+    DROP CONSTRAINT IF EXISTS chk_user_assets_status;
+ALTER TABLE public.user_assets
+    ADD CONSTRAINT chk_user_assets_status CHECK (((status)::text = ANY ((ARRAY[
+        'active'::character varying,
+        'trashed'::character varying,
+        'quarantined'::character varying,
+        'purging'::character varying,
+        'deleted'::character varying
+    ])::text[])));
+
+CREATE TABLE public.asset_lifecycle_audits (
+    id bigint NOT NULL,
+    asset_id bigint,
+    actor_user_id bigint,
+    actor_type character varying(16) NOT NULL,
+    action character varying(48) NOT NULL,
+    reason character varying(500),
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT asset_lifecycle_audits_pkey PRIMARY KEY (id),
+    CONSTRAINT chk_asset_lifecycle_audits_actor_type CHECK (((actor_type)::text = ANY ((ARRAY['user'::character varying, 'admin'::character varying, 'system'::character varying])::text[]))),
+    CONSTRAINT chk_asset_lifecycle_audits_action CHECK (((action)::text = ANY ((ARRAY['trashed'::character varying, 'restored'::character varying, 'quarantined'::character varying, 'purge_started'::character varying, 'purge_failed'::character varying, 'purged'::character varying])::text[]))),
+    CONSTRAINT chk_asset_lifecycle_audits_reason CHECK ((reason IS NULL) OR (length(btrim((reason)::text)) > 0))
+);
+
+ALTER TABLE ONLY public.asset_lifecycle_audits
+    ADD CONSTRAINT fk_asset_lifecycle_audits_asset FOREIGN KEY (asset_id) REFERENCES public.user_assets(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.asset_lifecycle_audits
+    ADD CONSTRAINT fk_asset_lifecycle_audits_actor FOREIGN KEY (actor_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_asset_lifecycle_audits_created_action
+    ON public.asset_lifecycle_audits USING btree (created_at DESC, action);
+CREATE INDEX idx_asset_lifecycle_audits_asset_created
+    ON public.asset_lifecycle_audits USING btree (asset_id, created_at DESC)
+    WHERE asset_id IS NOT NULL;
+CREATE INDEX idx_asset_lifecycle_audits_actor_created
+    ON public.asset_lifecycle_audits USING btree (actor_user_id, created_at DESC)
+    WHERE actor_user_id IS NOT NULL;
+
+INSERT INTO public.permission_definitions
+    (id, code, domain, resource, action, description, risk_level, allowed_scope_types, audit_level)
+VALUES
+    (900000000000001110, 'personal_space.asset.read_audit', 'personal_space', 'asset', 'read_audit', '查看用户资产聚合状态与低敏审计', 'medium', '["global"]'::jsonb, 'standard'),
+    (900000000000001111, 'personal_space.asset.manage', 'personal_space', 'asset', 'manage', '隔离、恢复或清除用户资产', 'high', '["global"]'::jsonb, 'required')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO public.role_permissions (id, role_id, permission_id, created_by, created_at)
+SELECT 910000000000001110 + ROW_NUMBER() OVER (ORDER BY pd.id), r.id, pd.id, 'v1.1-asset-governance', NOW()
+FROM public.roles r
+JOIN public.permission_definitions pd ON pd.code IN ('personal_space.asset.read_audit', 'personal_space.asset.manage')
+WHERE r.name = 'admin' AND r.deleted_at IS NULL
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000010_v1_1_personal_asset_preview.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- Allow the existing first-party PDF Viewer Surface to receive an owner-only
+-- personal-asset context. Invocation IDs remain opaque and never contain a
+-- storage key, provider path, JWT, or a public download URL.
+
+ALTER TABLE public.plugin_ui_invocations
+    ADD COLUMN context_kind character varying(32) NOT NULL DEFAULT 'article_attachment';
+
+ALTER TABLE public.plugin_ui_invocations
+    ALTER COLUMN article_content_id DROP NOT NULL;
+
+ALTER TABLE public.plugin_ui_invocations
+    ADD CONSTRAINT chk_plugin_ui_invocations_context_kind
+    CHECK (
+        (
+            context_kind = 'article_attachment'
+            AND article_content_id IS NOT NULL
+            AND asset_id IS NOT NULL
+            AND attachment_id IS NOT NULL
+        )
+        OR
+        (
+            context_kind = 'personal_asset'
+            AND article_content_id IS NULL
+            AND asset_id IS NOT NULL
+            AND attachment_id IS NULL
+        )
+    );
+
+-- ============================================================================
+-- Integrated into the disposable v1.1 baseline from 000011_v1_1_personal_document_pdf_preview.up.sql.
+-- This source has no independent upgrade history after the v1.1 clean reset.
+-- ============================================================================
+
+-- Extend the opaque, server-side PDF Viewer context to one owner-scoped
+-- Personal Documents record. The browser still receives only the random
+-- invocation ID; all document ownership, current-version and plugin checks
+-- are repeated by the API before every Range read.
+
+ALTER TABLE public.plugin_ui_invocations
+    ADD COLUMN personal_document_id bigint;
+
+ALTER TABLE ONLY public.plugin_ui_invocations
+    ADD CONSTRAINT fk_plugin_ui_invocations_personal_document
+    FOREIGN KEY (personal_document_id) REFERENCES public.personal_documents(id) ON DELETE CASCADE;
+
+ALTER TABLE public.plugin_ui_invocations
+    DROP CONSTRAINT IF EXISTS chk_plugin_ui_invocations_context_kind;
+
+ALTER TABLE public.plugin_ui_invocations
+    ADD CONSTRAINT chk_plugin_ui_invocations_context_kind
+    CHECK (
+        (
+            context_kind = 'article_attachment'
+            AND article_content_id IS NOT NULL
+            AND asset_id IS NOT NULL
+            AND attachment_id IS NOT NULL
+            AND personal_document_id IS NULL
+        )
+        OR
+        (
+            context_kind = 'personal_asset'
+            AND article_content_id IS NULL
+            AND asset_id IS NOT NULL
+            AND attachment_id IS NULL
+            AND personal_document_id IS NULL
+        )
+        OR
+        (
+            context_kind = 'personal_document'
+            AND article_content_id IS NULL
+            AND asset_id IS NULL
+            AND attachment_id IS NULL
+            AND personal_document_id IS NOT NULL
+        )
+    );
+
+CREATE INDEX idx_plugin_ui_invocations_personal_document
+    ON public.plugin_ui_invocations USING btree (personal_document_id)
+    WHERE personal_document_id IS NOT NULL;

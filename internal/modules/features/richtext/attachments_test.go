@@ -25,9 +25,47 @@ type testObjectPort struct {
 	next int
 }
 
+func TestPDFInvocationIDsRemainPositiveBigints(t *testing.T) {
+	seen := map[string]bool{}
+	for i := 0; i < 100; i++ {
+		id, err := newPDFInvocationID()
+		if err != nil {
+			t.Fatal(err)
+		}
+		value, err := strconv.ParseInt(id, 10, 64)
+		if err != nil || value <= 0 || seen[id] {
+			t.Fatalf("invalid or repeated invocation ID %q: %v", id, err)
+		}
+		seen[id] = true
+	}
+}
+
 type seekReadCloser struct{ *bytes.Reader }
 
 func (seekReadCloser) Close() error { return nil }
+
+type testPersonalDocumentPDFReader struct {
+	owner string
+	id    string
+	name  string
+	body  []byte
+}
+
+func (r testPersonalDocumentPDFReader) OpenOwnPDFDocument(_ context.Context, owner, id string) (PersonalDocumentPDF, error) {
+	if owner != r.owner || id != r.id {
+		return PersonalDocumentPDF{}, ErrAssetNotFound
+	}
+	now := time.Now().UTC()
+	return PersonalDocumentPDF{
+		ID:     r.id,
+		Name:   r.name,
+		Format: "pdf",
+		Object: corestorage.ObjectReader{
+			Object: corestorage.Object{ID: "document-object", OwnerID: owner, MimeType: "application/pdf", SizeBytes: int64(len(r.body)), SHA256: "document-test", UpdatedAt: now},
+			Reader: seekReadCloser{bytes.NewReader(r.body)},
+		},
+	}, nil
+}
 
 func newTestObjectPort() *testObjectPort {
 	return &testObjectPort{items: map[string]struct {
@@ -248,6 +286,64 @@ func TestPDFInvocationIsOwnerBoundAndExpires(t *testing.T) {
 	}
 }
 
+func TestPublishedArticlePDFCanBePreviewedByAnotherAuthorizedReader(t *testing.T) {
+	svc := newAttachmentTestService(t)
+	draft := createAttachmentDraft(t, svc)
+	pdf := []byte("%PDF-1.7\n")
+	attachment, err := svc.UploadAttachment(context.Background(), "1001", draft.ThreadID, "public.pdf", "application/pdf", int64(len(pdf)), bytes.NewReader(pdf))
+	if err != nil {
+		t.Fatalf("upload pdf: %v", err)
+	}
+	if _, err := svc.Publish(context.Background(), draft.ThreadID, "1001"); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	var calls []PDFViewerAuthorizationInput
+	svc.SetPDFViewerAuthorizer(func(_ context.Context, input PDFViewerAuthorizationInput) error {
+		calls = append(calls, input)
+		return nil
+	})
+	invocation, err := svc.CreatePDFInvocation(context.Background(), "1002", draft.ThreadID, attachment.ID, "modal")
+	if err != nil {
+		t.Fatalf("authorized public reader could not create preview: %v", err)
+	}
+	if invocation.UserID != "1002" || invocation.ContextKind != InvocationContextArticleAttachment {
+		t.Fatalf("preview context must remain bound to reader: %#v", invocation)
+	}
+	opened, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID)
+	if err != nil {
+		t.Fatalf("authorized public reader could not read preview: %v", err)
+	}
+	defer opened.Reader.Close()
+	if len(calls) != 3 || calls[0].CapabilityCode != "article_attachment.self.preview" || calls[0].ResourceOwnerID != "" || calls[2].OperationCode != "content.read" {
+		t.Fatalf("unexpected authorization contexts: %#v", calls)
+	}
+}
+
+func TestPDFPreviewStopsWhenPluginAuthorizationIsRevoked(t *testing.T) {
+	svc := newAttachmentTestService(t)
+	draft := createAttachmentDraft(t, svc)
+	pdf := []byte("%PDF-1.7\n")
+	attachment, err := svc.UploadAttachment(context.Background(), "1001", draft.ThreadID, "private.pdf", "application/pdf", int64(len(pdf)), bytes.NewReader(pdf))
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed := true
+	svc.SetPDFViewerAuthorizer(func(_ context.Context, _ PDFViewerAuthorizationInput) error {
+		if !allowed {
+			return &PDFViewerAuthorizationError{Reason: "DENY_USER_CONSENT_MISSING", Message: "你尚未同意该数据用途，或同意已撤销/过期/用途发生变化。"}
+		}
+		return nil
+	})
+	invocation, err := svc.CreatePersonalAssetPDFInvocation(context.Background(), "1001", attachment.AssetID, "modal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	allowed = false
+	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1001", invocation.ID); !errors.Is(err, ErrPluginAuthorization) {
+		t.Fatalf("revoked authorization must deny the next read: %v", err)
+	}
+}
+
 func TestPersonalAssetDownloadAndPDFPreviewAreOwnerBound(t *testing.T) {
 	svc := newAttachmentTestService(t)
 	draft := createAttachmentDraft(t, svc)
@@ -286,6 +382,39 @@ func TestPersonalAssetDownloadAndPDFPreviewAreOwnerBound(t *testing.T) {
 	defer preview.Reader.Close()
 	if got, _ := io.ReadAll(preview.Reader); !bytes.Equal(got, pdf) {
 		t.Fatalf("owner personal preview body = %q", got)
+	}
+}
+
+func TestPersonalDocumentPDFPreviewUsesTheSameOwnerScopedPluginContext(t *testing.T) {
+	svc := newAttachmentTestService(t)
+	pdf := []byte("%PDF-1.7\\n")
+	svc.SetPersonalDocumentPDFReader(testPersonalDocumentPDFReader{owner: "1001", id: "document-1", name: "我的文档.pdf", body: pdf})
+	var calls []PDFViewerAuthorizationInput
+	svc.SetPDFViewerAuthorizer(func(_ context.Context, input PDFViewerAuthorizationInput) error {
+		calls = append(calls, input)
+		return nil
+	})
+
+	invocation, err := svc.CreatePersonalDocumentPDFInvocation(context.Background(), "1001", "document-1", "modal")
+	if err != nil {
+		t.Fatalf("create personal document invocation: %v", err)
+	}
+	if invocation.ContextKind != InvocationContextPersonalDocument || invocation.PersonalDocumentID != "document-1" || invocation.AssetID != "" || invocation.AttachmentID != "" {
+		t.Fatalf("personal document context leaked an unrelated reference: %#v", invocation)
+	}
+	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationExpired) {
+		t.Fatalf("personal document invocation crossed owner boundary: %v", err)
+	}
+	opened, _, err := svc.OpenPDFInvocation(context.Background(), "1001", invocation.ID)
+	if err != nil {
+		t.Fatalf("owner personal document preview was denied: %v", err)
+	}
+	defer opened.Reader.Close()
+	if got, _ := io.ReadAll(opened.Reader); !bytes.Equal(got, pdf) {
+		t.Fatalf("personal document preview body = %q", got)
+	}
+	if len(calls) != 3 || calls[0].CapabilityCode != "personal_space_file.self.read" || calls[0].ResourceOwnerID != "1001" || calls[2].OperationCode != "content.read" {
+		t.Fatalf("unexpected personal document authorization contexts: %#v", calls)
 	}
 }
 

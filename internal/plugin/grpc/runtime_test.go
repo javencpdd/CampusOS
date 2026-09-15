@@ -105,6 +105,38 @@ func TestRuntimeSendsEventsOnlyToExplicitLoopbackEndpoint(t *testing.T) {
 	}
 }
 
+func TestPluginProcessEnvironmentUsesAllowListAndPrivateStorage(t *testing.T) {
+	layout, err := plugin.PreparePluginStorage(t.TempDir(), "example.process")
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed := &plugin.Plugin{Manifest: &plugin.Manifest{Name: "example.process"}, HostToken: "short-lived-token"}
+	env := pluginProcessEnvironment([]string{
+		"PATH=/safe/bin", "LANG=zh_CN.UTF-8", "DATABASE_URL=postgres://secret", "POSTGRES_PASSWORD=secret",
+		"JWT_SECRET=secret", "SMTP_PASSWORD=secret", "CAMPUSOS_CONFIG=secret", "HOME=/platform-home",
+	}, managed, layout)
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	for _, forbidden := range []string{"DATABASE_URL=", "POSTGRES_PASSWORD=", "JWT_SECRET=", "SMTP_PASSWORD=", "CAMPUSOS_CONFIG=", "HOME="} {
+		if strings.Contains(joined, forbidden) {
+			t.Fatalf("process environment leaked %s: %s", forbidden, joined)
+		}
+	}
+	for _, required := range []string{"PATH=/safe/bin", "LANG=zh_CN.UTF-8", "CAMPUSOS_PLUGIN_TOKEN=short-lived-token", "CAMPUSOS_PLUGIN_DATA_DIR=" + layout.DataDir, "CAMPUSOS_PLUGIN_CONFIG_PATH=" + layout.ConfigPath} {
+		if !strings.Contains(joined, required) {
+			t.Fatalf("process environment omitted %s: %s", required, joined)
+		}
+	}
+}
+
+func TestSafePluginProcessEnvironmentKeySupportsWindowsBootstrapOnly(t *testing.T) {
+	if !safePluginProcessEnvironmentKey("SystemRoot", true) || !safePluginProcessEnvironmentKey("PATH", true) {
+		t.Fatal("Windows bootstrap variables must be preserved")
+	}
+	if safePluginProcessEnvironmentKey("DATABASE_URL", true) || safePluginProcessEnvironmentKey("APPDATA", true) {
+		t.Fatal("Windows host data and secrets must not be inherited")
+	}
+}
+
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (fn roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
