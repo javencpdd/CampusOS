@@ -32,6 +32,7 @@ type Service struct {
 	enabled    func() bool
 	now        func() time.Time
 	meter      observability.Meter
+	pdfPreview PDFPreviewInvoker
 }
 
 // SetMeter attaches optional aggregate operational telemetry. A nil meter is
@@ -68,6 +69,21 @@ func (s *Service) SetEnabledChecker(checker func() bool) {
 		return
 	}
 	s.enabled = checker
+}
+
+// SetPDFPreviewInvoker receives the composition-owned bridge to the
+// first-party PDF Viewer. The Personal Documents feature stays the owner of
+// document bytes and does not depend on Plugin Manager internals.
+func (s *Service) SetPDFPreviewInvoker(invoker PDFPreviewInvoker) { s.pdfPreview = invoker }
+
+func (s *Service) CreatePDFInvocation(ctx context.Context, owner, id, presentation string) (PDFPreviewInvocation, error) {
+	if e := s.enabledError(); e != nil {
+		return PDFPreviewInvocation{}, e
+	}
+	if s.pdfPreview == nil {
+		return PDFPreviewInvocation{}, ErrPDFPreviewUnavailable
+	}
+	return s.pdfPreview(ctx, owner, id, presentation)
 }
 func (s *Service) List(ctx context.Context, owner, status string) ([]DocumentDetail, error) {
 	if e := s.enabledError(); e != nil {

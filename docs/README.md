@@ -1,6 +1,6 @@
 # CampusOS 文档门户
 
-> 当前应用启动/合同版本：`v0.13.0`；v0.14-dev 已确认开发收尾，`v1.0-dev` 已进入数据库基础实施
+> 当前应用启动/合同版本：`v0.13.0`；v0.14-dev 已确认开发收尾，v1.0 P0/P1 仓库实现已完成审查，v1.1-dev 主功能已实施，Final 证据仍在收集
 > 仓库文档：架构、合同、Help、计划和可复验证据
 > 官方文档前端：[docs-site](../docs-site/README.md)
 
@@ -25,7 +25,7 @@
 | 本机 Go/Node 开发 | [开发、验证与贡献指南](help/系统设计相关/开发运行与验证指南.md) |
 | Windows/Linux Docker 开发 | [Docker 开发](../docs-site/deployment/docker-development.md) |
 | 单主机部署、备份和迁移 | [Docker 部署](../docs-site/deployment/docker.md)、[备份恢复](help/系统设计相关/备份恢复说明.md) |
-| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[数据库 ER 图与关系说明](architecture/database-er/CampusOS数据库实体关系说明.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
+| 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[数据库 ER 图与关系说明](../migrations/er/current/CampusOS数据库实体关系说明.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
 | HTTP API | [API 与机器合同](api/README.md)、[接口约定](../docs-site/api/overview.md) |
 | Web/Admin 前端 | [官方完整入门](../docs-site/guide/getting-started.md)、[权限配置](../docs-site/guide/permission-configuration.md) |
 | External Plugin | [插件体系](../docs-site/plugins/overview.md)、[课表插件教程](../docs-site/plugins/schedule-plugin-tutorial.md) |
@@ -45,7 +45,7 @@
 | `architecture/` | [模块边界、数据所有权和安全设计](architecture/README.md) | 当前概览有效；带旧版本号的是决策历史 |
 | `../skills/sources/`、`../skills/guides/` | 项目 Skills 的规范源文件与调用维护说明 | 当前；`.agents/skills/` 提供仓库发现入口 |
 | [项目计划书v0/](项目计划书v0/README.md) | v0.1-v0.14 原始计划、回顾、输入材料和迁移说明 | 已封版，不是当前待办 |
-| [项目计划书v1/](项目计划书v1/README.md) | v1.0 正式计划、数据库重构、威胁模型和逐条审查 | 代码收尾/Release Candidate；目标环境证据待收集 |
+| [项目计划书v1/](项目计划书v1/README.md) | v1.0 正式计划/审查与 v1.1 正式计划 | v1.0 为代码收尾/RC；v1.1-dev 主功能已实施，Final 门禁待完成 |
 | `计划书总结/` | 计划有效性、逐版推理和候选路线 | 当前治理入口 |
 | `进度/` | [每阶段实现、测试、兼容和回滚证据](进度/README.md) | 对应版本的历史证据 |
 | `Todo/` | [未排期需求、思考草稿和样例](Todo/README.md) | 不是产品承诺 |
@@ -64,7 +64,7 @@
 `openapi-v0.6-current.yaml`、`http-routes-v0.6.json` 等名称为兼容旧链接保留；文件内容由当前代码生成，
 不能根据文件名中的 `v0.6` 判断实现版本。
 
-当前数据库使用 `000001-000003` clean baseline，包含 84 张业务表和 2 张 migration 系统表；旧
+当前数据库使用单一 `000001_v1_1_schema_baseline`，包含 88 张业务表和 2 张 migration 系统表；旧
 `000001-000049` 测试链不再支持原地升级。静态旧表清单不能替代 Admin `/architecture`、`migrations/`、
 `make database-check` 和架构同步检查器；完整重构决策见
 [v1.0 数据库全面重构方案](项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md)，索引与约束治理见
@@ -83,19 +83,21 @@
 
 ## 6. 版本与计划
 
-v0.1-v0.14 都已退出待执行状态；项目所有者已确认 v0.14 当前代码可作为版本收尾。v1.0 已进入开发，
-当前数据库 clean baseline 已实施，其余插件授权业务按正式计划推进：
+v0.1-v0.14 都已退出待执行状态；项目所有者已确认 v0.14 当前代码可作为版本收尾。v1.0 P0/P1 仓库实现已完成审查，
+v1.1-dev 的仓库功能已实现，正收集目标环境 Final 证据：
 
 版本命名规则：面向开发者和使用者的项目计划、进度标题、Help/API/架构文档路径及 UI 展示统一使用
 `v0.N`（例如 `v0.14`）。迁移文件名、测试/Make 命令、基线 schema、数据库夹具、API/Host API/Manifest/
 CampusDoc 协议版本等技术标识保持其既有写法，例如 `/api/v1`。数据库重构后的 migration 技术编号重新从
-`000001_v1_schema_baseline` 开始；这不改变产品版本命名。
+`000001_v1_1_schema_baseline` 开始；这不改变产品版本命名。
 
 - [v1.0 插件生态与三层授权体系正式项目计划](项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md)；P0/P1 仓库实现已完成，发布证据待收集
 - [v1.0 数据库全面重构方案](项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md)
 - [v1.0 计划逐条审查与项目回顾](项目计划书v1/项目计划v1.0/03-v1.0计划逐条审查与项目回顾.md)
 - [v1.0 插件三层授权与运行安全说明](help/系统设计相关/v1.0插件三层授权与运行安全说明.md)
 - [v1.0 插件平台数据模型与开发库重置说明](help/系统设计相关/v1.0插件平台数据模型与开发库重置说明.md)
+- [v1.1 图文附件、PDF 预览插件与 Plugin UI v2 正式计划](项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md)
+- [v1.1 图文附件、PDF 预览插件与授权设计说明](help/系统设计相关/v1.1个人资源预览与授权设计说明.md)
 - [v0.14 正式项目计划](项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md)
 - [v0.1-v0.14 历史计划目录与迁移清单](项目计划书v0/README.md)
 - [v0.14 学期治理与个人文档使用说明](help/系统设计相关/v0.14学期治理与个人文档使用说明.md)

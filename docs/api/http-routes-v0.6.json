@@ -1634,6 +1634,23 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/documents/:id/pdf-invocations",
+      "handler": "d.PersonalDocuments",
+      "module_owner": "feature.personal-documents",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.documents.id.pdf_invocations",
+      "legacy_aliases": [
+        "http.post.api.v1.documents.id.pdf_invocations",
+        "httpapi.post.api.v1.documents.id.pdf_invocations"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "PUT",
       "path": "/api/v1/documents/:id",
       "handler": "d.PersonalDocuments",
@@ -1903,6 +1920,261 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.assets",
+      "legacy_aliases": [
+        "http.get.api.v1.assets",
+        "httpapi.get.api.v1.assets"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/:id/download",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.assets.id.download",
+      "legacy_aliases": [
+        "http.get.api.v1.assets.id.download",
+        "httpapi.get.api.v1.assets.id.download"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/assets/:id/pdf-invocations",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.assets.id.pdf_invocations",
+      "legacy_aliases": [
+        "http.post.api.v1.assets.id.pdf_invocations",
+        "httpapi.post.api.v1.assets.id.pdf_invocations"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/assets/:id/trash",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.assets.id.trash",
+      "legacy_aliases": [
+        "http.post.api.v1.assets.id.trash",
+        "httpapi.post.api.v1.assets.id.trash"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/assets/:id/restore",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.assets.id.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.assets.id.restore",
+        "httpapi.post.api.v1.assets.id.restore"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/richtext/articles/:id/attachments",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.richtext.articles.id.attachments",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.articles.id.attachments",
+        "httpapi.get.api.v1.richtext.articles.id.attachments"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/richtext/articles/:id/attachments",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles.id.attachments",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.attachments",
+        "httpapi.post.api.v1.richtext.articles.id.attachments"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/richtext/articles/:id/attachments/upload",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles.id.attachments.upload",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.attachments.upload",
+        "httpapi.post.api.v1.richtext.articles.id.attachments.upload"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/richtext/articles/:id/attachments/order",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.patch.api.v1.richtext.articles.id.attachments.order",
+      "legacy_aliases": [
+        "http.patch.api.v1.richtext.articles.id.attachments.order",
+        "httpapi.patch.api.v1.richtext.articles.id.attachments.order"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.patch.api.v1.richtext.articles.id.attachments.attachment_id",
+      "legacy_aliases": [
+        "http.patch.api.v1.richtext.articles.id.attachments.attachment_id",
+        "httpapi.patch.api.v1.richtext.articles.id.attachments.attachment_id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.delete.api.v1.richtext.articles.id.attachments.attachment_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.richtext.articles.id.attachments.attachment_id",
+        "httpapi.delete.api.v1.richtext.articles.id.attachments.attachment_id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id/download",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.richtext.articles.id.attachments.attachment_id.download",
+      "legacy_aliases": [
+        "http.get.api.v1.richtext.articles.id.attachments.attachment_id.download",
+        "httpapi.get.api.v1.richtext.articles.id.attachments.attachment_id.download"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-ui/invocations",
+      "handler": "d.RichText",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_ui.invocations",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_ui.invocations",
+        "httpapi.post.api.v1.plugin_ui.invocations"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-ui/invocations/:id",
+      "handler": "d.RichText",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_ui.invocations.id",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_ui.invocations.id",
+        "httpapi.get.api.v1.plugin_ui.invocations.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-ui/invocations/:id/content",
+      "handler": "d.RichText",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_ui.invocations.id.content",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_ui.invocations.id.content",
+        "httpapi.get.api.v1.plugin_ui.invocations.id.content"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
       "stability": "experimental"
     },
     {
@@ -4271,6 +4543,101 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/assets/summary",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "asset:read_audit",
+      "permission_code": "personal_space.asset.read_audit",
+      "operation_code": "http.personal_space.asset.governance_summary",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.assets.summary",
+        "httpapi.get.api.v1.admin.assets.summary"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/assets/:id/quarantine",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "asset:manage",
+      "permission_code": "personal_space.asset.manage",
+      "operation_code": "http.personal_space.asset.quarantine",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.assets.id.quarantine",
+        "httpapi.post.api.v1.admin.assets.id.quarantine"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/assets/:id/restore",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "asset:manage",
+      "permission_code": "personal_space.asset.manage",
+      "operation_code": "http.personal_space.asset.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.assets.id.restore",
+        "httpapi.post.api.v1.admin.assets.id.restore"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/assets/:id/purge-preview",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "asset:manage",
+      "permission_code": "personal_space.asset.manage",
+      "operation_code": "http.personal_space.asset.purge_preview",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.assets.id.purge_preview",
+        "httpapi.get.api.v1.admin.assets.id.purge_preview"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/assets/:id/purge",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "asset:manage",
+      "permission_code": "personal_space.asset.manage",
+      "operation_code": "http.personal_space.asset.purge",
+      "legacy_aliases": [
+        "http.delete.api.v1.admin.assets.id.purge",
+        "httpapi.delete.api.v1.admin.assets.id.purge"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

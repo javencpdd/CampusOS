@@ -1,4 +1,5 @@
-export const UI_CONTRACT_VERSION = 'campusos.ui/v1'
+export const UI_CONTRACT_VERSION = 'campusos.ui/v2'
+export const SUPPORTED_UI_CONTRACT_VERSIONS = ['campusos.ui/v1', UI_CONTRACT_VERSION] as const
 
 export type BackendState =
   'installed' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'pending_restart' | 'error'
@@ -39,8 +40,14 @@ export interface UISlot {
 export interface UIAction {
   id: string
   label: string
-  method: string
-  path: string
+  kind?: 'request' | 'open-surface'
+  // A request action has method/path.  An open-surface action deliberately
+  // has neither: it may select only a declared surface and a host-owned
+  // presentation, never an arbitrary navigation URL.
+  method?: string
+  path?: string
+  surface_id?: string
+  presentation?: 'modal' | 'drawer' | 'fullscreen' | 'new-tab'
   permission?: string
   confirm?: boolean
   audit?: boolean
@@ -58,6 +65,7 @@ export interface UISurface {
   action_ids?: string[]
   public_tokens?: string[]
   regions?: string[]
+  presentations?: Array<'modal' | 'drawer' | 'fullscreen' | 'new-tab'>
 }
 export interface UISchemaNode {
   component: 'stack' | 'grid' | 'card' | 'heading' | 'text' | 'badge' | 'alert' | 'button' | 'list'

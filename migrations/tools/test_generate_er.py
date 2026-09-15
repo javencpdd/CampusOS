@@ -76,6 +76,18 @@ class GenerateERTest(unittest.TestCase):
         self.assertEqual(len(child.foreign_keys), 1)
         self.assertEqual(child.foreign_keys[0].on_delete, "SET NULL")
 
+    def test_forward_add_column_if_not_exists_is_available_to_later_foreign_key(self) -> None:
+        sql = """
+        CREATE TABLE parents (id bigint PRIMARY KEY);
+        CREATE TABLE children (id bigint PRIMARY KEY);
+        ALTER TABLE children ADD COLUMN IF NOT EXISTS parent_id bigint;
+        ALTER TABLE ONLY children ADD CONSTRAINT fk_child_parent
+          FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE RESTRICT;
+        """
+        child = generate_er.parse_schema(sql)["children"]
+        self.assertIsNotNone(child.column("parent_id"))
+        self.assertEqual(child.foreign_keys[0].child_columns, ["parent_id"])
+
     def test_current_migrations_generate_three_consistent_artifacts(self) -> None:
         root = Path(__file__).resolve().parents[2]
         migrations = root / "migrations"

@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,6 +31,29 @@ func newAuthorizationFixture(t testing.TB) (*AuthorizationService, PluginVersion
 		t.Fatal(err)
 	}
 	return service, version
+}
+
+func TestAuthorizationOverviewMarshalsSnowflakeIDsAsDecimalStrings(t *testing.T) {
+	const versionID int64 = 1789489244156976761
+	payload, err := json.Marshal(AuthorizationOverview{
+		Version: PluginVersion{ID: versionID, PluginID: versionID},
+		Declarations: []CapabilityDeclaration{{
+			ID: versionID, PluginVersionID: versionID, CapabilityCode: "schedule.self.read",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("marshal authorization overview: %v", err)
+	}
+	encoded := string(payload)
+	for _, expected := range []string{
+		`"id":"1789489244156976761"`,
+		`"plugin_id":"1789489244156976761"`,
+		`"plugin_version_id":"1789489244156976761"`,
+	} {
+		if !strings.Contains(encoded, expected) {
+			t.Fatalf("expected browser-safe decimal ID %s in %s", expected, encoded)
+		}
+	}
 }
 
 func TestAuthorizationThreeLayerAndImmediateRevocation(t *testing.T) {

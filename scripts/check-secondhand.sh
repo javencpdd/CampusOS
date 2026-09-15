@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 rg -q 'feature.secondhand' modules/features/secondhand/module.yaml
-rg -q 'CREATE TABLE public\.secondhand_details' migrations/000001_v1_schema_baseline.up.sql
+rg -q 'CREATE TABLE public\.secondhand_details' migrations/000001_v1_1_schema_baseline.up.sql
 rg -q 'CreateStructuredThread' internal/modules/features/secondhand/service.go
 rg -q 'ErrThreadNotEditable' internal/modules/features/secondhand/service.go
 rg -Fq 'response.WriteError(c, errorTranslator.Translate(err))' internal/modules/features/secondhand/handler.go

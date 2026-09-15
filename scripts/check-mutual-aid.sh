@@ -10,7 +10,7 @@ GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test \
   -count=1
 
 rg -q 'feature.mutual-aid' modules/features/mutual-aid/module.yaml
-rg -q 'CREATE TABLE public\.mutual_aid_details' migrations/000001_v1_schema_baseline.up.sql
+rg -q 'CREATE TABLE public\.mutual_aid_details' migrations/000001_v1_1_schema_baseline.up.sql
 rg -q 'CreateStructuredThread' internal/modules/features/mutualaid/service.go
 rg -q 'ErrThreadNotEditable' internal/modules/features/mutualaid/service.go
 rg -Fq 'response.WriteError(c, errorTranslator.Translate(err))' internal/modules/features/mutualaid/handler.go

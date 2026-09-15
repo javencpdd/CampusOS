@@ -929,6 +929,7 @@ var memoryPermissions = map[string]map[string]bool{
 		"thread:read": true, "thread:write": true, "thread:delete": true, "thread:pin": true, "thread:lock": true,
 		"post:read": true, "post:write": true, "post:delete": true,
 		"category:read": true, "category:write": true, "category:delete": true,
+		"asset:read_audit": true, "asset:manage": true,
 		"role:manage": true, "role:read": true, "role:assign": true, "role:revoke": true,
 		"feature:read": true, "feature:configure": true, "feature:lifecycle": true,
 	},
@@ -1048,6 +1049,8 @@ func (r *MemoryRoleRepository) seedAuthorizationCatalog() {
 		{"platform.reliability.read", "metrics", "read", []string{"admin"}},
 		{"platform.reliability.replay", "plugin", "configure", []string{"admin"}},
 		{"platform.retention.preview", "metrics", "read", []string{"admin"}},
+		{"personal_space.asset.read_audit", "asset", "read_audit", []string{"admin"}},
+		{"personal_space.asset.manage", "asset", "manage", []string{"admin"}},
 	} {
 		r.ensureMemoryDefinition(definition.code, definition.resource, definition.action, now)
 		for _, roleName := range definition.roles {

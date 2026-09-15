@@ -24,6 +24,14 @@ export const builtinFeatureDefinitions: FeatureRow[] = [
     configSources: [{ name: 'controlled-richtext-article', label: '文章配置' }],
   },
   {
+    id: 'pdf-viewer',
+    label: 'PDF 文档预览',
+    description: 'PDF Viewer 的兼容性总开关；实际生命周期、授权与预览入口由第一方受管插件 builtin.pdf-viewer 管理。',
+    representative: 'pdf-viewer',
+    parentId: 'controlled-richtext-article',
+    configSources: [],
+  },
+  {
     id: 'mutual-aid',
     label: '校园互助',
     description: '复用安全图文正文和用户图片资产，保留独立的互助类型与状态。',

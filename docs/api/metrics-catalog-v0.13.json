@@ -325,6 +325,33 @@
       "maximum_series": 8
     },
     {
+      "name": "campusos_richtext_asset_bytes",
+      "help": "Current RichText attachment bytes by lifecycle status.",
+      "type": "gauge",
+      "unit": "bytes",
+      "label_names": [
+        "status"
+      ],
+      "maximum_series": 8
+    },
+    {
+      "name": "campusos_richtext_assets",
+      "help": "Current RichText attachment assets by lifecycle status.",
+      "type": "gauge",
+      "unit": "assets",
+      "label_names": [
+        "status"
+      ],
+      "maximum_series": 8
+    },
+    {
+      "name": "campusos_richtext_expired_invocations",
+      "help": "Current expired or revoked RichText PDF preview invocations.",
+      "type": "gauge",
+      "unit": "invocations",
+      "maximum_series": 1
+    },
+    {
       "name": "campusos_runtime_goroutines",
       "help": "Current Go runtime goroutine count.",
       "type": "gauge",

@@ -106,6 +106,40 @@
         <img v-if="article.cover_url" class="article-cover" :src="article.cover_url" alt="cover" />
         <p v-if="article.summary" class="article-summary">{{ article.summary }}</p>
         <article class="article-content" v-html="article.sanitized_html"></article>
+        <section v-if="isLoggedIn && attachments.length" class="article-attachments" aria-label="文章附件">
+          <h3>附件</h3>
+          <div v-for="attachment in attachments" :key="attachment.id" class="attachment-card">
+            <div class="attachment-card-main">
+              <strong>{{ attachment.display_name }}</strong>
+              <span>{{ attachment.asset?.mime_type }} · {{ formatAttachmentSize(attachment.asset?.size_bytes) }}</span>
+            </div>
+            <div class="attachment-card-actions">
+              <el-dropdown
+                v-if="isPDF(attachment)"
+                trigger="click"
+                @command="(presentation: string) => previewPDF(attachment, presentation)"
+              >
+                <el-button size="small" type="primary">预览</el-button>
+                <template #dropdown
+                  ><el-dropdown-menu>
+                    <el-dropdown-item command="modal">弹窗预览</el-dropdown-item>
+                    <el-dropdown-item command="fullscreen">全屏预览</el-dropdown-item>
+                    <el-dropdown-item command="drawer">侧边预览</el-dropdown-item>
+                    <el-dropdown-item command="new-tab">新标签页预览</el-dropdown-item>
+                  </el-dropdown-menu></template
+                >
+              </el-dropdown>
+              <el-button size="small" @click="downloadAttachment(attachment)">下载</el-button>
+            </div>
+          </div>
+        </section>
+        <el-alert
+          v-else-if="article && !isLoggedIn"
+          class="attachment-login-hint"
+          type="info"
+          :closable="false"
+          title="文章附件仅向已登录且有文章访问权限的用户显示。"
+        />
       </template>
       <article
         v-else-if="thread.content_format === 'safe_html'"
@@ -201,6 +235,8 @@ import { moderationApi, postApi, threadApi } from '@/modules/community/api'
 import ThreadTaxonomy from '@/modules/community/components/ThreadTaxonomy.vue'
 import { richTextApi } from '@/modules/richtext/api'
 import { useUserStore } from '@/modules/identity/store'
+import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
+import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,6 +255,7 @@ const replyTarget = ref<any>(null)
 const postsPage = ref(1)
 const postsPageSize = 20
 const postsTotal = ref(0)
+const attachments = ref<any[]>([])
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const isOwnThread = computed(() => Boolean(thread.value && userStore.user?.id === thread.value.author_id))
 const publicationStatus = computed(() => thread.value?.publication_status || thread.value?.status || 'published')
@@ -357,14 +394,71 @@ const deleteModeratedPost = async (post: any) => {
 
 const loadArticle = async () => {
   article.value = null
+  attachments.value = []
   if (!threadID()) return
   try {
     const res: any = userStore.isLoggedIn
       ? await richTextApi.getMine(threadID()).catch(() => richTextApi.getPublished(threadID()))
       : await richTextApi.getPublished(threadID())
-    if (res.code === 0) article.value = res.data
+    if (res.code === 0) {
+      article.value = res.data
+      if (userStore.isLoggedIn) await loadAttachments()
+    }
   } catch {
     article.value = null
+  }
+}
+
+const loadAttachments = async () => {
+  if (!threadID()) return
+  try {
+    const result: any = await richTextApi.listAttachments(threadID())
+    attachments.value = result?.data?.items || result?.items || []
+  } catch {
+    attachments.value = []
+  }
+}
+
+const formatAttachmentSize = (value: unknown) => {
+  const bytes = Number(value || 0)
+  if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes)} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
+}
+
+const isPDF = (attachment: any) => attachment?.asset?.mime_type === 'application/pdf'
+
+const downloadAttachment = async (attachment: any) => {
+  try {
+    const payload: any = await richTextApi.downloadAttachment(threadID(), attachment.id)
+    const blob = payload?.data || payload
+    if (!(blob instanceof Blob)) throw new Error('下载内容不可用')
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = attachment.display_name || attachment.asset?.original_name || 'attachment'
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('已开始下载附件')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '附件下载失败')
+  }
+}
+
+const previewPDF = async (attachment: any, requested: string) => {
+  const presentation = requested as SurfacePresentation
+  try {
+    await ensurePDFViewerConsent('article_attachment.self.preview')
+    const response: any = await richTextApi.createPDFInvocation(threadID(), attachment.id, presentation)
+    const invocation = response?.data || response
+    openPluginSurface({
+      surfaceID: 'builtin.pdf-viewer.preview',
+      invocationID: invocation.id,
+      presentation,
+    })
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载附件后使用本地阅读器打开。')
   }
 }
 
@@ -603,6 +697,49 @@ onMounted(async () => {
   background: #f5f7fa;
   color: #606266;
   line-height: 1.7;
+}
+.article-attachments {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.article-attachments h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.attachment-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+}
+.attachment-card-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.attachment-card-main strong,
+.attachment-card-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-card-main span {
+  color: var(--campus-muted-color, #606266);
+  font-size: 12px;
+}
+.attachment-card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+.attachment-login-hint {
+  margin-top: 24px;
 }
 .article-content {
   max-width: 760px;

@@ -57,7 +57,8 @@ export const pluginApi = {
     api.post(`/plugins/${encodeURIComponent(name)}/authorization/sync`),
   setCapabilityGrant: (
     name: string,
-    versionId: number,
+    // Keep Snowflake BIGINT IDs exact when they are placed in URL paths.
+    versionId: string,
     capability: string,
     status: "granted" | "denied" | "revoked",
     reason: string,

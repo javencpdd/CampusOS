@@ -1,5 +1,12 @@
 import type { Router } from 'vue-router'
-import type { RuntimeNavigation, RuntimePlugin, RuntimeSurface, UIAction, UIRuntimeManifest } from './contracts'
+import {
+  SUPPORTED_UI_CONTRACT_VERSIONS,
+  type RuntimeNavigation,
+  type RuntimePlugin,
+  type RuntimeSurface,
+  type UIAction,
+  type UIRuntimeManifest,
+} from './contracts'
 
 export interface RegistrySnapshot {
   revision: number
@@ -27,7 +34,11 @@ export class RuntimeRegistry {
   }
 
   replace(manifest: UIRuntimeManifest): RegistrySnapshot {
-    if (manifest.contract_version !== 'campusos.ui/v1')
+    if (
+      !SUPPORTED_UI_CONTRACT_VERSIONS.includes(
+        manifest.contract_version as (typeof SUPPORTED_UI_CONTRACT_VERSIONS)[number],
+      )
+    )
       throw new Error(`不兼容的 UI Contract: ${manifest.contract_version}`)
     const fingerprint = JSON.stringify(manifest)
     if (fingerprint === this.manifestFingerprint) return this.snapshot

@@ -1,0 +1,16 @@
+schema: campusos.module/v1
+id: feature.pdf-viewer
+feature_id: pdf-viewer
+name: pdf-viewer
+display_name: "PDF 文档预览"
+version: "1.1.3-dev"
+description: "兼容性功能标识。PDF 预览的生命周期、授权声明和 UI 路由由受管的第一方插件 builtin.pdf-viewer 提供。"
+kind: builtin-feature
+activation_mode: restart
+default_enabled: true
+dependencies: [core.user-storage, feature.controlled-richtext-article, core.feature-registry]
+implementation: web/src/modules/pdf-viewer
+# Do not declare UI here. Keeping this compatibility descriptor without a UI
+# contribution prevents the same surface/route from being registered twice;
+# the Plugin Manager manifest is the sole source of the PDF Viewer's UI v2
+# contribution and authorization contract.

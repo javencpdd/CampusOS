@@ -3,6 +3,7 @@ package personaldocuments
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -61,6 +62,38 @@ type SaveRequest struct {
 type VersionRequest struct {
 	ExpectedVersion int64 `json:"expected_version"`
 }
+
+type PDFInvocationRequest struct {
+	Presentation string `json:"presentation" binding:"required"`
+}
+
+// PDFPreviewInvocation contains only the opaque server-side invocation ID.
+// It deliberately never exposes a document version, storage object ID, path,
+// JWT, or a reusable download URL.
+type PDFPreviewInvocation struct {
+	ID string `json:"id"`
+}
+
+type PDFPreviewInvoker func(context.Context, string, string, string) (PDFPreviewInvocation, error)
+
+var ErrPDFPreviewUnavailable = errors.New("personal document PDF preview is unavailable")
+
+// PDFPreviewError is the narrow error envelope accepted from the trusted
+// composition adapter. It keeps plugin/runtime detail out of the document
+// handler while preserving an actionable, localized HTTP response.
+type PDFPreviewError struct {
+	Status  int
+	Code    int
+	Message string
+}
+
+func (e *PDFPreviewError) Error() string {
+	if e == nil || e.Message == "" {
+		return ErrPDFPreviewUnavailable.Error()
+	}
+	return e.Message
+}
+
 type ListFilter struct{ Status string }
 
 // PreviewStatus is intentionally a bounded capability result. v0.14 never

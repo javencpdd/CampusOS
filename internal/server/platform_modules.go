@@ -208,6 +208,7 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
 	m.manager.RegisterRuntime("process", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
+	m.manager.RegisterRuntime("builtin", plugin.NewBuiltinRuntime())
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
 		return errors.New("authoritative feature registry is unavailable")
@@ -244,6 +245,9 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return fmt.Errorf("plugin platform dependencies are not registered")
 	}
 	m.owner.registerDefaultSubscriptions(m.events.EventBus())
+	if _, err := m.manager.RegisterBuiltin(plugin.NewPDFViewerBuiltinManifest()); err != nil {
+		return fmt.Errorf("register built-in PDF Viewer plugin: %w", err)
+	}
 	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
 	}
@@ -258,7 +262,7 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		m.secrets = secrets
 	}
 	for _, installed := range m.manager.ListPlugins() {
-		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" {
+		if installed == nil || installed.Manifest == nil {
 			continue
 		}
 		if _, err := m.authorization.SyncInstalled(ctx, installed, ""); err != nil {
@@ -273,6 +277,9 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 				log.Printf("⚠️  插件 %s 已隔离：同版本包内容或能力声明发生变化，请提升插件版本后重新安装（%v）", installed.Manifest.Name, err)
 			}
 		}
+	}
+	if err := m.ensurePDFViewerDefaultGrants(ctx); err != nil {
+		return fmt.Errorf("initialize PDF Viewer administrator grants: %w", err)
 	}
 	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
 	m.manager.StartDesiredPlugins(plugin.ScopeUser)
@@ -309,6 +316,41 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	healthContext, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
+	return nil
+}
+
+// ensurePDFViewerDefaultGrants creates auditable, revocable administrator
+// grants for the compiled first-party reader. It is not an authorization
+// bypass: a later administrator denial/revocation immediately wins, and every
+// user still supplies their own consent for restricted file reads.
+func (m *pluginPlatformModule) ensurePDFViewerDefaultGrants(ctx context.Context) error {
+	if m.authorization == nil || !m.authorization.Available() {
+		return errors.New("plugin authorization service is unavailable")
+	}
+	version, err := m.authorization.ActiveVersion(ctx, plugin.PDFViewerPluginName)
+	if err != nil {
+		return err
+	}
+	for _, capability := range []string{"article_attachment.self.preview", "personal_space_file.self.read", "plugin_ui.surface.open", "plugin_record.self.read", "plugin_record.self.write"} {
+		// Set only the initial grant. An existing deny/revoke is a deliberate
+		// administrator decision and must never be overwritten at startup.
+		overview, err := m.authorization.Overview(ctx, plugin.PDFViewerPluginName, "")
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, grant := range overview.AdminGrants {
+			if grant.CapabilityCode == capability {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if _, err := m.authorization.SetAdminGrant(ctx, version.ID, capability, "granted", "系统首次注册第一方 PDF Viewer 的可撤销默认能力", map[string]interface{}{"scope": "self"}, "", nil); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

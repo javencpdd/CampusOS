@@ -118,8 +118,8 @@
             type="info"
             :closable="false"
             show-icon
-            :title="`兼容 Manifest：${builtinCompatibilityPlugins.map((item) => item.name).join('、')}`"
-            description="这些 runtime: builtin 项保留用于旧包兼容；它们不是可导入或卸载的 External Plugin。"
+            :title="`第一方受管插件：${builtinCompatibilityPlugins.map((item) => item.name).join('、')}`"
+            description="这些 runtime: builtin 项随主程序交付，但拥有独立的插件生命周期、能力声明与授权记录；它们不可导入或卸载。"
           />
 
           <div

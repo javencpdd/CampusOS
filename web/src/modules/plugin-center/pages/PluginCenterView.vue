@@ -3,7 +3,7 @@
     <div class="page-heading">
       <div>
         <h1 id="plugin-center-title">插件中心</h1>
-        <p>查看管理员发布的插件，按用途授权，并随时撤销或导出自己的数据。</p>
+        <p>查看管理员发布的插件与受管第一方插件，按用途授权，并随时撤销自己的授权。</p>
       </div>
       <el-button :loading="loading" @click="load"
         ><el-icon><Refresh /></el-icon>刷新</el-button
@@ -35,7 +35,7 @@
           ><el-icon class="empty-icon"><Box /></el-icon
         ></template>
         <template #default>
-          <p class="empty-title">暂时没有可用的外部插件</p>
+          <p class="empty-title">暂时没有可用插件</p>
           <p class="empty-copy">{{ catalogEmptyReason }}</p>
           <el-button type="primary" @click="focusRequest">申请安装插件</el-button>
         </template>
@@ -114,7 +114,12 @@
           </div>
         </dl>
         <div class="plugin-actions">
-          <el-button plain @click="openFineAuthorization(entry)">精细授权</el-button>
+          <el-button plain @click="openFineAuthorization(entry)">{{
+            entry.trusted_builtin ? '查看并授权' : '精细授权'
+          }}</el-button>
+          <template v-if="entry.trusted_builtin">
+            <el-tag type="success" effect="plain">第一方受管插件</el-tag>
+          </template>
           <template v-if="isEnabled(entry.plugin_name)"
             ><el-button @click="exportData(entry.plugin_name)"
               ><el-icon><Download /></el-icon>导出数据</el-button
@@ -130,7 +135,7 @@
               ></el-popconfirm
             ><el-button type="warning" plain @click="revoke(entry.plugin_name)">撤销授权</el-button></template
           >
-          <template v-else
+          <template v-else-if="!entry.trusted_builtin"
             ><el-button type="primary" @click="openConsent(entry)">查看并授权</el-button
             ><el-button text @click="requestInstall(entry.plugin_name)">请求安装</el-button></template
           >
@@ -255,6 +260,7 @@ type CatalogEntry = {
   description: string
   version: string
   runtime: string
+  trusted_builtin?: boolean
   data_capabilities: string[]
   user_permissions: Permission[]
   experience?: {
@@ -290,13 +296,13 @@ const catalog = ref<CatalogEntry[]>([]),
   secretSaving = ref(false),
   delegationIssuing = ref(false),
   issuedDelegationToken = ref(''),
-  issuedDelegationId = ref<number | null>(null),
+  issuedDelegationId = ref<string | null>(null),
   selected = ref<CatalogEntry | null>(null),
   selectedPermissions = ref<string[]>([]),
   requestName = ref(''),
   requestMessage = ref(''),
   catalogState = ref('ready'),
-  catalogEmptyReason = ref('管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。')
+  catalogEmptyReason = ref('管理员暂未发布可供用户授权的插件。')
 const unwrap = (value: any) => value?.data || value || {}
 const enabledGrants = computed(
   () => new Map(grants.value.filter((grant) => grant.status === 'enabled').map((grant) => [grant.plugin_name, grant])),
@@ -312,8 +318,7 @@ const load = async () => {
     const catalogData = unwrap(catalogResponse)
     catalog.value = catalogData.items || []
     catalogState.value = catalogData.catalog_state || (catalog.value.length ? 'ready' : 'empty')
-    catalogEmptyReason.value =
-      catalogData.empty_reason || '管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。'
+    catalogEmptyReason.value = catalogData.empty_reason || '管理员暂未发布可供用户授权的插件。'
     grants.value = unwrap(grantResponse).items || []
     usages.value = unwrap(usageResponse).items || []
   } catch (error: any) {
@@ -323,8 +328,17 @@ const load = async () => {
   }
 }
 const isEnabled = (name: string) => enabledGrants.value.has(name)
-const grantLabel = (name: string) => (isEnabled(name) ? '已授权' : '未授权')
-const grantType = (name: string) => (isEnabled(name) ? 'success' : 'info')
+const grantLabel = (name: string) => {
+  const entry = catalog.value.find((item) => item.plugin_name === name)
+  if (entry?.trusted_builtin) return '受管授权'
+  return isEnabled(name) ? '已授权' : '未授权'
+}
+const grantType = (name: string) =>
+  catalog.value.find((item) => item.plugin_name === name)?.trusted_builtin
+    ? 'success'
+    : isEnabled(name)
+      ? 'success'
+      : 'info'
 const usageFor = (name: string) => usages.value.find((item) => item.plugin_name === name)
 const formatBytes = (value: number) => {
   if (value < 1024) return `${value} B`
@@ -334,7 +348,12 @@ const formatBytes = (value: number) => {
 const permissionKey = (permission: Permission) => `${permission.resource}:${permission.actions.join(',')}`
 const permissionPurpose = (permission: Permission) => permission.purpose || '未说明用途'
 const capabilityLabel = (capability: string) =>
-  ({ 'managed-data': '受管数据', 'user-files': '个人文件', 'user-consent': '需用户授权' })[capability] || capability
+  ({
+    'managed-data': '受管数据',
+    'user-files': '个人文件',
+    'user-consent': '需用户授权',
+    'trusted-builtin': '第一方受信任代码',
+  })[capability] || capability
 const focusRequest = () => {
   const target = document.querySelector<HTMLInputElement>('.request-fields input')
   target?.focus()
@@ -375,10 +394,12 @@ const openFineAuthorization = async (entry: CatalogEntry) => {
   try {
     const [authorization, secrets] = await Promise.all([
       pluginCenterApi.authorization(entry.plugin_name),
-      pluginCenterApi.secrets(entry.plugin_name),
+      // A first-party renderer does not need a Secret store. Its authorization
+      // panel must still open when the optional secret service is disabled.
+      pluginCenterApi.secrets(entry.plugin_name).catch(() => null),
     ])
     fineAuthorizationOverview.value = unwrap(authorization) || {}
-    userSecrets.value = unwrap(secrets).items || []
+    userSecrets.value = unwrap(secrets)?.items || []
   } catch (error: any) {
     ElMessage.error(error?.message || '加载精细授权失败')
   } finally {

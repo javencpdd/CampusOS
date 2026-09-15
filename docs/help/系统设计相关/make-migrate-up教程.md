@@ -1,149 +1,59 @@
-# `make migrate-up` 当前实现原理
+# `make migrate-up` 教程
 
-> 适用项目：CampusOS
-> 文档状态：当前实现专项教程
-> 更新时间：2026-09-01
-> 第一次操作数据库前请先读 [数据库管理指南](数据库管理指南.md)。
+> 更新时间：2026-09-16（Asia/Shanghai）
+> 当前 Schema：`000001_v1_1_schema_baseline`
 
-## 1. 命令入口
+## 它做什么
 
-Linux、WSL2 或 Git Bash：
+`make migrate-up` 调用 `scripts/migrate.sh up`，按编号执行尚未记录在 `schema_migrations` 中的 UP 文件，并将文件名、SHA-256、
+执行耗时和执行者记录在同一事务。当前只有一份 v1.1 baseline：
 
-```bash
-make migrate-up
-# 等价于
-./scripts/migrate.sh up
+```text
+000001_v1_1_schema_baseline
 ```
 
-Windows PowerShell 不依赖 Make：
+它同时建立完整业务 Schema、角色与权限参考数据、插件三层授权、附件/资产、个人文档和受控 PDF Invocation 上下文。
+它不会创建业务用户或管理员密码。
+
+## 使用前检查
+
+```bash
+make migrate-status
+make migrate-check
+```
+
+在 Docker 开发环境应明确使用 Docker PostgreSQL，避免 Git Bash、WSL2 或本机 psql 连到其它库：
+
+```bash
+CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker \
+POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos \
+make migrate-up
+```
+
+PowerShell 可直接设置相同环境变量后运行 `make migrate-up`，或使用：
 
 ```powershell
+.\scripts\migrate.ps1 status
+.\scripts\migrate.ps1 check
 .\scripts\migrate.ps1 up
 ```
 
-两份执行器提供相同动作：`up`、`down`、`reset`、`status`、`check`。默认优先使用宿主机 `psql`；显式
-设置 `PSQL_MODE=docker` 后，通过 `POSTGRES_CONTAINER` 指定的容器运行 PostgreSQL 客户端。
+## 遇到 checksum drift
 
-## 2. 当前 migration 链
+旧开发库记录的是已删除的 `000001`–`000011` 链，或记录的是旧 baseline checksum 时，脚本会拒绝继续执行。这是保护，不是缺陷。
+仅在确认数据库中的数据均可丢弃后，设置 `CAMPUSOS_ENV=development` 和与 `DB_NAME` 完全相同的
+`CAMPUSOS_RESET_CONFIRM`，执行 `migrate reset`。完整跨平台命令见[数据库管理指南](数据库管理指南.md)。
 
-当前不是历史追加链，而是从空库建立的三组 clean baseline：
+生产、staging 或任何需保留数据的库不能 reset，也不能编辑已经应用的 baseline；应先制定数据导出和从 `000002` 起的前向迁移。
 
-```text
-000001_v1_schema_baseline
-000002_v1_plugin_authorization_foundation
-000003_v1_reference_data
-000004_v1_authorization_runtime_corrections
-000005_v1_process_runtime
-```
+## 后续新 migration
 
-- `000001` 创建当前业务 Schema。
-- `000002` 创建 v1 插件生态与三层授权的数据基础。
-- `000003` 写入角色、Permission Code 和认证策略，不创建用户或默认管理员。
-- `000004` 修正 Secret 轮换索引与未声明能力拒绝审计。
-- `000005` 允许 Manifest v3 `process` Runtime，保留 `grpc` 兼容。
-
-已有旧 `000001-000049` 开发库不能直接 `up`。必须先备份需要保留的数据，再按第 6 节显式重置。
-
-## 3. `up` 的真实执行顺序
-
-执行器会：
-
-1. 校验文件名必须使用六位版本号，且每个版本同时存在 `.up.sql` 和 `.down.sql`。
-2. 创建或检查 `public.schema_migrations` 与 `public.schema_migration_locks`。
-3. 拒绝缺少 checksum 字段的旧 migration 元数据表。
-4. 对已执行文件计算 SHA-256；只要数据库记录与仓库文件不一致就终止。
-5. 获取数据库互斥锁，防止两个发布任务同时改 Schema。
-6. 按版本顺序执行尚未应用的 `.up.sql`。
-7. 将 SQL 和 `schema_migrations` 记录放在同一事务中提交。
-8. 成功或失败后释放执行锁。
-
-因此 `up` 可以重复执行，但“可重复”只表示已应用版本会被安全跳过，不表示旧 SQL 可以原地修改。
-
-## 4. 迁移记录
-
-`schema_migrations` 保存：
-
-| 字段 | 作用 |
-| --- | --- |
-| `version` | 六位 migration 版本号 |
-| `name` | 文件中的语义名称 |
-| `checksum` | `.up.sql` 的 SHA-256 |
-| `execution_ms` | 执行耗时证据 |
-| `executor` | 执行入口标识 |
-| `applied_at` | 带时区应用时间 |
-
-`schema_migration_locks` 只用于执行器互斥，不承载业务数据。`check` 是只读合同校验，不获取或清除该锁。
-
-## 5. 常用配置
-
-Linux/Git Bash 示例：
-
-```bash
-DB_HOST=127.0.0.1 \
-DB_PORT=5432 \
-DB_NAME=campusos \
-DB_USER=campusos \
-DB_PASSWORD='从本地安全配置读取' \
-./scripts/migrate.sh status
-```
-
-Docker 开发栈示例：
-
-```bash
-PSQL_MODE=docker \
-POSTGRES_CONTAINER=campusos-dev-postgres-1 \
-DB_NAME=campusos \
-DB_USER=campusos \
-DB_PASSWORD=campusos \
-./scripts/migrate.sh check
-```
-
-PowerShell 对应设置 `$env:DB_NAME`、`$env:POSTGRES_CONTAINER` 等变量，再调用 `.\scripts\migrate.ps1`。
-配置值只应放在被 Git 忽略的本地环境文件或 Secret 管理系统，不要写回本文。
-
-## 6. 不兼容开发库重置
-
-`reset` 会执行 `DROP SCHEMA public CASCADE`，不可由 down migration 恢复。脚本同时要求环境和数据库名确认：
-
-```bash
-CAMPUSOS_ENV=development \
-CAMPUSOS_RESET_CONFIRM=campusos \
-DB_NAME=campusos \
-./scripts/migrate.sh reset
-```
-
-PowerShell：
-
-```powershell
-$env:CAMPUSOS_ENV = 'development'
-$env:CAMPUSOS_RESET_CONFIRM = 'campusos'
-$env:DB_NAME = 'campusos'
-.\scripts\migrate.ps1 reset
-```
-
-只有 `development` 或 `test` 被接受，并且确认值必须与 `DB_NAME` 完全一致。共享或生产数据库应走备份、恢复演练
-和正式发布流程，不得使用 reset。
-
-## 7. 新增后续 migration
-
-当前已追加至 `000005`，下一次从 `000006` 开始追加成对文件：
+自 clean baseline 共享后，下一项结构变更从：
 
 ```text
-migrations/000006_descriptive_name.up.sql
-migrations/000006_descriptive_name.down.sql
+migrations/000002_descriptive_name.up.sql
+migrations/000002_descriptive_name.down.sql
 ```
 
-新文件应满足：稳定主键、明确数据所有权、`TIMESTAMPTZ`、可验证约束、以真实查询为依据的索引、可逆 down，
-并同步更新 Schema 合同、Admin `/architecture`、系统设计文档和进度证据。任何已执行并记录 checksum 的 migration 禁止修改。
-
-## 8. 验证
-
-```bash
-./scripts/migrate.sh check
-POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
-POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/database-check.sh all
-python skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
-```
-
-`v1-database-baseline-check` 使用独立临时数据库验证空库建立、checksum 漂移拒绝、最新回滚、全量回滚和
-up/down/up，不会重置主开发库。
+开始，并同步更新 `scripts/schema-contract.sql`、ER、Admin `/architecture`、架构文档和隔离数据库回归。执行
+`make v1-database-baseline-check` 可验证当前基线的 reset/checksum/up/down/up 合同。

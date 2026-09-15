@@ -47,6 +47,9 @@ func (m *Manager) RegisterRuntime(runtimeType string, runtime Runtime) {
 	log.Printf("plugin runtime registered: %s", runtimeType)
 }
 func (m *Manager) Install(dir string) (*Plugin, error) { return m.packages.Install(dir) }
+func (m *Manager) RegisterBuiltin(manifest *Manifest) (*Plugin, error) {
+	return m.packages.RegisterBuiltin(manifest)
+}
 func (m *Manager) AuthorizeHostAPI(name, token string) (*Plugin, bool) {
 	return m.host.Authorize(name, token)
 }

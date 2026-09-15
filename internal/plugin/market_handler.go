@@ -12,8 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MarketCatalog exposes only administrator-published external plugins to a
-// signed-in user. Installation still remains a server-admin action.
+// MarketCatalog exposes administrator-published external plugins and compiled
+// first-party trusted plugins. Listing a builtin never grants access; its
+// declarations remain subject to administrator and user authorization.
 func (h *Handler) MarketCatalog(c *gin.Context) {
 	market, ok := h.marketService(c)
 	if !ok {
@@ -26,11 +27,9 @@ func (h *Handler) MarketCatalog(c *gin.Context) {
 	}
 	payload := gin.H{"items": items, "total": len(items), "catalog_state": "ready"}
 	if len(items) == 0 {
-		// An empty user catalog is a normal governance state: only explicitly
-		// published external plugins are visible here. Keep that distinction in
-		// the API so clients do not imply that built-in features are missing.
+		// An empty user catalog is a normal governance state.
 		payload["catalog_state"] = "empty"
-		payload["empty_reason"] = "管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。"
+		payload["empty_reason"] = "管理员暂未发布可供用户授权的插件。"
 		payload["request_available"] = true
 	}
 	response.Success(c, payload)

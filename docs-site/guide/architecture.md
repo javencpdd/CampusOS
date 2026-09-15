@@ -78,7 +78,7 @@ CampusOS 区分 Core Module、Built-in Feature、External Plugin 和无 Runtime 
 | 开发日志 | `.campusos/logs/`。 |
 
 数据库既包含已验证的核心 PostgreSQL 外键，也保留部分由逻辑归属、索引和服务层约束表达的当前插件关系。
-当前数据库为 `000001-000003` clean baseline 加 `000004-000005` 前向修正：76 张现行业务表、8 张 v1 插件身份/版本/三层授权基础表，以及不含用户凭据的稳定参考数据；`000004` 修正 Secret 轮换与拒绝审计，`000005` 正式接纳 `process` Runtime；
+当前数据库为单一 `000001_v1_1_schema_baseline`：88 张业务表、8 张插件身份/版本/三层授权基础表、不含用户凭据的稳定参考数据、图文附件、资产治理和三种 PDF Invocation 上下文均由该基线建立；
 执行器另管理 checksum 和互斥锁。修改 Schema 前必须运行 `make v1-database-baseline-check`、`make database-check`
 和架构同步检查。详见 [数据库迁移与 Schema 冗余治理](/operations/database-migration-hygiene)。
 

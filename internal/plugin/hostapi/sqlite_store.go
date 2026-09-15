@@ -4,12 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
-	"unicode"
 
+	"github.com/campusos/CampusOS/internal/plugin"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,9 +25,10 @@ func NewSQLiteKVStore(rootDir string) (*SQLiteKVStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(cleanRoot, 0o755); err != nil {
+	if err := os.MkdirAll(cleanRoot, 0o700); err != nil {
 		return nil, err
 	}
+	_ = os.Chmod(cleanRoot, 0o700)
 	return &SQLiteKVStore{rootDir: cleanRoot}, nil
 }
 
@@ -87,7 +86,7 @@ func (s *SQLiteKVStore) open(ctx context.Context, pluginName string) (*sql.DB, e
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
 		return nil, err
 	}
 
@@ -96,6 +95,7 @@ func (s *SQLiteKVStore) open(ctx context.Context, pluginName string) (*sql.DB, e
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
+	_ = os.Chmod(dbPath, 0o600)
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
 		return nil, err
@@ -114,37 +114,13 @@ func (s *SQLiteKVStore) open(ctx context.Context, pluginName string) (*sql.DB, e
 }
 
 func (s *SQLiteKVStore) dbPath(pluginName string) (string, error) {
-	if err := validatePluginStorageName(pluginName); err != nil {
-		return "", err
-	}
 	rootDir := s.rootDir
 	if rootDir == "" {
 		rootDir = defaultPluginDataDir
 	}
-	rootAbs, err := filepath.Abs(filepath.Clean(rootDir))
+	layout, err := plugin.PreparePluginStorage(rootDir, pluginName)
 	if err != nil {
 		return "", err
 	}
-	target := filepath.Join(rootAbs, pluginName, "plugin.db")
-	targetAbs, err := filepath.Abs(filepath.Clean(target))
-	if err != nil {
-		return "", err
-	}
-	if targetAbs != rootAbs && !strings.HasPrefix(targetAbs, rootAbs+string(os.PathSeparator)) {
-		return "", fmt.Errorf("plugin storage path escapes root: %s", pluginName)
-	}
-	return targetAbs, nil
-}
-
-func validatePluginStorageName(name string) error {
-	if name == "" {
-		return errors.New("plugin name is required")
-	}
-	for _, r := range name {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' {
-			continue
-		}
-		return fmt.Errorf("invalid plugin name for storage: %q", name)
-	}
-	return nil
+	return layout.SQLitePath, nil
 }

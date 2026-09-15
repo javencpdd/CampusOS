@@ -61,3 +61,13 @@ func TestSQLiteKVStoreRejectsUnsafePluginName(t *testing.T) {
 		t.Fatalf("expected plugin path separator to be rejected")
 	}
 }
+
+func TestSQLiteKVStoreSupportsQualifiedPluginName(t *testing.T) {
+	store, err := NewSQLiteKVStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set(t.Context(), "builtin.pdf-viewer", "page", "4"); err != nil {
+		t.Fatalf("qualified plugin name: %v", err)
+	}
+}

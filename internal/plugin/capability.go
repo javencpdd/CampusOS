@@ -23,6 +23,7 @@ type CapabilityDescriptor struct {
 }
 
 var capabilityCatalog = []CapabilityDescriptor{
+	{Code: "article_attachment.self.preview", Resource: "article_attachment", Action: "preview", Scope: "self", Risk: "medium", ConsentRequired: true, DataClassification: "restricted", AuditLevel: "decision", Description: "预览当前用户有权阅读的文章 PDF 附件"},
 	{Code: "audit.system.write", Resource: "audit", Action: "write", Scope: "system", Risk: "high", DataClassification: "sensitive", AuditLevel: "decision", Description: "写入插件安全与治理审计记录"},
 	{Code: "config.system.read", Resource: "config", Action: "read", Scope: "system", Risk: "low", DataClassification: "internal", AuditLevel: "summary", Description: "读取当前插件的非敏感配置"},
 	{Code: "config.system.write", Resource: "config", Action: "write", Scope: "system", Risk: "medium", DataClassification: "internal", AuditLevel: "decision", Description: "修改当前插件的非敏感配置"},
@@ -43,6 +44,7 @@ var capabilityCatalog = []CapabilityDescriptor{
 	{Code: "plugin_file.self.delete", Resource: "plugin_file", Action: "delete", Scope: "self", Risk: "high", ConsentRequired: true, DataClassification: "restricted", AuditLevel: "decision", Description: "删除当前用户的插件受管文件"},
 	{Code: "plugin_file.self.read", Resource: "plugin_file", Action: "read", Scope: "self", Risk: "medium", ConsentRequired: true, DataClassification: "restricted", AuditLevel: "decision", Description: "读取当前用户的插件受管文件"},
 	{Code: "plugin_file.self.write", Resource: "plugin_file", Action: "write", Scope: "self", Risk: "high", ConsentRequired: true, DataClassification: "restricted", AuditLevel: "decision", Description: "写入当前用户的插件受管文件"},
+	{Code: "plugin_ui.surface.open", Resource: "plugin_ui", Action: "open", Scope: "self", Risk: "low", ConsentRequired: false, DataClassification: "internal", AuditLevel: "decision", Description: "由当前用户操作打开受宿主控制的插件界面"},
 	{Code: "plugin_record.self.delete", Resource: "managed_data", Action: "delete", Scope: "self", Risk: "high", ConsentRequired: true, DataClassification: "sensitive", AuditLevel: "decision", Description: "删除当前用户的插件受管记录"},
 	{Code: "plugin_record.self.read", Resource: "managed_data", Action: "read", Scope: "self", Risk: "medium", ConsentRequired: true, DataClassification: "sensitive", AuditLevel: "decision", Description: "读取当前用户的插件受管记录"},
 	{Code: "plugin_record.self.write", Resource: "managed_data", Action: "write", Scope: "self", Risk: "high", ConsentRequired: true, DataClassification: "sensitive", AuditLevel: "decision", Description: "写入当前用户的插件受管记录"},

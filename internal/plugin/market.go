@@ -124,6 +124,7 @@ type CatalogEntry struct {
 	DataCapabilities []string         `json:"data_capabilities,omitempty"`
 	UserPermissions  []UserPermission `json:"user_permissions,omitempty"`
 	Experience       ExperienceConfig `json:"experience,omitempty"`
+	TrustedBuiltin   bool             `json:"trusted_builtin,omitempty"`
 	UpdatedAt        time.Time        `json:"updated_at"`
 }
 
@@ -250,10 +251,14 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		visibilityByPlugin[entry.PluginName] = entry.Visibility
 	}
 	for _, installed := range plugins {
-		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" || (!installed.Manifest.IsV2() && !installed.Manifest.IsV3()) {
+		if installed == nil || installed.Manifest == nil || (!installed.Manifest.IsV2() && !installed.Manifest.IsV3()) {
 			continue
 		}
 		manifest := installed.Manifest
+		isTrustedBuiltin := isManagedBuiltinManifest(manifest)
+		if manifest.Runtime == "builtin" && !isTrustedBuiltin {
+			continue
+		}
 		capabilities := []string{}
 		if len(manifest.ManagedData.Collections) > 0 {
 			capabilities = append(capabilities, "managed-data")
@@ -267,16 +272,24 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 				break
 			}
 		}
-		if len(manifest.Permissions.User) > 0 {
+		if len(manifest.Permissions.User) > 0 || len(manifest.CapabilityDeclarations) > 0 {
 			capabilities = append(capabilities, "user-consent")
+		}
+		if isTrustedBuiltin {
+			capabilities = append(capabilities, "trusted-builtin")
 		}
 		entry := CatalogEntry{
 			PluginName: manifest.Name, DisplayName: manifest.DisplayName, Description: manifest.Description,
 			Version: manifest.Version, Runtime: manifest.Runtime, Visibility: CatalogDraft,
-			PackageChecksum: installed.Checksum, RiskLevel: catalogRiskLevel(manifest), DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, Experience: normalizedExperience(manifest), UpdatedAt: s.now(),
+			PackageChecksum: installed.Checksum, RiskLevel: catalogRiskLevel(manifest), DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, Experience: normalizedExperience(manifest), TrustedBuiltin: isTrustedBuiltin, UpdatedAt: s.now(),
 		}
 		if visibility, ok := visibilityByPlugin[manifest.Name]; ok {
 			entry.Visibility = visibility
+		} else if isTrustedBuiltin {
+			// First-party compiled UI is safe to list as soon as it is registered;
+			// data access still requires the separate administrator grant and user
+			// consent records, so publication never grants file access.
+			entry.Visibility = CatalogPublished
 		}
 		if _, err := s.store.UpsertCatalog(ctx, entry); err != nil {
 			return err
@@ -307,6 +320,25 @@ func normalizedExperience(manifest *Manifest) ExperienceConfig {
 		experience.DisabledBehavior = "停用或撤销授权不会自动删除你的数据；可在插件中心导出或删除。"
 	}
 	return experience
+}
+
+// isManagedBuiltinManifest is deliberately derived from the current compiled
+// manifest instead of persisted in plugin_catalog_entries. A catalog row must
+// never be able to make an uploaded package look first-party after a restart.
+func isManagedBuiltinManifest(manifest *Manifest) bool {
+	return manifest != nil && manifest.Runtime == "builtin" && manifest.Scope == ScopeSystem && manifest.Type == PluginTypeBuiltin
+}
+
+func (s *MarketService) hydrateCatalogTrust(entries []CatalogEntry) []CatalogEntry {
+	for index := range entries {
+		entries[index].TrustedBuiltin = false
+		if s == nil || s.manifests == nil {
+			continue
+		}
+		manifest, found := s.manifests(entries[index].PluginName)
+		entries[index].TrustedBuiltin = found && isManagedBuiltinManifest(manifest)
+	}
+	return entries
 }
 
 func catalogRiskLevel(manifest *Manifest) string {
@@ -340,7 +372,7 @@ func (s *MarketService) SetCatalogVisibility(ctx context.Context, pluginName, vi
 			if saveErr == nil {
 				s.audit(ctx, pluginName, actorID, "catalog.visibility", "success", map[string]interface{}{"visibility": visibility})
 			}
-			return saved, saveErr
+			return s.hydrateCatalogTrust([]CatalogEntry{saved})[0], saveErr
 		}
 	}
 	return CatalogEntry{}, ErrMarketNotFound
@@ -351,7 +383,11 @@ func (s *MarketService) Catalog(ctx context.Context, publishedOnly bool) ([]Cata
 	if publishedOnly {
 		visibility = CatalogPublished
 	}
-	return s.store.ListCatalog(ctx, visibility)
+	entries, err := s.store.ListCatalog(ctx, visibility)
+	if err != nil {
+		return nil, err
+	}
+	return s.hydrateCatalogTrust(entries), nil
 }
 
 func (s *MarketService) Grant(ctx context.Context, pluginName, userID string, permissions []string) (UserGrant, error) {
@@ -954,7 +990,7 @@ func (s *MarketService) userManifest(pluginName string) (*Manifest, error) {
 	if !ok || manifest == nil {
 		return nil, ErrMarketNotFound
 	}
-	if (!manifest.IsV2() && !manifest.IsV3()) || manifest.Runtime == "builtin" {
+	if (!manifest.IsV2() && !manifest.IsV3()) || (manifest.Runtime == "builtin" && !isManagedBuiltinManifest(manifest)) {
 		return nil, ErrMarketUnsupported
 	}
 	return manifest, nil

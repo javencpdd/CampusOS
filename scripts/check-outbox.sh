@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-migration="migrations/000001_v1_schema_baseline.up.sql"
+migration="migrations/000001_v1_1_schema_baseline.up.sql"
 for table in platform_outbox outbox_consumer_receipts platform_outbox_attempts platform_command_audits platform_worker_leases; do
   grep -Eq "CREATE TABLE public\.${table}" "$migration"
 done

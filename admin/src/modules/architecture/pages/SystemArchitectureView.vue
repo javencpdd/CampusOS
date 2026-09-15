@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">当前迁移 000001 - 000005</el-tag>
+      <el-tag type="info" effect="plain">当前迁移 000001（v1.1 clean baseline）</el-tag>
     </section>
 
     <el-alert
@@ -1013,7 +1013,7 @@ const databaseTables: DbTable[] = [
     domain: "plugin",
     purpose: "保存发布者稳定标识、信任状态、签名密钥引用和扩展元数据。",
     fields: ["id", "slug", "trust_status", "signing_key_id", "metadata"],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "plugins.publisher_id 通过外键指向本表；created_by 可追溯到 users。",
   },
@@ -1030,7 +1030,7 @@ const databaseTables: DbTable[] = [
       "permission_fingerprint",
       "lifecycle_status",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "plugin_id 外键指向 plugins；一个插件最多一个 active 版本。",
   },
@@ -1046,7 +1046,7 @@ const databaseTables: DbTable[] = [
       "risk_level",
       "resource_scope",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源。",
   },
@@ -1062,7 +1062,7 @@ const databaseTables: DbTable[] = [
       "granted_scope",
       "policy_revision",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "联合外键指向能力声明；每项能力只允许一条未 supersede 的当前决策。",
   },
@@ -1078,7 +1078,7 @@ const databaseTables: DbTable[] = [
       "status",
       "purpose_hash",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "用户同意不能扩大管理员 Grant；用途变化通过 purpose_hash 触发重新确认。",
   },
@@ -1094,7 +1094,7 @@ const databaseTables: DbTable[] = [
       "granted_capabilities",
       "expires_at",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "不保存明文 Token；权限不得超过管理员 Grant 与用户 Consent 的交集。",
   },
@@ -1111,7 +1111,7 @@ const databaseTables: DbTable[] = [
       "ciphertext",
       "nonce",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "支持系统级和用户级 Secret；active 名称使用 NULLS NOT DISTINCT 唯一索引。",
   },
@@ -1129,7 +1129,7 @@ const databaseTables: DbTable[] = [
       "outcome",
       "policy_revision",
     ],
-    migration: "000002",
+    migration: "000001",
     relationshipNote:
       "request_id 全局唯一；高风险拒绝与错误可按插件、用户和时间检索。",
   },
@@ -1493,6 +1493,82 @@ const databaseTables: DbTable[] = [
     relationshipNote: "主题、富文本正文和上传用户均由外键保护。",
   },
   {
+    name: "user_assets",
+    title: "用户附件资产",
+    domain: "space",
+    purpose:
+      "为图文文章附件提供 owner、状态、大小和 Storage Object 的稳定业务身份；不保存宿主路径。",
+    fields: [
+      "id",
+      "owner_user_id",
+      "kind",
+      "storage_object_id",
+      "mime_type",
+      "size_bytes",
+      "status",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "一个 Asset 只引用一个 Storage Object；回收、隔离和删除状态由业务层立即参与访问判断。",
+  },
+  {
+    name: "asset_lifecycle_audits",
+    title: "附件生命周期审计",
+    domain: "system",
+    purpose:
+      "以追加记录保存回收、隔离、恢复与清除的低敏治理事实；不保存文件名、对象路径、正文或载荷。",
+    fields: [
+      "id",
+      "asset_id",
+      "actor_user_id",
+      "actor_type",
+      "action",
+      "reason",
+      "created_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "资产或操作者被删除时保留审计记录并将关联置空；仅管理端聚合查看，不作为文件浏览入口。",
+  },
+  {
+    name: "richtext_article_attachments",
+    title: "图文文章附件绑定",
+    domain: "space",
+    purpose:
+      "把文章与附件资产显式绑定，并保存显示名称和稳定排序；附件不会写入 HTML 正文。",
+    fields: [
+      "id",
+      "article_content_id",
+      "asset_id",
+      "display_name",
+      "display_order",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "(article_content_id, asset_id) 与排序均唯一；删除文章只级联删除绑定，不静默删除用户资产。",
+  },
+  {
+    name: "plugin_ui_invocations",
+    title: "插件界面短期调用上下文",
+    domain: "plugin",
+    purpose:
+      "保存 PDF 预览的用户、上下文类型、文章附件、owner-only 资产或个人文档、Surface、展示方式和到期时间；不保存 JWT、路径或公开下载链接。",
+    fields: [
+      "id",
+      "user_id",
+      "surface_id",
+      "context_kind",
+      "article_content_id",
+      "asset_id",
+      "attachment_id",
+      "personal_document_id",
+      "expires_at",
+    ],
+    migration: "000001",
+    relationshipNote:
+      "article_attachment 必须同时绑定文章、Asset 和 Attachment；personal_asset 只绑定 owner 的 Asset；personal_document 只绑定 owner 的个人文档。每次内容读取仍回到对应访问策略；过期、撤销或停用后预览立即拒绝。",
+  },
+  {
     name: "webhook_endpoints",
     title: "Webhook 端点",
     domain: "integration",
@@ -1753,6 +1829,15 @@ const relations: Relation[] = [
     targetCardinality: "1..N",
     label: "id -> document_id / current_version_id",
     domains: ["space"],
+  },
+  {
+    id: "personal-documents-plugin-ui-invocations",
+    source: "personal_documents",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> personal_document_id",
+    domains: ["space", "plugin"],
   },
   {
     id: "storage-objects-document-versions",
@@ -2178,6 +2263,96 @@ const relations: Relation[] = [
     domains: ["identity", "space"],
   },
   {
+    id: "users-user-assets",
+    source: "users",
+    target: "user_assets",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> owner_user_id",
+    domains: ["identity", "space"],
+  },
+  {
+    id: "storage-objects-user-assets",
+    source: "storage_objects",
+    target: "user_assets",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> storage_object_id",
+    domains: ["space"],
+  },
+  {
+    id: "user-assets-lifecycle-audits",
+    source: "user_assets",
+    target: "asset_lifecycle_audits",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id (SET NULL)",
+    domains: ["space", "system"],
+  },
+  {
+    id: "users-lifecycle-audits",
+    source: "users",
+    target: "asset_lifecycle_audits",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> actor_user_id (SET NULL)",
+    domains: ["identity", "system"],
+  },
+  {
+    id: "richtext-article-attachments",
+    source: "richtext_article_contents",
+    target: "richtext_article_attachments",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> article_content_id",
+    domains: ["space"],
+  },
+  {
+    id: "user-assets-richtext-attachments",
+    source: "user_assets",
+    target: "richtext_article_attachments",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id",
+    domains: ["space"],
+  },
+  {
+    id: "users-plugin-ui-invocations",
+    source: "users",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> user_id",
+    domains: ["identity", "plugin"],
+  },
+  {
+    id: "richtext-plugin-ui-invocations",
+    source: "richtext_article_contents",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> article_content_id",
+    domains: ["space", "plugin"],
+  },
+  {
+    id: "user-assets-plugin-ui-invocations",
+    source: "user_assets",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> asset_id",
+    domains: ["space", "plugin"],
+  },
+  {
+    id: "attachments-plugin-ui-invocations",
+    source: "richtext_article_attachments",
+    target: "plugin_ui_invocations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> attachment_id",
+    domains: ["space", "plugin"],
+  },
+  {
     id: "plugins-permissions",
     source: "plugins",
     target: "plugin_permissions",
@@ -2399,9 +2574,10 @@ const storageRows = [
       "img/avatars/：头像源文件，默认保留最近 3 个并可切换，只有新上传才按 FIFO 清理",
       "img/content/：普通帖子、校园互助和二手正文图片；仅当前上传者可在“我的文档 → 已上传资源”中查看清单，文件仍可能被公开帖子引用",
       "img/richtext/：图文文章图片；JPEG/PNG 优化后计入配额",
+      "file/objects/<storage_object_id>.bin：Object Port 原子落盘的受管附件字节；文件名和 MIME 只保存在 PostgreSQL 元数据",
       "file/schedule/terms/<year>-<semester>.json：每学期课表",
       "plugins/<plugin>/：v2 插件受控附件",
-      "file/、excel/、word/、pdf/：按用途/后缀分类的文件",
+      "file/：兼容文件与受管 Object 边界；不得按原始文件名或平铺目录查找附件",
     ],
     note: "数据库只保存 URL 或元数据；“已上传资源”是只读库存，不会把兼容图片迁入私有文档版本，也不会提供删除，以免破坏已发布内容；恢复时必须与数据库同时恢复。",
   },
@@ -2493,63 +2669,16 @@ const storageRows = [
 const migrations = [
   {
     version: "000001",
-    file: "000001_v1_schema_baseline.up.sql",
-    title: "v1 干净业务 Schema 基线",
+    file: "000001_v1_1_schema_baseline.up.sql",
+    title: "v1.1 单一干净 Schema 基线",
     scope: "全域",
     summary:
-      "从已验证的 v0.14 最终结构重建 76 张当前业务表，统一 TIMESTAMPTZ，并删除旧 permissions 双轨模型；不导入任何测试用户或凭据。",
-    tables: ["identity / community / storage / integration / runtime tables"],
-  },
-  {
-    version: "000002",
-    file: "000002_v1_plugin_authorization_foundation.up.sql",
-    title: "插件身份、版本与三层授权基础",
-    scope: "插件平台",
-    summary:
-      "新增发布者、不可变版本、能力声明、管理员 Grant、用户 Consent、短期 Delegation、密文 Secret 和授权判定证据。",
+      "将此前 000001–000011 的最终有效结构、稳定参考数据、插件三层授权、图文附件、资产治理和三种 PDF Invocation 上下文收敛为可重复的 v1.1 测试基线；不导入用户、邮箱、管理员凭据或业务测试记录。",
     tables: [
-      "plugin_publishers",
-      "plugin_versions",
-      "plugin_capability_declarations",
-      "plugin_admin_grants",
-      "plugin_user_consents",
-      "plugin_delegations",
-      "plugin_secret_values",
-      "plugin_authorization_decisions",
+      "identity / community / storage / personal documents",
+      "plugin authorization / runtime / UI invocation",
+      "integration / reliability / governance",
     ],
-  },
-  {
-    version: "000003",
-    file: "000003_v1_reference_data.up.sql",
-    title: "稳定参考数据",
-    scope: "权限与安全策略",
-    summary:
-      "只写入 4 个系统角色、76 个 Permission Code、默认最小授权矩阵和身份安全策略；不写用户、邮箱、管理员密码或默认版块。",
-    tables: [
-      "roles",
-      "permission_definitions",
-      "role_permissions",
-      "identity_challenge_policies",
-      "identity_mfa_policies",
-    ],
-  },
-  {
-    version: "000004",
-    file: "000004_v1_authorization_runtime_corrections.up.sql",
-    title: "授权运行期约束修正",
-    scope: "插件授权",
-    summary:
-      "以追加迁移修正活动 Secret 唯一索引，并允许保留能力未声明时的拒绝审计；不改写已经执行的授权基础 checksum。",
-    tables: ["plugin_secret_values", "plugin_authorization_decisions"],
-  },
-  {
-    version: "000005",
-    file: "000005_v1_process_runtime.up.sql",
-    title: "Process Runtime 数据库合同",
-    scope: "插件运行时",
-    summary:
-      "数据库正式接受 Manifest v3 的 process Runtime；grpc 在 v1 兼容窗口内继续可用，回滚时自动映射。",
-    tables: ["plugins"],
   },
 ];
 const tableByName = (name: string) =>

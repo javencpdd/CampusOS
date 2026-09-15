@@ -126,6 +126,37 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 	return plugin, nil
 }
 
+// RegisterBuiltin registers a compiled first-party plugin manifest. Unlike
+// Install it never reads package files and is deliberately unavailable to
+// external imports, so no uploaded code can claim the builtin runtime.
+func (m *PackageService) RegisterBuiltin(manifest *Manifest) (*Plugin, error) {
+	if manifest == nil {
+		return nil, errors.New("builtin manifest is required")
+	}
+	if err := manifest.Validate(); err != nil {
+		return nil, err
+	}
+	if manifest.Runtime != "builtin" || manifest.Scope != ScopeSystem || manifest.Type != PluginTypeBuiltin {
+		return nil, errors.New("builtin registration requires a system builtin manifest")
+	}
+	m.catalog.mu.Lock()
+	if _, exists := m.catalog.plugins[manifest.Name]; exists {
+		m.catalog.mu.Unlock()
+		return nil, fmt.Errorf("plugin %q already registered", manifest.Name)
+	}
+	p := &Plugin{ID: manifest.Name, Manifest: manifest, Status: StatusInstalled, BackendState: BackendInstalled,
+		FrontendState: FrontendLoaded, Health: HealthUnknown, DesiredEnabled: true, Directory: "builtin:" + manifest.Name, InstalledBy: "system",
+		Checksum: digestJSON(manifest)}
+	m.catalog.plugins[manifest.Name] = p
+	m.events.Add(manifest.Name, manifest.Events.Subscribe)
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
+	if err := m.syncPluginRecord(context.Background(), p); err != nil {
+		return nil, err
+	}
+	return clonePlugin(p), nil
+}
+
 func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error {
 	m.catalog.mu.RLock()
 	repo := m.catalog.repo
@@ -158,9 +189,30 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 			p.FrontendState = restoredFrontendState(record.FrontendState, p)
 			p.Health = restoredHealthState(record.HealthState, p.Status)
 			p.ErrorMsg = record.ErrorMsg
-			p.Checksum = record.Checksum
+			// A builtin plugin has no imported package whose historical checksum
+			// should be restored. Its digest is derived from the compiled manifest
+			// and is the security identity synced to plugin_versions. Restoring an
+			// old persisted checksum would hide a manifest/version upgrade.
+			if p.Manifest.Runtime != "builtin" {
+				p.Checksum = record.Checksum
+			}
 			p.PackageSize = record.PackageSize
 			p.InstalledBy = record.InstalledBy
+			// Built-in modules are compiled with the host.  Older development
+			// databases may contain the specific automatic quarantine raised when
+			// this module's declarations changed without a version bump.  The
+			// current manifest has a new immutable version, so it is safe to
+			// recover that *automatic* quarantine and let the normal authorization
+			// synchronisation create a fresh version/declaration set.  Do not
+			// clear other errors or an administrator's deliberate stop.
+			if shouldRecoverBuiltinDeclarationUpgrade(record, p.Manifest) {
+				p.Status = StatusInstalled
+				p.DesiredEnabled = true
+				p.BackendState = BackendInstalled
+				p.FrontendState = FrontendLoaded
+				p.Health = HealthUnknown
+				p.ErrorMsg = ""
+			}
 			m.catalog.mu.Unlock()
 		}
 	} else if !errors.Is(err, ErrAPIKeyNotFound) {
@@ -207,6 +259,17 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 		record.InstalledBy = "system"
 	}
 	return repo.Save(ctx, record)
+}
+
+const builtinDeclarationUpgradeQuarantineReason = "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+
+func shouldRecoverBuiltinDeclarationUpgrade(record *PluginRecord, manifest *Manifest) bool {
+	if record == nil || manifest == nil || manifest.Runtime != "builtin" {
+		return false
+	}
+	return record.Version != "" && record.Version != manifest.Version &&
+		PluginStatus(record.Status) == StatusError &&
+		strings.TrimSpace(record.ErrorMsg) == builtinDeclarationUpgradeQuarantineReason
 }
 
 func restoredBackendState(value string, status PluginStatus) BackendState {

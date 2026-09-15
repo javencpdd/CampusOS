@@ -66,7 +66,8 @@ const (
 	ActivationRestart       = "restart"
 	ActivationPluginRestart = "plugin-restart"
 	ActivationHot           = "hot"
-	CurrentUIContract       = "campusos.ui/v1"
+	LegacyUIContract        = "campusos.ui/v1"
+	CurrentUIContract       = "campusos.ui/v2"
 )
 
 type LifecycleConfig struct {
@@ -134,6 +135,7 @@ type SQLiteConfig struct {
 
 const (
 	PluginTypeExternal = "external"
+	PluginTypeBuiltin  = "builtin"
 	OwnerSystem        = "system"
 	OwnerUser          = "user"
 )
@@ -338,10 +340,18 @@ func (m *Manifest) IsV3() bool { return m != nil && m.APIVersion == ManifestAPIV
 
 func (m *Manifest) validateV3() error {
 	if m.Type == "" {
-		m.Type = PluginTypeExternal
+		if m.Runtime == "builtin" {
+			m.Type = PluginTypeBuiltin
+		} else {
+			m.Type = PluginTypeExternal
+		}
 	}
-	if m.Type != PluginTypeExternal {
-		return fmt.Errorf("manifest: v3 type must be %q", PluginTypeExternal)
+	if m.Type == PluginTypeBuiltin {
+		if m.Runtime != "builtin" || m.Scope != ScopeSystem {
+			return errors.New("manifest: builtin v3 plugins must use builtin runtime and system scope")
+		}
+	} else if m.Type != PluginTypeExternal {
+		return fmt.Errorf("manifest: v3 type must be %q or %q", PluginTypeExternal, PluginTypeBuiltin)
 	}
 	if m.HostAPIVersion != HostAPIVersionV3 {
 		return fmt.Errorf("manifest: v3 requires host_api_version %q", HostAPIVersionV3)
