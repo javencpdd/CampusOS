@@ -228,7 +228,7 @@
       <article class="article-content" v-html="previewHtml"></article>
     </el-drawer>
     <el-dialog v-model="assetPickerVisible" title="我的附件与回收站" width="min(720px, 92vw)">
-      <el-radio-group v-model="assetPickerStatus" class="asset-picker-tabs" @change="loadUserAssets">
+      <el-radio-group v-model="assetPickerStatus" class="asset-picker-tabs" @change="loadUserAssets()">
         <el-radio-button label="active">可添加附件</el-radio-button>
         <el-radio-button label="trashed">回收站</el-radio-button>
       </el-radio-group>
@@ -256,6 +256,7 @@
           ></el-table-column
         >
       </el-table>
+      <el-button v-if="assetNextCursor" :loading="assetsLoading" @click="loadUserAssets(true)">加载更多附件</el-button>
     </el-dialog>
   </div>
 </template>
@@ -299,6 +300,9 @@ const attachments = ref<any[]>([])
 const assetPickerVisible = ref(false)
 const userAssets = ref<any[]>([])
 const assetPickerStatus = ref<'active' | 'trashed'>('active')
+const assetNextCursor = ref('')
+const assetsLoading = ref(false)
+let assetListRevision = 0
 const categories = ref<
   Array<{
     id: string
@@ -595,12 +599,26 @@ const openAssetPicker = async () => {
   await loadUserAssets()
 }
 
-const loadUserAssets = async () => {
+const loadUserAssets = async (append = false) => {
+  if (append && (assetsLoading.value || !assetNextCursor.value)) return
+  const revision = ++assetListRevision
+  assetsLoading.value = true
+  if (!append) {
+    assetNextCursor.value = ''
+    userAssets.value = []
+  }
   try {
-    const result: any = await richTextApi.listUserAssets(assetPickerStatus.value)
-    userAssets.value = (unwrap(result)?.items || []).filter((asset: any) => asset.kind === 'article_attachment')
+    const result: any = await richTextApi.listUserAssets(assetPickerStatus.value, append ? assetNextCursor.value : '')
+    if (revision !== assetListRevision) return
+    const payload = unwrap(result)
+    const items = (payload?.items || []).filter((asset: any) => asset.kind === 'article_attachment')
+    userAssets.value = append ? [...userAssets.value, ...items] : items
+    assetNextCursor.value = payload?.next_cursor || ''
   } catch (error: any) {
+    if (revision !== assetListRevision) return
     ElMessage.error(error?.msg || '无法读取个人附件')
+  } finally {
+    if (revision === assetListRevision) assetsLoading.value = false
   }
 }
 

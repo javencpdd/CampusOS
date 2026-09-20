@@ -14,6 +14,7 @@
       v-else-if="surface?.renderer === 'schema' && surface.schema"
       :node="surface.schema"
       :plugin="surface.plugin"
+      :resource-context="resourceContext"
     />
   </el-dialog>
   <el-drawer
@@ -30,6 +31,7 @@
       v-else-if="surface?.renderer === 'schema' && surface.schema"
       :node="surface.schema"
       :plugin="surface.plugin"
+      :resource-context="resourceContext"
     />
   </el-drawer>
 </template>
@@ -40,10 +42,16 @@ import { trustedModules } from './trustedModules'
 import { computed, watch } from 'vue'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
+import { useSurfaceResourceContext } from './useSurfaceResourceContext'
 
 const { activeSurface, closePluginSurface } = usePluginSurfaceHost()
 const runtime = useUIRuntimeStore()
 const surface = computed(() => (activeSurface.value ? runtime.surface(activeSurface.value.surfaceID) : undefined))
+const resourceContext = useSurfaceResourceContext(
+  computed(() => (surface.value?.renderer === 'schema' ? activeSurface.value?.invocationID || '' : '')),
+  computed(() => surface.value?.id || ''),
+  computed(() => surface.value?.plugin || ''),
+)
 const viewer = computed(() =>
   surface.value?.renderer === 'trusted-module' && surface.value.module_id
     ? trustedModules[surface.value.module_id]
@@ -52,7 +60,10 @@ const viewer = computed(() =>
 watch(surface, (current) => {
   if (
     activeSurface.value &&
-    (!current || !current.lifecycle.desired_enabled || current.lifecycle.frontend_state !== 'loaded')
+    (!current ||
+      !current.lifecycle.desired_enabled ||
+      current.lifecycle.frontend_state !== 'loaded' ||
+      current.plugin_version !== activeSurface.value.pluginVersion)
   ) {
     closePluginSurface()
   }

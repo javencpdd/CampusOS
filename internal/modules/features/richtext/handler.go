@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
@@ -16,7 +17,8 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc              *Service
+	contentAdmission contentAdmission
 }
 
 const richTextAssetFormSlack = int64(64 * 1024)
@@ -407,12 +409,21 @@ func (h *Handler) ListUserAssets(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后查看个人附件。 ")
 		return
 	}
-	items, err := h.svc.ListMyUserAssets(c.Request.Context(), userID, c.Query("status"))
+	limit := 0
+	if raw := c.Query("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 200 {
+			response.Error(c, http.StatusBadRequest, 73002, "每页附件数量须为 1–200 的整数，请修改 limit 参数后重试。")
+			return
+		}
+		limit = parsed
+	}
+	page, err := h.svc.ListMyUserAssetPage(c.Request.Context(), userID, c.Query("status"), c.Query("cursor"), limit)
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"items": items, "limit": 200})
+	response.Success(c, page)
 }
 
 func (h *Handler) DownloadMyUserAsset(c *gin.Context) {
@@ -545,6 +556,15 @@ func (h *Handler) CreatePDFInvocation(c *gin.Context) {
 		return
 	}
 	threadID := strings.TrimSpace(c.Query("thread_id"))
+	if req.PluginKey != "" || req.ResourceType != "" || req.SurfaceID != "" {
+		invocation, err := h.svc.CreateResourceInvocation(c.Request.Context(), userID, req)
+		if err != nil {
+			writeAttachmentError(c, err, 0)
+			return
+		}
+		response.Created(c, invocation)
+		return
+	}
 	if threadID == "" {
 		response.Error(c, http.StatusBadRequest, 73002, "预览请求缺少文章标识。 ")
 		return
@@ -587,7 +607,34 @@ func (h *Handler) GetPDFInvocation(c *gin.Context) {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"invocation": invocation, "attachment": attachment})
+	resourceID := invocation.AssetID
+	if invocation.ContextKind == InvocationContextPersonalDocument {
+		resourceID = invocation.PersonalDocumentID
+	}
+	resource := gin.H{"resource_type": invocation.ContextKind, "resource_id": resourceID}
+	if invocation.ContextKind == InvocationContextArticleAttachment {
+		article, err := h.svc.store.GetArticleByContentID(c.Request.Context(), invocation.ArticleContentID)
+		if err != nil {
+			writeAttachmentError(c, err, 0)
+			return
+		}
+		resource["thread_id"], resource["resource_id"] = article.ThreadID, invocation.AttachmentID
+	}
+	response.Success(c, gin.H{"invocation": invocation, "attachment": attachment, "resource_context": resource})
+}
+
+func (h *Handler) DownloadPDFInvocation(c *gin.Context) {
+	userID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后下载文件。")
+		return
+	}
+	opened, err := h.svc.DownloadPDFInvocation(c.Request.Context(), userID, c.Param("id"))
+	if err != nil {
+		writeAttachmentError(c, err, 0)
+		return
+	}
+	h.serveOpenedAttachment(c, opened, false)
 }
 
 func (h *Handler) PDFInvocationContent(c *gin.Context) {
@@ -606,6 +653,22 @@ func (h *Handler) PDFInvocationContent(c *gin.Context) {
 
 func (h *Handler) serveOpenedAttachment(c *gin.Context, opened AttachmentOpen, inline bool) {
 	defer opened.Reader.Close()
+	userID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后读取附件。")
+		return
+	}
+	release, admitted := h.admitContent(c, userID)
+	if !admitted {
+		return
+	}
+	defer release()
+	// Bound slow content writers without imposing a global deadline on SSE.
+	// Gin exposes its underlying writer through Unwrap; recorders may not.
+	controller := http.NewResponseController(c.Writer)
+	if err := controller.SetWriteDeadline(time.Now().Add(2 * time.Minute)); err == nil {
+		defer controller.SetWriteDeadline(time.Time{})
+	}
 	reader, ok := opened.Reader.(io.ReadSeeker)
 	if !ok {
 		response.Error(c, http.StatusServiceUnavailable, 10006, "附件存储暂不支持安全范围读取，请下载文件后查看。 ")

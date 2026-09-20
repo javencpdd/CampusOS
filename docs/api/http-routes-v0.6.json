@@ -2178,6 +2178,23 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/plugin-ui/invocations/:id/download",
+      "handler": "d.RichText",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_ui.invocations.id.download",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_ui.invocations.id.download",
+        "httpapi.get.api.v1.plugin_ui.invocations.id.download"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/publish",
       "handler": "d.RichText",

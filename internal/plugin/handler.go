@@ -534,6 +534,12 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 	}
 	payload["lifecycle_owner"] = "plugin-platform"
 	payload["capability_class"] = classification
+	payload["ui_contract_version"] = p.Manifest.UI.ContractVersion
+	surfaces := make([]gin.H, 0, len(p.Manifest.UI.Surfaces))
+	for _, surface := range p.Manifest.UI.Surfaces {
+		surfaces = append(surfaces, gin.H{"id": surface.ID, "version": surface.Version, "type": surface.Type, "presentations": surface.Presentations})
+	}
+	payload["ui_surfaces"] = surfaces
 	return payload
 }
 

@@ -60,7 +60,8 @@ export const richTextApi = {
         responseType: 'blob',
       },
     ),
-  listUserAssets: (status: 'active' | 'trashed' = 'active') => api.get('/assets', { params: { status } }),
+  listUserAssets: (status: 'active' | 'trashed' = 'active', cursor = '') =>
+    api.get('/assets', { params: { status, cursor, limit: 50 } }),
   downloadUserAsset: (assetId: string) =>
     api.get(`/assets/${encodeURIComponent(assetId)}/download`, { responseType: 'blob' }),
   trashUserAsset: (assetId: string) => api.post(`/assets/${assetId}/trash`),
@@ -79,4 +80,6 @@ export const richTextApi = {
   getPDFInvocation: (invocationId: string) => api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}`),
   getPDFInvocationContent: (invocationId: string) =>
     api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}/content`, { responseType: 'blob' }),
+  downloadPDFInvocation: (invocationId: string) =>
+    api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}/download`, { responseType: 'blob' }),
 }

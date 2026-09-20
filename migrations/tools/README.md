@@ -57,7 +57,7 @@ Git Bash 会跳过 WindowsApps 中不可执行的 `python3` 别名，依次尝�
 审查快照，请显式指定日期目录，不要改写 `current/` 的输出位置：
 
 ```bash
-python migrations/tools/generate_er.py --migrations migrations --out migrations/er/20260912
+python migrations/tools/generate_er.py --migrations migrations --out migrations/er/20260919
 ```
 
 ## 3. 漂移检查

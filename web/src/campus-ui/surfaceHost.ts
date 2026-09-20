@@ -8,9 +8,11 @@ export interface SurfaceOpenRequest {
   surfaceID: string
   invocationID: string
   presentation: SurfacePresentation
+  pluginVersion?: string
 }
 
 const activeSurface = ref<SurfaceOpenRequest | null>(null)
+let returnFocus: HTMLElement | null = null
 
 const allowedPresentations = new Set<SurfacePresentation>(['modal', 'drawer', 'fullscreen', 'new-tab'])
 
@@ -41,11 +43,15 @@ export const openPluginSurface = (request: SurfaceOpenRequest) => {
     window.open(target, '_blank', 'noopener,noreferrer')
     return
   }
-  activeSurface.value = { ...request }
+  if (!activeSurface.value) returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  activeSurface.value = { ...request, pluginVersion: surface.plugin_version }
 }
 
 export const closePluginSurface = () => {
   activeSurface.value = null
+  const target = returnFocus
+  returnFocus = null
+  if (target?.isConnected) target.focus()
 }
 
 export const usePluginSurfaceHost = () => ({

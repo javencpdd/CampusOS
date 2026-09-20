@@ -1,6 +1,6 @@
 # Plugin UI v2 Surface
 
-> 更新时间：2026-09-15。
+> 更新时间：2026-09-20（Asia/Shanghai）。
 
 `campusos.ui/v2` 为插件提供受宿主管理的界面打开能力。它适合 PDF 预览、受管数据详情等需要弹窗、抽屉、全屏或
 同源新标签页的场景，但不会把浏览器、主站路由或登录凭据控制权交给插件。
@@ -48,15 +48,40 @@ Document 是否仍属于当前用户。三种调用都只携带短期 Invocation
 正式计划第 10.2 节允许编译期 trusted-module；`builtin` Runtime 只管理这项编译交付模块的 Manifest、生命周期
 与三层授权，并不执行动态插件代码。PDF.js 深度代理、加载切换与关闭清理、浏览器存储受限、未注册 Surface 打开和
 固定新标签页路径均已处理。编译产物采用内容哈希 URL，可由生产静态资源缓存复用；受保护 PDF 内容不进入持久缓存。
-此处描述 PDF 专用 Invocation，不代表示例声明式 open-surface Action 的通用业务上下文签发已经交付。
+通用签发已提取到 `internal/platform/pluginui`，并接通声明式 `open-surface`。只有宿主用户选择产生的
+`resourceContext` 可用于签发；没有选定资源时提示先选择文件，不从 Action body 信任路径或 owner。
+新旧签发入口共用业务解析和三层授权，现支持的资源仍仅为三类 PDF 上下文，不提供 Office/音视频预览。
+
+## 通用签发与下载降级
+
+宿主在用户点击时调用 `POST /api/v1/plugin-ui/invocations`：
+
+```json
+{
+  "plugin_key": "my-plugin",
+  "action_id": "my-plugin.open-preview",
+  "surface_id": "my-plugin.preview",
+  "presentation": "modal",
+  "resource_type": "personal_asset",
+  "resource_id": "123"
+}
+```
+
+文章附件使用 `resource_type=article_attachment`、附件绑定 ID 与额外的 `thread_id`；个人文档使用
+`personal_document` 和文档 ID。所有 ID 使用字符串。服务端验证已安装且运行的插件声明、Action、展示方式、
+业务 ACL 和 Grant/Consent，返回短期 Invocation；读取时摘要校验插件与对象版本，版本变化须重新打开。
+
+受限文件读取仍须用户同意。普通下载是独立宿主权限：Viewer 下载按钮调用
+`GET /api/v1/plugin-ui/invocations/:id/download`，即使预览过期或插件停用也重新按文章 ACL/owner 判断。
+它不恢复预览授权；移除附件会原子删除其上下文，过期超过 24 小时的上下文会有界清理，此后从来源页面下载。
 
 ## 开发和验收
 
 插件持久数据仅允许使用平台已开放的现有通用表、自身 SQLite 和文件型 config。插件安装/升级不能执行平台建表或
 改表 SQL；平台通用结构不足时由 CampusOS 版本统一演进。当前 `000001_v1_1_schema_baseline` 已含平台 Invocation 表及其三类资源上下文。
 当前 process 使用明确环境白名单，不继承数据库、JWT、SMTP 或平台 `CAMPUSOS_*` 凭据；SQLite/config 使用私有布局，
-PDF 最近页使用已存在的 `plugin_records` 用户命名空间而非 localStorage。OS/网络隔离与通用资源上下文服务尚未提取；
-这些仍是最新存储约束下的待实施项。静态 JS/Worker 的 HTTP 缓存可继续保留。详见仓库
+PDF 最近页使用已存在的 `plugin_records` 用户命名空间而非 localStorage。通用上下文服务已提取；
+OS/目录/数据库网络隔离仍须目标部署实施与验证，不能把环境白名单称为沙箱。静态 JS/Worker 的 HTTP 缓存可继续保留。详见仓库
 `docs/help/系统设计相关/插件存储边界与平台通用数据设计.md` 和正式计划第 7.0 节。
 
 可参考仓库 `examples/plugins/v2-managed-example/plugin.yaml`。它包含一个可解析的 v2 Surface，且有测试保证示例

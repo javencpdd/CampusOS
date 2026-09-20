@@ -27,6 +27,17 @@ describe('registered surface host', () => {
     openPluginSurface({ ...request, invocationID: 'next' })
     expect(usePluginSurfaceHost().activeSurface.value?.invocationID).toBe('next')
   })
+  it('returns focus to the original trigger when the surface closes', () => {
+    const trigger = document.createElement('button')
+    document.body.appendChild(trigger)
+    trigger.focus()
+    openPluginSurface(request)
+    trigger.blur()
+    openPluginSurface({ ...request, invocationID: 'replacement' })
+    closePluginSurface()
+    expect(document.activeElement).toBe(trigger)
+    trigger.remove()
+  })
   it('opens only the registered same-origin route', () => {
     const opened = vi.spyOn(window, 'open').mockImplementation(() => null)
     openPluginSurface({ ...request, presentation: 'new-tab' })

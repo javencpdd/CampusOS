@@ -92,6 +92,7 @@ export class RuntimeRegistry {
       target.surfaces.set(surface.id, {
         ...surface,
         plugin: plugin.name,
+        plugin_version: plugin.version,
         lifecycle: plugin.lifecycle,
       })
     for (const route of routes) {

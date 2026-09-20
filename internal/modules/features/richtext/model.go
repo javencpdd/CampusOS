@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/campusos/CampusOS/internal/platform/pluginui"
 )
 
 const (
@@ -37,9 +39,9 @@ var (
 	ErrAttachmentContent      = errors.New("richtext article attachment content is invalid")
 	ErrAssetReferenced        = errors.New("richtext asset is still referenced")
 	ErrAssetPurgeIneligible   = errors.New("richtext asset is not eligible for purge")
-	ErrInvocationNotFound     = errors.New("plugin ui invocation was not found")
-	ErrInvocationExpired      = errors.New("plugin ui invocation has expired")
-	ErrInvocationPresentation = errors.New("plugin ui invocation presentation is invalid")
+	ErrInvocationNotFound     = pluginui.ErrNotFound
+	ErrInvocationExpired      = pluginui.ErrExpired
+	ErrInvocationPresentation = pluginui.ErrPresentation
 	ErrPluginAuthorization    = errors.New("pdf viewer plugin authorization denied")
 )
 
@@ -172,29 +174,14 @@ type ArticleAttachment struct {
 
 // PluginUIInvocation is a short-lived, opaque server-side context.  Its ID
 // is safe to put in a same-origin route, but is not a download credential.
-type PluginUIInvocation struct {
-	ID                 string     `json:"id"`
-	UserID             string     `json:"user_id"`
-	PluginKey          string     `json:"plugin_key"`
-	SurfaceID          string     `json:"surface_id"`
-	ContextKind        string     `json:"context_kind"`
-	ArticleContentID   string     `json:"article_content_id"`
-	AssetID            string     `json:"asset_id,omitempty"`
-	AttachmentID       string     `json:"attachment_id,omitempty"`
-	PersonalDocumentID string     `json:"personal_document_id,omitempty"`
-	Presentation       string     `json:"presentation"`
-	Purpose            string     `json:"purpose"`
-	ExpiresAt          time.Time  `json:"expires_at"`
-	OpenedAt           *time.Time `json:"opened_at,omitempty"`
-	RevokedAt          *time.Time `json:"revoked_at,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-}
+type PluginUIInvocation = pluginui.Invocation
 
 // PDFViewerAuthorizationInput crosses the feature/plugin boundary without
 // exposing the Plugin Manager to RichText. ResourceOwnerID is intentionally
 // empty for an article attachment: the current reader is authorized through
 // article visibility, not by impersonating the attachment owner.
 type PDFViewerAuthorizationInput struct {
+	PluginKey       string
 	UserID          string
 	ResourceOwnerID string
 	CapabilityCode  string
@@ -256,8 +243,14 @@ type AttachmentUpdateRequest struct {
 }
 
 type PluginUIInvocationRequest struct {
-	AttachmentID string `json:"attachment_id" binding:"required"`
+	AttachmentID string `json:"attachment_id"`
 	Presentation string `json:"presentation" binding:"required"`
+	PluginKey    string `json:"plugin_key,omitempty"`
+	SurfaceID    string `json:"surface_id,omitempty"`
+	ResourceType string `json:"resource_type,omitempty"`
+	ResourceID   string `json:"resource_id,omitempty"`
+	ThreadID     string `json:"thread_id,omitempty"`
+	ActionID     string `json:"action_id,omitempty"`
 }
 
 type PersonalAssetPDFInvocationRequest struct {

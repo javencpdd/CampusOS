@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
@@ -22,6 +24,7 @@ type ModuleConfig struct {
 	Enabled                   func() bool
 	PDFViewerEnabled          func() bool
 	PDFViewerAuthorizer       func(context.Context, PDFViewerAuthorizationInput) error
+	SurfaceValidator          SurfaceValidator
 	PersonalDocumentPDFReader PersonalDocumentPDFReader
 }
 
@@ -29,15 +32,17 @@ type ModuleConfig struct {
 // Storage ports. Its legacy configuration is supplied by the composition
 // boundary, never by a Plugin Manager dependency inside the feature.
 type Module struct {
-	config    ModuleConfig
-	app       *platformmodule.AppContext
-	store     Store
-	community communityport.ContentGateway
-	storage   corestorage.Port
-	objects   corestorage.ObjectPort
-	meter     observability.Meter
-	service   *Service
-	handler   *Handler
+	config          ModuleConfig
+	app             *platformmodule.AppContext
+	store           Store
+	community       communityport.ContentGateway
+	storage         corestorage.Port
+	objects         corestorage.ObjectPort
+	meter           observability.Meter
+	service         *Service
+	handler         *Handler
+	retentionCancel context.CancelFunc
+	retentionDone   chan struct{}
 }
 
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
@@ -113,6 +118,7 @@ func (m *Module) Start(ctx context.Context) error {
 	svc.SetEnabledChecker(m.enabled)
 	svc.SetPDFViewerEnabledChecker(m.pdfViewerEnabled)
 	svc.SetPDFViewerAuthorizer(m.config.PDFViewerAuthorizer)
+	svc.SetSurfaceValidator(m.config.SurfaceValidator)
 	svc.SetPersonalDocumentPDFReader(m.config.PersonalDocumentPDFReader)
 	config := AssetStoreConfig{}
 	if m.config.AssetStoreConfig != nil {
@@ -136,10 +142,40 @@ func (m *Module) Start(ctx context.Context) error {
 	svc.refreshAssetMetrics(ctx)
 	m.service = svc
 	m.handler = NewHandler(svc)
+	retentionContext, cancel := context.WithCancel(ctx)
+	m.retentionCancel, m.retentionDone = cancel, make(chan struct{})
+	go func() {
+		defer close(m.retentionDone)
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			batch, stop := context.WithTimeout(retentionContext, 10*time.Second)
+			_, err := m.store.PruneInvocations(batch, time.Now().UTC().Add(-24*time.Hour), 500)
+			stop()
+			if err != nil && retentionContext.Err() == nil {
+				log.Print("plugin UI context retention failed; retry scheduled")
+			}
+			select {
+			case <-retentionContext.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
 	return nil
 }
 
-func (m *Module) Stop(context.Context) error { return nil }
+func (m *Module) Stop(ctx context.Context) error {
+	if m.retentionCancel != nil {
+		m.retentionCancel()
+		select {
+		case <-m.retentionDone:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
 
 func (m *Module) Health(context.Context) platformmodule.Health {
 	if m.service == nil || m.handler == nil {

@@ -263,6 +263,7 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/plugin-ui/invocations", d.RichText.CreatePDFInvocation)
 		authenticated.GET("/plugin-ui/invocations/:id", d.RichText.GetPDFInvocation)
 		authenticated.GET("/plugin-ui/invocations/:id/content", d.RichText.PDFInvocationContent)
+		authenticated.GET("/plugin-ui/invocations/:id/download", d.RichText.DownloadPDFInvocation)
 		authenticated.POST("/richtext/articles/:id/publish", d.RichText.Publish)
 		authenticated.POST("/richtext/articles/:id/offline", d.RichText.Offline)
 		authenticated.DELETE("/richtext/articles/:id", d.RichText.Delete)

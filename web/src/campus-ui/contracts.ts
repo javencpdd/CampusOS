@@ -37,6 +37,12 @@ export interface UISlot {
   surface_id: string
   order?: number
 }
+// Supplied by a trusted host after the user selects a resource, not by schema.
+export interface UIResourceContext {
+  resource_type: 'article_attachment' | 'personal_asset' | 'personal_document'
+  resource_id: string
+  thread_id?: string
+}
 export interface UIAction {
   id: string
   label: string
@@ -111,5 +117,6 @@ export interface RuntimeNavigation extends UINavigation {
 }
 export interface RuntimeSurface extends UISurface {
   plugin: string
+  plugin_version?: string
   lifecycle: LifecycleState
 }

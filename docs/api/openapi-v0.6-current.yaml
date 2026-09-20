@@ -6998,6 +6998,37 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-ui/invocations/{id}/download:
+    get:
+      operationId: d_RichText
+      summary: GET /api/v1/plugin-ui/invocations/:id/download
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.get.api.v1.plugin_ui.invocations.id.download
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugins:
     get:
       operationId: d_Plugin

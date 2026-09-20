@@ -274,7 +274,7 @@ func TestPDFInvocationIsOwnerBoundAndExpires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create invocation: %v", err)
 	}
-	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationExpired) {
+	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationNotFound) {
 		t.Fatalf("invocation crossed owner boundary: %v", err)
 	}
 	invocation.ExpiresAt = time.Now().UTC().Add(-time.Second)
@@ -314,7 +314,7 @@ func TestPublishedArticlePDFCanBePreviewedByAnotherAuthorizedReader(t *testing.T
 		t.Fatalf("authorized public reader could not read preview: %v", err)
 	}
 	defer opened.Reader.Close()
-	if len(calls) != 3 || calls[0].CapabilityCode != "article_attachment.self.preview" || calls[0].ResourceOwnerID != "" || calls[2].OperationCode != "content.read" {
+	if len(calls) != 4 || calls[0].CapabilityCode != "article_attachment.self.preview" || calls[0].ResourceOwnerID != "" || calls[2].OperationCode != "content.read" || calls[3].CapabilityCode != "plugin_ui.surface.open" {
 		t.Fatalf("unexpected authorization contexts: %#v", calls)
 	}
 }
@@ -372,7 +372,7 @@ func TestPersonalAssetDownloadAndPDFPreviewAreOwnerBound(t *testing.T) {
 	if invocation.ContextKind != InvocationContextPersonalAsset || invocation.ArticleContentID != "" || invocation.AttachmentID != "" {
 		t.Fatalf("personal preview leaked an article context: %#v", invocation)
 	}
-	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationExpired) {
+	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationNotFound) {
 		t.Fatalf("personal preview invocation crossed owner boundary: %v", err)
 	}
 	preview, _, err := svc.OpenPDFInvocation(context.Background(), "1001", invocation.ID)
@@ -402,7 +402,7 @@ func TestPersonalDocumentPDFPreviewUsesTheSameOwnerScopedPluginContext(t *testin
 	if invocation.ContextKind != InvocationContextPersonalDocument || invocation.PersonalDocumentID != "document-1" || invocation.AssetID != "" || invocation.AttachmentID != "" {
 		t.Fatalf("personal document context leaked an unrelated reference: %#v", invocation)
 	}
-	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationExpired) {
+	if _, _, err := svc.OpenPDFInvocation(context.Background(), "1002", invocation.ID); !errors.Is(err, ErrInvocationNotFound) {
 		t.Fatalf("personal document invocation crossed owner boundary: %v", err)
 	}
 	opened, _, err := svc.OpenPDFInvocation(context.Background(), "1001", invocation.ID)
@@ -413,7 +413,7 @@ func TestPersonalDocumentPDFPreviewUsesTheSameOwnerScopedPluginContext(t *testin
 	if got, _ := io.ReadAll(opened.Reader); !bytes.Equal(got, pdf) {
 		t.Fatalf("personal document preview body = %q", got)
 	}
-	if len(calls) != 3 || calls[0].CapabilityCode != "personal_space_file.self.read" || calls[0].ResourceOwnerID != "1001" || calls[2].OperationCode != "content.read" {
+	if len(calls) != 4 || calls[0].CapabilityCode != "personal_space_file.self.read" || calls[0].ResourceOwnerID != "1001" || calls[2].OperationCode != "content.read" || calls[3].CapabilityCode != "plugin_ui.surface.open" {
 		t.Fatalf("unexpected personal document authorization contexts: %#v", calls)
 	}
 }
@@ -425,6 +425,7 @@ func TestAttachmentContentUsesHTTPRangeAndPrivateHeaders(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/attachment", nil)
 	request.Header.Set("Range", "bytes=4-7")
 	context.Request = request
+	context.Set("user_id", "1001")
 	now := time.Now().UTC()
 	handler := NewHandler(nil)
 	handler.serveOpenedAttachment(context, AttachmentOpen{
@@ -457,6 +458,7 @@ func TestAttachmentContentHonorsIfRangeAndRejectsInvalidRange(t *testing.T) {
 			request.Header.Set("If-Range", ifRange)
 		}
 		context.Request = request
+		context.Set("user_id", "1001")
 		NewHandler(nil).serveOpenedAttachment(context, AttachmentOpen{
 			Attachment: ArticleAttachment{DisplayName: "preview.pdf", Asset: UserAsset{MimeType: "application/pdf"}},
 			Object:     corestorage.Object{UpdatedAt: time.Now().UTC(), SHA256: "stable-etag"},

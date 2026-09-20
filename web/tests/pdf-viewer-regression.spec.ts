@@ -10,10 +10,13 @@ const mocks = vi.hoisted(() => ({
   createRecord: vi.fn(),
   updateRecord: vi.fn(),
   ensureConsent: vi.fn(),
+  download: vi.fn(),
 }))
 vi.mock('pdfjs-dist', () => ({ getDocument: mocks.getDocument, GlobalWorkerOptions: {} }))
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '/worker.mjs' }))
-vi.mock('../src/modules/richtext/api', () => ({ richTextApi: { getPDFInvocation: mocks.summary } }))
+vi.mock('../src/modules/richtext/api', () => ({
+  richTextApi: { getPDFInvocation: mocks.summary, downloadPDFInvocation: mocks.download },
+}))
 vi.mock('../src/modules/identity/session', () => ({ getAccessToken: () => 'test-only' }))
 vi.mock('../src/modules/plugin-center/api', () => ({
   pluginCenterApi: { getRecord: mocks.getRecord, createRecord: mocks.createRecord, updateRecord: mocks.updateRecord },
@@ -127,5 +130,18 @@ describe('PDF lifecycle regression', () => {
     wrapper.unmount()
     wrappers.splice(wrappers.indexOf(wrapper), 1)
     expect(destroy).toHaveBeenCalledTimes(1)
+  })
+  it('uses host authenticated download even when the preview summary expires', async () => {
+    mocks.summary.mockRejectedValueOnce({ msg: '预览已过期' })
+    mocks.download.mockRejectedValueOnce({ msg: '测试不产生真实下载' })
+    const wrapper = open()
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '下载')!
+      .trigger('click')
+    await flushPromises()
+    expect(mocks.download).toHaveBeenCalledWith('one')
+    expect(mocks.getDocument).not.toHaveBeenCalled()
   })
 })

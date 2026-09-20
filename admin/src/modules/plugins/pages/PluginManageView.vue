@@ -143,6 +143,18 @@
           width="105"
           align="center"
         />
+        <el-table-column label="UI 合同 / 界面" min-width="250">
+          <template #default="{ row }">
+            <div>{{ row.ui_contract_version || "无 UI 声明" }}</div>
+            <div v-for="surface in row.ui_surfaces || []" :key="surface.id">
+              <strong>{{ surface.id }}</strong>
+              <div>{{ (surface.presentations || []).join(" / ") || "普通页面" }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="error" label="最近运行错误" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.error || "无" }}</template>
+        </el-table-column>
         <el-table-column
           prop="checksum"
           label="Checksum"

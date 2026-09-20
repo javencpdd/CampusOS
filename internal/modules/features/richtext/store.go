@@ -25,7 +25,7 @@ type Store interface {
 	ListAssetsByUploader(ctx context.Context, uploaderID string) ([]*Asset, error)
 	CreateUserAsset(ctx context.Context, asset *UserAsset) error
 	GetUserAsset(ctx context.Context, assetID string) (*UserAsset, error)
-	ListUserAssetsByOwner(ctx context.Context, ownerID string, statuses []string) ([]*UserAsset, error)
+	ListUserAssetsByOwner(ctx context.Context, ownerID string, statuses []string, queries ...AssetPageQuery) ([]*UserAsset, error)
 	TransitionUserAsset(ctx context.Context, assetID, ownerID string, from []string, status string, audit AssetLifecycleAudit) error
 	DeleteUserAsset(ctx context.Context, assetID, ownerID string) error
 	CreateAttachment(ctx context.Context, attachment *ArticleAttachment) error
@@ -39,6 +39,7 @@ type Store interface {
 	CreateInvocation(ctx context.Context, invocation *PluginUIInvocation) error
 	GetInvocation(ctx context.Context, invocationID string) (*PluginUIInvocation, error)
 	MarkInvocationOpened(ctx context.Context, invocationID, userID string) error
+	PruneInvocations(ctx context.Context, before time.Time, limit int) (int64, error)
 }
 
 type PgStore struct {
@@ -240,12 +241,20 @@ func (s *PgStore) GetUserAsset(ctx context.Context, assetID string) (*UserAsset,
 	return scanUserAsset(s.db(ctx).QueryRow(ctx, `SELECT `+userAssetColumns+` FROM user_assets WHERE id=$1`, assetID))
 }
 
-func (s *PgStore) ListUserAssetsByOwner(ctx context.Context, ownerID string, statuses []string) ([]*UserAsset, error) {
+func (s *PgStore) ListUserAssetsByOwner(ctx context.Context, ownerID string, statuses []string, queries ...AssetPageQuery) ([]*UserAsset, error) {
 	if len(statuses) == 0 {
 		return []*UserAsset{}, nil
 	}
+	query := assetPageQuery(queries)
+	var beforeTime any
+	var beforeID any
+	if query.BeforeID != "" {
+		beforeTime, beforeID = query.BeforeTime, query.BeforeID
+	}
 	rows, err := s.db(ctx).Query(ctx, `SELECT `+userAssetColumns+` FROM user_assets
-		WHERE owner_user_id=$1 AND status = ANY($2) ORDER BY updated_at DESC, id DESC LIMIT 200`, ownerID, statuses)
+		WHERE owner_user_id=$1 AND status = ANY($2)
+		AND ($3::timestamptz IS NULL OR (updated_at, id) < ($3::timestamptz, $4::bigint))
+		ORDER BY user_assets.updated_at DESC, user_assets.id DESC LIMIT $5`, ownerID, statuses, beforeTime, beforeID, query.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -407,14 +416,23 @@ func (s *PgStore) UpdateAttachmentDisplayName(ctx context.Context, articleID, at
 }
 
 func (s *PgStore) RemoveAttachment(ctx context.Context, articleID, attachmentID string) error {
-	tag, err := s.db(ctx).Exec(ctx, `DELETE FROM richtext_article_attachments WHERE article_content_id=$1 AND id=$2`, articleID, attachmentID)
-	if err != nil {
+	return transaction.NewPostgreSQL(s.pool).Within(ctx, func(ctx context.Context) error {
+		var locked string
+		err := s.db(ctx).QueryRow(ctx, `SELECT id::text FROM richtext_article_attachments WHERE article_content_id=$1 AND id=$2 FOR UPDATE`, articleID, attachmentID).Scan(&locked)
+		if err == pgx.ErrNoRows {
+			return ErrAttachmentNotFound
+		}
+		if err != nil {
+			return err
+		}
+		// The row lock serializes concurrent FK checks during context issuance.
+		// Removing a binding invalidates every preview of that exact binding.
+		if _, err = s.db(ctx).Exec(ctx, `DELETE FROM plugin_ui_invocations WHERE article_content_id=$1 AND attachment_id=$2`, articleID, attachmentID); err != nil {
+			return err
+		}
+		_, err = s.db(ctx).Exec(ctx, `DELETE FROM richtext_article_attachments WHERE article_content_id=$1 AND id=$2`, articleID, attachmentID)
 		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrAttachmentNotFound
-	}
-	return nil
+	})
 }
 
 func (s *PgStore) ReorderAttachments(ctx context.Context, articleID string, attachmentIDs []string) error {
@@ -491,10 +509,10 @@ func (s *PgStore) AssetGovernanceSummary(ctx context.Context, now time.Time) (As
 
 const createInvocationSQL = `INSERT INTO plugin_ui_invocations
 	(id, user_id, plugin_key, surface_id, context_kind, article_content_id, asset_id, attachment_id, personal_document_id, presentation, purpose, context_digest, expires_at, opened_at, revoked_at, created_at)
-	VALUES ($1,$2,$3,$4,$5,NULLIF($6,'')::bigint,NULLIF($7,'')::bigint,NULLIF($8,'')::bigint,NULLIF($9,'')::bigint,$10,$11,'',$12,$13,$14,$15)`
+	VALUES ($1,$2,$3,$4,$5,NULLIF($6,'')::bigint,NULLIF($7,'')::bigint,NULLIF($8,'')::bigint,NULLIF($9,'')::bigint,$10,$11,$16,$12,$13,$14,$15)`
 
 const getInvocationSQL = `SELECT id::text,user_id::text,plugin_key,surface_id,context_kind,COALESCE(article_content_id::text,''),COALESCE(asset_id::text,''),COALESCE(attachment_id::text,''),
-	COALESCE(personal_document_id::text,''),presentation,purpose,expires_at,opened_at,revoked_at,created_at FROM plugin_ui_invocations WHERE id=$1`
+	COALESCE(personal_document_id::text,''),presentation,purpose,expires_at,opened_at,revoked_at,created_at,context_digest FROM plugin_ui_invocations WHERE id=$1`
 
 func (s *PgStore) CreateInvocation(ctx context.Context, item *PluginUIInvocation) error {
 	if item == nil {
@@ -502,14 +520,14 @@ func (s *PgStore) CreateInvocation(ctx context.Context, item *PluginUIInvocation
 	}
 	_, err := s.db(ctx).Exec(ctx, createInvocationSQL,
 		item.ID, item.UserID, item.PluginKey, item.SurfaceID, item.ContextKind, item.ArticleContentID, item.AssetID, item.AttachmentID, item.PersonalDocumentID, item.Presentation, item.Purpose,
-		item.ExpiresAt, item.OpenedAt, item.RevokedAt, item.CreatedAt)
+		item.ExpiresAt, item.OpenedAt, item.RevokedAt, item.CreatedAt, item.ContextDigest)
 	return err
 }
 
 func (s *PgStore) GetInvocation(ctx context.Context, invocationID string) (*PluginUIInvocation, error) {
 	item := &PluginUIInvocation{}
 	err := s.db(ctx).QueryRow(ctx, getInvocationSQL, invocationID).
-		Scan(&item.ID, &item.UserID, &item.PluginKey, &item.SurfaceID, &item.ContextKind, &item.ArticleContentID, &item.AssetID, &item.AttachmentID, &item.PersonalDocumentID, &item.Presentation, &item.Purpose, &item.ExpiresAt, &item.OpenedAt, &item.RevokedAt, &item.CreatedAt)
+		Scan(&item.ID, &item.UserID, &item.PluginKey, &item.SurfaceID, &item.ContextKind, &item.ArticleContentID, &item.AssetID, &item.AttachmentID, &item.PersonalDocumentID, &item.Presentation, &item.Purpose, &item.ExpiresAt, &item.OpenedAt, &item.RevokedAt, &item.CreatedAt, &item.ContextDigest)
 	if err == pgx.ErrNoRows {
 		return nil, ErrInvocationNotFound
 	}
@@ -539,12 +557,13 @@ type MemoryStore struct {
 }
 
 type memoryStoreSnapshot struct {
-	Articles    map[string]*Article            `json:"articles"`
-	Assets      map[string]*Asset              `json:"assets"`
-	UserAssets  map[string]*UserAsset          `json:"user_assets"`
-	Attachments map[string]*ArticleAttachment  `json:"attachments"`
-	Invocations map[string]*PluginUIInvocation `json:"invocations"`
-	Audits      []AssetLifecycleAudit          `json:"audits"`
+	Articles          map[string]*Article            `json:"articles"`
+	Assets            map[string]*Asset              `json:"assets"`
+	UserAssets        map[string]*UserAsset          `json:"user_assets"`
+	Attachments       map[string]*ArticleAttachment  `json:"attachments"`
+	Invocations       map[string]*PluginUIInvocation `json:"invocations"`
+	InvocationDigests map[string]string              `json:"invocation_digests"`
+	Audits            []AssetLifecycleAudit          `json:"audits"`
 }
 
 func NewMemoryStore() *MemoryStore {
@@ -562,7 +581,11 @@ func NewMemoryStore() *MemoryStore {
 func (s *MemoryStore) Snapshot() any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	payload, err := json.Marshal(memoryStoreSnapshot{Articles: s.articles, Assets: s.assets, UserAssets: s.userAssets, Attachments: s.attachments, Invocations: s.invocations, Audits: s.audits})
+	digests := make(map[string]string, len(s.invocations))
+	for id, v := range s.invocations {
+		digests[id] = v.ContextDigest
+	}
+	payload, err := json.Marshal(memoryStoreSnapshot{Articles: s.articles, Assets: s.assets, UserAssets: s.userAssets, Attachments: s.attachments, Invocations: s.invocations, InvocationDigests: digests, Audits: s.audits})
 	if err != nil {
 		return []byte(nil)
 	}
@@ -600,6 +623,9 @@ func (s *MemoryStore) Restore(value any) {
 	s.userAssets = snapshot.UserAssets
 	s.attachments = snapshot.Attachments
 	s.invocations = snapshot.Invocations
+	for id, v := range s.invocations {
+		v.ContextDigest = snapshot.InvocationDigests[id]
+	}
 	s.audits = append([]AssetLifecycleAudit(nil), snapshot.Audits...)
 }
 
@@ -710,18 +736,27 @@ func (s *MemoryStore) GetUserAsset(_ context.Context, assetID string) (*UserAsse
 	return cloneUserAsset(item), nil
 }
 
-func (s *MemoryStore) ListUserAssetsByOwner(_ context.Context, ownerID string, statuses []string) ([]*UserAsset, error) {
+func (s *MemoryStore) ListUserAssetsByOwner(_ context.Context, ownerID string, statuses []string, queries ...AssetPageQuery) ([]*UserAsset, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	items := make([]*UserAsset, 0)
+	query := assetPageQuery(queries)
 	for _, item := range s.userAssets {
 		if item.OwnerID == ownerID && containsAssetStatus(statuses, item.Status) {
+			if query.BeforeID != "" && (item.UpdatedAt.After(query.BeforeTime) || (item.UpdatedAt.Equal(query.BeforeTime) && !assetIDGreater(query.BeforeID, item.ID))) {
+				continue
+			}
 			items = append(items, cloneUserAsset(item))
 		}
 	}
-	sort.Slice(items, func(i, j int) bool { return items[i].UpdatedAt.After(items[j].UpdatedAt) })
-	if len(items) > 200 {
-		items = items[:200]
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].UpdatedAt.Equal(items[j].UpdatedAt) {
+			return assetIDGreater(items[i].ID, items[j].ID)
+		}
+		return items[i].UpdatedAt.After(items[j].UpdatedAt)
+	})
+	if len(items) > query.Limit {
+		items = items[:query.Limit]
 	}
 	return items, nil
 }
@@ -886,6 +921,11 @@ func (s *MemoryStore) RemoveAttachment(_ context.Context, articleID, attachmentI
 		return ErrAttachmentNotFound
 	}
 	delete(s.attachments, attachmentID)
+	for id, v := range s.invocations {
+		if v.ArticleContentID == articleID && v.AttachmentID == attachmentID {
+			delete(s.invocations, id)
+		}
+	}
 	return nil
 }
 

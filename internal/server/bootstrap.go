@@ -175,7 +175,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			if plugins.authorization == nil || !plugins.authorization.Available() {
 				return &richtext.PDFViewerAuthorizationError{Reason: "unavailable", Message: "PDF 预览插件授权服务暂不可用，请确认数据库迁移完成后重试。"}
 			}
-			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: plugin.PDFViewerPluginName, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
+			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: input.PluginKey, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
 			if !result.Allow {
 				return &richtext.PDFViewerAuthorizationError{Reason: string(result.ReasonCode), Message: result.Message}
 			}
@@ -187,6 +187,14 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			}
 			return personalDocumentsModule.Service()
 		}},
+		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
+			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
+				if identityModule.Permissions() == nil {
+					return false, nil
+				}
+				return identityModule.Permissions().Check(ctx, user, resource, action)
+			})
+		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{
 		Config: func() schedule.Config {

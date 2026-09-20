@@ -26,6 +26,7 @@ type Service struct {
 	enabled                func() bool
 	pdfViewerEnabled       func() bool
 	pdfViewerAuthorize     func(context.Context, PDFViewerAuthorizationInput) error
+	surfaceValidator       SurfaceValidator
 	personalDocumentReader PersonalDocumentPDFReader
 	reliable               *reliability.Service
 	meter                  observability.Meter

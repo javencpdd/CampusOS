@@ -332,7 +332,7 @@ const download = async () => {
   const id = invocationID()
   if (!id) return
   try {
-    const result: any = await richTextApi.getPDFInvocationContent(id)
+    const result: any = await richTextApi.downloadPDFInvocation(id)
     const blob = result?.data || result
     if (!(blob instanceof Blob)) throw new Error('下载内容不可用')
     const url = URL.createObjectURL(blob)

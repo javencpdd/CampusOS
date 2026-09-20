@@ -430,6 +430,9 @@
         </el-table-column>
       </el-table>
       <el-empty v-else-if="!personalAssetsLoading" description="暂无可下载的个人附件。先在图文文章编辑器中添加附件。" />
+      <el-button v-if="personalAssetsCursor" :loading="personalAssetsLoading" @click="loadPersonalAssets(true, true)">
+        加载更多附件
+      </el-button>
     </el-card>
   </div>
 </template>
@@ -611,6 +614,8 @@ const selectingAvatar = ref(false)
 const avatars = ref<AvatarHistoryItem[]>([])
 const personalAssets = ref<PersonalAsset[]>([])
 const personalAssetsLoading = ref(false)
+const personalAssetsCursor = ref('')
+let personalAssetsRevision = 0
 const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
@@ -718,16 +723,24 @@ const loadSpace = async () => {
   }
 }
 
-const loadPersonalAssets = async (showError = true) => {
+const loadPersonalAssets = async (showError = true, append = false) => {
+  if (append && (personalAssetsLoading.value || !personalAssetsCursor.value)) return
+  const revision = ++personalAssetsRevision
   personalAssetsLoading.value = true
+  if (!append) personalAssetsCursor.value = ''
   try {
-    const payload = unwrap<{ items: PersonalAsset[] }>(await richTextApi.listUserAssets())
-    personalAssets.value = payload.items || []
+    const payload = unwrap<{ items: PersonalAsset[]; next_cursor: string }>(
+      await richTextApi.listUserAssets('active', append ? personalAssetsCursor.value : ''),
+    )
+    if (revision !== personalAssetsRevision) return
+    personalAssets.value = append ? [...personalAssets.value, ...(payload.items || [])] : payload.items || []
+    personalAssetsCursor.value = payload.next_cursor || ''
   } catch (error: any) {
-    personalAssets.value = []
+    if (revision !== personalAssetsRevision) return
+    if (!append) personalAssets.value = []
     if (showError) ElMessage.error(error?.msg || '加载个人附件失败')
   } finally {
-    personalAssetsLoading.value = false
+    if (revision === personalAssetsRevision) personalAssetsLoading.value = false
   }
 }
 
