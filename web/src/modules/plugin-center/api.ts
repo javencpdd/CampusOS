@@ -7,7 +7,11 @@ export const pluginCenterApi = {
   enable: (name: string, permissions: string[]) =>
     api.post(`/plugin-market/${encodeURIComponent(name)}/enable`, { permissions }),
   revoke: (name: string) => api.post(`/plugin-market/${encodeURIComponent(name)}/revoke`),
-  request: (name: string, message = '') => api.post(`/plugin-market/${encodeURIComponent(name)}/request`, { message }),
+  marketplaceSources: () => api.get('/plugin-market/sources'),
+  searchMarketplace: (sourceID: string, query = '') =>
+    api.get(`/plugin-market/sources/${encodeURIComponent(sourceID)}/plugins`, { params: { q: query } }),
+  requestMarketplace: (sourceID: string, pluginID: string, message = '') =>
+    api.post('/plugin-market/requests', { source_id: sourceID, plugin_id: pluginID, message }),
   exportData: (name: string) => api.get(`/plugin-market/${encodeURIComponent(name)}/export`),
   deleteData: (name: string) => api.delete(`/plugin-market/${encodeURIComponent(name)}/data`),
   search: (plugin: string, collection: string, query: string) =>

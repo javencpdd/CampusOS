@@ -3,7 +3,7 @@
     <div class="page-heading">
       <div>
         <h1 id="plugin-center-title">插件中心</h1>
-        <p>查看管理员发布的插件与受管第一方插件，按用途授权，并随时撤销自己的授权。</p>
+        <p>查看已发布或系统已校验安装的外部插件，按用途授权，并随时撤销自己的授权。</p>
       </div>
       <el-button :loading="loading" @click="load"
         ><el-icon><Refresh /></el-icon>刷新</el-button
@@ -19,14 +19,66 @@
 
     <section class="request-panel" aria-labelledby="request-plugin-title">
       <div>
-        <h2 id="request-plugin-title">推荐或申请安装插件</h2>
-        <p>填写稳定插件 ID；申请只进入管理员审核，不会由浏览器直接安装代码。</p>
+        <h2 id="request-plugin-title">从可信插件市场申请</h2>
+        <p>
+          仅可检索管理员已启用、并已配置证书校验的插件市场。不能提交任意链接或市场地址；申请仅进入管理员审核，不会由浏览器直接安装代码。
+        </p>
       </div>
-      <div class="request-fields">
-        <el-input v-model="requestName" placeholder="例如 calendar-assistant" aria-label="插件 ID" />
-        <el-input v-model="requestMessage" placeholder="用途或来源说明（可选）" aria-label="申请说明" />
-        <el-button :loading="requesting" @click="requestInstall()">提交申请</el-button>
-      </div>
+      <el-alert
+        v-if="!marketplaceSources.length"
+        title="管理员尚未开放可信插件市场，当前不能申请外部市场插件。"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+      <template v-else>
+        <div class="request-fields">
+          <el-select v-model="selectedMarketplaceSourceID" aria-label="可信插件市场">
+            <el-option
+              v-for="source in marketplaceSources"
+              :key="source.id"
+              :label="`${source.display_name}（${source.id}）`"
+              :value="source.id"
+            />
+          </el-select>
+          <el-input
+            v-model="marketplaceQuery"
+            placeholder="按插件 ID 或名称检索"
+            aria-label="检索词"
+            @keyup.enter="searchMarketplace"
+          />
+          <el-button :loading="marketplaceLoading" @click="searchMarketplace">检索</el-button>
+        </div>
+        <el-input
+          v-model="requestMessage"
+          class="request-message"
+          placeholder="申请用途说明（可选）"
+          aria-label="申请说明"
+        />
+        <div v-if="marketplaceListings.length" class="marketplace-list">
+          <article
+            v-for="listing in marketplaceListings"
+            :key="`${listing.source_id}:${listing.plugin_id}`"
+            class="marketplace-item"
+          >
+            <div>
+              <strong>{{ listing.display_name }}</strong>
+              <small
+                >{{ listing.plugin_id }} · v{{ listing.version
+                }}<span v-if="listing.publisher"> · {{ listing.publisher }}</span></small
+              >
+              <p>{{ listing.description || '该市场条目未提供详细说明。' }}</p>
+            </div>
+            <div class="marketplace-actions">
+              <a :href="listing.listing_url" target="_blank" rel="noopener noreferrer">市场详情</a>
+              <el-button type="primary" size="small" :loading="requesting" @click="requestMarketplace(listing)"
+                >申请审核</el-button
+              >
+            </div>
+          </article>
+        </div>
+        <p v-else-if="marketplaceSearched" class="marketplace-empty">该可信市场中没有匹配的插件。</p>
+      </template>
     </section>
 
     <div v-if="!loading" class="plugin-list">
@@ -37,7 +89,9 @@
         <template #default>
           <p class="empty-title">暂时没有可用插件</p>
           <p class="empty-copy">{{ catalogEmptyReason }}</p>
-          <el-button type="primary" @click="focusRequest">申请安装插件</el-button>
+          <el-button type="primary" :disabled="!marketplaceSources.length" @click="focusMarketplace"
+            >查看可信市场</el-button
+          >
         </template>
       </el-empty>
       <article v-for="entry in catalog" :key="entry.plugin_name" class="plugin-item">
@@ -136,8 +190,9 @@
             ><el-button type="warning" plain @click="revoke(entry.plugin_name)">撤销授权</el-button></template
           >
           <template v-else-if="!entry.trusted_builtin"
-            ><el-button type="primary" @click="openConsent(entry)">查看并授权</el-button
-            ><el-button text @click="requestInstall(entry.plugin_name)">请求安装</el-button></template
+            ><el-button type="primary" @click="addInstalledPlugin(entry)">{{
+              entry.user_permissions?.length ? '添加并授权' : '添加到我的插件'
+            }}</el-button></template
           >
         </div>
       </article>
@@ -280,12 +335,25 @@ type Usage = {
   file_bytes: number
   search_enabled: boolean
 }
+type MarketplaceSource = { id: string; display_name: string; catalog_url: string; key_fingerprint: string }
+type MarketplaceListing = {
+  source_id: string
+  plugin_id: string
+  display_name: string
+  description: string
+  version: string
+  publisher: string
+  listing_url: string
+}
 const catalog = ref<CatalogEntry[]>([]),
   grants = ref<Grant[]>([]),
   usages = ref<Usage[]>([]),
+  marketplaceSources = ref<MarketplaceSource[]>([]),
+  marketplaceListings = ref<MarketplaceListing[]>([]),
   loading = ref(false),
   granting = ref(false),
   requesting = ref(false),
+  marketplaceLoading = ref(false),
   consentDialog = ref(false),
   fineAuthorizationDialog = ref(false),
   fineAuthorizationLoading = ref(false),
@@ -299,8 +367,10 @@ const catalog = ref<CatalogEntry[]>([]),
   issuedDelegationId = ref<string | null>(null),
   selected = ref<CatalogEntry | null>(null),
   selectedPermissions = ref<string[]>([]),
-  requestName = ref(''),
   requestMessage = ref(''),
+  selectedMarketplaceSourceID = ref(''),
+  marketplaceQuery = ref(''),
+  marketplaceSearched = ref(false),
   catalogState = ref('ready'),
   catalogEmptyReason = ref('管理员暂未发布可供用户授权的插件。')
 const unwrap = (value: any) => value?.data || value || {}
@@ -310,10 +380,11 @@ const enabledGrants = computed(
 const load = async () => {
   loading.value = true
   try {
-    const [catalogResponse, grantResponse, usageResponse] = await Promise.all([
+    const [catalogResponse, grantResponse, usageResponse, sourceResponse] = await Promise.all([
       pluginCenterApi.catalog(),
       pluginCenterApi.myGrants(),
       pluginCenterApi.myUsage(),
+      pluginCenterApi.marketplaceSources(),
     ])
     const catalogData = unwrap(catalogResponse)
     catalog.value = catalogData.items || []
@@ -321,6 +392,12 @@ const load = async () => {
     catalogEmptyReason.value = catalogData.empty_reason || '管理员暂未发布可供用户授权的插件。'
     grants.value = unwrap(grantResponse).items || []
     usages.value = unwrap(usageResponse).items || []
+    marketplaceSources.value = unwrap(sourceResponse).items || []
+    if (!marketplaceSources.value.some((source) => source.id === selectedMarketplaceSourceID.value)) {
+      selectedMarketplaceSourceID.value = marketplaceSources.value[0]?.id || ''
+      marketplaceListings.value = []
+      marketplaceSearched.value = false
+    }
   } catch (error: any) {
     ElMessage.error(error?.message || '加载插件中心失败')
   } finally {
@@ -354,9 +431,39 @@ const capabilityLabel = (capability: string) =>
     'user-consent': '需用户授权',
     'trusted-builtin': '第一方受信任代码',
   })[capability] || capability
-const focusRequest = () => {
+const focusMarketplace = () => {
   const target = document.querySelector<HTMLInputElement>('.request-fields input')
   target?.focus()
+}
+const searchMarketplace = async () => {
+  if (!selectedMarketplaceSourceID.value) {
+    ElMessage.warning('管理员尚未开放可信插件市场')
+    return
+  }
+  marketplaceLoading.value = true
+  try {
+    marketplaceListings.value =
+      unwrap(await pluginCenterApi.searchMarketplace(selectedMarketplaceSourceID.value, marketplaceQuery.value.trim()))
+        .items || []
+    marketplaceSearched.value = true
+  } catch (error: any) {
+    ElMessage.error(error?.message || '检索可信插件市场失败')
+  } finally {
+    marketplaceLoading.value = false
+  }
+}
+const requestMarketplace = async (listing: MarketplaceListing) => {
+  if (!selectedMarketplaceSourceID.value) return
+  requesting.value = true
+  try {
+    await pluginCenterApi.requestMarketplace(selectedMarketplaceSourceID.value, listing.plugin_id, requestMessage.value)
+    ElMessage.success('已提交可信市场插件申请，等待管理员审核')
+    requestMessage.value = ''
+  } catch (error: any) {
+    ElMessage.error(error?.message || '申请提交失败')
+  } finally {
+    requesting.value = false
+  }
 }
 const openConsent = (entry: CatalogEntry) => {
   selected.value = entry
@@ -516,6 +623,22 @@ const grant = async () => {
     granting.value = false
   }
 }
+const addInstalledPlugin = async (entry: CatalogEntry) => {
+  if (entry.user_permissions?.length) {
+    openConsent(entry)
+    return
+  }
+  granting.value = true
+  try {
+    await pluginCenterApi.enable(entry.plugin_name, [])
+    ElMessage.success('插件已添加到我的插件；如需读取个人数据，请在精细授权中逐项确认')
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '添加插件失败')
+  } finally {
+    granting.value = false
+  }
+}
 const revoke = async (name: string) => {
   try {
     await pluginCenterApi.revoke(name)
@@ -523,24 +646,6 @@ const revoke = async (name: string) => {
     await load()
   } catch (error: any) {
     ElMessage.error(error?.message || '撤销失败')
-  }
-}
-const requestInstall = async (name = requestName.value) => {
-  name = name.trim()
-  if (!name) {
-    ElMessage.error('请填写插件 ID')
-    return
-  }
-  requesting.value = true
-  try {
-    await pluginCenterApi.request(name, name === requestName.value.trim() ? requestMessage.value : '')
-    ElMessage.success('已提交管理员审核请求')
-    requestName.value = ''
-    requestMessage.value = ''
-  } catch (error: any) {
-    ElMessage.error(error?.message || '请求提交失败')
-  } finally {
-    requesting.value = false
   }
 }
 const exportData = async (name: string) => {
@@ -622,6 +727,45 @@ h2 {
   display: grid;
   grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.4fr) auto;
   gap: 8px;
+}
+.request-message {
+  margin-top: -4px;
+}
+.marketplace-list {
+  display: grid;
+  gap: 8px;
+}
+.marketplace-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--campus-border-color, #dfe3e8);
+  background: var(--campus-page-background, #f4f6f8);
+}
+.marketplace-item strong,
+.marketplace-item small,
+.marketplace-item p {
+  display: block;
+}
+.marketplace-item small,
+.marketplace-item p,
+.marketplace-empty {
+  color: var(--campus-muted-color, #687385);
+  font-size: 12px;
+}
+.marketplace-item p {
+  margin-top: 4px;
+}
+.marketplace-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.marketplace-empty {
+  padding: 4px 0;
 }
 .plugin-item {
   padding: 18px;
@@ -803,6 +947,10 @@ h2 {
   }
   .request-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .marketplace-item {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .experience-list div {
     grid-template-columns: minmax(0, 1fr);

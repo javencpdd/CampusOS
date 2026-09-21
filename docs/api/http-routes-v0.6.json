@@ -2909,6 +2909,57 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/plugin-market/sources",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.sources",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.sources",
+        "httpapi.get.api.v1.plugin_market.sources"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-market/sources/:source_id/plugins",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.get.api.v1.plugin_market.sources.source_id.plugins",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.sources.source_id.plugins",
+        "httpapi.get.api.v1.plugin_market.sources.source_id.plugins"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-market/requests",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.plugin_market.requests",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_market.requests",
+        "httpapi.post.api.v1.plugin_market.requests"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/enable",
       "handler": "d.Plugin",
@@ -2936,23 +2987,6 @@
       "legacy_aliases": [
         "http.post.api.v1.plugin_market.name.revoke",
         "httpapi.post.api.v1.plugin_market.name.revoke"
-      ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
-      "stability": "experimental"
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/plugin-market/:name/request",
-      "handler": "d.Plugin",
-      "module_owner": "core.plugin-platform",
-      "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.plugin_market.name.request",
-      "legacy_aliases": [
-        "http.post.api.v1.plugin_market.name.request",
-        "httpapi.post.api.v1.plugin_market.name.request"
       ],
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
@@ -4351,6 +4385,63 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-market/admin/sources",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.get.api.v1.plugin_market.admin.sources",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_market.admin.sources",
+        "httpapi.get.api.v1.plugin_market.admin.sources"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/plugin-market/admin/sources/:source_id",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.put.api.v1.plugin_market.admin.sources.source_id",
+      "legacy_aliases": [
+        "http.put.api.v1.plugin_market.admin.sources.source_id",
+        "httpapi.put.api.v1.plugin_market.admin.sources.source_id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/plugin-market/admin/sources/:source_id",
+      "handler": "d.Plugin",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:configure",
+      "permission_code": "plugin.plugin.configure",
+      "operation_code": "http.delete.api.v1.plugin_market.admin.sources.source_id",
+      "legacy_aliases": [
+        "http.delete.api.v1.plugin_market.admin.sources.source_id",
+        "httpapi.delete.api.v1.plugin_market.admin.sources.source_id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
       "stability": "experimental"
     },
     {

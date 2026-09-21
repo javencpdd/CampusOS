@@ -129,14 +129,20 @@ type CatalogEntry struct {
 }
 
 type InstallRequest struct {
-	ID         int64      `json:"id"`
-	PluginName string     `json:"plugin_name"`
-	UserID     string     `json:"user_id"`
-	Message    string     `json:"message,omitempty"`
-	Status     string     `json:"status"`
-	ReviewedBy string     `json:"reviewed_by,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	ReviewedAt *time.Time `json:"reviewed_at,omitempty"`
+	ID               int64      `json:"id"`
+	PluginName       string     `json:"plugin_name"`
+	MarketSourceID   string     `json:"market_source_id,omitempty"`
+	MarketPluginID   string     `json:"market_plugin_id,omitempty"`
+	MarketListingURL string     `json:"market_listing_url,omitempty"`
+	MarketPackageURL string     `json:"market_package_url,omitempty"`
+	MarketVersion    string     `json:"market_version,omitempty"`
+	MarketPublisher  string     `json:"market_publisher,omitempty"`
+	UserID           string     `json:"user_id"`
+	Message          string     `json:"message,omitempty"`
+	Status           string     `json:"status"`
+	ReviewedBy       string     `json:"reviewed_by,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
 }
 
 type PluginRelease struct {
@@ -196,6 +202,10 @@ type MarketStore interface {
 	// current Plugin Manager snapshot.
 	DeleteCatalog(ctx context.Context, pluginName string) error
 	ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error)
+	UpsertMarketplaceSource(ctx context.Context, source MarketplaceSource) (MarketplaceSource, error)
+	GetMarketplaceSource(ctx context.Context, sourceID string) (MarketplaceSource, error)
+	ListMarketplaceSources(ctx context.Context, enabledOnly bool) ([]MarketplaceSource, error)
+	DeleteMarketplaceSource(ctx context.Context, sourceID string) error
 	CreateInstallRequest(ctx context.Context, request InstallRequest) (InstallRequest, error)
 	ListInstallRequests(ctx context.Context, status string) ([]InstallRequest, error)
 	ReviewInstallRequest(ctx context.Context, id int64, reviewer, status string) (InstallRequest, error)
@@ -216,11 +226,13 @@ type MarketService struct {
 	manifests     ManifestResolver
 	active        PluginActiveResolver
 	authorization *AuthorizationService
+	marketplaces  MarketplaceCatalogClient
+	provisionUser UserInstallProvisioner
 	now           func() time.Time
 }
 
 func NewMarketService(store MarketStore, storage corestorage.Port, manifests ManifestResolver) *MarketService {
-	return &MarketService{store: store, storage: storage, manifests: manifests, now: time.Now}
+	return &MarketService{store: store, storage: storage, manifests: manifests, marketplaces: NewHTTPSMarketplaceCatalogClient(), now: time.Now}
 }
 
 // SetPluginActiveResolver binds user-facing runtime calls to the external
@@ -236,6 +248,22 @@ func (s *MarketService) SetPluginActiveResolver(resolver PluginActiveResolver) {
 // time-limited legacy grant adapter during the compatibility window.
 func (s *MarketService) SetAuthorizationService(service *AuthorizationService) {
 	s.authorization = service
+}
+
+// SetMarketplaceCatalogClient swaps the transport only for controlled tests or
+// a platform-owned integration. User requests still resolve their target from
+// an enabled persisted source; callers never supply an arbitrary URL.
+func (s *MarketService) SetMarketplaceCatalogClient(client MarketplaceCatalogClient) {
+	if client != nil {
+		s.marketplaces = client
+	}
+}
+
+// SetUserInstallProvisioner binds a successful first-time user addition to
+// host-owned configuration provisioning. A provisioner must be idempotent:
+// database retries may occur after the file pair was safely written.
+func (s *MarketService) SetUserInstallProvisioner(provisioner UserInstallProvisioner) {
+	s.provisionUser = provisioner
 }
 
 func (s *MarketService) Available() bool {
@@ -291,10 +319,13 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		}
 		if visibility, ok := visibilityByPlugin[manifest.Name]; ok {
 			entry.Visibility = visibility
-		} else if isTrustedBuiltin {
+		}
+		if (isTrustedBuiltin || isSystemManagedExternalRelease(installed)) && entry.Visibility != CatalogHidden {
 			// First-party compiled UI is safe to list as soon as it is registered;
 			// data access still requires the separate administrator grant and user
-			// consent records, so publication never grants file access.
+			// consent records, so publication never grants file access. This also
+			// repairs a former default draft row after an in-place v1.1 upgrade;
+			// only an explicit hidden state is preserved.
 			entry.Visibility = CatalogPublished
 		}
 		if _, err := s.store.UpsertCatalog(ctx, entry); err != nil {
@@ -346,6 +377,15 @@ func normalizedExperience(manifest *Manifest) ExperienceConfig {
 // never be able to make an uploaded package look first-party after a restart.
 func isManagedBuiltinManifest(manifest *Manifest) bool {
 	return manifest != nil && manifest.Runtime == "builtin" && manifest.Scope == ScopeSystem && manifest.Type == PluginTypeBuiltin
+}
+
+// isSystemManagedExternalRelease is deliberately narrower than “external”.
+// A package imported by an administrator stays draft until it is explicitly
+// published. The platform's verified, isolated release bundled with the
+// system (currently campusos.pdf-viewer) is already installed by the trusted
+// host and must be visible in the user catalog without a second manual step.
+func isSystemManagedExternalRelease(installed *Plugin) bool {
+	return installed != nil && installed.Manifest != nil && installed.Manifest.Type == PluginTypeExternal && installed.IsolatedUI && installed.InstalledBy == "system"
 }
 
 func (s *MarketService) hydrateCatalogTrust(entries []CatalogEntry) []CatalogEntry {
@@ -431,6 +471,12 @@ func (s *MarketService) Grant(ctx context.Context, pluginName, userID string, pe
 	for _, permission := range permissions {
 		if !allowed[permission] {
 			return UserGrant{}, fmt.Errorf("%w: plugin does not declare user permission %s", ErrMarketDenied, permission)
+		}
+	}
+	if s.provisionUser != nil {
+		if err := s.provisionUser(ctx, pluginName, userID); err != nil {
+			s.audit(ctx, pluginName, userID, "user.install", "failed", map[string]interface{}{"reason": "configuration_provision_failed"})
+			return UserGrant{}, err
 		}
 	}
 	grant, err := s.store.UpsertGrant(ctx, UserGrant{
@@ -1346,13 +1392,14 @@ type MemoryMarketStore struct {
 	grants   map[string]UserGrant
 	files    map[string]PluginFile
 	catalog  map[string]CatalogEntry
+	sources  map[string]MarketplaceSource
 	requests map[int64]InstallRequest
 	releases map[string][]PluginRelease
 	audits   []MarketAudit
 }
 
 func NewMemoryMarketStore() *MemoryMarketStore {
-	return &MemoryMarketStore{records: map[string]ManagedRecord{}, grants: map[string]UserGrant{}, files: map[string]PluginFile{}, catalog: map[string]CatalogEntry{}, requests: map[int64]InstallRequest{}, releases: map[string][]PluginRelease{}}
+	return &MemoryMarketStore{records: map[string]ManagedRecord{}, grants: map[string]UserGrant{}, files: map[string]PluginFile{}, catalog: map[string]CatalogEntry{}, sources: map[string]MarketplaceSource{}, requests: map[int64]InstallRequest{}, releases: map[string][]PluginRelease{}}
 }
 
 func recordStoreKey(pluginName, ownerType, ownerID, collection, key string) string {
@@ -1589,11 +1636,75 @@ func (m *MemoryMarketStore) ListCatalog(_ context.Context, visibility string) ([
 	return items, nil
 }
 
+func (m *MemoryMarketStore) UpsertMarketplaceSource(_ context.Context, source MarketplaceSource) (MarketplaceSource, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if existing, found := m.sources[source.ID]; found {
+		source.CreatedAt, source.CreatedBy = existing.CreatedAt, existing.CreatedBy
+	}
+	m.sources[source.ID] = source
+	return source, nil
+}
+
+func (m *MemoryMarketStore) GetMarketplaceSource(_ context.Context, sourceID string) (MarketplaceSource, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	source, found := m.sources[sourceID]
+	if !found {
+		return MarketplaceSource{}, ErrMarketNotFound
+	}
+	return source, nil
+}
+
+func (m *MemoryMarketStore) ListMarketplaceSources(_ context.Context, enabledOnly bool) ([]MarketplaceSource, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	items := []MarketplaceSource{}
+	for _, source := range m.sources {
+		if !enabledOnly || source.Status == MarketplaceSourceEnabled {
+			items = append(items, source)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].DisplayName == items[j].DisplayName {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].DisplayName < items[j].DisplayName
+	})
+	return items, nil
+}
+
+func (m *MemoryMarketStore) DeleteMarketplaceSource(_ context.Context, sourceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, found := m.sources[sourceID]; !found {
+		return ErrMarketNotFound
+	}
+	for _, request := range m.requests {
+		if request.MarketSourceID == sourceID {
+			return ErrMarketConflict
+		}
+	}
+	delete(m.sources, sourceID)
+	return nil
+}
+
 func (m *MemoryMarketStore) CreateInstallRequest(_ context.Context, request InstallRequest) (InstallRequest, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	sourceID, pluginID := request.MarketSourceID, request.MarketPluginID
+	// Legacy service callers are retained for old in-process tests only. They
+	// never reach an HTTP route, but must keep their original per-plugin
+	// duplicate semantics in the development memory profile.
+	if sourceID == "" && pluginID == "" {
+		sourceID, pluginID = "legacy", request.PluginName
+	}
 	for _, existing := range m.requests {
-		if existing.PluginName == request.PluginName && existing.UserID == request.UserID && existing.Status == RequestPending {
+		existingSourceID, existingPluginID := existing.MarketSourceID, existing.MarketPluginID
+		if existingSourceID == "" && existingPluginID == "" {
+			existingSourceID, existingPluginID = "legacy", existing.PluginName
+		}
+		if existingSourceID == sourceID && existingPluginID == pluginID && existing.UserID == request.UserID && existing.Status == RequestPending {
 			return InstallRequest{}, ErrMarketConflict
 		}
 	}

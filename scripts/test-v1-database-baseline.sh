@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 用法：POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/test-v1-database-baseline.sh
-# 在专用临时数据库中验证 v1.1 单一 clean baseline、参考数据、回滚、重置和 checksum 漂移门禁。
+# 在专用临时数据库中验证 v1.1 clean baseline、前向修订、参考数据、回滚、重置和 checksum 漂移门禁。
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -52,8 +52,8 @@ docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" \
 run_migrate reset >/dev/null
 run_migrate check >/dev/null
 
-require_equals "migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "1"
-require_equals "public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "90"
+require_equals "migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "3"
+require_equals "public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "91"
 require_equals "legacy permission table removed" "$(psql_scalar "SELECT to_regclass('public.permissions') IS NULL;")" "t"
 require_equals "raw session secret columns removed" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='sessions' AND column_name IN ('refresh_token','ip_address');")" "0"
 require_equals "refresh digest required" "$(psql_scalar "SELECT is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='sessions' AND column_name='refresh_token_digest';")" "NO"
@@ -70,6 +70,7 @@ require_equals "v1.1 asset governance" "$(psql_scalar "SELECT count(*) FROM info
 require_equals "v1.1 personal document PDF invocation column" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='plugin_ui_invocations' AND column_name='personal_document_id';")" "1"
 require_equals "v1.1 personal document PDF invocation foreign key" "$(psql_scalar "SELECT count(*) FROM pg_constraint WHERE conname='fk_plugin_ui_invocations_personal_document' AND conrelid='public.plugin_ui_invocations'::regclass;")" "1"
 require_equals "v1.1 personal document PDF invocation index" "$(psql_scalar "SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='plugin_ui_invocations' AND indexname='idx_plugin_ui_invocations_personal_document';")" "1"
+require_equals "v1.1 trusted market source table" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='plugin_market_sources';")" "1"
 require_equals "process runtime accepted" "$(psql_scalar "INSERT INTO plugins(id,name,display_name,version,runtime,status,config,installed_at,updated_at) VALUES(900000000001,'runtime-contract-probe','Runtime Contract Probe','1.0.0','process','installed','{}'::jsonb,NOW(),NOW()); DELETE FROM plugins WHERE id=900000000001; SELECT 'ok';")" "ok"
 require_equals "foreign-key leading index coverage" "$(psql_scalar "SELECT count(*) FROM pg_constraint fk WHERE fk.contype='f' AND fk.connamespace='public'::regnamespace AND NOT EXISTS (SELECT 1 FROM pg_index idx WHERE idx.indrelid=fk.conrelid AND idx.indisvalid AND (idx.indkey::smallint[])[0:cardinality(fk.conkey)-1] @> fk.conkey);")" "0"
 
@@ -88,12 +89,21 @@ fi
 rm -rf -- "$temp_migrations"
 temp_migrations=""
 
+require_equals "trusted market rollback guard setup" "$(psql_scalar "INSERT INTO plugin_market_sources(id,display_name,catalog_url,public_key,status) VALUES('drill-market','Drill Market','https://market.example/catalog','drill-key','enabled'); SELECT 'ok';")" "ok"
+if run_migrate down >/dev/null 2>&1; then
+  echo "trusted market rollback guard was not enforced" >&2
+  exit 1
+fi
+require_equals "trusted market rollback guard cleanup" "$(psql_scalar "DELETE FROM plugin_market_sources WHERE id='drill-market'; SELECT 'ok';")" "ok"
+
+run_migrate down >/dev/null
+run_migrate down >/dev/null
 run_migrate down >/dev/null
 require_equals "full rollback migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "0"
 require_equals "full rollback keeps only migration metadata" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "2"
 
 run_migrate up >/dev/null
-require_equals "up/down/up migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "1"
-require_equals "up/down/up public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "90"
+require_equals "up/down/up migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "3"
+require_equals "up/down/up public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "91"
 
 echo "v1.1 clean database baseline reset/checksum/up-down-up drill passed (PostgreSQL container: $POSTGRES_CONTAINER)"

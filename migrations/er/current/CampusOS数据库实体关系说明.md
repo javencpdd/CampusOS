@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=019b9e5d9ea7921f50957f523dec1b9d0bf485a0c1173a02f6f0cd6734b1687d;tables=88;foreign_keys=105 -->
+<!-- campusos-er:schema_sha256=7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70;tables=89;foreign_keys=106 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**88**
-- 物理外键：**105**
+- 实体表：**89**
+- 物理外键：**106**
 - 一对一/可选一对一关系：**12**
-- 一对多关系：**93**
+- 一对多关系：**94**
 - 推断的逻辑多对多关系：**5**
-- Schema 指纹：`019b9e5d9ea7921f50957f523dec1b9d0bf485a0c1173a02f6f0cd6734b1687d`
+- Schema 指纹：`7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70`
 
 ## 1. 生成范围与判定规则
 
@@ -19,6 +19,7 @@
 
 - `000001_v1_1_schema_baseline.up.sql`
 - `000002_v1_1_ui_only_plugin_runtime.up.sql`
+- `000003_v1_1_trusted_market_sources.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -80,9 +81,10 @@
 | 插件生态与授权 | `plugin_catalog_entries` | 12 | `plugin_name` | 0 | 0 |
 | 插件生态与授权 | `plugin_delegations` | 12 | `id` | 3 | 1 |
 | 插件生态与授权 | `plugin_file_metadata` | 11 | `id` | 0 | 0 |
-| 插件生态与授权 | `plugin_install_requests` | 8 | `id` | 0 | 0 |
+| 插件生态与授权 | `plugin_install_requests` | 14 | `id` | 1 | 0 |
 | 插件生态与授权 | `plugin_logs` | 9 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_market_audits` | 7 | `id` | 0 | 0 |
+| 插件生态与授权 | `plugin_market_sources` | 9 | `id` | 0 | 1 |
 | 插件生态与授权 | `plugin_permissions` | 6 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_publishers` | 10 | `id` | 1 | 1 |
 | 插件生态与授权 | `plugin_records` | 12 | `id` | 0 | 0 |
@@ -184,6 +186,7 @@
 | `plugin_versions` | `plugin_delegations` | `plugin_delegations_plugin_version_id_fkey` | `plugin_version_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_delegations` | `plugin_delegations_subject_user_id_fkey` | `subject_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_delegations` | `plugin_delegations_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
+| `plugin_market_sources` | `plugin_install_requests` | `fk_plugin_install_requests_market_source` | `market_source_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `CASCADE` |
 | `users` | `plugin_publishers` | `plugin_publishers_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugins` | `plugin_secret_values` | `plugin_secret_values_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_secret_values` | `plugin_secret_values_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -1464,7 +1467,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：0
+- 出站外键：1；入站外键：0
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -1476,6 +1479,16 @@
 | `reviewed_by` | `varchar(64)` | NN | 否 | `''::character varying` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `reviewed_at` | `timestamptz` | — | 是 | `—` |
+| `market_source_id` | `varchar(128)` | FK | 是 | `—` |
+| `market_plugin_id` | `varchar(128)` | — | 是 | `—` |
+| `market_listing_url` | `text` | NN | 否 | `''` |
+| `market_package_url` | `text` | NN | 否 | `''` |
+| `market_version` | `varchar(64)` | NN | 否 | `''` |
+| `market_publisher` | `varchar(255)` | NN | 否 | `''` |
+
+外键明细：
+
+- `fk_plugin_install_requests_market_source`：`plugin_install_requests(market_source_id)` → `plugin_market_sources(id)`；ON DELETE `RESTRICT`；ON UPDATE `CASCADE`。
 
 #### `plugin_logs`
 
@@ -1510,6 +1523,24 @@
 | `outcome` | `varchar(32)` | NN | 否 | `—` |
 | `metadata` | `jsonb` | NN | 否 | `'{}'::jsonb` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+
+#### `plugin_market_sources`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `varchar(128)` | PK | 是 | `—` |
+| `display_name` | `varchar(120)` | NN | 否 | `—` |
+| `catalog_url` | `text` | NN | 否 | `—` |
+| `public_key` | `text` | NN | 否 | `—` |
+| `status` | `varchar(16)` | NN | 否 | `'enabled'` |
+| `created_by` | `varchar(64)` | NN | 否 | `''` |
+| `updated_by` | `varchar(64)` | NN | 否 | `''` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `updated_at` | `timestamptz` | NN | 否 | `now()` |
 
 #### `plugin_permissions`
 

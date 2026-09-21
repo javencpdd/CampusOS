@@ -17,6 +17,7 @@ import (
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
+	pluginv4 "github.com/campusos/CampusOS/internal/plugin/v4"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -309,6 +310,20 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return found && installed != nil && installed.Status == plugin.StatusRunning
 	})
 	m.market.SetAuthorizationService(m.authorization)
+	if localStorage, ok := userStorage.(*corestorage.LocalAdapter); ok {
+		m.market.SetUserInstallProvisioner(func(_ context.Context, pluginName, userID string) error {
+			release, found := m.manager.V4Release(pluginName)
+			if !found || release.Release.Manifest == nil || release.Release.Manifest.Configuration.User == nil {
+				return nil
+			}
+			_, _, err := pluginv4.InitializeUserConfig(release.Release.Path, userID, pluginv4.UserConfigOptions{
+				PersonalSpaceRoot: localStorage.Root(),
+				PluginVersion:     release.Release.Manifest.Version,
+				Generation:        release.Release.Digest,
+			})
+			return err
+		})
+	}
 	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
 		return fmt.Errorf("sync plugin market catalog: %w", err)
 	}

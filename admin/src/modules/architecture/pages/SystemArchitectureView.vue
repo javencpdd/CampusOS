@@ -9,7 +9,9 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">当前迁移 000001 - 000002（v1.1）</el-tag>
+      <el-tag type="info" effect="plain"
+        >当前迁移 000001 - 000003（v1.1）</el-tag
+      >
     </section>
 
     <el-alert
@@ -1233,13 +1235,41 @@ const databaseTables: DbTable[] = [
   },
   {
     name: "plugin_install_requests",
-    title: "插件安装申请",
+    title: "可信市场插件申请",
     domain: "plugin",
-    purpose: "记录用户请求管理员发布或审核本地目录插件的说明和结果。",
-    fields: ["plugin_name", "user_id", "status", "reviewed_by"],
-    migration: "000001",
+    purpose:
+      "保存用户从已启用、证书钉扎的市场解析出的插件 ID、版本和链接快照，以及管理员审核结果；批准不会自动下载、安装或启动插件。",
+    fields: [
+      "plugin_name",
+      "market_source_id",
+      "market_plugin_id",
+      "market_version",
+      "user_id",
+      "status",
+      "reviewed_by",
+    ],
+    migration: "000001 / 000003",
     relationshipNote:
-      "plugin_name、user_id 和 reviewed_by 为逻辑关系；批准不自动安装宿主代码。",
+      "market_source_id 是受 FK 保护的白名单来源；plugin_name、user_id 和 reviewed_by 为逻辑关系。保存的是签名目录的申请快照，不是可执行包。",
+  },
+  {
+    name: "plugin_market_sources",
+    title: "可信插件市场白名单",
+    domain: "plugin",
+    purpose:
+      "保存管理员配置的 HTTPS 插件市场目录和 Ed25519 验签公钥。只有 enabled 来源可被用户检索和申请；公钥是证书而不是 Secret。",
+    fields: [
+      "id",
+      "display_name",
+      "catalog_url",
+      "public_key",
+      "status",
+      "created_by",
+      "updated_by",
+    ],
+    migration: "000003",
+    relationshipNote:
+      "id 通过外键被 plugin_install_requests.market_source_id 引用；有申请记录时禁止删除，改用 disabled 保留审计证据。",
   },
   {
     name: "plugin_releases",
@@ -2416,6 +2446,24 @@ const relations: Relation[] = [
     domains: ["plugin"],
   },
   {
+    id: "market-sources-install-requests",
+    source: "plugin_market_sources",
+    target: "plugin_install_requests",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> market_source_id (FK, RESTRICT)",
+    domains: ["plugin"],
+  },
+  {
+    id: "users-plugin-install-requests",
+    source: "users",
+    target: "plugin_install_requests",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "logical id -> user_id",
+    domains: ["identity", "plugin"],
+  },
+  {
     id: "plugins-releases",
     source: "plugins",
     target: "plugin_releases",
@@ -2597,7 +2645,8 @@ const storageRows = [
     path: "plugins/<plugin>/ + plugins/.installed/<key>/<version>-<digest>/",
     category: "v4 外部插件包",
     type: "warning",
-    purpose: "受版本控制的 v4 源码包与经摘要校验后可被运行时发现的不可变发布包。",
+    purpose:
+      "受版本控制的 v4 源码包与经摘要校验后可被运行时发现的不可变发布包。",
     contents: [
       "源码：plugin.yaml、config/、frontend/user、frontend/admin、tests/",
       ".installed/：已校验 dist、Manifest 与 checksum；静态网关仅服务此目录",
@@ -2688,6 +2737,18 @@ const migrations = [
     summary:
       "仅把 plugins.runtime 的受限枚举扩展为 none，使已校验的隔离 UI 包可以没有后端进程；不新增插件表，不授予权限，也不改变三层授权和业务资源 ACL。回滚前必须先移除所有 runtime=none 插件。",
     tables: ["plugins（CHECK 约束）"],
+  },
+  {
+    version: "000003",
+    file: "000003_v1_1_trusted_market_sources.up.sql",
+    title: "可信插件市场白名单与申请快照",
+    scope: "插件市场治理",
+    summary:
+      "增加管理员维护的 HTTPS + Ed25519 证书钉扎市场来源，并把用户申请绑定到来源、市场插件 ID 与签名目录快照。无启用来源时用户不能提交外部市场申请；批准仍不自动安装。",
+    tables: [
+      "plugin_market_sources",
+      "plugin_install_requests（来源与快照字段）",
+    ],
   },
 ];
 const tableByName = (name: string) =>
