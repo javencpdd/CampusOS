@@ -14,6 +14,7 @@
 | `campusos-docker-development` | [Docker 开发 Skill 使用说明](CampusOS-Docker开发Skill使用说明.md) | 处理 Windows/Linux Docker 首配、热更新、代理、LAN、日志和重建边界。 |
 | `campusos-webui-regression` | [WebUI 回归 Skill 使用说明](CampusOS-WebUI回归Skill使用说明.md) | 从 Vue、HTTP、Go、PostgreSQL 和运行栈跨层定位 UI 问题。 |
 | `campusos-skill-repository-sync` | [仓库 Skill 映射与直用说明](CampusOS-仓库Skill映射与直用说明.md) | 同步规范源文件、使用说明和 `.agents/skills` 可移植发现桥接。 |
+| `senior-developer` 专家包 | [高级开发工程师专家包使用与接入说明](高级开发工程师专家包使用与接入说明.md) | 审阅导入专家包中的角色配置、全栈/前端/浏览器子 Skill，并说明当前参考用法与正式接入步骤。 |
 
 完整适用性、修订原因和后续候选见 [Skill 适用性审计与规划](CampusOS-Skill适用性审计与规划.md)。
 
