@@ -43,7 +43,7 @@ Docker 开发仍然需要先在宿主机克隆源码。`compose.dev.yml` 会把�
 - `EMAIL_PROVIDER=smtp`：用于完整测试注册、密码找回和邮箱绑定；填写对应 `EMAIL_SMTP_*`，不要提交密码。
 
 修改后重新执行 `docker-dev.* up`；`docker restart` 不会重读环境文件，只有修改 Desktop 代理/引擎时才重启 Docker Desktop。Docker 模式的 API/Web/Admin/Docs 输出会同时写入 `.campusos/logs/`，可在管理端“平台日志”实时查看。
-可信局域网开放 3000–3002 后运行 `docker-dev.* lan-check`；Windows 和 Linux 都会自动识别访问 IP、检查三个服务并给出防火墙/远端验证提示。API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
+可信局域网开放 3000–3002 后运行 `docker-dev.* lan-check`；Windows 和 Linux 都会自动识别访问 IP、检查 Web/Admin/Docs 与插件界面网关并给出防火墙/远端验证提示。PDF 等隔离插件预览还需要把 `CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0` 设为与 Web 相同的可信 LAN 公开范围（端口 `3003`）；API/数据服务仍只监听本机，详见 [Docker 开发指南](docs-site/deployment/docker-development.md)。
 
 ### 3. 校验配置并启动
 
@@ -62,6 +62,7 @@ Docker 开发仍然需要先在宿主机克隆源码。`compose.dev.yml` 会把�
 | 用户前台 | `http://localhost:3000` |
 | 管理后台 | `http://localhost:3001` |
 | 官方文档 | `http://localhost:3002` |
+| 已校验插件 UI 网关（不直接操作） | `http://localhost:3003` |
 | API | `http://localhost:8080/api/v1` |
 
 ```bash
@@ -148,8 +149,8 @@ head/base 相同。使用其他 remote 时传 `--remote <name>`。完整参数�
 | `modules/`、`internal/modules/` | 编译期 Core/Built-in Feature 描述符与实现；不进入插件安装流程 |
 | `web/`、`admin/` | 用户前台与管理后台 |
 | `docs-site/`、`docs/` | 对外文档站与仓库内计划、帮助、API、架构和进度证据 |
-| `data/plugins/` | External Plugin 实现代码、Manifest 与运行入口 |
-| `data/plugin_data/`、`data/module_data/` | External Plugin 私有数据/版本快照与 Built-in Feature 本地可变数据 |
+| `plugins/<key>/`、`plugins/.installed/` | v4 插件源码与已校验的不可变发布包；隔离 UI 网关只服务 `.installed`，用户空间不能作为执行入口 |
+| `data/plugins/`、`data/plugin_data/`、`data/module_data/` | 旧 External Plugin 实现/私有运行数据与 Built-in Feature 本地可变数据；不作为 v4 源码发现入口 |
 | `data/resources/` | 主题、主页包、空间风格、Skills、Prompt 等资源包 |
 | `data/personal-space/<user_id>/` | 用户文件、图片、课表与插件用户附件 |
 | [`skills/`](skills/README.md)、`.agents/skills/` | 项目 Skill 源文件、使用说明与跨平台发现桥接；clone 后可直接调用 |

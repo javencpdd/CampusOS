@@ -59,8 +59,8 @@ func (s *Service) SetEnabledChecker(checker func() bool) {
 	s.enabled = checker
 }
 
-// SetPDFViewerEnabledChecker lets the host feature registry withdraw the
-// trusted viewer without weakening the authenticated download path.
+// SetPDFViewerEnabledChecker lets the composition layer withdraw the current
+// PDF Viewer release without weakening the authenticated download path.
 func (s *Service) SetPDFViewerEnabledChecker(checker func() bool) {
 	if checker == nil {
 		s.pdfViewerEnabled = func() bool { return true }

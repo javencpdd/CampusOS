@@ -9,7 +9,7 @@
           PostgreSQL 中保存的文件数据。
         </p>
       </div>
-      <el-tag type="info" effect="plain">当前迁移 000001（v1.1 clean baseline）</el-tag>
+      <el-tag type="info" effect="plain">当前迁移 000001 - 000002（v1.1）</el-tag>
     </section>
 
     <el-alert
@@ -2576,7 +2576,7 @@ const storageRows = [
       "img/richtext/：图文文章图片；JPEG/PNG 优化后计入配额",
       "file/objects/<storage_object_id>.bin：Object Port 原子落盘的受管附件字节；文件名和 MIME 只保存在 PostgreSQL 元数据",
       "file/schedule/terms/<year>-<semester>.json：每学期课表",
-      "plugins/<plugin>/：v2 插件受控附件",
+      "plugins/<plugin>/config/：v4 用户级插件配置；仅在平台完成该用户插件安装关系后按 schema/defaults 创建，不能存放原始附件",
       "file/：兼容文件与受管 Object 边界；不得按原始文件名或平铺目录查找附件",
     ],
     note: "数据库只保存 URL 或元数据；“已上传资源”是只读库存，不会把兼容图片迁入私有文档版本，也不会提供删除，以免破坏已发布内容；恢复时必须与数据库同时恢复。",
@@ -2594,28 +2594,28 @@ const storageRows = [
     note: "模块随主程序构建；Core 不可停用，Built-in Feature 由 /features 管理。",
   },
   {
-    path: "data/plugins/<plugin>/",
-    category: "外部插件实现",
+    path: "plugins/<plugin>/ + plugins/.installed/<key>/<version>-<digest>/",
+    category: "v4 外部插件包",
     type: "warning",
-    purpose: "可独立安装的 External Plugin manifest、运行入口和实现代码。",
+    purpose: "受版本控制的 v4 源码包与经摘要校验后可被运行时发现的不可变发布包。",
     contents: [
-      "plugin.yaml",
-      "Wasm/受管进程 runtime 文件",
-      "插件 README 与随代码部署的静态输入",
+      "源码：plugin.yaml、config/、frontend/user、frontend/admin、tests/",
+      ".installed/：已校验 dist、Manifest 与 checksum；静态网关仅服务此目录",
+      ".staging/：原子安装临时目录，不是执行入口",
     ],
-    note: "禁止放入 Built-in Feature、模块数据或风格包；不要把运行数据写入此目录。",
+    note: "v4 运行时绝不直接执行源码、staging 或用户空间内容；插件不得提交平台 migration 或自行创建平台表。data/plugins 是旧运行时目录，不是 v4 源码/自动发现入口。",
   },
   {
     path: "data/plugin_data/<plugin>/",
     category: "外部插件数据",
     type: "warning",
-    purpose: "External Plugin 的 v1 KV、私有运行数据和版本快照。",
+    purpose: "旧 External Plugin 的 SQLite KV、私有运行数据和版本快照。",
     contents: [
       "SQLite-backed v1 插件 KV",
       "version-snapshots/",
       "插件私有缓存和可恢复运行状态",
     ],
-    note: "v2 结构化记录进入 PostgreSQL，v2 用户附件进入个人空间；本目录仍应与 data/plugins 分开备份。",
+    note: "v4 用户配置位于个人空间的 plugins/<key>/config，受平台文件服务和用户安装关系管理；此旧目录仍应与发布包、用户配置及 data/plugins 分开备份。",
   },
   {
     path: "data/module_data/<feature>/",
@@ -2679,6 +2679,15 @@ const migrations = [
       "plugin authorization / runtime / UI invocation",
       "integration / reliability / governance",
     ],
+  },
+  {
+    version: "000002",
+    file: "000002_v1_1_ui_only_plugin_runtime.up.sql",
+    title: "v4 UI-only 插件 Runtime 合同",
+    scope: "插件控制面",
+    summary:
+      "仅把 plugins.runtime 的受限枚举扩展为 none，使已校验的隔离 UI 包可以没有后端进程；不新增插件表，不授予权限，也不改变三层授权和业务资源 ACL。回滚前必须先移除所有 runtime=none 插件。",
+    tables: ["plugins（CHECK 约束）"],
   },
 ];
 const tableByName = (name: string) =>

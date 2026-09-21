@@ -1,15 +1,14 @@
 # Plugin UI v2 开发与验收
 
 > 适用基线：v1.1-dev  
-> 更新时间：2026-09-15
-> 状态：当前 External Plugin 与第一方受管插件的 UI 合同；`campusos.ui/v1` 继续兼容
+> 更新时间：2026-09-21 18:16（Asia/Shanghai）
+> 状态：本文是旧 `campusos.ui/v1/v2` 声明式合同的兼容说明。PDF Viewer 已迁至 v4 自包含包并使用 v3 隔离 iframe；当前实现与未完成项以[插件重构计划](../../项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)为准。
 
 ## 1. 解决什么问题
 
-本轮以正式计划第 10.2 节的第一方编译期 trusted-module 为准，不引入第三方动态 UI。
-`builtin.pdf-viewer` 已由 Plugin Manager 注册为受管第一方插件：Manifest、Capability、管理员 Grant、用户
-Consent、运行状态和 Invocation 内容读取形成闭环。声明可解析或前端构建成功仍不能替代这条服务端授权链；
-具体实现与验证见 [v1.1.12 进度记录](../../进度/v1.1-dev/v1.1.12-dev.md)。
+本文只解释仍受兼容代码支持的 v1/v2 声明式 Surface。它不是 PDF Viewer 的当前实现说明：
+`builtin.pdf-viewer` 已被移除，当前只有自包含外部插件 `campusos.pdf-viewer`，使用 v4 包与 v3 隔离 iframe。
+其实际加载、授权和运行边界见[插件平台与授权体系](../../architecture/模块设计/插件平台与授权体系.md)。
 
 Plugin UI v2 把“插件想展示什么”与“浏览器怎样打开”分开。插件只能声明一个命名 `Surface` 并请求展示；
 CampusOS 宿主根据当前设备、页面状态和安全策略选择 `modal`、`drawer`、`fullscreen` 或同源 `new-tab`。
@@ -67,12 +66,14 @@ cd web && pnpm exec vue-tsc --noEmit && pnpm build
 Invocation 过期和插件运行失败。浏览器矩阵、目标 Linux 环境和容量/恢复报告属于 Final 发布证据，不能用本地
 单元测试替代。
 
-## 5. PDF 文档预览：第一方受管插件
+## 5. PDF 文档预览：当前实现不使用 v2
 
-`PDF 文档预览`是随主程序发布的第一方受管插件 `builtin.pdf-viewer`，不是可上传或独立安装的 External Plugin
-包。它会出现在用户“插件中心”及管理员“插件运行管理 / 插件中心”中，并标为“第一方受管”。管理员可查看
-其 Capability、批准/撤销 Grant、启停 Runtime；它不可导入、导出、升级包或卸载。停用不会删除文章或附件，用户会
-收到可下载并用本地阅读器打开的中文提示。
+`PDF 文档预览`当前唯一有效身份为外部、自包含的 `campusos.pdf-viewer`。它的页面、PDF.js Worker、Manifest 和配置定义
+位于 `plugins/campusos.pdf-viewer/`，运行时只从校验后的 `.installed` release 读取。它只会显示在“外部插件运行管理”
+及其面向用户的“用户目录与授权”投影中；不会作为“内置功能”或第二个 `builtin.pdf-viewer` 出现。
+
+“用户目录与授权”只控制用户是否可见、请求和个人 Consent；导入/启停/管理员 Capability Grant 在“外部插件运行管理”中
+完成。两个页面共享同一个当前安装快照，目录条目会在 API 启动同步时清除失效投影。
 
 首次在线预览时，用户会被要求同意当前用途：文章附件使用 `article_attachment.self.preview`，个人空间“个人附件”
 和“我的文档”的 owner-only PDF 使用 `personal_space_file.self.read`。同意可在“插件中心 → PDF 文档预览 → 查看并授权”撤销；管理员 Grant 被拒绝或
@@ -85,5 +86,5 @@ Token 或私钥。
 
 个人空间的“个人附件”及“我的文档”中的 PDF 都会显示预览入口，但仅允许文件或文档 owner 使用。公开文章的有权读者可预览其附件 PDF，
 并不因此取得作者个人空间或 Personal Documents 的下载权。个人文档预览只创建绑定当前用户和 document ID 的短期
-Invocation，PDF.js 页面与 Worker 随 Web 构建为内容哈希资源，生产环境可由浏览器长期缓存；
-文件内容仍由认证 API 私有返回，不被持久缓存。
+Invocation；PDF.js 页面与 Worker 随插件 v4 release 发布到独立 Origin，浏览器可缓存插件代码，文件内容仍由认证 API
+私有返回且不被持久缓存。

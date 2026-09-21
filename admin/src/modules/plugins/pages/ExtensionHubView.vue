@@ -205,13 +205,13 @@
         <el-tab-pane label="用户目录" name="market">
           <div class="tab-heading">
             <div>
-              <h3>插件目录与用户请求</h3>
+              <h3>用户目录与授权</h3>
               <p>
-                目录发布不会自动安装插件；用户授权和插件受管数据由宿主保存。
+                这是已安装外部插件面向用户的目录投影。目录发布不会安装或启用插件；用户请求、个人授权和受管数据均由宿主保存。
               </p>
             </div>
             <el-button plain @click="go('/plugin-center')"
-              >打开插件中心</el-button
+              >打开用户目录与授权</el-button
             >
           </div>
           <div class="market-metrics">

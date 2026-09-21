@@ -31,9 +31,13 @@ lint:
 contracts:
 	go run ./cmd/campusos-contracts --write
 
-contracts-check:
+contracts-check: plugin-v4-check
 	go run ./cmd/campusos-contracts --check
 	go run ./cmd/campusos-capability-contract
+
+.PHONY: plugin-v4-check
+plugin-v4-check:
+	go run ./cmd/campusos-plugin-v4-check -root plugins
 
 .PHONY: capability-contract-write
 capability-contract-write:

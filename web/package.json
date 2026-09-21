@@ -17,7 +17,6 @@
     "@element-plus/icons-vue": "^2.3.0",
     "axios": "^1.7.0",
     "element-plus": "^2.7.0",
-    "pdfjs-dist": "4.10.38",
     "pinia": "^2.1.0",
     "qrcode": "1.5.4",
     "vue": "^3.4.0",

@@ -64,6 +64,8 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
+      plugin-ui:
+        condition: service_healthy
     working_dir: /workspace
     environment:
       CAMPUSOS_ENV: ${CAMPUSOS_ENV:-development}
@@ -117,6 +119,11 @@ services:
       HOST_API_ADDR: 127.0.0.1:18080
       OBSERVABILITY_PROMETHEUS_ENABLED: "false"
       PLUGINS_DIR: data/plugins
+      # Package reviewed source into an immutable v4 release on API startup.
+      # The user browser receives it only through the isolated plugin gateway.
+      CAMPUSOS_PLUGIN_V4_DIR: /workspace/plugins
+      CAMPUSOS_PLUGIN_V4_DEV_SOURCE: "true"
+      CAMPUSOS_PLUGIN_UI_ORIGIN: http://{host}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}
       PLUGIN_DATA_DIR: data/plugin_data
       MODULE_DATA_DIR: data/module_data
       RESOURCE_DIR: data/resources
@@ -131,6 +138,33 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/v1/health"]
       interval: ${CAMPUSOS_DEV_API_HEALTHCHECK_INTERVAL:-5s}
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+
+  plugin-ui:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.dev
+      target: plugin-ui-dev
+    working_dir: /workspace/plugins/campusos.pdf-viewer/frontend
+    command: ["/usr/local/bin/campusos-dev-frontend", "/usr/local/bin/campusos-dev-plugin-ui"]
+    environment:
+      CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/plugins/campusos.pdf-viewer/frontend
+      CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
+      CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
+      CAMPUSOS_PLUGIN_V4_DIR: /workspace/plugins
+      CAMPUSOS_PLUGIN_UI_PORT: 3003
+      # Development default. Production must list only its exact Web/Admin origins.
+      CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS: ${CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS:-*}
+    ports:
+      - "${CAMPUSOS_DEV_PLUGIN_UI_BIND:-127.0.0.1}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}:3003"
+    volumes:
+      - .:/workspace
+      - plugin-ui-node-modules:/workspace/plugins/campusos.pdf-viewer/frontend/node_modules
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
       timeout: 5s
       start_period: 60s
       retries: 30
@@ -248,4 +282,5 @@ volumes:
   web-node-modules:
   admin-node-modules:
   docs-node-modules:
+  plugin-ui-node-modules:
   pgadmin-data:

@@ -22,13 +22,26 @@ func validateResourceSurface(ctx context.Context, manager *plugin.Manager, autho
 		return "", denied
 	}
 	found := false
-	for _, surface := range installed.Manifest.UI.Surfaces {
-		if surface.ID != v.SurfaceID {
-			continue
+	if release, v4Found := manager.V4Release(v.PluginKey); v4Found && release.Release.Manifest != nil && release.Release.Manifest.UI.User != nil {
+		for _, surface := range release.Release.Manifest.UI.User.Surfaces {
+			if v.SurfaceID != v.PluginKey+"."+surface.ID {
+				continue
+			}
+			for _, presentation := range surface.Presentations {
+				if presentation == v.Presentation {
+					found = true
+				}
+			}
 		}
-		for _, presentation := range surface.Presentations {
-			if presentation == v.Presentation {
-				found = true
+	} else {
+		for _, surface := range installed.Manifest.UI.Surfaces {
+			if surface.ID != v.SurfaceID {
+				continue
+			}
+			for _, presentation := range surface.Presentations {
+				if presentation == v.Presentation {
+					found = true
+				}
 			}
 		}
 	}

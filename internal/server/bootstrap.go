@@ -162,13 +162,11 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
 		},
 		PDFViewerEnabled: func() bool {
-			// The former Feature remains a compatibility-wide kill switch. The
-			// managed plugin remains the authorization/lifecycle source of truth;
-			// both must be active before RichText can mint an invocation.
-			if features.Registry() == nil || !features.Registry().Enabled("pdf-viewer") {
-				return false
-			}
-			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerPluginName)
+			// PDF preview is now solely the self-contained v4 external release.
+			// Do not retain a feature.pdf-viewer compatibility switch here: it
+			// would both expose a duplicate built-in entry and disable the real
+			// plugin after the descriptor is removed.
+			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerV4PluginName)
 			return found && installed != nil && installed.Status == plugin.StatusRunning && installed.DesiredEnabled
 		},
 		PDFViewerAuthorizer: func(ctx context.Context, input richtext.PDFViewerAuthorizationInput) error {

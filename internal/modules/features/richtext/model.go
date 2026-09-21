@@ -55,8 +55,8 @@ const (
 	AssetStatusPurging     = "purging"
 	AssetStatusDeleted     = "deleted"
 
-	PDFViewerPluginKey = "builtin.pdf-viewer"
-	PDFViewerSurfaceID = "builtin.pdf-viewer.preview"
+	PDFViewerPluginKey = "campusos.pdf-viewer"
+	PDFViewerSurfaceID = "campusos.pdf-viewer.preview"
 
 	// Invocation contexts deliberately distinguish an article attachment from a
 	// private owner asset.  The opaque invocation ID is never a file-download

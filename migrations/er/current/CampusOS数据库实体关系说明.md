@@ -1,6 +1,6 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=219c8316bad98cc330f920c40c3256f2fc1a08d63ab13fdb98713a574b78871e;tables=88;foreign_keys=105 -->
+<!-- campusos-er:schema_sha256=019b9e5d9ea7921f50957f523dec1b9d0bf485a0c1173a02f6f0cd6734b1687d;tables=88;foreign_keys=105 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
@@ -11,13 +11,14 @@
 - 一对一/可选一对一关系：**12**
 - 一对多关系：**93**
 - 推断的逻辑多对多关系：**5**
-- Schema 指纹：`219c8316bad98cc330f920c40c3256f2fc1a08d63ab13fdb98713a574b78871e`
+- Schema 指纹：`019b9e5d9ea7921f50957f523dec1b9d0bf485a0c1173a02f6f0cd6734b1687d`
 
 ## 1. 生成范围与判定规则
 
 工具只读取 `*.up.sql`，不连接数据库，也不会执行 migration。当前输入文件：
 
 - `000001_v1_1_schema_baseline.up.sql`
+- `000002_v1_1_ui_only_plugin_runtime.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。

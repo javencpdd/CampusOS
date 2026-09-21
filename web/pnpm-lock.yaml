@@ -14,9 +14,6 @@ dependencies:
   element-plus:
     specifier: ^2.7.0
     version: 2.14.2(vue@3.5.38)
-  pdfjs-dist:
-    specifier: 4.10.38
-    version: 4.10.38
   pinia:
     specifier: ^2.1.0
     version: 2.3.1(typescript@5.9.3)(vue@3.5.38)
@@ -2616,13 +2613,6 @@ packages:
   /pathval@1.1.1:
     resolution: {integrity: sha512-Dp6zGqpTdETdR63lehJYPeIOqpiNBNtc7BpWSLrOje7UaIsE5aY92r/AunQA7rsXvet3lrJ3JnZX29UPTKXyKQ==}
     dev: true
-
-  /pdfjs-dist@4.10.38:
-    resolution: {integrity: sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ==}
-    engines: {node: '>=20'}
-    optionalDependencies:
-      '@napi-rs/canvas': 0.1.100
-    dev: false
 
   /picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}

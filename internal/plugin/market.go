@@ -191,6 +191,10 @@ type MarketStore interface {
 	DeleteFile(ctx context.Context, pluginName, ownerID, fileID string) (PluginFile, error)
 	FileUsage(ctx context.Context, pluginName, ownerID string) (int64, error)
 	UpsertCatalog(ctx context.Context, entry CatalogEntry) (CatalogEntry, error)
+	// DeleteCatalog removes a stale projection entry. The catalog is not an
+	// installation ledger: it must only contain manifests discovered in the
+	// current Plugin Manager snapshot.
+	DeleteCatalog(ctx context.Context, pluginName string) error
 	ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error)
 	CreateInstallRequest(ctx context.Context, request InstallRequest) (InstallRequest, error)
 	ListInstallRequests(ctx context.Context, status string) ([]InstallRequest, error)
@@ -250,6 +254,7 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 	for _, entry := range existing {
 		visibilityByPlugin[entry.PluginName] = entry.Visibility
 	}
+	active := make(map[string]struct{}, len(plugins))
 	for _, installed := range plugins {
 		if installed == nil || installed.Manifest == nil || (!installed.Manifest.IsV2() && !installed.Manifest.IsV3()) {
 			continue
@@ -259,6 +264,7 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 		if manifest.Runtime == "builtin" && !isTrustedBuiltin {
 			continue
 		}
+		active[manifest.Name] = struct{}{}
 		capabilities := []string{}
 		if len(manifest.ManagedData.Collections) > 0 {
 			capabilities = append(capabilities, "managed-data")
@@ -292,6 +298,19 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 			entry.Visibility = CatalogPublished
 		}
 		if _, err := s.store.UpsertCatalog(ctx, entry); err != nil {
+			return err
+		}
+	}
+	// Keep catalog publication state only for releases which are actually
+	// discoverable now. In particular, this retires the former
+	// builtin.pdf-viewer projection after the v4 package replaces it. Keeping
+	// that row creates a second PDF entry and lets an obsolete package look
+	// available even though it cannot be invoked by the current manager.
+	for _, entry := range existing {
+		if _, ok := active[entry.PluginName]; ok {
+			continue
+		}
+		if err := s.store.DeleteCatalog(ctx, entry.PluginName); err != nil {
 			return err
 		}
 	}
@@ -1548,6 +1567,13 @@ func (m *MemoryMarketStore) UpsertCatalog(_ context.Context, entry CatalogEntry)
 	}
 	m.catalog[entry.PluginName] = entry
 	return entry, nil
+}
+
+func (m *MemoryMarketStore) DeleteCatalog(_ context.Context, pluginName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.catalog, pluginName)
+	return nil
 }
 
 func (m *MemoryMarketStore) ListCatalog(_ context.Context, visibility string) ([]CatalogEntry, error) {

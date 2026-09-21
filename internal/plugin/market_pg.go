@@ -247,6 +247,11 @@ func (r *PgMarketStore) UpsertCatalog(ctx context.Context, entry CatalogEntry) (
 		RETURNING plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at`, entry.PluginName, entry.DisplayName, entry.Description, entry.Version, entry.Runtime, entry.Visibility, entry.PackageChecksum, entry.RiskLevel, string(capabilities), string(permissions), string(experience), entry.UpdatedAt))
 }
 
+func (r *PgMarketStore) DeleteCatalog(ctx context.Context, pluginName string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM plugin_catalog_entries WHERE plugin_name=$1`, pluginName)
+	return err
+}
+
 func (r *PgMarketStore) ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error) {
 	rows, err := r.pool.Query(ctx, `SELECT plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at FROM plugin_catalog_entries WHERE ($1='' OR visibility=$1) ORDER BY plugin_name`, visibility)
 	if err != nil {

@@ -33,7 +33,7 @@ type Manifest struct {
 	Version                string              `yaml:"version" json:"version"`
 	Description            string              `yaml:"description" json:"description"`
 	Author                 string              `yaml:"author" json:"author"`
-	Runtime                string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
+	Runtime                string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin / none
 	Scope                  string              `yaml:"scope" json:"scope"`     // system / user
 	Capabilities           []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	CapabilityDeclarations []CapabilityRequest `yaml:"capability_declarations,omitempty" json:"capability_declarations,omitempty"`
@@ -265,8 +265,8 @@ func (m *Manifest) Validate() error {
 	if m.Runtime == "" {
 		m.Runtime = "grpc"
 	}
-	if m.Runtime != "grpc" && m.Runtime != "process" && m.Runtime != "wasm" && m.Runtime != "builtin" {
-		return fmt.Errorf("manifest: runtime must be 'process', 'grpc', 'wasm' or 'builtin', got '%s'", m.Runtime)
+	if m.Runtime != "grpc" && m.Runtime != "process" && m.Runtime != "wasm" && m.Runtime != "builtin" && m.Runtime != "none" {
+		return fmt.Errorf("manifest: runtime must be 'process', 'grpc', 'wasm', 'builtin' or 'none', got '%s'", m.Runtime)
 	}
 	if m.Scope == "" {
 		if m.Runtime == "builtin" {
@@ -547,6 +547,12 @@ func (m *Manifest) applyLifecycleDefaults() {
 	if m.Lifecycle.Backend.ActivationMode == "" {
 		switch {
 		case m.Runtime == "wasm":
+			m.Lifecycle.Backend.ActivationMode = ActivationHot
+		case m.Runtime == "none":
+			// A UI-only v4 package has no backend process to start. It still
+			// participates in lifecycle and authorization state, so it uses the
+			// same hot transition as a Wasm package rather than pretending to be
+			// a compiled builtin module.
 			m.Lifecycle.Backend.ActivationMode = ActivationHot
 		case m.Runtime == "grpc" || m.Runtime == "process":
 			m.Lifecycle.Backend.ActivationMode = ActivationPluginRestart

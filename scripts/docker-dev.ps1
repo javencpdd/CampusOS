@@ -171,6 +171,7 @@ function Assert-Environment {
         CAMPUSOS_DEV_WEB_BIND = "127.0.0.1"
         CAMPUSOS_DEV_ADMIN_BIND = "127.0.0.1"
         CAMPUSOS_DEV_DOCS_BIND = "127.0.0.1"
+        CAMPUSOS_DEV_PLUGIN_UI_BIND = "127.0.0.1"
     }
     $LanSurfaces = @()
     foreach ($Key in $SurfaceBinds.Keys) {
@@ -194,6 +195,7 @@ function Assert-Environment {
         CAMPUSOS_DEV_WEB_PORT = 3000
         CAMPUSOS_DEV_ADMIN_PORT = 3001
         CAMPUSOS_DEV_DOCS_PORT = 3002
+        CAMPUSOS_DEV_PLUGIN_UI_PORT = 3003
         CAMPUSOS_DEV_API_PORT = 8080
         CAMPUSOS_DEV_POSTGRES_PORT = 55432
         CAMPUSOS_DEV_REDIS_PORT = 56379
@@ -293,7 +295,7 @@ function Start-DevelopmentStack {
     }
     $Arguments += @("--wait", "--wait-timeout", "600")
     if ($Build) {
-        $Arguments += @("api", "web", "admin", "docs")
+        $Arguments += @("plugin-ui", "api", "web", "admin", "docs")
     }
     Invoke-Compose $Arguments
     Invoke-Compose @("ps")
@@ -367,6 +369,7 @@ function Wait-ApplicationPorts {
         (Assert-Port "CAMPUSOS_DEV_WEB_PORT" 3000),
         (Assert-Port "CAMPUSOS_DEV_ADMIN_PORT" 3001),
         (Assert-Port "CAMPUSOS_DEV_DOCS_PORT" 3002)
+        (Assert-Port "CAMPUSOS_DEV_PLUGIN_UI_PORT" 3003)
     )
     $Busy = @()
     for ($Attempt = 0; $Attempt -lt 100; $Attempt++) {
@@ -381,7 +384,7 @@ function Wait-ApplicationPorts {
 
 function Stop-ApplicationServices {
     Assert-Docker
-    $Running = @(& docker @ComposeArgs ps --services --status running api web admin docs)
+    $Running = @(& docker @ComposeArgs ps --services --status running api web admin docs plugin-ui)
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -391,7 +394,7 @@ function Stop-ApplicationServices {
         return
     }
     Write-Host "Stopping Docker development application services: $($Running -join ' ')"
-    Invoke-Compose @("stop", "api", "web", "admin", "docs")
+    Invoke-Compose @("stop", "api", "web", "admin", "docs", "plugin-ui")
 }
 
 switch ($Command) {
@@ -423,7 +426,7 @@ switch ($Command) {
     }
     "build" {
         Assert-Docker
-        Invoke-Compose @("build", "api", "web", "admin", "docs")
+        Invoke-Compose @("build", "api", "web", "admin", "docs", "plugin-ui")
     }
     "up" {
         Assert-Environment

@@ -44,12 +44,13 @@ class LanAccessTest(unittest.TestCase):
             [{"Service": "web"}, {"Service": "docs"}],
         )
 
-    def test_compose_bindings_find_all_three_surfaces(self) -> None:
+    def test_compose_bindings_find_all_ui_surfaces(self) -> None:
         config = {
             "services": {
                 "web": {"ports": [{"host_ip": "0.0.0.0", "published": "3000", "target": 3000}]},
                 "admin": {"ports": [{"host_ip": "0.0.0.0", "published": "3001", "target": 3001}]},
                 "docs": {"ports": [{"host_ip": "127.0.0.1", "published": "3002", "target": 3002}]},
+                "plugin-ui": {"ports": [{"host_ip": "0.0.0.0", "published": "3003", "target": 3003}]},
             }
         }
         self.assertEqual(
@@ -58,6 +59,7 @@ class LanAccessTest(unittest.TestCase):
                 "web": ("0.0.0.0", 3000),
                 "admin": ("0.0.0.0", 3001),
                 "docs": ("127.0.0.1", 3002),
+                "plugin-ui": ("0.0.0.0", 3003),
             },
         )
 

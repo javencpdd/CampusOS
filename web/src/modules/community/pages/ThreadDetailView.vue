@@ -236,7 +236,7 @@ import ThreadTaxonomy from '@/modules/community/components/ThreadTaxonomy.vue'
 import { richTextApi } from '@/modules/richtext/api'
 import { useUserStore } from '@/modules/identity/store'
 import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
-import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
+import { ensurePluginCapabilityConsent } from '@/campus-ui/pluginConsent'
 
 const route = useRoute()
 const router = useRouter()
@@ -448,11 +448,12 @@ const downloadAttachment = async (attachment: any) => {
 const previewPDF = async (attachment: any, requested: string) => {
   const presentation = requested as SurfacePresentation
   try {
-    await ensurePDFViewerConsent('article_attachment.self.preview')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'article_attachment.self.preview')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
     const response: any = await richTextApi.createPDFInvocation(threadID(), attachment.id, presentation)
     const invocation = response?.data || response
     openPluginSurface({
-      surfaceID: 'builtin.pdf-viewer.preview',
+      surfaceID: 'campusos.pdf-viewer.preview',
       invocationID: invocation.id,
       presentation,
     })

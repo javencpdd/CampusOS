@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <div class="header-title">
-            <span>插件运行管理</span>
+            <span>外部插件运行管理</span>
             <el-tag type="info" size="small"
               >已安装 {{ plugins.length }} 个插件</el-tag
             >
@@ -37,7 +37,7 @@
       </template>
 
       <el-alert
-        title="此处展示可安装的 External Plugin，以及随主程序交付、可单独授权和启停的第一方受管插件。第一方受管插件不可导入、导出或卸载。"
+        title="此处管理已安装外部插件的发布包、运行状态、管理员能力授权和系统配置。它不管理用户目录发布、用户请求或个人授权；这些内容在“用户目录与授权”中处理。"
         type="info"
         show-icon
         :closable="false"
@@ -148,11 +148,18 @@
             <div>{{ row.ui_contract_version || "无 UI 声明" }}</div>
             <div v-for="surface in row.ui_surfaces || []" :key="surface.id">
               <strong>{{ surface.id }}</strong>
-              <div>{{ (surface.presentations || []).join(" / ") || "普通页面" }}</div>
+              <div>
+                {{ (surface.presentations || []).join(" / ") || "普通页面" }}
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="error" label="最近运行错误" min-width="180" show-overflow-tooltip>
+        <el-table-column
+          prop="error"
+          label="最近运行错误"
+          min-width="180"
+          show-overflow-tooltip
+        >
           <template #default="{ row }">{{ row.error || "无" }}</template>
         </el-table-column>
         <el-table-column

@@ -445,7 +445,7 @@ import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/modules/space/api'
 import { richTextApi } from '@/modules/richtext/api'
 import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
-import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
+import { ensurePluginCapabilityConsent } from '@/campus-ui/pluginConsent'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
 import { useUserStore } from '@/modules/identity/store'
 
@@ -759,11 +759,12 @@ const downloadPersonalAsset = async (asset: PersonalAsset) => {
 const previewPersonalAssetPDF = async (asset: PersonalAsset) => {
   const presentation: SurfacePresentation = 'modal'
   try {
-    await ensurePDFViewerConsent('personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
     const response: any = await richTextApi.createPersonalAssetPDFInvocation(asset.id, presentation)
     const invocation = response?.data || response
     openPluginSurface({
-      surfaceID: 'builtin.pdf-viewer.preview',
+      surfaceID: 'campusos.pdf-viewer.preview',
       invocationID: invocation.id,
       presentation,
     })

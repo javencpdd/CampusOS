@@ -1,6 +1,7 @@
 # Plugin UI v2 Surface
 
-> 更新时间：2026-09-20（Asia/Shanghai）。
+> 更新时间：2026-09-21 18:16（Asia/Shanghai）。
+> 适用范围：本文保留 `campusos.ui/v2` 的旧声明式合同说明。当前 PDF Viewer 已迁至 `campusos.plugin/v4` 自包含包并使用 `campusos.ui/v3` 隔离 iframe；请优先阅读[插件重构计划](../../docs/项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)和[当前架构](../../docs/architecture/模块设计/插件平台与授权体系.md)。
 
 `campusos.ui/v2` 为插件提供受宿主管理的界面打开能力。它适合 PDF 预览、受管数据详情等需要弹窗、抽屉、全屏或
 同源新标签页的场景，但不会把浏览器、主站路由或登录凭据控制权交给插件。
@@ -34,23 +35,21 @@ ui:
 - External Plugin 默认使用声明式 `schema`；只有随 CampusOS 编译且被信任白名单允许的 Built-in Feature 能使用
   `trusted-module`。
 - 同源新标签页只能使用短期、服务端保存的调用上下文，不能把 JWT、对象路径、存储 key 或长期下载链接写入 URL。
-- 每次打开由宿主检查当前注册 Surface、加载状态和 Presentation；PDF 内容读取重新检查第一方插件状态、Invocation 和业务资源访问权。
-- `builtin.pdf-viewer` 已接入 PDF Capability、管理员 Grant、用户 Consent 和插件版本/生命周期闭环；管理员或用户撤销后，后续创建和读取都会被拒绝。
+- 每次打开由宿主检查当前注册 Surface、加载状态和 Presentation；PDF 内容读取重新检查当前外部插件 release、Invocation 和业务资源访问权。
+- `builtin.pdf-viewer` 是已移除的历史实现，不能再被安装、展示或授权。当前 PDF Viewer 是自包含外部插件 `campusos.pdf-viewer`，使用 v4 包和 v3 隔离 iframe；管理员或用户撤销后，后续创建和读取都会被拒绝。
 
 ## v1.1 PDF Viewer 的三个受控入口
 
-`builtin.pdf-viewer` 是第一方受管插件，不是可上传或下载安装的 External Plugin 包。它以受信
-`trusted-module` 注册 `builtin.pdf-viewer.preview`，由图文文章附件列表、个人空间“个人附件”和“我的文档”的
+`campusos.pdf-viewer` 是当前唯一 PDF 预览外部插件。它以校验后的 v4 release 注册
+`campusos.pdf-viewer.preview`，由图文文章附件列表、个人空间“个人附件”和“我的文档”的
 PDF 行共同调用同一 Surface：前者每次读取复核文章是否仍对当前用户开放；后两者每次读取复核 Asset 或 Personal
 Document 是否仍属于当前用户。三种调用都只携带短期 Invocation ID，不会生成公开 URL；Personal Documents
 只传递 document ID，External Plugin 不能复用 PDF.js trusted module 或注入动态前端 Bundle。
 
-正式计划第 10.2 节允许编译期 trusted-module；`builtin` Runtime 只管理这项编译交付模块的 Manifest、生命周期
-与三层授权，并不执行动态插件代码。PDF.js 深度代理、加载切换与关闭清理、浏览器存储受限、未注册 Surface 打开和
-固定新标签页路径均已处理。编译产物采用内容哈希 URL，可由生产静态资源缓存复用；受保护 PDF 内容不进入持久缓存。
-通用签发已提取到 `internal/platform/pluginui`，并接通声明式 `open-surface`。只有宿主用户选择产生的
-`resourceContext` 可用于签发；没有选定资源时提示先选择文件，不从 Action body 信任路径或 owner。
-新旧签发入口共用业务解析和三层授权，现支持的资源仍仅为三类 PDF 上下文，不提供 Office/音视频预览。
+`trusted-module` 和 `builtin` Runtime 的说明只适用于旧 v1/v2 兼容实现，不能用于新的 PDF Viewer。
+当前 PDF.js 产物随 `campusos.pdf-viewer` v4 release 发布到独立 Origin，可由浏览器缓存；受保护的 PDF 内容不进入
+持久缓存。通用签发仍由 `internal/platform/pluginui` 完成：只有宿主用户选择产生的 `resourceContext` 才能签发，
+不会从 Action body 信任文件路径或 owner。当前支持的资源仍只有三类 PDF 上下文，不提供 Office/音视频预览。
 
 ## 通用签发与下载降级
 

@@ -24,6 +24,7 @@ type Manager struct {
 	packages  *PackageService
 	snapshots *SnapshotService
 	host      *HostAccessService
+	v4        *v4Catalog
 }
 
 // NewManager 创建插件管理器
@@ -32,6 +33,7 @@ func NewManager() *Manager {
 		runtimes: NewRuntimeRegistry(),
 		catalog:  NewPluginCatalog(),
 		ui:       NewUIRegistry(),
+		v4:       newV4Catalog(),
 	}
 	m.audit = NewAuditLogService()
 	m.lifecycle = NewLifecycleService(m.catalog, m.runtimes, m.ui, m.audit)
@@ -108,7 +110,7 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 		DesiredEnabled: manifest.IsSystemLevel(),
 		Directory:      dir,
 	}
-	if plugin.DesiredEnabled && !manifest.UI.Empty() {
+	if plugin.DesiredEnabled && pluginHasFrontend(plugin) {
 		plugin.FrontendState = FrontendLoaded
 	}
 	m.catalog.plugins[manifest.Name] = plugin
@@ -290,7 +292,7 @@ func restoredBackendState(value string, status PluginStatus) BackendState {
 }
 
 func restoredFrontendState(value string, p *Plugin) FrontendState {
-	if p != nil && p.Manifest != nil && p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p != nil && p.Manifest != nil && p.DesiredEnabled && pluginHasFrontend(p) {
 		if FrontendState(value) == FrontendIncompatible || FrontendState(value) == FrontendError {
 			return FrontendState(value)
 		}
@@ -356,7 +358,7 @@ func (m *LifecycleService) requestEnable(name string) error {
 		m.catalog.mu.Lock()
 		p.DesiredEnabled = true
 		p.BackendState = BackendPendingRestart
-		if !p.Manifest.UI.Empty() {
+		if pluginHasFrontend(p) {
 			p.FrontendState = FrontendLoaded
 		}
 		m.ui.Bump()
@@ -562,7 +564,7 @@ func (m *LifecycleService) start(name string) error {
 	m.catalog.mu.Lock()
 	p.BackendState = BackendStarting
 	p.Health = HealthUnknown
-	if p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p.DesiredEnabled && pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	m.ui.Bump()
@@ -643,7 +645,7 @@ func (m *LifecycleService) start(name string) error {
 	p.Status = StatusRunning
 	p.BackendState = BackendRunning
 	p.Health = HealthHealthy
-	if !p.Manifest.UI.Empty() {
+	if pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	p.DesiredEnabled = true

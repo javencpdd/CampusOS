@@ -49,6 +49,33 @@ func TestMarketServiceScopesRecordsAndRequiresGrant(t *testing.T) {
 	}
 }
 
+func TestMarketServiceSyncCatalogRemovesRetiredPluginProjection(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := NewMemoryMarketStore()
+	if _, err := store.UpsertCatalog(context.Background(), CatalogEntry{
+		PluginName: "builtin.pdf-viewer", DisplayName: "PDF 文档预览", Version: "1.1.3-dev", Runtime: "builtin", Visibility: CatalogPublished,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(store, storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest}}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := store.ListCatalog(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].PluginName != manifest.Name {
+		t.Fatalf("catalog after sync = %#v, want only active %q", items, manifest.Name)
+	}
+}
+
 func TestMarketServiceStoresFilesUnderUserPluginNamespace(t *testing.T) {
 	manifest := mustV2MarketManifest(t)
 	storage, err := corestorage.NewLocalAdapterWithQuota(t.TempDir(), 1024*1024)
@@ -190,8 +217,8 @@ func TestMarketServiceRequiresPublishedCatalogForNewConsent(t *testing.T) {
 	}
 }
 
-func TestMarketCatalogMarksCompiledBuiltinWithoutPersistingTrust(t *testing.T) {
-	manifest := NewPDFViewerBuiltinManifest()
+func TestMarketCatalogDoesNotTrustAnExternalPackage(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
 	storage, err := corestorage.NewLocalAdapter(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -202,34 +229,12 @@ func TestMarketCatalogMarksCompiledBuiltinWithoutPersistingTrust(t *testing.T) {
 	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest}}); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := service.Catalog(context.Background(), true)
+	entries, err := service.Catalog(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || entries[0].PluginName != PDFViewerPluginName || !entries[0].TrustedBuiltin {
-		t.Fatalf("catalog must derive trusted builtin from compiled manifest: %#v", entries)
-	}
-}
-
-func TestMarketServiceAllowsOnlyManagedBuiltinToUseDeclaredUserRecords(t *testing.T) {
-	manifest := NewPDFViewerBuiltinManifest()
-	storage, err := corestorage.NewLocalAdapter(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
-		return manifest, name == manifest.Name
-	})
-	if _, err := service.userManifest(PDFViewerPluginName); err != nil {
-		t.Fatalf("managed builtin must be eligible for host-managed records: %v", err)
-	}
-	spoofed := *manifest
-	spoofed.Scope = ScopeUser
-	service = NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
-		return &spoofed, name == spoofed.Name
-	})
-	if _, err := service.userManifest(PDFViewerPluginName); !errors.Is(err, ErrMarketUnsupported) {
-		t.Fatalf("unmanaged builtin shape = %v, want unsupported", err)
+	if len(entries) != 1 || entries[0].PluginName != manifest.Name || entries[0].TrustedBuiltin {
+		t.Fatalf("external package must not be marked as a trusted builtin: %#v", entries)
 	}
 }
 

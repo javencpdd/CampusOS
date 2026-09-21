@@ -1,5 +1,12 @@
 <template>
   <component v-if="trustedComponent" :is="trustedComponent" />
+  <IsolatedPluginFrame
+    v-else-if="available && frameIdentity && frameURL"
+    :identity="frameIdentity"
+    :src="frameURL"
+    :title="surface?.type === 'document-preview' ? 'PDF 预览' : '插件界面'"
+    :request="requestFromFrame"
+  />
   <DeclarativeRenderer
     v-else-if="available && surface?.renderer === 'schema' && surface.schema"
     :node="surface.schema"
@@ -21,6 +28,9 @@ import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import { trustedModules } from './trustedModules'
 import { useSurfaceResourceContext } from './useSurfaceResourceContext'
+import IsolatedPluginFrame from './IsolatedPluginFrame.vue'
+import { handleIsolatedPluginRequest, isolatedPluginFrameURL } from './isolatedPluginHost'
+import type { PluginBridgeRequest, PluginFrameIdentity } from './isolatedPluginBridge'
 const route = useRoute()
 const runtime = useUIRuntimeStore()
 const surface = computed(() => runtime.surface(String(route.meta.surfaceId || '')))
@@ -53,4 +63,24 @@ const trustedComponent = computed(() =>
     ? trustedModules[surface.value.module_id]
     : undefined,
 )
+const invocationID = computed(() => String(route.query.invocation || ''))
+const frameIdentity = computed<PluginFrameIdentity | undefined>(() => {
+  const frame = surface.value?.frame
+  if (!frame || surface.value?.renderer !== 'isolated-iframe') return undefined
+  return {
+    pluginKey: surface.value.plugin,
+    pluginVersion: surface.value.plugin_version || '',
+    surfaceID: surface.value.id.replace(`${surface.value.plugin}.`, ''),
+    audience: frame.audience,
+    origin: frame.origin,
+  }
+})
+const frameURL = computed(() => {
+  const frame = surface.value?.frame
+  return frame && invocationID.value ? isolatedPluginFrameURL(frame.src, invocationID.value) : ''
+})
+const requestFromFrame = (request: PluginBridgeRequest) => {
+  if (!surface.value || !invocationID.value) return Promise.reject(new Error('预览上下文不可用。'))
+  return handleIsolatedPluginRequest(surface.value, invocationID.value, request)
+}
 </script>

@@ -209,6 +209,7 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	m.manager.RegisterRuntime("process", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
 	m.manager.RegisterRuntime("builtin", plugin.NewBuiltinRuntime())
+	m.manager.RegisterRuntime("none", plugin.NewNoneRuntime())
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
 		return errors.New("authoritative feature registry is unavailable")
@@ -245,8 +246,13 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return fmt.Errorf("plugin platform dependencies are not registered")
 	}
 	m.owner.registerDefaultSubscriptions(m.events.EventBus())
-	if _, err := m.manager.RegisterBuiltin(plugin.NewPDFViewerBuiltinManifest()); err != nil {
-		return fmt.Errorf("register built-in PDF Viewer plugin: %w", err)
+	if plugin.V4DevelopmentSourceEnabled() {
+		if err := m.manager.InstallV4DevelopmentSources(plugin.V4PluginsDirFromEnv()); err != nil {
+			return fmt.Errorf("install v4 development plugin release: %w", err)
+		}
+	}
+	if err := m.manager.LoadV4Releases(plugin.V4PluginsDirFromEnv(), plugin.V4UIOriginFromEnv()); err != nil {
+		return fmt.Errorf("load v4 plugin releases: %w", err)
 	}
 	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
@@ -327,14 +333,20 @@ func (m *pluginPlatformModule) ensurePDFViewerDefaultGrants(ctx context.Context)
 	if m.authorization == nil || !m.authorization.Available() {
 		return errors.New("plugin authorization service is unavailable")
 	}
-	version, err := m.authorization.ActiveVersion(ctx, plugin.PDFViewerPluginName)
+	if _, installed := m.manager.V4Release(plugin.PDFViewerV4PluginName); !installed {
+		// The host remains available when an administrator has not installed a
+		// release yet. Preview requests then safely fall back to the existing
+		// authenticated download path instead of making API startup fail.
+		return nil
+	}
+	version, err := m.authorization.ActiveVersion(ctx, plugin.PDFViewerV4PluginName)
 	if err != nil {
 		return err
 	}
 	for _, capability := range []string{"article_attachment.self.preview", "personal_space_file.self.read", "plugin_ui.surface.open", "plugin_record.self.read", "plugin_record.self.write"} {
 		// Set only the initial grant. An existing deny/revoke is a deliberate
 		// administrator decision and must never be overwritten at startup.
-		overview, err := m.authorization.Overview(ctx, plugin.PDFViewerPluginName, "")
+		overview, err := m.authorization.Overview(ctx, plugin.PDFViewerV4PluginName, "")
 		if err != nil {
 			return err
 		}

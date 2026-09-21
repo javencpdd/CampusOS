@@ -8,7 +8,6 @@ const trustedModuleLoaders: Record<string, TrustedModuleLoader> = {
   'core.personal-space': () => import('@/modules/space/pages/SpaceSettingsView.vue'),
   'core.richtext-editor': () => import('@/modules/community/pages/CreateThreadView.vue'),
   'core.appearance': () => import('@/modules/appearance/pages/AppearanceSettingsView.vue'),
-  'core.pdf-viewer': () => import('@/modules/pdf-viewer/pages/PdfViewerView.vue'),
 }
 
 export const trustedModules: Record<string, ReturnType<typeof defineAsyncComponent>> = Object.fromEntries(

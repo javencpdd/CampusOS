@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "zoom": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 3,
+      "title": "默认缩放比例"
+    }
+  }
+}

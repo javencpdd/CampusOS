@@ -13,7 +13,6 @@ var trustedCoreModules = map[string]bool{
 	"core.personal-space":  true,
 	"core.richtext-editor": true,
 	"core.appearance":      true,
-	"core.pdf-viewer":      true,
 }
 
 type UIContribution struct {
@@ -66,12 +65,22 @@ type UISurface struct {
 	LayoutRole    string                 `yaml:"layout_role" json:"layout_role"`
 	Renderer      string                 `yaml:"renderer,omitempty" json:"renderer,omitempty"`
 	ModuleID      string                 `yaml:"module_id,omitempty" json:"module_id,omitempty"`
+	Frame         *UIFrame               `yaml:"frame,omitempty" json:"frame,omitempty"`
 	Schema        map[string]interface{} `yaml:"schema,omitempty" json:"schema,omitempty"`
 	DataContract  map[string]interface{} `yaml:"data_contract,omitempty" json:"data_contract,omitempty"`
 	ActionIDs     []string               `yaml:"action_ids,omitempty" json:"action_ids,omitempty"`
 	PublicTokens  []string               `yaml:"public_tokens,omitempty" json:"public_tokens,omitempty"`
 	Regions       []string               `yaml:"regions,omitempty" json:"regions,omitempty"`
 	Presentations []string               `yaml:"presentations,omitempty" json:"presentations,omitempty"`
+}
+
+// UIFrame is an immutable, host-issued identity for an isolated v4 UI. The
+// package never supplies an arbitrary host URL: RuntimeManifest constructs the
+// entry from a verified release directory and the platform configuration.
+type UIFrame struct {
+	Src      string `yaml:"src" json:"src"`
+	Origin   string `yaml:"origin" json:"origin"`
+	Audience string `yaml:"audience" json:"audience"`
 }
 
 type UIAction struct {
@@ -153,14 +162,17 @@ func (m *Manifest) validateUI() error {
 		if surface.Version == "" || surface.Type == "" || surface.LayoutRole == "" {
 			return fmt.Errorf("manifest: ui surface %q requires version, type and layout_role", surface.ID)
 		}
-		if surface.Renderer == "" || (surface.Renderer == "schema" && len(surface.Schema) == 0) || (surface.Renderer == "trusted-module" && surface.ModuleID == "") {
+		if surface.Renderer == "" || (surface.Renderer == "schema" && len(surface.Schema) == 0) || (surface.Renderer == "trusted-module" && surface.ModuleID == "") || (surface.Renderer == "isolated-iframe" && surface.Frame == nil) {
 			return fmt.Errorf("manifest: ui surface %q requires a usable default renderer", surface.ID)
 		}
-		if surface.Renderer != "schema" && surface.Renderer != "trusted-module" {
-			return fmt.Errorf("manifest: ui surface %q renderer must be schema or trusted-module", surface.ID)
+		if surface.Renderer != "schema" && surface.Renderer != "trusted-module" && surface.Renderer != "isolated-iframe" {
+			return fmt.Errorf("manifest: ui surface %q renderer must be schema, trusted-module or isolated-iframe", surface.ID)
 		}
 		if surface.Renderer == "trusted-module" && (m.Runtime != "builtin" || m.Scope != ScopeSystem || !trustedCoreModules[surface.ModuleID]) {
 			return fmt.Errorf("manifest: ui surface %q uses an untrusted core module", surface.ID)
+		}
+		if surface.Renderer == "isolated-iframe" && (m.Runtime != "none" || surface.Frame.Src == "" || surface.Frame.Origin == "" || (surface.Frame.Audience != "user" && surface.Frame.Audience != "admin")) {
+			return fmt.Errorf("manifest: ui surface %q has an invalid isolated frame", surface.ID)
 		}
 		if m.UI.ContractVersion == CurrentUIContract {
 			if len(surface.Presentations) == 0 {

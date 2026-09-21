@@ -105,8 +105,8 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | 版主管理 | `/moderators` | 版主动作上限，以及用户负责的具体板块范围 |
 | 内置功能 | `/features` | 个人空间、富文本、个人课表和 Appearance 的状态、生效方式与配置 |
 | 外观与风格包 | `/appearance` | 首页包切换/导入/回滚、系统主题目录和个人主页风格边界 |
-| 外部插件 | `/plugins` | 插件预检、导入、启停、更新、日志与导出 |
-| 插件中心 | `/plugin-center` | 管理员发布目录、用户请求、版本和治理审计 |
+| 外部插件运行管理 | `/plugins` | 已安装插件的预检、导入、启停、管理员能力授权、系统配置与运行日志 |
+| 用户目录与授权 | `/plugin-center` | 同一安装快照的用户目录发布、用户请求、聚合数据概览和治理审计；不负责导入或启停 |
 | 扩展总览 | `/extensions` | 四类扩展的统一清单，不合并它们的生命周期 |
 | 集成中心 | `/integrations` | AI、Webhook、MCP-like 和 Message Local 的能力状态 |
 
@@ -235,9 +235,10 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 确认使用当前管理端代码并访问 `/features` 和 `/appearance`。课表用户数据不会出现在 Admin；系统主题的个人选择也在用户前台完成。
 
-**插件中心为空**
+**用户端插件中心为空**
 
-这通常表示管理员尚未把已安装 External Plugin 发布到用户目录，不表示 Built-in Feature 丢失。
+这通常表示管理员尚未在“用户目录与授权”中发布当前已安装的 External Plugin，不表示 Built-in Feature 丢失。目录是运行管理的投影，
+不应与“外部插件运行管理”重复出现不同版本的同一个插件。
 
 ## 完成标准
 

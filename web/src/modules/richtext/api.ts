@@ -80,6 +80,11 @@ export const richTextApi = {
   getPDFInvocation: (invocationId: string) => api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}`),
   getPDFInvocationContent: (invocationId: string) =>
     api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}/content`, { responseType: 'blob' }),
+  getPDFInvocationContentRange: (invocationId: string, offset: number, length: number) =>
+    api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}/content`, {
+      responseType: 'arraybuffer',
+      headers: { Range: `bytes=${offset}-${offset + length - 1}` },
+    }),
   downloadPDFInvocation: (invocationId: string) =>
     api.get(`/plugin-ui/invocations/${encodeURIComponent(invocationId)}/download`, { responseType: 'blob' }),
 }

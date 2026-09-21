@@ -43,6 +43,7 @@ SURFACES = (
     Surface("web", "Web", "CAMPUSOS_DEV_WEB_BIND", "CAMPUSOS_DEV_WEB_PORT", 3000, 3000, "/api/v1/health"),
     Surface("admin", "Admin", "CAMPUSOS_DEV_ADMIN_BIND", "CAMPUSOS_DEV_ADMIN_PORT", 3001, 3001, "/api/v1/health"),
     Surface("docs", "Docs", "CAMPUSOS_DEV_DOCS_BIND", "CAMPUSOS_DEV_DOCS_PORT", 3002, 3002, "/"),
+    Surface("plugin-ui", "Plugin UI gateway", "CAMPUSOS_DEV_PLUGIN_UI_BIND", "CAMPUSOS_DEV_PLUGIN_UI_PORT", 3003, 3003, "/health"),
 )
 
 
@@ -473,15 +474,15 @@ def main() -> int:
     elif sys.platform.startswith("linux"):
         if shutil.which("ufw"):
             warnings.append(
-                "Linux UFW may require an inbound rule for TCP 3000:3002 from the trusted LAN subnet"
+                "Linux UFW may require an inbound rule for TCP 3000:3003 from the trusted LAN subnet"
             )
         elif shutil.which("firewall-cmd"):
             warnings.append(
-                "Linux firewalld may require TCP 3000-3002 in the active trusted LAN zone"
+                "Linux firewalld may require TCP 3000-3003 in the active trusted LAN zone"
             )
         else:
             warnings.append(
-                "Linux host firewall state was not determined; check nftables/iptables policy for TCP 3000-3002"
+                "Linux host firewall state was not determined; check nftables/iptables policy for TCP 3000-3003"
             )
 
     print()

@@ -10,6 +10,13 @@
     @close="closePluginSurface"
   >
     <component :is="viewer" v-if="viewer && activeSurface" :invocation-id="activeSurface.invocationID" />
+    <IsolatedPluginFrame
+      v-else-if="frameIdentity && frameURL && activeSurface"
+      :identity="frameIdentity"
+      :src="frameURL"
+      :title="surface?.type === 'document-preview' ? 'PDF 预览' : '插件界面'"
+      :request="requestFromFrame"
+    />
     <DeclarativeRenderer
       v-else-if="surface?.renderer === 'schema' && surface.schema"
       :node="surface.schema"
@@ -27,6 +34,13 @@
     @close="closePluginSurface"
   >
     <component :is="viewer" v-if="viewer" :invocation-id="activeSurface.invocationID" />
+    <IsolatedPluginFrame
+      v-else-if="frameIdentity && frameURL && activeSurface"
+      :identity="frameIdentity"
+      :src="frameURL"
+      :title="surface?.type === 'document-preview' ? 'PDF 预览' : '插件界面'"
+      :request="requestFromFrame"
+    />
     <DeclarativeRenderer
       v-else-if="surface?.renderer === 'schema' && surface.schema"
       :node="surface.schema"
@@ -43,6 +57,9 @@ import { computed, watch } from 'vue'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
 import DeclarativeRenderer from './DeclarativeRenderer.vue'
 import { useSurfaceResourceContext } from './useSurfaceResourceContext'
+import IsolatedPluginFrame from './IsolatedPluginFrame.vue'
+import { handleIsolatedPluginRequest, isolatedPluginFrameURL } from './isolatedPluginHost'
+import type { PluginBridgeRequest, PluginFrameIdentity } from './isolatedPluginBridge'
 
 const { activeSurface, closePluginSurface } = usePluginSurfaceHost()
 const runtime = useUIRuntimeStore()
@@ -57,6 +74,27 @@ const viewer = computed(() =>
     ? trustedModules[surface.value.module_id]
     : undefined,
 )
+const frameIdentity = computed<PluginFrameIdentity | undefined>(() => {
+  const frame = surface.value?.frame
+  const active = activeSurface.value
+  if (!frame || !active || surface.value?.renderer !== 'isolated-iframe') return undefined
+  return {
+    pluginKey: surface.value.plugin,
+    pluginVersion: surface.value.plugin_version || '',
+    surfaceID: surface.value.id.replace(`${surface.value.plugin}.`, ''),
+    audience: frame.audience,
+    origin: frame.origin,
+  }
+})
+const frameURL = computed(() => {
+  const frame = surface.value?.frame
+  const active = activeSurface.value
+  return frame && active ? isolatedPluginFrameURL(frame.src, active.invocationID) : ''
+})
+const requestFromFrame = (request: PluginBridgeRequest) => {
+  if (!surface.value || !activeSurface.value) return Promise.reject(new Error('预览已关闭。'))
+  return handleIsolatedPluginRequest(surface.value, activeSurface.value.invocationID, request)
+}
 watch(surface, (current) => {
   if (
     activeSurface.value &&

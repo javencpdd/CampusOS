@@ -143,6 +143,8 @@ CAMPUSOS_DEV_ALLOW_LAN=true
 CAMPUSOS_DEV_WEB_BIND=0.0.0.0
 CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0
 CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
+# Web/Admin 在局域网中使用隔离插件预览时必须同时公开此网关。
+CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0
 ```
 
 启动后自动诊断 Compose 发布、容器健康、LAN IPv4、HTTP/API Proxy 和宿主网络/防火墙提示：
@@ -153,7 +155,7 @@ CAMPUSOS_DEV_DOCS_BIND=0.0.0.0
 
 Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows 会读取活动网卡、网络类别和项目
 防火墙规则；Linux 会优先读取默认路由网卡的 IPv4/子网，并根据 UFW、firewalld 或 nftables/iptables 给出
-防火墙提示。两端都会列出 Web/Admin/Docs URL，同时生成供另一台局域网主机执行的 Windows
+防火墙提示。两端都会列出 Web/Admin/Docs URL 和插件 UI 网关健康检查，同时生成供另一台局域网主机执行的 Windows
 `Test-NetConnection` 与 Linux/macOS `curl`、`nc` 命令。`LOCAL READY` 只证明开发机自身通过 LAN 地址访问
 正常；只有另一台主机实测才能发现宿主入站策略或路由器 AP/客户端隔离。
 
@@ -178,17 +180,17 @@ New-NetFirewallRule `
   -Direction Inbound `
   -Action Allow `
   -Protocol TCP `
-  -LocalPort 3000-3002 `
+  -LocalPort 3000-3003 `
   -Profile Private `
   -RemoteAddress LocalSubnet
 ```
 
 Linux 同样可能被宿主防火墙拦截。Ubuntu/Debian 用 `sudo ufw status`，Fedora/RHEL 用
 `sudo firewall-cmd --get-active-zones` 和 `sudo firewall-cmd --list-ports` 检查；其他发行版检查
-nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3002，不要直接创建面向任意来源的规则。
+nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3003，不要直接创建面向任意来源的规则。
 
 脚本会自动输出应使用的开发机 IPv4；局域网设备分别访问
-`http://<开发机IPv4>:3000`、`:3001`、`:3002`。若仍无法连接，检查 Windows 当前网络类别或 Linux
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。其中 `:3003` 是只服务已校验不可变插件产物的跨 Origin 网关；普通用户不需要直接打开它，但远程浏览器加载 PDF 等隔离插件时必须能连接该端口。若仍无法连接，检查 Windows 当前网络类别或 Linux
 防火墙、路由器/AP 客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
 只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值。Windows
 如果创建过项目规则，再删除：
@@ -277,7 +279,7 @@ STOP_EXISTING=true make dev-all
 
 脚本会按以下顺序交接：
 
-1. 停止 `campusos-dev` 项目中的 API、Web、Admin 和 Docs 容器，但保留 PostgreSQL、Redis、NATS。
+1. 停止 `campusos-dev` 项目中的 API、Web、Admin、Docs 和 Plugin UI 容器，但保留 PostgreSQL、Redis、NATS。
 2. 从同一份 Docker 开发配置读取数据库映射端口、SMTP、JWT、Challenge、Session 和 MFA 设置。
 3. 在同一个 PostgreSQL 容器中执行 migration。
 4. 从宿主工作区启动 API 和三个前端，并记录 `.campusos/run/native-dev.pid`。
@@ -361,7 +363,7 @@ API/Web/Admin/Docs 使用 `--build --force-recreate`。两者都无需先执行 
 ```
 
 Docker 开发进程的标准输出仍保留在 `docker compose logs`，同时由启动脚本追加到宿主仓库
-`.campusos/logs/api.log`、`web.log`、`admin.log`、`docs.log`。因此管理后台“平台日志”在 Docker 模式也能
+`.campusos/logs/api.log`、`web.log`、`admin.log`、`docs.log`。Plugin UI 网关只提供静态、已校验产物，不写入用户文件内容。 因此管理后台“平台日志”在 Docker 模式也能
 读取并 follow 实时输出；这不是 Docker 导致能力缺失，而是容器 stdout 与原生日志文件原先没有桥接。
 修改 Compose 构建项或 `deploy/docker/dev-*.sh` 后需要重新构建/创建对应容器：
 

@@ -2,9 +2,9 @@
   <section class="plugin-center" aria-labelledby="plugin-center-title">
     <div class="page-heading">
       <div>
-        <h1 id="plugin-center-title">插件中心</h1>
+        <h1 id="plugin-center-title">用户目录与授权</h1>
         <p>
-          管理 v2 外部插件与第一方受管插件的目录可见性、用户请求和发布记录。
+          管理已安装外部插件在用户端的目录发布、用户请求、授权概览和发布审计。
         </p>
       </div>
       <el-button :loading="loading" @click="load">
@@ -14,7 +14,7 @@
     </div>
 
     <el-alert
-      title="目录展示通过受管数据合同的外部插件，以及随 CampusOS 交付的第一方受管插件。用户授权、文件和记录均由宿主保存，插件不能直接访问数据库。"
+      title="这是“外部插件运行管理”的实时目录投影，不是第二套插件安装记录：每个当前已安装的外部插件最多显示一条。发布仅决定用户是否能看到和请求它；安装、启停、管理员能力授权与系统配置仍在“外部插件运行管理”完成。"
       type="info"
       show-icon
       :closable="false"
@@ -38,8 +38,10 @@
     <section class="workspace-section" aria-labelledby="catalog-title">
       <div class="section-heading">
         <div>
-          <h2 id="catalog-title">目录与数据概览</h2>
-          <p>发布后，用户可在前台查看并按声明授权。</p>
+          <h2 id="catalog-title">用户目录发布与受管数据概览</h2>
+          <p>
+            每一行对应一个当前已安装的外部插件；发布后用户可在前台查看、请求并按声明授权。
+          </p>
         </div>
       </div>
       <el-table v-loading="loading" :data="items" class="desktop-table" stripe>

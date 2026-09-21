@@ -144,7 +144,7 @@ func containedPluginStoragePath(rootDir, pluginName string) (string, error) {
 }
 
 // ValidatePluginStorageName permits the manifest names used by CampusOS (for
-// example builtin.pdf-viewer) while rejecting separators, traversal and names
+// example campusos.pdf-viewer) while rejecting separators, traversal and names
 // that are unsafe as a single directory component on Windows or Linux.
 func ValidatePluginStorageName(name string) error {
 	if strings.TrimSpace(name) == "" {

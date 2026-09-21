@@ -180,7 +180,7 @@ import { spaceApi } from '@/modules/space/api'
 import { personalDocumentsApi } from '../api'
 import DocumentContentEditor from '@/modules/content-editor/components/DocumentContentEditor.vue'
 import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
-import { ensurePDFViewerConsent } from '@/modules/pdf-viewer/authorization'
+import { ensurePluginCapabilityConsent } from '@/campus-ui/pluginConsent'
 import {
   defaultDocumentContent,
   documentNameForFormat,
@@ -386,12 +386,13 @@ async function download(row: any) {
 async function previewPDF(row: any) {
   const presentation: SurfacePresentation = 'modal'
   try {
-    await ensurePDFViewerConsent('personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
     const result: any = await personalDocumentsApi.createPDFInvocation(row.id, presentation)
     const invocation = data(result)
     if (!invocation?.id) throw new Error('服务器未返回有效的 PDF 预览上下文')
     await openPluginSurface({
-      surfaceID: 'builtin.pdf-viewer.preview',
+      surfaceID: 'campusos.pdf-viewer.preview',
       invocationID: invocation.id,
       presentation,
     })

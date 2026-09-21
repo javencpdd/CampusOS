@@ -138,6 +138,12 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
+	case "v4":
+		if err := runPluginV4(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "plugin v4: %v\n", err)
+			return 1
+		}
+		return 0
 	case "help", "-h", "--help":
 		printPluginUsage(stdout)
 		return 0
@@ -466,4 +472,5 @@ func printPluginUsage(w io.Writer) {
 	fmt.Fprintln(w, "  doctor    diagnose manifest, capability and runtime-contract issues")
 	fmt.Fprintln(w, "  watch     rerun the development loop when source files change")
 	fmt.Fprintln(w, "  conformance run the v1 manifest/runtime/package conformance suite")
+	fmt.Fprintln(w, "  v4        validate, stage, package, sign or install a self-contained v4 plugin")
 }

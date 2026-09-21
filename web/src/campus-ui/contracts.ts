@@ -1,5 +1,5 @@
-export const UI_CONTRACT_VERSION = 'campusos.ui/v2'
-export const SUPPORTED_UI_CONTRACT_VERSIONS = ['campusos.ui/v1', UI_CONTRACT_VERSION] as const
+export const UI_CONTRACT_VERSION = 'campusos.ui/v3'
+export const SUPPORTED_UI_CONTRACT_VERSIONS = ['campusos.ui/v1', 'campusos.ui/v2', UI_CONTRACT_VERSION] as const
 
 export type BackendState =
   'installed' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'pending_restart' | 'error'
@@ -64,8 +64,13 @@ export interface UISurface {
   version: string
   type: string
   layout_role: string
-  renderer: 'schema' | 'trusted-module'
+  renderer: 'schema' | 'trusted-module' | 'isolated-iframe'
   module_id?: string
+  frame?: {
+    src: string
+    origin: string
+    audience: 'user' | 'admin'
+  }
   schema?: UISchemaNode
   data_contract?: Record<string, unknown>
   action_ids?: string[]
