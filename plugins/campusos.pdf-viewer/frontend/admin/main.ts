@@ -8,7 +8,7 @@ if (!hostOrigin || new URL(hostOrigin).origin !== hostOrigin || window.parent ==
   if (app) app.textContent = '插件设置必须由 CampusOS 管理宿主在隔离页面中打开。'
 } else {
   const client = new PluginBridgeClient(
-    { pluginKey: 'campusos.pdf-viewer', pluginVersion: '2.0.0-dev.1', surfaceID: 'settings', audience: 'admin' },
+    { pluginKey: 'campusos.pdf-viewer', pluginVersion: '2.0.0-dev.2', surfaceID: 'settings', audience: 'admin' },
     hostOrigin,
   )
   client

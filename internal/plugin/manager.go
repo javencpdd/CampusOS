@@ -191,23 +191,24 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 			p.FrontendState = restoredFrontendState(record.FrontendState, p)
 			p.Health = restoredHealthState(record.HealthState, p.Status)
 			p.ErrorMsg = record.ErrorMsg
-			// A builtin plugin has no imported package whose historical checksum
-			// should be restored. Its digest is derived from the compiled manifest
-			// and is the security identity synced to plugin_versions. Restoring an
-			// old persisted checksum would hide a manifest/version upgrade.
-			if p.Manifest.Runtime != "builtin" {
+			// Builtin modules and v4 isolated UI releases derive their checksum from
+			// the current immutable declaration/release.  That digest is the
+			// security identity synced to plugin_versions. Restoring an old
+			// persisted checksum would make a new semantic version appear to have
+			// the previous package's digest and can trigger a false integrity
+			// quarantine on the unique (plugin_id, package_digest) constraint.
+			if p.Manifest.Runtime != "builtin" && !p.IsolatedUI {
 				p.Checksum = record.Checksum
 			}
 			p.PackageSize = record.PackageSize
 			p.InstalledBy = record.InstalledBy
-			// Built-in modules are compiled with the host.  Older development
-			// databases may contain the specific automatic quarantine raised when
-			// this module's declarations changed without a version bump.  The
-			// current manifest has a new immutable version, so it is safe to
-			// recover that *automatic* quarantine and let the normal authorization
-			// synchronisation create a fresh version/declaration set.  Do not
-			// clear other errors or an administrator's deliberate stop.
-			if shouldRecoverBuiltinDeclarationUpgrade(record, p.Manifest) {
+			// Builtin modules and v4 isolated UI releases are host-managed immutable
+			// declarations. A prior development release may have been automatically
+			// quarantined after its declaration changed. When its semantic version
+			// has now advanced, recover only that precise automatic quarantine so the
+			// authorization synchronisation can create a fresh declaration set. Do
+			// not clear unrelated errors or an administrator's deliberate stop.
+			if shouldRecoverImmutableReleaseUpgrade(record, p) {
 				p.Status = StatusInstalled
 				p.DesiredEnabled = true
 				p.BackendState = BackendInstalled
@@ -263,15 +264,15 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 	return repo.Save(ctx, record)
 }
 
-const builtinDeclarationUpgradeQuarantineReason = "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+const immutableReleaseUpgradeQuarantineReason = "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
 
-func shouldRecoverBuiltinDeclarationUpgrade(record *PluginRecord, manifest *Manifest) bool {
-	if record == nil || manifest == nil || manifest.Runtime != "builtin" {
+func shouldRecoverImmutableReleaseUpgrade(record *PluginRecord, p *Plugin) bool {
+	if record == nil || p == nil || p.Manifest == nil || (p.Manifest.Runtime != "builtin" && !p.IsolatedUI) {
 		return false
 	}
-	return record.Version != "" && record.Version != manifest.Version &&
+	return record.Version != "" && record.Version != p.Manifest.Version &&
 		PluginStatus(record.Status) == StatusError &&
-		strings.TrimSpace(record.ErrorMsg) == builtinDeclarationUpgradeQuarantineReason
+		strings.TrimSpace(record.ErrorMsg) == immutableReleaseUpgradeQuarantineReason
 }
 
 func restoredBackendState(value string, status PluginStatus) BackendState {

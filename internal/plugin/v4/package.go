@@ -112,6 +112,18 @@ func PrepareReleaseDirectory(sourceRoot, destination string) (*Manifest, error) 
 			return nil, fmt.Errorf("copy v4 %s UI build output: %w", audience, err)
 		}
 	}
+	// Vite emits chunks, workers and other shared files in dist/assets while
+	// audience entries live in dist/user and dist/admin.  Those assets are part
+	// of the immutable release too: copying only the HTML entry leaves the
+	// iframe rendering its fallback text because its module script returns 404.
+	assets := filepath.Join(sourceRoot, "dist", "assets")
+	if _, err := os.Lstat(assets); err == nil {
+		if err := copyReleaseDirectory(assets, filepath.Join(destination, "ui", "assets")); err != nil {
+			return nil, fmt.Errorf("copy v4 shared UI assets: %w", err)
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("inspect v4 shared UI assets: %w", err)
+	}
 	if _, err := ValidateReleaseDirectory(destination); err != nil {
 		return nil, err
 	}

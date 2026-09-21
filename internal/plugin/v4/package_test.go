@@ -57,7 +57,7 @@ func TestInstallRejectsUnsignedReleaseWhenPolicyRequiresTrust(t *testing.T) {
 
 func TestPrepareReleaseDirectoryCopiesOnlyReleaseInputs(t *testing.T) {
 	source := t.TempDir()
-	for _, directory := range []string{"frontend/user", "frontend/admin", "dist/user", "dist/admin", "config"} {
+	for _, directory := range []string{"frontend/user", "frontend/admin", "dist/user", "dist/admin", "dist/assets", "config"} {
 		if err := os.MkdirAll(filepath.Join(source, directory), 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -69,6 +69,7 @@ func TestPrepareReleaseDirectoryCopiesOnlyReleaseInputs(t *testing.T) {
 		"frontend/user/main.ts":       "throw new Error('source must not ship')",
 		"dist/user/index.html":        "<!doctype html><title>user</title>",
 		"dist/admin/index.html":       "<!doctype html><title>admin</title>",
+		"dist/assets/user.js":         "console.log('user release asset')",
 		"config/system.schema.json":   `{"type":"object","additionalProperties":false}`,
 		"config/system.defaults.json": `{}`,
 		"config/user.schema.json":     `{"type":"object","additionalProperties":false}`,
@@ -86,6 +87,9 @@ func TestPrepareReleaseDirectoryCopiesOnlyReleaseInputs(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(release, "ui", "user", "index.html")); err != nil {
 		t.Fatalf("user release entry missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(release, "ui", "assets", "user.js")); err != nil {
+		t.Fatalf("shared UI release asset missing: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(release, "frontend", "user", "main.ts")); !os.IsNotExist(err) {
 		t.Fatalf("source was copied into release: %v", err)

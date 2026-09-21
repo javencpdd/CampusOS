@@ -58,3 +58,37 @@ func TestV4ReleaseUsesSeparateCatalogAndProjectsAnIsolatedFrame(t *testing.T) {
 		}
 	}
 }
+
+func TestV4RuntimeManifestTemplateOriginUsesBrowserFacingHost(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	manager := NewManager()
+	manager.RegisterRuntime("none", NewNoneRuntime())
+	manifest := testV4RuntimeManifest(t)
+	if _, err := manager.RegisterV4Release(V4Release{
+		Release:    pluginv4.InstalledRelease{Manifest: manifest, Path: t.TempDir(), Digest: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+		PublicPath: "plugins/campusos.pdf-viewer/2.0.0-dev.1-test",
+		UIOrigin:   "http://{host}:3003",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Start(manifest.Key); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewRuntimeHTTPHandler(manager, nil)
+	router := gin.New()
+	router.GET("/runtime", handler.RuntimeManifest)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/runtime", nil)
+	// Vite's Docker proxy must preserve this browser-visible host instead of
+	// replacing it with the internal API service name.
+	request.Host = "192.0.2.42:3000"
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatal(recorder.Body.String())
+	}
+	want := "http://192.0.2.42:3003/plugins/campusos.pdf-viewer/2.0.0-dev.1-test/ui/user/index.html"
+	if !strings.Contains(recorder.Body.String(), want) {
+		t.Fatalf("runtime manifest did not retain the browser-facing host: %s", recorder.Body.String())
+	}
+}

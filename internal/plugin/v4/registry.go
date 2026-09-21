@@ -74,6 +74,32 @@ func DiscoverInstalledReleases(root string) ([]InstalledRelease, error) {
 	return releases, nil
 }
 
+// DiscardDevelopmentReleases removes only the generated releases for one
+// plugin key. It is intentionally a development helper: production discovery
+// never calls it, and production upgrades must keep their explicit lifecycle
+// and rollback records. Docker development regenerates this derived directory
+// from the checked-in source on every API start, so retaining an older digest
+// would make the single-active-release registry reject the newly built UI.
+func DiscardDevelopmentReleases(root, key string) error {
+	if !pluginKeyPattern.MatchString(key) {
+		return errors.New("v4 development release key is invalid")
+	}
+	root, err := installationRoot(root)
+	if err != nil {
+		return err
+	}
+	installedRoot := filepath.Join(root, ".installed")
+	target := filepath.Join(installedRoot, key)
+	relative, err := filepath.Rel(installedRoot, target)
+	if err != nil || relative != key || filepath.IsAbs(relative) || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return errors.New("v4 development release path escapes installed root")
+	}
+	if err := os.RemoveAll(target); err != nil {
+		return fmt.Errorf("remove v4 development releases: %w", err)
+	}
+	return nil
+}
+
 func loadInstalledRelease(pathname string) (InstalledRelease, error) {
 	manifest, err := ValidateReleaseDirectory(pathname)
 	if err != nil {

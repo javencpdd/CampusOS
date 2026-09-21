@@ -31,3 +31,24 @@ func TestDiscoverInstalledReleasesIgnoresSourceAndDetectsTampering(t *testing.T)
 		t.Fatal("tampered installed release was accepted")
 	}
 }
+
+func TestDiscardDevelopmentReleasesOnlyRemovesRequestedPlugin(t *testing.T) {
+	root := t.TempDir()
+	for _, key := range []string{"campusos.pdf-viewer", "campusos.other-plugin"} {
+		if err := os.MkdirAll(filepath.Join(root, ".installed", key, "2.0.0-dev.1-test"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := DiscardDevelopmentReleases(root, "campusos.pdf-viewer"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".installed", "campusos.pdf-viewer")); !os.IsNotExist(err) {
+		t.Fatalf("requested development release was not removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".installed", "campusos.other-plugin")); err != nil {
+		t.Fatalf("unrelated plugin release was removed: %v", err)
+	}
+	if err := DiscardDevelopmentReleases(root, "../escape"); err == nil {
+		t.Fatal("invalid plugin key was accepted")
+	}
+}

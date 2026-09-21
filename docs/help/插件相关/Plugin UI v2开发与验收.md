@@ -1,7 +1,7 @@
 # Plugin UI v2 开发与验收
 
 > 适用基线：v1.1-dev  
-> 更新时间：2026-09-21 18:16（Asia/Shanghai）
+> 更新时间：2026-09-22（Asia/Shanghai）
 > 状态：本文是旧 `campusos.ui/v1/v2` 声明式合同的兼容说明。PDF Viewer 已迁至 v4 自包含包并使用 v3 隔离 iframe；当前实现与未完成项以[插件重构计划](../../项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)为准。
 
 ## 1. 解决什么问题
@@ -88,3 +88,12 @@ Token 或私钥。
 并不因此取得作者个人空间或 Personal Documents 的下载权。个人文档预览只创建绑定当前用户和 document ID 的短期
 Invocation；PDF.js 页面与 Worker 随插件 v4 release 发布到独立 Origin，浏览器可缓存插件代码，文件内容仍由认证 API
 私有返回且不被持久缓存。
+
+### v4 静态产物路径
+
+隔离网关只服务 `/plugins/<key>/<version>-<digest>/...`，不会服务站点根目录 `/assets/...`。因此 v4 插件的 Vite 构建
+必须使用相对 `base: './'`；打包器会将 `dist/user/`、`dist/admin/` 与共享的 `dist/assets/` 分别复制到 release 的
+`ui/user/`、`ui/admin/`、`ui/assets/`。若入口 HTML 仍引用 `/assets/...` 或 release 缺少 `ui/assets/`，浏览器只能显示
+“正在连接 CampusOS…”，因为 Bridge 客户端脚本尚未执行，并非授权被拒绝。
+
+修改插件前端构建配置或 v4 打包器后需执行 Docker `rebuild`，普通宿主 Vue/Go 源码变更仍由现有热加载处理。

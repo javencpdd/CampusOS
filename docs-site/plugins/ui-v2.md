@@ -1,6 +1,6 @@
 # Plugin UI v2 Surface
 
-> 更新时间：2026-09-21 18:16（Asia/Shanghai）。
+> 更新时间：2026-09-22（Asia/Shanghai）。
 > 适用范围：本文保留 `campusos.ui/v2` 的旧声明式合同说明。当前 PDF Viewer 已迁至 `campusos.plugin/v4` 自包含包并使用 `campusos.ui/v3` 隔离 iframe；请优先阅读[插件重构计划](../../docs/项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)和[当前架构](../../docs/architecture/模块设计/插件平台与授权体系.md)。
 
 `campusos.ui/v2` 为插件提供受宿主管理的界面打开能力。它适合 PDF 预览、受管数据详情等需要弹窗、抽屉、全屏或
@@ -50,6 +50,10 @@ Document 是否仍属于当前用户。三种调用都只携带短期 Invocation
 当前 PDF.js 产物随 `campusos.pdf-viewer` v4 release 发布到独立 Origin，可由浏览器缓存；受保护的 PDF 内容不进入
 持久缓存。通用签发仍由 `internal/platform/pluginui` 完成：只有宿主用户选择产生的 `resourceContext` 才能签发，
 不会从 Action body 信任文件路径或 owner。当前支持的资源仍只有三类 PDF 上下文，不提供 Office/音视频预览。
+
+v4 网关只服务 release 自身的 `/plugins/<key>/<version>-<digest>/...` 路径。插件 Vite 构建使用相对 `base: './'`，
+打包器会把入口目录和共享 `dist/assets/` 一并发布到 `ui/` 下；这样 PDF.js Worker 和 Bridge 脚本不会错误请求主站根目录
+`/assets/`。若页面停在“正在连接 CampusOS…”，应先检查入口和共享资源是否均在该 release 内返回 `200`，这发生在授权校验之前。
 
 ## 通用签发与下载降级
 

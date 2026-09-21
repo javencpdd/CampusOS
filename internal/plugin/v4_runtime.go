@@ -133,9 +133,10 @@ func (m *Manager) LoadV4Releases(root, publicOrigin string) error {
 // InstallV4DevelopmentSources is an explicit Docker-development convenience,
 // not production discovery. It builds a signed-contract release from already
 // compiled source artifacts and installs it through the same checksum and
-// atomic staging path as an uploaded package. A source edit that changes an
-// immutable version is rejected on the next restart instead of silently
-// replacing a release with inherited authorization decisions.
+// atomic staging path as an uploaded package. It replaces only derived
+// development releases for that key, so an old digest cannot compete with the
+// single release selected by the in-memory v4 registry. Production discovery
+// never uses this path and retains its explicit upgrade/rollback lifecycle.
 func (m *Manager) InstallV4DevelopmentSources(root string) error {
 	if m == nil {
 		return fmt.Errorf("plugin manager is required")
@@ -167,6 +168,9 @@ func (m *Manager) InstallV4DevelopmentSources(root string) error {
 			}
 			archivePath := filepath.Join(stage, manifest.Key+"-"+manifest.Version+".tar.gz")
 			if _, err = pluginv4.BuildReleaseArchive(releaseDir, archivePath); err != nil {
+				return
+			}
+			if err = pluginv4.DiscardDevelopmentReleases(root, manifest.Key); err != nil {
 				return
 			}
 			_, err = pluginv4.InstallReleaseArchive(archivePath, pluginv4.InstallOptions{RootDir: root})

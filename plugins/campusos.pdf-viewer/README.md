@@ -1,10 +1,21 @@
 # CampusOS PDF Viewer v4 源包
 
-> 更新时间：2026-09-21（Asia/Shanghai）
-> 状态：迁出准备骨架；当前生产/开发运行的 PDF 页面仍在旧 Web 模块，不能把本目录视为已安装或可运行插件。
+> 更新时间：2026-09-22（Asia/Shanghai）
+> 状态：当前唯一的 PDF 预览外部插件源码；开发环境会构建并打包为校验后的 v4 release。
 
-本包预留用户预览页面、管理员配置页面、配置 schema/defaults、测试和未来 PDF.js Worker 构建产物。
-R11-02 的跨 Origin iframe、Worker 和 Range 原型通过前，不复制或删除旧页面；R11-09 才迁移实际实现并移除宿主静态 import。
+本包包含用户端 PDF.js 页面、管理员页面、Bridge 客户端、PDF Worker、Manifest 以及系统/用户配置 schema。运行时只加载
+`plugins/.installed/campusos.pdf-viewer/<version>-<digest>/` 中校验通过的产物；源码、`node_modules`、用户配置与暂存目录不会
+被静态网关服务。
 
-包不含密码、Token、平台路径、数据库连接或可执行安装脚本。用户实际配置未来由宿主创建在
-`data/personal-space/<user-id>/plugins/campusos.pdf-viewer/config/`，不由本包直接访问。
+## 静态资源约定
+
+Vite 构建必须使用相对 `base: './'`。用户/管理员入口会被打入 `dist/user/`、`dist/admin/`，共享 JS、PDF.js Worker 等产物
+写入 `dist/assets/`；v4 打包器将其分别发布为 `ui/user/`、`ui/admin/` 和 `ui/assets/`。因此 iframe 内的脚本和 Worker 始终
+请求自身 release 路径，不会错误访问主站根目录 `/assets/`。
+
+开发中修改本包前端、Vite 构建配置或 v4 打包器后，执行 `./scripts/docker-dev.ps1 rebuild`（Windows）或
+`./scripts/docker-dev.sh rebuild`（Linux/WSL/Git Bash），以重新构建 `plugin-ui`、生成新的 release 并让 API 重新发现它。
+用户不需要生成密钥、Token 或手动编辑 `.installed`。
+
+权限、Bridge、三层授权和资源访问边界见
+[插件平台与授权体系](../../docs/architecture/模块设计/插件平台与授权体系.md)。
