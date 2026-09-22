@@ -154,6 +154,12 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-space") },
 	})
 	var personalDocumentsModule *personaldocuments.Module
+	personalDocumentReader := personalDocumentPDFReader{service: func() *personaldocuments.Service {
+		if personalDocumentsModule == nil {
+			return nil
+		}
+		return personalDocumentsModule.Service()
+	}}
 	richtextModule := richtext.NewModule(richtext.ModuleConfig{
 		AssetStoreConfig: func() richtext.AssetStoreConfig {
 			return richtext.AssetStoreConfigFromPluginConfig(features.Registry().Config("controlled-richtext-article"), features.Registry().Config("personal-space"))
@@ -179,12 +185,8 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			}
 			return nil
 		},
-		PersonalDocumentPDFReader: personalDocumentPDFReader{service: func() *personaldocuments.Service {
-			if personalDocumentsModule == nil {
-				return nil
-			}
-			return personalDocumentsModule.Service()
-		}},
+		PersonalDocumentPDFReader:        personalDocumentReader,
+		PersonalDocumentAttachmentReader: personalDocumentReader,
 		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
 			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
 				if identityModule.Permissions() == nil {

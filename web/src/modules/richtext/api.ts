@@ -47,6 +47,8 @@ export const richTextApi = {
   },
   bindAttachment: (threadId: string, data: { asset_id: string; display_name?: string }) =>
     api.post(`/richtext/articles/${threadId}/attachments`, data),
+  attachPersonalDocument: (threadId: string, data: { document_id: string; display_name?: string }) =>
+    api.post(`/richtext/articles/${threadId}/attachments/from-personal-document`, data),
   reorderAttachments: (threadId: string, attachmentIDs: string[]) =>
     api.patch(`/richtext/articles/${threadId}/attachments/order`, { attachment_ids: attachmentIDs }),
   renameAttachment: (threadId: string, attachmentId: string, displayName: string) =>

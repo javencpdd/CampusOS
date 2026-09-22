@@ -164,6 +164,42 @@ func (s *Service) AttachExisting(ctx context.Context, userID, threadID, assetID,
 	return attachment, nil
 }
 
+// AttachPersonalDocument copies the current, owner-scoped version of an
+// eligible Personal Document into a normal article attachment. Keeping a
+// snapshot is intentional: later edits, restoration or deletion of the
+// private document must never change bytes that a published article exposes.
+func (s *Service) AttachPersonalDocument(ctx context.Context, userID, threadID, documentID, displayName string) (*ArticleAttachment, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(documentID) == "" {
+		return nil, ErrAssetNotFound
+	}
+	// Check article ownership before opening the private document stream.
+	if _, _, err := s.editableArticle(ctx, threadID, userID); err != nil {
+		return nil, err
+	}
+	if s.personalDocumentAttachmentReader == nil {
+		return nil, ErrAssetUnavailable
+	}
+	source, err := s.personalDocumentAttachmentReader.OpenOwnDocumentForAttachment(ctx, userID, strings.TrimSpace(documentID))
+	if err != nil {
+		return nil, err
+	}
+	if source.Object.Reader == nil {
+		return nil, ErrAssetUnavailable
+	}
+	defer source.Object.Reader.Close()
+	if source.Format != "pdf" && source.Format != "docx" {
+		return nil, ErrAttachmentType
+	}
+	name := strings.TrimSpace(displayName)
+	if name == "" {
+		name = source.Name
+	}
+	return s.UploadAttachment(ctx, userID, threadID, name, source.Object.Object.MimeType, source.Object.Object.SizeBytes, source.Object.Reader)
+}
+
 func (s *Service) RemoveAttachment(ctx context.Context, userID, threadID, attachmentID string) error {
 	article, _, err := s.editableArticle(ctx, threadID, userID)
 	if err != nil {

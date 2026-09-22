@@ -5,7 +5,7 @@
         <div class="header">
           <div>
             <h2>我的文档</h2>
-            <span>文档仅自己可见；每次保存都会生成可恢复的新版本。已上传图片在“已上传资源”中只读展示。</span>
+            <span>文档仅自己可见；每次保存都会生成可恢复的新版本。文章附件与图片资源会在各自的只读资源页展示。</span>
           </div>
           <el-button v-if="activePane === 'documents'" type="primary" @click="createDocument">新建文本</el-button>
         </div>
@@ -56,6 +56,68 @@
               </template>
             </el-table-column>
           </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="文章附件" name="attachments">
+          <div class="media-panel" v-loading="articleAttachmentLoading">
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+              title="这里汇总你上传或从个人文档添加到图文文章的附件。它们属于个人空间，仅你可在此下载或预览；已被文章引用的文件不能移入回收站。"
+            />
+            <div class="toolbar">
+              <el-button
+                :type="articleAttachmentStatus === 'active' ? 'primary' : 'default'"
+                plain
+                @click="loadArticleAttachments('active')"
+                >我的附件</el-button
+              >
+              <el-button
+                :type="articleAttachmentStatus === 'trashed' ? 'primary' : 'default'"
+                plain
+                @click="loadArticleAttachments('trashed')"
+                >回收站</el-button
+              >
+            </div>
+            <el-empty
+              v-if="!articleAttachmentLoading && articleAttachments.length === 0"
+              :description="articleAttachmentStatus === 'trashed' ? '附件回收站为空。' : '暂时没有文章附件。'"
+            />
+            <el-table v-else :data="articleAttachments">
+              <el-table-column prop="original_name" label="文件名" min-width="220" />
+              <el-table-column label="类型 / 大小" min-width="180">
+                <template #default="{ row }"
+                  >{{ row.mime_type || '未知类型' }} · {{ formatBytes(Number(row.size_bytes || 0)) }}</template
+                >
+              </el-table-column>
+              <el-table-column prop="updated_at" label="更新时间" min-width="170" />
+              <el-table-column label="操作" width="220">
+                <template #default="{ row }">
+                  <el-button v-if="isPDFAsset(row)" link type="primary" @click="previewArticleAttachmentPDF(row)"
+                    >预览</el-button
+                  >
+                  <el-button link type="primary" @click="downloadArticleAttachment(row)">下载</el-button>
+                  <el-button
+                    v-if="row.status === 'active'"
+                    link
+                    type="danger"
+                    @click="changeArticleAttachmentStatus(row, true)"
+                    >移入回收站</el-button
+                  >
+                  <el-button v-else link type="success" @click="changeArticleAttachmentStatus(row, false)"
+                    >恢复</el-button
+                  >
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-button
+              v-if="articleAttachmentNextCursor"
+              :loading="articleAttachmentLoading"
+              @click="loadArticleAttachments(articleAttachmentStatus, true)"
+              >加载更多附件</el-button
+            >
+          </div>
         </el-tab-pane>
 
         <el-tab-pane label="已上传资源" name="media">
@@ -212,13 +274,17 @@ const versions = ref<any[]>([])
 const previewVisible = ref(false)
 const previewHTML = ref('')
 const editor = ref<any>({})
-const activePane = ref<'documents' | 'media'>('documents')
+const activePane = ref<'documents' | 'attachments' | 'media'>('documents')
 const mediaLoading = ref(false)
 const mediaLoaded = ref(false)
 const mediaLoadNotice = ref('')
 const avatars = ref<any[]>([])
 const contentImages = ref<any[]>([])
 const richTextImages = ref<any[]>([])
+const articleAttachmentLoading = ref(false)
+const articleAttachmentStatus = ref<'active' | 'trashed'>('active')
+const articleAttachments = ref<any[]>([])
+const articleAttachmentNextCursor = ref('')
 const editable = computed(() => isEditableDocumentFormat(editor.value.format))
 const data = (response: any) => response?.data?.data ?? response?.data ?? response
 
@@ -288,6 +354,26 @@ async function loadMedia(force = false) {
     mediaLoadNotice.value = '部分图片资源暂时无法加载，可能是对应功能未启用或服务正在恢复；请稍后刷新重试。'
   mediaLoaded.value = true
   mediaLoading.value = false
+}
+
+async function loadArticleAttachments(next = articleAttachmentStatus.value, append = false) {
+  if (append && (!articleAttachmentNextCursor.value || articleAttachmentLoading.value)) return
+  articleAttachmentStatus.value = next
+  articleAttachmentLoading.value = true
+  if (!append) {
+    articleAttachments.value = []
+    articleAttachmentNextCursor.value = ''
+  }
+  try {
+    const result = data(await richTextApi.listUserAssets(next, append ? articleAttachmentNextCursor.value : ''))
+    const items = (result?.items || []).filter((asset: any) => asset.kind === 'article_attachment')
+    articleAttachments.value = append ? [...articleAttachments.value, ...items] : items
+    articleAttachmentNextCursor.value = result?.next_cursor || ''
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '加载文章附件失败')
+  } finally {
+    articleAttachmentLoading.value = false
+  }
 }
 
 function createDocument() {
@@ -380,6 +466,66 @@ async function download(row: any) {
     ElMessage.success('已开始下载个人文档')
   } catch (error: any) {
     ElMessage.error(error?.msg || error?.message || '个人文档下载失败，请刷新后重试')
+  }
+}
+
+async function downloadArticleAttachment(row: any) {
+  try {
+    const result: any = await richTextApi.downloadUserAsset(row.id)
+    const blob = result?.data || result
+    if (!(blob instanceof Blob)) throw new Error('下载内容不可用')
+    const url = URL.createObjectURL(blob)
+    const link = window.document.createElement('a')
+    link.href = url
+    link.download = row.original_name || 'attachment'
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('已开始下载个人文章附件')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || error?.message || '文章附件下载失败，请刷新后重试')
+  }
+}
+
+function isPDFAsset(row: any) {
+  return (
+    row?.mime_type === 'application/pdf' ||
+    String(row?.original_name || '')
+      .toLowerCase()
+      .endsWith('.pdf')
+  )
+}
+
+async function previewArticleAttachmentPDF(row: any) {
+  const presentation: SurfacePresentation = 'modal'
+  try {
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
+    const result: any = await richTextApi.createPersonalAssetPDFInvocation(row.id, presentation)
+    const invocation = data(result)
+    if (!invocation?.id) throw new Error('服务器未返回有效的 PDF 预览上下文')
+    await openPluginSurface({
+      surfaceID: 'campusos.pdf-viewer.preview',
+      invocationID: invocation.id,
+      presentation,
+    })
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载后使用本地阅读器打开。')
+  }
+}
+
+async function changeArticleAttachmentStatus(row: any, trash: boolean) {
+  try {
+    await ElMessageBox.confirm(
+      trash ? '未被文章引用的附件会移入回收站，可稍后恢复。' : '恢复该文章附件？',
+      trash ? '移入回收站' : '恢复文章附件',
+      { type: 'warning' },
+    )
+    await (trash ? richTextApi.trashUserAsset(row.id) : richTextApi.restoreUserAsset(row.id))
+    await loadArticleAttachments()
+    ElMessage.success('操作成功')
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.msg || '操作失败')
   }
 }
 
@@ -476,6 +622,7 @@ function goSpaceSettings() {
 
 watch(activePane, (next) => {
   if (next === 'media') void loadMedia()
+  if (next === 'attachments') void loadArticleAttachments()
 })
 onMounted(() => load())
 </script>

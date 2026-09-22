@@ -20,12 +20,13 @@ const ModuleID = "feature.controlled-richtext-article"
 const portStore = "feature.controlled-richtext-article.adapter.store"
 
 type ModuleConfig struct {
-	AssetStoreConfig          func() AssetStoreConfig
-	Enabled                   func() bool
-	PDFViewerEnabled          func() bool
-	PDFViewerAuthorizer       func(context.Context, PDFViewerAuthorizationInput) error
-	SurfaceValidator          SurfaceValidator
-	PersonalDocumentPDFReader PersonalDocumentPDFReader
+	AssetStoreConfig                 func() AssetStoreConfig
+	Enabled                          func() bool
+	PDFViewerEnabled                 func() bool
+	PDFViewerAuthorizer              func(context.Context, PDFViewerAuthorizationInput) error
+	SurfaceValidator                 SurfaceValidator
+	PersonalDocumentPDFReader        PersonalDocumentPDFReader
+	PersonalDocumentAttachmentReader PersonalDocumentAttachmentReader
 }
 
 // Module composes controlled rich-text through the public Community and User
@@ -120,6 +121,7 @@ func (m *Module) Start(ctx context.Context) error {
 	svc.SetPDFViewerAuthorizer(m.config.PDFViewerAuthorizer)
 	svc.SetSurfaceValidator(m.config.SurfaceValidator)
 	svc.SetPersonalDocumentPDFReader(m.config.PersonalDocumentPDFReader)
+	svc.SetPersonalDocumentAttachmentReader(m.config.PersonalDocumentAttachmentReader)
 	config := AssetStoreConfig{}
 	if m.config.AssetStoreConfig != nil {
 		config = m.config.AssetStoreConfig()

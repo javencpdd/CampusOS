@@ -238,6 +238,11 @@ type AttachmentBindRequest struct {
 	DisplayName string `json:"display_name,omitempty"`
 }
 
+type PersonalDocumentAttachmentRequest struct {
+	DocumentID  string `json:"document_id" binding:"required"`
+	DisplayName string `json:"display_name,omitempty"`
+}
+
 type AttachmentUpdateRequest struct {
 	DisplayName string `json:"display_name" binding:"required"`
 }

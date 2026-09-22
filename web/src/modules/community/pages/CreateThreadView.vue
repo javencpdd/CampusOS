@@ -185,7 +185,7 @@
                 @change="uploadAttachment"
               />
               <el-button size="small" :loading="attachmentUploading" @click="chooseAttachment">上传附件</el-button>
-              <el-button size="small" @click="openAssetPicker">从我的附件添加</el-button>
+              <el-button size="small" @click="openAssetPicker">从我的文件添加</el-button>
             </div>
             <el-empty v-if="attachments.length === 0" :image-size="42" description="尚未添加附件" />
             <div v-for="(attachment, index) in attachments" :key="attachment.id" class="attachment-editor-row">
@@ -227,36 +227,80 @@
     <el-drawer v-model="previewVisible" title="文章预览" size="60%">
       <article class="article-content" v-html="previewHtml"></article>
     </el-drawer>
-    <el-dialog v-model="assetPickerVisible" title="我的附件与回收站" width="min(720px, 92vw)">
-      <el-radio-group v-model="assetPickerStatus" class="asset-picker-tabs" @change="loadUserAssets()">
-        <el-radio-button label="active">可添加附件</el-radio-button>
-        <el-radio-button label="trashed">回收站</el-radio-button>
-      </el-radio-group>
-      <p class="attachment-hint">回收站附件不可添加到文章；恢复后才可再次使用。已经被文章引用的附件不能移入回收站。</p>
-      <el-empty
-        v-if="userAssets.length === 0"
-        :description="assetPickerStatus === 'trashed' ? '回收站为空。' : '暂无可添加的个人附件，请先上传一个附件。'"
-      />
-      <el-table v-else :data="userAssets" size="small" max-height="360">
-        <el-table-column prop="original_name" label="文件名" min-width="220" />
-        <el-table-column label="类型/大小" min-width="170"
-          ><template #default="scope"
-            >{{ scope.row.mime_type }} · {{ formatAttachmentSize(scope.row.size_bytes) }}</template
-          ></el-table-column
-        >
-        <el-table-column label="操作" width="132"
-          ><template #default="scope"
-            ><el-button v-if="assetPickerStatus === 'active'" text type="primary" @click="bindExistingAsset(scope.row)"
-              >添加</el-button
+    <el-dialog v-model="assetPickerVisible" title="从我的文件添加" width="min(720px, 92vw)">
+      <el-tabs v-model="assetPickerSource" class="asset-picker-tabs">
+        <el-tab-pane label="个人附件" name="assets">
+          <el-radio-group v-model="assetPickerStatus" class="asset-picker-tabs" @change="loadUserAssets()">
+            <el-radio-button label="active">可添加附件</el-radio-button>
+            <el-radio-button label="trashed">回收站</el-radio-button>
+          </el-radio-group>
+          <p class="attachment-hint">
+            回收站附件不可添加到文章；恢复后才可再次使用。已经被文章引用的附件不能移入回收站。
+          </p>
+          <el-empty
+            v-if="userAssets.length === 0"
+            :description="assetPickerStatus === 'trashed' ? '回收站为空。' : '暂无可添加的个人附件，请先上传一个附件。'"
+          />
+          <el-table v-else :data="userAssets" size="small" max-height="360">
+            <el-table-column prop="original_name" label="文件名" min-width="220" />
+            <el-table-column label="类型/大小" min-width="170"
+              ><template #default="scope"
+                >{{ scope.row.mime_type }} · {{ formatAttachmentSize(scope.row.size_bytes) }}</template
+              ></el-table-column
             >
-            <el-button v-if="assetPickerStatus === 'active'" text type="danger" @click="trashUserAsset(scope.row)"
-              >移入回收站</el-button
+            <el-table-column label="操作" width="132"
+              ><template #default="scope"
+                ><el-button
+                  v-if="assetPickerStatus === 'active'"
+                  text
+                  type="primary"
+                  @click="bindExistingAsset(scope.row)"
+                  >添加</el-button
+                >
+                <el-button v-if="assetPickerStatus === 'active'" text type="danger" @click="trashUserAsset(scope.row)"
+                  >移入回收站</el-button
+                >
+                <el-button v-else text type="primary" @click="restoreUserAsset(scope.row)">恢复</el-button></template
+              ></el-table-column
             >
-            <el-button v-else text type="primary" @click="restoreUserAsset(scope.row)">恢复</el-button></template
-          ></el-table-column
-        >
-      </el-table>
-      <el-button v-if="assetNextCursor" :loading="assetsLoading" @click="loadUserAssets(true)">加载更多附件</el-button>
+          </el-table>
+          <el-button v-if="assetNextCursor" :loading="assetsLoading" @click="loadUserAssets(true)"
+            >加载更多附件</el-button
+          >
+        </el-tab-pane>
+        <el-tab-pane label="个人文档" name="documents">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            title="仅显示可作为文章附件的 PDF 和 DOCX。添加时会创建独立快照，之后修改、恢复或删除原个人文档不会改变已发布文章。"
+          />
+          <el-empty
+            v-if="!personalDocumentsLoading && personalAttachmentDocuments.length === 0"
+            description="暂无可添加的 PDF 或 DOCX 个人文档。"
+          />
+          <el-table
+            v-else
+            :data="personalAttachmentDocuments"
+            v-loading="personalDocumentsLoading"
+            size="small"
+            max-height="360"
+          >
+            <el-table-column prop="name" label="文件名" min-width="220" />
+            <el-table-column label="类型/大小" min-width="170">
+              <template #default="scope">
+                {{ String(scope.row.format || '').toUpperCase() }} ·
+                {{ formatAttachmentSize(scope.row.current_version?.size_bytes) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="84">
+              <template #default="scope"
+                ><el-button text type="primary" @click="bindPersonalDocument(scope.row)">添加</el-button></template
+              >
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
     </el-dialog>
   </div>
 </template>
@@ -266,6 +310,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { richTextApi } from '@/modules/richtext/api'
+import { personalDocumentsApi } from '@/modules/personal-documents/api'
 import { mutualAidApi } from '@/modules/mutual-aid/api'
 import { secondhandApi } from '@/modules/secondhand/api'
 import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
@@ -298,11 +343,14 @@ const attachmentInput = ref<HTMLInputElement | null>(null)
 const attachmentUploading = ref(false)
 const attachments = ref<any[]>([])
 const assetPickerVisible = ref(false)
+const assetPickerSource = ref<'assets' | 'documents'>('assets')
 const userAssets = ref<any[]>([])
 const assetPickerStatus = ref<'active' | 'trashed'>('active')
 const assetNextCursor = ref('')
 const assetsLoading = ref(false)
 let assetListRevision = 0
+const personalAttachmentDocuments = ref<any[]>([])
+const personalDocumentsLoading = ref(false)
 const categories = ref<
   Array<{
     id: string
@@ -595,8 +643,9 @@ const openAssetPicker = async () => {
   const threadId = await ensureDraftForAttachments()
   if (!threadId) return
   assetPickerStatus.value = 'active'
+  assetPickerSource.value = 'assets'
   assetPickerVisible.value = true
-  await loadUserAssets()
+  await Promise.all([loadUserAssets(), loadPersonalAttachmentDocuments()])
 }
 
 const loadUserAssets = async (append = false) => {
@@ -631,6 +680,33 @@ const bindExistingAsset = async (asset: any) => {
     ElMessage.success('已添加已有附件')
   } catch (error: any) {
     ElMessage.error(error?.msg || '添加附件失败')
+  }
+}
+
+const loadPersonalAttachmentDocuments = async () => {
+  personalDocumentsLoading.value = true
+  try {
+    const result: any = await personalDocumentsApi.list('active')
+    const payload = unwrap(result)
+    personalAttachmentDocuments.value = (payload?.items || []).filter((document: any) =>
+      ['pdf', 'docx'].includes(String(document?.format || '').toLowerCase()),
+    )
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '无法读取个人文档')
+  } finally {
+    personalDocumentsLoading.value = false
+  }
+}
+
+const bindPersonalDocument = async (document: any) => {
+  if (!draftThreadId.value) return
+  try {
+    await richTextApi.attachPersonalDocument(draftThreadId.value, { document_id: document.id })
+    assetPickerVisible.value = false
+    await loadAttachments()
+    ElMessage.success('已创建个人文档快照并添加到文章草稿')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '添加个人文档附件失败')
   }
 }
 
@@ -784,6 +860,9 @@ const mergeTags = (...groups: string[][]) => {
 
 watch(() => plainForm.category_id, applyPlainDefaultTags)
 watch(() => articleForm.category_id, applyArticleDefaultTags)
+watch(assetPickerSource, (source) => {
+  if (assetPickerVisible.value && source === 'documents') void loadPersonalAttachmentDocuments()
+})
 watch(
   plainForm,
   () => {

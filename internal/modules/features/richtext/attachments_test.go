@@ -67,6 +67,14 @@ func (r testPersonalDocumentPDFReader) OpenOwnPDFDocument(_ context.Context, own
 	}, nil
 }
 
+func (r testPersonalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Context, owner, id string) (PersonalDocumentAttachment, error) {
+	document, err := r.OpenOwnPDFDocument(ctx, owner, id)
+	if err != nil {
+		return PersonalDocumentAttachment{}, err
+	}
+	return PersonalDocumentAttachment{ID: document.ID, Name: document.Name, Format: document.Format, Object: document.Object}, nil
+}
+
 func newTestObjectPort() *testObjectPort {
 	return &testObjectPort{items: map[string]struct {
 		object corestorage.Object
@@ -189,6 +197,41 @@ func TestArticleAttachmentRejectsUnsafeTypeAndProtectedTrash(t *testing.T) {
 	}
 	if err := svc.TrashUserAsset(context.Background(), "1001", attachment.AssetID); err != nil {
 		t.Fatalf("trash unreferenced asset: %v", err)
+	}
+}
+
+func TestAttachPersonalDocumentCopiesOwnerScopedSnapshot(t *testing.T) {
+	svc := newAttachmentTestService(t)
+	draft := createAttachmentDraft(t, svc)
+	pdf := []byte("%PDF-1.7\\n1 0 obj\\n<<>>\\nendobj\\n")
+	svc.SetPersonalDocumentAttachmentReader(testPersonalDocumentPDFReader{owner: "1001", id: "document-1", name: "我的资料.pdf", body: pdf})
+
+	attachment, err := svc.AttachPersonalDocument(context.Background(), "1001", draft.ThreadID, "document-1", "")
+	if err != nil {
+		t.Fatalf("attach personal document: %v", err)
+	}
+	if attachment.Asset.Kind != AssetKindAttachment || attachment.DisplayName != "我的资料.pdf" {
+		t.Fatalf("unexpected copied attachment: %#v", attachment)
+	}
+	if attachment.Asset.StorageObjectID == "document-object" {
+		t.Fatal("article attachment retained the Personal Documents storage object instead of copying a snapshot")
+	}
+	objects := svc.objects.(*testObjectPort)
+	stored, ok := objects.items[attachment.Asset.StorageObjectID]
+	if !ok || !bytes.Equal(stored.body, pdf) {
+		t.Fatalf("copied attachment bytes=%q found=%v, want personal document bytes", stored.body, ok)
+	}
+	assets, err := svc.ListMyUserAssets(context.Background(), "1001", AssetStatusActive)
+	if err != nil || len(assets) != 1 || assets[0].ID != attachment.AssetID {
+		t.Fatalf("personal attachment index=%#v err=%v", assets, err)
+	}
+
+	otherDraft, err := svc.CreateDraft(context.Background(), "1002", "bob", SaveArticleRequest{Title: "另一篇", CategoryID: "1", ContentHTML: "<p>正文</p>"})
+	if err != nil {
+		t.Fatalf("create other draft: %v", err)
+	}
+	if _, err := svc.AttachPersonalDocument(context.Background(), "1002", otherDraft.ThreadID, "document-1", ""); !errors.Is(err, ErrAssetNotFound) {
+		t.Fatalf("another user must not copy the personal document: %v", err)
 	}
 }
 

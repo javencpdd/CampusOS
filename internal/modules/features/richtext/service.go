@@ -19,17 +19,18 @@ import (
 )
 
 type Service struct {
-	store                  Store
-	community              communityport.ContentGateway
-	assets                 *LocalAssetStore
-	objects                corestorage.ObjectPort
-	enabled                func() bool
-	pdfViewerEnabled       func() bool
-	pdfViewerAuthorize     func(context.Context, PDFViewerAuthorizationInput) error
-	surfaceValidator       SurfaceValidator
-	personalDocumentReader PersonalDocumentPDFReader
-	reliable               *reliability.Service
-	meter                  observability.Meter
+	store                            Store
+	community                        communityport.ContentGateway
+	assets                           *LocalAssetStore
+	objects                          corestorage.ObjectPort
+	enabled                          func() bool
+	pdfViewerEnabled                 func() bool
+	pdfViewerAuthorize               func(context.Context, PDFViewerAuthorizationInput) error
+	surfaceValidator                 SurfaceValidator
+	personalDocumentReader           PersonalDocumentPDFReader
+	personalDocumentAttachmentReader PersonalDocumentAttachmentReader
+	reliable                         *reliability.Service
+	meter                            observability.Meter
 }
 
 // PersonalDocumentPDFReader is a deliberately narrow composition seam for the
@@ -41,6 +42,21 @@ type PersonalDocumentPDFReader interface {
 }
 
 type PersonalDocumentPDF struct {
+	ID     string
+	Name   string
+	Format string
+	Object corestorage.ObjectReader
+}
+
+// PersonalDocumentAttachmentReader is the equally narrow composition seam
+// used when a document owner adds one of their private documents to an
+// article. The returned stream is copied into a RichText-owned attachment;
+// RichText never retains a Personal Documents object ID or repository handle.
+type PersonalDocumentAttachmentReader interface {
+	OpenOwnDocumentForAttachment(context.Context, string, string) (PersonalDocumentAttachment, error)
+}
+
+type PersonalDocumentAttachment struct {
 	ID     string
 	Name   string
 	Format string
@@ -78,6 +94,10 @@ func (s *Service) SetPDFViewerAuthorizer(authorizer func(context.Context, PDFVie
 
 func (s *Service) SetPersonalDocumentPDFReader(reader PersonalDocumentPDFReader) {
 	s.personalDocumentReader = reader
+}
+
+func (s *Service) SetPersonalDocumentAttachmentReader(reader PersonalDocumentAttachmentReader) {
+	s.personalDocumentAttachmentReader = reader
 }
 
 func (s *Service) authorizePDFViewer(ctx context.Context, input PDFViewerAuthorizationInput) error {

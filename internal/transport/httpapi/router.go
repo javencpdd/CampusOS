@@ -255,6 +255,7 @@ func Build(d Dependencies) *Router {
 		authenticated.POST("/assets/:id/restore", d.RichText.RestoreUserAsset)
 		authenticated.GET("/richtext/articles/:id/attachments", d.RichText.ListAttachments)
 		authenticated.POST("/richtext/articles/:id/attachments", d.RichText.BindAttachment)
+		authenticated.POST("/richtext/articles/:id/attachments/from-personal-document", d.RichText.AttachPersonalDocument)
 		authenticated.POST("/richtext/articles/:id/attachments/upload", d.RichText.UploadAttachment)
 		authenticated.PATCH("/richtext/articles/:id/attachments/order", d.RichText.ReorderAttachments)
 		authenticated.PATCH("/richtext/articles/:id/attachments/:attachment_id", d.RichText.RenameAttachment)

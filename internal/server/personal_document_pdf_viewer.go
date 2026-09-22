@@ -30,6 +30,31 @@ func (r personalDocumentPDFReader) OpenOwnPDFDocument(ctx context.Context, owner
 	return richtext.PersonalDocumentPDF{ID: document.ID, Name: document.Name, Format: document.Format, Object: object}, nil
 }
 
+// OpenOwnDocumentForAttachment exposes one active, supported personal
+// document as a stream for RichText to copy. It deliberately does not expose
+// the underlying repository or object ID, so article attachments remain
+// independent snapshots with their own lifecycle and ACL.
+func (r personalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Context, owner, documentID string) (richtext.PersonalDocumentAttachment, error) {
+	if r.service == nil || r.service() == nil {
+		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetUnavailable
+	}
+	document, object, err := r.service().OpenCurrent(ctx, owner, documentID)
+	if err != nil {
+		// Keep the source document owner-scoped and opaque. The caller must not
+		// learn whether an arbitrary document ID exists for another user.
+		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetNotFound
+	}
+	if document.Status != personaldocuments.StatusActive {
+		_ = object.Reader.Close()
+		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetNotFound
+	}
+	if document.Format != personaldocuments.FormatPDF && document.Format != personaldocuments.FormatDOCX {
+		_ = object.Reader.Close()
+		return richtext.PersonalDocumentAttachment{}, richtext.ErrAttachmentType
+	}
+	return richtext.PersonalDocumentAttachment{ID: document.ID, Name: document.Name, Format: document.Format, Object: object}, nil
+}
+
 func personalDocumentPDFPreviewUnavailable() error {
 	return &personaldocuments.PDFPreviewError{
 		Status:  http.StatusServiceUnavailable,

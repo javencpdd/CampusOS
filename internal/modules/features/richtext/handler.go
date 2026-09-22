@@ -323,6 +323,25 @@ func (h *Handler) BindAttachment(c *gin.Context) {
 	response.Created(c, attachment)
 }
 
+func (h *Handler) AttachPersonalDocument(c *gin.Context) {
+	userID, _, ok := currentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后再从个人文档添加文章附件。")
+		return
+	}
+	var req PersonalDocumentAttachmentRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "个人文档附件请求无效，请重新选择文件后重试。")
+		return
+	}
+	attachment, err := h.svc.AttachPersonalDocument(c.Request.Context(), userID, c.Param("id"), req.DocumentID, req.DisplayName)
+	if err != nil {
+		writePersonalDocumentAttachmentError(c, err)
+		return
+	}
+	response.Created(c, attachment)
+}
+
 func (h *Handler) ListAttachments(c *gin.Context) {
 	userID, _, ok := currentUser(c)
 	if !ok {
@@ -769,6 +788,19 @@ func writeAttachmentError(c *gin.Context, err error, providedBytes int64, usages
 		response.Error(c, http.StatusNotFound, 73004, "文章或个人附件不存在、已下架或当前无权访问。")
 	default:
 		writeRichTextError(c, err)
+	}
+}
+
+func writePersonalDocumentAttachmentError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrAssetNotFound), errors.Is(err, ErrPermissionDenied):
+		response.Error(c, http.StatusNotFound, 73004, "个人文档不存在、已移入回收站，或当前无权添加。")
+	case errors.Is(err, ErrAttachmentType):
+		response.Error(c, http.StatusBadRequest, 73002, "该个人文档不能作为文章附件。目前仅支持 PDF 或 DOCX。")
+	case errors.Is(err, ErrAssetUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 10006, "个人文档存储暂不可用，请稍后重试。")
+	default:
+		writeAttachmentError(c, err, 0)
 	}
 }
 
