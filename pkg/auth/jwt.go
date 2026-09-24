@@ -14,6 +14,7 @@ import (
 type JWTClaims struct {
 	UserID      string `json:"user_id"`
 	Username    string `json:"username"`
+	Nickname    string `json:"nickname,omitempty"`
 	SessionID   string `json:"session_id,omitempty"`
 	AuthVersion int64  `json:"auth_version,omitempty"`
 	TokenType   string `json:"typ,omitempty"`
@@ -28,6 +29,10 @@ const AccessTokenType = "access"
 type AccessTokenContext struct {
 	SessionID   string
 	AuthVersion int64
+	// Nickname is an optional display-name snapshot for lightweight callers.
+	// CampusOS production middleware refreshes it from the verified identity
+	// record before exposing it to a request.
+	Nickname string
 }
 
 // JWTConfig JWT 配置
@@ -68,6 +73,7 @@ func (m *JWTManager) GenerateAccessToken(userID, username string, contexts ...Ac
 	claims := JWTClaims{
 		UserID:      userID,
 		Username:    username,
+		Nickname:    context.Nickname,
 		SessionID:   context.SessionID,
 		AuthVersion: context.AuthVersion,
 		TokenType:   AccessTokenType,

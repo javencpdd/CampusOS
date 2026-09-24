@@ -1,6 +1,6 @@
 # CampusOS migration ER 图生成工具
 
-> 更新时间：2026-09-11
+> 更新时间：2026-09-12
 
 该工具递归扫描 `migrations/**/*.up.sql`，静态解析 PostgreSQL 建表、主键、全局唯一约束和外键，生成同源的：
 
@@ -53,10 +53,11 @@ bash migrations/tools/generate_er.sh
 Git Bash 会跳过 WindowsApps 中不可执行的 `python3` 别名，依次尝试可用的 `python3`、`python` 和 `py -3`；
 也可通过 `PYTHON_BIN` 显式指定解释器。
 
-默认输出目录为 `docs/architecture/database-er/`。如需临时输出到其他位置：
+默认输出目录为 `migrations/er/current/`。目录下的 `current/` 是文档入口与 CI 检查的唯一权威投影；如需保留某次
+审查快照，请显式指定日期目录，不要改写 `current/` 的输出位置：
 
 ```bash
-python migrations/tools/generate_er.py --migrations migrations --out /tmp/campusos-er
+python migrations/tools/generate_er.py --migrations migrations --out migrations/er/20260919
 ```
 
 ## 3. 漂移检查

@@ -42,13 +42,13 @@
       <div class="section-heading">
         <div>
           <h3>用户与板块范围</h3>
-          <p>未选择任何板块表示撤销该用户的版主角色。</p>
+          <p>未选择任何板块表示撤销该用户的版主角色。用户名用于唯一检索，昵称是对外显示名称。</p>
         </div>
         <el-input v-model="keyword" clearable placeholder="搜索用户" style="width: 220px" />
       </div>
       <el-table :data="filteredUsers" border stripe>
-        <el-table-column prop="username" label="用户名" min-width="150" />
-        <el-table-column prop="nickname" label="昵称" min-width="150" />
+        <el-table-column prop="username" label="用户名（唯一标识）" min-width="170" />
+        <el-table-column prop="nickname" label="昵称（对外显示）" min-width="170" />
         <el-table-column label="负责板块" min-width="320">
           <template #default="{ row }">
             <div v-if="assignmentFor(row.id).categories.length" class="category-tags">
@@ -69,7 +69,7 @@
 
     <el-dialog v-model="dialogVisible" title="配置板块版主" width="560px" destroy-on-close>
       <div v-if="selectedUser" class="scope-dialog">
-        <p><strong>{{ selectedUser.username }}</strong>（{{ selectedUser.nickname }}）</p>
+        <p><strong>{{ selectedUser.nickname }}</strong>（用户名：{{ selectedUser.username }}）</p>
         <el-form label-position="top">
           <el-form-item label="负责板块">
             <el-select v-model="selectedCategoryIds" multiple filterable placeholder="选择一个或多个板块" style="width: 100%">

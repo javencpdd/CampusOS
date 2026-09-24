@@ -1,9 +1,41 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteRecordRaw } from "vue-router";
 
 export const operationRoutes: RouteRecordRaw[] = [
-  { path: 'events', name: 'Events', component: () => import('./pages/EventLogView.vue'), meta: { title: '事件日志' } },
-  { path: 'platform-logs', name: 'PlatformLogs', component: () => import('./pages/PlatformLogsView.vue'), meta: { title: '平台日志' } },
-  { path: 'reliability', name: 'Reliability', component: () => import('./pages/ReliabilityView.vue'), meta: { title: '可靠任务' } },
-  { path: 'architecture', name: 'SystemArchitecture', component: () => import('@/modules/architecture/pages/SystemArchitectureView.vue'), meta: { title: '数据架构' } },
-  { path: 'docs', name: 'DeveloperDocs', component: () => import('@/modules/docs/pages/DeveloperDocsView.vue'), meta: { title: '相关资料' } },
-]
+  {
+    path: "events",
+    name: "Events",
+    component: () => import("./pages/EventLogView.vue"),
+    meta: { title: "事件日志" },
+  },
+  {
+    path: "platform-logs",
+    name: "PlatformLogs",
+    component: () => import("./pages/PlatformLogsView.vue"),
+    meta: { title: "平台日志" },
+  },
+  {
+    path: "reliability",
+    name: "Reliability",
+    component: () => import("./pages/ReliabilityView.vue"),
+    meta: { title: "可靠任务" },
+  },
+  {
+    path: "asset-governance",
+    name: "AssetGovernance",
+    component: () => import("./pages/AssetGovernanceView.vue"),
+    meta: { title: "附件治理", adminOnly: true },
+  },
+  {
+    path: "architecture",
+    name: "SystemArchitecture",
+    component: () =>
+      import("@/modules/architecture/pages/SystemArchitectureView.vue"),
+    meta: { title: "数据架构" },
+  },
+  {
+    path: "docs",
+    name: "DeveloperDocs",
+    component: () => import("@/modules/docs/pages/DeveloperDocsView.vue"),
+    meta: { title: "相关资料" },
+  },
+];

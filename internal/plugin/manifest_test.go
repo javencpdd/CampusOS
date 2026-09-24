@@ -195,6 +195,65 @@ ui:
 	}
 }
 
+func TestManifestUIV2AcceptsConstrainedOpenSurfaceAction(t *testing.T) {
+	manifest, err := ParseManifest([]byte(`
+name: preview-ui
+version: 1.0.0
+runtime: wasm
+ui:
+  contract_version: campusos.ui/v2
+  actions:
+    - id: preview-ui.open
+      label: Open preview
+      kind: open-surface
+      surface_id: preview-ui.preview
+      presentation: modal
+  surfaces:
+    - id: preview-ui.preview
+      version: v1
+      type: preview
+      layout_role: overlay
+      renderer: schema
+      schema: { component: stack }
+      action_ids: [preview-ui.open]
+      presentations: [modal, new-tab]
+`))
+	if err != nil {
+		t.Fatalf("parse constrained v2 open-surface action: %v", err)
+	}
+	if manifest.UI.ContractVersion != CurrentUIContract || manifest.UI.Actions[0].Kind != "open-surface" {
+		t.Fatalf("unexpected v2 UI contribution: %#v", manifest.UI)
+	}
+}
+
+func TestManifestUIV2RejectsOpenSurfaceURL(t *testing.T) {
+	_, err := ParseManifest([]byte(`
+name: unsafe-preview-ui
+version: 1.0.0
+runtime: wasm
+ui:
+  contract_version: campusos.ui/v2
+  actions:
+    - id: unsafe-preview-ui.open
+      label: Unsafe preview
+      kind: open-surface
+      surface_id: unsafe-preview-ui.preview
+      presentation: modal
+      path: https://example.invalid
+  surfaces:
+    - id: unsafe-preview-ui.preview
+      version: v1
+      type: preview
+      layout_role: overlay
+      renderer: schema
+      schema: { component: stack }
+      presentations: [modal]
+`))
+	if err == nil {
+		t.Fatal("expected open-surface URL to be rejected")
+	}
+}
+
 func TestManifestV2AcceptsManagedDataAndResponsiveContract(t *testing.T) {
 	manifest, err := ParseManifest([]byte(`
 api_version: campusos.plugin/v2

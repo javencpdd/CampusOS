@@ -1,34 +1,15 @@
-# 生命周期与数据
+# 插件生命周期：v4 运行约定
 
-CampusOS 不再用 `scope` 直接决定启停方式。`scope: system | user` 只描述管理级别、安装权限和系统重要性；后端和前端生效方式由 `lifecycle` 声明。
+> 更新时间：2026-09-23
 
-```yaml
-lifecycle:
-  backend:
-    activation_mode: plugin-restart
-  frontend:
-    activation_mode: hot
-```
+v4 的发布与运行边界如下：
 
-## 默认值
+1. 开发源码位于 `plugins/<key>/`，不得直接作为运行来源。
+2. 预检、打包、验签后写入 `plugins/.installed/<key>/<version>/`；切换活动版本必须原子完成。
+3. 管理员安装、发布、启用/禁用并治理能力；用户仅能添加已发布插件并同意本人数据访问。
+4. API 与 Gateway 每次 Bridge 调用均检查活动版本、管理员 Grant、用户 Consent（需要时）和业务资源 ACL。
+5. 禁用、撤销或卸载不会把已授权资源变成公开资源；插件自有配置仍由宿主保留、清理或恢复。
 
-| Runtime | 后端 | 前端 |
-| --- | --- | --- |
-| 受管进程（`grpc` 兼容名） | `plugin-restart` | `hot` |
-| Wasm | `hot` | `hot` |
+当前 `campusos.pdf-viewer` 为 `runtime: none` 的 UI 插件。Manifest 可枚举 Wasm/container Runtime，但通用生产执行、跨版本迁移与回滚流程仍需后续交付，不应据此假设可直接投产。
 
-旧 External Plugin manifest 会自动得到这些默认值。受管进程可以只重启插件；Wasm 使用候选实例验证成功后原子替换。`runtime: builtin` 只能解析用于迁移，不能安装；Core 始终启用，Built-in Feature 由独立 Feature Registry 按 `restart` 或 `hot-gated` 策略生效。
-
-## 三轴状态
-
-- BackendState：`installed / starting / running / restarting / stopping / stopped / pending_restart / error`。
-- FrontendState：`unloaded / loading / loaded / incompatible / error`。
-- Health：`healthy / degraded / unavailable / unknown`。
-
-后端短暂 restarting 或 degraded 时，前端页面不会消失。管理员明确停用或卸载插件后，Web 才清理其动态路由、导航、插槽、Surface 和 Action。旧 `status` 与 `pending_restart` 字段继续兼容。
-
-## 数据保留
-
-停止、禁用或热卸载前端不会自动删除 `data/plugin_data/<plugin>/`、PostgreSQL 配置和日志、用户业务数据或审计。External Plugin 卸载前应备份数据并阅读插件 README；Core/Built-in Feature 不进入卸载流程。
-
-下一步阅读 [前端运行时与 Gateway](./frontend-runtime.md)。
+参见[打包、安装与更新](/plugins/package-import)和[目录与用户数据](/plugins/market-managed-data)。

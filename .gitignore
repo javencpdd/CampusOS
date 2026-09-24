@@ -98,6 +98,14 @@ nats-data/
 /data/skills/*
 !/data/skills/.gitkeep
 
+# v4 plugin source is tracked. Install and staging roots are runtime state,
+# never executable source or a substitute for a reviewed release package.
+/plugins/.installed/
+/plugins/.staging/
+/plugins/**/node_modules/
+/plugins/**/dist/
+/plugins/**/.vite/
+
 # Runtime data belongs under the repository-level data directory or a Docker
 # volume, never under an internal Go package.
 /internal/**/data/

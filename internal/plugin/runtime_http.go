@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -44,9 +46,10 @@ func NewRuntimeHTTPHandler(manager *Manager, check PermissionChecker, registries
 func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 	userID := contextString(c, "user_id")
 	plugins := h.manager.ListPlugins()
-	items := make([]gin.H, 0, len(plugins))
+	v4Releases := h.manager.V4Releases()
+	items := make([]gin.H, 0, len(plugins)+len(v4Releases))
 	for _, p := range plugins {
-		if p == nil || p.Manifest == nil || p.Manifest.UI.Empty() || p.FrontendState == FrontendUnloaded {
+		if p == nil || p.Manifest == nil || p.IsolatedUI || p.Manifest.UI.Empty() || p.FrontendState == FrontendUnloaded {
 			continue
 		}
 		ui := cloneUI(p.Manifest.UI)
@@ -72,13 +75,96 @@ func (h *RuntimeHTTPHandler) RuntimeManifest(c *gin.Context) {
 			"lifecycle": state, "ui": ui,
 		})
 	}
+	items = append(items, h.v4RuntimePlugins(v4Releases, c.Request.Host)...)
+	contractVersion := CurrentUIContract
+	if len(v4Releases) > 0 {
+		contractVersion = "campusos.ui/v3"
+	}
 	response.Success(c, gin.H{
-		"contract_version": CurrentUIContract,
+		"contract_version": contractVersion,
 		"revision":         h.manager.UIRevision(),
 		"current_theme":    h.currentTheme(),
 		"plugins":          items,
 		"modules":          h.moduleContributions(),
 	})
+}
+
+func (h *RuntimeHTTPHandler) v4RuntimePlugins(releases []V4Release, requestHost string) []gin.H {
+	items := make([]gin.H, 0, len(releases))
+	for _, release := range releases {
+		manifest := release.Release.Manifest
+		if manifest == nil || manifest.UI.User == nil || manifest.Artifacts.UserUI == nil {
+			continue
+		}
+		installed, found := h.manager.GetPlugin(manifest.Key)
+		if !found || installed == nil {
+			continue
+		}
+		if !installed.DesiredEnabled || installed.FrontendState != FrontendLoaded {
+			continue
+		}
+		state, _ := h.manager.LifecycleState(manifest.Key)
+		frameOrigin, err := resolvedV4UIOrigin(release.UIOrigin, requestHost)
+		if err != nil {
+			continue
+		}
+		entry := strings.TrimLeft(manifest.Artifacts.UserUI.Entry, "/")
+		frameURL := strings.TrimRight(frameOrigin, "/") + "/" + strings.Trim(release.PublicPath, "/") + "/" + entry
+		surfaces := make([]UISurface, 0, len(manifest.UI.User.Surfaces))
+		routes := make([]UIRoute, 0, len(manifest.UI.User.Surfaces))
+		for _, surface := range manifest.UI.User.Surfaces {
+			surfaceID := manifest.Key + "." + surface.ID
+			surfaceType := "isolated-plugin"
+			for _, provider := range manifest.Previewers {
+				if provider.SurfaceID == surface.ID {
+					surfaceType = "document-preview"
+					break
+				}
+			}
+			surfaces = append(surfaces, UISurface{
+				ID: surfaceID, Version: manifest.Version, Type: surfaceType, LayoutRole: "main",
+				Renderer: "isolated-iframe", Frame: &UIFrame{Src: frameURL, Origin: frameOrigin, Audience: "user"},
+				Presentations: append([]string(nil), surface.Presentations...), Regions: []string{"isolated-frame"},
+			})
+			if containsPresentation(surface.Presentations, "page") {
+				routes = append(routes, UIRoute{ID: surfaceID + ".route", Path: "/extensions/" + manifest.Key + "/" + surface.Route, SurfaceID: surfaceID, Title: surface.Title, RequiresAuth: true})
+			}
+		}
+		items = append(items, gin.H{
+			"name": manifest.Key, "version": manifest.Version, "runtime": "none", "scope": ScopeSystem,
+			"lifecycle": state, "ui": UIContribution{ContractVersion: "campusos.ui/v3", Routes: routes, Surfaces: surfaces},
+		})
+	}
+	return items
+}
+
+func resolvedV4UIOrigin(configured, requestHost string) (string, error) {
+	configured = strings.TrimRight(strings.TrimSpace(configured), "/")
+	if strings.Contains(configured, "{host}") {
+		host := strings.TrimSpace(requestHost)
+		if parsedHost, _, err := net.SplitHostPort(host); err == nil {
+			host = parsedHost
+		}
+		host = strings.Trim(host, "[]")
+		if host == "" || strings.ContainsAny(host, "/\\?@") {
+			return "", fmt.Errorf("request host is invalid for v4 plugin UI")
+		}
+		configured = strings.ReplaceAll(configured, "{host}", host)
+	}
+	parsed, err := url.Parse(configured)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", fmt.Errorf("v4 plugin UI origin is invalid")
+	}
+	return parsed.String(), nil
+}
+
+func containsPresentation(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *RuntimeHTTPHandler) moduleContributions() []gin.H {

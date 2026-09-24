@@ -132,7 +132,7 @@ func (s *SessionService) IssueWithAuthentication(ctx context.Context, user *doma
 		AuthenticationStrength: strength, MFAAuthenticatedAt: cloneSessionServiceTime(mfaVerifiedAt),
 		LastActiveAt: now, ExpiresAt: now.Add(s.jwt.RefreshTTL()), CreatedAt: now, UpdatedAt: now,
 	}
-	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: session.ID, AuthVersion: user.AuthVersion})
+	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: session.ID, AuthVersion: user.AuthVersion, Nickname: user.Nickname})
 	if err != nil {
 		s.observeSession("issue", "error")
 		return nil, fmt.Errorf("generate session access token: %w", err)
@@ -265,7 +265,7 @@ func (s *SessionService) Refresh(ctx context.Context, rawRefresh string, metadat
 		s.observeSession("refresh", "invalid")
 		return nil, ErrRefreshTokenInvalid
 	}
-	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: issued.ID, AuthVersion: user.AuthVersion})
+	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: issued.ID, AuthVersion: user.AuthVersion, Nickname: user.Nickname})
 	if err != nil {
 		s.observeSession("refresh", "error")
 		return nil, fmt.Errorf("generate refreshed access token: %w", err)
@@ -291,6 +291,10 @@ func (s *SessionService) VerifyAccess(ctx context.Context, claims *auth.JWTClaim
 		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
+	// A nickname is presentation data, not an authorization fact. Refresh it
+	// from the verified record so a profile change affects new posts immediately
+	// instead of waiting for the short-lived access token to rotate.
+	claims.Nickname = user.Nickname
 	s.observeSession("verify", "success")
 	return nil
 }
@@ -333,7 +337,7 @@ func (s *SessionService) MarkMFA(ctx context.Context, userID, sessionID string) 
 	if updated == nil || user == nil {
 		return nil, ErrSessionInvalid
 	}
-	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: updated.ID, AuthVersion: user.AuthVersion})
+	accessToken, err := s.jwt.GenerateAccessToken(user.ID, user.Username, auth.AccessTokenContext{SessionID: updated.ID, AuthVersion: user.AuthVersion, Nickname: user.Nickname})
 	if err != nil {
 		return nil, fmt.Errorf("generate MFA step-up access token: %w", err)
 	}

@@ -1,6 +1,6 @@
 # CampusOS 完整入门路径
 
-这条路径面向第一次接触 CampusOS 的开发者。完成后，你应能启动四个服务、理解系统为何是“单进程但多模块”、找到课表与风格包管理入口，并完成一次最小改动和验证。
+这条路径面向第一次接触 CampusOS 的开发者。完成后，你应能启动五个开发服务、理解系统为何是“单进程但多模块”、找到管理入口，并完成一次最小改动和验证。
 
 希望按“每阶段完成标志”学习时，先使用 [开发者学习路线](/guide/developer-learning-path)；本页保留完整的
 一次性操作说明。
@@ -19,7 +19,7 @@ CampusOS 不是单模块应用，也不是一组微服务。它是 **模块化�
 | --- | --- | --- | --- |
 | Core Module | 是 | 否 | Identity、Community、Moderation、User Storage |
 | Built-in Feature | 是 | 否，可启停 | Personal Space、RichText、Personal Schedule、Appearance |
-| External Plugin | 否 | 是 | Wasm、受管进程和 Manifest v2 插件 |
+| External Plugin | 否 | 是 | 自包含 v4 插件，例如 PDF Viewer |
 | Resource Package | 否，只是数据资源 | 不走插件卸载流程 | 系统主题、首页包、个人主页风格、Skill、Prompt |
 
 `web`、`admin` 和 `docs-site` 是三个独立前端；它们共同访问 Go API。看到一个后端进程，不代表系统只有一个模块。
@@ -78,6 +78,7 @@ STOP_EXISTING=true make dev-all
 | 管理后台 | `http://localhost:3001` | 用户、权限、内容、内置功能、风格包、插件和运维 |
 | 官方文档 | `http://localhost:3002` | 当前这套入门、API 和插件开发教程 |
 | 后端 API | `http://localhost:8080/api/v1` | 浏览器和扩展调用的统一入口 |
+| Plugin UI Gateway | `http://localhost:3003` | 已校验外部插件 UI 的隔离来源，通常不直接打开 |
 
 快速检查：
 
@@ -105,8 +106,8 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | 版主管理 | `/moderators` | 版主动作上限，以及用户负责的具体板块范围 |
 | 内置功能 | `/features` | 个人空间、富文本、个人课表和 Appearance 的状态、生效方式与配置 |
 | 外观与风格包 | `/appearance` | 首页包切换/导入/回滚、系统主题目录和个人主页风格边界 |
-| 外部插件 | `/plugins` | 插件预检、导入、启停、更新、日志与导出 |
-| 插件中心 | `/plugin-center` | 管理员发布目录、用户请求、版本和治理审计 |
+| 外部插件运行管理 | `/plugins` | v4 发布包的预检、安装、启停、管理员能力授权与运行状态 |
+| 用户目录与授权 | `/plugin-center` | 已发布目录、可信市场来源/申请、用户添加与授权的治理视图；不负责执行未审核代码 |
 | 扩展总览 | `/extensions` | 四类扩展的统一清单，不合并它们的生命周期 |
 | 集成中心 | `/integrations` | AI、Webhook、MCP-like 和 Message Local 的能力状态 |
 
@@ -141,17 +142,17 @@ curl -fsS -H 'Accept: application/json' http://localhost:8080/api/v1
 | 个人课表 | `internal/modules/features/schedule/` |
 | 个人文档 | `internal/modules/features/personaldocuments/` |
 | User Storage | `internal/modules/core/userstorage/` |
-| 插件平台 | `internal/plugin/` |
+| 插件平台 | `internal/plugin/`、`plugins/` |
 | 风格包与 Appearance | `internal/modules/features/appearance/runtime/`、`internal/modules/features/appearance/stylepack/`、`internal/modules/features/appearance/webtheme/` |
 | 用户前台 | `web/src/modules/` |
 | 管理后台 | `admin/src/modules/` |
 | 官方文档站 | `docs-site/` |
 
-数据目录不要混用：
+数据目录不要混用。v4 插件源码及发布包与用户文件严格分离：
 
 ```text
-data/plugins/<id>/                 插件实现和 plugin.yaml
-data/plugin_data/<id>/             External Plugin 私有运行数据
+plugins/<key>/                     v4 插件源码和 plugin.yaml
+plugins/.installed/<key>/<version>/ 已校验不可变发布包
 data/module_data/<feature>/        Built-in Feature 本地可变数据
 data/resources/<type>/<id>/        Resource Package 仓库
 data/personal-space/<user-id>/     用户文件、课表和插件用户附件
@@ -200,7 +201,7 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 | 你的任务 | 下一页 |
 | --- | --- |
-| 开发插件 | [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial) |
+| 开发插件 | [以 PDF Viewer 学习第一个 v4 外部插件](/plugins/pdf-viewer-tutorial) |
 | 理解插件分类 | [插件体系](/plugins/overview) |
 | 调用 HTTP API | [接口约定](/api/overview) |
 | 编写风格包 | [风格包、特效与 CampusStyleSDK](/plugins/style-packs) |
@@ -235,9 +236,10 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 
 确认使用当前管理端代码并访问 `/features` 和 `/appearance`。课表用户数据不会出现在 Admin；系统主题的个人选择也在用户前台完成。
 
-**插件中心为空**
+**用户端插件中心为空**
 
-这通常表示管理员尚未把已安装 External Plugin 发布到用户目录，不表示 Built-in Feature 丢失。
+这通常表示管理员尚未在“用户目录与授权”中发布当前已安装的 External Plugin，不表示 Built-in Feature 丢失。目录是运行管理的投影，
+不应与“外部插件运行管理”重复出现不同版本的同一个插件。
 
 ## 完成标准
 
@@ -247,4 +249,4 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 - 能指出插件代码、插件数据、资源包和用户文件各自的目录。
 - 能按改动范围运行测试，并知道何时使用 `release-check`。
 
-下一步：[以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)。
+下一步：[以 PDF Viewer 学习第一个 v4 外部插件](/plugins/pdf-viewer-tutorial)。

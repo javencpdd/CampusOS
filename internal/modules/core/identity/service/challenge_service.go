@@ -359,7 +359,6 @@ func (s *ChallengeService) ConsumeTicketForCommand(ctx context.Context, request 
 		return nil, ErrChallengeTicket
 	}
 	email := domain.NormalizeEmail(request.Email)
-	var consumed *domain.EmailChallenge
 	challenge, err := s.store.GetChallengeForUpdate(ctx, strings.TrimSpace(request.PublicID))
 	if errors.Is(err, repository.ErrChallengeNotFound) {
 		return nil, ErrChallengeTicket
@@ -389,11 +388,7 @@ func (s *ChallengeService) ConsumeTicketForCommand(ctx context.Context, request 
 		return nil, err
 	}
 	copy := *challenge
-	consumed = &copy
-	if consumed == nil {
-		return nil, ErrChallengeTicket
-	}
-	return consumed, nil
+	return &copy, nil
 }
 
 // LookupForCommand is a narrowly scoped internal lookup for compound Core

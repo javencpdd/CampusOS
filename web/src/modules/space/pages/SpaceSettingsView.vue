@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2>个人主页</h2>
-        <p>配置公开主页、帖子展示筛选和风格包。</p>
+        <p>配置公开主页、帖子展示筛选和风格包。主页地址由注册时的用户名确定；帖子作者等对外名称使用昵称。</p>
       </div>
       <div class="header-actions">
         <el-button @click="goPublicSpace" :disabled="!owner?.username">
@@ -389,6 +389,51 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-card class="panel private-assets-panel" shadow="never">
+      <template #header>
+        <div class="panel-header">
+          <span>个人附件</span>
+          <el-button text type="primary" size="small" :loading="personalAssetsLoading" @click="loadPersonalAssets()">
+            刷新
+          </el-button>
+        </div>
+      </template>
+      <p class="form-hint">
+        此处仅列出并允许下载当前账号自己的附件；其他用户只能从已公开图文文章的附件列表下载。PDF 预览由受控插件 Surface
+        打开，不会产生公开文件链接。
+      </p>
+      <el-table v-if="personalAssets.length" :data="personalAssets" size="small" v-loading="personalAssetsLoading">
+        <el-table-column prop="original_name" label="文件" min-width="220" show-overflow-tooltip />
+        <el-table-column label="类型" min-width="150">
+          <template #default="{ row }">{{ row.mime_type || '未知' }}</template>
+        </el-table-column>
+        <el-table-column label="大小" width="110">
+          <template #default="{ row }">{{ formatBytes(row.size_bytes) }}</template>
+        </el-table-column>
+        <el-table-column label="更新时间" min-width="170">
+          <template #default="{ row }">{{ formatAvatarTime(row.updated_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <el-button text type="primary" size="small" @click="downloadPersonalAsset(row)">下载</el-button>
+            <el-button
+              v-if="row.mime_type === 'application/pdf'"
+              text
+              type="primary"
+              size="small"
+              @click="previewPersonalAssetPDF(row)"
+            >
+              预览
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else-if="!personalAssetsLoading" description="暂无可下载的个人附件。先在图文文章编辑器中添加附件。" />
+      <el-button v-if="personalAssetsCursor" :loading="personalAssetsLoading" @click="loadPersonalAssets(true, true)">
+        加载更多附件
+      </el-button>
+    </el-card>
   </div>
 </template>
 
@@ -398,6 +443,9 @@ import { useRouter } from 'vue-router'
 import { CircleCheck, Check, Download, Refresh, RefreshLeft, Switch, Upload, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { spaceApi } from '@/modules/space/api'
+import { richTextApi } from '@/modules/richtext/api'
+import { openPluginSurface, type SurfacePresentation } from '@/campus-ui/surfaceHost'
+import { ensurePluginCapabilityConsent } from '@/campus-ui/pluginConsent'
 import { styleExamples, type StylePackage } from '@/data/spaceStyleExamples'
 import { useUserStore } from '@/modules/identity/store'
 
@@ -532,6 +580,15 @@ interface AvatarHistoryItem {
   active: boolean
 }
 
+interface PersonalAsset {
+  id: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  status: string
+  updated_at: string
+}
+
 interface SpaceForm {
   title: string
   bio: string
@@ -555,6 +612,10 @@ const saving = ref(false)
 const uploadingAvatar = ref(false)
 const selectingAvatar = ref(false)
 const avatars = ref<AvatarHistoryItem[]>([])
+const personalAssets = ref<PersonalAsset[]>([])
+const personalAssetsLoading = ref(false)
+const personalAssetsCursor = ref('')
+let personalAssetsRevision = 0
 const validating = ref(false)
 const previewing = ref(false)
 const applying = ref(false)
@@ -654,11 +715,62 @@ const loadSpace = async () => {
     syncHTMLEditor(payload.space)
     storage.value = unwrap<SpaceStorageStatus>(storageRes)
     avatars.value = unwrap<{ items: AvatarHistoryItem[] }>(avatarRes)?.items || []
-    await loadSourceStylePacks(false)
+    await Promise.all([loadSourceStylePacks(false), loadPersonalAssets(false)])
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载个人主页失败')
   } finally {
     loading.value = false
+  }
+}
+
+const loadPersonalAssets = async (showError = true, append = false) => {
+  if (append && (personalAssetsLoading.value || !personalAssetsCursor.value)) return
+  const revision = ++personalAssetsRevision
+  personalAssetsLoading.value = true
+  if (!append) personalAssetsCursor.value = ''
+  try {
+    const payload = unwrap<{ items: PersonalAsset[]; next_cursor: string }>(
+      await richTextApi.listUserAssets('active', append ? personalAssetsCursor.value : ''),
+    )
+    if (revision !== personalAssetsRevision) return
+    personalAssets.value = append ? [...personalAssets.value, ...(payload.items || [])] : payload.items || []
+    personalAssetsCursor.value = payload.next_cursor || ''
+  } catch (error: any) {
+    if (revision !== personalAssetsRevision) return
+    if (!append) personalAssets.value = []
+    if (showError) ElMessage.error(error?.msg || '加载个人附件失败')
+  } finally {
+    if (revision === personalAssetsRevision) personalAssetsLoading.value = false
+  }
+}
+
+const downloadPersonalAsset = async (asset: PersonalAsset) => {
+  try {
+    const result: any = await richTextApi.downloadUserAsset(asset.id)
+    const blob = result?.data || result
+    if (!(blob instanceof Blob)) throw new Error('下载内容不可用')
+    downloadBlob(blob, asset.original_name || 'attachment', asset.mime_type || 'application/octet-stream')
+    ElMessage.success('已开始下载个人附件')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '个人附件下载失败，请刷新后重试')
+  }
+}
+
+const previewPersonalAssetPDF = async (asset: PersonalAsset) => {
+  const presentation: SurfacePresentation = 'modal'
+  try {
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
+    await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
+    const response: any = await richTextApi.createPersonalAssetPDFInvocation(asset.id, presentation)
+    const invocation = response?.data || response
+    openPluginSurface({
+      surfaceID: 'campusos.pdf-viewer.preview',
+      invocationID: invocation.id,
+      presentation,
+    })
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.warning(error?.msg || error?.message || 'PDF 预览暂不可用，请下载后使用本地阅读器打开。')
   }
 }
 
@@ -1138,6 +1250,9 @@ onMounted(loadSpace)
 }
 .panel {
   margin-bottom: 20px;
+}
+.private-assets-panel :deep(.el-table) {
+  margin-top: 12px;
 }
 .panel-header {
   display: flex;

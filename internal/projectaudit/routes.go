@@ -205,6 +205,12 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/admin/assets"):
+		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/assets"):
+		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/plugin-ui"):
+		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
 		return "feature.mutual-aid"
 	case strings.HasPrefix(path, APIPrefix+"/secondhand"):
@@ -263,6 +269,12 @@ func featureForRoute(path string) string {
 		return "personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/admin/assets"):
+		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/assets"):
+		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/plugin-ui"):
+		return "pdf-viewer"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):

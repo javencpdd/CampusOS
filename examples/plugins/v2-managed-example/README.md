@@ -34,3 +34,13 @@ go run ./cmd/campusosctl plugin pack examples/plugins/v2-managed-example
 ```
 
 打包或导出不会包含 CampusOS Session、Access Token、Refresh Token、JWT 私钥或数据库凭据。
+
+## Plugin UI v2 Surface 示例
+
+`plugin.yaml` 还包含一个可解析的 `campusos.ui/v2` 声明：`open-note` 只能请求一个命名的
+`note-preview` Surface，不能携带 URL、`window.open()` 指令或浏览器 Token。宿主可把该请求渲染为
+modal、drawer、fullscreen 或同源新标签页；实际展示方式必须在清单的 `presentations` 白名单内。
+
+这是一个开发者合同示例，并不意味着第三方代码可以被动态注入主站。外部插件仍使用声明式 schema；只有随
+CampusOS 编译的 Built-in Feature 才能声明 `trusted-module` Renderer。完整的清单规则、兼容范围和验收命令见
+[Plugin UI v2 开发与验收](../../../docs/help/插件相关/Plugin%20UI%20v2开发与验收.md)。

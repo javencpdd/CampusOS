@@ -63,6 +63,7 @@ RUN_RESTORE_DRILL=true RUN_BROWSER_SMOKE=true make release-check
 | Windows/Linux Docker 首配、热更新、代理、LAN 和日志 | `campusos-docker-development` |
 | Web/Admin 空态、字段、通知、表单、路由和跨层回归 | `campusos-webui-regression` |
 | 新增、移动、校验仓库 Skill 和发现桥接 | `campusos-skill-repository-sync` |
+| 需要以最小纵向切片完成并立即验证的 CampusOS 开发任务 | `senior-developer`，再按改动类型组合对应专项 Skill |
 
 Skill 不能替代代码事实和实际测试。每个项目 `SKILL.md` 与使用说明必须写明更新时间；完整审计见
 [仓库 Skills 文档](https://github.com/javencpdd/CampusOS/tree/main/skills)。修改 Skill 后执行

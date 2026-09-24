@@ -55,7 +55,7 @@ func (h *Handler) GetPublic(c *gin.Context) {
 }
 
 func (h *Handler) Create(c *gin.Context) {
-	userID, username, ok := currentUser(c)
+	userID, displayName, ok := currentUser(c)
 	if !ok {
 		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
@@ -65,7 +65,7 @@ func (h *Handler) Create(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	result, err := h.service.Create(c.Request.Context(), userID, username, req)
+	result, err := h.service.Create(c.Request.Context(), userID, displayName, req)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -134,8 +134,12 @@ func currentUser(c *gin.Context) (string, string, bool) {
 	if !ok || strings.TrimSpace(userID) == "" {
 		return "", "", false
 	}
-	username, _ := c.Get("username")
-	name, _ := username.(string)
+	nickname, _ := c.Get("nickname")
+	name, _ := nickname.(string)
+	if strings.TrimSpace(name) == "" {
+		username, _ := c.Get("username")
+		name, _ = username.(string)
+	}
 	return userID, name, true
 }
 

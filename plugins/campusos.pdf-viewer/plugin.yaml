@@ -1,0 +1,71 @@
+api_version: campusos.plugin/v4
+key: campusos.pdf-viewer
+version: 2.0.0-dev.2
+publisher:
+  id: campusos
+  name: CampusOS
+display_name: PDF 文档预览
+description: 通过宿主授权和受限 Bridge 预览当前用户有权读取的 PDF；不持有宿主路径、数据库连接或浏览器会话令牌。
+compatibility:
+  host: ">=1.1"
+  ui: campusos.ui/v3
+  bridge: campusos.bridge/v1
+backend:
+  runtime: none
+artifacts:
+  user_ui:
+    source: frontend/user
+    entry: ui/user/index.html
+  admin_ui:
+    source: frontend/admin
+    entry: ui/admin/index.html
+ui:
+  user:
+    surfaces:
+      - id: preview
+        route: preview
+        title: PDF 预览
+        presentations: [modal, drawer, fullscreen, new-tab]
+  admin:
+    surfaces:
+      - id: settings
+        route: settings
+        title: PDF 插件设置
+        presentations: [page]
+preview_providers:
+  - id: pdf
+    resource_types: [article_attachment, personal_asset, personal_document]
+    mime_types: [application/pdf]
+    surface_id: preview
+capabilities:
+  - code: article_attachment.self.preview
+    required: true
+    purpose: 预览当前用户有权阅读的图文文章 PDF 附件。
+    scope: self
+  - code: personal_space_file.self.read
+    required: true
+    purpose: 预览当前用户本人个人空间的 PDF 文件。
+    scope: self
+  - code: plugin_ui.surface.open
+    required: true
+    purpose: 仅在当前用户明确操作后打开宿主控制的预览界面。
+    scope: self
+  - code: plugin_record.self.read
+    required: false
+    purpose: 在用户同意后读取本人的 PDF 最近阅读位置。
+    scope: self
+  - code: plugin_record.self.write
+    required: false
+    purpose: 在用户同意后保存本人的 PDF 最近阅读位置。
+    scope: self
+configuration:
+  system:
+    schema: config/system.schema.json
+    defaults: config/system.defaults.json
+    version: v1
+  user:
+    schema: config/user.schema.json
+    defaults: config/user.defaults.json
+    version: v1
+data:
+  user_config_max_bytes: 262144

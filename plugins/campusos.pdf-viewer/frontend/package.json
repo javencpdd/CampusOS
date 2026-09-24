@@ -1,0 +1,20 @@
+{
+  "name": "@campusos-plugin/pdf-viewer",
+  "version": "2.0.0-dev.1",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@8.15.9",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "format:check": "prettier --check \"**/*.{ts,css,html,json,md}\""
+  },
+  "dependencies": {
+    "pdfjs-dist": "4.10.38"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vite": "^5.4.0",
+    "vitest": "^1.6.1"
+  }
+}

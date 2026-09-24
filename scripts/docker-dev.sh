@@ -158,6 +158,7 @@ validate_env() {
     "CAMPUSOS_DEV_WEB_BIND|127.0.0.1"
     "CAMPUSOS_DEV_ADMIN_BIND|127.0.0.1"
     "CAMPUSOS_DEV_DOCS_BIND|127.0.0.1"
+    "CAMPUSOS_DEV_PLUGIN_UI_BIND|127.0.0.1"
   )
   for bind_spec in "${bind_specs[@]}"; do
     IFS='|' read -r bind_key bind_value <<<"$bind_spec"
@@ -184,6 +185,7 @@ validate_env() {
     "CAMPUSOS_DEV_WEB_PORT|3000"
     "CAMPUSOS_DEV_ADMIN_PORT|3001"
     "CAMPUSOS_DEV_DOCS_PORT|3002"
+    "CAMPUSOS_DEV_PLUGIN_UI_PORT|3003"
     "CAMPUSOS_DEV_API_PORT|8080"
     "CAMPUSOS_DEV_POSTGRES_PORT|55432"
     "CAMPUSOS_DEV_REDIS_PORT|56379"
@@ -356,6 +358,7 @@ wait_for_application_ports() {
   ports+=("$(read_env_setting CAMPUSOS_DEV_WEB_PORT 3000)")
   ports+=("$(read_env_setting CAMPUSOS_DEV_ADMIN_PORT 3001)")
   ports+=("$(read_env_setting CAMPUSOS_DEV_DOCS_PORT 3002)")
+  ports+=("$(read_env_setting CAMPUSOS_DEV_PLUGIN_UI_PORT 3003)")
 
   local attempt port busy
   for attempt in {1..100}; do
@@ -396,7 +399,7 @@ start_stack() {
   fi
   up_args+=(--wait --wait-timeout "${CAMPUSOS_DOCKER_WAIT_TIMEOUT:-600}")
   if [[ "$build_mode" == "build" ]]; then
-    up_args+=(api web admin docs)
+    up_args+=(plugin-ui api web admin docs)
   fi
   compose "${up_args[@]}"
   compose ps
@@ -424,13 +427,13 @@ run_migrations() {
 stop_application_services() {
   check_docker
   local running
-  running="$(compose ps --services --status running api web admin docs)"
+  running="$(compose ps --services --status running api web admin docs plugin-ui)"
   if [[ -z "$running" ]]; then
     echo "No Docker development application services are running."
     return
   fi
   echo "Stopping Docker development application services: $(tr '\n' ' ' <<<"$running")"
-  compose stop api web admin docs
+  compose stop api web admin docs plugin-ui
 }
 
 case "$command" in
@@ -462,7 +465,7 @@ case "$command" in
     ;;
   build)
     check_docker
-    compose build api web admin docs
+    compose build api web admin docs plugin-ui
     ;;
   up)
     validate_env

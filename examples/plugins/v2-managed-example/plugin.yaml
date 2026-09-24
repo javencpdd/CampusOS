@@ -72,3 +72,39 @@ experience:
 config:
   command: ./plugin
   extension_url: http://127.0.0.1:19091
+ui:
+  # The v2 contract lets a plugin request a named Surface.  CampusOS, rather
+  # than the plugin, chooses and enforces the actual browser presentation.
+  contract_version: campusos.ui/v2
+  responsive:
+    supported_viewports: [mobile, tablet, desktop]
+    minimum_width: 360
+    mobile_behavior: responsive
+    overflow_policy: internal-only
+  actions:
+    - id: v2-managed-example.open-note
+      label: 打开便签
+      kind: open-surface
+      surface_id: v2-managed-example.note-preview
+      presentation: modal
+  surfaces:
+    - id: v2-managed-example.note-preview
+      version: v1
+      type: record-preview
+      layout_role: overlay
+      renderer: schema
+      schema:
+        component: stack
+        children:
+          - component: heading
+            text: 校园个人便签
+          - component: text
+            text: 内容由 CampusOS 受管数据接口按当前授权提供。
+      action_ids: [v2-managed-example.open-note]
+      presentations: [modal, drawer, fullscreen, new-tab]
+  routes:
+    - id: v2-managed-example.route.notes
+      path: /extensions/v2-managed-example/notes
+      surface_id: v2-managed-example.note-preview
+      title: 校园个人便签
+      requires_auth: true

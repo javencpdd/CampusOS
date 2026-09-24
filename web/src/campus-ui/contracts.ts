@@ -1,4 +1,5 @@
-export const UI_CONTRACT_VERSION = 'campusos.ui/v1'
+export const UI_CONTRACT_VERSION = 'campusos.ui/v3'
+export const SUPPORTED_UI_CONTRACT_VERSIONS = ['campusos.ui/v1', 'campusos.ui/v2', UI_CONTRACT_VERSION] as const
 
 export type BackendState =
   'installed' | 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'pending_restart' | 'error'
@@ -36,11 +37,23 @@ export interface UISlot {
   surface_id: string
   order?: number
 }
+// Supplied by a trusted host after the user selects a resource, not by schema.
+export interface UIResourceContext {
+  resource_type: 'article_attachment' | 'personal_asset' | 'personal_document'
+  resource_id: string
+  thread_id?: string
+}
 export interface UIAction {
   id: string
   label: string
-  method: string
-  path: string
+  kind?: 'request' | 'open-surface'
+  // A request action has method/path.  An open-surface action deliberately
+  // has neither: it may select only a declared surface and a host-owned
+  // presentation, never an arbitrary navigation URL.
+  method?: string
+  path?: string
+  surface_id?: string
+  presentation?: 'modal' | 'drawer' | 'fullscreen' | 'new-tab'
   permission?: string
   confirm?: boolean
   audit?: boolean
@@ -51,13 +64,19 @@ export interface UISurface {
   version: string
   type: string
   layout_role: string
-  renderer: 'schema' | 'trusted-module'
+  renderer: 'schema' | 'trusted-module' | 'isolated-iframe'
   module_id?: string
+  frame?: {
+    src: string
+    origin: string
+    audience: 'user' | 'admin'
+  }
   schema?: UISchemaNode
   data_contract?: Record<string, unknown>
   action_ids?: string[]
   public_tokens?: string[]
   regions?: string[]
+  presentations?: Array<'modal' | 'drawer' | 'fullscreen' | 'new-tab'>
 }
 export interface UISchemaNode {
   component: 'stack' | 'grid' | 'card' | 'heading' | 'text' | 'badge' | 'alert' | 'button' | 'list'
@@ -103,5 +122,6 @@ export interface RuntimeNavigation extends UINavigation {
 }
 export interface RuntimeSurface extends UISurface {
   plugin: string
+  plugin_version?: string
   lifecycle: LifecycleState
 }

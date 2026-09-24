@@ -247,6 +247,11 @@ func (r *PgMarketStore) UpsertCatalog(ctx context.Context, entry CatalogEntry) (
 		RETURNING plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at`, entry.PluginName, entry.DisplayName, entry.Description, entry.Version, entry.Runtime, entry.Visibility, entry.PackageChecksum, entry.RiskLevel, string(capabilities), string(permissions), string(experience), entry.UpdatedAt))
 }
 
+func (r *PgMarketStore) DeleteCatalog(ctx context.Context, pluginName string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM plugin_catalog_entries WHERE plugin_name=$1`, pluginName)
+	return err
+}
+
 func (r *PgMarketStore) ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error) {
 	rows, err := r.pool.Query(ctx, `SELECT plugin_name,display_name,description,version,runtime,visibility,package_checksum,risk_level,data_capabilities,user_permissions,experience,updated_at FROM plugin_catalog_entries WHERE ($1='' OR visibility=$1) ORDER BY plugin_name`, visibility)
 	if err != nil {
@@ -264,8 +269,51 @@ func (r *PgMarketStore) ListCatalog(ctx context.Context, visibility string) ([]C
 	return items, rows.Err()
 }
 
+func (r *PgMarketStore) UpsertMarketplaceSource(ctx context.Context, source MarketplaceSource) (MarketplaceSource, error) {
+	return scanMarketplaceSource(r.pool.QueryRow(ctx, `INSERT INTO plugin_market_sources (id,display_name,catalog_url,public_key,status,created_by,updated_by,created_at,updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		ON CONFLICT (id) DO UPDATE SET display_name=EXCLUDED.display_name,catalog_url=EXCLUDED.catalog_url,public_key=EXCLUDED.public_key,status=EXCLUDED.status,updated_by=EXCLUDED.updated_by,updated_at=EXCLUDED.updated_at
+		RETURNING id,display_name,catalog_url,public_key,status,created_by,updated_by,created_at,updated_at`, source.ID, source.DisplayName, source.CatalogURL, source.PublicKey, source.Status, source.CreatedBy, source.UpdatedBy, source.CreatedAt, source.UpdatedAt))
+}
+
+func (r *PgMarketStore) GetMarketplaceSource(ctx context.Context, sourceID string) (MarketplaceSource, error) {
+	return scanMarketplaceSource(r.pool.QueryRow(ctx, `SELECT id,display_name,catalog_url,public_key,status,created_by,updated_by,created_at,updated_at FROM plugin_market_sources WHERE id=$1`, sourceID))
+}
+
+func (r *PgMarketStore) ListMarketplaceSources(ctx context.Context, enabledOnly bool) ([]MarketplaceSource, error) {
+	rows, err := r.pool.Query(ctx, `SELECT id,display_name,catalog_url,public_key,status,created_by,updated_by,created_at,updated_at FROM plugin_market_sources WHERE (NOT $1 OR status='enabled') ORDER BY display_name,id`, enabledOnly)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MarketplaceSource{}
+	for rows.Next() {
+		item, scanErr := scanMarketplaceSource(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *PgMarketStore) DeleteMarketplaceSource(ctx context.Context, sourceID string) error {
+	result, err := r.pool.Exec(ctx, `DELETE FROM plugin_market_sources WHERE id=$1`, sourceID)
+	if err != nil {
+		if strings.Contains(err.Error(), "fk_plugin_install_requests_market_source") {
+			return ErrMarketConflict
+		}
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrMarketNotFound
+	}
+	return nil
+}
+
 func (r *PgMarketStore) CreateInstallRequest(ctx context.Context, request InstallRequest) (InstallRequest, error) {
-	_, err := r.pool.Exec(ctx, `INSERT INTO plugin_install_requests (id,plugin_name,user_id,message,status,created_at) VALUES ($1,$2,$3,$4,$5,$6)`, request.ID, request.PluginName, request.UserID, request.Message, request.Status, request.CreatedAt)
+	_, err := r.pool.Exec(ctx, `INSERT INTO plugin_install_requests (id,plugin_name,market_source_id,market_plugin_id,market_listing_url,market_package_url,market_version,market_publisher,user_id,message,status,created_at)
+		VALUES ($1,$2,NULLIF($3,''),NULLIF($4,''),$5,$6,$7,$8,$9,$10,$11,$12)`, request.ID, request.PluginName, request.MarketSourceID, request.MarketPluginID, request.MarketListingURL, request.MarketPackageURL, request.MarketVersion, request.MarketPublisher, request.UserID, request.Message, request.Status, request.CreatedAt)
 	if err != nil && strings.Contains(err.Error(), "uk_plugin_install_request_pending") {
 		return InstallRequest{}, ErrMarketConflict
 	}
@@ -273,7 +321,7 @@ func (r *PgMarketStore) CreateInstallRequest(ctx context.Context, request Instal
 }
 
 func (r *PgMarketStore) ListInstallRequests(ctx context.Context, status string) ([]InstallRequest, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id,plugin_name,user_id,message,status,reviewed_by,created_at,reviewed_at FROM plugin_install_requests WHERE ($1='' OR status=$1) ORDER BY created_at DESC`, status)
+	rows, err := r.pool.Query(ctx, `SELECT id,plugin_name,COALESCE(market_source_id,''),COALESCE(market_plugin_id,''),market_listing_url,market_package_url,market_version,market_publisher,user_id,message,status,reviewed_by,created_at,reviewed_at FROM plugin_install_requests WHERE ($1='' OR status=$1) ORDER BY created_at DESC`, status)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +338,7 @@ func (r *PgMarketStore) ListInstallRequests(ctx context.Context, status string) 
 }
 
 func (r *PgMarketStore) ReviewInstallRequest(ctx context.Context, id int64, reviewer, status string) (InstallRequest, error) {
-	return scanInstallRequest(r.pool.QueryRow(ctx, `UPDATE plugin_install_requests SET status=$1,reviewed_by=$2,reviewed_at=NOW() WHERE id=$3 AND status='pending' RETURNING id,plugin_name,user_id,message,status,reviewed_by,created_at,reviewed_at`, status, reviewer, id))
+	return scanInstallRequest(r.pool.QueryRow(ctx, `UPDATE plugin_install_requests SET status=$1,reviewed_by=$2,reviewed_at=NOW() WHERE id=$3 AND status='pending' RETURNING id,plugin_name,COALESCE(market_source_id,''),COALESCE(market_plugin_id,''),market_listing_url,market_package_url,market_version,market_publisher,user_id,message,status,reviewed_by,created_at,reviewed_at`, status, reviewer, id))
 }
 
 func (r *PgMarketStore) SaveRelease(ctx context.Context, release PluginRelease) (PluginRelease, error) {
@@ -443,11 +491,20 @@ func scanCatalog(row rowScanner) (CatalogEntry, error) {
 }
 func scanInstallRequest(row rowScanner) (InstallRequest, error) {
 	var request InstallRequest
-	err := row.Scan(&request.ID, &request.PluginName, &request.UserID, &request.Message, &request.Status, &request.ReviewedBy, &request.CreatedAt, &request.ReviewedAt)
+	err := row.Scan(&request.ID, &request.PluginName, &request.MarketSourceID, &request.MarketPluginID, &request.MarketListingURL, &request.MarketPackageURL, &request.MarketVersion, &request.MarketPublisher, &request.UserID, &request.Message, &request.Status, &request.ReviewedBy, &request.CreatedAt, &request.ReviewedAt)
 	if err != nil {
 		return InstallRequest{}, normalizeMarketRowError(err)
 	}
 	return request, nil
+}
+func scanMarketplaceSource(row rowScanner) (MarketplaceSource, error) {
+	var source MarketplaceSource
+	err := row.Scan(&source.ID, &source.DisplayName, &source.CatalogURL, &source.PublicKey, &source.Status, &source.CreatedBy, &source.UpdatedBy, &source.CreatedAt, &source.UpdatedAt)
+	if err != nil {
+		return MarketplaceSource{}, normalizeMarketRowError(err)
+	}
+	source.KeyFingerprint = marketplaceKeyFingerprint(source.PublicKey)
+	return source, nil
 }
 func scanRelease(row rowScanner) (PluginRelease, error) {
 	var release PluginRelease

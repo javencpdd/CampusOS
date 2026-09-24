@@ -36,8 +36,12 @@ const (
 var ErrAuthorizationDenied = errors.New("plugin authorization denied")
 
 type CapabilityDeclaration struct {
-	ID                 int64                  `json:"id"`
-	PluginVersionID    int64                  `json:"plugin_version_id"`
+	// PostgreSQL identifiers are 64-bit Snowflake values. They must cross the
+	// JSON/browser boundary as decimal strings: JavaScript Number silently loses
+	// precision above Number.MAX_SAFE_INTEGER, which would otherwise turn a
+	// valid declaration into a lookup for a different plugin version.
+	ID                 int64                  `json:"id,string"`
+	PluginVersionID    int64                  `json:"plugin_version_id,string"`
 	CapabilityCode     string                 `json:"capability_code"`
 	Purpose            string                 `json:"purpose"`
 	RiskLevel          string                 `json:"risk_level"`
@@ -48,8 +52,8 @@ type CapabilityDeclaration struct {
 }
 
 type PluginVersion struct {
-	ID                    int64                  `json:"id"`
-	PluginID              int64                  `json:"plugin_id"`
+	ID                    int64                  `json:"id,string"`
+	PluginID              int64                  `json:"plugin_id,string"`
 	PluginName            string                 `json:"plugin_name"`
 	Version               string                 `json:"version"`
 	PackageDigest         string                 `json:"package_digest"`
@@ -64,13 +68,13 @@ type PluginVersion struct {
 }
 
 type AdminGrant struct {
-	ID              int64                  `json:"id"`
-	PluginVersionID int64                  `json:"plugin_version_id"`
+	ID              int64                  `json:"id,string"`
+	PluginVersionID int64                  `json:"plugin_version_id,string"`
 	CapabilityCode  string                 `json:"capability_code"`
 	Status          string                 `json:"status"`
 	GrantedScope    map[string]interface{} `json:"granted_scope"`
 	PolicyRevision  int64                  `json:"policy_revision"`
-	DecidedBy       *int64                 `json:"decided_by,omitempty"`
+	DecidedBy       *int64                 `json:"decided_by,string,omitempty"`
 	Reason          string                 `json:"reason"`
 	ExpiresAt       *time.Time             `json:"expires_at,omitempty"`
 	SupersededAt    *time.Time             `json:"superseded_at,omitempty"`
@@ -79,9 +83,9 @@ type AdminGrant struct {
 }
 
 type UserConsent struct {
-	ID              int64                  `json:"id"`
-	UserID          int64                  `json:"user_id"`
-	PluginVersionID int64                  `json:"plugin_version_id"`
+	ID              int64                  `json:"id,string"`
+	UserID          int64                  `json:"user_id,string"`
+	PluginVersionID int64                  `json:"plugin_version_id,string"`
 	CapabilityCode  string                 `json:"capability_code"`
 	Status          string                 `json:"status"`
 	ConsentScope    map[string]interface{} `json:"consent_scope"`
@@ -95,9 +99,9 @@ type UserConsent struct {
 }
 
 type Delegation struct {
-	ID                  int64                  `json:"id"`
-	PluginVersionID     int64                  `json:"plugin_version_id"`
-	SubjectUserID       int64                  `json:"subject_user_id"`
+	ID                  int64                  `json:"id,string"`
+	PluginVersionID     int64                  `json:"plugin_version_id,string"`
+	SubjectUserID       int64                  `json:"subject_user_id,string"`
 	TokenDigest         string                 `json:"-"`
 	GrantedCapabilities []string               `json:"granted_capabilities"`
 	ResourceScope       map[string]interface{} `json:"resource_scope"`
@@ -105,21 +109,21 @@ type Delegation struct {
 	NotBefore           time.Time              `json:"not_before"`
 	ExpiresAt           time.Time              `json:"expires_at"`
 	RevokedAt           *time.Time             `json:"revoked_at,omitempty"`
-	CreatedBy           *int64                 `json:"created_by,omitempty"`
+	CreatedBy           *int64                 `json:"created_by,string,omitempty"`
 	CreatedAt           time.Time              `json:"created_at"`
 }
 
 type AuthorizationDecision struct {
-	ID              int64                  `json:"id"`
+	ID              int64                  `json:"id,string"`
 	RequestID       string                 `json:"request_id"`
-	PluginVersionID int64                  `json:"plugin_version_id"`
-	UserID          *int64                 `json:"user_id,omitempty"`
+	PluginVersionID int64                  `json:"plugin_version_id,string"`
+	UserID          *int64                 `json:"user_id,string,omitempty"`
 	CapabilityCode  string                 `json:"capability_code"`
 	OperationCode   string                 `json:"operation_code"`
 	ResourceScope   map[string]interface{} `json:"resource_scope"`
-	AdminGrantID    *int64                 `json:"admin_grant_id,omitempty"`
-	UserConsentID   *int64                 `json:"user_consent_id,omitempty"`
-	DelegationID    *int64                 `json:"delegation_id,omitempty"`
+	AdminGrantID    *int64                 `json:"admin_grant_id,string,omitempty"`
+	UserConsentID   *int64                 `json:"user_consent_id,string,omitempty"`
+	DelegationID    *int64                 `json:"delegation_id,string,omitempty"`
 	Outcome         string                 `json:"outcome"`
 	ReasonCode      AuthorizationReason    `json:"reason_code"`
 	PolicyRevision  int64                  `json:"policy_revision"`

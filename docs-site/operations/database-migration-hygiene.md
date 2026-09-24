@@ -1,95 +1,46 @@
 # 数据库迁移与 Schema 治理
 
-CampusOS 当前使用 v1.0 clean baseline，而不是历史 `000001-000049` 增量链。项目所有者确认全部旧数据为测试数据后，
-数据库从当前业务模型重新构建；旧开发库不能原地升级，必须经过明确的 development/test reset。
+> 更新时间：2026-09-16（Asia/Shanghai）
+
+CampusOS 当前使用单一 `000001_v1_1_schema_baseline`。项目所有者已确认当前开发数据均为测试数据，因此此前开发阶段
+`000001`–`000011` 已收敛为这一个可从零创建的 v1.1 基线；旧开发库不是原地升级目标，必须在明确的 development/test
+环境重置后重建。
 
 ## 当前结构
 
-| migration | 内容 |
-| --- | --- |
-| `000001_v1_schema_baseline` | 76 张现行业务表、外键、CHECK、索引、函数和触发器 |
-| `000002_v1_plugin_authorization_foundation` | 8 张插件身份、版本、三层授权、Delegation、Secret 和判定证据表 |
-| `000003_v1_reference_data` | 4 个系统角色、76 个 Permission Code、最小角色矩阵和身份安全策略 |
-| `000004_v1_authorization_runtime_corrections` | 修正 Secret 活跃版本轮换索引，并允许记录未声明能力的拒绝判定 |
-| `000005_v1_process_runtime` | 将 `process` 加入插件 Runtime 数据库约束，保留 `grpc` 兼容值 |
+`000001_v1_1_schema_baseline` 同时定义 88 张业务表、稳定角色/权限参考数据、105 个物理外键及其引用端前导索引，
+并覆盖核心业务、插件三层授权、图文附件、资产治理、三种 PDF Invocation 上下文、个人文档、课表、可靠任务和集成。
+执行器额外维护 `schema_migrations`、`schema_migration_locks` 两张系统表，因此空库完成迁移后 `public` 共 90 张表。
 
-执行器另建 `schema_migrations`、`schema_migration_locks`。最终为 84 张业务表和 2 张系统表。
-migration 不创建用户、管理员、邮箱、默认密码或默认版块。
+迁移不写入用户、管理员、邮箱、默认密码、默认版块或业务测试记录。旧 `permissions(resource, action)` 已删除，RBAC 统一使用
+`permission_definitions + role_permissions`；所有时间点字段使用 `TIMESTAMPTZ`。
 
-旧 `permissions(resource, action)` 已删除，RBAC 统一使用
-`permission_definitions + role_permissions`。所有时间点字段统一为 `TIMESTAMPTZ`。
+## 使用与 reset
 
-## 常用命令
+Linux/Git Bash 使用 `./scripts/migrate.sh status|check|up|down`，Windows PowerShell 使用
+`.\scripts\migrate.ps1 status|check|up|down`。`check` 验证版本、UP/DOWN 配对和 SHA-256；`up` 在一个事务中提交 SQL 与版本记录；
+`down` 一次只回滚最高版本。当前只有一个 baseline，development/test 中一次 `down` 会清除全部应用表和参考数据。
 
-Linux / Git Bash：
+对旧开发库必须执行带环境和数据库名双确认的 reset：
 
 ```bash
-./scripts/migrate.sh status
-./scripts/migrate.sh check
-./scripts/migrate.sh up
-./scripts/migrate.sh down
-```
-
-Windows PowerShell：
-
-```powershell
-.\scripts\migrate.ps1 status
-.\scripts\migrate.ps1 check
-.\scripts\migrate.ps1 up
-.\scripts\migrate.ps1 down
-```
-
-- `check` 检查版本、up/down 配对和已执行文件 SHA-256；
-- `up` 在单 migration 事务中同时提交 SQL 与版本记录；
-- `down` 一次只回滚最新版本；
-- 数据库锁阻止并发 migration；
-- checksum 漂移或旧格式 `schema_migrations` 会直接失败。
-
-## 重置旧开发库
-
-只允许确认可丢弃的 development/test 数据。示例：
-
-```bash
-CAMPUSOS_ENV=development \
-CAMPUSOS_RESET_CONFIRM=campusos \
+CAMPUSOS_SKIP_DOTENV=true CAMPUSOS_ENV=development CAMPUSOS_RESET_CONFIRM=campusos \
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos \
 ./scripts/migrate.sh reset
 ```
 
-确认值必须与真实 `DB_NAME` 完全一致。reset 会删除整个 `public` schema；production/staging 禁止使用。
-Windows 使用相同环境变量执行 `.\scripts\migrate.ps1 reset`。
+reset 会执行 `DROP SCHEMA public CASCADE`，不可恢复；production/staging 或任何需保留数据的数据库禁止使用。此类环境必须采取导出、
+转换与前向迁移方案，不能绕过 checksum。
 
-重置后管理员由安全 bootstrap/CLI 创建，不存在 migration 默认凭据。
-
-## Schema、数据和冗余门禁
+## 门禁与后续变更
 
 ```bash
-./scripts/database-check.sh audit
-./scripts/database-check.sh schema
-./scripts/database-check.sh hygiene
-POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+./scripts/database-check.sh all
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+python migrations/tools/generate_er.py --check
 make architecture-check
 ```
 
-- audit 检查重复、孤儿、非法状态和业务不变量；
-- schema 检查必需表、列、约束和索引；
-- hygiene 拒绝重复索引、相同谓词下被复合 B-tree 覆盖的窄索引和重复约束；
-- baseline drill 在隔离库验证零建库、无测试凭据、checksum drift、单步/全链 down、重新 up 和 reset；
-- architecture-check 确认 Admin `/architecture` 与 86 张当前表完全对齐。
-
-## 后续 migration
-
-下一编号是 `000006`。已经进入共享分支的 `000001-000005` 不得修改；任何修复都必须新增前向 migration。
-
-新增 Schema 时必须同步：
-
-1. up/down SQL；
-2. `scripts/schema-contract.sql` 和必要的数据审计；
-3. Admin 数据架构视图；
-4. migration README、架构/帮助和进度证据；
-5. 受影响 Repository/Service、Go、前端和浏览器测试。
-
-金额使用最小货币单位整数，时间点使用 `TIMESTAMPTZ`，JSONB 约束顶层类型，Token/验证码只存摘要，
-Secret 只存密文和 Key 版本，外键必须显式选择删除语义。
-
-更完整的模型、需求和每一步影响见仓库
-`docs/项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md`。
+baseline drill 在隔离临时库验证零建库、无测试凭据、checksum 漂移拒绝、单一基线 up/down/up 和结构合同。
+从本基线进入共享或不可丢弃环境开始，`000001` 不可再改写；下一项结构变更必须从 `000002_<业务名>` 追加 UP/DOWN，
+同步更新 schema contract、ER、Admin `/architecture`、架构/操作文档与进度证据。

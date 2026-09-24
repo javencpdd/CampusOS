@@ -2,6 +2,17 @@
   "version": "campusos.capability/v1",
   "items": [
     {
+      "code": "article_attachment.self.preview",
+      "resource": "article_attachment",
+      "action": "preview",
+      "scope": "self",
+      "risk": "medium",
+      "consent_required": true,
+      "data_classification": "restricted",
+      "audit_level": "decision",
+      "description": "预览当前用户有权阅读的文章 PDF 附件"
+    },
+    {
       "code": "audit.system.write",
       "resource": "audit",
       "action": "write",
@@ -264,6 +275,17 @@
       "data_classification": "sensitive",
       "audit_level": "decision",
       "description": "搜索当前用户的插件受管记录"
+    },
+    {
+      "code": "plugin_ui.surface.open",
+      "resource": "plugin_ui",
+      "action": "open",
+      "scope": "self",
+      "risk": "low",
+      "consent_required": false,
+      "data_classification": "internal",
+      "audit_level": "decision",
+      "description": "由当前用户操作打开受宿主控制的插件界面"
     },
     {
       "code": "reply.system.read",

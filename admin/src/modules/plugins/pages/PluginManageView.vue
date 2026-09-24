@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <div class="header-title">
-            <span>外部插件</span>
+            <span>外部插件运行管理</span>
             <el-tag type="info" size="small"
               >已安装 {{ plugins.length }} 个插件</el-tag
             >
@@ -37,7 +37,7 @@
       </template>
 
       <el-alert
-        title="这里只管理可独立安装、升级、停用和卸载的 External Plugin；系统核心与内置功能请在“内置功能”页面管理。"
+        title="此处管理已安装外部插件的发布包、运行状态、管理员能力授权和系统配置。它不管理用户目录发布、用户请求或个人授权；这些内容在“用户目录与授权”中处理。"
         type="info"
         show-icon
         :closable="false"
@@ -60,6 +60,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="display_name" label="显示名称" width="150" />
+        <el-table-column label="来源" width="130" align="center">
+          <template #default="{ row }">
+            <el-tag
+              v-if="isManagedBuiltin(row)"
+              type="success"
+              size="small"
+              effect="plain"
+              >第一方受管</el-tag
+            >
+            <el-tag v-else size="small" effect="plain">外部插件</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="version" label="版本" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">v{{ row.version }}</el-tag>
@@ -131,6 +143,25 @@
           width="105"
           align="center"
         />
+        <el-table-column label="UI 合同 / 界面" min-width="250">
+          <template #default="{ row }">
+            <div>{{ row.ui_contract_version || "无 UI 声明" }}</div>
+            <div v-for="surface in row.ui_surfaces || []" :key="surface.id">
+              <strong>{{ surface.id }}</strong>
+              <div>
+                {{ (surface.presentations || []).join(" / ") || "普通页面" }}
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="error"
+          label="最近运行错误"
+          min-width="180"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">{{ row.error || "无" }}</template>
+        </el-table-column>
         <el-table-column
           prop="checksum"
           label="Checksum"
@@ -160,18 +191,24 @@
               配置
             </el-button>
             <el-button
-              v-if="!isSystemPlugin(row)"
+              v-if="!isSystemPlugin(row) || isManagedBuiltin(row)"
               size="small"
               plain
               @click="openAuthorization(row.name)"
               >授权</el-button
             >
-            <el-button type="success" size="small" plain @click="doExport(row)">
+            <el-button
+              v-if="!isManagedBuiltin(row)"
+              type="success"
+              size="small"
+              plain
+              @click="doExport(row)"
+            >
               <el-icon><Upload /></el-icon>
               导出
             </el-button>
             <el-button
-              v-if="canReload(row)"
+              v-if="canReload(row) && !isManagedBuiltin(row)"
               size="small"
               plain
               :loading="reloadingPluginName === row.name"
@@ -181,7 +218,7 @@
               {{ isPluginEnabled(row) ? "重载" : "加载" }}
             </el-button>
             <el-button
-              v-if="!isSystemPlugin(row)"
+              v-if="!isSystemPlugin(row) && !isManagedBuiltin(row)"
               size="small"
               plain
               @click="openSnapshots(row.name)"
@@ -198,7 +235,7 @@
               @change="onTogglePlugin(row, $event)"
             />
             <el-popconfirm
-              v-if="!isSystemPlugin(row)"
+              v-if="!isSystemPlugin(row) && !isManagedBuiltin(row)"
               title="确定要卸载该插件吗？此操作不可恢复。"
               confirm-button-text="卸载"
               cancel-button-text="取消"
@@ -209,16 +246,16 @@
                 <el-button type="danger" size="small" plain>卸载</el-button>
               </template>
             </el-popconfirm>
-            <el-tag v-else type="info" size="small" effect="plain"
-              >随服务部署</el-tag
-            >
+            <el-tag v-else type="info" size="small" effect="plain">{{
+              isManagedBuiltin(row) ? "随 Web 编译交付" : "随服务部署"
+            }}</el-tag>
           </template>
         </el-table-column>
       </el-table>
 
       <el-empty
         v-if="!loading && plugins.length === 0"
-        description="暂无已安装的插件"
+        description="暂无已安装或已注册的插件"
       />
     </el-card>
 
@@ -957,8 +994,8 @@ const load = async () => {
   loading.value = true;
   try {
     const r = (await pluginApi.list()) as any;
-    plugins.value = responseItems(r).filter(
-      (item) => item?.capability_class === "external-plugin",
+    plugins.value = responseItems(r).filter((item) =>
+      ["external-plugin", "builtin-plugin"].includes(item?.capability_class),
     );
   } catch {
     // 插件接口可能不可用，静默处理
@@ -1447,6 +1484,8 @@ const loadLogs = async () => {
 };
 
 const isSystemPlugin = (row: any) => row?.scope === "system";
+const isManagedBuiltin = (row: any) =>
+  row?.capability_class === "builtin-plugin" || row?.runtime === "builtin";
 const requiresRestart = (row: any) =>
   (row?.backend_activation_mode || row?.activation_mode) === "restart";
 const canReload = (row: any) => !requiresRestart(row);

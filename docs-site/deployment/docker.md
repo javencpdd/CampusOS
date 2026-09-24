@@ -1,6 +1,8 @@
 # Docker 单主机部署与迁移
 
-CampusOS v0.13 提供经过仓库门禁检查的单主机 Docker Compose 交付。宿主机不需要安装 Go、Node.js、
+> 更新时间：2026-09-23；当前应用启动/合同版本：`v0.13.0`；v1.1-dev 的插件重构尚未构成 Final 发布声明。
+
+CampusOS 提供经过仓库门禁检查的单主机 Docker Compose 交付。宿主机不需要安装 Go、Node.js、
 PostgreSQL、Redis 或 NATS，只需要 Git、Docker 和 Compose v2。
 
 ## 支持边界

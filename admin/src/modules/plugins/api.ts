@@ -23,6 +23,14 @@ export const pluginApi = {
     api.put(`/plugins/${name}/config`, config),
   uninstall: (name: string) => api.delete(`/plugins/${name}`),
   marketOverview: () => api.get("/plugin-market/admin/overview"),
+  marketplaceSources: () => api.get("/plugin-market/admin/sources"),
+  saveMarketplaceSource: (sourceID: string, source: Record<string, string>) =>
+    api.put(
+      `/plugin-market/admin/sources/${encodeURIComponent(sourceID)}`,
+      source,
+    ),
+  deleteMarketplaceSource: (sourceID: string) =>
+    api.delete(`/plugin-market/admin/sources/${encodeURIComponent(sourceID)}`),
   setMarketVisibility: (
     name: string,
     visibility: "draft" | "published" | "hidden",
@@ -57,7 +65,8 @@ export const pluginApi = {
     api.post(`/plugins/${encodeURIComponent(name)}/authorization/sync`),
   setCapabilityGrant: (
     name: string,
-    versionId: number,
+    // Keep Snowflake BIGINT IDs exact when they are placed in URL paths.
+    versionId: string,
     capability: string,
     status: "granted" | "denied" | "revoked",
     reason: string,

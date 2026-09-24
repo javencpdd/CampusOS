@@ -1,63 +1,37 @@
 # CampusOS 数据库迁移
 
-> 当前基线：v1.0 clean baseline
-> 更新时间：2026-09-11
+> 当前基线：v1.1 图文附件、受控 PDF Viewer、个人文档预览、资产生命周期和插件三层授权
+> 更新时间：2026-09-21 21:22（Asia/Shanghai）
 > 数据库：PostgreSQL 16+
-> 兼容边界：不支持从旧 `000001-000049` 链原地升级；现有开发/测试库必须显式重置
+> 数据边界：本仓库当前开发数据均为可丢弃测试数据；本次已将旧链重构为单一 clean baseline。
 
-## 1. 本次重构结论
+## 1. 当前结构
 
-原 49 组增量 migration 已压缩为三段 clean baseline；基线冻结后以两段前向 migration 修正运行期约束。当前结果是：
+`migrations/` 保留一个不可变 clean baseline 和其后的前向修订：
 
-- 84 张业务表，另有执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
-- 所有时间点字段统一为 `TIMESTAMPTZ`，日期类字段继续使用 `DATE`；
-- 删除旧 `permissions(resource, action)` 表，RBAC 只保留 `permission_definitions + role_permissions`；
-- `sessions` 删除明文 `refresh_token` 与原始 `ip_address` 列，只保留必填 SHA-256 摘要和 `ip_hash`；
-- 数据库触发函数固化 `pg_catalog, public` search path，避免调用会话改变对象解析边界；
-- 不再 migration 内置默认管理员、邮箱、密码哈希、默认版块或任何历史测试数据；
-- 为 v1 插件生态预建发布者、不可变版本、能力声明、管理员 Grant、用户 Consent、短期 Delegation、密文 Secret 与判定证据；
-- migration 文件使用 SHA-256 防篡改，执行使用数据库互斥锁，单个 migration 与版本记录在同一事务提交；
-- 当前 93 个物理外键均有可用的引用端前导索引，Schema 合同会阻止后续新增无索引外键；
-- `down` 一次只回滚最新版本；全量清库只能走带环境和数据库名双确认的 `reset`。
+| 版本 | 文件 | 职责 |
+| --- | --- | --- |
+| `000001` | `000001_v1_1_schema_baseline.up.sql` / `.down.sql` | 从零创建完整 v1.1 Schema、系统角色与权限参考数据、约束、索引、函数、触发器及插件 Runtime 合同；`down` 仅用于可丢弃 development/test 数据库的全量回滚。 |
+| `000002` | `000002_v1_1_ui_only_plugin_runtime.up.sql` / `.down.sql` | 把平台 `plugins.runtime` 合同扩展为 `none`，用于无后端进程、仅提供已校验隔离 UI 的 v4 外部插件。回滚前必须先卸载所有 `runtime=none` 插件。 |
+| `000003` | `000003_v1_1_trusted_market_sources.up.sql` / `.down.sql` | 建立管理员维护的 HTTPS + Ed25519 可信市场来源，并为既有申请保存来源、市场插件 ID 和签名目录快照。存在市场来源或来源型申请时拒绝回滚，保留治理审计。 |
 
-## 2. 当前 migration
+该基线整合了此前 `000001`–`000011` 的最终有效结构，包含：
 
-| 版本 | 文件 | 职责 | 影响 |
-| --- | --- | --- | --- |
-| `000001` | `000001_v1_schema_baseline.*.sql` | 从零创建当前 76 张业务表、约束、索引、函数与触发器 | 取代全部旧建表/补列/修复链；删除旧权限双轨；时间统一为带时区 |
-| `000002` | `000002_v1_plugin_authorization_foundation.*.sql` | 新增 8 张 v1 插件身份与三层授权基础表，并为 `plugins` 增加 `publisher_id` | 为后续授权服务、密钥托管、版本升级和判定审计提供稳定数据边界 |
-| `000003` | `000003_v1_reference_data.*.sql` | 写入 4 个系统角色、76 个权限定义、最小角色矩阵、验证码和管理员 MFA 策略 | 不写入用户、账号、邮箱、管理员凭据或业务测试记录 |
-| `000004` | `000004_v1_authorization_runtime_corrections.*.sql` | 修正活动 Secret 唯一索引并允许记录“能力未声明”的拒绝证据 | 保留冻结基线 checksum；轮换可重复，拒绝审计不依赖声明外键 |
-| `000005` | `000005_v1_process_runtime.*.sql` | 把 Manifest v3 的 `process` 纳入插件 Runtime 数据库约束 | `grpc` 继续作为兼容别名；回滚时自动映射为 `grpc` |
+- 89 张业务表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
+- 身份、RBAC、管理员准入、MFA、会话摘要、插件发布者/版本/三层授权与审计；
+- 社区、图文文章、`user_assets`、`richtext_article_attachments`、短期 `plugin_ui_invocations` 和资产生命周期审计；
+- 个人空间、对象配额、个人文档、文档版本与预览；
+- 学期课表、可靠任务、平台治理、外部集成与当前 Plugin Runtime/市场数据模型。
 
-已进入本基线的旧业务结构不再保留原 migration 编号。管理端 `/architecture` 按当前五段结构展示，而不是模拟历史 49 段升级过程。
+附件字节仍只由 `storage_objects` 和 Object Port 管理；`user_assets` 只管理业务身份；外部插件不得自行创建平台 PostgreSQL 表。
 
-### 自动生成 ER 图
+## 2. 此次 clean baseline 的影响
 
-```bash
-python migrations/tools/generate_er.py
-python migrations/tools/generate_er.py --check
-```
+此前 `000001`–`000011` 是开发阶段逐段演进记录。由于项目所有者已明确当前数据均可清空，它们已被合并为 `000001_v1_1_schema_baseline`，因此旧 `000008`–`000011` 不再独立存在。当前 v1.1 的 `000002`、`000003` 是基线发布后的前向修订：它们不能重新改写已应用的基线文件，否则 checksum 门禁会拒绝启动。
 
-工具从 UP migration 生成 [PNG、SVG 与中文实体关系说明](../docs/architecture/database-er/CampusOS数据库实体关系说明.md)，
-不连接或修改数据库。Windows/Linux 包装脚本、关系判定规则与依赖安装见 [工具 README](tools/README.md)。
+这不是兼容升级：任何记录了旧迁移名称或校验和的数据库执行 `up`/`status` 都会被 checksum 门禁拒绝。必须先确认目标为测试库，再执行 `reset`。不得将本规则用于生产库或包含需保留数据的库；这类环境必须先制定导出、转换和前向迁移方案。
 
-## 3. 数据域清单
-
-| 数据域 | 当前表 |
-| --- | --- |
-| 身份、认证与授权 | `users`、`accounts`、`sessions`、`roles`、`user_roles`、`permission_definitions`、`role_permissions`、`route_operations`、`route_permission_bindings`、`authorization_audits` |
-| 管理员准入与身份安全 | `identity_admin_accounts`、`identity_email_challenges`、`identity_challenge_rate_limits`、`identity_challenge_policies`、`identity_account_recovery_cases`、`identity_legacy_email_placeholders`、`identity_reserved_identifiers`、`identity_mfa_totp_methods`、`identity_mfa_tickets`、`identity_mfa_recovery_codes`、`identity_mfa_policies` |
-| 社区与内容治理 | `categories`、`category_thread_type_policies`、`threads`、`posts`、`tags`、`likes`、`notifications`、`content_revisions`、`content_moderation_cases`、`content_moderation_actions`、`richtext_article_contents`、`richtext_article_assets`、`mutual_aid_details`、`secondhand_details` |
-| 用户空间、对象与文档 | `user_spaces`、`user_space_contents`、`user_space_style_snapshots`、`user_storage_quotas`、`user_storage_accounts`、`user_storage_reservations`、`storage_objects`、`personal_documents`、`personal_document_versions`、`personal_document_previews` |
-| 学期与课表 | `academic_terms`、`user_schedule_terms`、`user_schedule_preferences` |
-| 当前插件 Runtime/市场 | `plugins`、`api_keys`、`plugin_permissions`、`plugin_logs`、`plugin_records`、`plugin_file_metadata`、`plugin_user_grants`、`plugin_catalog_entries`、`plugin_install_requests`、`plugin_releases`、`plugin_market_audits` |
-| v1 插件授权基础 | `plugin_publishers`、`plugin_versions`、`plugin_capability_declarations`、`plugin_admin_grants`、`plugin_user_consents`、`plugin_delegations`、`plugin_secret_values`、`plugin_authorization_decisions` |
-| 可靠性与平台治理 | `platform_outbox`、`platform_outbox_attempts`、`outbox_consumer_receipts`、`platform_command_audits`、`platform_worker_leases`、`platform_operation_runs`、`platform_compatibility_usage`、`platform_retention_runs`、`builtin_feature_states`、`configurations`、`audit_logs` |
-| 外部集成与观测 | `webhook_endpoints`、`webhook_deliveries`、`message_bindings`、`message_logs`、`mcp_audit_logs`、`ai_call_logs` |
-| migration 元数据 | `schema_migrations`、`schema_migration_locks`，由跨平台执行器创建，不属于业务 migration |
-
-## 4. Windows 与 Linux 使用
+## 3. Windows 与 Linux 使用
 
 Linux、WSL2 或 Git Bash：
 
@@ -77,66 +51,61 @@ Windows PowerShell：
 .\scripts\migrate.ps1 down
 ```
 
-`up` 只应用未执行版本，并核对所有已执行文件的名称与 SHA-256。`down` 只回滚当前最高版本，避免一次命令意外撤销整个数据库。
+`up` 会核对已执行文件的名称和 SHA-256；`down` 只回滚当前最高版本。`000003 down` 在存在可信市场来源或来源型申请时会明确拒绝；随后 `000002 down` 若仍有 UI-only 插件也会拒绝；再回滚 `000001` 才会移除全部应用表与参考数据，但保留两个 migration 元数据表。
 
-### 重置旧开发库
+### 重置当前 Docker 开发库
 
-旧 `schema_migrations` 没有 checksum，执行器会明确拒绝继续。确认数据均为可丢弃测试数据后：
+确认数据可以删除后，在仓库根目录运行：
 
-Linux / Git Bash：
+```powershell
+$env:CAMPUSOS_SKIP_DOTENV = "true"
+$env:CAMPUSOS_ENV = "development"
+$env:CAMPUSOS_RESET_CONFIRM = "campusos"
+$env:PSQL_MODE = "docker"
+$env:POSTGRES_CONTAINER = "campusos-dev-postgres-1"
+$env:DB_NAME = "campusos"
+.\scripts\migrate.ps1 reset
+Remove-Item Env:CAMPUSOS_SKIP_DOTENV, Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM, Env:PSQL_MODE, Env:POSTGRES_CONTAINER, Env:DB_NAME
+```
+
+Linux/Git Bash 等价命令：
 
 ```bash
-CAMPUSOS_ENV=development \
-CAMPUSOS_RESET_CONFIRM=campusos \
+CAMPUSOS_SKIP_DOTENV=true CAMPUSOS_ENV=development CAMPUSOS_RESET_CONFIRM=campusos \
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos \
 ./scripts/migrate.sh reset
 ```
 
-Windows PowerShell：
+`reset` 会对精确的 `DB_NAME` 执行 `DROP SCHEMA public CASCADE`，不可恢复；脚本只允许 `development` 或 `test`，且确认值必须与数据库名完全相同。Docker 环境的用户名、密码、主机和端口由 `deploy/docker/.env.dev.local` 提供，切勿把其中的 Secret 写入文档或提交。
 
-```powershell
-$env:CAMPUSOS_ENV = "development"
-$env:CAMPUSOS_RESET_CONFIRM = "campusos"
-.\scripts\migrate.ps1 reset
-Remove-Item Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM
-```
-
-如果通过 Docker 连接，请同时设置真实容器名，例如 `POSTGRES_CONTAINER=campusos-dev-postgres-1`，并确认 `DB_NAME` 与确认值完全相同。重置会执行 `DROP SCHEMA public CASCADE`，不可恢复；生产环境不允许使用该入口。
-
-重置后管理员由应用启动时的安全 bootstrap 创建，必须通过 `AUTH_BOOTSTRAP_ADMIN_SECRET` 或受控 CLI 提供凭据。migration 不再携带默认密码。
-
-## 5. 后续 migration 规范
-
-从 `000004` 起只追加新 migration，不再修改已经进入共享分支的 `000001-000003`。当前已追加至 `000005`，下一次从 `000006` 开始：
-
-1. 文件名使用六位连续编号和清晰业务名，必须同时提供 `.up.sql`、`.down.sql`。
-2. 一个 migration 只表达一个可审查的 Schema/参考数据变化；结构和大规模数据回填应拆开。
-3. 时间点使用 `TIMESTAMPTZ`，纯日期使用 `DATE`；金额使用最小货币单位整数；密钥、Token、验证码只保存摘要或密文。
-4. 状态字段必须有 CHECK；JSONB 必须约束顶层类型；计数、版本和字节数必须约束非负或正数。
-5. 业务归属优先使用显式外键，并明确 `CASCADE`、`RESTRICT` 或 `SET NULL`，不能依赖默认删除行为。
-6. 唯一约束表达业务不变量；普通索引必须对应已知查询、外键清理、状态扫描或时间排序，禁止重复左前缀索引。
-7. 高并发领取使用可证明的 fencing/lease 语义；审计、授权判定和版本记录采用追加写。
-8. migration 合并后 SHA-256 成为环境合同；如文件必须修正，应新增前向 migration，不能改写旧文件。
-9. 新表必须同步更新 `scripts/schema-contract.sql`、Admin 数据架构页、架构说明和进度证据。
-10. 至少执行 `make v1-database-baseline-check`、`make architecture-check` 和受影响 Go/前端测试。
-
-历史 `test-v10...test-v14...migration.sh` 文件仅保留为旧命令入口，统一转发到当前 v1 baseline drill，不再验证已删除的历史 SQL 文件。
-
-## 6. 验证
+## 4. ER 图与结构投影
 
 ```bash
-POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
-POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos_v1_database_baseline_drill ./scripts/database-check.sh all
-python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
+python migrations/tools/generate_er.py
+python migrations/tools/generate_er.py --check
+python skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 ```
 
-baseline drill 在固定的隔离测试库中验证：
+ER 工具从唯一 UP 文件生成 [PNG、SVG 与中文实体关系说明](er/current/CampusOS数据库实体关系说明.md)，不连接或修改数据库。管理端 `/architecture` 是源码 Schema 的静态投影，不显示真实数据、文件或 Secret。
 
-- 从零建库、无测试用户/账号/管理员凭据；
-- 84 张业务表和 2 张 migration 系统表；
-- 76 个稳定权限定义与最小角色矩阵；
-- 旧 `permissions` 表已移除；
-- Session 不存在明文 Refresh Token/原始 IP 列，摘要为必填且全局唯一；
-- 93 个物理外键均有引用端前导索引，索引/约束 hygiene 问题为 0；
-- 全库不存在 `timestamp without time zone`；
-- checksum 漂移会失败；
-- 最新版本回滚、全链回滚、重新 up 和显式 reset 均可重复。
+## 5. 后续规范
+
+这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000003`，下一项结构变更从 `000004_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
+
+1. 说明表归属、外键、索引、状态约束、数据修复和回滚损失；
+2. 更新 `scripts/schema-contract.sql`、Admin `/architecture`、ER、架构与操作文档；
+3. 在隔离库执行空库 `up`、`down`、`up`、checksum 和 schema 合同检查；
+4. 不在 migration 内写入默认账号、邮箱、密码哈希或业务测试记录；机密只保存摘要或密文。
+
+## 6. 验证命令
+
+```bash
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 \
+  DB_NAME=campusos_v1_database_baseline_drill ./scripts/database-check.sh all
+python migrations/tools/generate_er.py --check
+python skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
+```
+
+基线 drill 会验证空库、无测试用户/账号/管理员凭据、78 项稳定权限、91 张 public 表（包含两张 migration 系统表）、
+全部外键前导索引、无无时区 timestamp、checksum 漂移拒绝，以及顺序 migration 的 up/down/up 可重复性。

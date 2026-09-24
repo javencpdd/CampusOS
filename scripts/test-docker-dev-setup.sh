@@ -23,9 +23,9 @@ case "${1:-} ${2:-}" in
   "compose version"|"info ") exit 0 ;;
 esac
 if [[ "${1:-}" == "compose" ]]; then
-  if [[ "$*" == *" ps --services --status running api web admin docs"* ]] \
+  if [[ "$*" == *" ps --services --status running api web admin docs plugin-ui"* ]] \
     && [[ "${MOCK_DOCKER_APPS_RUNNING:-false}" == "true" ]]; then
-    printf 'api\nweb\nadmin\ndocs\n'
+    printf 'api\nweb\nadmin\ndocs\nplugin-ui\n'
   fi
   exit 0
 fi
@@ -125,10 +125,11 @@ sed -i \
   -e 's/^CAMPUSOS_DEV_WEB_BIND=.*/CAMPUSOS_DEV_WEB_BIND=0.0.0.0/' \
   -e 's/^CAMPUSOS_DEV_ADMIN_BIND=.*/CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0/' \
   -e 's/^CAMPUSOS_DEV_DOCS_BIND=.*/CAMPUSOS_DEV_DOCS_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_PLUGIN_UI_BIND=.*/CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0/' \
   "$LAN_ENV"
 PATH="$TEMP_DIR/bin:$PATH" CAMPUSOS_DOCKER_DEV_ENV="$LAN_ENV" \
   "$ROOT_DIR/scripts/docker-dev.sh" setup >"$TEMP_DIR/lan.out"
-grep -q 'LAN exposure is enabled for 3 UI service(s)' "$TEMP_DIR/lan.out"
+grep -q 'LAN exposure is enabled for 4 UI service(s)' "$TEMP_DIR/lan.out"
 
 VALID_ENV="$TEMP_DIR/valid.env"
 cp "$ROOT_DIR/deploy/docker/.env.dev.example" "$VALID_ENV"
@@ -150,8 +151,8 @@ fi
 MOCK_DOCKER_LOG="$TEMP_DIR/docker.log" PATH="$TEMP_DIR/bin:$PATH" \
   MOCK_DOCKER_APPS_RUNNING=true CAMPUSOS_DOCKER_DEV_ENV="$VALID_ENV" \
   "$ROOT_DIR/scripts/docker-dev.sh" stop-apps >"$TEMP_DIR/stop-apps.out"
-grep -q 'Stopping Docker development application services: api web admin docs' "$TEMP_DIR/stop-apps.out"
-grep -q 'stop api web admin docs' "$TEMP_DIR/docker.log"
+grep -q 'Stopping Docker development application services: api web admin docs plugin-ui' "$TEMP_DIR/stop-apps.out"
+grep -q 'stop api web admin docs plugin-ui' "$TEMP_DIR/docker.log"
 
 MOCK_DOCKER_LOG="$TEMP_DIR/docker.log" PATH="$TEMP_DIR/bin:$PATH" \
   CAMPUSOS_DOCKER_DEV_ENV="$VALID_ENV" \
@@ -184,6 +185,6 @@ MOCK_DOCKER_LOG="$TEMP_DIR/rebuild-docker.log" PATH="$TEMP_DIR/bin:$PATH" \
   CAMPUSOS_DOCKER_DEV_ENV="$VALID_ENV" \
   "$ROOT_DIR/scripts/docker-dev.sh" rebuild >"$TEMP_DIR/rebuild.out"
 grep -q 'Rebuilding Docker development application images before startup' "$TEMP_DIR/rebuild.out"
-grep -q 'up -d --build --force-recreate --wait --wait-timeout 600 api web admin docs' "$TEMP_DIR/rebuild-docker.log"
+grep -q 'up -d --build --force-recreate --wait --wait-timeout 600 plugin-ui api web admin docs' "$TEMP_DIR/rebuild-docker.log"
 
 echo "Docker development setup guidance tests passed."

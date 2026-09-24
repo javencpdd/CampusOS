@@ -24,6 +24,7 @@ type Manager struct {
 	packages  *PackageService
 	snapshots *SnapshotService
 	host      *HostAccessService
+	v4        *v4Catalog
 }
 
 // NewManager 创建插件管理器
@@ -32,6 +33,7 @@ func NewManager() *Manager {
 		runtimes: NewRuntimeRegistry(),
 		catalog:  NewPluginCatalog(),
 		ui:       NewUIRegistry(),
+		v4:       newV4Catalog(),
 	}
 	m.audit = NewAuditLogService()
 	m.lifecycle = NewLifecycleService(m.catalog, m.runtimes, m.ui, m.audit)
@@ -108,7 +110,7 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 		DesiredEnabled: manifest.IsSystemLevel(),
 		Directory:      dir,
 	}
-	if plugin.DesiredEnabled && !manifest.UI.Empty() {
+	if plugin.DesiredEnabled && pluginHasFrontend(plugin) {
 		plugin.FrontendState = FrontendLoaded
 	}
 	m.catalog.plugins[manifest.Name] = plugin
@@ -124,6 +126,37 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 
 	log.Printf("🔌 插件已安装: %s v%s (%s)", manifest.Name, manifest.Version, manifest.Runtime)
 	return plugin, nil
+}
+
+// RegisterBuiltin registers a compiled first-party plugin manifest. Unlike
+// Install it never reads package files and is deliberately unavailable to
+// external imports, so no uploaded code can claim the builtin runtime.
+func (m *PackageService) RegisterBuiltin(manifest *Manifest) (*Plugin, error) {
+	if manifest == nil {
+		return nil, errors.New("builtin manifest is required")
+	}
+	if err := manifest.Validate(); err != nil {
+		return nil, err
+	}
+	if manifest.Runtime != "builtin" || manifest.Scope != ScopeSystem || manifest.Type != PluginTypeBuiltin {
+		return nil, errors.New("builtin registration requires a system builtin manifest")
+	}
+	m.catalog.mu.Lock()
+	if _, exists := m.catalog.plugins[manifest.Name]; exists {
+		m.catalog.mu.Unlock()
+		return nil, fmt.Errorf("plugin %q already registered", manifest.Name)
+	}
+	p := &Plugin{ID: manifest.Name, Manifest: manifest, Status: StatusInstalled, BackendState: BackendInstalled,
+		FrontendState: FrontendLoaded, Health: HealthUnknown, DesiredEnabled: true, Directory: "builtin:" + manifest.Name, InstalledBy: "system",
+		Checksum: digestJSON(manifest)}
+	m.catalog.plugins[manifest.Name] = p
+	m.events.Add(manifest.Name, manifest.Events.Subscribe)
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
+	if err := m.syncPluginRecord(context.Background(), p); err != nil {
+		return nil, err
+	}
+	return clonePlugin(p), nil
 }
 
 func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error {
@@ -158,9 +191,31 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 			p.FrontendState = restoredFrontendState(record.FrontendState, p)
 			p.Health = restoredHealthState(record.HealthState, p.Status)
 			p.ErrorMsg = record.ErrorMsg
-			p.Checksum = record.Checksum
+			// Builtin modules and v4 isolated UI releases derive their checksum from
+			// the current immutable declaration/release.  That digest is the
+			// security identity synced to plugin_versions. Restoring an old
+			// persisted checksum would make a new semantic version appear to have
+			// the previous package's digest and can trigger a false integrity
+			// quarantine on the unique (plugin_id, package_digest) constraint.
+			if p.Manifest.Runtime != "builtin" && !p.IsolatedUI {
+				p.Checksum = record.Checksum
+			}
 			p.PackageSize = record.PackageSize
 			p.InstalledBy = record.InstalledBy
+			// Builtin modules and v4 isolated UI releases are host-managed immutable
+			// declarations. A prior development release may have been automatically
+			// quarantined after its declaration changed. When its semantic version
+			// has now advanced, recover only that precise automatic quarantine so the
+			// authorization synchronisation can create a fresh declaration set. Do
+			// not clear unrelated errors or an administrator's deliberate stop.
+			if shouldRecoverImmutableReleaseUpgrade(record, p) {
+				p.Status = StatusInstalled
+				p.DesiredEnabled = true
+				p.BackendState = BackendInstalled
+				p.FrontendState = FrontendLoaded
+				p.Health = HealthUnknown
+				p.ErrorMsg = ""
+			}
 			m.catalog.mu.Unlock()
 		}
 	} else if !errors.Is(err, ErrAPIKeyNotFound) {
@@ -209,6 +264,17 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 	return repo.Save(ctx, record)
 }
 
+const immutableReleaseUpgradeQuarantineReason = "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+
+func shouldRecoverImmutableReleaseUpgrade(record *PluginRecord, p *Plugin) bool {
+	if record == nil || p == nil || p.Manifest == nil || (p.Manifest.Runtime != "builtin" && !p.IsolatedUI) {
+		return false
+	}
+	return record.Version != "" && record.Version != p.Manifest.Version &&
+		PluginStatus(record.Status) == StatusError &&
+		strings.TrimSpace(record.ErrorMsg) == immutableReleaseUpgradeQuarantineReason
+}
+
 func restoredBackendState(value string, status PluginStatus) BackendState {
 	switch BackendState(value) {
 	case BackendInstalled, BackendStarting, BackendRunning, BackendRestarting, BackendStopping, BackendStopped, BackendPendingRestart, BackendError:
@@ -227,7 +293,7 @@ func restoredBackendState(value string, status PluginStatus) BackendState {
 }
 
 func restoredFrontendState(value string, p *Plugin) FrontendState {
-	if p != nil && p.Manifest != nil && p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p != nil && p.Manifest != nil && p.DesiredEnabled && pluginHasFrontend(p) {
 		if FrontendState(value) == FrontendIncompatible || FrontendState(value) == FrontendError {
 			return FrontendState(value)
 		}
@@ -293,7 +359,7 @@ func (m *LifecycleService) requestEnable(name string) error {
 		m.catalog.mu.Lock()
 		p.DesiredEnabled = true
 		p.BackendState = BackendPendingRestart
-		if !p.Manifest.UI.Empty() {
+		if pluginHasFrontend(p) {
 			p.FrontendState = FrontendLoaded
 		}
 		m.ui.Bump()
@@ -499,7 +565,7 @@ func (m *LifecycleService) start(name string) error {
 	m.catalog.mu.Lock()
 	p.BackendState = BackendStarting
 	p.Health = HealthUnknown
-	if p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p.DesiredEnabled && pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	m.ui.Bump()
@@ -580,7 +646,7 @@ func (m *LifecycleService) start(name string) error {
 	p.Status = StatusRunning
 	p.BackendState = BackendRunning
 	p.Health = HealthHealthy
-	if !p.Manifest.UI.Empty() {
+	if pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	p.DesiredEnabled = true

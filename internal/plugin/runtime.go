@@ -46,20 +46,28 @@ const (
 
 // Plugin 插件实例
 type Plugin struct {
-	ID                 string        `json:"id"`
-	Manifest           *Manifest     `json:"manifest"`
-	Status             PluginStatus  `json:"status"`
-	BackendState       BackendState  `json:"backend_state"`
-	FrontendState      FrontendState `json:"frontend_state"`
-	Health             HealthState   `json:"health"`
-	DesiredEnabled     bool          `json:"desired_enabled"`
-	ErrorMsg           string        `json:"error_message,omitempty"`
-	Directory          string        `json:"directory"`
-	InstalledBy        string        `json:"installed_by"`
-	Checksum           string        `json:"checksum,omitempty"`
-	PackageSize        int64         `json:"package_size,omitempty"`
-	HostToken          string        `json:"-"`
-	HostTokenExpiresAt time.Time     `json:"-"`
+	ID             string        `json:"id"`
+	Manifest       *Manifest     `json:"manifest"`
+	Status         PluginStatus  `json:"status"`
+	BackendState   BackendState  `json:"backend_state"`
+	FrontendState  FrontendState `json:"frontend_state"`
+	Health         HealthState   `json:"health"`
+	DesiredEnabled bool          `json:"desired_enabled"`
+	ErrorMsg       string        `json:"error_message,omitempty"`
+	Directory      string        `json:"directory"`
+	InstalledBy    string        `json:"installed_by"`
+	Checksum       string        `json:"checksum,omitempty"`
+	PackageSize    int64         `json:"package_size,omitempty"`
+	// IsolatedUI means the plugin's UI metadata lives exclusively in the v4
+	// immutable release catalog. The legacy manifest remains intentionally UI
+	// empty and acts only as the adapter for lifecycle and authorization data.
+	IsolatedUI         bool      `json:"-"`
+	HostToken          string    `json:"-"`
+	HostTokenExpiresAt time.Time `json:"-"`
+}
+
+func pluginHasFrontend(plugin *Plugin) bool {
+	return plugin != nil && (plugin.IsolatedUI || (plugin.Manifest != nil && !plugin.Manifest.UI.Empty()))
 }
 
 // LifecycleState is the frontend-safe lifecycle view for one plugin.

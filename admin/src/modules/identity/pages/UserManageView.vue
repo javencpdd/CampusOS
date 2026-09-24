@@ -3,14 +3,17 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>用户管理</span>
+          <div>
+            <span>用户管理</span>
+            <p class="identity-hint">用户名是不可修改的唯一标识和个人主页地址；昵称才是用户在帖子、评论中的对外显示名称。</p>
+          </div>
           <div class="header-actions">
             <el-button v-if="canManageRoles" plain @click="$router.push('/moderators')">
               版主管理
             </el-button>
             <el-input
               v-model="searchKeyword"
-              placeholder="搜索用户名/昵称"
+              placeholder="搜索用户名、昵称或邮箱"
               clearable
               style="width: 200px"
               @clear="load"
@@ -26,8 +29,8 @@
 
       <el-table :data="users" v-loading="loading" stripe border style="width: 100%">
         <el-table-column prop="id" label="ID" width="200" show-overflow-tooltip />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="nickname" label="昵称" width="120" />
+        <el-table-column prop="username" label="用户名（唯一标识）" min-width="150" />
+        <el-table-column prop="nickname" label="昵称（对外显示）" min-width="150" />
         <el-table-column prop="email" label="邮箱" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="{ 'empty-email': !row.email }">{{ row.email || '未绑定邮箱' }}</span>
@@ -103,7 +106,7 @@
     <!-- 角色管理对话框 -->
     <el-dialog v-model="roleDialogVisible" title="角色管理" width="500px" destroy-on-close>
       <div v-if="selectedUser" class="role-dialog-content">
-        <p><strong>用户：</strong>{{ selectedUser.username }}（{{ selectedUser.nickname }}）</p>
+        <p><strong>用户：</strong>{{ selectedUser.nickname }}（用户名：{{ selectedUser.username }}）</p>
 
         <h4 style="margin: 16px 0 8px">当前角色：</h4>
         <div v-if="selectedUserRoles.length > 0" style="margin-bottom: 16px">
@@ -165,7 +168,7 @@
 
     <el-dialog v-model="storageDialogVisible" title="个人空间配额" width="520px" destroy-on-close>
       <div v-if="storageSelectedUser" v-loading="storageLoading" class="storage-dialog-content">
-        <p><strong>用户：</strong>{{ storageSelectedUser.username }}（{{ storageSelectedUser.nickname }}）</p>
+        <p><strong>用户：</strong>{{ storageSelectedUser.nickname }}（用户名：{{ storageSelectedUser.username }}）</p>
         <el-descriptions v-if="storageStatus" :column="2" border>
           <el-descriptions-item label="已使用">{{ formatBytes(storageStatus.used_bytes) }}</el-descriptions-item>
           <el-descriptions-item label="当前配额">{{ formatBytes(storageStatus.quota_bytes) }}</el-descriptions-item>
@@ -436,7 +439,16 @@ onMounted(() => {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.identity-hint {
+  max-width: 680px;
+  margin: 4px 0 0;
+  color: #606266;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .pagination-wrapper {

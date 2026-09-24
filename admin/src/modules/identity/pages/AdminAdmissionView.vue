@@ -25,7 +25,7 @@
         <span>{{ total }} 条</span>
       </div>
       <el-table :data="records" class="admission-table" empty-text="暂无管理员准入账号">
-        <el-table-column label="管理员" min-width="170">
+        <el-table-column label="管理员（昵称 / 用户名）" min-width="170">
           <template #default="{ row }">
             <div class="identity-cell">
               <strong>{{ row.nickname || row.username || row.account.user_id }}</strong>

@@ -33,7 +33,7 @@ type Manifest struct {
 	Version                string              `yaml:"version" json:"version"`
 	Description            string              `yaml:"description" json:"description"`
 	Author                 string              `yaml:"author" json:"author"`
-	Runtime                string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
+	Runtime                string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin / none
 	Scope                  string              `yaml:"scope" json:"scope"`     // system / user
 	Capabilities           []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	CapabilityDeclarations []CapabilityRequest `yaml:"capability_declarations,omitempty" json:"capability_declarations,omitempty"`
@@ -66,7 +66,8 @@ const (
 	ActivationRestart       = "restart"
 	ActivationPluginRestart = "plugin-restart"
 	ActivationHot           = "hot"
-	CurrentUIContract       = "campusos.ui/v1"
+	LegacyUIContract        = "campusos.ui/v1"
+	CurrentUIContract       = "campusos.ui/v2"
 )
 
 type LifecycleConfig struct {
@@ -134,6 +135,7 @@ type SQLiteConfig struct {
 
 const (
 	PluginTypeExternal = "external"
+	PluginTypeBuiltin  = "builtin"
 	OwnerSystem        = "system"
 	OwnerUser          = "user"
 )
@@ -263,8 +265,8 @@ func (m *Manifest) Validate() error {
 	if m.Runtime == "" {
 		m.Runtime = "grpc"
 	}
-	if m.Runtime != "grpc" && m.Runtime != "process" && m.Runtime != "wasm" && m.Runtime != "builtin" {
-		return fmt.Errorf("manifest: runtime must be 'process', 'grpc', 'wasm' or 'builtin', got '%s'", m.Runtime)
+	if m.Runtime != "grpc" && m.Runtime != "process" && m.Runtime != "wasm" && m.Runtime != "builtin" && m.Runtime != "none" {
+		return fmt.Errorf("manifest: runtime must be 'process', 'grpc', 'wasm', 'builtin' or 'none', got '%s'", m.Runtime)
 	}
 	if m.Scope == "" {
 		if m.Runtime == "builtin" {
@@ -338,10 +340,18 @@ func (m *Manifest) IsV3() bool { return m != nil && m.APIVersion == ManifestAPIV
 
 func (m *Manifest) validateV3() error {
 	if m.Type == "" {
-		m.Type = PluginTypeExternal
+		if m.Runtime == "builtin" {
+			m.Type = PluginTypeBuiltin
+		} else {
+			m.Type = PluginTypeExternal
+		}
 	}
-	if m.Type != PluginTypeExternal {
-		return fmt.Errorf("manifest: v3 type must be %q", PluginTypeExternal)
+	if m.Type == PluginTypeBuiltin {
+		if m.Runtime != "builtin" || m.Scope != ScopeSystem {
+			return errors.New("manifest: builtin v3 plugins must use builtin runtime and system scope")
+		}
+	} else if m.Type != PluginTypeExternal {
+		return fmt.Errorf("manifest: v3 type must be %q or %q", PluginTypeExternal, PluginTypeBuiltin)
 	}
 	if m.HostAPIVersion != HostAPIVersionV3 {
 		return fmt.Errorf("manifest: v3 requires host_api_version %q", HostAPIVersionV3)
@@ -537,6 +547,12 @@ func (m *Manifest) applyLifecycleDefaults() {
 	if m.Lifecycle.Backend.ActivationMode == "" {
 		switch {
 		case m.Runtime == "wasm":
+			m.Lifecycle.Backend.ActivationMode = ActivationHot
+		case m.Runtime == "none":
+			// A UI-only v4 package has no backend process to start. It still
+			// participates in lifecycle and authorization state, so it uses the
+			// same hot transition as a Wasm package rather than pretending to be
+			// a compiled builtin module.
 			m.Lifecycle.Backend.ActivationMode = ActivationHot
 		case m.Runtime == "grpc" || m.Runtime == "process":
 			m.Lifecycle.Backend.ActivationMode = ActivationPluginRestart

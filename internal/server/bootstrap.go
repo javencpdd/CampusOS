@@ -153,12 +153,47 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-space") },
 	})
+	var personalDocumentsModule *personaldocuments.Module
+	personalDocumentReader := personalDocumentPDFReader{service: func() *personaldocuments.Service {
+		if personalDocumentsModule == nil {
+			return nil
+		}
+		return personalDocumentsModule.Service()
+	}}
 	richtextModule := richtext.NewModule(richtext.ModuleConfig{
 		AssetStoreConfig: func() richtext.AssetStoreConfig {
 			return richtext.AssetStoreConfigFromPluginConfig(features.Registry().Config("controlled-richtext-article"), features.Registry().Config("personal-space"))
 		},
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
+		},
+		PDFViewerEnabled: func() bool {
+			// PDF preview is now solely the self-contained v4 external release.
+			// Do not retain a feature.pdf-viewer compatibility switch here: it
+			// would both expose a duplicate built-in entry and disable the real
+			// plugin after the descriptor is removed.
+			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerV4PluginName)
+			return found && installed != nil && installed.Status == plugin.StatusRunning && installed.DesiredEnabled
+		},
+		PDFViewerAuthorizer: func(ctx context.Context, input richtext.PDFViewerAuthorizationInput) error {
+			if plugins.authorization == nil || !plugins.authorization.Available() {
+				return &richtext.PDFViewerAuthorizationError{Reason: "unavailable", Message: "PDF 预览插件授权服务暂不可用，请确认数据库迁移完成后重试。"}
+			}
+			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: input.PluginKey, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
+			if !result.Allow {
+				return &richtext.PDFViewerAuthorizationError{Reason: string(result.ReasonCode), Message: result.Message}
+			}
+			return nil
+		},
+		PersonalDocumentPDFReader:        personalDocumentReader,
+		PersonalDocumentAttachmentReader: personalDocumentReader,
+		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
+			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
+				if identityModule.Permissions() == nil {
+					return false, nil
+				}
+				return identityModule.Permissions().Check(ctx, user, resource, action)
+			})
 		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{
@@ -167,9 +202,19 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-schedule") },
 	})
-	personalDocumentsModule := personaldocuments.NewModule(personaldocuments.ModuleConfig{
+	personalDocumentsModule = personaldocuments.NewModule(personaldocuments.ModuleConfig{
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled(personaldocuments.FeatureID)
+		},
+		PDFPreviewInvoker: func(ctx context.Context, owner, documentID, presentation string) (personaldocuments.PDFPreviewInvocation, error) {
+			if richtextModule.Service() == nil {
+				return personaldocuments.PDFPreviewInvocation{}, personalDocumentPDFPreviewUnavailable()
+			}
+			invocation, err := richtextModule.Service().CreatePersonalDocumentPDFInvocation(ctx, owner, documentID, presentation)
+			if err != nil {
+				return personaldocuments.PDFPreviewInvocation{}, mapPersonalDocumentPDFPreviewError(err)
+			}
+			return personaldocuments.PDFPreviewInvocation{ID: invocation.ID}, nil
 		},
 	})
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{

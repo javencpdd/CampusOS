@@ -2,7 +2,7 @@
 # 可选：-Check 只检查已生成的 PNG、SVG 和中文说明是否与 migrations 一致。
 param(
     [string]$Migrations = "migrations",
-    [string]$Out = "docs/architecture/database-er",
+    [string]$Out = "migrations/er/current",
     [switch]$Check
 )
 

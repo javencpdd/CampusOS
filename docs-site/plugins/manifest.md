@@ -1,144 +1,80 @@
-# Manifest 与配置
+# v4 Manifest 与配置
 
-## plugin.yaml
+> 更新时间：2026-09-23（Asia/Shanghai）
 
-每个插件目录必须在根部包含 `plugin.yaml`。
+每个 v4 源插件在根目录放置 `plugin.yaml`。它是声明式、可校验的包入口；不能包含命令行、数据库名、宿主路径、
+URL、凭据、Token 或可执行回调。
 
-| 字段 | 必填 | 说明 |
+## 最小可用结构
+
+```yaml
+api_version: campusos.plugin/v4
+key: example.readonly-viewer
+version: 1.0.0
+publisher:
+  id: example
+  name: Example Publisher
+display_name: 示例只读查看器
+description: 由宿主授权后显示当前用户可访问的内容。
+compatibility:
+  host: ">=1.1"
+  ui: campusos.ui/v3
+  bridge: campusos.bridge/v1
+backend:
+  runtime: none
+artifacts:
+  user_ui:
+    source: frontend/user
+    entry: ui/user/index.html
+ui:
+  user:
+    surfaces:
+      - id: preview
+        route: preview
+        title: 示例预览
+        presentations: [modal, fullscreen]
+capabilities: []
+```
+
+`key` 必须是小写命名空间标识，例如 `publisher.plugin-name`；`version` 必须是 SemVer；每个 UI audience 必须同时声明
+一个 `artifacts` 入口和至少一个 Surface。`source` 仅存在于源码包，`entry` 是 release 内的编译后入口。
+
+## 主要字段
+
+| 字段 | 作用 | 宿主校验 |
 | --- | --- | --- |
-| `name` | 是 | 插件唯一名称。 |
-| `version` | 是 | 建议使用语义化版本。 |
-| `runtime` | 是 | v3 External Plugin 使用 `process` 或 `wasm`；`grpc` 是受管进程兼容名。 |
-| `scope` | 建议 | `system` 或 `user`。第三方默认使用 `user`。 |
-| `lifecycle` | 否 | 后端 `restart/plugin-restart/hot` 与前端 `hot`；缺省值按 Runtime 推导。 |
-| `ui` | 否 | `campusos.ui/v1` Route、Navigation、Slot、Surface 和 Action。 |
-| `display_name` | 否 | 管理端显示名称。 |
-| `description` | 否 | 插件用途。 |
-| `events.subscribe` | 否 | 订阅事件列表。 |
-| `permissions.api` | 否 | Host API 权限。 |
-| `storage` | 建议 | `none`、`sqlite` 或插件约定的存储声明。 |
-| `config` | 视 Runtime | 当前配置。 |
-| `config_schema` | 否 | 管理端配置表单和后端归一化规则。 |
+| `compatibility` | 声明 host、UI 和 Bridge 合同 | UI 必须是 `campusos.ui/v3`，Bridge 必须是 `campusos.bridge/v1`。 |
+| `backend.runtime` | `none`、`wasm` 或 `container` | 不接受插件提供任意进程命令；当前生产化样例为 `none`。 |
+| `artifacts` / `ui` | 用户端或管理端隔离页面与可展示 Surface | 路径、Surface ID、route、presentation 必须安全且唯一。 |
+| `preview_providers` | 宿主可选择的预览提供者 | 不是文件权限；目前只允许三类 PDF 资源与 `application/pdf`。 |
+| `capabilities` | 插件请求的最小能力、用途和 required 标记 | 只能使用平台 Catalog 已定义的 `self` capability。 |
+| `configuration` | system/user JSON schema 与默认值 | 路径必须在包内，JSON 与受限 schema 必须有效。 |
+| `data.user_config_max_bytes` | 单插件用户配置上限 | 范围为 0–256 KiB，且仍受用户总配置预算控制。 |
 
-v2 外部插件还可声明 `api_version`、`host_api_version`、`type`、`managed_data`、`files`、`permissions.user` 和 `release`。v3 改用逐项 `capability_declarations`，禁止通配符，并把用途、required/optional 与 `self/system` Scope 绑定到不可变版本。新插件优先阅读 [Manifest v3 与三层授权](/plugins/authorization-v3)。受管数据示例和字段规则见 [插件中心、受管数据与签名](/plugins/market-managed-data)。
-
-## Runtime 配置
-
-Wasm：
+## 配置的两种归属
 
 ```yaml
-runtime: wasm
-config:
-  module: plugin.wasm
-  entrypoint: handle_event
-  event_timeout_ms: 1000
+configuration:
+  system:
+    schema: config/system.schema.json
+    defaults: config/system.defaults.json
+    version: v1
+  user:
+    schema: config/user.schema.json
+    defaults: config/user.defaults.json
+    version: v1
 ```
 
-`module` 必须是插件目录内的相对路径，不能使用绝对路径或 `../`。
+- **系统配置**由管理员通过宿主控制面维护；插件页面不获得管理员万能权限。
+- **用户配置**只有用户点击添加已安装插件后才由宿主在个人空间创建；保存时验证 schema、revision 和 hash。
+- **Secret**不属于 JSON 配置。它由宿主加密保存并只在适当的授权调用中使用，不能写入 Manifest 或前端 Bundle。
 
-受管进程：
+完整真实样例请阅读 [`campusos.pdf-viewer/plugin.yaml`](../../plugins/campusos.pdf-viewer/plugin.yaml)。更改源码后先执行：
 
-```yaml
-runtime: process
-config:
-  command: ./plugin
-  process_contract: campusos.process/v1
-  health_url: http://127.0.0.1:19091/health
-  extension_url: http://127.0.0.1:19091/extension
-  event_url: http://127.0.0.1:19091/event # 可选；未配置时事件只记录、不误探测端口
-  event_timeout_ms: 1000
+```bash
+go run ./cmd/campusosctl plugin v4 validate plugins/campusos.pdf-viewer
+go run ./cmd/campusos-plugin-v4-check -root plugins
 ```
 
-当前 Runtime 只启动插件目录内的 `plugin` 可执行文件，并只接受显式的 loopback HTTP 端点。`grpc` 是 `process` 的兼容标识，不是标准 protobuf gRPC 协议承诺。
-
-`runtime: builtin` 只为旧 Manifest 检查和迁移保留解析能力。CLI、目录扫描、
-Plugin Manager 和插件包导入都会拒绝它。内置功能使用
-`modules/{core,features}/<id>/module.yaml`，并通过 `/api/v1/features` 管理。
-
-## 生命周期与默认 UI
-
-```yaml
-lifecycle:
-  backend:
-    activation_mode: plugin-restart
-  frontend:
-    activation_mode: hot
-```
-
-新插件应提供默认可用 UI。第三方默认使用声明式 schema；复杂可信模块必须使用 Core 编译期白名单。完整格式见 [前端运行时与 Gateway](./frontend-runtime.md)。
-
-## 权限
-
-```yaml
-permissions:
-  api:
-    - resource: thread
-      actions: [read]
-    - resource: log
-      actions: [write]
-```
-
-权限由 `resource:action` 表达。Manifest 声明只是申请，不能代替后端检查。
-
-## config_schema
-
-```yaml
-config:
-  mode: compact
-  enabled: true
-  limit: 20
-
-config_schema:
-  fields:
-    - key: mode
-      label: "显示模式"
-      type: select
-      default: compact
-      options:
-        - label: "紧凑"
-          value: compact
-        - label: "完整"
-          value: full
-    - key: enabled
-      label: "启用功能"
-      type: boolean
-      default: true
-    - key: limit
-      label: "数量上限"
-      type: number
-      default: 20
-```
-
-支持类型：
-
-```text
-string
-text
-number
-boolean
-select
-json
-```
-
-规则：
-
-- `key` 不能为空或重复。
-- `select` 必须提供 `options`。
-- 保存时按 schema 归一化类型。
-- schema 未声明字段不会由 Admin 普通表单写入。
-- 缺失字段优先保留当前值，再使用默认值。
-
-## 配置更新接口
-
-```http
-GET /api/v1/plugins/:name
-PUT /api/v1/plugins/:name/config
-```
-
-接口只对管理员开放。配置中不要保存明文生产密钥；敏感凭据应使用独立 Secret 管理。
-
-## 版本变更
-
-修改插件包内容、用途或能力范围后必须更新 `version`。同一版本的 package digest 和能力指纹不可变；覆盖导入会在写入前拒绝冲突，并以五类 diff 提示是否需要重新授权。
-
-页面风格包使用独立的 `style.yaml`，其 `target`、CSS 根作用域、`effect` 和 `capabilities` 不属于普通 `plugin.yaml` Host API 权限。参见 [风格包、特效与 CampusStyleSDK](/plugins/style-packs)。
+修改版本、能力用途、UI 合同或包内容时必须创建新的不可变 release。Manifest 声明不等于获权，后续调用仍须经过
+[三层授权与资源访问](/plugins/authorization-v3)。

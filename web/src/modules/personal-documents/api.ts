@@ -12,6 +12,8 @@ export const personalDocumentsApi = {
   },
   content: (id: string) => api.get(`/documents/${id}/content`),
   preview: (id: string) => api.get(`/documents/${id}/preview`),
+  createPDFInvocation: (id: string, presentation: 'modal' | 'drawer' | 'fullscreen' | 'new-tab') =>
+    api.post(`/documents/${id}/pdf-invocations`, { presentation }),
   save: (id: string, data: { expected_version: number; name?: string; content: string }) =>
     api.put(`/documents/${id}`, data),
   trash: (id: string, expected_version: number) => api.post(`/documents/${id}/trash`, { expected_version }),
@@ -19,5 +21,7 @@ export const personalDocumentsApi = {
   versions: (id: string) => api.get(`/documents/${id}/versions`),
   restoreVersion: (id: string, versionID: string, expected_version: number) =>
     api.post(`/documents/${id}/versions/${versionID}/restore`, { expected_version }),
-  downloadURL: (id: string) => `/api/v1/documents/${id}/download`,
+  // Use the authenticated API client rather than window.open(): browser
+  // navigation cannot attach the Bearer token kept by the session store.
+  download: (id: string) => api.get(`/documents/${id}/download`, { responseType: 'blob' }),
 }
