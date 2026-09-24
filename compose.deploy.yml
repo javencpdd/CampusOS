@@ -52,7 +52,7 @@ services:
       service: docs
 
   maintenance:
-    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
     profiles: ["maintenance"]
     user: "0:0"
     entrypoint: ["/sbin/tini", "--"]

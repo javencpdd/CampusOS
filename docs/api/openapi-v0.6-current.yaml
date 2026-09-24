@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CampusOS Current HTTP API
-  version: 0.13.0-experimental
+  version: 1.1.0-dev-experimental
   description: Generated route, authorization, request-body and core field contract. Operations using GenericObject remain experimental.
 servers:
   - url: http://localhost:8080

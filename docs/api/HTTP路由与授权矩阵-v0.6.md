@@ -1,4 +1,4 @@
-# CampusOS HTTP 路由与授权矩阵 v0.13
+# CampusOS HTTP 路由与授权矩阵 v1.1
 
 > 本文档由 `go run ./cmd/campusos-contracts --write` 根据 `internal/transport/httpapi/router.go` 生成，请勿手工编辑。
 

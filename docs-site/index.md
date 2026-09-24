@@ -1,12 +1,12 @@
 # CampusOS 官方文档
 
-> 更新时间：2026-09-23（Asia/Shanghai）
+> 更新时间：2026-09-25（Asia/Shanghai）
 
 CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，提供用户社区、管理后台、个人空间、
 受控图文文章、课表，以及可治理的外部插件平台。
 
 <div class="status-line">
-  <code>运行时合同 v0.13.0</code>
+  <code>开发运行版本 v1.1.0-dev</code>
   <code>当前开发主线 v1.1-dev</code>
   <code>Go + Gin</code>
   <code>Vue 3</code>
@@ -53,7 +53,7 @@ cd CampusOS
 | 后端 API | `http://localhost:8080/api/v1` |
 
 ::: warning 当前开发边界
-运行时版本字符串仍为 `v0.13.0`，但本工作区正在进行 `v1.1-dev` 图文附件和插件自包含重构；不要把两者混为正式发布声明。
+当前统一版本为 `v1.1.0-dev`，对应 `v1.1-dev` 图文附件和插件自包含开发主线；应用与部署镜像默认标签保持一致，但这不表示已宣布 `v1.1 Final`。
 CampusOS 提供 Docker 开发栈和单主机 Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
 Linux Containers，不支持原生 Windows Containers。`campusos.plugin/v4` 当前提供纯 UI 的 `runtime: none` 实践样例；通用 Wasm/Container Runner 的完整生产验收仍未完成。
 :::

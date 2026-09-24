@@ -4,7 +4,7 @@
 package version
 
 const (
-	Number  = "0.13.0"
+	Number  = "1.1.0-dev"
 	Display = "v" + Number
 	OpenAPI = Number + "-experimental"
 )
