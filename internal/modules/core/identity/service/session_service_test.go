@@ -52,8 +52,15 @@ func TestSessionRefreshRotationRejectsReuseAndRevokesFamily(t *testing.T) {
 	if err != nil {
 		t.Fatalf("verify issued access JWT: %v", err)
 	}
+	if claims.Nickname != "Session User" {
+		t.Fatalf("issued nickname = %q, want %q", claims.Nickname, "Session User")
+	}
+	claims.Nickname = "stale nickname"
 	if err := service.VerifyAccess(ctx, claims); err != nil {
 		t.Fatalf("verify issued session: %v", err)
+	}
+	if claims.Nickname != "Session User" {
+		t.Fatalf("verified nickname = %q, want current identity nickname", claims.Nickname)
 	}
 
 	rotated, err := service.Refresh(ctx, issued.RefreshToken, SessionMetadata{DeviceName: "Test Browser", ClientIP: "203.0.113.11"})

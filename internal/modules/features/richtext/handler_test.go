@@ -46,3 +46,17 @@ func TestWriteRichTextAssetUploadErrorExplainsSourceDimensions(t *testing.T) {
 		t.Fatalf("expected dimension details, got %#v", payload.Error.Details)
 	}
 }
+
+func TestCurrentUserPrefersNicknameForArticleAuthor(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Set("user_id", "1001")
+	context.Set("username", "alice_handle")
+	context.Set("nickname", "爱丽丝")
+
+	userID, displayName, ok := currentUser(context)
+	if !ok || userID != "1001" || displayName != "爱丽丝" {
+		t.Fatalf("currentUser() = (%q, %q, %t), want current nickname", userID, displayName, ok)
+	}
+}

@@ -1,7 +1,10 @@
-# 专家包清单 — senior-developer（吴八哥 · 高级开发工程师）
+# 专家包清单 — senior-developer（学长小文 · 高级开发工程师）
 
-> 来源：WorkBuddy 专家市场 `experts/plugins/senior-developer`
-> 打包时间：2026-09-22　文件总数：118（其中 Markdown 27 份）
+> 原始来源：WorkBuddy 专家市场 `experts/plugins/senior-developer`
+> 原始打包时间：2026-09-22　文件总数：118（其中 Markdown 27 份）
+>
+> CampusOS 于 2026-09-23 新增根级 `SKILL.md`、将角色显示名改为“学长小文”，并生成仓库发现桥接。
+> 因此本页的历史大小和 SHA256 仅用于追溯导入时的源包，不能作为当前适配后目录的完整性校验值。
 
 
 ## 一、角色配置

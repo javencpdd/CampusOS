@@ -430,7 +430,7 @@ CampusOS 中有三套彼此独立的授权：
 - 插件 Manifest 声明权限，不代表安装后自动批准。
 - 管理员 RBAC 不会把数据库连接、JWT 私钥或用户 Token 交给插件。
 
-插件权限继续阅读：[Host API 与权限](/plugins/host-api) 和 [插件中心、受管数据与签名](/plugins/market-managed-data)。
+v4 插件权限继续阅读：[三层授权与资源访问](/plugins/authorization-v3)、[隔离 UI 与 Bridge](/plugins/frontend-runtime) 和 [插件中心、目录与用户数据](/plugins/market-managed-data)。
 
 ## 13. 常见问题排查
 
@@ -488,7 +488,7 @@ CampusOS 中有三套彼此独立的授权：
 | --- | --- |
 | 版主接口和治理动作 | [版主管理 API](/api/moderation) |
 | HTTP 认证和响应格式 | [认证与社区 API](/api/community) |
-| External Plugin 权限 | [Host API 与权限](/plugins/host-api) |
+| External Plugin 权限 | [三层授权与资源访问](/plugins/authorization-v3) |
 | 插件用户数据授权 | [插件中心、受管数据与签名](/plugins/market-managed-data) |
 | 系统模块和安全边界 | [系统架构](/guide/architecture) |
 

@@ -1,7 +1,7 @@
 # 文档状态与历史替代
 
-> 当前基线：`v0.13.0`  
-> 最近审查：2026-09-11
+> 当前基线：运行时合同 `v0.13.0`，插件开发主线 `v1.1-dev`
+> 最近审查：2026-09-23
 
 CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策与迁移旧实例。但“文件仍存在”不表示它仍是
 当前操作标准。本页说明如何判断文档是否有效，以及旧文档应由什么入口替代。
@@ -38,7 +38,7 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 | `数据库v0.6体检与模型决策.md` 的静态表清单 | 只覆盖旧 `000016` 时点 | 当前 [数据库迁移治理](/operations/database-migration-hygiene)、`migrations/README.md` 与 Admin 只读架构 |
 | `RBAC权限与版主管理说明.md` | v0.10 前后的权限快照 | [权限配置入门](/guide/permission-configuration) |
 | `v0.10权限管理设计与使用入门.md` | 已被 v0.11 权限、作用域和可靠审计模型扩展 | [权限配置入门](/guide/permission-configuration) |
-| `插件开发与工具链v0.6.md` | 只覆盖 Manifest v1 和旧工具链 | [插件体系](/plugins/overview)、[课表插件教程](/plugins/schedule-plugin-tutorial) |
+| `插件开发与工具链v0.6.md` | 只覆盖 Manifest v1 和旧工具链 | [插件体系](/plugins/overview)、[PDF Viewer v4 教程](/plugins/pdf-viewer-tutorial) |
 | `插件包治理与回滚说明.md` | 早期导入流程 | [打包、导入与更新](/plugins/package-import) |
 | `个人主页风格包说明.md` | 旧 Personal Space 风格合同 | [风格包与沙箱 SDK](/plugins/style-packs) |
 | `PostgreSQL双实例数据不一致说明.md` | 单次本地事故复盘 | [Docker 部署与迁移](/deployment/docker) |
@@ -66,7 +66,7 @@ CampusOS 保留历史计划、事故复盘和旧版教程，便于追溯决策�
 当前版本结论见 [v0.1-v0.14 版本演进](/project/version-evolution)，后续候选见
 [当前规划与后续路线](/project/current-roadmap)。
 
-v0.14 已由项目所有者确认收尾。v1.0-dev 的计划内 P0/P1 仓库实现已经完成，目标 Linux、浏览器、恢复与规模性能证据仍属于发布门禁；应以仓库
+v0.14 已由项目所有者确认收尾。v1.0-dev 的计划内 P0/P1 仓库实现已经完成，目标 Linux、浏览器、恢复与规模性能证据仍属于发布门禁；v1.1-dev 的当前插件范围以 v4 自包含重构计划和最新进度记录为准，不能用旧 UI v2 审查报告代替。应以仓库
 `docs/进度/v1.0-dev/v1.0.3-dev.md` 和
 `docs/项目计划书v1/项目计划v1.0/03-v1.0计划逐条审查与项目回顾.md` 判断当前实现与验收状态，以
 `docs/项目计划书v1/项目计划v1.0/01-v1.0数据库全面重构方案.md` 判断数据模型和后续迁移规范。
@@ -86,7 +86,7 @@ v0.14 已由项目所有者确认收尾。v1.0-dev 的计划内 P0/P1 仓库实�
 | Windows/Linux 使用 Docker 开发 | [Docker 跨平台开发](/deployment/docker-development) |
 | 判断 Module、Plugin 和 Resource 的归属 | [模块与插件边界](/guide/module-plugin-resource-boundaries) |
 | 理解和配置权限 | [权限配置入门](/guide/permission-configuration) |
-| 编写、导入和测试外部插件 | [课表插件完整教程](/plugins/schedule-plugin-tutorial) |
+| 编写、导入和测试外部插件 | [PDF Viewer v4 教程](/plugins/pdf-viewer-tutorial) |
 | 调用 API 和处理错误 | [接口约定](/api/overview) |
 | 发布、备份和恢复 | [构建与发布](/deployment/release)、[备份与恢复](/operations/recovery) |
 | 提交 PR 并理解 CI | [贡献、Pull Request 与 CI/CD](/contributing/workflow) |

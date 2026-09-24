@@ -1,11 +1,14 @@
-# 迁移指南 — senior-developer 专家包
+# 导入资料迁移说明 — senior-developer（学长小文）
 
-本包为「吴八哥 · 高级开发工程师」专家包的完整导出，可在任意支持 Markdown 提示词 / Skill 目录约定的 Agent 软件中复用。
+原始包为“学长小文 · 高级开发工程师”的导入资料。CampusOS 的正式可发现入口是根级 `SKILL.md`，
+由仓库同步脚本生成 `.agents/skills/senior-developer/SKILL.md` 桥接；本文件保留原始资料的迁移背景，
+不应替代 CampusOS 的 [使用说明](../../guides/高级开发工程师专家包使用与接入说明.md)。
 
 ## 1. 包结构
 
 ```
 senior-developer/
+├── SKILL.md                       # CampusOS 正式、可发现的工作法入口
 ├── README.md                      # 专家简介（一句话）
 ├── agents/senior-developer.md     # 角色主配置（人格、工作流、输出规范、身份声明）
 ├── avatars/expert.png             # 头像

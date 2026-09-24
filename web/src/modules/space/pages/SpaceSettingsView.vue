@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2>个人主页</h2>
-        <p>配置公开主页、帖子展示筛选和风格包。</p>
+        <p>配置公开主页、帖子展示筛选和风格包。主页地址由注册时的用户名确定；帖子作者等对外名称使用昵称。</p>
       </div>
       <div class="header-actions">
         <el-button @click="goPublicSpace" :disabled="!owner?.username">

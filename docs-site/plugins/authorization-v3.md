@@ -1,63 +1,44 @@
-# Manifest v3 与三层授权
+# 三层授权与资源访问
 
-> 更新时间：2026-09-11
-> 状态：v1.0 Release Candidate 功能说明；目标环境发布证据待收集
+> 更新时间：2026-09-23
+> 适用范围：`campusos.plugin/v4`、`campusos.ui/v3`、`campusos.bridge/v1`
 
-CampusOS 的 External Plugin 不需要用户自行创建长期 API Key，也不能读取用户 JWT、数据库连接或宿主目录。敏感调用的有效权限是以下条件的交集：
+CampusOS 不要求用户生成 API Key、Token 或插件密码来授权。外部插件运行在受宿主控制的隔离界面中；每一次敏感资源读取都由宿主重新判断，插件不会拿到用户 JWT、数据库凭据、真实文件路径或宿主目录权限。
+
+## 决策路径
+
+一项调用只有同时满足下列条件才会放行：
 
 ```text
-Manifest 声明 ∩ 管理员 Grant ∩ 用户 Consent（需要时）
-∩ 插件版本 ∩ self/system Scope ∩ 运行状态 ∩ 系统策略
+Manifest 声明
+∩ 管理员对当前版本的 Grant
+∩ 用户对本人数据的 Consent（需要时）
+∩ 当前插件版本、摘要与已启用状态
+∩ self 范围、资源访问规则与系统策略
 ```
 
-未知方法、未知 Capability、版本变化、范围越界和任一授权缺失都会默认拒绝，并返回稳定的 `DENY_*` 原因码。授权成功结果不做跨请求缓存，所以撤销后的下一次敏感调用立即重新判定。
+任一条件不满足即拒绝。版本、能力、用途或风险变化后，旧授权不会自动扩大；撤销后下一次调用即失效。
 
-## 管理员与用户操作
+## 谁在什么位置授权
 
-- 管理员在 3001 管理端“插件管理 → 授权”审查当前版本的逐项能力、用途和风险，填写原因后授予、拒绝或撤销。
-- 涉及个人数据时，用户在 3000 用户端“插件中心 → 精细授权”逐项同意；管理员未授予的能力不能由用户自行开启。
-- 管理员可在授权对话框管理系统 Secret；用户可在精细授权对话框管理个人 Secret。保存同名项会轮换旧值，页面只显示掩码。
-- 用户可生成一次显示、默认 15 分钟的后台 Delegation。它只包含当前已授权能力，最长 24 小时，可立即撤销。
+| 角色 | 入口 | 能做什么 |
+| --- | --- | --- |
+| 管理员 | 3001 管理端 → 外部插件 → 精细授权 | 审查当前发布版本声明的能力，按能力授予、拒绝或撤销；填写治理原因。 |
+| 用户 | 3000 用户端 → 插件中心 → 我的插件/精细授权 | 添加已发布插件，并仅对自己的个人数据逐项同意或撤销。管理员未授予的能力不能由用户开启。 |
+| 宿主 | API 与 Plugin UI Gateway | 验证发布版本、iframe 会话、调用范围及实际资源 ACL，再签发一次性的受限读取。 |
 
-## Manifest v3 示例
+`PDF 文档预览`是可验证的例子：文章附件预览需要文章读者本来就有的阅读权；个人空间 PDF 仅允许文件所有者预览。插件只能通过 Bridge 读取一个已获授权资源的描述和最多 1 MiB 的 Range 片段，不能列目录或猜测其他文件。
 
-```yaml
-api_version: campusos.plugin/v3
-host_api_version: v3
-name: schedule-reminder
-display_name: 课表提醒
-version: 1.0.0
-runtime: process
-scope: user
-capability_declarations:
-  - code: schedule.self.read
-    required: true
-    purpose: 读取当前用户课表并生成提醒
-    scope: self
-config:
-  command: ./plugin
-  process_contract: campusos.process/v1
-  health_url: http://127.0.0.1:39090/health
-  extension_url: http://127.0.0.1:39090/events
-storage: { type: none }
-```
+## 隔离界面为何不需要 Token
 
-同一语义版本的包摘要和能力指纹不可变化。修改代码、用途或范围后必须提升版本；启动时若发现冲突，CampusOS 会隔离问题插件、保留可诊断错误并继续启动 API。
+用户界面加载自 Plugin UI Gateway（开发环境默认 3003），随后与父页面建立一次受校验的 `MessagePort`。宿主检查来源、插件 key/version、surface、受众和随机 challenge，再仅开放 Bridge 方法：
 
-## Secret 与后台任务
+`config.read`、`config.update`、`resource.describe`、`resource.readRange`、`backend.invoke`、`ui.requestSurface`、`records.read`、`records.write`。
 
-部署端必须设置 32 字节 `CAMPUSOS_PLUGIN_SECRET_KEY` 和 `CAMPUSOS_PLUGIN_SECRET_KEY_VERSION`。数据库保存 AES-256-GCM 密文、nonce 与 Key 版本，不保存或回显明文。
+这不是把登录令牌交给 iframe。页面直接访问 API、存储 Cookie/JWT、拼接 `api` 容器名或读取宿主文件都会被拒绝或失败。
 
-后台任务只能携带宿主签发的短期 Delegation。数据库只保存 Token 摘要；过期、撤销、版本变化、插件停用或 Scope 不匹配都会拒绝调用。
+## Secret 与个人配置
 
-## 开发验证
+系统 Secret 由宿主加密保存，后台仅显示掩码；同名保存会轮换旧值。用户配置不是 Secret 的替代品：添加插件时，宿主在用户空间创建受控的 `plugins/<key>/config/user.json`，并通过带版本的 Bridge 读写，不能由插件自行选择磁盘路径。
 
-```bash
-go run ./cmd/campusosctl plugin doctor ./my-plugin
-go run ./cmd/campusosctl plugin conformance ./my-plugin --json
-make contracts-check
-```
-
-Capability 机器合同位于 `docs/api/plugin-capabilities-v1.json`。三个完整示例位于 `examples/plugins/v1-schedule-reminder`、`v1-mail-watcher` 和 `v1-content-enhancer`。
-
-进一步阅读：[Manifest 与配置](/plugins/manifest)、[Host API 与权限](/plugins/host-api)、[插件生命周期](/plugins/lifecycle)。
+进一步阅读：[v4 Manifest 与配置](/plugins/manifest)、[隔离 UI 与 Bridge](/plugins/frontend-runtime)、[PDF Viewer 实战](/plugins/pdf-viewer-tutorial)。

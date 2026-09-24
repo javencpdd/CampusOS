@@ -32,7 +32,7 @@ func (h *Handler) Status(c *gin.Context) {
 }
 
 func (h *Handler) CreateDraft(c *gin.Context) {
-	userID, username, ok := currentUser(c)
+	userID, displayName, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -42,7 +42,7 @@ func (h *Handler) CreateDraft(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	result, err := h.svc.CreateDraft(c.Request.Context(), userID, username, req)
+	result, err := h.svc.CreateDraft(c.Request.Context(), userID, displayName, req)
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -851,13 +851,20 @@ func currentUser(c *gin.Context) (string, string, bool) {
 	if !ok || id == "" {
 		return "", "", false
 	}
-	username := "Anonymous"
-	if rawName, ok := c.Get("username"); ok {
+	displayName := "Anonymous"
+	if rawName, ok := c.Get("nickname"); ok {
 		if name, ok := rawName.(string); ok && name != "" {
-			username = name
+			displayName = name
 		}
 	}
-	return id, username, true
+	if displayName == "Anonymous" {
+		if rawName, ok := c.Get("username"); ok {
+			if name, ok := rawName.(string); ok && name != "" {
+				displayName = name
+			}
+		}
+	}
+	return id, displayName, true
 }
 
 func writeRichTextError(c *gin.Context, err error) {

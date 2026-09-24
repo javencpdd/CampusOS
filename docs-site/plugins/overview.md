@@ -1,86 +1,69 @@
-# 插件体系
+# v4 自包含外部插件体系
 
-## 先确认你要开发什么
+> 更新时间：2026-09-23（Asia/Shanghai）
+> 适用范围：`campusos.plugin/v4` 新插件开发。v1-v3 目录和文档仅保留兼容与历史参考，不能作为新插件模板。
 
-| 目标 | 应使用的类型 |
-| --- | --- |
-| 修改身份、社区、权限、User Storage 等平台完整性能力 | Core Module |
-| 增加随主程序发布、可启停的官方业务功能 | Built-in Feature |
-| 独立安装、升级、卸载和迁移的扩展 | External Plugin |
-| 主题、主页风格、个人主页风格、Skill/Prompt | Resource Package |
+## 先选对扩展类型
 
-本章的“插件”专指 External Plugin。内置课表、个人空间、富文本和 Appearance
-由 Feature Registry 管理，不在插件目录中。
-
-## 外部插件目录
-
-```text
-data/plugins/<plugin-name>/       实现、plugin.yaml、Wasm/进程入口
-data/plugin_data/<plugin-name>/  KV、快照和运行数据
-```
-
-插件包更新代码时不能覆盖用户数据。需要写用户文件时，必须声明能力并通过
-Host API/User Storage，不得自行拼接 `data/personal-space` 绝对路径。
-
-## Runtime
-
-### Wasm
-
-`runtime: wasm` 由 wazero 在受控环境中加载，适合小型事件逻辑。Wasm 只能
-调用声明并获准的 Host API。
-
-### 受管进程
-
-`runtime: grpc` 是历史兼容名称。CampusOS 启停独立进程，并通过显式声明、
-严格校验的 loopback HTTP Extension/Event 端点通信。它目前不是标准
-protobuf gRPC 协议。
-
-### 为什么没有 builtin
-
-`runtime: builtin` 只保留旧文件解析能力，不能被 Plugin Manager、CLI 或导入
-流程安装。Built-in 使用 `modules/*/module.yaml`，并随 CampusOS 重新编译。
-
-## 权限和事件
-
-```yaml
-events:
-  subscribe: [thread.created]
-permissions:
-  api:
-    - resource: log
-      actions: [write]
-```
-
-Manifest 是权限申请，不是授权结果。Host API 默认拒绝；用户数据能力还需要
-用户 Grant。外部插件永远不能直接取得数据库连接、JWT 私钥、CampusOS 用户
-Token、`AppContext` 或内部 Service。
-
-## UI Runtime
-
-外部插件可以声明 Route、Navigation、Surface 和 Action。`campusos.ui/v1` 继续兼容；新建需要弹窗、抽屉、
-全屏层或同源新标签页的界面应使用 `campusos.ui/v2`。v2 的插件只请求命名 Surface 和允许的 Presentation，
-宿主最终决定怎样打开；不能提交任意 URL、直接调用 `window.open()` 或取得 Session Token。业务 Action 通过：
-
-```text
-/api/v1/extensions/:plugin/*path
-```
-
-Core 注入可信调用者上下文，插件不能相信请求正文中的伪造用户 ID。运行清单
-将外部贡献放在 `plugins[]`，内置功能贡献放在 `modules[]`。
-
-## 示例
-
-| 示例 | 位置 | 用途 |
+| 目标 | 正确类型 | 生命周期 |
 | --- | --- | --- |
-| `hello-wasm` | `data/plugins/hello-wasm` | 最小 Wasm 事件插件 |
-| `grpc-example` | `examples/plugins/grpc-example` | 最小受管进程模板 |
-| `campus-welcome` | `examples/plugins/campus-welcome` | UI Surface 与 Gateway |
-| `v2-managed-example` | `examples/plugins/v2-managed-example` | Grant、受管记录和文件 |
-| `schedule-helper` | `examples/plugins/schedule-helper` | 以课表场景讲解可移植外部插件 |
-| Built-in descriptor | `examples/modules/builtin-feature-example` | 仅说明模块描述符，不可 `plugin install` |
+| 身份、权限、社区、User Storage 等平台完整性能力 | Core Module | 始终随主程序运行。 |
+| 官方业务功能，例如课表、个人空间、富文本 | Built-in Feature | 随 CampusOS 编译，可配置/启停，不可市场安装。 |
+| 可独立发布、安装、授权和卸载的业务扩展 | External Plugin | 使用 `campusos.plugin/v4`。 |
+| 主题、主页样式、Prompt、Skill 等无业务 Runtime 的数据 | Resource Package | 校验、导入、应用，不执行插件代码。 |
 
-下一步：[课表插件完整教程](/plugins/schedule-plugin-tutorial) 或
-[编写第一个插件](/plugins/create-first-plugin)。
+本章的“插件”只指 External Plugin。第三方代码不能通过 `runtime: builtin` 获取进程内访问权，也不能直接读取平台数据库、
+宿主目录、JWT、Cookie、Redis、NATS 或环境密钥。
 
-v2 Surface 的清单、信任边界和验收命令见
-[Plugin UI v2 Surface](/plugins/ui-v2)。
+## 当前 v4 文件与数据边界
+
+```text
+plugins/<plugin-key>/                         # 受版本控制的插件源码
+  plugin.yaml
+  config/{system,user}.{schema,defaults}.json
+  frontend/{user,admin}/                      # 可选的隔离 UI 源码
+  backend/ storage/sqlite/ tests/             # 按需使用
+
+plugins/.installed/<plugin-key>/<version>-<digest>/  # 已校验的不可变 release，唯一可发现运行产物
+plugins/.staging/                              # 宿主原子安装临时目录，不可执行
+data/personal-space/<user-id>/plugins/<key>/config/  # 宿主创建的用户配置，不对 iframe 暴露
+```
+
+源码目录、暂存目录和用户配置目录不会被直接执行或作为静态网页根目录。开发模式会先把源码打包为 release，再走同一套
+校验/安装路径；生产模式只扫描 `.installed/`。旧 `data/plugins/`、`data/plugin_data/` 属于 v1-v3 兼容运行时，
+不能作为 v4 源码发现入口。
+
+## 当前可运行样例：PDF Viewer
+
+[`plugins/campusos.pdf-viewer/`](https://github.com/javencpdd/CampusOS/tree/main/plugins/campusos.pdf-viewer) 是当前唯一的 v4 外部插件：
+
+- `runtime: none`，不运行插件后端进程；预览内容仍由宿主按权限读取。
+- 用户端 PDF.js 页面和管理端设置页随 release 发布到独立 Origin（开发栈默认 `:3003`）。
+- 图文文章附件、个人附件、个人文档三种 PDF 入口由宿主创建短期 Invocation；插件只通过 Bridge 请求受限的描述和 Range 字节。
+- 静态 JS/Worker 可按 release digest 使用浏览器缓存；受保护 PDF 字节不写入 Service Worker、IndexedDB 或共享缓存。
+
+请从 [PDF Viewer 入门教程](/plugins/pdf-viewer-tutorial) 开始，而不是从旧课表示例复制 Manifest。
+
+## 新插件的通用流程
+
+```text
+编写源码和 plugin.yaml
+  -> v4 静态校验、构建 UI 产物
+  -> stage / pack / 可选签名
+  -> 校验后原子安装到 .installed
+  -> 管理员审查并授予声明能力、发布目录
+  -> 用户“添加到我的插件”并生成配置目录
+  -> 用户同意个人数据能力
+  -> 宿主按资源 ACL 与三层授权创建受限 UI/Host 调用
+```
+
+“用户添加”不等于管理员授权，也不等于用户已经同意所有能力；升级后版本身份、声明用途或能力变化会使旧授权失效。
+平台每次调用都重新检查插件版本、运行状态、管理员 Grant、用户 Consent 和业务资源 ACL。
+
+## Runtime 的当前边界
+
+v4 Manifest 可以声明 `none`、`wasm` 或 `container`。`none` 是当前 PDF Viewer 已有的可运行路径。Wasm/Container
+需要受限 Runtime Adapter、资源限制、恢复与目标环境证据；在这些门禁未完成前，不应把其目录、Manifest 字段或计划设计表述为已交付的通用执行平台。
+
+下一步：[v4 Manifest 与配置](/plugins/manifest)、[隔离 UI、Bridge 与 Gateway](/plugins/frontend-runtime)、
+[三层授权与资源访问](/plugins/authorization-v3)。

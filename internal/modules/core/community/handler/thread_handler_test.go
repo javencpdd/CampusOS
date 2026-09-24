@@ -23,7 +23,7 @@ func TestCreateThreadUsesJWTContext(t *testing.T) {
 		AccessTTL: time.Hour,
 		Issuer:    "campusos-test",
 	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
+	token, err := jwtMgr.GenerateAccessToken("1001", "alice", auth.AccessTokenContext{Nickname: "Alice"})
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestCreateThreadUsesJWTContext(t *testing.T) {
 	if payload.Data.AuthorID != "1001" {
 		t.Fatalf("expected author_id from token, got %q", payload.Data.AuthorID)
 	}
-	if payload.Data.AuthorName != "alice" {
-		t.Fatalf("expected author_name from token, got %q", payload.Data.AuthorName)
+	if payload.Data.AuthorName != "Alice" {
+		t.Fatalf("expected author_name to use nickname, got %q", payload.Data.AuthorName)
 	}
 }

@@ -1,6 +1,6 @@
 # CampusOS Skills 文档索引
 
-> 更新时间：2026-08-03
+> 更新时间：2026-09-23
 
 本目录集中保存项目 Skills 的调用、维护、验证和同步说明。Skill 规范源文件位于 `skills/sources/<skill-name>/`，
 仓库级自动发现入口位于 `.agents/skills/`。从 GitHub clone 后不需要再复制到用户系统目录。
@@ -14,7 +14,7 @@
 | `campusos-docker-development` | [Docker 开发 Skill 使用说明](CampusOS-Docker开发Skill使用说明.md) | 处理 Windows/Linux Docker 首配、热更新、代理、LAN、日志和重建边界。 |
 | `campusos-webui-regression` | [WebUI 回归 Skill 使用说明](CampusOS-WebUI回归Skill使用说明.md) | 从 Vue、HTTP、Go、PostgreSQL 和运行栈跨层定位 UI 问题。 |
 | `campusos-skill-repository-sync` | [仓库 Skill 映射与直用说明](CampusOS-仓库Skill映射与直用说明.md) | 同步规范源文件、使用说明和 `.agents/skills` 可移植发现桥接。 |
-| `senior-developer` 专家包 | [高级开发工程师专家包使用与接入说明](高级开发工程师专家包使用与接入说明.md) | 审阅导入专家包中的角色配置、全栈/前端/浏览器子 Skill，并说明当前参考用法与正式接入步骤。 |
+| `senior-developer` | [高级开发工程师 Skill 使用说明](高级开发工程师专家包使用与接入说明.md) | 将“小步实现与验证”落实为 CampusOS 的可发现工作流，并界定导入参考资料的使用边界。 |
 
 完整适用性、修订原因和后续候选见 [Skill 适用性审计与规划](CampusOS-Skill适用性审计与规划.md)。
 

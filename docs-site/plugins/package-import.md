@@ -1,120 +1,41 @@
-# 打包、导入与更新
+# v4 插件打包、安装与更新
 
-## 标准插件包
+> 更新时间：2026-09-23
+> 当前示例：[`plugins/campusos.pdf-viewer`](https://github.com/javencpdd/CampusOS/tree/main/plugins/campusos.pdf-viewer)
 
-文件后缀：
+v4 源码目录不是运行目录。开发者在 `plugins/<key>/` 编写 Manifest、前端和配置 Schema；宿主只从校验后的不可变发布目录 `plugins/.installed/<key>/<version>/` 发现并运行插件。`.staging/` 只用于短暂预检，不能成为执行来源。
 
-```text
-.campusos-plugin.tar.gz
-```
+## 包的边界
 
-归档根目录必须直接包含 `plugin.yaml`：
+发布包根目录必须包含 `plugin.yaml` 以及 Manifest 所声明的 UI 产物、静态资源和文档。不要包含：
 
-```text
-plugin.yaml
-README.md
-plugin.wasm
-src/
-```
+- `.git/`、`node_modules/`、日志、临时文件；
+- 用户文件、数据库数据、个人配置或 Secret；
+- 未构建的前端源替代 `dist/` 产物。
 
-不要再套一层插件名目录，否则导入器无法从包根部读取 manifest。
+`campusos.pdf-viewer` 的用户端与管理端均是 Vite 产物；Vite `base` 必须是 `./`，以便 Gateway 在固定 `/plugins/<key>/<version>/...` 路径下托管资源。
 
-## CLI 打包
+## 本地闭环
 
 ```bash
-go run ./cmd/campusosctl plugin pack data/plugins/hello-wasm
+go run ./cmd/campusos-plugin-v4-check -root plugins
+go run ./cmd/campusosctl plugin v4 validate plugins/campusos.pdf-viewer
+go run ./cmd/campusosctl plugin v4 stage plugins/campusos.pdf-viewer --out .tmp/pdf-viewer.stage
+go run ./cmd/campusosctl plugin v4 pack plugins/campusos.pdf-viewer --out .tmp/pdf-viewer.campusos-plugin.tar.gz
+go run ./cmd/campusosctl plugin v4 sign .tmp/pdf-viewer.campusos-plugin.tar.gz --key-id organization-key --key-file /secure/key --out .tmp/pdf-viewer.signed.tar.gz
+go run ./cmd/campusosctl plugin v4 install .tmp/pdf-viewer.signed.tar.gz --root plugins
 ```
 
-指定输出：
+命令参数以仓库中 `campusosctl plugin v4 --help` 为准；开发 Docker 也可通过 `CAMPUSOS_PLUGIN_V4_DEV_SOURCE=true` 把已校验的开发源码复制成实际发布版本，但 API 仍只扫描 `.installed/`。
 
-```bash
-go run ./cmd/campusosctl plugin pack \
-  data/plugins/hello-wasm \
-  --out /tmp/hello-wasm-0.1.0.campusos-plugin.tar.gz
-```
+## 管理流程
 
-## 导入预检
+1. 管理员预检 Manifest、包路径、摘要、签名、能力与版本变化。
+2. 校验通过后，宿主把发布包写入新版本目录，再原子切换活动版本；失败不污染当前版本。
+3. 管理员决定是否发布到用户目录，并对当前版本逐项 Grant。
+4. 用户添加已发布插件并完成本人数据的 Consent；这会创建受控用户配置目录。
+5. 禁用、撤销、升级或卸载会使后续 Bridge 调用重新判定。升级后的新增能力必须重新治理。
 
-Admin 导入前会检查：
+可信市场“批准申请”不等于下载、安装或执行代码；它只让管理员进入下一步的预检和导入流程。
 
-- `plugin.yaml` 是否存在并可解析。
-- 插件名、版本和 Runtime。
-- 归档路径是否安全。
-- Wasm 模块是否存在。
-- 包大小和 checksum。
-- 权限声明和风险等级。
-- 签名状态、受信任签名密钥和 Manifest 是否要求验签。
-- 同名插件及版本变化。
-- 新增/移除的系统权限与用户权限、是否需要重新授权、数据 Schema 版本变化。
-
-绝对路径、`../` 路径逃逸、符号链接、硬链接和缺少 manifest 的包会被拒绝。
-
-## Admin 导入
-
-```http
-POST /api/v1/plugin-packages/precheck
-POST /api/v1/plugin-packages/import
-```
-
-导入使用 `multipart/form-data`，文件字段名为 `file`。同名插件默认拒绝覆盖；管理员明确选择覆盖后才执行替换。
-
-## CLI 安装
-
-```bash
-go run ./cmd/campusosctl plugin install \
-  /tmp/hello-wasm-0.1.0.campusos-plugin.tar.gz \
-  --dir data/plugins
-```
-
-覆盖：
-
-```bash
-go run ./cmd/campusosctl plugin install \
-  /tmp/hello-wasm-0.1.0.campusos-plugin.tar.gz \
-  --dir data/plugins \
-  --replace
-```
-
-## 导出
-
-Admin：
-
-```http
-GET /api/v1/plugins/:name/export
-```
-
-标准导出只包含插件运行需要的代码和静态文件，不包含数据库状态或运行数据。
-
-## 不应打包的内容
-
-| 内容 | 原因 |
-| --- | --- |
-| `.git/` | 版本库元数据。 |
-| `node_modules/` | 体积大且不可移植。 |
-| `data/` | 运行数据不属于代码包。 |
-| `*.log`、`*.tmp` | 日志和临时文件。 |
-| API Key 和 token | 敏感凭据。 |
-
-## 更新与回滚
-
-覆盖更新前记录：
-
-1. 当前版本和 checksum。
-2. 新包来源、权限变化和 config schema 变化。
-3. `plugin_data` 是否需要迁移。
-4. 失败时恢复旧包和数据的方法。
-
-替换已有插件时会先创建代码快照；管理员可以从快照恢复旧包。受管数据不会随代码回滚而倒退，数据迁移仍需插件作者提供向后兼容策略。
-
-新增用户权限会标记“需要重新授权”。Grant 绑定精确插件版本，升级后不会把旧同意自动扩大到新权限。
-
-## 签名
-
-签名不是把私钥随包导出。使用离线 Ed25519 私钥对包内文件的内容摘要签名：
-
-```bash
-go run ./cmd/campusosctl plugin sign <plugin-dir> --key-id organization-key --key-file /secure/private-key.txt
-go run ./cmd/campusosctl plugin pack <plugin-dir>
-```
-
-实例只保存受信任公钥，位于 `data/config/plugin-trust-keys.json`。如果 Manifest 设置 `release.signature_required: true`，未签名、签名损坏或未受信任的包会被拒绝。详见 [插件中心、受管数据与签名](/plugins/market-managed-data)。
+通用的回滚、跨版本数据迁移和任意 Wasm/container Runtime 仍是后续范围，不应假定已经具备生产承诺。参见[可信市场与目录](/plugins/market-managed-data)。

@@ -1,22 +1,16 @@
-# 插件兼容矩阵
+# 插件兼容性与历史边界
 
-| CampusOS | Manifest API | Host API | Go SDK 标签 | Runtime 模板 |
-| --- | --- | --- | --- | --- |
-| `0.13.x` | `campusos.plugin/v1`、`campusos.plugin/v2` | `v1`、`v2` | `v0.13` | Wasm、受管进程（`grpc` 兼容名）与 legacy builtin 映射 |
+> 更新时间：2026-09-23
 
-Manifest 应显式声明：
+| 范围 | 当前约定 | 新开发是否应使用 |
+| --- | --- | --- |
+| v4 自包含插件 | `campusos.plugin/v4` + `campusos.ui/v3` + `campusos.bridge/v1` | 是 |
+| 当前示例 | `campusos.pdf-viewer` `2.0.0-dev.2`，`runtime: none` | 是 |
+| v1-v3 Manifest/Host API/数据目录 | 兼容读取或历史资料 | 否 |
+| 任意 Wasm/container Runtime | Manifest 枚举值存在，通用生产执行链未作为本期交付 | 否 |
 
-```yaml
-api_version: campusos.plugin/v1
-host_api_version: v1
-compatibility:
-  campusos: ">=0.6.0 <0.14.0"
-  host_api: "v1"
-  sdk_go: "v0.13"
-```
+当前应用启动/合同版本仍为 `v0.13.0`；工作区正在交付 `v1.1-dev` 的插件自包含重构。版本字符串不是 v1.1 Final 声明。
 
-旧包未写版本字段时按 v1 读取，便于 v0.3-v0.5 包迁移；写入未知版本会被拒绝。v2 必须配合 Host API v2，并用于受管数据、用户授权、文件和发布治理。新增权限会提高预检风险并要求管理员重新确认。破坏 Host API 请求/响应或权限语义必须发布新版本，不能在 v1/v2 中静默替换。
+v4 Manifest 应声明 `compatibility.host`、UI 协议和 Bridge 协议。变化能力、用途、风险、资源类型或发布内容时必须发布新版本并重新经历管理员治理；不能在同一已发布版本中静默扩大权限。
 
-当前 `runtime: grpc` 是进程 Runtime 的历史名称，Extension/Event 使用显式 loopback HTTP 合同。标准 protobuf gRPC 插件协议属于未来独立协议版本。
-
-TypeScript SDK 暂不复制 Go Host API。浏览器插件不能持有 Host token，前端调用继续使用 Public HTTP API；待字段级 OpenAPI schema 稳定后，从 OpenAPI 生成只覆盖 Public API 的 TypeScript client。
+旧教程与旧目录仅用于维护既有数据，不能成为新插件的脚手架。请从[PDF Viewer 实战](/plugins/pdf-viewer-tutorial)和[v4 Manifest](/plugins/manifest)开始。
