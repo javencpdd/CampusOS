@@ -2,13 +2,13 @@ name: campusos-api
 
 services:
   api:
-    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
     build:
       context: ../../..
       dockerfile: deploy/docker/Dockerfile
       target: api
       args:
-        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-0.13.0}
+        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
         GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
         GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
     restart: unless-stopped

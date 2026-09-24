@@ -26,7 +26,7 @@ def main() -> int:
     try:
         application = match(
             "internal/platform/version/version.go",
-            r'^\s*Number\s*=\s*"(\d+\.\d+\.\d+)"',
+            r'^\s*Number\s*=\s*"(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)"',
             "application version",
         )
         major_minor = ".".join(application.split(".")[:2])
@@ -39,7 +39,7 @@ def main() -> int:
             )
 
         typescript_sdk = json.loads(read("sdk/typescript/package.json"))["version"]
-        expected_typescript_sdk = f"{application}-dev"
+        expected_typescript_sdk = application if "-" in application else f"{application}-dev"
         if typescript_sdk != expected_typescript_sdk:
             errors.append(
                 "TypeScript SDK package version="
@@ -62,6 +62,54 @@ def main() -> int:
         expected_openapi = f"{application}-experimental"
         if openapi != expected_openapi:
             errors.append(f"OpenAPI version={openapi}, expected={expected_openapi}")
+
+        deployment_tag = match(
+            "deploy/docker/.env.example",
+            r"^CAMPUSOS_IMAGE_TAG=([^\s#]+)$",
+            "deployment image tag",
+        )
+        if deployment_tag != application:
+            errors.append(
+                f"deployment image tag={deployment_tag}, expected={application}"
+            )
+
+        dockerfile_version = match(
+            "deploy/docker/Dockerfile",
+            r"^ARG CAMPUSOS_VERSION=([^\s#]+)$",
+            "Docker image version",
+        )
+        if dockerfile_version != application:
+            errors.append(
+                f"Docker image version={dockerfile_version}, expected={application}"
+            )
+
+        for path in (
+            "compose.deploy.yml",
+            "deploy/docker/components/compose.api.yml",
+            "deploy/docker/components/compose.web.yml",
+            "deploy/docker/components/compose.admin.yml",
+            "deploy/docker/components/compose.docs.yml",
+        ):
+            default_tags = re.findall(r"\$\{CAMPUSOS_IMAGE_TAG:-([^}]+)\}", read(path))
+            if not default_tags:
+                errors.append(f"{path} does not define a default image tag")
+            for tag in default_tags:
+                if tag != application:
+                    errors.append(f"{path} default image tag={tag}, expected={application}")
+
+        display = f"v{application}"
+        development_stage = f"v{major_minor}-dev" if application.endswith("-dev") else ""
+        for path in (
+            "README.md",
+            "docs/README.md",
+            "docs-site/index.md",
+            "docs-site/guide/introduction.md",
+        ):
+            content = read(path)
+            if display not in content:
+                errors.append(f"{path} does not show application version {display}")
+            if development_stage and development_stage not in content:
+                errors.append(f"{path} does not show development stage {development_stage}")
     except (KeyError, OSError, ValueError, json.JSONDecodeError) as error:
         errors.append(str(error))
 

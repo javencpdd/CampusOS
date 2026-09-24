@@ -1,14 +1,14 @@
 # CampusOS API 索引
 
 > 基础地址：`http://localhost:8080/api/v1`
-> 当前发布基线：`v0.13.0`（统一错误合同、可观测性、可靠任务运营、双端风格包、管理员准入、TOTP MFA 与容量门禁已验收）；`v0.14-dev` 的学期治理、对象存储和个人文档接口已进入当前工作树，但不代表 `v0.14.0 Final` 已发布。
+> 当前统一版本：`v1.1.0-dev`（`v1.1-dev` 主线）。应用版本不改变 `/api/v1` 或独立插件合同的兼容标识，也不是 v1.1 Final 声明。
 
 第一次调用 API 时先读 [官方接口约定](../../docs-site/api/overview.md)。本页适合开发者按业务域查找当前
 路由；机器集成应使用生成的 OpenAPI 和路由授权矩阵，不能从本文示例推断未声明字段。
 
 ## 1. 契约状态
 
-CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；内容的 `version` 为 v0.13，并由真实路由代码生成和检查漂移。
+CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威契约是 [openapi-v0.6-current.yaml](openapi-v0.6-current.yaml)，机器清单是 [http-routes-v0.6.json](http-routes-v0.6.json)，完整授权矩阵见 [HTTP 路由与授权矩阵](HTTP路由与授权矩阵-v0.6.md)。这些兼容文件名不再表示实现版本；当前路由清单内容版本为 `v1.1`、OpenAPI 信息版本为 `1.1.0-dev-experimental`，均由真实路由代码生成并检查漂移。
 
 当前 OpenAPI 已覆盖 method/path、认证、显式权限、请求体和通用响应包络。验证式注册、登录、用户资料、帖子、回复、版块、个人空间、受管课表、个人文档、富文本、角色/版主和风格包选择等核心请求使用字段级 schema；动态插件配置、集成配置和部分上传接口使用 `GenericObject` 或 `MultipartRequest`，继续标记 `generic-experimental`。历史 [openapi-v0.3-pre.yaml](openapi-v0.3-pre.yaml) 只作旧版本参考。
 

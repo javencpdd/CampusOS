@@ -1,5 +1,5 @@
 {
-  "version": "v0.13",
+  "version": "v1.1",
   "routes": [
     {
       "method": "GET",
