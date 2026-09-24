@@ -8145,6 +8145,44 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/richtext/articles/{id}/attachments/from-personal-document:
+    post:
+      operationId: d_RichText
+      summary: POST /api/v1/richtext/articles/:id/attachments/from-personal-document
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: feature.controlled-richtext-article
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.post.api.v1.richtext.articles.id.attachments.from_personal_document
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericObject'
+      x-campusos-schema-level: generic-experimental
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/richtext/articles/{id}/attachments/order:
     patch:
       operationId: d_RichText

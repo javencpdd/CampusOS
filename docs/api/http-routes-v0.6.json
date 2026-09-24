@@ -2043,6 +2043,23 @@
     },
     {
       "method": "POST",
+      "path": "/api/v1/richtext/articles/:id/attachments/from-personal-document",
+      "handler": "d.RichText",
+      "module_owner": "feature.controlled-richtext-article",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.post.api.v1.richtext.articles.id.attachments.from_personal_document",
+      "legacy_aliases": [
+        "http.post.api.v1.richtext.articles.id.attachments.from_personal_document",
+        "httpapi.post.api.v1.richtext.articles.id.attachments.from_personal_document"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
       "path": "/api/v1/richtext/articles/:id/attachments/upload",
       "handler": "d.RichText",
       "module_owner": "feature.controlled-richtext-article",
