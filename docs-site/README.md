@@ -17,7 +17,7 @@ pnpm dev
 
 权限配置入门：`http://localhost:3002/guide/permission-configuration`
 
-课表插件教程：`http://localhost:3002/plugins/schedule-plugin-tutorial`
+PDF Viewer v4 插件教程：`http://localhost:3002/plugins/pdf-viewer-tutorial`
 
 版本演进：`http://localhost:3002/project/version-evolution`
 

@@ -1,7 +1,21 @@
 # Docker 单主机部署与迁移
 
-CampusOS v0.13 提供经过仓库门禁检查的单主机 Docker Compose 交付。宿主机不需要安装 Go、Node.js、
+> 更新时间：2026-09-25；当前源码与默认部署镜像统一使用 `v1.1.0-dev`（`v1.1-dev`）；插件重构尚未构成 Final 发布声明。
+
+CampusOS 提供经过仓库门禁检查的单主机 Docker Compose 交付。宿主机不需要安装 Go、Node.js、
 PostgreSQL、Redis 或 NATS，只需要 Git、Docker 和 Compose v2。
+
+## 版本号与运行方式
+
+未宣布正式发布前，源码中的应用版本、部署模板的 `CAMPUSOS_IMAGE_TAG` 默认值和镜像元数据统一为
+`v1.1.0-dev`（镜像 tag 不带前缀 `v`：`1.1.0-dev`）。版本号相同表示来自同一开发阶段，**不表示**
+已经完成正式发布验收。历史版本 `v0.13.0` 仅用于追溯，不再作为当前模板默认值。
+
+版本号不是运行模式开关：开发栈挂载工作区并热重载，可使用本地测试配置；本页的单主机部署栈构建
+固定镜像，更新源码需重新构建镜像。`CAMPUSOS_ENV=production` 还会校验非开发密钥、禁止 fake 邮件
+投递并启用安全 Cookie。联网部署需要配置 SMTP、TLS、备份与恢复流程，不能仅因 tag 一致就把开发
+配置用于生产。已有 `.env.docker` 不会因模板修改而自动覆盖；如仍写着旧 tag，需自行将其中的
+`CAMPUSOS_IMAGE_TAG` 改为 `1.1.0-dev` 后执行部署更新。
 
 ## 支持边界
 

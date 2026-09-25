@@ -18,7 +18,9 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: apiProxyTarget,
-        changeOrigin: true,
+        // Keep the browser's Host header for v4 isolated-plugin UI origins.
+        // `api:8080` is a Docker-only name and must never reach the browser.
+        changeOrigin: false,
       },
     },
   },

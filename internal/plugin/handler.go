@@ -15,10 +15,12 @@ import (
 
 // Handler 插件管理 HTTP 处理器
 type Handler struct {
-	manager    *Manager
-	pluginsDir string
-	builtins   BuiltinFeatureCompatibility
-	market     *MarketService
+	manager       *Manager
+	pluginsDir    string
+	builtins      BuiltinFeatureCompatibility
+	market        *MarketService
+	authorization *AuthorizationService
+	secrets       *SecretService
 }
 
 // BuiltinFeatureCompatibility is a deprecated transport adapter only. The
@@ -46,6 +48,14 @@ func WithBuiltinFeatureCompatibility(features BuiltinFeatureCompatibility) Handl
 
 func WithMarketService(market *MarketService) HandlerOption {
 	return func(h *Handler) { h.market = market }
+}
+
+func WithAuthorizationService(service *AuthorizationService) HandlerOption {
+	return func(h *Handler) { h.authorization = service }
+}
+
+func WithSecretService(service *SecretService) HandlerOption {
+	return func(h *Handler) { h.secrets = service }
 }
 
 // NewHandler 创建插件处理器
@@ -326,6 +336,7 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		"requires_reauthorization": precheck.RequiresReauthorization,
 		"data_schema_change":       precheck.DataSchemaChange,
 		"signature_status":         precheck.SignatureStatus,
+		"capability_changes":       precheck.CapabilityChanges,
 		"precheck_warnings":        precheck.Warnings,
 	}
 	if precheck.Manifest != nil {
@@ -337,6 +348,17 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import rejected by precheck", auditMetadata)
 		response.Error(c, http.StatusBadRequest, 60005, "plugin package precheck failed: "+strings.Join(precheck.Errors, "; "))
 		return
+	}
+	// A semantic version is an immutable security identity in v1. Reject a
+	// changed package before replacing files; otherwise code and authorization
+	// facts could momentarily disagree even though runtime access is fail-closed.
+	if h.authorization != nil && precheck.Manifest != nil {
+		if active, activeErr := h.authorization.ActiveVersion(c.Request.Context(), precheck.Manifest.Name); activeErr == nil && active.Version == precheck.Manifest.Version && active.PackageDigest != strings.ToLower(precheck.Checksum) {
+			auditMetadata["outcome"] = "immutable_version_conflict"
+			h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import rejected because version content changed", auditMetadata)
+			response.Error(c, http.StatusConflict, 60004, "相同插件版本的包内容不可变；请提升 Manifest version 后重新导入。")
+			return
+		}
 	}
 	if precheck.Conflict && !replace {
 		auditMetadata["outcome"] = "conflict_without_replace"
@@ -360,8 +382,18 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 	hotReloaded := replace && installed.Manifest.IsUserLevel() && installed.Status == StatusRunning
 	auditMetadata["hot_reloaded"] = hotReloaded
 	h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "info", "plugin package imported by admin", auditMetadata)
+	authorizationSynced := h.authorization == nil
+	if h.authorization != nil {
+		if _, syncErr := h.authorization.SyncInstalled(c.Request.Context(), installed, actorID); syncErr != nil {
+			auditMetadata["authorization_sync_error"] = syncErr.Error()
+			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "error", "plugin authorization facts sync failed after import", auditMetadata)
+			response.Error(c, http.StatusConflict, 60004, "插件包已导入，但授权事实同步失败；插件保持默认拒绝，请检查版本摘要后重试同步："+syncErr.Error())
+			return
+		}
+		authorizationSynced = true
+	}
 	marketSynced := true
-	if h.market != nil && h.market.Available() && installed.Manifest.IsV2() && installed.Manifest.Runtime != "builtin" {
+	if h.market != nil && h.market.Available() && (installed.Manifest.IsV2() || installed.Manifest.IsV3()) && installed.Manifest.Runtime != "builtin" {
 		if err := h.market.SyncCatalog(c.Request.Context(), h.manager.ListPlugins()); err != nil {
 			marketSynced = false
 			auditMetadata["market_sync_error"] = err.Error()
@@ -376,6 +408,7 @@ func (h *Handler) ImportPluginPackage(c *gin.Context) {
 	payload := h.pluginPayload(installed)
 	payload["hot_reloaded"] = hotReloaded
 	payload["market_synced"] = marketSynced
+	payload["authorization_synced"] = authorizationSynced
 	response.Success(c, payload)
 }
 
@@ -441,6 +474,12 @@ func (h *Handler) RollbackVersionSnapshot(c *gin.Context) {
 		return
 	}
 	actorID, actorName := currentActor(c)
+	if h.authorization != nil {
+		if _, syncErr := h.authorization.SyncInstalled(c.Request.Context(), installed, actorID); syncErr != nil {
+			response.Error(c, http.StatusConflict, 60004, "版本文件已恢复，但授权版本同步失败；插件保持默认拒绝："+syncErr.Error())
+			return
+		}
+	}
 	h.manager.RecordPluginAudit(c.Request.Context(), name, "warn", "plugin rollback requested by admin", map[string]interface{}{
 		"actor_id": actorID, "actor_name": actorName, "snapshot_id": req.SnapshotID,
 	})
@@ -495,6 +534,12 @@ func (h *Handler) pluginPayload(p *Plugin) gin.H {
 	}
 	payload["lifecycle_owner"] = "plugin-platform"
 	payload["capability_class"] = classification
+	payload["ui_contract_version"] = p.Manifest.UI.ContractVersion
+	surfaces := make([]gin.H, 0, len(p.Manifest.UI.Surfaces))
+	for _, surface := range p.Manifest.UI.Surfaces {
+		surfaces = append(surfaces, gin.H{"id": surface.ID, "version": surface.Version, "type": surface.Type, "presentations": surface.Presentations})
+	}
+	payload["ui_surfaces"] = surfaces
 	return payload
 }
 

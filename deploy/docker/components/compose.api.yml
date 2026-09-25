@@ -2,13 +2,13 @@ name: campusos-api
 
 services:
   api:
-    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    image: campusos-api:${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
     build:
       context: ../../..
       dockerfile: deploy/docker/Dockerfile
       target: api
       args:
-        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-0.13.0}
+        CAMPUSOS_VERSION: ${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
         GOPROXY: ${DOCKER_BUILD_GOPROXY:-https://goproxy.cn|https://proxy.golang.org|direct}
         GOSUMDB: ${DOCKER_BUILD_GOSUMDB:-sum.golang.google.cn}
     restart: unless-stopped
@@ -43,6 +43,8 @@ services:
       AUTH_MFA_ACTIVE_KEY_ID: ${AUTH_MFA_ACTIVE_KEY_ID:-docker-v1}
       AUTH_MFA_ENCRYPTION_KEYS: ${AUTH_MFA_ENCRYPTION_KEYS:?run the Docker environment init first}
       AUTH_MFA_ISSUER: ${AUTH_MFA_ISSUER:-CampusOS}
+      CAMPUSOS_PLUGIN_SECRET_KEY: ${CAMPUSOS_PLUGIN_SECRET_KEY:?run the Docker environment init first}
+      CAMPUSOS_PLUGIN_SECRET_KEY_VERSION: ${CAMPUSOS_PLUGIN_SECRET_KEY_VERSION:-v1}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-fake}
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}

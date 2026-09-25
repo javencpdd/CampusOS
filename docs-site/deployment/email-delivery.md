@@ -65,8 +65,10 @@ EMAIL_SMTP_STARTTLS=true
 GET /api/v1/platform/email-delivery/status
 ```
 
-SMTP 失败后任务会以 at-least-once 语义重试。修复网络或 Provider 后重启服务并检查 Outbox；不要
-通过日志或数据库恢复验证码。
+SMTP 失败后任务会以 at-least-once 语义重试。邮件投递卡片会在不显示地址、验证码或 Provider 原始响应的前提下，
+区分连接、TLS、身份验证、发件地址、收件地址和邮件提交故障，并给出中文修复建议。QQ/Foxmail 返回 `535`
+通常表示 SMTP 授权码无效、已撤销或账号尚未启用 SMTP 服务；重新生成授权码后更新本地配置、重启 API，
+再重放已进入 `dead` 的任务或重新申请验证码。不要通过日志或数据库恢复验证码。
 
 仓库内的完整排障说明见
 `docs/help/系统设计相关/v0.12邮件投递与SMTP部署说明.md`。

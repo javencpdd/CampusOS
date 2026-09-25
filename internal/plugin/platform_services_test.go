@@ -10,4 +10,7 @@ func TestPlatformServicesOnlyClassifyExternalPlugins(t *testing.T) {
 	if got := m.Catalog().Classify(&Manifest{Name: "external", Runtime: "wasm"}); got != ExternalPlugin {
 		t.Fatalf("class=%s", got)
 	}
+	if got := m.Catalog().Classify(&Manifest{Name: "ui-only", Runtime: "none", Type: PluginTypeExternal}); got != ExternalPlugin {
+		t.Fatalf("ui-only class=%s", got)
+	}
 }

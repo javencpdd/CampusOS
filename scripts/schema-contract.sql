@@ -4,13 +4,17 @@ DECLARE
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
-        'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles', 'permissions',
+        'schema_migrations', 'schema_migration_locks',
+        'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles',
         'identity_legacy_email_placeholders', 'identity_reserved_identifiers',
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
+        'plugin_publishers', 'plugin_versions', 'plugin_capability_declarations', 'plugin_admin_grants',
+        'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',
-        'richtext_article_assets', 'content_revisions', 'content_moderation_cases', 'content_moderation_actions',
+        'richtext_article_assets', 'user_assets', 'richtext_article_attachments', 'plugin_ui_invocations', 'asset_lifecycle_audits',
+        'content_revisions', 'content_moderation_cases', 'content_moderation_actions',
         'webhook_endpoints', 'webhook_deliveries',
         'platform_outbox', 'outbox_consumer_receipts', 'platform_outbox_attempts', 'platform_command_audits', 'platform_worker_leases',
         'platform_operation_runs', 'platform_compatibility_usage', 'platform_retention_runs',
@@ -68,7 +72,18 @@ BEGIN
         'user_schedule_preferences.user_id', 'user_schedule_preferences.academic_term_id',
         'personal_documents.id', 'personal_documents.owner_user_id', 'personal_documents.name', 'personal_documents.document_type', 'personal_documents.status', 'personal_documents.current_version_id', 'personal_documents.version',
         'personal_document_versions.id', 'personal_document_versions.document_id', 'personal_document_versions.version_number', 'personal_document_versions.source_object_id', 'personal_document_versions.source_type', 'personal_document_versions.size_bytes', 'personal_document_versions.sha256',
-        'personal_document_previews.id', 'personal_document_previews.document_version_id', 'personal_document_previews.preview_object_id', 'personal_document_previews.status', 'personal_document_previews.attempts'
+        'personal_document_previews.id', 'personal_document_previews.document_version_id', 'personal_document_previews.preview_object_id', 'personal_document_previews.status', 'personal_document_previews.attempts',
+        'user_assets.id', 'user_assets.owner_user_id', 'user_assets.kind', 'user_assets.storage_object_id', 'user_assets.mime_type', 'user_assets.size_bytes', 'user_assets.status', 'user_assets.version',
+        'richtext_article_attachments.id', 'richtext_article_attachments.article_content_id', 'richtext_article_attachments.asset_id', 'richtext_article_attachments.display_name', 'richtext_article_attachments.display_order',
+        'plugin_ui_invocations.id', 'plugin_ui_invocations.user_id', 'plugin_ui_invocations.plugin_key', 'plugin_ui_invocations.surface_id', 'plugin_ui_invocations.context_kind', 'plugin_ui_invocations.article_content_id', 'plugin_ui_invocations.personal_document_id', 'plugin_ui_invocations.presentation', 'plugin_ui_invocations.expires_at',
+        'asset_lifecycle_audits.id', 'asset_lifecycle_audits.asset_id', 'asset_lifecycle_audits.actor_user_id', 'asset_lifecycle_audits.actor_type', 'asset_lifecycle_audits.action', 'asset_lifecycle_audits.created_at',
+        'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
+        'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
+        'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint',
+        'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
+        'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
+        'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
+        'plugin_authorization_decisions.request_id', 'plugin_authorization_decisions.outcome'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM information_schema.columns c
@@ -94,7 +109,7 @@ BEGIN
         'chk_identity_challenge_policy_ip_limit', 'chk_identity_challenge_policy_version',
         'chk_identity_recovery_case_status', 'chk_identity_recovery_case_target_email',
         'chk_identity_recovery_case_completion',
-        'ck_sessions_refresh_token_cleared', 'ck_sessions_refresh_token_digest_shape',
+        'ck_sessions_refresh_token_digest_shape',
         'chk_categories_node_kind', 'chk_categories_lifecycle_status', 'chk_categories_version',
         'chk_categories_color', 'chk_categories_group_root',
         'chk_threads_status', 'chk_threads_thread_type', 'chk_posts_status',
@@ -122,17 +137,28 @@ BEGIN
         'chk_user_storage_reservations_bytes', 'chk_user_storage_reservations_status',
 		'chk_personal_documents_type', 'chk_personal_documents_status', 'chk_personal_documents_version',
 		'chk_personal_document_versions_number', 'chk_personal_document_versions_type', 'chk_personal_document_versions_size',
-		'chk_personal_document_previews_status', 'chk_personal_document_previews_attempts',
+        'chk_personal_document_previews_status', 'chk_personal_document_previews_attempts',
+        'chk_user_assets_kind', 'chk_user_assets_size', 'chk_user_assets_status', 'chk_user_assets_version', 'chk_user_assets_deleted_at',
+        'chk_richtext_article_attachment_name', 'chk_richtext_article_attachment_order',
+        'chk_plugin_ui_invocations_presentation', 'chk_plugin_ui_invocations_purpose', 'chk_plugin_ui_invocations_expiry', 'chk_plugin_ui_invocations_context_kind',
+        'chk_asset_lifecycle_audits_actor_type', 'chk_asset_lifecycle_audits_action', 'chk_asset_lifecycle_audits_reason',
         'chk_webhook_endpoint_max_concurrent', 'chk_webhook_endpoint_rate_limit',
         'fk_accounts_user', 'fk_identity_admin_account_user', 'fk_identity_admin_account_credential',
         'fk_identity_email_challenge_account', 'fk_identity_challenge_policy_updated_by', 'fk_identity_recovery_case_user',
         'fk_identity_recovery_case_account', 'fk_identity_recovery_case_challenge',
         'fk_identity_recovery_case_created_by', 'fk_threads_author', 'fk_threads_category',
         'fk_posts_thread', 'fk_posts_author', 'fk_user_roles_user', 'fk_user_roles_role',
-        'fk_permissions_role', 'fk_user_spaces_user', 'fk_richtext_contents_thread',
+        'fk_user_spaces_user', 'fk_richtext_contents_thread',
         'fk_v10_role_permissions_role', 'fk_v10_role_permissions_permission',
         'fk_route_permission_operation', 'fk_route_permission_definition',
-        'chk_plugins_backend_state', 'chk_plugins_frontend_state', 'chk_plugins_health_state'
+        'chk_plugins_backend_state', 'chk_plugins_frontend_state', 'chk_plugins_health_state',
+        'fk_plugins_publisher', 'chk_plugin_publishers_trust', 'chk_plugin_versions_lifecycle',
+        'fk_user_assets_owner', 'fk_user_assets_storage_object', 'fk_richtext_article_attachments_article', 'fk_richtext_article_attachments_asset',
+        'fk_plugin_ui_invocations_user', 'fk_plugin_ui_invocations_article', 'fk_plugin_ui_invocations_asset', 'fk_plugin_ui_invocations_attachment', 'fk_plugin_ui_invocations_personal_document',
+        'fk_asset_lifecycle_audits_asset', 'fk_asset_lifecycle_audits_actor',
+        'fk_richtext_article_assets_user_asset',
+        'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
+        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated
@@ -165,16 +191,42 @@ BEGIN
         'uk_storage_objects_provider_key', 'idx_storage_objects_owner_id_desc', 'idx_storage_objects_owner_namespace_purpose_id_desc', 'idx_storage_objects_status_updated_at',
         'uk_user_storage_reservations_object', 'idx_user_storage_reservations_pending_expiry',
         'idx_user_schedule_terms_academic_term', 'idx_user_schedule_terms_current_object', 'idx_user_schedule_preferences_term', 'idx_personal_documents_owner_status_updated',
-        'idx_personal_document_versions_document_number', 'uk_personal_document_versions_number', 'uk_personal_document_previews_version'
+        'idx_personal_document_versions_document_number', 'uk_personal_document_versions_number', 'uk_personal_document_previews_version',
+        'uk_plugin_publishers_slug_active', 'uk_plugin_versions_version', 'uk_plugin_versions_active',
+        'uk_plugin_capability_declaration', 'uk_plugin_admin_grants_current', 'uk_plugin_user_consents_current',
+        'uk_plugin_delegations_token_digest', 'uk_plugin_secret_values_active', 'uk_plugin_authorization_request',
+        'idx_plugin_admin_grants_declaration', 'idx_plugin_user_consents_declaration',
+        'idx_plugin_authorization_declaration'
+        ,'uq_user_assets_storage_object', 'idx_user_assets_owner_status_updated', 'idx_user_assets_owner_kind_updated',
+        'uq_richtext_article_attachment_asset', 'uq_richtext_article_attachment_order', 'idx_richtext_article_attachments_article_order', 'idx_richtext_article_attachments_asset_article',
+        'idx_plugin_ui_invocations_expiry', 'idx_plugin_ui_invocations_user_plugin_expiry', 'idx_plugin_ui_invocations_article', 'idx_plugin_ui_invocations_asset', 'idx_plugin_ui_invocations_attachment', 'idx_plugin_ui_invocations_personal_document',
+        'idx_asset_lifecycle_audits_created_action', 'idx_asset_lifecycle_audits_asset_created', 'idx_asset_lifecycle_audits_actor_created',
+        'idx_richtext_article_assets_asset_id'
     ]) expected
     WHERE to_regclass('public.' || expected) IS NULL;
     IF missing IS NOT NULL THEN
         RAISE EXCEPTION 'schema contract missing indexes: %', missing;
     END IF;
+
+    SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
+    INTO missing
+    FROM pg_constraint fk
+    WHERE fk.contype = 'f'
+      AND fk.connamespace = 'public'::regnamespace
+      AND NOT EXISTS (
+          SELECT 1
+          FROM pg_index idx
+          WHERE idx.indrelid = fk.conrelid
+            AND idx.indisvalid
+            AND (idx.indkey::smallint[])[0:cardinality(fk.conkey)-1] @> fk.conkey
+      );
+    IF missing IS NOT NULL THEN
+        RAISE EXCEPTION 'schema contract foreign keys without a leading index: %', missing;
+    END IF;
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v0.12-admin-plane-v2',
+    'schema_contract', 'v1.1-personal-document-preview-v1',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'

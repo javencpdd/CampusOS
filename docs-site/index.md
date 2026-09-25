@@ -1,9 +1,13 @@
 # CampusOS 官方文档
 
-CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，同时提供用户社区、管理后台、个人空间、受控富文本、个人课表和可扩展插件运行时。
+> 更新时间：2026-09-25（Asia/Shanghai）
+
+CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统，提供用户社区、管理后台、个人空间、
+受控图文文章、课表，以及可治理的外部插件平台。
 
 <div class="status-line">
-  <code>v0.13.0</code>
+  <code>开发运行版本 v1.1.0-dev</code>
+  <code>当前开发主线 v1.1-dev</code>
   <code>Go + Gin</code>
   <code>Vue 3</code>
   <code>PostgreSQL</code>
@@ -15,9 +19,9 @@ CampusOS 是一个基于 Go、Gin、Vue 3 和 PostgreSQL 的校园社区系统�
   <a href="/guide/permission-configuration"><strong>配置角色与权限</strong><span>从权限概念、自定义角色和用户分配，逐步完成板块版主与授权审计。</span></a>
   <a href="/deployment/development"><strong>启动开发环境</strong><span>安装依赖、准备配置、运行 migration 并启动四个开发服务。</span></a>
   <a href="/api/overview"><strong>调用 HTTP API</strong><span>认证、响应包络、错误处理、接口分组和当前契约边界。</span></a>
-  <a href="/plugins/schedule-plugin-tutorial"><strong>编写课表插件</strong><span>区分内置课表与外部插件，并完成 Manifest v2、受管数据和发布授权闭环。</span></a>
+  <a href="/plugins/pdf-viewer-tutorial"><strong>编写第一个 v4 插件</strong><span>以自包含 PDF Viewer 学习 Manifest、隔离 UI、Bridge、三层授权和用户配置目录。</span></a>
   <a href="/operations/reliable-tasks"><strong>可靠任务与 Webhook</strong><span>查看持久事件、失败队列、重放边界和安全投递配置。</span></a>
-  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>理解 v0.1-v0.14 演进、v0.14-dev 已实现范围与尚未跨越的 Final 门禁。</span></a>
+  <a href="/project/current-roadmap"><strong>查看项目规划</strong><span>了解 v1.1-dev 的附件、PDF Viewer 与自包含插件重构状态，以及仍需完成的验收边界。</span></a>
 </div>
 
 ## 当前界面
@@ -49,10 +53,9 @@ cd CampusOS
 | 后端 API | `http://localhost:8080/api/v1` |
 
 ::: warning 当前开发边界
-CampusOS 仍处于开发阶段。仓库已经提供容器化开发环境、API/Web/Admin/Docs 独立镜像和单主机
-Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
-Linux Containers，不支持原生 Windows Containers。
-当前兼容名称 `runtime: grpc` 表示受管外部进程，Extension/Event 使用受限 loopback HTTP；它不是标准 protobuf gRPC 协议。
+当前统一版本为 `v1.1.0-dev`，对应 `v1.1-dev` 图文附件和插件自包含开发主线；应用与部署镜像默认标签保持一致，但这不表示已宣布 `v1.1 Final`。
+CampusOS 提供 Docker 开发栈和单主机 Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
+Linux Containers，不支持原生 Windows Containers。`campusos.plugin/v4` 当前提供纯 UI 的 `runtime: none` 实践样例；通用 Wasm/Container Runner 的完整生产验收仍未完成。
 :::
 
 ## 参与开发
@@ -62,8 +65,8 @@ Linux Containers，不支持原生 Windows Containers。
 - [开发者学习路线](/guide/developer-learning-path)
 - [贡献、Pull Request 与 CI/CD](/contributing/workflow)
 - [权限配置入门](/guide/permission-configuration)
-- [以课表为例编写外部插件](/plugins/schedule-plugin-tutorial)
-- [编写第一个插件](/plugins/create-first-plugin)
+- [以 PDF Viewer 为例编写 v4 外部插件](/plugins/pdf-viewer-tutorial)
+- [v4 自包含插件体系](/plugins/overview)
 - [构建与发布](/deployment/release)
 - [v0.1-v0.14 版本演进](/project/version-evolution)
 - [文档状态与历史替代](/project/document-lifecycle)

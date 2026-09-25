@@ -24,6 +24,7 @@ type Manager struct {
 	packages  *PackageService
 	snapshots *SnapshotService
 	host      *HostAccessService
+	v4        *v4Catalog
 }
 
 // NewManager 创建插件管理器
@@ -32,6 +33,7 @@ func NewManager() *Manager {
 		runtimes: NewRuntimeRegistry(),
 		catalog:  NewPluginCatalog(),
 		ui:       NewUIRegistry(),
+		v4:       newV4Catalog(),
 	}
 	m.audit = NewAuditLogService()
 	m.lifecycle = NewLifecycleService(m.catalog, m.runtimes, m.ui, m.audit)
@@ -108,7 +110,7 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 		DesiredEnabled: manifest.IsSystemLevel(),
 		Directory:      dir,
 	}
-	if plugin.DesiredEnabled && !manifest.UI.Empty() {
+	if plugin.DesiredEnabled && pluginHasFrontend(plugin) {
 		plugin.FrontendState = FrontendLoaded
 	}
 	m.catalog.plugins[manifest.Name] = plugin
@@ -124,6 +126,37 @@ func (m *PackageService) Install(dir string) (*Plugin, error) {
 
 	log.Printf("🔌 插件已安装: %s v%s (%s)", manifest.Name, manifest.Version, manifest.Runtime)
 	return plugin, nil
+}
+
+// RegisterBuiltin registers a compiled first-party plugin manifest. Unlike
+// Install it never reads package files and is deliberately unavailable to
+// external imports, so no uploaded code can claim the builtin runtime.
+func (m *PackageService) RegisterBuiltin(manifest *Manifest) (*Plugin, error) {
+	if manifest == nil {
+		return nil, errors.New("builtin manifest is required")
+	}
+	if err := manifest.Validate(); err != nil {
+		return nil, err
+	}
+	if manifest.Runtime != "builtin" || manifest.Scope != ScopeSystem || manifest.Type != PluginTypeBuiltin {
+		return nil, errors.New("builtin registration requires a system builtin manifest")
+	}
+	m.catalog.mu.Lock()
+	if _, exists := m.catalog.plugins[manifest.Name]; exists {
+		m.catalog.mu.Unlock()
+		return nil, fmt.Errorf("plugin %q already registered", manifest.Name)
+	}
+	p := &Plugin{ID: manifest.Name, Manifest: manifest, Status: StatusInstalled, BackendState: BackendInstalled,
+		FrontendState: FrontendLoaded, Health: HealthUnknown, DesiredEnabled: true, Directory: "builtin:" + manifest.Name, InstalledBy: "system",
+		Checksum: digestJSON(manifest)}
+	m.catalog.plugins[manifest.Name] = p
+	m.events.Add(manifest.Name, manifest.Events.Subscribe)
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
+	if err := m.syncPluginRecord(context.Background(), p); err != nil {
+		return nil, err
+	}
+	return clonePlugin(p), nil
 }
 
 func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error {
@@ -158,9 +191,31 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 			p.FrontendState = restoredFrontendState(record.FrontendState, p)
 			p.Health = restoredHealthState(record.HealthState, p.Status)
 			p.ErrorMsg = record.ErrorMsg
-			p.Checksum = record.Checksum
+			// Builtin modules and v4 isolated UI releases derive their checksum from
+			// the current immutable declaration/release.  That digest is the
+			// security identity synced to plugin_versions. Restoring an old
+			// persisted checksum would make a new semantic version appear to have
+			// the previous package's digest and can trigger a false integrity
+			// quarantine on the unique (plugin_id, package_digest) constraint.
+			if p.Manifest.Runtime != "builtin" && !p.IsolatedUI {
+				p.Checksum = record.Checksum
+			}
 			p.PackageSize = record.PackageSize
 			p.InstalledBy = record.InstalledBy
+			// Builtin modules and v4 isolated UI releases are host-managed immutable
+			// declarations. A prior development release may have been automatically
+			// quarantined after its declaration changed. When its semantic version
+			// has now advanced, recover only that precise automatic quarantine so the
+			// authorization synchronisation can create a fresh declaration set. Do
+			// not clear unrelated errors or an administrator's deliberate stop.
+			if shouldRecoverImmutableReleaseUpgrade(record, p) {
+				p.Status = StatusInstalled
+				p.DesiredEnabled = true
+				p.BackendState = BackendInstalled
+				p.FrontendState = FrontendLoaded
+				p.Health = HealthUnknown
+				p.ErrorMsg = ""
+			}
 			m.catalog.mu.Unlock()
 		}
 	} else if !errors.Is(err, ErrAPIKeyNotFound) {
@@ -209,6 +264,17 @@ func (m *PackageService) syncPluginRecord(ctx context.Context, p *Plugin) error 
 	return repo.Save(ctx, record)
 }
 
+const immutableReleaseUpgradeQuarantineReason = "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+
+func shouldRecoverImmutableReleaseUpgrade(record *PluginRecord, p *Plugin) bool {
+	if record == nil || p == nil || p.Manifest == nil || (p.Manifest.Runtime != "builtin" && !p.IsolatedUI) {
+		return false
+	}
+	return record.Version != "" && record.Version != p.Manifest.Version &&
+		PluginStatus(record.Status) == StatusError &&
+		strings.TrimSpace(record.ErrorMsg) == immutableReleaseUpgradeQuarantineReason
+}
+
 func restoredBackendState(value string, status PluginStatus) BackendState {
 	switch BackendState(value) {
 	case BackendInstalled, BackendStarting, BackendRunning, BackendRestarting, BackendStopping, BackendStopped, BackendPendingRestart, BackendError:
@@ -227,7 +293,7 @@ func restoredBackendState(value string, status PluginStatus) BackendState {
 }
 
 func restoredFrontendState(value string, p *Plugin) FrontendState {
-	if p != nil && p.Manifest != nil && p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p != nil && p.Manifest != nil && p.DesiredEnabled && pluginHasFrontend(p) {
 		if FrontendState(value) == FrontendIncompatible || FrontendState(value) == FrontendError {
 			return FrontendState(value)
 		}
@@ -293,7 +359,7 @@ func (m *LifecycleService) requestEnable(name string) error {
 		m.catalog.mu.Lock()
 		p.DesiredEnabled = true
 		p.BackendState = BackendPendingRestart
-		if !p.Manifest.UI.Empty() {
+		if pluginHasFrontend(p) {
 			p.FrontendState = FrontendLoaded
 		}
 		m.ui.Bump()
@@ -326,6 +392,42 @@ func (m *LifecycleService) requestEnable(name string) error {
 // plugins remain in their current process state until the next server restart.
 func (m *Manager) RequestDisable(name string) error {
 	return m.lifecycle.RequestDisable(name)
+}
+
+// Quarantine prevents a package that failed an identity or authorization
+// integrity check from starting. The error is persisted so Admin can explain
+// the recovery action instead of showing a silently disabled plugin.
+func (m *Manager) Quarantine(name, reason string) error {
+	return m.lifecycle.Quarantine(name, reason)
+}
+
+func (m *LifecycleService) Quarantine(name, reason string) error {
+	m.catalog.mu.Lock()
+	p, ok := m.catalog.plugins[name]
+	if !ok {
+		m.catalog.mu.Unlock()
+		return fmt.Errorf("plugin '%s' not found", name)
+	}
+	p.Status = StatusError
+	p.BackendState = BackendError
+	p.FrontendState = FrontendUnloaded
+	p.Health = HealthUnavailable
+	p.DesiredEnabled = false
+	p.ErrorMsg = reason
+	p.HostToken = ""
+	p.HostTokenExpiresAt = time.Time{}
+	m.ui.Bump()
+	m.catalog.mu.Unlock()
+	m.persistPluginStatus(context.Background(), name, StatusError, reason)
+	m.logPlugin(context.Background(), &PluginLogRecord{
+		PluginName: name,
+		Level:      "error",
+		Message:    "plugin quarantined before startup",
+		Metadata: map[string]interface{}{
+			"reason": reason,
+		},
+	})
+	return nil
 }
 
 func (m *LifecycleService) requestDisable(name string) error {
@@ -463,7 +565,7 @@ func (m *LifecycleService) start(name string) error {
 	m.catalog.mu.Lock()
 	p.BackendState = BackendStarting
 	p.Health = HealthUnknown
-	if p.DesiredEnabled && !p.Manifest.UI.Empty() {
+	if p.DesiredEnabled && pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	m.ui.Bump()
@@ -513,12 +615,38 @@ func (m *LifecycleService) start(name string) error {
 		})
 		return fmt.Errorf("start plugin '%s': %w", name, err)
 	}
+	// campusos.process/v1 makes startup success contingent on an authenticated
+	// protocol handshake, rather than merely observing that an OS process was
+	// spawned. Give a freshly started process a short, bounded warm-up window.
+	if runtimeType == "process" {
+		deadline := time.Now().Add(5 * time.Second)
+		var healthErr error
+		for {
+			probeCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+			healthErr = runtime.HealthCheck(probeCtx, name)
+			cancel()
+			if healthErr == nil || time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		if healthErr != nil {
+			_ = runtime.Stop(context.Background(), name)
+			m.catalog.mu.Lock()
+			p.Status, p.BackendState, p.Health = StatusError, BackendError, HealthUnavailable
+			p.ErrorMsg, p.HostToken, p.HostTokenExpiresAt = "process handshake failed: "+healthErr.Error(), "", time.Time{}
+			m.ui.Bump()
+			m.catalog.mu.Unlock()
+			m.persistPluginStatus(context.Background(), name, StatusError, p.ErrorMsg)
+			return fmt.Errorf("start plugin '%s': process handshake: %w", name, healthErr)
+		}
+	}
 
 	m.catalog.mu.Lock()
 	p.Status = StatusRunning
 	p.BackendState = BackendRunning
 	p.Health = HealthHealthy
-	if !p.Manifest.UI.Empty() {
+	if pluginHasFrontend(p) {
 		p.FrontendState = FrontendLoaded
 	}
 	p.DesiredEnabled = true
@@ -632,11 +760,18 @@ func (m *HostAccessService) Authorize(name, token string) (*Plugin, bool) {
 
 // DispatchBeforeEvent 分发 .before 事件（同步，可被插件拦截）
 func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMessage) *PluginResponse {
+	event.Normalize()
 	beforeEvent := &EventMessage{
-		Type:    event.Type + ".before",
-		Source:  event.Source,
-		Subject: event.Subject,
-		Data:    event.Data,
+		SpecVersion: event.SpecVersion,
+		ID:          event.ID,
+		Type:        event.Type + ".before",
+		Source:      event.Source,
+		Subject:     event.Subject,
+		Time:        event.Time,
+		TraceID:     event.TraceID,
+		Actor:       event.Actor,
+		DataSchema:  event.DataSchema,
+		Data:        event.Data,
 	}
 
 	pluginNames := m.Subscribers(event.Type)
@@ -650,6 +785,13 @@ func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMes
 	m.catalog.mu.RUnlock()
 
 	for _, p := range plugins {
+		if m.authorization != nil {
+			decision := m.authorization.Authorize(ctx, AuthorizationInput{PluginName: p.Manifest.Name, PluginVersion: p.Manifest.Version, CapabilityCode: "event.system.subscribe", OperationCode: "event.subscribe." + beforeEvent.Type, TraceID: beforeEvent.TraceID})
+			if !decision.Allow {
+				m.logPlugin(ctx, &PluginLogRecord{PluginName: p.ID, Level: "warn", Message: "plugin event authorization denied", EventType: beforeEvent.Type, TraceID: beforeEvent.TraceID, Metadata: map[string]interface{}{"reason_code": decision.ReasonCode}})
+				continue
+			}
+		}
 		runtimeType := p.Manifest.Runtime
 		runtime, ok := m.runtimes.Get(runtimeType)
 		if !ok {
@@ -693,6 +835,7 @@ func (m *EventRegistry) DispatchBeforeEvent(ctx context.Context, event *EventMes
 
 // DispatchEvent 分发 .after 事件到所有订阅的插件（异步）
 func (m *EventRegistry) DispatchEvent(ctx context.Context, event *EventMessage) {
+	event.Normalize()
 	pluginNames := m.Subscribers(event.Type)
 	m.catalog.mu.RLock()
 	plugins := make([]*Plugin, 0, len(pluginNames))
@@ -705,6 +848,13 @@ func (m *EventRegistry) DispatchEvent(ctx context.Context, event *EventMessage) 
 
 	for _, p := range plugins {
 		go func(pl *Plugin) {
+			if m.authorization != nil {
+				decision := m.authorization.Authorize(ctx, AuthorizationInput{PluginName: pl.Manifest.Name, PluginVersion: pl.Manifest.Version, CapabilityCode: "event.system.subscribe", OperationCode: "event.subscribe." + event.Type, TraceID: event.TraceID})
+				if !decision.Allow {
+					m.logPlugin(ctx, &PluginLogRecord{PluginName: pl.ID, Level: "warn", Message: "plugin event authorization denied", EventType: event.Type, TraceID: event.TraceID, Metadata: map[string]interface{}{"reason_code": decision.ReasonCode}})
+					return
+				}
+			}
 			runtimeType := pl.Manifest.Runtime
 			runtime, ok := m.runtimes.Get(runtimeType)
 			if !ok {

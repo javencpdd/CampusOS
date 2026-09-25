@@ -147,7 +147,16 @@ func TestDocumentVersionCommitEnqueuesMinimalDurablePreviewRequest(t *testing.T)
 		if payload.DocumentID != document.ID || payload.DocumentVersionID == "" || payload.SourceObjectID == "" || payload.TargetPreviewType != "native" {
 			t.Fatalf("unsafe or incomplete payload: %#v", payload)
 		}
-		if strings.Contains(string(event.Payload), "1001") || strings.Contains(string(event.Payload), "隐私计划") || strings.Contains(string(event.Payload), "第一版") || strings.Contains(string(event.Payload), "第二版") {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(event.Payload, &raw); err != nil {
+			t.Fatalf("decode raw payload: %v", err)
+		}
+		for _, forbidden := range []string{"owner_id", "owner_user_id", "name", "content", "file_path", "download_url", "authorization"} {
+			if _, found := raw[forbidden]; found {
+				t.Fatalf("outbox payload leaked private field %q: %s", forbidden, event.Payload)
+			}
+		}
+		if strings.Contains(string(event.Payload), "隐私计划") || strings.Contains(string(event.Payload), "第一版") || strings.Contains(string(event.Payload), "第二版") {
 			t.Fatalf("outbox payload leaked private owner/name/content: %s", event.Payload)
 		}
 	}

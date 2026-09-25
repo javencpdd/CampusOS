@@ -205,6 +205,12 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/admin/assets"):
+		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/assets"):
+		return "feature.controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/plugin-ui"):
+		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
 		return "feature.mutual-aid"
 	case strings.HasPrefix(path, APIPrefix+"/secondhand"):
@@ -221,7 +227,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.reliability"
 	case strings.HasPrefix(path, APIPrefix+"/platform/email-delivery"):
 		return "core.email-delivery"
-	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
+	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/plugin-capabilities"), strings.HasPrefix(path, APIPrefix+"/plugin-authorizations"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):
 		return "feature.ai-gateway"
@@ -263,6 +269,12 @@ func featureForRoute(path string) string {
 		return "personal-space"
 	case strings.HasPrefix(path, APIPrefix+"/richtext"):
 		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/admin/assets"):
+		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/assets"):
+		return "controlled-richtext-article"
+	case strings.HasPrefix(path, APIPrefix+"/plugin-ui"):
+		return "pdf-viewer"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):

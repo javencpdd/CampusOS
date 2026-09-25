@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-$(go env GOARC
     go build -trimpath -ldflags="-s -w" -o /out/campusos-server ./cmd/server
 
 FROM ${API_RUNTIME_IMAGE} AS api
-ARG CAMPUSOS_VERSION=0.13.0
+ARG CAMPUSOS_VERSION=1.1.0-dev
 ARG POSTGRES_CLIENT_MAJOR=16
 LABEL org.opencontainers.image.title="CampusOS API" \
       org.opencontainers.image.version="${CAMPUSOS_VERSION}" \

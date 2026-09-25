@@ -1,115 +1,111 @@
-# CampusOS 数据库迁移说明
+# CampusOS 数据库迁移
 
-> 最近审查：2026-08-31  
-> 迁移范围：`000001` 至 `000049`，共 49 组 `up/down` 文件  
-> 维护原则：迁移历史只追加，不重写已可能被环境执行过的 SQL。
+> 当前基线：v1.1 图文附件、受控 PDF Viewer、个人文档预览、资产生命周期和插件三层授权
+> 更新时间：2026-09-21 21:22（Asia/Shanghai）
+> 数据库：PostgreSQL 16+
+> 数据边界：本仓库当前开发数据均为可丢弃测试数据；本次已将旧链重构为单一 clean baseline。
 
-本目录是 CampusOS PostgreSQL 结构演进的唯一迁移来源。每个编号迁移由
-`*.up.sql`（向前升级）和 `*.down.sql`（仅限隔离库演练的回退脚本）组成；编号采用
-六位零填充，以保证脚本按字典序执行时仍是正确的版本顺序。
+## 1. 当前结构
 
-## 当前审查结论
+`migrations/` 保留一个不可变 clean baseline 和其后的前向修订：
 
-截至本次审查，目录中不存在可以直接删除、合并或改写的“冗余迁移”。历史上看似重复的
-变更，均承担了兼容旧开发库、数据修复、索引治理或可验证回退演练的职责。直接整理旧文件
-会使已部署环境的 `schema_migrations` 历史与新克隆环境的建库过程产生分叉，因此不可取。
+| 版本 | 文件 | 职责 |
+| --- | --- | --- |
+| `000001` | `000001_v1_1_schema_baseline.up.sql` / `.down.sql` | 从零创建完整 v1.1 Schema、系统角色与权限参考数据、约束、索引、函数、触发器及插件 Runtime 合同；`down` 仅用于可丢弃 development/test 数据库的全量回滚。 |
+| `000002` | `000002_v1_1_ui_only_plugin_runtime.up.sql` / `.down.sql` | 把平台 `plugins.runtime` 合同扩展为 `none`，用于无后端进程、仅提供已校验隔离 UI 的 v4 外部插件。回滚前必须先卸载所有 `runtime=none` 插件。 |
+| `000003` | `000003_v1_1_trusted_market_sources.up.sql` / `.down.sql` | 建立管理员维护的 HTTPS + Ed25519 可信市场来源，并为既有申请保存来源、市场插件 ID 和签名目录快照。存在市场来源或来源型申请时拒绝回滚，保留治理审计。 |
 
-| 审查项 | 结论 |
-| --- | --- |
-| 文件配对 | 49 个 `up` 与 49 个 `down` 文件一一配对，无缺号、无孤立文件。 |
-| 当前结构映射 | 迁移元数据与管理端“数据架构”视图均以 `000049` 为最新版本，78 张业务/系统表映射一致。 |
-| 运行库审计 | 开发数据库的结构合同、数据审计与索引卫生检查均为 0 项违规。 |
-| 重复索引/约束 | `migration-hygiene.sql` 未发现完全重复索引、可被严格左前缀覆盖的非唯一 B-tree 索引或重复约束。 |
-| 可简化点 | 可在后续专门任务中加强迁移执行器的回退粒度、校验和与锁；这不是删除历史 SQL 的理由。 |
+该基线整合了此前 `000001`–`000011` 的最终有效结构，包含：
 
-以下内容说明容易被误判为冗余的迁移为何应保留。
+- 89 张业务表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；
+- 身份、RBAC、管理员准入、MFA、会话摘要、插件发布者/版本/三层授权与审计；
+- 社区、图文文章、`user_assets`、`richtext_article_attachments`、短期 `plugin_ui_invocations` 和资产生命周期审计；
+- 个人空间、对象配额、个人文档、文档版本与预览；
+- 学期课表、可靠任务、平台治理、外部集成与当前 Plugin Runtime/市场数据模型。
 
-| 迁移 | 保留原因 |
-| --- | --- |
-| `000021`、`000022` | 插件权限字段采用分步兼容演进；后一项是针对先前目录结构的增量修正，不是重复建表。 |
-| `000037` | 扩展 outbox 投递状态以支持 `failed`；回退时将其语义映射为 `retry`，仅用于演练。 |
-| `000041` | 有意清理九个被复合索引严格左前缀覆盖的旧索引，并使用 `CONCURRENTLY` 避免不必要的表写入阻塞；其 `down` 仅为隔离演练重建旧索引。 |
-| `000042`、`000045`、`000047`、`000049` | 分别覆盖个人存储配额、对象/预留账本、个人文档和课程表对象绑定，是 v0.14 的独立业务边界，不能合并为一个难以回滚和审计的大迁移。 |
-| `000048` | 仅在早期开发库存在旧约束名且新名称尚不存在时重命名，干净数据库不会产生额外结构；它是兼容桥，不是重复约束。 |
+附件字节仍只由 `storage_objects` 和 Object Port 管理；`user_assets` 只管理业务身份；外部插件不得自行创建平台 PostgreSQL 表。
 
-早期迁移中存在的 `IF EXISTS`、`IF NOT EXISTS` 与条件块同样应保留。它们用于支持历史开发库的
-逐步升级；结构合同和索引卫生检查负责发现人工改库造成的漂移，不能为了“更短的 SQL”而去除
-已验证的兼容性保护。
+## 2. 此次 clean baseline 的影响
 
-## 迁移状态与执行方式
+此前 `000001`–`000011` 是开发阶段逐段演进记录。由于项目所有者已明确当前数据均可清空，它们已被合并为 `000001_v1_1_schema_baseline`，因此旧 `000008`–`000011` 不再独立存在。当前 v1.1 的 `000002`、`000003` 是基线发布后的前向修订：它们不能重新改写已应用的基线文件，否则 checksum 门禁会拒绝启动。
 
-迁移执行器会在数据库中维护 `schema_migrations` 表，记录成功执行的版本、名称和时间。该表是
-执行器的状态表，不是本目录中的业务迁移文件；不要手工插入、删除或修改其记录来跳过迁移。
+这不是兼容升级：任何记录了旧迁移名称或校验和的数据库执行 `up`/`status` 都会被 checksum 门禁拒绝。必须先确认目标为测试库，再执行 `reset`。不得将本规则用于生产库或包含需保留数据的库；这类环境必须先制定导出、转换和前向迁移方案。
 
-Docker 开发环境正常启动时，API 初始化流程会执行向前迁移。仅修改前端、后端业务代码时不需要
-手工运行迁移；只有新增/调整数据库结构且迁移文件已经过评审时，才需要在目标开发库执行 `up`。
+## 3. Windows 与 Linux 使用
 
-Windows PowerShell（Docker 开发库容器通常名为 `campusos-dev-postgres-1`）：
+Linux、WSL2 或 Git Bash：
+
+```bash
+./scripts/migrate.sh status
+./scripts/migrate.sh check
+./scripts/migrate.sh up
+./scripts/migrate.sh down
+```
+
+Windows PowerShell：
 
 ```powershell
-$env:POSTGRES_CONTAINER = 'campusos-dev-postgres-1'
 .\scripts\migrate.ps1 status
+.\scripts\migrate.ps1 check
 .\scripts\migrate.ps1 up
+.\scripts\migrate.ps1 down
 ```
 
-Linux、WSL 或 Git Bash：
+`up` 会核对已执行文件的名称和 SHA-256；`down` 只回滚当前最高版本。`000003 down` 在存在可信市场来源或来源型申请时会明确拒绝；随后 `000002 down` 若仍有 UI-only 插件也会拒绝；再回滚 `000001` 才会移除全部应用表与参考数据，但保留两个 migration 元数据表。
 
-```bash
-POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/migrate.sh status
-POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/migrate.sh up
+### 重置当前 Docker 开发库
+
+确认数据可以删除后，在仓库根目录运行：
+
+```powershell
+$env:CAMPUSOS_SKIP_DOTENV = "true"
+$env:CAMPUSOS_ENV = "development"
+$env:CAMPUSOS_RESET_CONFIRM = "campusos"
+$env:PSQL_MODE = "docker"
+$env:POSTGRES_CONTAINER = "campusos-dev-postgres-1"
+$env:DB_NAME = "campusos"
+.\scripts\migrate.ps1 reset
+Remove-Item Env:CAMPUSOS_SKIP_DOTENV, Env:CAMPUSOS_ENV, Env:CAMPUSOS_RESET_CONFIRM, Env:PSQL_MODE, Env:POSTGRES_CONTAINER, Env:DB_NAME
 ```
 
-`up` 会执行所有尚未记录在 `schema_migrations` 中的迁移。执行前应确认连接的是预期数据库，
-并先备份任何有价值的数据。
-
-## 回退与生产安全边界
-
-`down` 和 `reset` **不是生产恢复命令**。当前执行器的 `down` 会以反向顺序运行目录内的回退 SQL，
-并移除相应迁移记录；它不适合用于带有真实数据的共享开发库、测试库或生产库。部分历史 `down`
-会删除表、列、索引或将新状态降级为旧状态，设计目的仅是验证空白隔离库的 `up/down/up` 演练。
-
-因此：
-
-- 生产或含真实数据的环境发生问题时，新增一条向前修复迁移，并配套数据校正/对账方案；不要执行 `down` 或 `reset`。
-- 不要修改、重排、合并或删除已进入版本库的编号迁移；需要修复历史缺陷时，以更高编号追加迁移。
-- 新增不可逆或数据语义会丢失的变更时，在迁移头部和发布说明中明确标注，并提供备份、恢复和验证步骤。
-- `000041` 使用了 `DROP INDEX CONCURRENTLY`；此类 SQL 不可被包进全局事务。新增类似操作时要单独评审失败恢复与锁影响。
-
-## 建议的后续优化
-
-当前迁移链保持清晰且已通过卫生审计，短期不应以“压缩历史”为目标。后续可在独立需求中逐项
-增强执行器，而不改变既有迁移的语义：
-
-1. 将回退接口改为按指定、已应用的版本执行，默认拒绝全量 `down`；生产环境继续禁用回退。
-2. 为 `schema_migrations` 增加迁移文件校验和与执行元数据，在部署前发现文件被篡改或环境漂移。
-3. 在执行器中加入 PostgreSQL advisory lock，避免多个 API/运维进程并发执行迁移。
-4. 为可事务迁移与 `CONCURRENTLY` 类非事务迁移定义明确执行策略和失败恢复记录。
-5. 当迁移数量显著增长时，提供只面向全新环境的基线快照/镜像加速；它必须与完整迁移链并行存在，不能替代历史迁移。
-
-上述建议需要单独设计、测试和发布；在实现前不得手工清理当前迁移文件或数据库索引。
-
-## 验证与排查
-
-在 Docker 开发环境中，可用以下命令检查当前数据库。命令只创建会话级临时审计对象，不修改业务
-表或迁移历史。
+Linux/Git Bash 等价命令：
 
 ```bash
-POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/database-check.sh all
+CAMPUSOS_SKIP_DOTENV=true CAMPUSOS_ENV=development CAMPUSOS_RESET_CONFIRM=campusos \
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos \
+./scripts/migrate.sh reset
 ```
 
-迁移文件、系统表边界和管理端架构视图的一致性检查：
+`reset` 会对精确的 `DB_NAME` 执行 `DROP SCHEMA public CASCADE`，不可恢复；脚本只允许 `development` 或 `test`，且确认值必须与数据库名完全相同。Docker 环境的用户名、密码、主机和端口由 `deploy/docker/.env.dev.local` 提供，切勿把其中的 Secret 写入文档或提交。
+
+## 4. ER 图与结构投影
 
 ```bash
+python migrations/tools/generate_er.py
+python migrations/tools/generate_er.py --check
 python skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 ```
 
-新增迁移后，还应在隔离数据库执行对应的 `up/down/up` 演练脚本，例如：
+ER 工具从唯一 UP 文件生成 [PNG、SVG 与中文实体关系说明](er/current/CampusOS数据库实体关系说明.md)，不连接或修改数据库。管理端 `/architecture` 是源码 Schema 的静态投影，不显示真实数据、文件或 Secret。
+
+## 5. 后续规范
+
+这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000003`，下一项结构变更从 `000004_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
+
+1. 说明表归属、外键、索引、状态约束、数据修复和回滚损失；
+2. 更新 `scripts/schema-contract.sql`、Admin `/architecture`、ER、架构与操作文档；
+3. 在隔离库执行空库 `up`、`down`、`up`、checksum 和 schema 合同检查；
+4. 不在 migration 内写入默认账号、邮箱、密码哈希或业务测试记录；机密只保存摘要或密文。
+
+## 6. 验证命令
 
 ```bash
-./scripts/test-v14-g0-baseline-migration.sh
-./scripts/test-v14-storage-objects-migration.sh
-./scripts/test-v14-personal-documents-migration.sh
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 \
+  DB_NAME=campusos_v1_database_baseline_drill ./scripts/database-check.sh all
+python migrations/tools/generate_er.py --check
+python skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 ```
 
-这些演练脚本会建立并销毁专用测试库；仍须确认 Docker 容器和 PostgreSQL 连接目标正确，切勿将
-生产数据库连接信息传给测试命令。
+基线 drill 会验证空库、无测试用户/账号/管理员凭据、78 项稳定权限、91 张 public 表（包含两张 migration 系统表）、
+全部外键前导索引、无无时区 timestamp、checksum 漂移拒绝，以及顺序 migration 的 up/down/up 可重复性。

@@ -170,6 +170,51 @@
             placeholder="<p>从这里开始写文章正文...</p>"
           />
         </el-form-item>
+        <el-form-item label="文章附件">
+          <div class="attachment-editor">
+            <p class="attachment-hint">
+              附件不会插入正文排版。支持 PDF、MP3、MP4、DOC/DOCX、XLS/XLSX、ZIP、RAR；单个不超过 20 MiB，每篇最多 10
+              个且总计不超过 40 MiB。
+            </p>
+            <div class="body-toolbar">
+              <input
+                ref="attachmentInput"
+                class="hidden-input"
+                type="file"
+                accept=".pdf,.mp3,.mp4,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                @change="uploadAttachment"
+              />
+              <el-button size="small" :loading="attachmentUploading" @click="chooseAttachment">上传附件</el-button>
+              <el-button size="small" @click="openAssetPicker">从我的文件添加</el-button>
+            </div>
+            <el-empty v-if="attachments.length === 0" :image-size="42" description="尚未添加附件" />
+            <div v-for="(attachment, index) in attachments" :key="attachment.id" class="attachment-editor-row">
+              <div class="attachment-editor-name">
+                <el-input
+                  v-model="attachment.display_name"
+                  size="small"
+                  maxlength="255"
+                  aria-label="附件显示名称"
+                  @change="renameAttachment(attachment)"
+                />
+                <span
+                  >{{ attachment.asset?.mime_type }} · {{ formatAttachmentSize(attachment.asset?.size_bytes) }}</span
+                >
+              </div>
+              <div class="attachment-editor-actions">
+                <el-button text size="small" :disabled="index === 0" @click="moveAttachment(index, -1)">上移</el-button>
+                <el-button
+                  text
+                  size="small"
+                  :disabled="index === attachments.length - 1"
+                  @click="moveAttachment(index, 1)"
+                  >下移</el-button
+                >
+                <el-button text type="danger" size="small" @click="removeAttachment(attachment.id)">移除</el-button>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
         <div class="editor-actions">
           <el-button @click="saveDraft" :loading="savingDraft">保存草稿</el-button>
           <el-button @click="previewArticle" :loading="previewing">预览</el-button>
@@ -182,6 +227,81 @@
     <el-drawer v-model="previewVisible" title="文章预览" size="60%">
       <article class="article-content" v-html="previewHtml"></article>
     </el-drawer>
+    <el-dialog v-model="assetPickerVisible" title="从我的文件添加" width="min(720px, 92vw)">
+      <el-tabs v-model="assetPickerSource" class="asset-picker-tabs">
+        <el-tab-pane label="个人附件" name="assets">
+          <el-radio-group v-model="assetPickerStatus" class="asset-picker-tabs" @change="loadUserAssets()">
+            <el-radio-button label="active">可添加附件</el-radio-button>
+            <el-radio-button label="trashed">回收站</el-radio-button>
+          </el-radio-group>
+          <p class="attachment-hint">
+            回收站附件不可添加到文章；恢复后才可再次使用。已经被文章引用的附件不能移入回收站。
+          </p>
+          <el-empty
+            v-if="userAssets.length === 0"
+            :description="assetPickerStatus === 'trashed' ? '回收站为空。' : '暂无可添加的个人附件，请先上传一个附件。'"
+          />
+          <el-table v-else :data="userAssets" size="small" max-height="360">
+            <el-table-column prop="original_name" label="文件名" min-width="220" />
+            <el-table-column label="类型/大小" min-width="170"
+              ><template #default="scope"
+                >{{ scope.row.mime_type }} · {{ formatAttachmentSize(scope.row.size_bytes) }}</template
+              ></el-table-column
+            >
+            <el-table-column label="操作" width="132"
+              ><template #default="scope"
+                ><el-button
+                  v-if="assetPickerStatus === 'active'"
+                  text
+                  type="primary"
+                  @click="bindExistingAsset(scope.row)"
+                  >添加</el-button
+                >
+                <el-button v-if="assetPickerStatus === 'active'" text type="danger" @click="trashUserAsset(scope.row)"
+                  >移入回收站</el-button
+                >
+                <el-button v-else text type="primary" @click="restoreUserAsset(scope.row)">恢复</el-button></template
+              ></el-table-column
+            >
+          </el-table>
+          <el-button v-if="assetNextCursor" :loading="assetsLoading" @click="loadUserAssets(true)"
+            >加载更多附件</el-button
+          >
+        </el-tab-pane>
+        <el-tab-pane label="个人文档" name="documents">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            title="仅显示可作为文章附件的 PDF 和 DOCX。添加时会创建独立快照，之后修改、恢复或删除原个人文档不会改变已发布文章。"
+          />
+          <el-empty
+            v-if="!personalDocumentsLoading && personalAttachmentDocuments.length === 0"
+            description="暂无可添加的 PDF 或 DOCX 个人文档。"
+          />
+          <el-table
+            v-else
+            :data="personalAttachmentDocuments"
+            v-loading="personalDocumentsLoading"
+            size="small"
+            max-height="360"
+          >
+            <el-table-column prop="name" label="文件名" min-width="220" />
+            <el-table-column label="类型/大小" min-width="170">
+              <template #default="scope">
+                {{ String(scope.row.format || '').toUpperCase() }} ·
+                {{ formatAttachmentSize(scope.row.current_version?.size_bytes) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="84">
+              <template #default="scope"
+                ><el-button text type="primary" @click="bindPersonalDocument(scope.row)">添加</el-button></template
+              >
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
+    </el-dialog>
   </div>
 </template>
 
@@ -190,6 +310,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'
 import { richTextApi } from '@/modules/richtext/api'
+import { personalDocumentsApi } from '@/modules/personal-documents/api'
 import { mutualAidApi } from '@/modules/mutual-aid/api'
 import { secondhandApi } from '@/modules/secondhand/api'
 import { useLayoutCapability } from '@/shared/layout/useLayoutCapability'
@@ -218,6 +339,18 @@ const previewVisible = ref(false)
 const previewHtml = ref('')
 const coverInput = ref<HTMLInputElement | null>(null)
 const bodyImageInput = ref<HTMLInputElement | null>(null)
+const attachmentInput = ref<HTMLInputElement | null>(null)
+const attachmentUploading = ref(false)
+const attachments = ref<any[]>([])
+const assetPickerVisible = ref(false)
+const assetPickerSource = ref<'assets' | 'documents'>('assets')
+const userAssets = ref<any[]>([])
+const assetPickerStatus = ref<'active' | 'trashed'>('active')
+const assetNextCursor = ref('')
+const assetsLoading = ref(false)
+let assetListRevision = 0
+const personalAttachmentDocuments = ref<any[]>([])
+const personalDocumentsLoading = ref(false)
 const categories = ref<
   Array<{
     id: string
@@ -346,6 +479,7 @@ const loadEditingThread = async () => {
     articleForm.content_html = article.content_html || article.sanitized_html || '<p></p>'
     articleForm.content_json = article.content_json || {}
     articleContentId.value = article.id || ''
+    await loadAttachments()
   } catch (error: any) {
     ElMessage.error(error?.msg || '加载帖子失败')
   }
@@ -466,6 +600,188 @@ const selectPublishMode = (value: PublishMode) => {
 
 const chooseCover = () => coverInput.value?.click()
 const chooseBodyImage = () => bodyImageInput.value?.click()
+const chooseAttachment = () => attachmentInput.value?.click()
+
+const loadAttachments = async () => {
+  if (!draftThreadId.value) {
+    attachments.value = []
+    return
+  }
+  try {
+    const result: any = await richTextApi.listAttachments(draftThreadId.value)
+    attachments.value = unwrap(result)?.items || []
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '加载文章附件失败')
+  }
+}
+
+const ensureDraftForAttachments = async () => {
+  if (draftThreadId.value) return draftThreadId.value
+  return saveDraft()
+}
+
+const uploadAttachment = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  attachmentUploading.value = true
+  try {
+    const threadId = await ensureDraftForAttachments()
+    if (!threadId) return
+    await richTextApi.uploadAttachment(threadId, file)
+    await loadAttachments()
+    ElMessage.success('附件已添加到文章草稿')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '附件上传失败')
+  } finally {
+    input.value = ''
+    attachmentUploading.value = false
+  }
+}
+
+const openAssetPicker = async () => {
+  const threadId = await ensureDraftForAttachments()
+  if (!threadId) return
+  assetPickerStatus.value = 'active'
+  assetPickerSource.value = 'assets'
+  assetPickerVisible.value = true
+  await Promise.all([loadUserAssets(), loadPersonalAttachmentDocuments()])
+}
+
+const loadUserAssets = async (append = false) => {
+  if (append && (assetsLoading.value || !assetNextCursor.value)) return
+  const revision = ++assetListRevision
+  assetsLoading.value = true
+  if (!append) {
+    assetNextCursor.value = ''
+    userAssets.value = []
+  }
+  try {
+    const result: any = await richTextApi.listUserAssets(assetPickerStatus.value, append ? assetNextCursor.value : '')
+    if (revision !== assetListRevision) return
+    const payload = unwrap(result)
+    const items = (payload?.items || []).filter((asset: any) => asset.kind === 'article_attachment')
+    userAssets.value = append ? [...userAssets.value, ...items] : items
+    assetNextCursor.value = payload?.next_cursor || ''
+  } catch (error: any) {
+    if (revision !== assetListRevision) return
+    ElMessage.error(error?.msg || '无法读取个人附件')
+  } finally {
+    if (revision === assetListRevision) assetsLoading.value = false
+  }
+}
+
+const bindExistingAsset = async (asset: any) => {
+  if (!draftThreadId.value) return
+  try {
+    await richTextApi.bindAttachment(draftThreadId.value, { asset_id: asset.id })
+    assetPickerVisible.value = false
+    await loadAttachments()
+    ElMessage.success('已添加已有附件')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '添加附件失败')
+  }
+}
+
+const loadPersonalAttachmentDocuments = async () => {
+  personalDocumentsLoading.value = true
+  try {
+    const result: any = await personalDocumentsApi.list('active')
+    const payload = unwrap(result)
+    personalAttachmentDocuments.value = (payload?.items || []).filter((document: any) =>
+      ['pdf', 'docx'].includes(String(document?.format || '').toLowerCase()),
+    )
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '无法读取个人文档')
+  } finally {
+    personalDocumentsLoading.value = false
+  }
+}
+
+const bindPersonalDocument = async (document: any) => {
+  if (!draftThreadId.value) return
+  try {
+    await richTextApi.attachPersonalDocument(draftThreadId.value, { document_id: document.id })
+    assetPickerVisible.value = false
+    await loadAttachments()
+    ElMessage.success('已创建个人文档快照并添加到文章草稿')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '添加个人文档附件失败')
+  }
+}
+
+const trashUserAsset = async (asset: any) => {
+  try {
+    await richTextApi.trashUserAsset(asset.id)
+    ElMessage.success('附件已移入回收站。')
+    await loadUserAssets()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '附件无法移入回收站。')
+  }
+}
+
+const restoreUserAsset = async (asset: any) => {
+  try {
+    await richTextApi.restoreUserAsset(asset.id)
+    ElMessage.success('附件已恢复，可重新添加到文章。')
+    await loadUserAssets()
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '附件恢复失败。')
+  }
+}
+
+const moveAttachment = async (index: number, offset: number) => {
+  if (!draftThreadId.value) return
+  const next = [...attachments.value]
+  const target = index + offset
+  if (target < 0 || target >= next.length) return
+  ;[next[index], next[target]] = [next[target], next[index]]
+  try {
+    await richTextApi.reorderAttachments(
+      draftThreadId.value,
+      next.map((item) => item.id),
+    )
+    attachments.value = next
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '附件排序失败')
+  }
+}
+
+const removeAttachment = async (attachmentID: string) => {
+  if (!draftThreadId.value) return
+  try {
+    await richTextApi.removeAttachment(draftThreadId.value, attachmentID)
+    await loadAttachments()
+    ElMessage.success('附件已从文章移除，仍保留在你的个人附件中')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '移除附件失败')
+  }
+}
+
+const renameAttachment = async (attachment: any) => {
+  if (!draftThreadId.value) return
+  const name = String(attachment?.display_name || '').trim()
+  if (!name) {
+    ElMessage.warning('附件显示名称不能为空')
+    await loadAttachments()
+    return
+  }
+  try {
+    await richTextApi.renameAttachment(draftThreadId.value, attachment.id, name)
+    attachment.display_name = name
+    ElMessage.success('附件显示名称已更新')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '更新附件名称失败')
+    await loadAttachments()
+  }
+}
+
+const formatAttachmentSize = (value: unknown) => {
+  const bytes = Number(value || 0)
+  if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, bytes)} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
+}
 
 const uploadCover = async (event: Event) => {
   const input = event.target as HTMLInputElement
@@ -544,6 +860,9 @@ const mergeTags = (...groups: string[][]) => {
 
 watch(() => plainForm.category_id, applyPlainDefaultTags)
 watch(() => articleForm.category_id, applyArticleDefaultTags)
+watch(assetPickerSource, (source) => {
+  if (assetPickerVisible.value && source === 'documents') void loadPersonalAttachmentDocuments()
+})
 watch(
   plainForm,
   () => {
@@ -652,6 +971,45 @@ onBeforeUnmount(() => {
 }
 .body-toolbar {
   margin-bottom: 8px;
+}
+.attachment-editor {
+  width: 100%;
+}
+.attachment-hint {
+  margin: 0 0 10px;
+  color: var(--campus-muted-color, #606266);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.asset-picker-tabs {
+  margin-bottom: 10px;
+}
+.attachment-editor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.attachment-editor-name {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.attachment-editor-name strong,
+.attachment-editor-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-editor-name span {
+  color: var(--campus-muted-color, #606266);
+  font-size: 12px;
+}
+.attachment-editor-actions {
+  display: flex;
+  flex: 0 0 auto;
 }
 .html-editor {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

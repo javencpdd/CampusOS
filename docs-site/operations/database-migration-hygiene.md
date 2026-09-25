@@ -1,95 +1,46 @@
-# 数据库迁移与 Schema 冗余治理
+# 数据库迁移与 Schema 治理
 
-CampusOS 当前按 `000001-000049` 顺序升级 PostgreSQL。`000041` 负责索引治理，`000042` 增加按用户
-空间配额授权，`000043` 为回复保存父楼层快照，`000044-000049` 追加受管学期、对象账本、课表引用、个人文档
-版本/预览状态和兼容约束。历史 migration 是已部署实例的数据升级合同，不能为了让目录看起来更短而合并、改写或删除。
+> 更新时间：2026-09-16（Asia/Shanghai）
 
-## 当前审计结果
+CampusOS 当前使用单一 `000001_v1_1_schema_baseline`。项目所有者已确认当前开发数据均为测试数据，因此此前开发阶段
+`000001`–`000011` 已收敛为这一个可从零创建的 v1.1 基线；旧开发库不是原地升级目标，必须在明确的 development/test
+环境重置后重建。
 
-在独立空库应用 `000001-000040` 后：
+## 当前结构
 
-- 78 项数据一致性审计全部为 0 违规；
-- 没有定义完全相同的重复索引或重复约束；
-- 存在九个被同表、同谓词复合 B-tree 严格左前缀覆盖的普通索引。
+`000001_v1_1_schema_baseline` 同时定义 88 张业务表、稳定角色/权限参考数据、105 个物理外键及其引用端前导索引，
+并覆盖核心业务、插件三层授权、图文附件、资产治理、三种 PDF Invocation 上下文、个人文档、课表、可靠任务和集成。
+执行器额外维护 `schema_migrations`、`schema_migration_locks` 两张系统表，因此空库完成迁移后 `public` 共 90 张表。
 
-`000041_v13_schema_index_hygiene` 只删除这九个索引，不删除业务数据、列、约束或历史 migration：
+迁移不写入用户、管理员、邮箱、默认密码、默认版块或业务测试记录。旧 `permissions(resource, action)` 已删除，RBAC 统一使用
+`permission_definitions + role_permissions`；所有时间点字段使用 `TIMESTAMPTZ`。
 
-| 删除 | 保留的覆盖索引 |
-| --- | --- |
-| `idx_notifications_user_id` | `idx_notifications_user_read` |
-| `idx_plugin_permissions_plugin` | `uk_plugin_permissions` |
-| `idx_plugin_records_search` | `idx_plugin_records_owner_collection_updated` |
-| `idx_posts_thread_id` | `idx_posts_thread_floor` |
-| `idx_role_permissions_role` | `uk_role_permissions_active` |
-| `idx_sessions_user_id` | `idx_sessions_user_active` |
-| `idx_threads_author_id` | `idx_threads_author_visibility_v10` |
-| `idx_user_roles_user_id` | `idx_user_roles_scope_lookup` |
-| `idx_webhook_deliveries_status` | `idx_webhook_deliveries_status_created` |
+## 使用与 reset
 
-复合 B-tree 可以使用左侧列执行这些查询。清理后减少写入、VACUUM、备份和缓存需要维护的重复索引结构。
+Linux/Git Bash 使用 `./scripts/migrate.sh status|check|up|down`，Windows PowerShell 使用
+`.\scripts\migrate.ps1 status|check|up|down`。`check` 验证版本、UP/DOWN 配对和 SHA-256；`up` 在一个事务中提交 SQL 与版本记录；
+`down` 一次只回滚最高版本。当前只有一个 baseline，development/test 中一次 `down` 会清除全部应用表和参考数据。
 
-## 执行检查
+对旧开发库必须执行带环境和数据库名双确认的 reset：
+
+```bash
+CAMPUSOS_SKIP_DOTENV=true CAMPUSOS_ENV=development CAMPUSOS_RESET_CONFIRM=campusos \
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 DB_NAME=campusos \
+./scripts/migrate.sh reset
+```
+
+reset 会执行 `DROP SCHEMA public CASCADE`，不可恢复；production/staging 或任何需保留数据的数据库禁止使用。此类环境必须采取导出、
+转换与前向迁移方案，不能绕过 checksum。
+
+## 门禁与后续变更
 
 ```bash
 ./scripts/database-check.sh all
+PSQL_MODE=docker POSTGRES_CONTAINER=campusos-dev-postgres-1 make v1-database-baseline-check
+python migrations/tools/generate_er.py --check
+make architecture-check
 ```
 
-只运行索引和约束冗余检查：
-
-```bash
-./scripts/database-check.sh hygiene
-```
-
-检查器会拒绝完全重复索引、完全重复约束，以及同表同谓词下被同键唯一索引或更长 B-tree 严格左前缀
-覆盖的普通索引。
-迁移回归使用：
-
-```bash
-make v13-migration-check
-```
-
-该门禁在独立临时数据库执行 `000041` up/down/up，不修改正在使用的数据库。
-
-v0.14 还需执行：
-
-```bash
-make v14-migration-check
-# 没有 make 的 Windows Git Bash，可逐项运行：
-bash ./scripts/test-v14-historical-fixture-migration.sh
-```
-
-v0.14 门禁覆盖空库、`000044-000049` 的关键 up/down/up，以及一个从 `000043` 历史数据库开始、保留原始课表 JSON
-hash 的隔离采用/对账 fixture。它创建并清理时间戳命名的测试数据库和临时个人空间目录；不替代真实历史数据的
-`schedule adopt --apply` 授权流程。
-
-## 升级注意事项
-
-```bash
-make migrate-up
-make migrate-status
-make database-check
-```
-
-`000041` 使用 `DROP INDEX CONCURRENTLY`；项目迁移器不会在文件外增加事务。不要手工把该迁移包进
-`BEGIN/COMMIT`。升级前仍需完成数据库备份和恢复验证，并观察锁、I/O 与复制延迟。
-
-索引删除不会删除表数据。生产环境出现问题时优先 forward-fix，不建议运行 down 重新制造写放大。
-
-v0.14 引入对象、文档或课表数据后，生产回退同样优先关闭 Feature 或 forward-fix；`000045`、`000047`、`000049`
-的 down 文件仅用于隔离演练，不能作为删除真实用户对象或版本的发布回滚手段。
-
-## 不应误删的兼容事实
-
-- `accounts(type=email)` 是登录邮箱权威事实，`users.email` 暂为旧 API 兼容投影。
-- `permission_definitions/role_permissions` 是当前权限代码目录，旧 `permissions` 仍处于兼容窗口。
-- Thread 和 Plugin 的单值状态仍服务旧读取，当前多轴状态才表达完整治理或 Runtime 事实。
-- 后续 migration 中的种子 upsert 和历史回填用于升级旧实例，不等同于重复业务行。
-
-这些对象只有在读写调用、兼容遥测、API 窗口和独立迁移全部闭合后才能删除。仓库内更完整的对象级分析见
-`docs/help/系统设计相关/数据库迁移与Schema冗余治理.md`。
-
-## 新增索引要求
-
-新增索引应提供对应查询、与现有索引的列/谓词比较、代表性数据上的
-`EXPLAIN (ANALYZE, BUFFERS)`、写放大说明和 up/down/up 证据。仅凭开发库
-`pg_stat_user_indexes.idx_scan=0` 不能判定索引无用。
+baseline drill 在隔离临时库验证零建库、无测试凭据、checksum 漂移拒绝、单一基线 up/down/up 和结构合同。
+从本基线进入共享或不可丢弃环境开始，`000001` 不可再改写；下一项结构变更必须从 `000002_<业务名>` 追加 UP/DOWN，
+同步更新 schema contract、ER、Admin `/architecture`、架构/操作文档与进度证据。

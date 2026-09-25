@@ -19,7 +19,7 @@
             maxlength="32"
             show-word-limit
           />
-          <div class="field-hint">用于登录，注册后不可修改</div>
+          <div class="field-hint">用于唯一识别和个人主页链接，注册后不可修改；请使用邮箱登录</div>
         </el-form-item>
 
         <el-form-item label="昵称" prop="nickname">
@@ -106,7 +106,7 @@ const formRef = ref<FormInstance>()
 const challengeId = ref('')
 const registrationTicket = ref('')
 const cooldown = ref(0)
-let countdownTimer: ReturnType<typeof setInterval> | undefined
+let countdownTimer: number | undefined
 
 const form = reactive({
   username: '',

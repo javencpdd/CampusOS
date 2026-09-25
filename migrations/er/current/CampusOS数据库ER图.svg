@@ -1,0 +1,1189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="5024" height="3388" viewBox="0 0 5024 3388">
+<metadata>campusos_schema_sha256=7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70;tables=89;foreign_keys=106</metadata>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#667085"/></marker></defs>
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
+<text x="64" y="48" font-size="30" font-weight="700" fill="#101828">CampusOS 数据库实体关系图</text>
+<text x="64" y="80" font-size="17" fill="#475467">89 张实体表 · 106 条物理外键 · 字段行优先展示 PK/FK/UQ</text>
+<path d="M 634.0,3201.0 L 673.9,3186.0 L 710.7,3142.6 L 744.6,3073.5 L 775.8,2981.2 L 804.8,2868.3 L 831.7,2737.4 L 856.9,2591.0 L 880.7,2431.8 L 903.3,2262.2 L 925.0,2084.9 L 946.1,1902.5 L 967.0,1717.5 L 987.9,1532.5 L 1009.0,1350.1 L 1030.7,1172.8 L 1053.3,1003.2 L 1077.1,844.0 L 1102.3,697.6 L 1129.2,566.7 L 1158.2,453.8 L 1189.4,361.5 L 1223.3,292.4 L 1260.1,249.0 L 1300.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>academic_terms_created_by_fkey: academic_terms(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 673.9,3186.0 L 710.7,3142.6 L 744.6,3073.5 L 775.8,2981.2 L 804.8,2868.3 L 831.7,2737.4 L 856.9,2591.0 L 880.7,2431.8 L 903.3,2262.2 L 925.0,2084.9 L 946.1,1902.5 L 967.0,1717.5 L 987.9,1532.5 L 1009.0,1350.1 L 1030.7,1172.8 L 1053.3,1003.2 L 1077.1,844.0 L 1102.3,697.6 L 1129.2,566.7 L 1158.2,453.8 L 1189.4,361.5 L 1223.3,292.4 L 1260.1,249.0 L 1300.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>academic_terms_updated_by_fkey: academic_terms(updated_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 637.6,3185.9 L 640.9,3142.4 L 643.8,3073.0 L 646.5,2980.3 L 648.8,2866.9 L 650.9,2735.5 L 652.6,2588.5 L 654.0,2428.5 L 655.1,2258.3 L 655.9,2080.2 L 656.3,1897.0 L 656.5,1711.2 L 656.3,1525.5 L 655.9,1342.3 L 655.1,1164.2 L 654.0,994.0 L 652.6,834.0 L 650.9,687.0 L 648.8,555.6 L 646.5,442.2 L 643.8,349.5 L 640.9,280.1 L 637.6,236.6 L 634.0,221.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_accounts_user: accounts(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4960.0,2061.0 L 4966.5,2051.7 L 4972.4,2025.1 L 4977.7,1982.5 L 4982.5,1925.7 L 4986.7,1856.1 L 4990.4,1775.5 L 4993.5,1685.4 L 4996.0,1587.3 L 4998.0,1482.9 L 4999.4,1373.8 L 5000.2,1261.4 L 5000.5,1147.5 L 5000.2,1033.6 L 4999.4,921.2 L 4998.0,812.1 L 4996.0,707.7 L 4993.5,609.6 L 4990.4,519.5 L 4986.7,438.9 L 4982.5,369.3 L 4977.7,312.5 L 4972.4,269.9 L 4966.5,243.3 L 4960.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_asset_lifecycle_audits_asset: asset_lifecycle_audits(asset_id) → user_assets(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 859.2,3186.0 L 1066.5,3142.6 L 1257.6,3073.5 L 1433.9,2981.2 L 1597.2,2868.3 L 1749.1,2737.4 L 1891.2,2591.0 L 2025.1,2431.8 L 2152.5,2262.2 L 2275.1,2084.9 L 2394.4,1902.5 L 2512.0,1717.5 L 2629.6,1532.5 L 2748.9,1350.1 L 2871.5,1172.8 L 2998.9,1003.2 L 3132.8,844.0 L 3274.9,697.6 L 3426.8,566.7 L 3590.1,453.8 L 3766.4,361.5 L 3957.5,292.4 L 4164.8,249.0 L 4390.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_asset_lifecycle_audits_actor: asset_lifecycle_audits(actor_user_id) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 1252.0,221.5 L 1257.5,221.5 L 1262.5,221.5 L 1267.1,221.5 L 1271.2,221.5 L 1274.8,221.5 L 1277.9,221.5 L 1280.5,221.5 L 1282.7,221.5 L 1284.3,221.5 L 1285.5,221.5 L 1286.3,221.5 L 1286.5,221.5 L 1286.3,221.5 L 1285.5,221.5 L 1284.3,221.5 L 1282.7,221.5 L 1280.5,221.5 L 1277.9,221.5 L 1274.8,221.5 L 1271.2,221.5 L 1267.1,221.5 L 1262.5,221.5 L 1257.5,221.5 L 1252.0,221.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_categories_parent: categories(parent_id) → categories(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,221.5 L 1258.5,222.2 L 1264.4,224.3 L 1269.7,227.6 L 1274.5,232.1 L 1278.7,237.5 L 1282.4,243.8 L 1285.5,250.9 L 1288.0,258.6 L 1290.0,266.7 L 1291.4,275.3 L 1292.2,284.1 L 1292.5,293.0 L 1292.2,301.9 L 1291.4,310.7 L 1290.0,319.3 L 1288.0,327.4 L 1285.5,335.1 L 1282.4,342.2 L 1278.7,348.5 L 1274.5,353.9 L 1269.7,358.4 L 1264.4,361.7 L 1258.5,363.8 L 1252.0,364.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_category_thread_type_policy_category: category_thread_type_policies(category_id) → categories(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 822.2,3187.7 L 995.4,3149.3 L 1155.0,3088.2 L 1302.3,3006.5 L 1438.7,2906.6 L 1565.6,2790.8 L 1684.3,2661.2 L 1796.2,2520.3 L 1902.7,2370.3 L 2005.1,2213.4 L 2104.7,2052.0 L 2203.0,1888.2 L 2301.3,1724.5 L 2400.9,1563.1 L 2503.3,1406.2 L 2609.8,1256.2 L 2721.7,1115.3 L 2840.4,985.7 L 2967.3,869.9 L 3103.7,770.0 L 3251.0,688.3 L 3410.6,627.2 L 3583.8,588.8 L 3772.0,575.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_configurations_updated_by: configurations(updated_by) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,221.5 L 640.5,223.7 L 646.4,229.9 L 651.7,239.9 L 656.5,253.3 L 660.7,269.6 L 664.4,288.5 L 667.5,309.7 L 670.0,332.7 L 672.0,357.2 L 673.4,382.9 L 674.2,409.2 L 674.5,436.0 L 674.2,462.8 L 673.4,489.1 L 672.0,514.8 L 670.0,539.3 L 667.5,562.3 L 664.4,583.5 L 660.7,602.4 L 656.5,618.7 L 651.7,632.1 L 646.4,642.1 L 640.5,648.3 L 634.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_recovery_case_account: identity_account_recovery_cases(account_id) → accounts(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,1360.0 L 640.5,1356.4 L 646.4,1346.0 L 651.7,1329.5 L 656.5,1307.4 L 660.7,1280.4 L 664.4,1249.1 L 667.5,1214.1 L 670.0,1176.1 L 672.0,1135.5 L 673.4,1093.1 L 674.2,1049.5 L 674.5,1005.2 L 674.2,961.0 L 673.4,917.4 L 672.0,875.0 L 670.0,834.4 L 667.5,796.4 L 664.4,761.4 L 660.7,730.1 L 656.5,703.1 L 651.7,681.0 L 646.4,664.5 L 640.5,654.1 L 634.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_recovery_case_challenge: identity_account_recovery_cases(challenge_id) → identity_email_challenges(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 640.5,3188.1 L 646.4,3150.8 L 651.7,3091.4 L 656.5,3012.1 L 660.7,2915.0 L 664.4,2802.5 L 667.5,2676.7 L 670.0,2539.8 L 672.0,2394.0 L 673.4,2241.6 L 674.2,2084.8 L 674.5,1925.8 L 674.2,1766.7 L 673.4,1609.9 L 672.0,1457.5 L 670.0,1311.7 L 667.5,1174.8 L 664.4,1049.0 L 660.7,936.5 L 656.5,839.4 L 651.7,760.1 L 646.4,700.7 L 640.5,663.4 L 634.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_recovery_case_created_by: identity_account_recovery_cases(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 640.5,3188.1 L 646.4,3150.8 L 651.7,3091.4 L 656.5,3012.1 L 660.7,2915.0 L 664.4,2802.5 L 667.5,2676.7 L 670.0,2539.8 L 672.0,2394.0 L 673.4,2241.6 L 674.2,2084.8 L 674.5,1925.8 L 674.2,1766.7 L 673.4,1609.9 L 672.0,1457.5 L 670.0,1311.7 L 667.5,1174.8 L 664.4,1049.0 L 660.7,936.5 L 656.5,839.4 L 651.7,760.1 L 646.4,700.7 L 640.5,663.4 L 634.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_recovery_case_user: identity_account_recovery_cases(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,221.5 L 636.6,224.8 L 639.0,234.2 L 641.2,249.3 L 643.2,269.4 L 644.9,294.0 L 646.4,322.6 L 647.6,354.5 L 648.7,389.2 L 649.5,426.2 L 650.0,464.9 L 650.4,504.7 L 650.5,545.0 L 650.4,585.3 L 650.0,625.1 L 649.5,663.8 L 648.7,700.8 L 647.6,735.5 L 646.4,767.4 L 644.9,796.0 L 643.2,820.6 L 641.2,840.7 L 639.0,855.8 L 636.6,865.2 L 634.0,868.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_admin_account_credential: identity_admin_accounts(credential_account_id) → accounts(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.6,3189.2 L 639.0,3155.1 L 641.2,3100.8 L 643.2,3028.2 L 644.9,2939.5 L 646.4,2836.5 L 647.6,2721.5 L 648.7,2596.3 L 649.5,2463.0 L 650.0,2323.6 L 650.4,2180.2 L 650.5,2034.8 L 650.4,1889.3 L 650.0,1745.9 L 649.5,1606.5 L 648.7,1473.2 L 647.6,1348.0 L 646.4,1233.0 L 644.9,1130.0 L 643.2,1041.3 L 641.2,968.7 L 639.0,914.4 L 636.6,880.3 L 634.0,868.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_admin_account_status_changed_by: identity_admin_accounts(status_changed_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 636.6,3189.2 L 639.0,3155.1 L 641.2,3100.8 L 643.2,3028.2 L 644.9,2939.5 L 646.4,2836.5 L 647.6,2721.5 L 648.7,2596.3 L 649.5,2463.0 L 650.0,2323.6 L 650.4,2180.2 L 650.5,2034.8 L 650.4,1889.3 L 650.0,1745.9 L 649.5,1606.5 L 648.7,1473.2 L 647.6,1348.0 L 646.4,1233.0 L 644.9,1130.0 L 643.2,1041.3 L 641.2,968.7 L 639.0,914.4 L 636.6,880.3 L 634.0,868.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_admin_account_user: identity_admin_accounts(user_id) → users(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 637.6,3190.0 L 640.9,3158.4 L 643.8,3108.0 L 646.5,3040.7 L 648.8,2958.3 L 650.9,2862.8 L 652.6,2756.0 L 654.0,2639.8 L 655.1,2516.1 L 655.9,2386.8 L 656.3,2253.7 L 656.5,2118.8 L 656.3,1983.8 L 655.9,1850.7 L 655.1,1721.4 L 654.0,1597.7 L 652.6,1481.5 L 650.9,1374.7 L 648.8,1279.2 L 646.5,1196.8 L 643.8,1129.5 L 640.9,1079.1 L 637.6,1047.5 L 634.0,1036.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_challenge_policy_updated_by: identity_challenge_policies(updated_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,221.5 L 639.5,227.3 L 644.5,243.9 L 649.1,270.4 L 653.2,305.8 L 656.8,349.2 L 659.9,399.4 L 662.5,455.6 L 664.7,516.7 L 666.3,581.7 L 667.5,649.8 L 668.3,719.8 L 668.5,790.8 L 668.3,861.7 L 667.5,931.7 L 666.3,999.8 L 664.7,1064.8 L 662.5,1125.9 L 659.9,1182.1 L 656.8,1232.3 L 653.2,1275.7 L 649.1,1311.1 L 644.5,1337.6 L 639.5,1354.2 L 634.0,1360.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_email_challenge_account: identity_email_challenges(account_id) → accounts(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 640.5,3192.5 L 646.4,3167.8 L 651.7,3128.6 L 656.5,3076.1 L 660.7,3012.0 L 664.4,2937.6 L 667.5,2854.5 L 670.0,2764.0 L 672.0,2667.7 L 673.4,2567.0 L 674.2,2463.3 L 674.5,2358.2 L 674.2,2253.2 L 673.4,2149.5 L 672.0,2048.8 L 670.0,1952.5 L 667.5,1862.0 L 664.4,1778.9 L 660.7,1704.5 L 656.5,1640.4 L 651.7,1587.9 L 646.4,1548.7 L 640.5,1524.0 L 634.0,1515.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_legacy_placeholder_user: identity_legacy_email_placeholders(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.6,3193.2 L 639.0,3170.6 L 641.2,3134.7 L 643.2,3086.7 L 644.9,3028.0 L 646.4,2960.0 L 647.6,2883.9 L 648.7,2801.1 L 649.5,2712.9 L 650.0,2620.8 L 650.4,2525.9 L 650.5,2429.8 L 650.4,2333.6 L 650.0,2238.7 L 649.5,2146.6 L 648.7,2058.4 L 647.6,1975.6 L 646.4,1899.5 L 644.9,1831.5 L 643.2,1772.8 L 641.2,1724.8 L 639.0,1688.9 L 636.6,1666.3 L 634.0,1658.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_mfa_policy_updated_by: identity_mfa_policies(updated_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,2162.5 L 637.6,2160.8 L 640.9,2155.9 L 643.8,2148.1 L 646.5,2137.6 L 648.8,2124.8 L 650.9,2110.0 L 652.6,2093.4 L 654.0,2075.4 L 655.1,2056.2 L 655.9,2036.1 L 656.3,2015.5 L 656.5,1994.5 L 656.3,1973.5 L 655.9,1952.9 L 655.1,1932.8 L 654.0,1913.6 L 652.6,1895.6 L 650.9,1879.0 L 648.8,1864.2 L 646.5,1851.4 L 643.8,1840.9 L 640.9,1833.1 L 637.6,1828.2 L 634.0,1826.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_mfa_recovery_method: identity_mfa_recovery_codes(method_id) → identity_mfa_totp_methods(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 637.6,3194.0 L 640.9,3174.0 L 643.8,3141.9 L 646.5,3099.2 L 648.8,3046.9 L 650.9,2986.2 L 652.6,2918.4 L 654.0,2844.6 L 655.1,2766.1 L 655.9,2684.0 L 656.3,2599.5 L 656.5,2513.8 L 656.3,2428.0 L 655.9,2343.5 L 655.1,2261.4 L 654.0,2182.9 L 652.6,2109.1 L 650.9,2041.3 L 648.8,1980.6 L 646.5,1928.3 L 643.8,1885.6 L 640.9,1853.5 L 637.6,1833.5 L 634.0,1826.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_mfa_recovery_user: identity_mfa_recovery_codes(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 638.6,3195.0 L 642.7,3177.5 L 646.5,3149.7 L 649.8,3112.6 L 652.8,3067.1 L 655.4,3014.4 L 657.6,2955.5 L 659.3,2891.4 L 660.7,2823.2 L 661.7,2751.9 L 662.3,2678.5 L 662.5,2604.0 L 662.3,2529.5 L 661.7,2456.1 L 660.7,2384.8 L 659.3,2316.6 L 657.6,2252.5 L 655.4,2193.6 L 652.8,2140.9 L 649.8,2095.4 L 646.5,2058.3 L 642.7,2030.5 L 638.6,2013.0 L 634.0,2007.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_mfa_ticket_user: identity_mfa_tickets(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 639.5,3195.7 L 644.5,3180.6 L 649.1,3156.4 L 653.2,3124.1 L 656.8,3084.6 L 659.9,3038.7 L 662.5,2987.5 L 664.7,2931.8 L 666.3,2872.4 L 667.5,2810.4 L 668.3,2746.5 L 668.5,2681.8 L 668.3,2617.0 L 667.5,2553.1 L 666.3,2491.1 L 664.7,2431.7 L 662.5,2376.0 L 659.9,2324.8 L 656.8,2278.9 L 653.2,2239.4 L 649.1,2207.1 L 644.5,2182.9 L 639.5,2167.8 L 634.0,2162.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_identity_mfa_totp_user: identity_mfa_totp_methods(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3187.4 L 639.5,3148.0 L 642.0,3085.3 L 644.2,3001.5 L 646.3,2899.0 L 648.2,2780.1 L 650.1,2647.3 L 651.8,2502.7 L 653.4,2348.8 L 655.0,2187.8 L 656.5,2022.2 L 658.0,1854.2 L 659.5,1686.3 L 661.0,1520.7 L 662.6,1359.7 L 664.2,1205.8 L 665.9,1061.2 L 667.8,928.4 L 669.7,809.5 L 671.8,707.0 L 674.0,623.2 L 676.5,560.5 L 679.1,521.1 L 682.0,507.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_likes_user: likes(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3188.1 L 639.5,3150.8 L 642.0,3091.4 L 644.2,3012.1 L 646.3,2915.0 L 648.2,2802.5 L 650.1,2676.7 L 651.8,2539.8 L 653.4,2394.0 L 655.0,2241.6 L 656.5,2084.8 L 658.0,1925.8 L 659.5,1766.7 L 661.0,1609.9 L 662.6,1457.5 L 664.2,1311.7 L 665.9,1174.8 L 667.8,1049.0 L 669.7,936.5 L 671.8,839.4 L 674.0,760.1 L 676.5,700.7 L 679.1,663.4 L 682.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_mutual_aid_details_created_by: mutual_aid_details(created_by) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1258.5,1857.9 L 1264.4,1840.1 L 1269.7,1811.9 L 1274.5,1774.1 L 1278.7,1727.9 L 1282.4,1674.4 L 1285.5,1614.5 L 1288.0,1549.4 L 1290.0,1480.0 L 1291.4,1407.5 L 1292.2,1332.9 L 1292.5,1257.2 L 1292.2,1181.6 L 1291.4,1107.0 L 1290.0,1034.5 L 1288.0,965.1 L 1285.5,900.0 L 1282.4,840.1 L 1278.7,786.6 L 1274.5,740.4 L 1269.7,702.6 L 1264.4,674.4 L 1258.5,656.6 L 1252.0,650.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_mutual_aid_details_thread: mutual_aid_details(thread_id) → threads(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3188.8 L 639.5,3153.6 L 642.0,3097.6 L 644.2,3022.7 L 646.3,2931.1 L 648.2,2824.8 L 650.1,2706.1 L 651.8,2576.8 L 653.4,2439.3 L 655.0,2295.4 L 656.5,2147.4 L 658.0,1997.2 L 659.5,1847.1 L 661.0,1699.1 L 662.6,1555.2 L 664.2,1417.7 L 665.9,1288.4 L 667.8,1169.7 L 669.7,1063.4 L 671.8,971.8 L 674.0,896.9 L 676.5,840.9 L 679.1,805.7 L 682.0,793.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_notifications_user: notifications(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4390.0,1110.0 L 4387.1,1109.8 L 4384.5,1109.3 L 4382.0,1108.4 L 4379.8,1107.2 L 4377.7,1105.8 L 4375.8,1104.1 L 4373.9,1102.3 L 4372.2,1100.3 L 4370.6,1098.1 L 4369.0,1095.9 L 4367.5,1093.6 L 4366.0,1091.2 L 4364.5,1088.9 L 4363.0,1086.6 L 4361.4,1084.4 L 4359.8,1082.2 L 4358.1,1080.2 L 4356.2,1078.4 L 4354.3,1076.7 L 4352.2,1075.3 L 4350.0,1074.1 L 4347.5,1073.2 L 4344.9,1072.7 L 4342.0,1072.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_outbox_consumer_receipt_event: outbox_consumer_receipts(event_id) → platform_outbox(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 2488.0,427.0 L 2493.5,426.0 L 2498.5,423.2 L 2503.1,418.7 L 2507.2,412.7 L 2510.8,405.4 L 2513.9,396.8 L 2516.5,387.3 L 2518.7,377.0 L 2520.3,365.9 L 2521.5,354.4 L 2522.3,342.5 L 2522.5,330.5 L 2522.3,318.5 L 2521.5,306.6 L 2520.3,295.1 L 2518.7,284.0 L 2516.5,273.7 L 2513.9,264.2 L 2510.8,255.6 L 2507.2,248.3 L 2503.1,242.3 L 2498.5,237.8 L 2493.5,235.0 L 2488.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_previews_document_version_id_fkey: personal_document_previews(document_version_id) → personal_document_versions(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2536.0,221.5 L 2533.1,221.6 L 2530.5,221.7 L 2528.0,222.0 L 2525.8,222.4 L 2523.7,222.9 L 2521.8,223.5 L 2519.9,224.1 L 2518.2,224.7 L 2516.6,225.5 L 2515.0,226.2 L 2513.5,227.0 L 2512.0,227.8 L 2510.5,228.5 L 2509.0,229.3 L 2507.4,230.0 L 2505.8,230.8 L 2504.1,231.4 L 2502.2,232.0 L 2500.3,232.6 L 2498.2,233.1 L 2496.0,233.5 L 2493.5,233.8 L 2490.9,233.9 L 2488.0,234.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_previews_preview_object_id_fkey: personal_document_previews(preview_object_id) → storage_objects(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 711.0,3187.0 L 781.9,3146.4 L 847.2,3081.8 L 907.4,2995.5 L 963.3,2890.0 L 1015.2,2767.6 L 1063.8,2630.7 L 1109.6,2481.8 L 1153.1,2323.3 L 1195.0,2157.5 L 1235.8,1987.0 L 1276.0,1814.0 L 1316.2,1641.0 L 1357.0,1470.5 L 1398.9,1304.7 L 1442.4,1146.2 L 1488.2,997.3 L 1536.8,860.4 L 1588.7,738.0 L 1644.6,632.5 L 1704.8,546.2 L 1770.1,481.6 L 1841.0,441.0 L 1918.0,427.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_versions_created_by_fkey: personal_document_versions(created_by) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2488.0,620.0 L 2494.5,619.0 L 2500.4,616.2 L 2505.7,611.7 L 2510.5,605.7 L 2514.7,598.4 L 2518.4,589.8 L 2521.5,580.3 L 2524.0,570.0 L 2526.0,558.9 L 2527.4,547.4 L 2528.2,535.5 L 2528.5,523.5 L 2528.2,511.5 L 2527.4,499.6 L 2526.0,488.1 L 2524.0,477.0 L 2521.5,466.7 L 2518.4,457.2 L 2514.7,448.6 L 2510.5,441.3 L 2505.7,435.3 L 2500.4,430.8 L 2494.5,428.0 L 2488.0,427.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_versions_document_id_fkey: personal_document_versions(document_id) → personal_documents(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2488.0,427.0 L 2494.5,427.0 L 2500.4,427.0 L 2505.7,427.0 L 2510.5,427.0 L 2514.7,427.0 L 2518.4,427.0 L 2521.5,427.0 L 2524.0,427.0 L 2526.0,427.0 L 2527.4,427.0 L 2528.2,427.0 L 2528.5,427.0 L 2528.2,427.0 L 2527.4,427.0 L 2526.0,427.0 L 2524.0,427.0 L 2521.5,427.0 L 2518.4,427.0 L 2514.7,427.0 L 2510.5,427.0 L 2505.7,427.0 L 2500.4,427.0 L 2494.5,427.0 L 2488.0,427.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_versions_restored_from_version_id_fkey: personal_document_versions(restored_from_version_id) → personal_document_versions(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2536.0,221.5 L 2533.1,222.5 L 2530.5,225.5 L 2528.0,230.3 L 2525.8,236.7 L 2523.7,244.5 L 2521.8,253.6 L 2519.9,263.7 L 2518.2,274.8 L 2516.6,286.5 L 2515.0,298.8 L 2513.5,311.4 L 2512.0,324.2 L 2510.5,337.1 L 2509.0,349.7 L 2507.4,362.0 L 2505.8,373.7 L 2504.1,384.8 L 2502.2,394.9 L 2500.3,404.0 L 2498.2,411.8 L 2496.0,418.2 L 2493.5,423.0 L 2490.9,426.0 L 2488.0,427.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_document_versions_source_object_id_fkey: personal_document_versions(source_object_id) → storage_objects(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2488.0,427.0 L 2490.6,428.0 L 2493.0,430.8 L 2495.2,435.3 L 2497.2,441.3 L 2498.9,448.6 L 2500.4,457.2 L 2501.6,466.7 L 2502.7,477.0 L 2503.5,488.1 L 2504.0,499.6 L 2504.4,511.5 L 2504.5,523.5 L 2504.4,535.5 L 2504.0,547.4 L 2503.5,558.9 L 2502.7,570.0 L 2501.6,580.3 L 2500.4,589.8 L 2498.9,598.4 L 2497.2,605.7 L 2495.2,611.7 L 2493.0,616.2 L 2490.6,619.0 L 2488.0,620.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_personal_documents_current_version: personal_documents(current_version_id) → personal_document_versions(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 711.0,3187.9 L 781.9,3150.2 L 847.2,3090.1 L 907.4,3009.8 L 963.3,2911.6 L 1015.2,2797.7 L 1063.8,2670.4 L 1109.6,2531.9 L 1153.1,2384.4 L 1195.0,2230.1 L 1235.8,2071.4 L 1276.0,1910.5 L 1316.2,1749.6 L 1357.0,1590.9 L 1398.9,1436.6 L 1442.4,1289.1 L 1488.2,1150.6 L 1536.8,1023.3 L 1588.7,909.4 L 1644.6,811.2 L 1704.8,730.9 L 1770.1,670.8 L 1841.0,633.1 L 1918.0,620.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>personal_documents_owner_user_id_fkey: personal_documents(owner_user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4960.0,1110.0 L 4963.6,1108.1 L 4966.9,1102.8 L 4969.8,1094.3 L 4972.5,1082.9 L 4974.8,1068.9 L 4976.9,1052.7 L 4978.6,1034.7 L 4980.0,1015.0 L 4981.1,994.0 L 4981.9,972.1 L 4982.3,949.6 L 4982.5,926.8 L 4982.3,903.9 L 4981.9,881.4 L 4981.1,859.5 L 4980.0,838.5 L 4978.6,818.8 L 4976.9,800.8 L 4974.8,784.6 L 4972.5,770.6 L 4969.8,759.2 L 4966.9,750.7 L 4963.6,745.4 L 4960.0,743.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_platform_command_audit_event: platform_command_audits(event_id) → platform_outbox(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 4960.0,1110.0 L 4962.6,1110.7 L 4965.0,1112.6 L 4967.2,1115.6 L 4969.2,1119.7 L 4970.9,1124.6 L 4972.4,1130.4 L 4973.6,1136.8 L 4974.7,1143.8 L 4975.5,1151.3 L 4976.0,1159.1 L 4976.4,1167.1 L 4976.5,1175.2 L 4976.4,1183.4 L 4976.0,1191.4 L 4975.5,1199.2 L 4974.7,1206.7 L 4973.6,1213.7 L 4972.4,1220.1 L 4970.9,1225.9 L 4969.2,1230.8 L 4967.2,1234.9 L 4965.0,1237.9 L 4962.6,1239.8 L 4960.0,1240.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_platform_outbox_attempt_event: platform_outbox_attempts(event_id) → platform_outbox(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3186.0 L 924.2,3142.9 L 1052.4,3074.0 L 1170.7,2982.1 L 1280.2,2869.7 L 1382.1,2739.4 L 1477.5,2593.6 L 1567.3,2435.0 L 1652.8,2266.2 L 1735.0,2089.6 L 1815.1,1908.0 L 1894.0,1723.8 L 1972.9,1539.5 L 2053.0,1357.9 L 2135.2,1181.3 L 2220.7,1012.5 L 2310.5,853.9 L 2405.9,708.1 L 2507.8,577.8 L 2617.3,465.4 L 2735.6,373.5 L 2863.8,304.6 L 3002.9,261.5 L 3154.0,246.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_admin_grants_decided_by_fkey: plugin_admin_grants(decided_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,682.5 L 3729.5,680.3 L 3734.5,673.9 L 3739.1,663.8 L 3743.2,650.2 L 3746.8,633.6 L 3749.9,614.4 L 3752.5,592.9 L 3754.7,569.5 L 3756.3,544.5 L 3757.5,518.5 L 3758.3,491.7 L 3758.5,464.5 L 3758.3,437.3 L 3757.5,410.5 L 3756.3,384.5 L 3754.7,359.5 L 3752.5,336.1 L 3749.9,314.6 L 3746.8,295.4 L 3743.2,278.8 L 3739.1,265.2 L 3734.5,255.1 L 3729.5,248.7 L 3724.0,246.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_admin_grant_declaration: plugin_admin_grants(plugin_version_id, capability_code) → plugin_capability_declarations(plugin_version_id, capability_code), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 3724.0,3008.0 L 3730.5,2995.2 L 3736.4,2958.2 L 3741.7,2899.2 L 3746.5,2820.5 L 3750.7,2724.2 L 3754.4,2612.5 L 3757.5,2487.7 L 3760.0,2351.8 L 3762.0,2207.2 L 3763.4,2055.9 L 3764.2,1900.3 L 3764.5,1742.5 L 3764.2,1584.7 L 3763.4,1429.1 L 3762.0,1277.8 L 3760.0,1133.2 L 3757.5,997.3 L 3754.4,872.5 L 3750.7,760.8 L 3746.5,664.5 L 3741.7,585.8 L 3736.4,526.8 L 3730.5,489.8 L 3724.0,477.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_authorization_decisions_plugin_version_id_fkey: plugin_authorization_decisions(plugin_version_id) → plugin_versions(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 785.1,3187.2 L 924.2,3147.4 L 1052.4,3084.0 L 1170.7,2999.2 L 1280.2,2895.6 L 1382.1,2775.4 L 1477.5,2641.0 L 1567.3,2494.8 L 1652.8,2339.1 L 1735.0,2176.3 L 1815.1,2008.9 L 1894.0,1839.0 L 1972.9,1669.1 L 2053.0,1501.7 L 2135.2,1338.9 L 2220.7,1183.2 L 2310.5,1037.0 L 2405.9,902.6 L 2507.8,782.4 L 2617.3,678.8 L 2735.6,594.0 L 2863.8,530.6 L 3002.9,490.8 L 3154.0,477.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_authorization_decisions_user_id_fkey: plugin_authorization_decisions(user_id) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,246.5 L 3730.5,247.7 L 3736.4,251.0 L 3741.7,256.4 L 3746.5,263.6 L 3750.7,272.3 L 3754.4,282.5 L 3757.5,293.9 L 3760.0,306.3 L 3762.0,319.4 L 3763.4,333.2 L 3764.2,347.4 L 3764.5,361.8 L 3764.2,376.1 L 3763.4,390.3 L 3762.0,404.1 L 3760.0,417.2 L 3757.5,429.6 L 3754.4,441.0 L 3750.7,451.2 L 3746.5,459.9 L 3741.7,467.1 L 3736.4,472.5 L 3730.5,475.8 L 3724.0,477.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_authorization_decisions_admin_grant_id_fkey: plugin_authorization_decisions(admin_grant_id) → plugin_admin_grants(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,2709.5 L 3730.5,2698.2 L 3736.4,2665.6 L 3741.7,2613.6 L 3746.5,2544.1 L 3750.7,2459.2 L 3754.4,2360.7 L 3757.5,2250.5 L 3760.0,2130.7 L 3762.0,2003.1 L 3763.4,1869.7 L 3764.2,1732.5 L 3764.5,1593.2 L 3764.2,1454.0 L 3763.4,1316.8 L 3762.0,1183.4 L 3760.0,1055.8 L 3757.5,936.0 L 3754.4,825.8 L 3750.7,727.3 L 3746.5,642.4 L 3741.7,572.9 L 3736.4,520.9 L 3730.5,488.3 L 3724.0,477.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_authorization_decisions_user_consent_id_fkey: plugin_authorization_decisions(user_consent_id) → plugin_user_consents(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,968.5 L 3730.5,966.0 L 3736.4,958.8 L 3741.7,947.4 L 3746.5,932.1 L 3750.7,913.4 L 3754.4,891.7 L 3757.5,867.5 L 3760.0,841.1 L 3762.0,813.0 L 3763.4,783.6 L 3764.2,753.4 L 3764.5,722.8 L 3764.2,692.1 L 3763.4,661.9 L 3762.0,632.5 L 3760.0,604.4 L 3757.5,578.0 L 3754.4,553.8 L 3750.7,532.1 L 3746.5,513.4 L 3741.7,498.1 L 3736.4,486.7 L 3730.5,479.5 L 3724.0,477.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_authorization_decisions_delegation_id_fkey: plugin_authorization_decisions(delegation_id) → plugin_delegations(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,3008.0 L 3726.6,2996.2 L 3729.0,2962.2 L 3731.2,2908.1 L 3733.2,2835.7 L 3734.9,2747.3 L 3736.4,2644.6 L 3737.6,2529.9 L 3738.7,2405.1 L 3739.5,2272.2 L 3740.0,2133.2 L 3740.4,1990.3 L 3740.5,1845.2 L 3740.4,1700.2 L 3740.0,1557.3 L 3739.5,1418.3 L 3738.7,1285.4 L 3737.6,1160.6 L 3736.4,1045.9 L 3734.9,943.2 L 3733.2,854.8 L 3731.2,782.4 L 3729.0,728.3 L 3726.6,694.3 L 3724.0,682.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_capability_declarations_plugin_version_id_fkey: plugin_capability_declarations(plugin_version_id) → plugin_versions(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 3724.0,3008.0 L 3728.6,2997.7 L 3732.7,2967.9 L 3736.5,2920.4 L 3739.8,2856.9 L 3742.8,2779.3 L 3745.4,2689.3 L 3747.6,2588.7 L 3749.3,2479.2 L 3750.7,2362.7 L 3751.7,2240.8 L 3752.3,2115.4 L 3752.5,1988.2 L 3752.3,1861.1 L 3751.7,1735.7 L 3750.7,1613.8 L 3749.3,1497.3 L 3747.6,1387.8 L 3745.4,1287.2 L 3742.8,1197.2 L 3739.8,1119.6 L 3736.5,1056.1 L 3732.7,1008.6 L 3728.6,978.8 L 3724.0,968.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_delegations_plugin_version_id_fkey: plugin_delegations(plugin_version_id) → plugin_versions(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3189.7 L 924.2,3157.1 L 1052.4,3105.1 L 1170.7,3035.6 L 1280.2,2950.7 L 1382.1,2852.2 L 1477.5,2742.0 L 1567.3,2622.2 L 1652.8,2494.6 L 1735.0,2361.2 L 1815.1,2224.0 L 1894.0,2084.8 L 1972.9,1945.5 L 2053.0,1808.3 L 2135.2,1674.9 L 2220.7,1547.3 L 2310.5,1427.5 L 2405.9,1317.3 L 2507.8,1218.8 L 2617.3,1133.9 L 2735.6,1064.4 L 2863.8,1012.4 L 3002.9,979.8 L 3154.0,968.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_delegations_subject_user_id_fkey: plugin_delegations(subject_user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3189.7 L 924.2,3157.1 L 1052.4,3105.1 L 1170.7,3035.6 L 1280.2,2950.7 L 1382.1,2852.2 L 1477.5,2742.0 L 1567.3,2622.2 L 1652.8,2494.6 L 1735.0,2361.2 L 1815.1,2224.0 L 1894.0,2084.8 L 1972.9,1945.5 L 2053.0,1808.3 L 2135.2,1674.9 L 2220.7,1547.3 L 2310.5,1427.5 L 2405.9,1317.3 L 2507.8,1218.8 L 2617.3,1133.9 L 2735.6,1064.4 L 2863.8,1012.4 L 3002.9,979.8 L 3154.0,968.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_delegations_created_by_fkey: plugin_delegations(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,1621.0 L 3730.5,1619.1 L 3736.4,1613.8 L 3741.7,1605.3 L 3746.5,1593.9 L 3750.7,1579.9 L 3754.4,1563.7 L 3757.5,1545.7 L 3760.0,1526.0 L 3762.0,1505.0 L 3763.4,1483.1 L 3764.2,1460.6 L 3764.5,1437.8 L 3764.2,1414.9 L 3763.4,1392.4 L 3762.0,1370.5 L 3760.0,1349.5 L 3757.5,1329.8 L 3754.4,1311.8 L 3750.7,1295.6 L 3746.5,1281.6 L 3741.7,1270.2 L 3736.4,1261.7 L 3730.5,1256.4 L 3724.0,1254.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_install_requests_market_source: plugin_install_requests(market_source_id) → plugin_market_sources(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 785.1,3194.3 L 924.2,3174.8 L 1052.4,3143.8 L 1170.7,3102.4 L 1280.2,3051.7 L 1382.1,2993.0 L 1477.5,2927.3 L 1567.3,2855.8 L 1652.8,2779.7 L 1735.0,2700.1 L 1815.1,2618.3 L 1894.0,2535.2 L 1972.9,2452.2 L 2053.0,2370.4 L 2135.2,2290.8 L 2220.7,2214.7 L 2310.5,2143.2 L 2405.9,2077.5 L 2507.8,2018.8 L 2617.3,1968.1 L 2735.6,1926.7 L 2863.8,1895.7 L 3002.9,1876.2 L 3154.0,1869.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_publishers_created_by_fkey: plugin_publishers(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,3163.5 L 3728.6,3159.0 L 3732.7,3146.0 L 3736.5,3125.3 L 3739.8,3097.6 L 3742.8,3063.7 L 3745.4,3024.4 L 3747.6,2980.5 L 3749.3,2932.8 L 3750.7,2881.9 L 3751.7,2828.7 L 3752.3,2774.0 L 3752.5,2718.5 L 3752.3,2663.0 L 3751.7,2608.3 L 3750.7,2555.1 L 3749.3,2504.2 L 3747.6,2456.5 L 3745.4,2412.6 L 3742.8,2373.3 L 3739.8,2339.4 L 3736.5,2311.7 L 3732.7,2291.0 L 3728.6,2278.0 L 3724.0,2273.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_secret_values_plugin_id_fkey: plugin_secret_values(plugin_id) → plugins(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3196.3 L 924.2,3182.8 L 1052.4,3161.1 L 1170.7,3132.3 L 1280.2,3097.0 L 1382.1,3056.1 L 1477.5,3010.3 L 1567.3,2960.5 L 1652.8,2907.5 L 1735.0,2852.1 L 1815.1,2795.1 L 1894.0,2737.2 L 1972.9,2679.4 L 2053.0,2622.4 L 2135.2,2567.0 L 2220.7,2514.0 L 2310.5,2464.2 L 2405.9,2418.4 L 2507.8,2377.5 L 2617.3,2342.2 L 2735.6,2313.4 L 2863.8,2291.7 L 3002.9,2278.2 L 3154.0,2273.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_secret_values_owner_user_id_fkey: plugin_secret_values(owner_user_id) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3196.3 L 924.2,3182.8 L 1052.4,3161.1 L 1170.7,3132.3 L 1280.2,3097.0 L 1382.1,3056.1 L 1477.5,3010.3 L 1567.3,2960.5 L 1652.8,2907.5 L 1735.0,2852.1 L 1815.1,2795.1 L 1894.0,2737.2 L 1972.9,2679.4 L 2053.0,2622.4 L 2135.2,2567.0 L 2220.7,2514.0 L 2310.5,2464.2 L 2405.9,2418.4 L 2507.8,2377.5 L 2617.3,2342.2 L 2735.6,2313.4 L 2863.8,2291.7 L 3002.9,2278.2 L 3154.0,2273.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_secret_values_created_by_fkey: plugin_secret_values(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 785.1,3197.4 L 924.2,3187.0 L 1052.4,3170.5 L 1170.7,3148.4 L 1280.2,3121.4 L 1382.1,3090.1 L 1477.5,3055.1 L 1567.3,3017.1 L 1652.8,2976.5 L 1735.0,2934.1 L 1815.1,2890.5 L 1894.0,2846.2 L 1972.9,2802.0 L 2053.0,2758.4 L 2135.2,2716.0 L 2220.7,2675.4 L 2310.5,2637.4 L 2405.9,2602.4 L 2507.8,2571.1 L 2617.3,2544.1 L 2735.6,2522.0 L 2863.8,2505.5 L 3002.9,2495.1 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_user: plugin_ui_invocations(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 1252.0,1540.5 L 1366.1,1545.3 L 1471.0,1559.2 L 1567.8,1581.4 L 1657.1,1610.9 L 1739.7,1647.1 L 1816.7,1689.1 L 1888.6,1736.0 L 1956.4,1787.1 L 2021.0,1841.4 L 2083.0,1898.2 L 2143.4,1956.7 L 2203.0,2016.0 L 2262.6,2075.3 L 2323.0,2133.8 L 2385.0,2190.6 L 2449.6,2244.9 L 2517.4,2296.0 L 2589.3,2342.9 L 2666.3,2384.9 L 2748.9,2421.1 L 2838.2,2450.6 L 2935.0,2472.8 L 3039.9,2486.7 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_article: plugin_ui_invocations(article_content_id) → richtext_article_contents(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 4390.0,2061.0 L 4350.1,2063.2 L 4313.3,2069.5 L 4279.4,2079.5 L 4248.2,2092.9 L 4219.2,2109.3 L 4192.3,2128.3 L 4167.1,2149.5 L 4143.3,2172.6 L 4120.7,2197.2 L 4099.0,2222.9 L 4077.9,2249.4 L 4057.0,2276.2 L 4036.1,2303.1 L 4015.0,2329.6 L 3993.3,2355.3 L 3970.7,2379.9 L 3946.9,2403.0 L 3921.7,2424.2 L 3894.8,2443.2 L 3865.8,2459.6 L 3834.6,2473.0 L 3800.7,2483.0 L 3763.9,2489.3 L 3724.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_asset: plugin_ui_invocations(asset_id) → user_assets(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1360.0 L 1366.1,1365.7 L 1471.0,1382.3 L 1567.8,1408.6 L 1657.1,1443.8 L 1739.7,1486.9 L 1816.7,1536.8 L 1888.6,1592.6 L 1956.4,1653.4 L 2021.0,1718.0 L 2083.0,1785.6 L 2143.4,1855.2 L 2203.0,1925.8 L 2262.6,1996.3 L 2323.0,2065.9 L 2385.0,2133.5 L 2449.6,2198.1 L 2517.4,2258.9 L 2589.3,2314.7 L 2666.3,2364.6 L 2748.9,2407.7 L 2838.2,2442.9 L 2935.0,2469.2 L 3039.9,2485.8 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_attachment: plugin_ui_invocations(attachment_id) → richtext_article_attachments(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2488.0,620.0 L 2527.9,629.5 L 2564.7,656.8 L 2598.6,700.4 L 2629.8,758.6 L 2658.8,829.8 L 2685.7,912.4 L 2710.9,1004.8 L 2734.7,1105.2 L 2757.3,1212.2 L 2779.0,1324.0 L 2800.1,1439.1 L 2821.0,1555.8 L 2841.9,1672.4 L 2863.0,1787.5 L 2884.7,1899.3 L 2907.3,2006.3 L 2931.1,2106.7 L 2956.3,2199.1 L 2983.2,2281.7 L 3012.2,2352.9 L 3043.4,2411.1 L 3077.3,2454.7 L 3114.1,2482.0 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_personal_document: plugin_ui_invocations(personal_document_id) → personal_documents(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3198.5 L 924.2,3191.3 L 1052.4,3179.9 L 1170.7,3164.6 L 1280.2,3145.9 L 1382.1,3124.2 L 1477.5,3100.0 L 1567.3,3073.6 L 1652.8,3045.5 L 1735.0,3016.1 L 1815.1,2985.9 L 1894.0,2955.2 L 1972.9,2924.6 L 2053.0,2894.4 L 2135.2,2865.0 L 2220.7,2836.9 L 2310.5,2810.5 L 2405.9,2786.3 L 2507.8,2764.6 L 2617.3,2745.9 L 2735.6,2730.6 L 2863.8,2719.2 L 3002.9,2712.0 L 3154.0,2709.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_user_consents_user_id_fkey: plugin_user_consents(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 3724.0,682.5 L 3730.5,692.8 L 3736.4,722.4 L 3741.7,769.6 L 3746.5,832.6 L 3750.7,909.8 L 3754.4,999.2 L 3757.5,1099.2 L 3760.0,1208.0 L 3762.0,1323.9 L 3763.4,1445.0 L 3764.2,1569.6 L 3764.5,1696.0 L 3764.2,1822.4 L 3763.4,1947.0 L 3762.0,2068.1 L 3760.0,2184.0 L 3757.5,2292.8 L 3754.4,2392.8 L 3750.7,2482.2 L 3746.5,2559.4 L 3741.7,2622.4 L 3736.4,2669.6 L 3730.5,2699.2 L 3724.0,2709.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_user_consent_declaration: plugin_user_consents(plugin_version_id, capability_code) → plugin_capability_declarations(plugin_version_id, capability_code), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 3724.0,3163.5 L 3727.6,3162.7 L 3730.9,3160.4 L 3733.8,3156.8 L 3736.5,3152.0 L 3738.8,3146.1 L 3740.9,3139.2 L 3742.6,3131.5 L 3744.0,3123.2 L 3745.1,3114.3 L 3745.9,3105.0 L 3746.3,3095.4 L 3746.5,3085.8 L 3746.3,3076.1 L 3745.9,3066.5 L 3745.1,3057.2 L 3744.0,3048.3 L 3742.6,3040.0 L 3740.9,3032.3 L 3738.8,3025.4 L 3736.5,3019.5 L 3733.8,3014.7 L 3730.9,3011.1 L 3727.6,3008.8 L 3724.0,3008.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_versions_plugin_id_fkey: plugin_versions(plugin_id) → plugins(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 785.1,3200.0 L 924.2,3197.2 L 1052.4,3192.7 L 1170.7,3186.7 L 1280.2,3179.4 L 1382.1,3170.8 L 1477.5,3161.3 L 1567.3,3151.0 L 1652.8,3139.9 L 1735.0,3128.4 L 1815.1,3116.5 L 1894.0,3104.5 L 1972.9,3092.5 L 2053.0,3080.6 L 2135.2,3069.1 L 2220.7,3058.0 L 2310.5,3047.7 L 2405.9,3038.2 L 2507.8,3029.6 L 2617.3,3022.3 L 2735.6,3016.3 L 2863.8,3011.8 L 3002.9,3009.0 L 3154.0,3008.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_versions_created_by_fkey: plugin_versions(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 3724.0,1869.5 L 3728.6,1876.1 L 3732.7,1895.0 L 3736.5,1925.1 L 3739.8,1965.4 L 3742.8,2014.6 L 3745.4,2071.7 L 3747.6,2135.5 L 3749.3,2205.0 L 3750.7,2278.9 L 3751.7,2356.2 L 3752.3,2435.8 L 3752.5,2516.5 L 3752.3,2597.2 L 3751.7,2676.8 L 3750.7,2754.1 L 3749.3,2828.0 L 3747.6,2897.5 L 3745.4,2961.3 L 3742.8,3018.4 L 3739.8,3067.6 L 3736.5,3107.9 L 3732.7,3138.0 L 3728.6,3156.9 L 3724.0,3163.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugins_publisher: plugins(publisher_id) → plugin_publishers(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 636.9,3189.7 L 639.5,3156.9 L 642.0,3104.8 L 644.2,3035.1 L 646.3,2949.9 L 648.2,2851.1 L 650.1,2740.6 L 651.8,2620.4 L 653.4,2492.4 L 655.0,2358.6 L 656.5,2220.9 L 658.0,2081.2 L 659.5,1941.6 L 661.0,1803.9 L 662.6,1670.1 L 664.2,1542.1 L 665.9,1421.9 L 667.8,1311.4 L 669.7,1212.6 L 671.8,1127.4 L 674.0,1057.7 L 676.5,1005.6 L 679.1,972.8 L 682.0,961.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_posts_author: posts(author_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,961.5 L 1257.5,961.5 L 1262.5,961.5 L 1267.1,961.5 L 1271.2,961.5 L 1274.8,961.5 L 1277.9,961.5 L 1280.5,961.5 L 1282.7,961.5 L 1284.3,961.5 L 1285.5,961.5 L 1286.3,961.5 L 1286.5,961.5 L 1286.3,961.5 L 1285.5,961.5 L 1284.3,961.5 L 1282.7,961.5 L 1280.5,961.5 L 1277.9,961.5 L 1274.8,961.5 L 1271.2,961.5 L 1267.1,961.5 L 1262.5,961.5 L 1257.5,961.5 L 1252.0,961.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_posts_parent: posts(parent_id) → posts(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1257.5,1859.4 L 1262.5,1846.2 L 1267.1,1825.2 L 1271.2,1797.1 L 1274.8,1762.8 L 1277.9,1723.0 L 1280.5,1678.5 L 1282.7,1630.0 L 1284.3,1578.4 L 1285.5,1524.5 L 1286.3,1469.0 L 1286.5,1412.8 L 1286.3,1356.5 L 1285.5,1301.0 L 1284.3,1247.1 L 1282.7,1195.5 L 1280.5,1147.0 L 1277.9,1102.5 L 1274.8,1062.7 L 1271.2,1028.4 L 1267.1,1000.3 L 1262.5,979.3 L 1257.5,966.1 L 1252.0,961.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_posts_thread: posts(thread_id) → threads(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1540.5 L 1258.5,1538.6 L 1264.4,1533.2 L 1269.7,1524.5 L 1274.5,1512.8 L 1278.7,1498.6 L 1282.4,1482.1 L 1285.5,1463.7 L 1288.0,1443.7 L 1290.0,1422.3 L 1291.4,1400.0 L 1292.2,1377.0 L 1292.5,1353.8 L 1292.2,1330.5 L 1291.4,1307.5 L 1290.0,1285.2 L 1288.0,1263.8 L 1285.5,1243.8 L 1282.4,1225.4 L 1278.7,1208.9 L 1274.5,1194.7 L 1269.7,1183.0 L 1264.4,1174.3 L 1258.5,1168.9 L 1252.0,1167.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_assets_content: richtext_article_assets(article_content_id) → richtext_article_contents(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1258.5,1860.5 L 1264.4,1850.3 L 1269.7,1834.1 L 1274.5,1812.4 L 1278.7,1785.8 L 1282.4,1755.1 L 1285.5,1720.7 L 1288.0,1683.3 L 1290.0,1643.5 L 1291.4,1601.8 L 1292.2,1559.0 L 1292.5,1515.5 L 1292.2,1472.0 L 1291.4,1429.2 L 1290.0,1387.5 L 1288.0,1347.7 L 1285.5,1310.3 L 1282.4,1275.9 L 1278.7,1245.2 L 1274.5,1218.6 L 1269.7,1196.9 L 1264.4,1180.7 L 1258.5,1170.5 L 1252.0,1167.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_assets_thread: richtext_article_assets(thread_id) → threads(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3190.7 L 639.5,3161.0 L 642.0,3113.6 L 644.2,3050.3 L 646.3,2972.9 L 648.2,2883.2 L 650.1,2782.8 L 651.8,2673.7 L 653.4,2557.4 L 655.0,2435.9 L 656.5,2310.8 L 658.0,2184.0 L 659.5,2057.2 L 661.0,1932.1 L 662.6,1810.6 L 664.2,1694.3 L 665.9,1585.2 L 667.8,1484.8 L 669.7,1395.1 L 671.8,1317.7 L 674.0,1254.4 L 676.5,1207.0 L 679.1,1177.3 L 682.0,1167.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_assets_uploader: richtext_article_assets(uploader_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4390.0,2061.0 L 4201.8,2056.5 L 4028.6,2043.4 L 3869.0,2022.6 L 3721.7,1994.8 L 3585.3,1960.8 L 3458.4,1921.3 L 3339.7,1877.2 L 3227.8,1829.2 L 3121.3,1778.1 L 3018.9,1724.7 L 2919.3,1669.7 L 2821.0,1614.0 L 2722.7,1558.3 L 2623.1,1503.3 L 2520.7,1449.9 L 2414.2,1398.8 L 2302.3,1350.8 L 2183.6,1306.7 L 2056.7,1267.2 L 1920.3,1233.2 L 1773.0,1205.4 L 1613.4,1184.6 L 1440.2,1171.5 L 1252.0,1167.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_article_assets_user_asset: richtext_article_assets(asset_id) → user_assets(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1540.5 L 1254.6,1539.6 L 1257.0,1536.9 L 1259.2,1532.7 L 1261.2,1527.1 L 1262.9,1520.3 L 1264.4,1512.3 L 1265.6,1503.4 L 1266.7,1493.7 L 1267.5,1483.4 L 1268.0,1472.6 L 1268.4,1461.5 L 1268.5,1450.2 L 1268.4,1439.0 L 1268.0,1427.9 L 1267.5,1417.1 L 1266.7,1406.8 L 1265.6,1397.1 L 1264.4,1388.2 L 1262.9,1380.2 L 1261.2,1373.4 L 1259.2,1367.8 L 1257.0,1363.6 L 1254.6,1360.9 L 1252.0,1360.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_article_attachments_article: richtext_article_attachments(article_content_id) → richtext_article_contents(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 4390.0,2061.0 L 4201.8,2057.5 L 4028.6,2047.2 L 3869.0,2030.9 L 3721.7,2009.1 L 3585.3,1982.4 L 3458.4,1951.5 L 3339.7,1916.9 L 3227.8,1879.3 L 3121.3,1839.2 L 3018.9,1797.3 L 2919.3,1754.2 L 2821.0,1710.5 L 2722.7,1666.8 L 2623.1,1623.7 L 2520.7,1581.8 L 2414.2,1541.7 L 2302.3,1504.1 L 2183.6,1469.5 L 2056.7,1438.6 L 1920.3,1411.9 L 1773.0,1390.1 L 1613.4,1373.8 L 1440.2,1363.5 L 1252.0,1360.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_article_attachments_asset: richtext_article_attachments(asset_id) → user_assets(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3192.6 L 639.5,3168.3 L 642.0,3129.7 L 644.2,3078.0 L 646.3,3014.8 L 648.2,2941.5 L 650.1,2859.6 L 651.8,2770.5 L 653.4,2675.6 L 655.0,2576.4 L 656.5,2474.3 L 658.0,2370.8 L 659.5,2267.2 L 661.0,2165.1 L 662.6,2065.9 L 664.2,1971.0 L 665.9,1881.9 L 667.8,1800.0 L 669.7,1726.7 L 671.8,1663.5 L 674.0,1611.8 L 676.5,1573.2 L 679.1,1548.9 L 682.0,1540.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_contents_created_by: richtext_article_contents(created_by) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1255.6,1862.4 L 1258.9,1857.6 L 1261.8,1850.1 L 1264.5,1840.0 L 1266.8,1827.7 L 1268.9,1813.5 L 1270.6,1797.5 L 1272.0,1780.1 L 1273.1,1761.6 L 1273.9,1742.3 L 1274.3,1722.4 L 1274.5,1702.2 L 1274.3,1682.1 L 1273.9,1662.2 L 1273.1,1642.9 L 1272.0,1624.4 L 1270.6,1607.0 L 1268.9,1591.0 L 1266.8,1576.8 L 1264.5,1564.5 L 1261.8,1554.4 L 1258.9,1546.9 L 1255.6,1542.1 L 1252.0,1540.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_contents_thread: richtext_article_contents(thread_id) → threads(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3192.6 L 639.5,3168.3 L 642.0,3129.7 L 644.2,3078.0 L 646.3,3014.8 L 648.2,2941.5 L 650.1,2859.6 L 651.8,2770.5 L 653.4,2675.6 L 655.0,2576.4 L 656.5,2474.3 L 658.0,2370.8 L 659.5,2267.2 L 661.0,2165.1 L 662.6,2065.9 L 664.2,1971.0 L 665.9,1881.9 L 667.8,1800.0 L 669.7,1726.7 L 671.8,1663.5 L 674.0,1611.8 L 676.5,1573.2 L 679.1,1548.9 L 682.0,1540.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_richtext_contents_updated_by: richtext_article_contents(updated_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,2448.5 L 638.6,2449.3 L 642.7,2451.6 L 646.5,2455.2 L 649.8,2460.0 L 652.8,2465.9 L 655.4,2472.8 L 657.6,2480.5 L 659.3,2488.8 L 660.7,2497.7 L 661.7,2507.0 L 662.3,2516.6 L 662.5,2526.2 L 662.3,2535.9 L 661.7,2545.5 L 660.7,2554.8 L 659.3,2563.7 L 657.6,2572.0 L 655.4,2579.7 L 652.8,2586.6 L 649.8,2592.5 L 646.5,2597.3 L 642.7,2600.9 L 638.6,2603.2 L 634.0,2604.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_v10_role_permissions_permission: role_permissions(permission_id) → permission_definitions(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,2747.0 L 638.6,2746.3 L 642.7,2744.2 L 646.5,2740.9 L 649.8,2736.4 L 652.8,2731.0 L 655.4,2724.7 L 657.6,2717.6 L 659.3,2709.9 L 660.7,2701.8 L 661.7,2693.2 L 662.3,2684.4 L 662.5,2675.5 L 662.3,2666.6 L 661.7,2657.8 L 660.7,2649.2 L 659.3,2641.1 L 657.6,2633.4 L 655.4,2626.3 L 652.8,2620.0 L 649.8,2614.6 L 646.5,2610.1 L 642.7,2606.8 L 638.6,2604.7 L 634.0,2604.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_v10_role_permissions_role: role_permissions(role_id) → roles(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,2448.5 L 859.2,2445.1 L 1066.5,2435.2 L 1257.6,2419.6 L 1433.9,2398.6 L 1597.2,2373.0 L 1749.1,2343.3 L 1891.2,2310.0 L 2025.1,2273.9 L 2152.5,2235.4 L 2275.1,2195.2 L 2394.4,2153.7 L 2512.0,2111.8 L 2629.6,2069.8 L 2748.9,2028.3 L 2871.5,1988.1 L 2998.9,1949.6 L 3132.8,1913.5 L 3274.9,1880.2 L 3426.8,1850.5 L 3590.1,1824.9 L 3766.4,1803.9 L 3957.5,1788.3 L 4164.8,1778.4 L 4390.0,1775.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_route_permission_definition: route_permission_bindings(permission_id) → permission_definitions(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4960.0,1619.5 L 4962.6,1620.3 L 4965.0,1622.6 L 4967.2,1626.2 L 4969.2,1631.0 L 4970.9,1636.9 L 4972.4,1643.8 L 4973.6,1651.5 L 4974.7,1659.8 L 4975.5,1668.7 L 4976.0,1678.0 L 4976.4,1687.6 L 4976.5,1697.2 L 4976.4,1706.9 L 4976.0,1716.5 L 4975.5,1725.8 L 4974.7,1734.7 L 4973.6,1743.0 L 4972.4,1750.7 L 4970.9,1757.6 L 4969.2,1763.5 L 4967.2,1768.3 L 4965.0,1771.9 L 4962.6,1774.2 L 4960.0,1775.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_route_permission_operation: route_permission_bindings(route_operation_id) → route_operations(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 636.9,3193.4 L 639.5,3171.6 L 642.0,3136.9 L 644.2,3090.4 L 646.3,3033.7 L 648.2,2967.8 L 650.1,2894.2 L 651.8,2814.1 L 653.4,2728.8 L 655.0,2639.6 L 656.5,2547.8 L 658.0,2454.8 L 659.5,2361.7 L 661.0,2269.9 L 662.6,2180.7 L 664.2,2095.4 L 665.9,2015.3 L 667.8,1941.7 L 669.7,1875.8 L 671.8,1819.1 L 674.0,1772.6 L 676.5,1737.9 L 679.1,1716.1 L 682.0,1708.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_secondhand_details_created_by: secondhand_details(created_by) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1255.6,1863.2 L 1258.9,1860.9 L 1261.8,1857.3 L 1264.5,1852.5 L 1266.8,1846.6 L 1268.9,1839.7 L 1270.6,1832.0 L 1272.0,1823.7 L 1273.1,1814.8 L 1273.9,1805.5 L 1274.3,1795.9 L 1274.5,1786.2 L 1274.3,1776.6 L 1273.9,1767.0 L 1273.1,1757.7 L 1272.0,1748.8 L 1270.6,1740.5 L 1268.9,1732.8 L 1266.8,1725.9 L 1264.5,1720.0 L 1261.8,1715.2 L 1258.9,1711.6 L 1255.6,1709.3 L 1252.0,1708.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_secondhand_details_thread: secondhand_details(thread_id) → threads(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 638.6,3199.4 L 642.7,3194.9 L 646.5,3187.6 L 649.8,3178.0 L 652.8,3166.1 L 655.4,3152.4 L 657.6,3137.1 L 659.3,3120.4 L 660.7,3102.6 L 661.7,3084.0 L 662.3,3064.9 L 662.5,3045.5 L 662.3,3026.1 L 661.7,3007.0 L 660.7,2988.4 L 659.3,2970.6 L 657.6,2953.9 L 655.4,2938.6 L 652.8,2924.9 L 649.8,2913.0 L 646.5,2903.4 L 642.7,2896.1 L 638.6,2891.6 L 634.0,2890.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_sessions_user: sessions(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 748.1,3185.9 L 853.0,3142.4 L 949.8,3073.0 L 1039.1,2980.3 L 1121.7,2866.9 L 1198.7,2735.5 L 1270.6,2588.5 L 1338.4,2428.5 L 1403.0,2258.3 L 1465.0,2080.2 L 1525.4,1897.0 L 1585.0,1711.2 L 1644.6,1525.5 L 1705.0,1342.3 L 1767.0,1164.2 L 1831.6,994.0 L 1899.4,834.0 L 1971.3,687.0 L 2048.3,555.6 L 2130.9,442.2 L 2220.2,349.5 L 2317.0,280.1 L 2421.9,236.6 L 2536.0,221.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>storage_objects_owner_user_id_fkey: storage_objects(owner_user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 636.9,3194.2 L 639.5,3174.7 L 642.0,3143.6 L 644.2,3102.0 L 646.3,3051.1 L 648.2,2992.1 L 650.1,2926.1 L 651.8,2854.4 L 653.4,2778.0 L 655.0,2698.1 L 656.5,2615.9 L 658.0,2532.5 L 659.5,2449.1 L 661.0,2366.9 L 662.6,2287.0 L 664.2,2210.6 L 665.9,2138.9 L 667.8,2072.9 L 669.7,2013.9 L 671.8,1963.0 L 674.0,1921.4 L 676.5,1890.3 L 679.1,1870.8 L 682.0,1864.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_threads_author: threads(author_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,221.5 L 1254.6,229.8 L 1257.0,253.8 L 1259.2,292.1 L 1261.2,343.2 L 1262.9,405.7 L 1264.4,478.1 L 1265.6,559.2 L 1266.7,647.3 L 1267.5,741.2 L 1268.0,839.3 L 1268.4,940.3 L 1268.5,1042.8 L 1268.4,1145.2 L 1268.0,1246.2 L 1267.5,1344.3 L 1266.7,1438.2 L 1265.6,1526.3 L 1264.4,1607.4 L 1262.9,1679.8 L 1261.2,1742.3 L 1259.2,1793.4 L 1257.0,1831.7 L 1254.6,1855.7 L 1252.0,1864.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_threads_category: threads(category_id) → categories(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 859.2,3195.2 L 1066.5,3178.6 L 1257.6,3152.0 L 1433.9,3116.6 L 1597.2,3073.2 L 1749.1,3022.9 L 1891.2,2966.6 L 2025.1,2905.4 L 2152.5,2840.3 L 2275.1,2772.2 L 2394.4,2702.1 L 2512.0,2631.0 L 2629.6,2559.9 L 2748.9,2489.8 L 2871.5,2421.7 L 2998.9,2356.6 L 3132.8,2295.4 L 3274.9,2239.1 L 3426.8,2188.8 L 3590.1,2145.4 L 3766.4,2110.0 L 3957.5,2083.4 L 4164.8,2066.8 L 4390.0,2061.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_assets_owner: user_assets(owner_user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 3106.0,221.5 L 3183.0,230.8 L 3253.9,257.7 L 3319.2,300.5 L 3379.4,357.8 L 3435.3,427.8 L 3487.2,508.9 L 3535.8,599.7 L 3581.6,698.4 L 3625.1,803.5 L 3667.0,913.4 L 3707.8,1026.5 L 3748.0,1141.2 L 3788.2,1256.0 L 3829.0,1369.1 L 3870.9,1479.0 L 3914.4,1584.1 L 3960.2,1682.8 L 4008.8,1773.6 L 4060.7,1854.7 L 4116.6,1924.7 L 4176.8,1982.0 L 4242.1,2024.8 L 4313.0,2051.7 L 4390.0,2061.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_assets_storage_object: user_assets(storage_object_id) → storage_objects(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,2747.0 L 638.6,2748.6 L 642.7,2753.1 L 646.5,2760.4 L 649.8,2770.0 L 652.8,2781.9 L 655.4,2795.6 L 657.6,2810.9 L 659.3,2827.6 L 660.7,2845.4 L 661.7,2864.0 L 662.3,2883.1 L 662.5,2902.5 L 662.3,2921.9 L 661.7,2941.0 L 660.7,2959.6 L 659.3,2977.4 L 657.6,2994.1 L 655.4,3009.4 L 652.8,3023.1 L 649.8,3035.0 L 646.5,3044.6 L 642.7,3051.9 L 638.6,3056.4 L 634.0,3058.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_roles_role: user_roles(role_id) → roles(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 638.6,3200.3 L 642.7,3198.2 L 646.5,3194.9 L 649.8,3190.4 L 652.8,3185.0 L 655.4,3178.7 L 657.6,3171.6 L 659.3,3163.9 L 660.7,3155.8 L 661.7,3147.2 L 662.3,3138.4 L 662.5,3129.5 L 662.3,3120.6 L 661.7,3111.8 L 660.7,3103.2 L 659.3,3095.1 L 657.6,3087.4 L 655.4,3080.3 L 652.8,3074.0 L 649.8,3068.6 L 646.5,3064.1 L 642.7,3060.8 L 638.6,3058.7 L 634.0,3058.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_roles_user: user_roles(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1870.0,234.0 L 1875.5,234.8 L 1880.5,237.1 L 1885.1,240.7 L 1889.2,245.5 L 1892.8,251.4 L 1895.9,258.3 L 1898.5,266.0 L 1900.7,274.3 L 1902.3,283.2 L 1903.5,292.5 L 1904.3,302.1 L 1904.5,311.8 L 1904.3,321.4 L 1903.5,331.0 L 1902.3,340.3 L 1900.7,349.2 L 1898.5,357.5 L 1895.9,365.2 L 1892.8,372.1 L 1889.2,378.0 L 1885.1,382.8 L 1880.5,386.4 L 1875.5,388.7 L 1870.0,389.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_schedule_preferences_academic_term_id_fkey: user_schedule_preferences(academic_term_id) → academic_terms(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 673.9,3186.8 L 710.7,3145.7 L 744.6,3080.2 L 775.8,2992.7 L 804.8,2885.8 L 831.7,2761.7 L 856.9,2623.0 L 880.7,2472.1 L 903.3,2311.4 L 925.0,2143.4 L 946.1,1970.6 L 967.0,1795.2 L 987.9,1619.9 L 1009.0,1447.1 L 1030.7,1279.1 L 1053.3,1118.4 L 1077.1,967.5 L 1102.3,828.8 L 1129.2,704.7 L 1158.2,597.8 L 1189.4,510.3 L 1223.3,444.8 L 1260.1,403.7 L 1300.0,389.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_schedule_preferences_user_id_fkey: user_schedule_preferences(user_id) → users(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 1870.0,234.0 L 1876.5,235.6 L 1882.4,240.1 L 1887.7,247.4 L 1892.5,257.0 L 1896.7,268.9 L 1900.4,282.6 L 1903.5,297.9 L 1906.0,314.6 L 1908.0,332.4 L 1909.4,351.0 L 1910.2,370.1 L 1910.5,389.5 L 1910.2,408.9 L 1909.4,428.0 L 1908.0,446.6 L 1906.0,464.4 L 1903.5,481.1 L 1900.4,496.4 L 1896.7,510.1 L 1892.5,522.0 L 1887.7,531.6 L 1882.4,538.9 L 1876.5,543.4 L 1870.0,545.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_schedule_terms_academic_term_id_fkey: user_schedule_terms(academic_term_id) → academic_terms(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 2536.0,221.5 L 2496.1,223.1 L 2459.3,227.9 L 2425.4,235.4 L 2394.2,245.5 L 2365.2,257.8 L 2338.3,272.0 L 2313.1,288.0 L 2289.3,305.4 L 2266.7,323.9 L 2245.0,343.2 L 2223.9,363.1 L 2203.0,383.2 L 2182.1,403.4 L 2161.0,423.3 L 2139.3,442.6 L 2116.7,461.1 L 2092.9,478.5 L 2067.7,494.5 L 2040.8,508.7 L 2011.8,521.0 L 1980.6,531.1 L 1946.7,538.6 L 1909.9,543.4 L 1870.0,545.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_schedule_terms_current_object_id_fkey: user_schedule_terms(current_object_id) → storage_objects(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 673.9,3187.6 L 710.7,3148.7 L 744.6,3086.9 L 775.8,3004.3 L 804.8,2903.2 L 831.7,2786.0 L 856.9,2655.0 L 880.7,2512.4 L 903.3,2360.6 L 925.0,2201.9 L 946.1,2038.6 L 967.0,1873.0 L 987.9,1707.4 L 1009.0,1544.1 L 1030.7,1385.4 L 1053.3,1233.6 L 1077.1,1091.0 L 1102.3,960.0 L 1129.2,842.8 L 1158.2,741.7 L 1189.4,659.1 L 1223.3,597.3 L 1260.1,558.4 L 1300.0,545.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_schedule_terms_user_id_fkey: user_schedule_terms(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 1252.0,221.5 L 1291.9,224.4 L 1328.7,232.9 L 1362.6,246.4 L 1393.8,264.4 L 1422.8,286.4 L 1449.7,312.0 L 1474.9,340.5 L 1498.7,371.6 L 1521.3,404.7 L 1543.0,439.3 L 1564.1,474.9 L 1585.0,511.0 L 1605.9,547.1 L 1627.0,582.7 L 1648.7,617.3 L 1671.3,650.4 L 1695.1,681.5 L 1720.3,710.0 L 1747.2,735.6 L 1776.2,757.6 L 1807.4,775.6 L 1841.3,789.1 L 1878.1,797.6 L 1918.0,800.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_space_contents_category: user_space_contents(category_id) → categories(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 1252.0,1864.0 L 1291.9,1858.6 L 1328.7,1843.1 L 1362.6,1818.3 L 1393.8,1785.2 L 1422.8,1744.8 L 1449.7,1697.8 L 1474.9,1645.4 L 1498.7,1588.3 L 1521.3,1527.5 L 1543.0,1464.0 L 1564.1,1398.6 L 1585.0,1332.2 L 1605.9,1265.9 L 1627.0,1200.5 L 1648.7,1137.0 L 1671.3,1076.2 L 1695.1,1019.1 L 1720.3,966.7 L 1747.2,919.7 L 1776.2,879.3 L 1807.4,846.2 L 1841.3,821.4 L 1878.1,805.9 L 1918.0,800.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_space_contents_thread: user_space_contents(thread_id) → threads(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 711.0,3188.8 L 781.9,3153.8 L 847.2,3097.9 L 907.4,3023.2 L 963.3,2931.8 L 1015.2,2825.9 L 1063.8,2707.5 L 1109.6,2578.6 L 1153.1,2441.5 L 1195.0,2298.0 L 1235.8,2150.4 L 1276.0,2000.8 L 1316.2,1851.1 L 1357.0,1703.5 L 1398.9,1560.0 L 1442.4,1422.9 L 1488.2,1294.0 L 1536.8,1175.6 L 1588.7,1069.7 L 1644.6,978.3 L 1704.8,903.6 L 1770.1,847.7 L 1841.0,812.7 L 1918.0,800.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_space_contents_user: user_space_contents(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 711.0,3190.3 L 781.9,3159.4 L 847.2,3110.1 L 907.4,3044.4 L 963.3,2963.9 L 1015.2,2870.6 L 1063.8,2766.3 L 1109.6,2652.8 L 1153.1,2532.0 L 1195.0,2405.6 L 1235.8,2275.6 L 1276.0,2143.8 L 1316.2,2011.9 L 1357.0,1881.9 L 1398.9,1755.5 L 1442.4,1634.7 L 1488.2,1521.2 L 1536.8,1416.9 L 1588.7,1323.6 L 1644.6,1243.1 L 1704.8,1177.4 L 1770.1,1128.1 L 1841.0,1097.2 L 1918.0,1086.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_user_spaces_user: user_spaces(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 634.0,3201.0 L 748.1,3186.6 L 853.0,3144.9 L 949.8,3078.6 L 1039.1,2990.0 L 1121.7,2881.6 L 1198.7,2755.8 L 1270.6,2615.3 L 1338.4,2462.4 L 1403.0,2299.6 L 1465.0,2129.3 L 1525.4,1954.2 L 1585.0,1776.5 L 1644.6,1598.8 L 1705.0,1423.7 L 1767.0,1253.4 L 1831.6,1090.6 L 1899.4,937.7 L 1971.3,797.2 L 2048.3,671.4 L 2130.9,563.0 L 2220.2,474.4 L 2317.0,408.1 L 2421.9,366.4 L 2536.0,352.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_storage_accounts_user_id_fkey: user_storage_accounts(user_id) → users(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 748.1,3187.2 L 853.0,3147.5 L 949.8,3084.2 L 1039.1,2999.6 L 1121.7,2896.2 L 1198.7,2776.2 L 1270.6,2642.1 L 1338.4,2496.2 L 1403.0,2340.8 L 1465.0,2178.4 L 1525.4,2011.3 L 1585.0,1841.8 L 1644.6,1672.2 L 1705.0,1505.1 L 1767.0,1342.7 L 1831.6,1187.3 L 1899.4,1041.4 L 1971.3,907.3 L 2048.3,787.3 L 2130.9,683.9 L 2220.2,599.3 L 2317.0,536.0 L 2421.9,496.3 L 2536.0,482.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_storage_quotas_updated_by_fkey: user_storage_quotas(updated_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,3201.0 L 748.1,3187.2 L 853.0,3147.5 L 949.8,3084.2 L 1039.1,2999.6 L 1121.7,2896.2 L 1198.7,2776.2 L 1270.6,2642.1 L 1338.4,2496.2 L 1403.0,2340.8 L 1465.0,2178.4 L 1525.4,2011.3 L 1585.0,1841.8 L 1644.6,1672.2 L 1705.0,1505.1 L 1767.0,1342.7 L 1831.6,1187.3 L 1899.4,1041.4 L 1971.3,907.3 L 2048.3,787.3 L 2130.9,683.9 L 2220.2,599.3 L 2317.0,536.0 L 2421.9,496.3 L 2536.0,482.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_storage_quotas_user_id_fkey: user_storage_quotas(user_id) → users(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 3106.0,221.5 L 3108.6,223.6 L 3111.0,229.7 L 3113.2,239.4 L 3115.2,252.4 L 3116.9,268.2 L 3118.4,286.6 L 3119.6,307.1 L 3120.7,329.5 L 3121.5,353.3 L 3122.0,378.2 L 3122.4,403.8 L 3122.5,429.8 L 3122.4,455.7 L 3122.0,481.3 L 3121.5,506.2 L 3120.7,530.0 L 3119.6,552.4 L 3118.4,572.9 L 3116.9,591.3 L 3115.2,607.1 L 3113.2,620.1 L 3111.0,629.8 L 3108.6,635.9 L 3106.0,638.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_storage_reservations_object_id_fkey: user_storage_reservations(object_id) → storage_objects(id), 父 1 : 子 0..1, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 634.0,3201.0 L 748.1,3188.0 L 853.0,3150.6 L 949.8,3090.9 L 1039.1,3011.1 L 1121.7,2913.6 L 1198.7,2800.5 L 1270.6,2674.1 L 1338.4,2536.5 L 1403.0,2390.1 L 1465.0,2236.9 L 1525.4,2079.3 L 1585.0,1919.5 L 1644.6,1759.7 L 1705.0,1602.1 L 1767.0,1448.9 L 1831.6,1302.5 L 1899.4,1164.9 L 1971.3,1038.5 L 2048.3,925.4 L 2130.9,827.9 L 2220.2,748.1 L 2317.0,688.4 L 2421.9,651.0 L 2536.0,638.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>user_storage_reservations_user_id_fkey: user_storage_reservations(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 4342.0,1371.0 L 4346.6,1370.3 L 4350.7,1368.2 L 4354.5,1364.9 L 4357.8,1360.4 L 4360.8,1355.0 L 4363.4,1348.7 L 4365.6,1341.6 L 4367.3,1333.9 L 4368.7,1325.8 L 4369.7,1317.2 L 4370.3,1308.4 L 4370.5,1299.5 L 4370.3,1290.6 L 4369.7,1281.8 L 4368.7,1273.2 L 4367.3,1265.1 L 4365.6,1257.4 L 4363.4,1250.3 L 4360.8,1244.0 L 4357.8,1238.6 L 4354.5,1234.1 L 4350.7,1230.8 L 4346.6,1228.7 L 4342.0,1228.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_webhook_deliveries_endpoint: webhook_deliveries(endpoint_id) → webhook_endpoints(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE RESTRICT</title></path>
+<path d="M 4390.0,1110.0 L 4387.1,1110.6 L 4384.5,1112.3 L 4382.0,1115.1 L 4379.8,1118.7 L 4377.7,1123.2 L 4375.8,1128.4 L 4373.9,1134.3 L 4372.2,1140.6 L 4370.6,1147.3 L 4369.0,1154.4 L 4367.5,1161.6 L 4366.0,1169.0 L 4364.5,1176.4 L 4363.0,1183.6 L 4361.4,1190.7 L 4359.8,1197.4 L 4358.1,1203.7 L 4356.2,1209.6 L 4354.3,1214.8 L 4352.2,1219.3 L 4350.0,1222.9 L 4347.5,1225.7 L 4344.9,1227.4 L 4342.0,1228.0" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_webhook_deliveries_outbox: webhook_deliveries(outbox_event_id) → platform_outbox(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
+<path d="M 634.0,2448.5 L 636.6,2450.0 L 639.0,2454.4 L 641.2,2461.3 L 643.2,2470.6 L 644.9,2482.0 L 646.4,2495.1 L 647.6,2509.9 L 648.7,2525.9 L 649.5,2542.9 L 650.0,2560.8 L 650.4,2579.1 L 650.5,2597.8 L 650.4,2616.4 L 650.0,2634.7 L 649.5,2652.6 L 648.7,2669.6 L 647.6,2685.6 L 646.4,2700.4 L 644.9,2713.5 L 643.2,2724.9 L 641.2,2734.2 L 639.0,2741.1 L 636.6,2745.5 L 634.0,2747.0" fill="none" stroke="#9b51e0" stroke-width="2" stroke-dasharray="8 7" opacity="0.55"><title>M:N，经由 role_permissions</title></path>
+<path d="M 634.0,2448.5 L 859.2,2444.3 L 1066.5,2432.2 L 1257.6,2412.9 L 1433.9,2387.1 L 1597.2,2355.5 L 1749.1,2319.0 L 1891.2,2278.1 L 2025.1,2233.6 L 2152.5,2186.2 L 2275.1,2136.7 L 2394.4,2085.7 L 2512.0,2034.0 L 2629.6,1982.3 L 2748.9,1931.3 L 2871.5,1881.8 L 2998.9,1834.4 L 3132.8,1789.9 L 3274.9,1749.0 L 3426.8,1712.5 L 3590.1,1680.9 L 3766.4,1655.1 L 3957.5,1635.8 L 4164.8,1623.7 L 4390.0,1619.5" fill="none" stroke="#9b51e0" stroke-width="2" stroke-dasharray="8 7" opacity="0.55"><title>M:N，经由 route_permission_bindings</title></path>
+<path d="M 634.0,2747.0 L 636.6,2749.3 L 639.0,2755.9 L 641.2,2766.5 L 643.2,2780.6 L 644.9,2797.9 L 646.4,2817.9 L 647.6,2840.3 L 648.7,2864.7 L 649.5,2890.6 L 650.0,2917.8 L 650.4,2945.7 L 650.5,2974.0 L 650.4,3002.3 L 650.0,3030.2 L 649.5,3057.4 L 648.7,3083.3 L 647.6,3107.7 L 646.4,3130.1 L 644.9,3150.1 L 643.2,3167.4 L 641.2,3181.5 L 639.0,3192.1 L 636.6,3198.7 L 634.0,3201.0" fill="none" stroke="#9b51e0" stroke-width="2" stroke-dasharray="8 7" opacity="0.55"><title>M:N，经由 user_roles</title></path>
+<path d="M 1300.0,234.0 L 1260.1,249.0 L 1223.3,292.4 L 1189.4,361.5 L 1158.2,453.8 L 1129.2,566.7 L 1102.3,697.6 L 1077.1,844.0 L 1053.3,1003.2 L 1030.7,1172.8 L 1009.0,1350.1 L 987.9,1532.5 L 967.0,1717.5 L 946.1,1902.5 L 925.0,2084.9 L 903.3,2262.2 L 880.7,2431.8 L 856.9,2591.0 L 831.7,2737.4 L 804.8,2868.3 L 775.8,2981.2 L 744.6,3073.5 L 710.7,3142.6 L 673.9,3186.0 L 634.0,3201.0" fill="none" stroke="#9b51e0" stroke-width="2" stroke-dasharray="8 7" opacity="0.55"><title>M:N，经由 user_schedule_terms</title></path>
+<path d="M 1252.0,1540.5 L 1440.2,1543.1 L 1613.4,1550.7 L 1773.0,1562.9 L 1920.3,1579.1 L 2056.7,1598.9 L 2183.6,1621.8 L 2302.3,1647.5 L 2414.2,1675.4 L 2520.7,1705.2 L 2623.1,1736.3 L 2722.7,1768.3 L 2821.0,1800.8 L 2919.3,1833.2 L 3018.9,1865.2 L 3121.3,1896.3 L 3227.8,1926.1 L 3339.7,1954.0 L 3458.4,1979.7 L 3585.3,2002.6 L 3721.7,2022.4 L 3869.0,2038.6 L 4028.6,2050.8 L 4201.8,2058.4 L 4390.0,2061.0" fill="none" stroke="#9b51e0" stroke-width="2" stroke-dasharray="8 7" opacity="0.55"><title>M:N，经由 richtext_article_attachments</title></path>
+<rect x="64" y="112" width="570" height="36" rx="9" fill="#DCEBFF" stroke="#d0d5dd"/>
+<text x="79" y="137" font-size="17" font-weight="700" fill="#344054">身份与访问控制</text>
+<rect x="682" y="112" width="570" height="36" rx="9" fill="#E3F4E8" stroke="#d0d5dd"/>
+<text x="697" y="137" font-size="17" font-weight="700" fill="#344054">社区与内容</text>
+<rect x="1300" y="112" width="570" height="36" rx="9" fill="#FFF0D8" stroke="#d0d5dd"/>
+<text x="1315" y="137" font-size="17" font-weight="700" fill="#344054">学期与日程</text>
+<rect x="1918" y="112" width="570" height="36" rx="9" fill="#EEE5FF" stroke="#d0d5dd"/>
+<text x="1933" y="137" font-size="17" font-weight="700" fill="#344054">个人空间与文档</text>
+<rect x="2536" y="112" width="570" height="36" rx="9" fill="#DFF5F2" stroke="#d0d5dd"/>
+<text x="2551" y="137" font-size="17" font-weight="700" fill="#344054">统一存储</text>
+<rect x="3154" y="112" width="570" height="36" rx="9" fill="#FFE1E7" stroke="#d0d5dd"/>
+<text x="3169" y="137" font-size="17" font-weight="700" fill="#344054">插件生态与授权</text>
+<rect x="3772" y="112" width="570" height="36" rx="9" fill="#ECEFF3" stroke="#d0d5dd"/>
+<text x="3787" y="137" font-size="17" font-weight="700" fill="#344054">平台可靠性与集成</text>
+<rect x="4390" y="112" width="570" height="36" rx="9" fill="#F3F3F3" stroke="#d0d5dd"/>
+<text x="4405" y="137" font-size="17" font-weight="700" fill="#344054">其他平台数据</text>
+<rect x="64" y="158" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="158" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="185" font-size="16" font-weight="700" fill="#101828">accounts</text>
+<text x="622" y="184" text-anchor="end" font-size="12" fill="#475467">15 字段 / 1 外键</text>
+<text x="77" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="221" font-size="13" fill="#344054">id</text>
+<text x="622" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="246" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="246" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="271" font-size="12" fill="#98a2b3">… 其余 13 个字段详见中文说明</text>
+<rect x="64" y="301" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="301" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="328" font-size="16" font-weight="700" fill="#101828">api_keys</text>
+<text x="622" y="327" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
+<text x="77" y="364" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="364" font-size="13" fill="#344054">id</text>
+<text x="622" y="364" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="389" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="64" y="419" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="419" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="446" font-size="16" font-weight="700" fill="#101828">authorization_audits</text>
+<text x="622" y="445" text-anchor="end" font-size="12" fill="#475467">16 字段 / 0 外键</text>
+<text x="77" y="482" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="482" font-size="13" fill="#344054">id</text>
+<text x="622" y="482" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="507" font-size="12" fill="#98a2b3">… 其余 15 个字段详见中文说明</text>
+<rect x="64" y="537" width="570" height="227" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="537" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="564" font-size="16" font-weight="700" fill="#101828">identity_account_recovery_cases</text>
+<text x="622" y="563" text-anchor="end" font-size="12" fill="#475467">14 字段 / 4 外键</text>
+<text x="77" y="600" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="600" font-size="13" fill="#344054">id</text>
+<text x="622" y="600" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="625" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="625" font-size="13" fill="#344054">public_id</text>
+<text x="622" y="625" text-anchor="end" font-size="12" fill="#667085">varchar(96)</text>
+<text x="77" y="650" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="650" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="650" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="675" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="675" font-size="13" fill="#344054">account_id</text>
+<text x="622" y="675" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="700" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="157" y="700" font-size="13" fill="#344054">challenge_id</text>
+<text x="622" y="700" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="725" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="157" y="725" font-size="13" fill="#344054">created_by</text>
+<text x="622" y="725" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="750" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="64" y="780" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="780" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="807" font-size="16" font-weight="700" fill="#101828">identity_admin_accounts</text>
+<text x="622" y="806" text-anchor="end" font-size="12" fill="#475467">14 字段 / 3 外键</text>
+<text x="77" y="843" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="843" font-size="13" fill="#344054">id</text>
+<text x="622" y="843" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="868" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="157" y="868" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="868" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="893" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="157" y="893" font-size="13" fill="#344054">credential_account_id</text>
+<text x="622" y="893" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="918" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="157" y="918" font-size="13" fill="#344054">status_changed_by</text>
+<text x="622" y="918" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="943" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="64" y="973" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="973" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1000" font-size="16" font-weight="700" fill="#101828">identity_challenge_policies</text>
+<text x="622" y="999" text-anchor="end" font-size="12" fill="#475467">8 字段 / 1 外键</text>
+<text x="77" y="1036" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1036" font-size="13" fill="#344054">id</text>
+<text x="622" y="1036" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="77" y="1061" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="157" y="1061" font-size="13" fill="#344054">updated_by</text>
+<text x="622" y="1061" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="1086" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="64" y="1116" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1116" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1143" font-size="16" font-weight="700" fill="#101828">identity_challenge_rate_limits</text>
+<text x="622" y="1142" text-anchor="end" font-size="12" fill="#475467">5 字段 / 0 外键</text>
+<text x="77" y="1179" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1179" font-size="13" fill="#344054">scope</text>
+<text x="622" y="1179" text-anchor="end" font-size="12" fill="#667085">varchar(32)</text>
+<text x="77" y="1204" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1204" font-size="13" fill="#344054">subject_digest</text>
+<text x="622" y="1204" text-anchor="end" font-size="12" fill="#667085">varchar(128)</text>
+<text x="77" y="1229" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1229" font-size="13" fill="#344054">window_started_at</text>
+<text x="622" y="1229" text-anchor="end" font-size="12" fill="#667085">timestamptz</text>
+<text x="157" y="1254" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="64" y="1284" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1284" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1311" font-size="16" font-weight="700" fill="#101828">identity_email_challenges</text>
+<text x="622" y="1310" text-anchor="end" font-size="12" fill="#475467">18 字段 / 1 外键</text>
+<text x="77" y="1347" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1347" font-size="13" fill="#344054">id</text>
+<text x="622" y="1347" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="1372" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="1372" font-size="13" fill="#344054">public_id</text>
+<text x="622" y="1372" text-anchor="end" font-size="12" fill="#667085">varchar(96)</text>
+<text x="77" y="1397" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="157" y="1397" font-size="13" fill="#344054">account_id</text>
+<text x="622" y="1397" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="1422" font-size="12" fill="#98a2b3">… 其余 15 个字段详见中文说明</text>
+<rect x="64" y="1452" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1452" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1479" font-size="16" font-weight="700" fill="#101828">identity_legacy_email_placeholders</text>
+<text x="622" y="1478" text-anchor="end" font-size="12" fill="#475467">7 字段 / 1 外键</text>
+<text x="77" y="1515" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1515" font-size="13" fill="#344054">id</text>
+<text x="622" y="1515" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="1540" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="1540" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="1540" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="1565" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="64" y="1595" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1595" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1622" font-size="16" font-weight="700" fill="#101828">identity_mfa_policies</text>
+<text x="622" y="1621" text-anchor="end" font-size="12" fill="#475467">6 字段 / 1 外键</text>
+<text x="77" y="1658" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1658" font-size="13" fill="#344054">id</text>
+<text x="622" y="1658" text-anchor="end" font-size="12" fill="#667085">varchar(32)</text>
+<text x="77" y="1683" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="157" y="1683" font-size="13" fill="#344054">updated_by</text>
+<text x="622" y="1683" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="1708" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<rect x="64" y="1738" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1738" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1765" font-size="16" font-weight="700" fill="#101828">identity_mfa_recovery_codes</text>
+<text x="622" y="1764" text-anchor="end" font-size="12" fill="#475467">6 字段 / 2 外键</text>
+<text x="77" y="1801" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1801" font-size="13" fill="#344054">id</text>
+<text x="622" y="1801" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="1826" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="1826" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="1826" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="1851" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="1851" font-size="13" fill="#344054">method_id</text>
+<text x="622" y="1851" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="1876" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="1876" font-size="13" fill="#344054">code_digest</text>
+<text x="622" y="1876" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="157" y="1901" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="64" y="1931" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="1931" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="1958" font-size="16" font-weight="700" fill="#101828">identity_mfa_tickets</text>
+<text x="622" y="1957" text-anchor="end" font-size="12" fill="#475467">11 字段 / 1 外键</text>
+<text x="77" y="1994" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="1994" font-size="13" fill="#344054">id</text>
+<text x="622" y="1994" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2019" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="2019" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="2019" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2044" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="2044" font-size="13" fill="#344054">ticket_digest</text>
+<text x="622" y="2044" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="157" y="2069" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="64" y="2099" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2099" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2126" font-size="16" font-weight="700" fill="#101828">identity_mfa_totp_methods</text>
+<text x="622" y="2125" text-anchor="end" font-size="12" fill="#475467">12 字段 / 1 外键</text>
+<text x="77" y="2162" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2162" font-size="13" fill="#344054">id</text>
+<text x="622" y="2162" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2187" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="2187" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="2187" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="2212" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="64" y="2242" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2242" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2269" font-size="16" font-weight="700" fill="#101828">identity_reserved_identifiers</text>
+<text x="622" y="2268" text-anchor="end" font-size="12" fill="#475467">4 字段 / 0 外键</text>
+<text x="77" y="2305" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2305" font-size="13" fill="#344054">identifier_type</text>
+<text x="622" y="2305" text-anchor="end" font-size="12" fill="#667085">varchar(32)</text>
+<text x="77" y="2330" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2330" font-size="13" fill="#344054">identifier_normalized</text>
+<text x="622" y="2330" text-anchor="end" font-size="12" fill="#667085">varchar(320)</text>
+<text x="157" y="2355" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="64" y="2385" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2385" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2412" font-size="16" font-weight="700" fill="#101828">permission_definitions</text>
+<text x="622" y="2411" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="77" y="2448" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2448" font-size="13" fill="#344054">id</text>
+<text x="622" y="2448" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2473" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="2473" font-size="13" fill="#344054">code</text>
+<text x="622" y="2473" text-anchor="end" font-size="12" fill="#667085">varchar(160)</text>
+<text x="157" y="2498" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="64" y="2528" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2528" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2555" font-size="16" font-weight="700" fill="#101828">role_permissions</text>
+<text x="622" y="2554" text-anchor="end" font-size="12" fill="#475467">6 字段 / 2 外键</text>
+<text x="77" y="2591" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2591" font-size="13" fill="#344054">id</text>
+<text x="622" y="2591" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2616" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="2616" font-size="13" fill="#344054">role_id</text>
+<text x="622" y="2616" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2641" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="2641" font-size="13" fill="#344054">permission_id</text>
+<text x="622" y="2641" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="2666" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
+<rect x="64" y="2696" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2696" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2723" font-size="16" font-weight="700" fill="#101828">roles</text>
+<text x="622" y="2722" text-anchor="end" font-size="12" fill="#475467">7 字段 / 0 外键</text>
+<text x="77" y="2759" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2759" font-size="13" fill="#344054">id</text>
+<text x="622" y="2759" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="2784" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="64" y="2814" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2814" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="2841" font-size="16" font-weight="700" fill="#101828">sessions</text>
+<text x="622" y="2840" text-anchor="end" font-size="12" fill="#475467">20 字段 / 1 外键</text>
+<text x="77" y="2877" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="2877" font-size="13" fill="#344054">id</text>
+<text x="622" y="2877" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2902" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="2902" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="2902" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="2927" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="157" y="2927" font-size="13" fill="#344054">refresh_token_digest</text>
+<text x="622" y="2927" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="157" y="2952" font-size="12" fill="#98a2b3">… 其余 17 个字段详见中文说明</text>
+<rect x="64" y="2982" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="2982" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="3009" font-size="16" font-weight="700" fill="#101828">user_roles</text>
+<text x="622" y="3008" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="77" y="3045" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="3045" font-size="13" fill="#344054">id</text>
+<text x="622" y="3045" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="3070" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="3070" font-size="13" fill="#344054">user_id</text>
+<text x="622" y="3070" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="77" y="3095" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="157" y="3095" font-size="13" fill="#344054">role_id</text>
+<text x="622" y="3095" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="3120" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<rect x="64" y="3150" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="64" y="3150" width="570" height="40" rx="8" fill="#DCEBFF"/>
+<text x="77" y="3177" font-size="16" font-weight="700" fill="#101828">users</text>
+<text x="622" y="3176" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="77" y="3213" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="157" y="3213" font-size="13" fill="#344054">id</text>
+<text x="622" y="3213" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="157" y="3238" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="682" y="158" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="158" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="185" font-size="16" font-weight="700" fill="#101828">categories</text>
+<text x="1240" y="184" text-anchor="end" font-size="12" fill="#475467">18 字段 / 1 外键</text>
+<text x="695" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="221" font-size="13" fill="#344054">id</text>
+<text x="1240" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="246" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="246" font-size="13" fill="#344054">parent_id</text>
+<text x="1240" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="271" font-size="12" fill="#98a2b3">… 其余 16 个字段详见中文说明</text>
+<rect x="682" y="301" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="301" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="328" font-size="16" font-weight="700" fill="#101828">category_thread_type_policies</text>
+<text x="1240" y="327" text-anchor="end" font-size="12" fill="#475467">5 字段 / 1 外键</text>
+<text x="695" y="364" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="775" y="364" font-size="13" fill="#344054">category_id</text>
+<text x="1240" y="364" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="389" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="389" font-size="13" fill="#344054">thread_type</text>
+<text x="1240" y="389" text-anchor="end" font-size="12" fill="#667085">varchar(32)</text>
+<text x="775" y="414" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
+<rect x="682" y="444" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="444" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="471" font-size="16" font-weight="700" fill="#101828">likes</text>
+<text x="1240" y="470" text-anchor="end" font-size="12" fill="#475467">7 字段 / 1 外键</text>
+<text x="695" y="507" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="507" font-size="13" fill="#344054">id</text>
+<text x="1240" y="507" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="532" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="532" font-size="13" fill="#344054">user_id</text>
+<text x="1240" y="532" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="557" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="682" y="587" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="587" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="614" font-size="16" font-weight="700" fill="#101828">mutual_aid_details</text>
+<text x="1240" y="613" text-anchor="end" font-size="12" fill="#475467">10 字段 / 2 外键</text>
+<text x="695" y="650" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="775" y="650" font-size="13" fill="#344054">thread_id</text>
+<text x="1240" y="650" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="675" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="675" font-size="13" fill="#344054">created_by</text>
+<text x="1240" y="675" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="700" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="682" y="730" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="730" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="757" font-size="16" font-weight="700" fill="#101828">notifications</text>
+<text x="1240" y="756" text-anchor="end" font-size="12" fill="#475467">12 字段 / 1 外键</text>
+<text x="695" y="793" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="793" font-size="13" fill="#344054">id</text>
+<text x="1240" y="793" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="818" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="818" font-size="13" fill="#344054">user_id</text>
+<text x="1240" y="818" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="843" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="682" y="873" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="873" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="900" font-size="16" font-weight="700" fill="#101828">posts</text>
+<text x="1240" y="899" text-anchor="end" font-size="12" fill="#475467">15 字段 / 3 外键</text>
+<text x="695" y="936" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="936" font-size="13" fill="#344054">id</text>
+<text x="1240" y="936" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="961" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="961" font-size="13" fill="#344054">thread_id</text>
+<text x="1240" y="961" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="986" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="986" font-size="13" fill="#344054">author_id</text>
+<text x="1240" y="986" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1011" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="1011" font-size="13" fill="#344054">parent_id</text>
+<text x="1240" y="1011" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1036" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="682" y="1066" width="570" height="202" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="1066" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="1093" font-size="16" font-weight="700" fill="#101828">richtext_article_assets</text>
+<text x="1240" y="1092" text-anchor="end" font-size="12" fill="#475467">12 字段 / 4 外键</text>
+<text x="695" y="1129" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="1129" font-size="13" fill="#344054">id</text>
+<text x="1240" y="1129" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1154" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="1154" font-size="13" fill="#344054">thread_id</text>
+<text x="1240" y="1154" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1179" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="1179" font-size="13" fill="#344054">article_content_id</text>
+<text x="1240" y="1179" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1204" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1204" font-size="13" fill="#344054">uploader_id</text>
+<text x="1240" y="1204" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1229" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="1229" font-size="13" fill="#344054">asset_id</text>
+<text x="1240" y="1229" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1254" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="682" y="1284" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="1284" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="1311" font-size="16" font-weight="700" fill="#101828">richtext_article_attachments</text>
+<text x="1240" y="1310" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="695" y="1347" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="1347" font-size="13" fill="#344054">id</text>
+<text x="1240" y="1347" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1372" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1372" font-size="13" fill="#344054">article_content_id</text>
+<text x="1240" y="1372" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1397" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1397" font-size="13" fill="#344054">asset_id</text>
+<text x="1240" y="1397" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1422" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<rect x="682" y="1452" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="1452" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="1479" font-size="16" font-weight="700" fill="#101828">richtext_article_contents</text>
+<text x="1240" y="1478" text-anchor="end" font-size="12" fill="#475467">15 字段 / 3 外键</text>
+<text x="695" y="1515" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="1515" font-size="13" fill="#344054">id</text>
+<text x="1240" y="1515" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1540" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="775" y="1540" font-size="13" fill="#344054">thread_id</text>
+<text x="1240" y="1540" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1565" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1565" font-size="13" fill="#344054">created_by</text>
+<text x="1240" y="1565" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1590" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="775" y="1590" font-size="13" fill="#344054">updated_by</text>
+<text x="1240" y="1590" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1615" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="682" y="1645" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="1645" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="1672" font-size="16" font-weight="700" fill="#101828">secondhand_details</text>
+<text x="1240" y="1671" text-anchor="end" font-size="12" fill="#475467">11 字段 / 2 外键</text>
+<text x="695" y="1708" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="775" y="1708" font-size="13" fill="#344054">thread_id</text>
+<text x="1240" y="1708" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1733" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1733" font-size="13" fill="#344054">created_by</text>
+<text x="1240" y="1733" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1758" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="682" y="1788" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="682" y="1788" width="570" height="40" rx="8" fill="#E3F4E8"/>
+<text x="695" y="1815" font-size="16" font-weight="700" fill="#101828">threads</text>
+<text x="1240" y="1814" text-anchor="end" font-size="12" fill="#475467">29 字段 / 2 外键</text>
+<text x="695" y="1851" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="775" y="1851" font-size="13" fill="#344054">id</text>
+<text x="1240" y="1851" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1876" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1876" font-size="13" fill="#344054">author_id</text>
+<text x="1240" y="1876" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="695" y="1901" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="775" y="1901" font-size="13" fill="#344054">category_id</text>
+<text x="1240" y="1901" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="775" y="1926" font-size="12" fill="#98a2b3">… 其余 26 个字段详见中文说明</text>
+<rect x="1300" y="158" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1300" y="158" width="570" height="40" rx="8" fill="#FFF0D8"/>
+<text x="1313" y="185" font-size="16" font-weight="700" fill="#101828">academic_terms</text>
+<text x="1858" y="184" text-anchor="end" font-size="12" fill="#475467">12 字段 / 2 外键</text>
+<text x="1313" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="1393" y="221" font-size="13" fill="#344054">id</text>
+<text x="1858" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1313" y="246" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="1393" y="246" font-size="13" fill="#344054">created_by</text>
+<text x="1858" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1313" y="271" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="1393" y="271" font-size="13" fill="#344054">updated_by</text>
+<text x="1858" y="271" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1393" y="296" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="1300" y="326" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1300" y="326" width="570" height="40" rx="8" fill="#FFF0D8"/>
+<text x="1313" y="353" font-size="16" font-weight="700" fill="#101828">user_schedule_preferences</text>
+<text x="1858" y="352" text-anchor="end" font-size="12" fill="#475467">3 字段 / 2 外键</text>
+<text x="1313" y="389" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="1393" y="389" font-size="13" fill="#344054">user_id</text>
+<text x="1858" y="389" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1313" y="414" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="1393" y="414" font-size="13" fill="#344054">academic_term_id</text>
+<text x="1858" y="414" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1393" y="439" font-size="12" fill="#98a2b3">… 其余 1 个字段详见中文说明</text>
+<rect x="1300" y="469" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1300" y="469" width="570" height="40" rx="8" fill="#FFF0D8"/>
+<text x="1313" y="496" font-size="16" font-weight="700" fill="#101828">user_schedule_terms</text>
+<text x="1858" y="495" text-anchor="end" font-size="12" fill="#475467">7 字段 / 3 外键</text>
+<text x="1313" y="532" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="1393" y="532" font-size="13" fill="#344054">user_id</text>
+<text x="1858" y="532" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1313" y="557" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="1393" y="557" font-size="13" fill="#344054">academic_term_id</text>
+<text x="1858" y="557" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1313" y="582" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="1393" y="582" font-size="13" fill="#344054">current_object_id</text>
+<text x="1858" y="582" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1393" y="607" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<rect x="1918" y="158" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="158" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="185" font-size="16" font-weight="700" fill="#101828">personal_document_previews</text>
+<text x="2476" y="184" text-anchor="end" font-size="12" fill="#475467">8 字段 / 2 外键</text>
+<text x="1931" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="221" font-size="13" fill="#344054">id</text>
+<text x="2476" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="246" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="2011" y="246" font-size="13" fill="#344054">document_version_id</text>
+<text x="2476" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="271" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="2011" y="271" font-size="13" fill="#344054">preview_object_id</text>
+<text x="2476" y="271" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="296" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="1918" y="326" width="570" height="202" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="326" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="353" font-size="16" font-weight="700" fill="#101828">personal_document_versions</text>
+<text x="2476" y="352" text-anchor="end" font-size="12" fill="#475467">10 字段 / 4 外键</text>
+<text x="1931" y="389" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="389" font-size="13" fill="#344054">id</text>
+<text x="2476" y="389" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="414" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="414" font-size="13" fill="#344054">document_id</text>
+<text x="2476" y="414" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="439" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="439" font-size="13" fill="#344054">source_object_id</text>
+<text x="2476" y="439" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="464" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="2011" y="464" font-size="13" fill="#344054">restored_from_version_id</text>
+<text x="2476" y="464" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="489" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="489" font-size="13" fill="#344054">created_by</text>
+<text x="2476" y="489" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="514" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="1918" y="544" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="544" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="571" font-size="16" font-weight="700" fill="#101828">personal_documents</text>
+<text x="2476" y="570" text-anchor="end" font-size="12" fill="#475467">10 字段 / 2 外键</text>
+<text x="1931" y="607" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="607" font-size="13" fill="#344054">id</text>
+<text x="2476" y="607" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="632" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="632" font-size="13" fill="#344054">owner_user_id</text>
+<text x="2476" y="632" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="657" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="2011" y="657" font-size="13" fill="#344054">current_version_id</text>
+<text x="2476" y="657" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="682" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="1918" y="712" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="712" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="739" font-size="16" font-weight="700" fill="#101828">user_space_contents</text>
+<text x="2476" y="738" text-anchor="end" font-size="12" fill="#475467">13 字段 / 3 外键</text>
+<text x="1931" y="775" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="775" font-size="13" fill="#344054">id</text>
+<text x="2476" y="775" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="800" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="800" font-size="13" fill="#344054">user_id</text>
+<text x="2476" y="800" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="825" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="825" font-size="13" fill="#344054">thread_id</text>
+<text x="2476" y="825" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="850" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="850" font-size="13" fill="#344054">category_id</text>
+<text x="2476" y="850" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="875" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="1918" y="905" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="905" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="932" font-size="16" font-weight="700" fill="#101828">user_space_style_snapshots</text>
+<text x="2476" y="931" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="1931" y="968" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="968" font-size="13" fill="#344054">id</text>
+<text x="2476" y="968" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="993" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="1918" y="1023" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="1918" y="1023" width="570" height="40" rx="8" fill="#EEE5FF"/>
+<text x="1931" y="1050" font-size="16" font-weight="700" fill="#101828">user_spaces</text>
+<text x="2476" y="1049" text-anchor="end" font-size="12" fill="#475467">23 字段 / 1 外键</text>
+<text x="1931" y="1086" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2011" y="1086" font-size="13" fill="#344054">id</text>
+<text x="2476" y="1086" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="1931" y="1111" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2011" y="1111" font-size="13" fill="#344054">user_id</text>
+<text x="2476" y="1111" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2011" y="1136" font-size="12" fill="#98a2b3">… 其余 21 个字段详见中文说明</text>
+<rect x="2536" y="158" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="2536" y="158" width="570" height="40" rx="8" fill="#DFF5F2"/>
+<text x="2549" y="185" font-size="16" font-weight="700" fill="#101828">storage_objects</text>
+<text x="3094" y="184" text-anchor="end" font-size="12" fill="#475467">15 字段 / 1 外键</text>
+<text x="2549" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2629" y="221" font-size="13" fill="#344054">id</text>
+<text x="3094" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2549" y="246" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2629" y="246" font-size="13" fill="#344054">owner_user_id</text>
+<text x="3094" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2629" y="271" font-size="12" fill="#98a2b3">… 其余 13 个字段详见中文说明</text>
+<rect x="2536" y="301" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="2536" y="301" width="570" height="40" rx="8" fill="#DFF5F2"/>
+<text x="2549" y="328" font-size="16" font-weight="700" fill="#101828">user_storage_accounts</text>
+<text x="3094" y="327" text-anchor="end" font-size="12" fill="#475467">6 字段 / 1 外键</text>
+<text x="2549" y="364" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="2629" y="364" font-size="13" fill="#344054">user_id</text>
+<text x="3094" y="364" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2629" y="389" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="2536" y="419" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="2536" y="419" width="570" height="40" rx="8" fill="#DFF5F2"/>
+<text x="2549" y="446" font-size="16" font-weight="700" fill="#101828">user_storage_quotas</text>
+<text x="3094" y="445" text-anchor="end" font-size="12" fill="#475467">5 字段 / 2 外键</text>
+<text x="2549" y="482" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="2629" y="482" font-size="13" fill="#344054">user_id</text>
+<text x="3094" y="482" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2549" y="507" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="2629" y="507" font-size="13" fill="#344054">updated_by</text>
+<text x="3094" y="507" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2629" y="532" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
+<rect x="2536" y="562" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="2536" y="562" width="570" height="40" rx="8" fill="#DFF5F2"/>
+<text x="2549" y="589" font-size="16" font-weight="700" fill="#101828">user_storage_reservations</text>
+<text x="3094" y="588" text-anchor="end" font-size="12" fill="#475467">8 字段 / 2 外键</text>
+<text x="2549" y="625" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="2629" y="625" font-size="13" fill="#344054">id</text>
+<text x="3094" y="625" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2549" y="650" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="2629" y="650" font-size="13" fill="#344054">user_id</text>
+<text x="3094" y="650" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2549" y="675" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="2629" y="675" font-size="13" fill="#344054">object_id</text>
+<text x="3094" y="675" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="2629" y="700" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="3154" y="158" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="158" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="185" font-size="16" font-weight="700" fill="#101828">plugin_admin_grants</text>
+<text x="3712" y="184" text-anchor="end" font-size="12" fill="#475467">12 字段 / 2 外键</text>
+<text x="3167" y="221" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="221" font-size="13" fill="#344054">id</text>
+<text x="3712" y="221" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="246" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="246" font-size="13" fill="#344054">plugin_version_id</text>
+<text x="3712" y="246" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="271" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="271" font-size="13" fill="#344054">capability_code</text>
+<text x="3712" y="271" text-anchor="end" font-size="12" fill="#667085">VARCHAR(160)</text>
+<text x="3167" y="296" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="296" font-size="13" fill="#344054">decided_by</text>
+<text x="3712" y="296" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="321" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="351" width="570" height="252" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="351" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="378" font-size="16" font-weight="700" fill="#101828">plugin_authorization_decisions</text>
+<text x="3712" y="377" text-anchor="end" font-size="12" fill="#475467">16 字段 / 5 外键</text>
+<text x="3167" y="414" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="414" font-size="13" fill="#344054">id</text>
+<text x="3712" y="414" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="439" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="3247" y="439" font-size="13" fill="#344054">request_id</text>
+<text x="3712" y="439" text-anchor="end" font-size="12" fill="#667085">UUID</text>
+<text x="3167" y="464" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="464" font-size="13" fill="#344054">plugin_version_id</text>
+<text x="3712" y="464" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="489" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="489" font-size="13" fill="#344054">user_id</text>
+<text x="3712" y="489" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="514" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="514" font-size="13" fill="#344054">admin_grant_id</text>
+<text x="3712" y="514" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="539" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="539" font-size="13" fill="#344054">user_consent_id</text>
+<text x="3712" y="539" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="564" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="564" font-size="13" fill="#344054">delegation_id</text>
+<text x="3712" y="564" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="589" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="3154" y="619" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="619" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="646" font-size="16" font-weight="700" fill="#101828">plugin_capability_declarations</text>
+<text x="3712" y="645" text-anchor="end" font-size="12" fill="#475467">9 字段 / 1 外键</text>
+<text x="3167" y="682" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="682" font-size="13" fill="#344054">id</text>
+<text x="3712" y="682" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="707" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="707" font-size="13" fill="#344054">plugin_version_id</text>
+<text x="3712" y="707" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="732" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="3154" y="762" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="762" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="789" font-size="16" font-weight="700" fill="#101828">plugin_catalog_entries</text>
+<text x="3712" y="788" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="3167" y="825" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="825" font-size="13" fill="#344054">plugin_name</text>
+<text x="3712" y="825" text-anchor="end" font-size="12" fill="#667085">varchar(128)</text>
+<text x="3247" y="850" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="3154" y="880" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="880" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="907" font-size="16" font-weight="700" fill="#101828">plugin_delegations</text>
+<text x="3712" y="906" text-anchor="end" font-size="12" fill="#475467">12 字段 / 3 外键</text>
+<text x="3167" y="943" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="943" font-size="13" fill="#344054">id</text>
+<text x="3712" y="943" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="968" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="968" font-size="13" fill="#344054">plugin_version_id</text>
+<text x="3712" y="968" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="993" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="993" font-size="13" fill="#344054">subject_user_id</text>
+<text x="3712" y="993" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="1018" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="1018" font-size="13" fill="#344054">created_by</text>
+<text x="3712" y="1018" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="1043" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="1073" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1073" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1100" font-size="16" font-weight="700" fill="#101828">plugin_file_metadata</text>
+<text x="3712" y="1099" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
+<text x="3167" y="1136" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="1136" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1136" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="1161" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="3154" y="1191" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1191" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1218" font-size="16" font-weight="700" fill="#101828">plugin_install_requests</text>
+<text x="3712" y="1217" text-anchor="end" font-size="12" fill="#475467">14 字段 / 1 外键</text>
+<text x="3167" y="1254" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="1254" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1254" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="1279" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="1279" font-size="13" fill="#344054">market_source_id</text>
+<text x="3712" y="1279" text-anchor="end" font-size="12" fill="#667085">varchar(128)</text>
+<text x="3247" y="1304" font-size="12" fill="#98a2b3">… 其余 12 个字段详见中文说明</text>
+<rect x="3154" y="1334" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1334" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1361" font-size="16" font-weight="700" fill="#101828">plugin_logs</text>
+<text x="3712" y="1360" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="3167" y="1397" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="1397" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1397" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="1422" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="1452" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1452" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1479" font-size="16" font-weight="700" fill="#101828">plugin_market_audits</text>
+<text x="3712" y="1478" text-anchor="end" font-size="12" fill="#475467">7 字段 / 0 外键</text>
+<text x="3167" y="1515" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="1515" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1515" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="1540" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="3154" y="1570" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1570" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1597" font-size="16" font-weight="700" fill="#101828">plugin_market_sources</text>
+<text x="3712" y="1596" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="3167" y="1633" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="1633" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1633" text-anchor="end" font-size="12" fill="#667085">varchar(128)</text>
+<text x="3247" y="1658" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="1688" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1688" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1715" font-size="16" font-weight="700" fill="#101828">plugin_permissions</text>
+<text x="3712" y="1714" text-anchor="end" font-size="12" fill="#475467">6 字段 / 0 外键</text>
+<text x="3167" y="1751" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="1751" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1751" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="1776" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="3154" y="1806" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1806" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1833" font-size="16" font-weight="700" fill="#101828">plugin_publishers</text>
+<text x="3712" y="1832" text-anchor="end" font-size="12" fill="#475467">10 字段 / 1 外键</text>
+<text x="3167" y="1869" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="1869" font-size="13" fill="#344054">id</text>
+<text x="3712" y="1869" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="1894" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="1894" font-size="13" fill="#344054">created_by</text>
+<text x="3712" y="1894" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="1919" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="1949" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="1949" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="1976" font-size="16" font-weight="700" fill="#101828">plugin_records</text>
+<text x="3712" y="1975" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="3167" y="2012" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="2012" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2012" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="2037" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="3154" y="2067" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2067" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2094" font-size="16" font-weight="700" fill="#101828">plugin_releases</text>
+<text x="3712" y="2093" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
+<text x="3167" y="2130" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="2130" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2130" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="2155" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="3154" y="2185" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2185" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2212" font-size="16" font-weight="700" fill="#101828">plugin_secret_values</text>
+<text x="3712" y="2211" text-anchor="end" font-size="12" fill="#475467">14 字段 / 3 外键</text>
+<text x="3167" y="2248" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="2248" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2248" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2273" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2273" font-size="13" fill="#344054">plugin_id</text>
+<text x="3712" y="2273" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2298" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="2298" font-size="13" fill="#344054">owner_user_id</text>
+<text x="3712" y="2298" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2323" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="2323" font-size="13" fill="#344054">created_by</text>
+<text x="3712" y="2323" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="2348" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="3154" y="2378" width="570" height="227" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2378" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2405" font-size="16" font-weight="700" fill="#101828">plugin_ui_invocations</text>
+<text x="3712" y="2404" text-anchor="end" font-size="12" fill="#475467">16 字段 / 5 外键</text>
+<text x="3167" y="2441" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="2441" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2441" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="2466" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2466" font-size="13" fill="#344054">user_id</text>
+<text x="3712" y="2466" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="2491" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2491" font-size="13" fill="#344054">article_content_id</text>
+<text x="3712" y="2491" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="2516" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="2516" font-size="13" fill="#344054">asset_id</text>
+<text x="3712" y="2516" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="2541" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="2541" font-size="13" fill="#344054">attachment_id</text>
+<text x="3712" y="2541" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="2566" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="2566" font-size="13" fill="#344054">personal_document_id</text>
+<text x="3712" y="2566" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="2591" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="3154" y="2621" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2621" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2648" font-size="16" font-weight="700" fill="#101828">plugin_user_consents</text>
+<text x="3712" y="2647" text-anchor="end" font-size="12" fill="#475467">13 字段 / 2 外键</text>
+<text x="3167" y="2684" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="2684" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2684" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2709" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2709" font-size="13" fill="#344054">user_id</text>
+<text x="3712" y="2709" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2734" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2734" font-size="13" fill="#344054">plugin_version_id</text>
+<text x="3712" y="2734" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="2759" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="2759" font-size="13" fill="#344054">capability_code</text>
+<text x="3712" y="2759" text-anchor="end" font-size="12" fill="#667085">VARCHAR(160)</text>
+<text x="3247" y="2784" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="3154" y="2814" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2814" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2841" font-size="16" font-weight="700" fill="#101828">plugin_user_grants</text>
+<text x="3712" y="2840" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="3167" y="2877" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="2877" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2877" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3247" y="2902" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3154" y="2932" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="2932" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="2959" font-size="16" font-weight="700" fill="#101828">plugin_versions</text>
+<text x="3712" y="2958" text-anchor="end" font-size="12" fill="#475467">16 字段 / 2 外键</text>
+<text x="3167" y="2995" font-size="12" font-weight="700" fill="#175cd3">PK</text>
+<text x="3247" y="2995" font-size="13" fill="#344054">id</text>
+<text x="3712" y="2995" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="3020" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3247" y="3020" font-size="13" fill="#344054">plugin_id</text>
+<text x="3712" y="3020" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3167" y="3045" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="3045" font-size="13" fill="#344054">created_by</text>
+<text x="3712" y="3045" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="3070" font-size="12" fill="#98a2b3">… 其余 13 个字段详见中文说明</text>
+<rect x="3154" y="3100" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3154" y="3100" width="570" height="40" rx="8" fill="#FFE1E7"/>
+<text x="3167" y="3127" font-size="16" font-weight="700" fill="#101828">plugins</text>
+<text x="3712" y="3126" text-anchor="end" font-size="12" fill="#475467">24 字段 / 1 外键</text>
+<text x="3167" y="3163" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3247" y="3163" font-size="13" fill="#344054">id</text>
+<text x="3712" y="3163" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3167" y="3188" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3247" y="3188" font-size="13" fill="#344054">publisher_id</text>
+<text x="3712" y="3188" text-anchor="end" font-size="12" fill="#667085">BIGINT</text>
+<text x="3247" y="3213" font-size="12" fill="#98a2b3">… 其余 22 个字段详见中文说明</text>
+<rect x="3772" y="158" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="158" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="185" font-size="16" font-weight="700" fill="#101828">ai_call_logs</text>
+<text x="4330" y="184" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="3785" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="221" font-size="13" fill="#344054">id</text>
+<text x="4330" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="246" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="3772" y="276" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="276" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="303" font-size="16" font-weight="700" fill="#101828">audit_logs</text>
+<text x="4330" y="302" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="3785" y="339" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="339" font-size="13" fill="#344054">id</text>
+<text x="4330" y="339" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="364" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<rect x="3772" y="394" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="394" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="421" font-size="16" font-weight="700" fill="#101828">builtin_feature_states</text>
+<text x="4330" y="420" text-anchor="end" font-size="12" fill="#475467">6 字段 / 0 外键</text>
+<text x="3785" y="457" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="457" font-size="13" fill="#344054">feature_id</text>
+<text x="4330" y="457" text-anchor="end" font-size="12" fill="#667085">varchar(128)</text>
+<text x="3865" y="482" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="3772" y="512" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="512" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="539" font-size="16" font-weight="700" fill="#101828">configurations</text>
+<text x="4330" y="538" text-anchor="end" font-size="12" fill="#475467">11 字段 / 1 外键</text>
+<text x="3785" y="575" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="575" font-size="13" fill="#344054">id</text>
+<text x="4330" y="575" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3785" y="600" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3865" y="600" font-size="13" fill="#344054">updated_by</text>
+<text x="4330" y="600" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="625" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
+<rect x="3772" y="655" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="655" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="682" font-size="16" font-weight="700" fill="#101828">mcp_audit_logs</text>
+<text x="4330" y="681" text-anchor="end" font-size="12" fill="#475467">7 字段 / 0 外键</text>
+<text x="3785" y="718" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="718" font-size="13" fill="#344054">id</text>
+<text x="4330" y="718" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="743" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="3772" y="773" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="773" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="800" font-size="16" font-weight="700" fill="#101828">message_bindings</text>
+<text x="4330" y="799" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
+<text x="3785" y="836" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="836" font-size="13" fill="#344054">id</text>
+<text x="4330" y="836" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="861" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="3772" y="891" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="891" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="918" font-size="16" font-weight="700" fill="#101828">message_logs</text>
+<text x="4330" y="917" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="3785" y="954" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="954" font-size="13" fill="#344054">id</text>
+<text x="4330" y="954" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="979" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="3772" y="1009" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="1009" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="1036" font-size="16" font-weight="700" fill="#101828">outbox_consumer_receipts</text>
+<text x="4330" y="1035" text-anchor="end" font-size="12" fill="#475467">4 字段 / 1 外键</text>
+<text x="3785" y="1072" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="1072" font-size="13" fill="#344054">consumer_name</text>
+<text x="4330" y="1072" text-anchor="end" font-size="12" fill="#667085">varchar(160)</text>
+<text x="3785" y="1097" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
+<text x="3865" y="1097" font-size="13" fill="#344054">event_id</text>
+<text x="4330" y="1097" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="3865" y="1122" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="3772" y="1152" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="1152" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="1179" font-size="16" font-weight="700" fill="#101828">webhook_deliveries</text>
+<text x="4330" y="1178" text-anchor="end" font-size="12" fill="#475467">15 字段 / 2 外键</text>
+<text x="3785" y="1215" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="1215" font-size="13" fill="#344054">id</text>
+<text x="4330" y="1215" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3785" y="1240" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3865" y="1240" font-size="13" fill="#344054">endpoint_id</text>
+<text x="4330" y="1240" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3785" y="1265" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="3865" y="1265" font-size="13" fill="#344054">outbox_event_id</text>
+<text x="4330" y="1265" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="3865" y="1290" font-size="12" fill="#98a2b3">… 其余 12 个字段详见中文说明</text>
+<rect x="3772" y="1320" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="3772" y="1320" width="570" height="40" rx="8" fill="#ECEFF3"/>
+<text x="3785" y="1347" font-size="16" font-weight="700" fill="#101828">webhook_endpoints</text>
+<text x="4330" y="1346" text-anchor="end" font-size="12" fill="#475467">14 字段 / 0 外键</text>
+<text x="3785" y="1383" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="3865" y="1383" font-size="13" fill="#344054">id</text>
+<text x="4330" y="1383" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="3865" y="1408" font-size="12" fill="#98a2b3">… 其余 13 个字段详见中文说明</text>
+<rect x="4390" y="158" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="158" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="185" font-size="16" font-weight="700" fill="#101828">asset_lifecycle_audits</text>
+<text x="4948" y="184" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="4403" y="221" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="221" font-size="13" fill="#344054">id</text>
+<text x="4948" y="221" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="246" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="4483" y="246" font-size="13" fill="#344054">asset_id</text>
+<text x="4948" y="246" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="271" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="4483" y="271" font-size="13" fill="#344054">actor_user_id</text>
+<text x="4948" y="271" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="296" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<rect x="4390" y="326" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="326" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="353" font-size="16" font-weight="700" fill="#101828">content_moderation_actions</text>
+<text x="4948" y="352" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="4403" y="389" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="389" font-size="13" fill="#344054">id</text>
+<text x="4948" y="389" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="414" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="4390" y="444" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="444" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="471" font-size="16" font-weight="700" fill="#101828">content_moderation_cases</text>
+<text x="4948" y="470" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
+<text x="4403" y="507" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="507" font-size="13" fill="#344054">id</text>
+<text x="4948" y="507" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="532" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<rect x="4390" y="562" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="562" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="589" font-size="16" font-weight="700" fill="#101828">content_revisions</text>
+<text x="4948" y="588" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
+<text x="4403" y="625" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="625" font-size="13" fill="#344054">id</text>
+<text x="4948" y="625" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="650" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="4390" y="680" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="680" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="707" font-size="16" font-weight="700" fill="#101828">platform_command_audits</text>
+<text x="4948" y="706" text-anchor="end" font-size="12" fill="#475467">14 字段 / 1 外键</text>
+<text x="4403" y="743" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="743" font-size="13" fill="#344054">id</text>
+<text x="4948" y="743" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="4403" y="768" font-size="12" font-weight="700" fill="#175cd3">FK</text>
+<text x="4483" y="768" font-size="13" fill="#344054">event_id</text>
+<text x="4948" y="768" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="4483" y="793" font-size="12" fill="#98a2b3">… 其余 12 个字段详见中文说明</text>
+<rect x="4390" y="823" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="823" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="850" font-size="16" font-weight="700" fill="#101828">platform_compatibility_usage</text>
+<text x="4948" y="849" text-anchor="end" font-size="12" fill="#475467">6 字段 / 0 外键</text>
+<text x="4403" y="886" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="886" font-size="13" fill="#344054">usage_key</text>
+<text x="4948" y="886" text-anchor="end" font-size="12" fill="#667085">varchar(255)</text>
+<text x="4483" y="911" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<rect x="4390" y="941" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="941" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="968" font-size="16" font-weight="700" fill="#101828">platform_operation_runs</text>
+<text x="4948" y="967" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
+<text x="4403" y="1004" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1004" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1004" text-anchor="end" font-size="12" fill="#667085">varchar(96)</text>
+<text x="4483" y="1029" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<rect x="4390" y="1059" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1059" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1086" font-size="16" font-weight="700" fill="#101828">platform_outbox</text>
+<text x="4948" y="1085" text-anchor="end" font-size="12" fill="#475467">19 字段 / 0 外键</text>
+<text x="4403" y="1122" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1122" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1122" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="4483" y="1147" font-size="12" fill="#98a2b3">… 其余 18 个字段详见中文说明</text>
+<rect x="4390" y="1177" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1177" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1204" font-size="16" font-weight="700" fill="#101828">platform_outbox_attempts</text>
+<text x="4948" y="1203" text-anchor="end" font-size="12" fill="#475467">10 字段 / 1 外键</text>
+<text x="4403" y="1240" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1240" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1240" text-anchor="end" font-size="12" fill="#667085">varchar(96)</text>
+<text x="4403" y="1265" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="4483" y="1265" font-size="13" fill="#344054">event_id</text>
+<text x="4948" y="1265" text-anchor="end" font-size="12" fill="#667085">varchar(64)</text>
+<text x="4483" y="1290" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="4390" y="1320" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1320" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1347" font-size="16" font-weight="700" fill="#101828">platform_retention_runs</text>
+<text x="4948" y="1346" text-anchor="end" font-size="12" fill="#475467">7 字段 / 0 外键</text>
+<text x="4403" y="1383" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1383" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1383" text-anchor="end" font-size="12" fill="#667085">varchar(96)</text>
+<text x="4483" y="1408" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="4390" y="1438" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1438" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1465" font-size="16" font-weight="700" fill="#101828">platform_worker_leases</text>
+<text x="4948" y="1464" text-anchor="end" font-size="12" fill="#475467">3 字段 / 0 外键</text>
+<text x="4403" y="1501" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1501" font-size="13" fill="#344054">worker_id</text>
+<text x="4948" y="1501" text-anchor="end" font-size="12" fill="#667085">varchar(160)</text>
+<text x="4483" y="1526" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="4390" y="1556" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1556" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1583" font-size="16" font-weight="700" fill="#101828">route_operations</text>
+<text x="4948" y="1582" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
+<text x="4403" y="1619" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1619" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1619" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="1644" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
+<text x="4483" y="1644" font-size="13" fill="#344054">operation_code</text>
+<text x="4948" y="1644" text-anchor="end" font-size="12" fill="#667085">varchar(200)</text>
+<text x="4483" y="1669" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<rect x="4390" y="1699" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1699" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1726" font-size="16" font-weight="700" fill="#101828">route_permission_bindings</text>
+<text x="4948" y="1725" text-anchor="end" font-size="12" fill="#475467">5 字段 / 2 外键</text>
+<text x="4403" y="1762" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1762" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1762" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="1787" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="4483" y="1787" font-size="13" fill="#344054">route_operation_id</text>
+<text x="4948" y="1787" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="1812" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="4483" y="1812" font-size="13" fill="#344054">permission_id</text>
+<text x="4948" y="1812" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="1837" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<rect x="4390" y="1867" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1867" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="1894" font-size="16" font-weight="700" fill="#101828">tags</text>
+<text x="4948" y="1893" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="4403" y="1930" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="1930" font-size="13" fill="#344054">id</text>
+<text x="4948" y="1930" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="1955" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<rect x="4390" y="1985" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
+<rect x="4390" y="1985" width="570" height="40" rx="8" fill="#F3F3F3"/>
+<text x="4403" y="2012" font-size="16" font-weight="700" fill="#101828">user_assets</text>
+<text x="4948" y="2011" text-anchor="end" font-size="12" fill="#475467">13 字段 / 2 外键</text>
+<text x="4403" y="2048" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
+<text x="4483" y="2048" font-size="13" fill="#344054">id</text>
+<text x="4948" y="2048" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="2073" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="4483" y="2073" font-size="13" fill="#344054">owner_user_id</text>
+<text x="4948" y="2073" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4403" y="2098" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
+<text x="4483" y="2098" font-size="13" fill="#344054">storage_object_id</text>
+<text x="4948" y="2098" text-anchor="end" font-size="12" fill="#667085">bigint</text>
+<text x="4483" y="2123" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：7c49aab7ae89e35c</text>
+</g>
+</svg>

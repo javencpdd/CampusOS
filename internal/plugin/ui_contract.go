@@ -59,28 +59,42 @@ type UISlot struct {
 }
 
 type UISurface struct {
-	ID           string                 `yaml:"id" json:"id"`
-	Version      string                 `yaml:"version" json:"version"`
-	Type         string                 `yaml:"type" json:"type"`
-	LayoutRole   string                 `yaml:"layout_role" json:"layout_role"`
-	Renderer     string                 `yaml:"renderer,omitempty" json:"renderer,omitempty"`
-	ModuleID     string                 `yaml:"module_id,omitempty" json:"module_id,omitempty"`
-	Schema       map[string]interface{} `yaml:"schema,omitempty" json:"schema,omitempty"`
-	DataContract map[string]interface{} `yaml:"data_contract,omitempty" json:"data_contract,omitempty"`
-	ActionIDs    []string               `yaml:"action_ids,omitempty" json:"action_ids,omitempty"`
-	PublicTokens []string               `yaml:"public_tokens,omitempty" json:"public_tokens,omitempty"`
-	Regions      []string               `yaml:"regions,omitempty" json:"regions,omitempty"`
+	ID            string                 `yaml:"id" json:"id"`
+	Version       string                 `yaml:"version" json:"version"`
+	Type          string                 `yaml:"type" json:"type"`
+	LayoutRole    string                 `yaml:"layout_role" json:"layout_role"`
+	Renderer      string                 `yaml:"renderer,omitempty" json:"renderer,omitempty"`
+	ModuleID      string                 `yaml:"module_id,omitempty" json:"module_id,omitempty"`
+	Frame         *UIFrame               `yaml:"frame,omitempty" json:"frame,omitempty"`
+	Schema        map[string]interface{} `yaml:"schema,omitempty" json:"schema,omitempty"`
+	DataContract  map[string]interface{} `yaml:"data_contract,omitempty" json:"data_contract,omitempty"`
+	ActionIDs     []string               `yaml:"action_ids,omitempty" json:"action_ids,omitempty"`
+	PublicTokens  []string               `yaml:"public_tokens,omitempty" json:"public_tokens,omitempty"`
+	Regions       []string               `yaml:"regions,omitempty" json:"regions,omitempty"`
+	Presentations []string               `yaml:"presentations,omitempty" json:"presentations,omitempty"`
+}
+
+// UIFrame is an immutable, host-issued identity for an isolated v4 UI. The
+// package never supplies an arbitrary host URL: RuntimeManifest constructs the
+// entry from a verified release directory and the platform configuration.
+type UIFrame struct {
+	Src      string `yaml:"src" json:"src"`
+	Origin   string `yaml:"origin" json:"origin"`
+	Audience string `yaml:"audience" json:"audience"`
 }
 
 type UIAction struct {
-	ID         string                 `yaml:"id" json:"id"`
-	Label      string                 `yaml:"label" json:"label"`
-	Method     string                 `yaml:"method" json:"method"`
-	Path       string                 `yaml:"path" json:"path"`
-	Permission string                 `yaml:"permission,omitempty" json:"permission,omitempty"`
-	Confirm    bool                   `yaml:"confirm,omitempty" json:"confirm,omitempty"`
-	Audit      bool                   `yaml:"audit,omitempty" json:"audit,omitempty"`
-	Body       map[string]interface{} `yaml:"body,omitempty" json:"body,omitempty"`
+	ID           string                 `yaml:"id" json:"id"`
+	Label        string                 `yaml:"label" json:"label"`
+	Kind         string                 `yaml:"kind,omitempty" json:"kind,omitempty"`
+	Method       string                 `yaml:"method" json:"method"`
+	Path         string                 `yaml:"path" json:"path"`
+	SurfaceID    string                 `yaml:"surface_id,omitempty" json:"surface_id,omitempty"`
+	Presentation string                 `yaml:"presentation,omitempty" json:"presentation,omitempty"`
+	Permission   string                 `yaml:"permission,omitempty" json:"permission,omitempty"`
+	Confirm      bool                   `yaml:"confirm,omitempty" json:"confirm,omitempty"`
+	Audit        bool                   `yaml:"audit,omitempty" json:"audit,omitempty"`
+	Body         map[string]interface{} `yaml:"body,omitempty" json:"body,omitempty"`
 }
 
 func (ui UIContribution) Empty() bool {
@@ -95,9 +109,11 @@ func (m *Manifest) validateUI() error {
 		return nil
 	}
 	if m.UI.ContractVersion == "" {
-		m.UI.ContractVersion = CurrentUIContract
+		// Existing manifests predate UI v2. Keep their implicit contract at v1
+		// instead of silently adding v2 presentation requirements on install.
+		m.UI.ContractVersion = LegacyUIContract
 	}
-	if m.UI.ContractVersion != CurrentUIContract {
+	if m.UI.ContractVersion != LegacyUIContract && m.UI.ContractVersion != CurrentUIContract {
 		return fmt.Errorf("manifest: unsupported ui.contract_version %q", m.UI.ContractVersion)
 	}
 	ids := map[string]string{}
@@ -119,12 +135,23 @@ func (m *Manifest) validateUI() error {
 		if err := add("action", action.ID); err != nil {
 			return err
 		}
-		method := strings.ToUpper(action.Method)
-		if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
-			return fmt.Errorf("manifest: ui action %q has unsupported method", action.ID)
+		kind := action.Kind
+		if kind == "" {
+			kind = "request"
 		}
-		if action.Path == "" || !strings.HasPrefix(action.Path, "/") || strings.Contains(action.Path, "..") {
-			return fmt.Errorf("manifest: ui action %q has invalid extension path", action.ID)
+		if kind != "request" && kind != "open-surface" {
+			return fmt.Errorf("manifest: ui action %q has unsupported kind", action.ID)
+		}
+		if kind == "request" {
+			method := strings.ToUpper(action.Method)
+			if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
+				return fmt.Errorf("manifest: ui action %q has unsupported method", action.ID)
+			}
+			if action.Path == "" || !strings.HasPrefix(action.Path, "/") || strings.Contains(action.Path, "..") {
+				return fmt.Errorf("manifest: ui action %q has invalid extension path", action.ID)
+			}
+		} else if m.UI.ContractVersion != CurrentUIContract || action.Method != "" || action.Path != "" || action.SurfaceID == "" || !allowedPresentation(action.Presentation) {
+			return fmt.Errorf("manifest: ui open-surface action %q has invalid v2 contract", action.ID)
 		}
 		actions[action.ID] = true
 	}
@@ -135,14 +162,32 @@ func (m *Manifest) validateUI() error {
 		if surface.Version == "" || surface.Type == "" || surface.LayoutRole == "" {
 			return fmt.Errorf("manifest: ui surface %q requires version, type and layout_role", surface.ID)
 		}
-		if surface.Renderer == "" || (surface.Renderer == "schema" && len(surface.Schema) == 0) || (surface.Renderer == "trusted-module" && surface.ModuleID == "") {
+		if surface.Renderer == "" || (surface.Renderer == "schema" && len(surface.Schema) == 0) || (surface.Renderer == "trusted-module" && surface.ModuleID == "") || (surface.Renderer == "isolated-iframe" && surface.Frame == nil) {
 			return fmt.Errorf("manifest: ui surface %q requires a usable default renderer", surface.ID)
 		}
-		if surface.Renderer != "schema" && surface.Renderer != "trusted-module" {
-			return fmt.Errorf("manifest: ui surface %q renderer must be schema or trusted-module", surface.ID)
+		if surface.Renderer != "schema" && surface.Renderer != "trusted-module" && surface.Renderer != "isolated-iframe" {
+			return fmt.Errorf("manifest: ui surface %q renderer must be schema, trusted-module or isolated-iframe", surface.ID)
 		}
 		if surface.Renderer == "trusted-module" && (m.Runtime != "builtin" || m.Scope != ScopeSystem || !trustedCoreModules[surface.ModuleID]) {
 			return fmt.Errorf("manifest: ui surface %q uses an untrusted core module", surface.ID)
+		}
+		if surface.Renderer == "isolated-iframe" && (m.Runtime != "none" || surface.Frame.Src == "" || surface.Frame.Origin == "" || (surface.Frame.Audience != "user" && surface.Frame.Audience != "admin")) {
+			return fmt.Errorf("manifest: ui surface %q has an invalid isolated frame", surface.ID)
+		}
+		if m.UI.ContractVersion == CurrentUIContract {
+			if len(surface.Presentations) == 0 {
+				return fmt.Errorf("manifest: ui v2 surface %q requires at least one presentation", surface.ID)
+			}
+			seenPresentations := map[string]bool{}
+			for _, presentation := range surface.Presentations {
+				if presentation != "modal" && presentation != "drawer" && presentation != "fullscreen" && presentation != "new-tab" {
+					return fmt.Errorf("manifest: ui surface %q has unsupported presentation %q", surface.ID, presentation)
+				}
+				if seenPresentations[presentation] {
+					return fmt.Errorf("manifest: ui surface %q duplicates presentation %q", surface.ID, presentation)
+				}
+				seenPresentations[presentation] = true
+			}
 		}
 		for _, actionID := range surface.ActionIDs {
 			if !actions[actionID] {
@@ -151,6 +196,11 @@ func (m *Manifest) validateUI() error {
 		}
 		surfaces[surface.ID] = true
 		surfaceRenderers[surface.ID] = surface.Renderer
+	}
+	for _, action := range m.UI.Actions {
+		if action.Kind == "open-surface" && !surfaces[action.SurfaceID] {
+			return fmt.Errorf("manifest: ui open-surface action %q references unknown surface %q", action.ID, action.SurfaceID)
+		}
 	}
 	for _, route := range m.UI.Routes {
 		if err := add("route", route.ID); err != nil {
@@ -187,6 +237,10 @@ func (m *Manifest) validateUI() error {
 		}
 	}
 	return nil
+}
+
+func allowedPresentation(value string) bool {
+	return value == "modal" || value == "drawer" || value == "fullscreen" || value == "new-tab"
 }
 
 func validateResponsiveUI(contract ResponsiveUI) error {

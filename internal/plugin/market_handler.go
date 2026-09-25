@@ -12,8 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MarketCatalog exposes only administrator-published external plugins to a
-// signed-in user. Installation still remains a server-admin action.
+// MarketCatalog exposes administrator-published external plugins, compiled
+// first-party trusted plugins, and host-verified isolated system releases.
+// Listing never grants access; declarations remain subject to administrator
+// and user authorization.
 func (h *Handler) MarketCatalog(c *gin.Context) {
 	market, ok := h.marketService(c)
 	if !ok {
@@ -26,11 +28,9 @@ func (h *Handler) MarketCatalog(c *gin.Context) {
 	}
 	payload := gin.H{"items": items, "total": len(items), "catalog_state": "ready"}
 	if len(items) == 0 {
-		// An empty user catalog is a normal governance state: only explicitly
-		// published external plugins are visible here. Keep that distinction in
-		// the API so clients do not imply that built-in features are missing.
+		// An empty user catalog is a normal governance state.
 		payload["catalog_state"] = "empty"
-		payload["empty_reason"] = "管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。"
+		payload["empty_reason"] = "管理员暂未发布可供用户授权的插件。"
 		payload["request_available"] = true
 	}
 	response.Success(c, payload)
@@ -55,6 +55,34 @@ func (h *Handler) MarketMyUsage(c *gin.Context) {
 		return
 	}
 	items, err := market.MyUsage(c.Request.Context(), marketUserID(c))
+	if err != nil {
+		h.marketError(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": len(items)})
+}
+
+// MarketplaceSources returns only system-enabled, certificate-pinned sources.
+// It intentionally exposes no arbitrary URL submission endpoint to users.
+func (h *Handler) MarketplaceSources(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	items, err := market.MarketplaceSources(c.Request.Context(), true)
+	if err != nil {
+		h.marketError(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": len(items)})
+}
+
+func (h *Handler) SearchMarketplace(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	items, err := market.SearchMarketplace(c.Request.Context(), c.Param("source_id"), c.Query("q"), marketUserID(c))
 	if err != nil {
 		h.marketError(c, err)
 		return
@@ -303,6 +331,32 @@ func (h *Handler) RequestMarketInstall(c *gin.Context) {
 	response.Success(c, request)
 }
 
+// RequestMarketplaceInstall accepts source and plugin IDs, then resolves them
+// against the source's freshly verified signed catalog. It deliberately has no
+// listing_url field: accepting one would turn this endpoint into an SSRF and
+// arbitrary-market bypass.
+func (h *Handler) RequestMarketplaceInstall(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	var req struct {
+		SourceID string `json:"source_id"`
+		PluginID string `json:"plugin_id"`
+		Message  string `json:"message"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.marketError(c, fmt.Errorf("%w: %v", ErrMarketInvalidInput, err))
+		return
+	}
+	request, err := market.RequestMarketplaceInstall(c.Request.Context(), req.SourceID, req.PluginID, marketUserID(c), req.Message)
+	if err != nil {
+		h.marketError(c, err)
+		return
+	}
+	response.Success(c, request)
+}
+
 func (h *Handler) SearchMarketRecords(c *gin.Context) {
 	market, ok := h.marketService(c)
 	if !ok {
@@ -350,6 +404,65 @@ func (h *Handler) AdminMarketOverview(c *gin.Context) {
 		result = append(result, gin.H{"catalog": entry, "metrics": metrics, "runtime_state": state, "system_permissions": systemPermissions})
 	}
 	response.Success(c, gin.H{"items": result, "total": len(result)})
+}
+
+func (h *Handler) AdminMarketplaceSources(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	items, err := market.MarketplaceSources(c.Request.Context(), false)
+	if err != nil {
+		h.marketError(c, err)
+		return
+	}
+	// The public key is a verification certificate rather than a credential.
+	// Administrators need it when editing a pinned source, while the user
+	// endpoint intentionally omits it to keep the public catalog minimal.
+	result := make([]gin.H, 0, len(items))
+	for _, item := range items {
+		result = append(result, gin.H{
+			"id": item.ID, "display_name": item.DisplayName, "catalog_url": item.CatalogURL,
+			"public_key": item.PublicKey, "key_fingerprint": item.KeyFingerprint, "status": item.Status,
+			"created_by": item.CreatedBy, "updated_by": item.UpdatedBy, "created_at": item.CreatedAt, "updated_at": item.UpdatedAt,
+		})
+	}
+	response.Success(c, gin.H{"items": result, "total": len(result)})
+}
+
+func (h *Handler) AdminSaveMarketplaceSource(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	var source MarketplaceSource
+	if err := c.ShouldBindJSON(&source); err != nil {
+		h.marketError(c, fmt.Errorf("%w: %v", ErrMarketInvalidInput, err))
+		return
+	}
+	if source.ID != "" && source.ID != c.Param("source_id") {
+		h.marketError(c, fmt.Errorf("%w: source ID cannot be changed", ErrMarketInvalidInput))
+		return
+	}
+	source.ID = c.Param("source_id")
+	saved, err := market.SaveMarketplaceSource(c.Request.Context(), source, marketUserID(c))
+	if err != nil {
+		h.marketError(c, err)
+		return
+	}
+	response.Success(c, saved)
+}
+
+func (h *Handler) AdminDeleteMarketplaceSource(c *gin.Context) {
+	market, ok := h.marketService(c)
+	if !ok {
+		return
+	}
+	if err := market.DeleteMarketplaceSource(c.Request.Context(), c.Param("source_id"), marketUserID(c)); err != nil {
+		h.marketError(c, err)
+		return
+	}
+	response.NoContent(c)
 }
 
 func (h *Handler) AdminSetMarketVisibility(c *gin.Context) {

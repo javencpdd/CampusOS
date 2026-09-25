@@ -180,8 +180,16 @@ func ensureAdminAccount(ctx context.Context, tx pgx.Tx, options adminSeedOptions
 		return 0, "", fmt.Errorf("read bootstrap administrator user: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO accounts (id, user_id, type, identifier, credential, verified, created_at, updated_at)
-		VALUES ($1, $2, 'email', $3, $4, TRUE, NOW(), NOW())`,
+		INSERT INTO accounts (
+			id, user_id, type, identifier, identifier_normalized, credential, verified,
+			verification_state, verified_at, verification_source, password_changed_at,
+			credential_version, created_at, updated_at
+		)
+		VALUES (
+			$1, $2, 'email', $3, $3, $4, TRUE,
+			'system_managed', NOW(), 'bootstrap_seed', NOW(),
+			1, NOW(), NOW()
+		)`,
 		defaultAdminAccountID, userID, defaultAdminEmail, credential,
 	); err != nil {
 		return 0, "", fmt.Errorf("create bootstrap administrator account: %w", err)
@@ -199,9 +207,33 @@ func isDefaultAdminCredential(credential string) bool {
 
 func ensureDefaultCategory(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, `
-		INSERT INTO categories (id, name, slug, description, sort_order, created_at, updated_at)
-		VALUES ($1, '默认版块', 'default', '系统默认版块', 0, NOW(), NOW())
-		ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING`,
+		WITH inserted AS (
+			INSERT INTO categories (id, name, slug, description, sort_order, created_at, updated_at)
+			VALUES ($1, '默认版块', 'default', '系统默认版块', 0, NOW(), NOW())
+			ON CONFLICT (slug) WHERE deleted_at IS NULL DO NOTHING
+			RETURNING id
+		), default_category AS (
+			SELECT id FROM inserted
+			UNION ALL
+			SELECT id FROM categories
+			WHERE slug = 'default' AND deleted_at IS NULL
+			LIMIT 1
+		), category_without_policy AS (
+			SELECT id
+			FROM default_category
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM category_thread_type_policies
+				WHERE category_id = default_category.id
+			)
+		)
+		INSERT INTO category_thread_type_policies (
+			category_id, thread_type, enabled, created_at, updated_at
+		)
+		SELECT id, thread_type, TRUE, NOW(), NOW()
+		FROM category_without_policy
+		CROSS JOIN (VALUES ('discussion'), ('article')) AS defaults(thread_type)
+		ON CONFLICT (category_id, thread_type) DO NOTHING`,
 		int64(1000000000000000004))
 	if err != nil {
 		return fmt.Errorf("ensure default category: %w", err)

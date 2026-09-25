@@ -12,13 +12,15 @@ import (
 var ErrHostAPIPermissionDenied = errors.New("host api permission denied")
 
 type HostAPIPermission struct {
-	Method   string `json:"method"`
-	Resource string `json:"resource"`
-	Action   string `json:"action"`
+	Method         string `json:"method"`
+	Resource       string `json:"resource"`
+	Action         string `json:"action"`
+	CapabilityCode string `json:"capability_code"`
 }
 
 var hostAPIMethodPermissions = map[string]HostAPIPermission{
 	"GetUser":          {Resource: "user", Action: "read"},
+	"GetUserContact":   {Resource: "user_contact", Action: "read"},
 	"GetThread":        {Resource: "thread", Action: "read"},
 	"QueryThreads":     {Resource: "thread", Action: "read"},
 	"GetReply":         {Resource: "reply", Action: "read"},
@@ -36,11 +38,22 @@ var hostAPIMethodPermissions = map[string]HostAPIPermission{
 	"RecordList":       {Resource: "managed_data", Action: "read"},
 	"RecordUpdate":     {Resource: "managed_data", Action: "write"},
 	"RecordDelete":     {Resource: "managed_data", Action: "delete"},
+	"GetSystemSecret":  {Resource: "secret", Action: "read"},
+	"GetUserSecret":    {Resource: "secret", Action: "read"},
 }
 
 func PermissionForMethod(method string) (HostAPIPermission, bool) {
 	permission, ok := hostAPIMethodPermissions[method]
 	permission.Method = method
+	if descriptor, known := plugin.CapabilityForPermission(permission.Resource, permission.Action); known {
+		permission.CapabilityCode = descriptor.Code
+	}
+	if method == "GetSystemSecret" {
+		permission.CapabilityCode = "secret.system.read"
+	}
+	if method == "GetUserSecret" {
+		permission.CapabilityCode = "secret.self.read"
+	}
 	return permission, ok
 }
 
@@ -57,13 +70,21 @@ func PermissionCatalog() []HostAPIPermission {
 func CheckHostAPIPermission(manifest *plugin.Manifest, method string) error {
 	permission, ok := PermissionForMethod(method)
 	if !ok {
-		return nil
+		return fmt.Errorf("%w: %s", ErrHostAPIPermissionDenied, plugin.ReasonUnknownOperation)
 	}
 	if manifest == nil {
 		return fmt.Errorf("%w: plugin manifest is required for %s", ErrHostAPIPermissionDenied, method)
 	}
-	if strings.HasPrefix(method, "Record") && (!manifest.IsV2() || manifest.HostAPIVersion != plugin.HostAPIVersionV2) {
+	if strings.HasPrefix(method, "Record") && (!manifest.IsV2() && !manifest.IsV3()) {
 		return fmt.Errorf("%w: %s requires campusos.plugin/v2 and host_api_version %s", ErrHostAPIPermissionDenied, method, plugin.HostAPIVersionV2)
+	}
+	if manifest.IsV3() {
+		for _, declaration := range manifest.CapabilityDeclarations {
+			if declaration.Code == permission.CapabilityCode {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: plugin %s cannot call %s; capability %s is not declared", ErrHostAPIPermissionDenied, manifest.Name, method, permission.CapabilityCode)
 	}
 	if !manifest.HasPermission(permission.Resource, permission.Action) {
 		return fmt.Errorf(

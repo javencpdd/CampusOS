@@ -43,7 +43,7 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=di
 | `WEB_PORT` | `3000` | 用户前台开发端口。 |
 | `ADMIN_PORT` | `3001` | 管理后台开发端口。 |
 | `DOCS_PORT` | `3002` | 官方文档开发端口。 |
-| `HOST_API_PORT` | `18080` | 插件 Host API 端口。 |
+| `CAMPUSOS_DEV_PLUGIN_UI_PORT` | `3003` | v4 Plugin UI Gateway 开发端口。 |
 | `PGADMIN_PORT` | `5050` | pgAdmin 页面端口。 |
 
 Admin 中的官方文档链接默认指向 `http://localhost:3002`。独立部署文档站后，在构建 Admin 前设置：
@@ -56,17 +56,20 @@ VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS
 
 `VITE_WEB_URL` 用于 Admin 的“外观与风格包”页面打开用户端主题切换页；它不是后端 API 地址。
 
-## 插件目录
+## v4 插件目录
 
 ```dotenv
-PLUGINS_DIR=data/plugins
-PLUGIN_DATA_DIR=data/plugin_data
+CAMPUSOS_PLUGIN_V4_DIR=plugins
+CAMPUSOS_PLUGIN_V4_DEV_SOURCE=true
+CAMPUSOS_PLUGIN_UI_ORIGIN=http://localhost:3003
 ```
 
-- `PLUGINS_DIR`：Manager 扫描插件实现的根目录。
-- `PLUGIN_DATA_DIR`：插件 KV 和运行数据根目录。
+- `CAMPUSOS_PLUGIN_V4_DIR`：v4 源码和 `.installed` 发布包的根目录。
+- `CAMPUSOS_PLUGIN_V4_DEV_SOURCE=true`：仅开发环境使用，将已验证源码制作为可发现的发布版本；生产模式只扫描 `.installed/`。
+- `CAMPUSOS_PLUGIN_UI_ORIGIN`：Web/Admin 中隔离 iframe 的 Gateway 来源；浏览器不可使用 Docker 内部 `api` 主机名。
 
-不要把两个变量指向同一目录。
+用户配置由宿主创建在 `data/personal-space/<user-id>/plugins/<key>/`。旧 `data/plugins` 和
+`data/plugin_data` 只保留 v1-v3 兼容资料，不能配置为新插件的发现入口。
 
 ## 实例模式
 

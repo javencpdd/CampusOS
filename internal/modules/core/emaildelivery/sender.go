@@ -21,6 +21,32 @@ import (
 
 var ErrSenderUnavailable = errors.New("email provider is temporarily unavailable")
 
+type smtpFailure struct {
+	stage string
+	cause error
+}
+
+func (e *smtpFailure) Error() string {
+	if e == nil || e.cause == nil {
+		return "SMTP operation failed"
+	}
+	return "SMTP " + e.stage + " failed: " + e.cause.Error()
+}
+
+func (e *smtpFailure) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+func wrapSMTPFailure(stage string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return &smtpFailure{stage: stage, cause: err}
+}
+
 // Message exists only between the durable-event consumer and a process-local
 // sender. It must never be serialized into the Outbox, logs, audit details, or
 // an HTTP response.
@@ -182,46 +208,46 @@ func (s *smtpSender) Send(ctx context.Context, message Message) error {
 	dialer := net.Dialer{Timeout: s.timeout}
 	connection, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(s.host, strconv.Itoa(s.port)))
 	if err != nil {
-		return fmt.Errorf("dial SMTP provider: %w", err)
+		return wrapSMTPFailure("connect", err)
 	}
 	client, err := smtp.NewClient(connection, s.host)
 	if err != nil {
 		_ = connection.Close()
-		return fmt.Errorf("open SMTP session: %w", err)
+		return wrapSMTPFailure("session", err)
 	}
 	defer client.Close()
 	if s.startTLS {
 		if ok, _ := client.Extension("STARTTLS"); !ok {
-			return errors.New("SMTP provider does not support STARTTLS")
+			return wrapSMTPFailure("starttls", errors.New("provider does not advertise STARTTLS"))
 		}
 		if err := client.StartTLS(&tls.Config{ServerName: s.host, MinVersion: tls.VersionTLS12}); err != nil {
-			return fmt.Errorf("start SMTP TLS: %w", err)
+			return wrapSMTPFailure("starttls", err)
 		}
 	}
 	if s.username != "" {
 		if err := client.Auth(smtp.PlainAuth("", s.username, s.password, s.host)); err != nil {
-			return fmt.Errorf("authenticate SMTP provider: %w", err)
+			return wrapSMTPFailure("authenticate", err)
 		}
 	}
 	if err := client.Mail(s.from); err != nil {
-		return fmt.Errorf("set SMTP sender: %w", err)
+		return wrapSMTPFailure("sender", err)
 	}
 	if err := client.Rcpt(message.To); err != nil {
-		return fmt.Errorf("set SMTP recipient: %w", err)
+		return wrapSMTPFailure("recipient", err)
 	}
 	writer, err := client.Data()
 	if err != nil {
-		return fmt.Errorf("open SMTP message: %w", err)
+		return wrapSMTPFailure("message", err)
 	}
 	if _, err := io.WriteString(writer, formatMessage(s.from, message)); err != nil {
 		_ = writer.Close()
-		return fmt.Errorf("write SMTP message: %w", err)
+		return wrapSMTPFailure("message", err)
 	}
 	if err := writer.Close(); err != nil {
-		return fmt.Errorf("complete SMTP message: %w", err)
+		return wrapSMTPFailure("message", err)
 	}
 	if err := client.Quit(); err != nil {
-		return fmt.Errorf("complete SMTP session: %w", err)
+		return wrapSMTPFailure("quit", err)
 	}
 	s.mu.Lock()
 	s.delivered[message.IdempotencyKey] = struct{}{}

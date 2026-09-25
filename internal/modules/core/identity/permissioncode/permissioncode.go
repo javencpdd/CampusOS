@@ -1,6 +1,6 @@
 // Package permissioncode defines the stable public identifiers used by the
-// authorization catalog. Legacy resource:action pairs remain supported during
-// the v10 migration, but callers should use Code for new contracts.
+// authorization catalog. Resource/action conversion remains available for
+// route and API compatibility; the database has one canonical Permission Code catalog.
 package permissioncode
 
 import "strings"
@@ -39,8 +39,8 @@ func FromLegacy(resource, action string) string {
 	return domain + "." + resource + "." + action
 }
 
-// LegacyForCode is the conservative compatibility mapping used while the old
-// permissions table remains readable. It never broadens an unknown code.
+// LegacyForCode is the conservative compatibility mapping for callers that
+// still express authorization as a resource/action pair. It never broadens an unknown code.
 func LegacyForCode(code string) (resource, action string, ok bool) {
 	code = strings.ToLower(strings.TrimSpace(code))
 	special := map[string][2]string{

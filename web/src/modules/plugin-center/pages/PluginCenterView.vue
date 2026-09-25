@@ -3,7 +3,7 @@
     <div class="page-heading">
       <div>
         <h1 id="plugin-center-title">插件中心</h1>
-        <p>查看管理员发布的插件，按用途授权，并随时撤销或导出自己的数据。</p>
+        <p>查看已发布或系统已校验安装的外部插件，按用途授权，并随时撤销自己的授权。</p>
       </div>
       <el-button :loading="loading" @click="load"
         ><el-icon><Refresh /></el-icon>刷新</el-button
@@ -19,14 +19,66 @@
 
     <section class="request-panel" aria-labelledby="request-plugin-title">
       <div>
-        <h2 id="request-plugin-title">推荐或申请安装插件</h2>
-        <p>填写稳定插件 ID；申请只进入管理员审核，不会由浏览器直接安装代码。</p>
+        <h2 id="request-plugin-title">从可信插件市场申请</h2>
+        <p>
+          仅可检索管理员已启用、并已配置证书校验的插件市场。不能提交任意链接或市场地址；申请仅进入管理员审核，不会由浏览器直接安装代码。
+        </p>
       </div>
-      <div class="request-fields">
-        <el-input v-model="requestName" placeholder="例如 calendar-assistant" aria-label="插件 ID" />
-        <el-input v-model="requestMessage" placeholder="用途或来源说明（可选）" aria-label="申请说明" />
-        <el-button :loading="requesting" @click="requestInstall()">提交申请</el-button>
-      </div>
+      <el-alert
+        v-if="!marketplaceSources.length"
+        title="管理员尚未开放可信插件市场，当前不能申请外部市场插件。"
+        type="warning"
+        :closable="false"
+        show-icon
+      />
+      <template v-else>
+        <div class="request-fields">
+          <el-select v-model="selectedMarketplaceSourceID" aria-label="可信插件市场">
+            <el-option
+              v-for="source in marketplaceSources"
+              :key="source.id"
+              :label="`${source.display_name}（${source.id}）`"
+              :value="source.id"
+            />
+          </el-select>
+          <el-input
+            v-model="marketplaceQuery"
+            placeholder="按插件 ID 或名称检索"
+            aria-label="检索词"
+            @keyup.enter="searchMarketplace"
+          />
+          <el-button :loading="marketplaceLoading" @click="searchMarketplace">检索</el-button>
+        </div>
+        <el-input
+          v-model="requestMessage"
+          class="request-message"
+          placeholder="申请用途说明（可选）"
+          aria-label="申请说明"
+        />
+        <div v-if="marketplaceListings.length" class="marketplace-list">
+          <article
+            v-for="listing in marketplaceListings"
+            :key="`${listing.source_id}:${listing.plugin_id}`"
+            class="marketplace-item"
+          >
+            <div>
+              <strong>{{ listing.display_name }}</strong>
+              <small
+                >{{ listing.plugin_id }} · v{{ listing.version
+                }}<span v-if="listing.publisher"> · {{ listing.publisher }}</span></small
+              >
+              <p>{{ listing.description || '该市场条目未提供详细说明。' }}</p>
+            </div>
+            <div class="marketplace-actions">
+              <a :href="listing.listing_url" target="_blank" rel="noopener noreferrer">市场详情</a>
+              <el-button type="primary" size="small" :loading="requesting" @click="requestMarketplace(listing)"
+                >申请审核</el-button
+              >
+            </div>
+          </article>
+        </div>
+        <p v-else-if="marketplaceSearched" class="marketplace-empty">该可信市场中没有匹配的插件。</p>
+      </template>
     </section>
 
     <div v-if="!loading" class="plugin-list">
@@ -35,9 +87,11 @@
           ><el-icon class="empty-icon"><Box /></el-icon
         ></template>
         <template #default>
-          <p class="empty-title">暂时没有可用的外部插件</p>
+          <p class="empty-title">暂时没有可用插件</p>
           <p class="empty-copy">{{ catalogEmptyReason }}</p>
-          <el-button type="primary" @click="focusRequest">申请安装插件</el-button>
+          <el-button type="primary" :disabled="!marketplaceSources.length" @click="focusMarketplace"
+            >查看可信市场</el-button
+          >
         </template>
       </el-empty>
       <article v-for="entry in catalog" :key="entry.plugin_name" class="plugin-item">
@@ -114,6 +168,12 @@
           </div>
         </dl>
         <div class="plugin-actions">
+          <el-button plain @click="openFineAuthorization(entry)">{{
+            entry.trusted_builtin ? '查看并授权' : '精细授权'
+          }}</el-button>
+          <template v-if="entry.trusted_builtin">
+            <el-tag type="success" effect="plain">第一方受管插件</el-tag>
+          </template>
           <template v-if="isEnabled(entry.plugin_name)"
             ><el-button @click="exportData(entry.plugin_name)"
               ><el-icon><Download /></el-icon>导出数据</el-button
@@ -129,9 +189,10 @@
               ></el-popconfirm
             ><el-button type="warning" plain @click="revoke(entry.plugin_name)">撤销授权</el-button></template
           >
-          <template v-else
-            ><el-button type="primary" @click="openConsent(entry)">查看并授权</el-button
-            ><el-button text @click="requestInstall(entry.plugin_name)">请求安装</el-button></template
+          <template v-else-if="!entry.trusted_builtin"
+            ><el-button type="primary" @click="addInstalledPlugin(entry)">{{
+              entry.user_permissions?.length ? '添加并授权' : '添加到我的插件'
+            }}</el-button></template
           >
         </div>
       </article>
@@ -163,12 +224,87 @@
         ><el-button type="primary" :loading="granting" @click="grant">确认授权</el-button></template
       >
     </el-dialog>
+
+    <el-dialog v-model="fineAuthorizationDialog" title="插件精细授权" width="min(760px, calc(100vw - 24px))">
+      <el-alert
+        title="每项能力都绑定当前插件版本和用途。管理员未授予的能力无法由用户自行开启；撤销后下一次调用立即失效。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+      <el-table :data="fineAuthorizationRows" v-loading="fineAuthorizationLoading" style="margin-top: 14px">
+        <el-table-column prop="capability_code" label="能力" min-width="200" />
+        <el-table-column prop="purpose" label="用途" min-width="220" />
+        <el-table-column label="风险/范围" width="120"
+          ><template #default="{ row }"
+            >{{ row.descriptor?.risk || row.risk_level }} · {{ row.descriptor?.scope || 'system' }}</template
+          ></el-table-column
+        >
+        <el-table-column label="管理员" width="90"
+          ><template #default="{ row }"
+            ><el-tag size="small">{{ row.admin?.status || '未授予' }}</el-tag></template
+          ></el-table-column
+        >
+        <el-table-column label="我的选择" width="110"
+          ><template #default="{ row }">
+            <el-switch
+              v-if="row.descriptor?.consent_required"
+              :model-value="row.consent?.status === 'granted'"
+              :disabled="row.admin?.status !== 'granted'"
+              @change="setFineConsent(row, Boolean($event))"
+            />
+            <span v-else>无需用户同意</span>
+          </template></el-table-column
+        >
+      </el-table>
+      <h3>短期后台委托</h3>
+      <p class="security-hint">仅把一次性令牌交给当前插件运行时。委托默认 15 分钟，且不能超过你已同意的能力范围。</p>
+      <el-button
+        type="primary"
+        plain
+        :disabled="delegatableCapabilities.length === 0"
+        :loading="delegationIssuing"
+        @click="issueDelegation"
+        >生成 15 分钟委托</el-button
+      >
+      <div v-if="issuedDelegationToken" class="delegation-result">
+        <el-alert title="令牌只显示这一次，请勿发送给其他人。" type="warning" :closable="false" show-icon />
+        <el-input :model-value="issuedDelegationToken" readonly>
+          <template #append><el-button @click="copyDelegationToken">复制</el-button></template>
+        </el-input>
+        <el-button type="danger" link @click="revokeIssuedDelegation">立即撤销本次委托</el-button>
+      </div>
+
+      <h3>我的插件 Secret</h3>
+      <p class="security-hint">宿主加密保存并且不回显明文；保存同名 Secret 会轮换旧值。</p>
+      <div class="secret-editor">
+        <el-input v-model="userSecretName" maxlength="128" placeholder="名称，例如 API_TOKEN" />
+        <el-input
+          v-model="userSecretValue"
+          type="password"
+          show-password
+          maxlength="65536"
+          placeholder="Secret 值（1～65536 字节）"
+        />
+        <el-button type="primary" :loading="secretSaving" @click="saveUserSecret">保存/轮换</el-button>
+      </div>
+      <el-table :data="userSecrets" size="small" empty-text="尚未配置个人 Secret">
+        <el-table-column prop="secret_name" label="名称" min-width="190" />
+        <el-table-column prop="masked_value" label="值" width="120" />
+        <el-table-column prop="created_at" label="更新时间" min-width="170" />
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button type="danger" link @click="revokeUserSecret(row.secret_name)">撤销</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Box, Delete, Download, Refresh } from '@element-plus/icons-vue'
 import { pluginCenterApi } from '../api'
 
@@ -179,6 +315,7 @@ type CatalogEntry = {
   description: string
   version: string
   runtime: string
+  trusted_builtin?: boolean
   data_capabilities: string[]
   user_permissions: Permission[]
   experience?: {
@@ -198,19 +335,44 @@ type Usage = {
   file_bytes: number
   search_enabled: boolean
 }
+type MarketplaceSource = { id: string; display_name: string; catalog_url: string; key_fingerprint: string }
+type MarketplaceListing = {
+  source_id: string
+  plugin_id: string
+  display_name: string
+  description: string
+  version: string
+  publisher: string
+  listing_url: string
+}
 const catalog = ref<CatalogEntry[]>([]),
   grants = ref<Grant[]>([]),
   usages = ref<Usage[]>([]),
+  marketplaceSources = ref<MarketplaceSource[]>([]),
+  marketplaceListings = ref<MarketplaceListing[]>([]),
   loading = ref(false),
   granting = ref(false),
   requesting = ref(false),
+  marketplaceLoading = ref(false),
   consentDialog = ref(false),
+  fineAuthorizationDialog = ref(false),
+  fineAuthorizationLoading = ref(false),
+  fineAuthorizationOverview = ref<any>({ declarations: [], catalog: [], admin_grants: [], user_consents: [] }),
+  userSecrets = ref<any[]>([]),
+  userSecretName = ref(''),
+  userSecretValue = ref(''),
+  secretSaving = ref(false),
+  delegationIssuing = ref(false),
+  issuedDelegationToken = ref(''),
+  issuedDelegationId = ref<string | null>(null),
   selected = ref<CatalogEntry | null>(null),
   selectedPermissions = ref<string[]>([]),
-  requestName = ref(''),
   requestMessage = ref(''),
+  selectedMarketplaceSourceID = ref(''),
+  marketplaceQuery = ref(''),
+  marketplaceSearched = ref(false),
   catalogState = ref('ready'),
-  catalogEmptyReason = ref('管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。')
+  catalogEmptyReason = ref('管理员暂未发布可供用户授权的插件。')
 const unwrap = (value: any) => value?.data || value || {}
 const enabledGrants = computed(
   () => new Map(grants.value.filter((grant) => grant.status === 'enabled').map((grant) => [grant.plugin_name, grant])),
@@ -218,18 +380,24 @@ const enabledGrants = computed(
 const load = async () => {
   loading.value = true
   try {
-    const [catalogResponse, grantResponse, usageResponse] = await Promise.all([
+    const [catalogResponse, grantResponse, usageResponse, sourceResponse] = await Promise.all([
       pluginCenterApi.catalog(),
       pluginCenterApi.myGrants(),
       pluginCenterApi.myUsage(),
+      pluginCenterApi.marketplaceSources(),
     ])
     const catalogData = unwrap(catalogResponse)
     catalog.value = catalogData.items || []
     catalogState.value = catalogData.catalog_state || (catalog.value.length ? 'ready' : 'empty')
-    catalogEmptyReason.value =
-      catalogData.empty_reason || '管理员暂未发布可供用户授权的外部插件。内置功能不在插件中心安装或授权。'
+    catalogEmptyReason.value = catalogData.empty_reason || '管理员暂未发布可供用户授权的插件。'
     grants.value = unwrap(grantResponse).items || []
     usages.value = unwrap(usageResponse).items || []
+    marketplaceSources.value = unwrap(sourceResponse).items || []
+    if (!marketplaceSources.value.some((source) => source.id === selectedMarketplaceSourceID.value)) {
+      selectedMarketplaceSourceID.value = marketplaceSources.value[0]?.id || ''
+      marketplaceListings.value = []
+      marketplaceSearched.value = false
+    }
   } catch (error: any) {
     ElMessage.error(error?.message || '加载插件中心失败')
   } finally {
@@ -237,8 +405,17 @@ const load = async () => {
   }
 }
 const isEnabled = (name: string) => enabledGrants.value.has(name)
-const grantLabel = (name: string) => (isEnabled(name) ? '已授权' : '未授权')
-const grantType = (name: string) => (isEnabled(name) ? 'success' : 'info')
+const grantLabel = (name: string) => {
+  const entry = catalog.value.find((item) => item.plugin_name === name)
+  if (entry?.trusted_builtin) return '受管授权'
+  return isEnabled(name) ? '已授权' : '未授权'
+}
+const grantType = (name: string) =>
+  catalog.value.find((item) => item.plugin_name === name)?.trusted_builtin
+    ? 'success'
+    : isEnabled(name)
+      ? 'success'
+      : 'info'
 const usageFor = (name: string) => usages.value.find((item) => item.plugin_name === name)
 const formatBytes = (value: number) => {
   if (value < 1024) return `${value} B`
@@ -248,15 +425,186 @@ const formatBytes = (value: number) => {
 const permissionKey = (permission: Permission) => `${permission.resource}:${permission.actions.join(',')}`
 const permissionPurpose = (permission: Permission) => permission.purpose || '未说明用途'
 const capabilityLabel = (capability: string) =>
-  ({ 'managed-data': '受管数据', 'user-files': '个人文件', 'user-consent': '需用户授权' })[capability] || capability
-const focusRequest = () => {
+  ({
+    'managed-data': '受管数据',
+    'user-files': '个人文件',
+    'user-consent': '需用户授权',
+    'trusted-builtin': '第一方受信任代码',
+  })[capability] || capability
+const focusMarketplace = () => {
   const target = document.querySelector<HTMLInputElement>('.request-fields input')
   target?.focus()
+}
+const searchMarketplace = async () => {
+  if (!selectedMarketplaceSourceID.value) {
+    ElMessage.warning('管理员尚未开放可信插件市场')
+    return
+  }
+  marketplaceLoading.value = true
+  try {
+    marketplaceListings.value =
+      unwrap(await pluginCenterApi.searchMarketplace(selectedMarketplaceSourceID.value, marketplaceQuery.value.trim()))
+        .items || []
+    marketplaceSearched.value = true
+  } catch (error: any) {
+    ElMessage.error(error?.message || '检索可信插件市场失败')
+  } finally {
+    marketplaceLoading.value = false
+  }
+}
+const requestMarketplace = async (listing: MarketplaceListing) => {
+  if (!selectedMarketplaceSourceID.value) return
+  requesting.value = true
+  try {
+    await pluginCenterApi.requestMarketplace(selectedMarketplaceSourceID.value, listing.plugin_id, requestMessage.value)
+    ElMessage.success('已提交可信市场插件申请，等待管理员审核')
+    requestMessage.value = ''
+  } catch (error: any) {
+    ElMessage.error(error?.message || '申请提交失败')
+  } finally {
+    requesting.value = false
+  }
 }
 const openConsent = (entry: CatalogEntry) => {
   selected.value = entry
   selectedPermissions.value = entry.user_permissions?.map(permissionKey) || []
   consentDialog.value = true
+}
+const fineAuthorizationRows = computed(() =>
+  (fineAuthorizationOverview.value.declarations || []).map((declaration: any) => ({
+    ...declaration,
+    descriptor: (fineAuthorizationOverview.value.catalog || []).find(
+      (item: any) => item.code === declaration.capability_code,
+    ),
+    admin: (fineAuthorizationOverview.value.admin_grants || []).find(
+      (item: any) => item.capability_code === declaration.capability_code,
+    ),
+    consent: (fineAuthorizationOverview.value.user_consents || []).find(
+      (item: any) => item.capability_code === declaration.capability_code,
+    ),
+  })),
+)
+const delegatableCapabilities = computed(() =>
+  fineAuthorizationRows.value
+    .filter(
+      (row: any) =>
+        row.admin?.status === 'granted' && (!row.descriptor?.consent_required || row.consent?.status === 'granted'),
+    )
+    .map((row: any) => row.capability_code),
+)
+const openFineAuthorization = async (entry: CatalogEntry) => {
+  selected.value = entry
+  fineAuthorizationDialog.value = true
+  fineAuthorizationLoading.value = true
+  issuedDelegationToken.value = ''
+  issuedDelegationId.value = null
+  try {
+    const [authorization, secrets] = await Promise.all([
+      pluginCenterApi.authorization(entry.plugin_name),
+      // A first-party renderer does not need a Secret store. Its authorization
+      // panel must still open when the optional secret service is disabled.
+      pluginCenterApi.secrets(entry.plugin_name).catch(() => null),
+    ])
+    fineAuthorizationOverview.value = unwrap(authorization) || {}
+    userSecrets.value = unwrap(secrets)?.items || []
+  } catch (error: any) {
+    ElMessage.error(error?.message || '加载精细授权失败')
+  } finally {
+    fineAuthorizationLoading.value = false
+  }
+}
+const issueDelegation = async () => {
+  if (!selected.value || !fineAuthorizationOverview.value.version?.id) return
+  delegationIssuing.value = true
+  try {
+    const result = unwrap(
+      await pluginCenterApi.issueDelegation(
+        selected.value.plugin_name,
+        fineAuthorizationOverview.value.version.id,
+        delegatableCapabilities.value,
+      ),
+    )
+    issuedDelegationToken.value = result.token || ''
+    issuedDelegationId.value = result.delegation?.id || null
+    ElMessage.success('短期委托已生成，将在 15 分钟后自动失效')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '生成后台委托失败')
+  } finally {
+    delegationIssuing.value = false
+  }
+}
+const copyDelegationToken = async () => {
+  try {
+    await navigator.clipboard.writeText(issuedDelegationToken.value)
+    ElMessage.success('委托令牌已复制')
+  } catch {
+    ElMessage.warning('浏览器未允许复制，请手动选择令牌')
+  }
+}
+const revokeIssuedDelegation = async () => {
+  if (!selected.value || !issuedDelegationId.value) return
+  try {
+    await pluginCenterApi.revokeDelegation(selected.value.plugin_name, issuedDelegationId.value)
+    issuedDelegationToken.value = ''
+    issuedDelegationId.value = null
+    ElMessage.success('本次委托已撤销')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '撤销后台委托失败')
+  }
+}
+const saveUserSecret = async () => {
+  if (!selected.value) return
+  const name = userSecretName.value.trim()
+  if (!/^[A-Za-z][A-Za-z0-9_.-]{0,127}$/.test(name)) {
+    ElMessage.warning('Secret 名称需以字母开头，只能包含字母、数字、点、下划线和连字符')
+    return
+  }
+  if (!userSecretValue.value) {
+    ElMessage.warning('请输入 Secret 值')
+    return
+  }
+  secretSaving.value = true
+  try {
+    await pluginCenterApi.setSecret(selected.value.plugin_name, name, userSecretValue.value)
+    userSecretValue.value = ''
+    userSecrets.value = unwrap(await pluginCenterApi.secrets(selected.value.plugin_name)).items || []
+    ElMessage.success('Secret 已加密保存；页面不会回显明文')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '保存 Secret 失败')
+  } finally {
+    secretSaving.value = false
+  }
+}
+const revokeUserSecret = async (name: string) => {
+  if (!selected.value) return
+  try {
+    await ElMessageBox.confirm(`确认撤销个人 Secret“${name}”？使用它的插件调用将失败。`, '撤销 Secret', {
+      type: 'warning',
+      confirmButtonText: '确认撤销',
+      cancelButtonText: '取消',
+    })
+    await pluginCenterApi.revokeSecret(selected.value.plugin_name, name)
+    userSecrets.value = unwrap(await pluginCenterApi.secrets(selected.value.plugin_name)).items || []
+    ElMessage.success('Secret 已撤销')
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.message || '撤销 Secret 失败')
+  }
+}
+const setFineConsent = async (row: any, enabled: boolean) => {
+  if (!selected.value) return
+  try {
+    await pluginCenterApi.setConsent(
+      selected.value.plugin_name,
+      fineAuthorizationOverview.value.version.id,
+      row.capability_code,
+      enabled ? 'granted' : 'revoked',
+      row.resource_scope || { scope: 'self' },
+    )
+    ElMessage.success(enabled ? '已同意该项用途' : '已撤销该项授权')
+    await openFineAuthorization(selected.value)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '更新授权失败')
+  }
 }
 const grant = async () => {
   if (!selected.value) return
@@ -275,6 +623,22 @@ const grant = async () => {
     granting.value = false
   }
 }
+const addInstalledPlugin = async (entry: CatalogEntry) => {
+  if (entry.user_permissions?.length) {
+    openConsent(entry)
+    return
+  }
+  granting.value = true
+  try {
+    await pluginCenterApi.enable(entry.plugin_name, [])
+    ElMessage.success('插件已添加到我的插件；如需读取个人数据，请在精细授权中逐项确认')
+    await load()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '添加插件失败')
+  } finally {
+    granting.value = false
+  }
+}
 const revoke = async (name: string) => {
   try {
     await pluginCenterApi.revoke(name)
@@ -282,24 +646,6 @@ const revoke = async (name: string) => {
     await load()
   } catch (error: any) {
     ElMessage.error(error?.message || '撤销失败')
-  }
-}
-const requestInstall = async (name = requestName.value) => {
-  name = name.trim()
-  if (!name) {
-    ElMessage.error('请填写插件 ID')
-    return
-  }
-  requesting.value = true
-  try {
-    await pluginCenterApi.request(name, name === requestName.value.trim() ? requestMessage.value : '')
-    ElMessage.success('已提交管理员审核请求')
-    requestName.value = ''
-    requestMessage.value = ''
-  } catch (error: any) {
-    ElMessage.error(error?.message || '请求提交失败')
-  } finally {
-    requesting.value = false
   }
 }
 const exportData = async (name: string) => {
@@ -381,6 +727,45 @@ h2 {
   display: grid;
   grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.4fr) auto;
   gap: 8px;
+}
+.request-message {
+  margin-top: -4px;
+}
+.marketplace-list {
+  display: grid;
+  gap: 8px;
+}
+.marketplace-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--campus-border-color, #dfe3e8);
+  background: var(--campus-page-background, #f4f6f8);
+}
+.marketplace-item strong,
+.marketplace-item small,
+.marketplace-item p {
+  display: block;
+}
+.marketplace-item small,
+.marketplace-item p,
+.marketplace-empty {
+  color: var(--campus-muted-color, #687385);
+  font-size: 12px;
+}
+.marketplace-item p {
+  margin-top: 4px;
+}
+.marketplace-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.marketplace-empty {
+  padding: 4px 0;
 }
 .plugin-item {
   padding: 18px;
@@ -519,6 +904,22 @@ h2 {
   color: #687385;
   line-height: 1.5;
 }
+.security-hint {
+  color: var(--campus-muted-color, #687385);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.delegation-result {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.secret-editor {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(240px, 1.3fr) auto;
+  gap: 10px;
+  margin: 12px 0;
+}
 .loading-state {
   padding: 18px;
   border: 1px solid var(--campus-border-color, #dfe3e8);
@@ -547,9 +948,16 @@ h2 {
   .request-fields {
     grid-template-columns: minmax(0, 1fr);
   }
+  .marketplace-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .experience-list div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
+  }
+  .secret-editor {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

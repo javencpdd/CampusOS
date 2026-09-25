@@ -1,127 +1,39 @@
-# 数据目录
+# 数据目录与持久化边界
 
-## 当前结构
-
-```text
-modules/                              编译期模块描述符，不是运行数据
-data/
-├── plugins/<plugin>/                 External Plugin 实现和 plugin.yaml
-├── plugin_data/<plugin>/             External Plugin 私有运行数据与版本快照
-├── module_data/<feature>/            Built-in Feature 本地数据
-├── resources/
-│   ├── themes/
-│   ├── homepage-packs/
-│   ├── space-style-packs/
-│   ├── skills/
-│   ├── prompts/
-│   ├── personas/
-│   └── knowledge-metadata/
-├── personal-space/<user_id>/         User Storage Core 管理的用户文件
-├── images/                            无用户归属的全局图片
-├── config/                            本地配置预留
-├── dist/                              本地发布产物预留
-└── skills/                            旧运行数据导入预留；项目 Agent Skills 位于仓库根 skills/
-```
-
-仓库根 `skills/sources/` 是项目 Agent Skill 的规范源，`skills/guides/` 是使用说明，`.agents/skills/` 是 clone 后
-由 Codex 自动发现的跨平台桥接。它们属于开发工作流，不属于 `data/resources/skills/` 资源包运行数据。
-
-## External Plugin
-
-`data/plugins/<plugin>/` 只保存实现和随代码部署的静态输入：
-
-- `plugin.yaml`；
-- `plugin.wasm`，或受管进程的可执行入口；
-- README 和运行所需静态文件。
-
-`data/plugin_data/<plugin>/` 只保存该外部插件的 KV、缓存、版本快照和可恢复
-运行状态。插件代码包不会自动携带这些数据，备份和迁移必须分别处理。
-
-内置课表、个人空间、富文本、Appearance 和 Moderation 不允许出现在这两个
-目录中。
-
-## Built-in Feature 数据
-
-模块描述符在 `modules/`，实现代码在 `internal/modules/`。Built-in Feature
-需要本地可变数据时使用 `data/module_data/<feature>/`。当前个人主页内置 JSON
-风格位于：
+> 更新时间：2026-09-23
 
 ```text
-data/module_data/personal-space/styles/
+plugins/<key>/                                  # v4 开发源码
+plugins/.installed/<key>/<version>/             # 已校验、不可变的运行发布包
+plugins/.staging/                               # 短暂预检目录，不执行
+data/personal-space/<decimal-user-id>/          # 用户文件和插件用户配置
+  plugins/<key>/config/user.json                # 受宿主 CAS/配额约束
+data/resources/                                 # 无 Runtime 的资源包
+data/plugins/、data/plugin_data/                # v1-v3 历史兼容目录
 ```
 
-功能停用不会删除这里的数据。
+## 用户空间
 
-## 用户个人空间
+头像、正文图片、个人文档和文章附件均通过 User Storage Core 落盘并记录元数据/归属。默认个人配额为 50 MB，管理员可按用户覆盖。个人空间文件只能由所有者读取；文章附件仅在对应文章仍对当前用户开放时读取。
 
-所有用户文件通过 User Storage Core 写入：
+文章附件在发布时形成受管理的附件绑定/快照，因此会同时出现在文章附件列表和“我的文档”的文章附件入口；它不是对其他用户个人空间的文件浏览权。
+
+## 插件配置
+
+宿主在用户添加插件后才创建：
 
 ```text
-data/personal-space/<user_id>/
-├── img/avatars/                       头像源文件，默认保留最近 3 个
-├── img/content/                       普通帖子、校园互助和二手正文图片
-├── img/richtext/                      富文本图片
-├── file/schedule/                     学期课表索引和 JSON
-├── plugins/<plugin>/                  获得用户授权的插件附件
-├── excel/
-├── word/
-└── pdf/
+data/personal-space/<user-id>/plugins/<key>/
+├── config/user.json
+├── config/meta.json
+├── .pending/
+└── .snapshots/
 ```
 
-默认配额为 50 MB；管理员可以在用户管理中写入 `user_storage_quotas`，按用户覆盖默认值且立即生效。
-头像、Community 内容图片和富文本图片共享该配额。JPEG/PNG 会去元数据、重编码，并在长边超过 1920
-像素时等比缩小，配额按优化后的文件大小计算；GIF/WebP 为保留动画或避免重复有损编码而原样保存。
+这些目录由宿主计算并维护，插件 iframe 不能传入路径、枚举其他用户目录或直接读写文件。默认用户级插件配置总预算为 2 MiB，单插件配置上限为 256 KiB。
 
-头像目录默认按上传时间保留最近 3 个源文件。用户切换到历史头像只修改 `user_spaces.avatar`，不会修改
-源文件时间或 FIFO 顺序；只有上传新头像才会删除最早的源文件。普通正文图片和富文本图片是兼容资源：
-“我的文档 → 已上传资源”只按当前上传者返回安全元数据、预览 URL 和时间，不将文件迁入私有文档版本、
-回收站或删除流程，以免破坏已有帖子。课表和富文本只依赖 User Storage Port，不依赖个人主页功能是否启用。
-备份必须同时包含 PostgreSQL 和 `data/personal-space/`。
+## 备份
 
-## Resource Package
+恢复完整实例必须同时备份 PostgreSQL 与 `data/personal-space/`；只备份其一都会破坏元数据与文件的一致性。`plugins/.installed/` 是部署发布物，开发源码和运行数据也应按发布策略分别保留。
 
-主题和风格包统一保存在：
-
-```text
-data/resources/themes/<id>/
-data/resources/homepage-packs/<id>/
-data/resources/space-style-packs/<id>/
-```
-
-每个目录必须有 `resource.json`，并且通常包含 `style.yaml`、README、预览、
-模板、图片、CSS、配置 schema 和可选受限特效。`resource.json` 声明稳定 ID、
-类型、版本、兼容范围、入口、来源和 checksum。
-
-```bash
-go run ./cmd/campusosctl resource inspect data/resources/themes/campus-canvas
-```
-
-Resource Package 不能包含 `plugin.yaml`、Go/Cargo Runtime、migration 或启动
-脚本。它没有业务进程生命周期，也不能取得数据库、JWT、用户 Token 或任意
-文件系统权限。
-
-## 从旧布局迁移
-
-旧版把 Built-in 描述符和风格包放在 `data/plugins`、`data/plugin_data`。v0.10
-提供可回滚迁移：
-
-```bash
-./scripts/migrate-v10-module-plugin-layout.sh check
-./scripts/migrate-v10-module-plugin-layout.sh apply backups/v10-layout-before
-./scripts/migrate-v10-module-plugin-layout.sh rollback backups/v10-layout-before
-```
-
-迁移不覆盖同名目标；每个移动写入状态文件；旧风格包迁入后必须生成并通过
-Resource Manifest 校验。
-
-## 备份边界
-
-`scripts/backup.sh` 的 v2 格式同时包含：PostgreSQL、`modules/`、外部插件、
-插件数据、模块数据、资源包和用户文件。恢复工具继续接受旧 v1 备份。
-
-```bash
-make backup
-make restore-drill
-```
-
-只备份数据库会丢失文件；只备份 `data/` 会丢失账号、帖子、授权和状态。
+更多细节见[插件市场、目录与用户数据](/plugins/market-managed-data)。

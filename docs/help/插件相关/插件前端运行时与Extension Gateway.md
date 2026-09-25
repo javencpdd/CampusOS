@@ -1,6 +1,6 @@
 # 插件前端运行时与 Extension Gateway
 
-> 适用基线：v0.10 External Plugin UI Runtime（`campusos.ui/v1`）
+> 适用基线：v1.1 External Plugin UI Runtime（`campusos.ui/v1` 兼容、`campusos.ui/v2` 当前扩展）
 
 ## 1. 一句话理解
 
@@ -69,6 +69,11 @@ ui:
 ```
 
 允许的 schema 组件只有 `stack`、`grid`、`card`、`heading`、`text`、`badge`、`alert`、`button` 和 `list`。未知组件、未知 Action、重复 ID、危险路径和可变 HTTP Method 会在安装前失败。
+
+需要由用户点击打开 modal、drawer、fullscreen 或同源新标签页时，使用 `campusos.ui/v2` 的 `open-surface`
+Action。插件只能给出已经声明的 `surface_id` 和允许的 Presentation，不能传 URL、调用 `window.open()` 或取得
+Session Token；宿主负责最终展示和所有读取授权。可直接参考
+[Plugin UI v2 开发与验收](Plugin%20UI%20v2开发与验收.md) 与 `examples/plugins/v2-managed-example`。
 
 复杂编辑器、地图和图表可以声明 `renderer: trusted-module`，但 `module_id` 必须存在于 Core 编译期白名单。当前没有远程 Vue 模块加载，也不允许插件读取全局 Router、Store、JWT 或其他插件 DOM。
 

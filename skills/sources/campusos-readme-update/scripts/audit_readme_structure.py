@@ -143,7 +143,7 @@ def main() -> int:
     version_source = root / "internal/platform/version/version.go"
     if version_source.is_file():
         match = re.search(
-            r'\bNumber\s*=\s*"(\d+\.\d+\.\d+)"',
+            r'\bNumber\s*=\s*"(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)"',
             version_source.read_text(encoding="utf-8"),
         )
         if match:

@@ -81,7 +81,7 @@ type ConfigOption struct {
 	Value interface{} `yaml:"value" json:"value"`
 }
 
-// UI types deliberately mirror the public campusos.ui/v1 wire contract while
+// UI types deliberately mirror the public campusos.ui/v1 and v2 wire contracts while
 // remaining independent from internal/plugin.
 type UIContribution struct {
 	ContractVersion string         `yaml:"contract_version,omitempty" json:"contract_version,omitempty"`
@@ -107,13 +107,14 @@ type UINavigation struct {
 }
 
 type UISurface struct {
-	ID         string   `yaml:"id" json:"id"`
-	Version    string   `yaml:"version" json:"version"`
-	Type       string   `yaml:"type" json:"type"`
-	LayoutRole string   `yaml:"layout_role" json:"layout_role"`
-	Renderer   string   `yaml:"renderer,omitempty" json:"renderer,omitempty"`
-	ModuleID   string   `yaml:"module_id,omitempty" json:"module_id,omitempty"`
-	Regions    []string `yaml:"regions,omitempty" json:"regions,omitempty"`
+	ID            string   `yaml:"id" json:"id"`
+	Version       string   `yaml:"version" json:"version"`
+	Type          string   `yaml:"type" json:"type"`
+	LayoutRole    string   `yaml:"layout_role" json:"layout_role"`
+	Renderer      string   `yaml:"renderer,omitempty" json:"renderer,omitempty"`
+	ModuleID      string   `yaml:"module_id,omitempty" json:"module_id,omitempty"`
+	Regions       []string `yaml:"regions,omitempty" json:"regions,omitempty"`
+	Presentations []string `yaml:"presentations,omitempty" json:"presentations,omitempty"`
 }
 
 type Catalog struct {
@@ -316,7 +317,7 @@ func validateUI(ui UIContribution) error {
 	if len(ui.Routes)+len(ui.Navigation)+len(ui.Surfaces) == 0 {
 		return nil
 	}
-	if ui.ContractVersion != "campusos.ui/v1" {
+	if ui.ContractVersion != "campusos.ui/v1" && ui.ContractVersion != "campusos.ui/v2" {
 		return fmt.Errorf("unsupported UI contract %q", ui.ContractVersion)
 	}
 	surfaces := map[string]bool{}
@@ -326,6 +327,18 @@ func validateUI(ui UIContribution) error {
 			return fmt.Errorf("invalid trusted module UI surface %q", surface.ID)
 		}
 		surfaces[surface.ID] = true
+		if ui.ContractVersion == "campusos.ui/v2" {
+			if len(surface.Presentations) == 0 {
+				return fmt.Errorf("ui v2 surface %q requires a presentation", surface.ID)
+			}
+			seen := map[string]bool{}
+			for _, presentation := range surface.Presentations {
+				if (presentation != "modal" && presentation != "drawer" && presentation != "fullscreen" && presentation != "new-tab") || seen[presentation] {
+					return fmt.Errorf("invalid ui v2 presentation %q", presentation)
+				}
+				seen[presentation] = true
+			}
+		}
 	}
 	for _, route := range ui.Routes {
 		if !identifierPattern.MatchString(route.ID) || !strings.HasPrefix(route.Path, "/") || strings.Contains(route.Path, "..") || !surfaces[route.SurfaceID] {

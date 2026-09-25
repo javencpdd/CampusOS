@@ -13,12 +13,19 @@ func currentUser(c *gin.Context) (string, string, bool) {
 		return "", "", false
 	}
 
-	username := "Anonymous"
-	if value, ok := c.Get("username"); ok {
+	displayName := "Anonymous"
+	if value, ok := c.Get("nickname"); ok {
 		if name, ok := value.(string); ok && name != "" {
-			username = name
+			displayName = name
+		}
+	}
+	if displayName == "Anonymous" {
+		if value, ok := c.Get("username"); ok {
+			if name, ok := value.(string); ok && name != "" {
+				displayName = name
+			}
 		}
 	}
 
-	return id, username, true
+	return id, displayName, true
 }

@@ -277,7 +277,8 @@ function Test-ProxyConnection {
 }
 
 function Show-ProxyStatus {
-    $environmentProxy = (Get-Item Env:http_proxy -ErrorAction SilentlyContinue).Value
+    $environmentItem = Get-Item Env:http_proxy -ErrorAction SilentlyContinue
+    $environmentProxy = if ($null -ne $environmentItem) { [string]$environmentItem.Value } else { '' }
     if ([string]::IsNullOrWhiteSpace($environmentProxy)) {
         $environmentProxy = '<未设置>'
     }

@@ -53,7 +53,9 @@
             <el-menu-item v-if="adminStore.isAdmin" index="/challenge-policy"
               >验证码策略</el-menu-item
             >
-			<el-menu-item v-if="adminStore.isAdmin" index="/academic-terms">学期治理</el-menu-item>
+            <el-menu-item v-if="adminStore.isAdmin" index="/academic-terms"
+              >学期治理</el-menu-item
+            >
           </el-sub-menu>
           <el-sub-menu index="content">
             <template #title
@@ -71,8 +73,8 @@
             <el-menu-item index="/extensions">扩展总览</el-menu-item>
             <el-menu-item index="/features">内置功能</el-menu-item>
             <el-menu-item index="/appearance">外观与风格包</el-menu-item>
-            <el-menu-item index="/plugins">外部插件</el-menu-item>
-            <el-menu-item index="/plugin-center">插件中心</el-menu-item>
+            <el-menu-item index="/plugins">外部插件运行管理</el-menu-item>
+            <el-menu-item index="/plugin-center">用户目录与授权</el-menu-item>
             <el-menu-item index="/integrations">集成中心</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="operations">
@@ -84,6 +86,9 @@
             <el-menu-item index="/platform-logs">平台日志</el-menu-item>
             <el-menu-item v-if="adminStore.isAdmin" index="/reliability"
               >可靠任务</el-menu-item
+            >
+            <el-menu-item v-if="adminStore.isAdmin" index="/asset-governance"
+              >附件治理</el-menu-item
             >
             <el-menu-item index="/docs">相关资料</el-menu-item>
           </el-sub-menu>
@@ -240,14 +245,14 @@ const currentPageTitle = computed(() => {
     "/mfa-policy": "管理员 MFA 策略",
     "/account-recovery": "账号恢复",
     "/challenge-policy": "验证码策略",
-		"/academic-terms": "学期治理",
+    "/academic-terms": "学期治理",
     "/threads": "帖子治理",
     "/categories": "版块管理",
     "/docs": "相关资料",
     "/architecture": "数据架构",
     "/extensions": "扩展与集成",
-    "/plugins": "外部插件",
-    "/plugin-center": "插件中心",
+    "/plugins": "外部插件运行管理",
+    "/plugin-center": "用户目录与授权",
     "/features": "内置功能",
     "/appearance": "外观与风格包",
     "/integrations": "集成中心",
@@ -255,6 +260,7 @@ const currentPageTitle = computed(() => {
     "/events": "事件日志",
     "/platform-logs": "平台日志",
     "/reliability": "可靠任务",
+    "/asset-governance": "附件治理",
   };
   return titles[route.path] || "";
 });

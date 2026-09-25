@@ -2,7 +2,7 @@ name: campusos-web
 
 services:
   web:
-    image: campusos-web:${CAMPUSOS_IMAGE_TAG:-0.13.0}
+    image: campusos-web:${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
     build:
       context: ../../..
       dockerfile: deploy/docker/Dockerfile

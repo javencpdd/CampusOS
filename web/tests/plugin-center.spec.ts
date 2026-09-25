@@ -8,6 +8,7 @@ const { api } = vi.hoisted(() => ({
     catalog: vi.fn(),
     myGrants: vi.fn(),
     myUsage: vi.fn(),
+    marketplaceSources: vi.fn(),
     enable: vi.fn(),
     revoke: vi.fn(),
     request: vi.fn(),
@@ -74,6 +75,7 @@ describe('PluginCenterView', () => {
         items: [{ plugin_name: 'notes-v2', record_count: 8, file_count: 2, file_bytes: 2048, search_enabled: true }],
       },
     })
+    api.marketplaceSources.mockResolvedValue({ data: { items: [] } })
   })
 
   it('renders the published catalog and clearly marks an existing user grant', async () => {
@@ -83,11 +85,12 @@ describe('PluginCenterView', () => {
     expect(api.catalog).toHaveBeenCalledOnce()
     expect(api.myGrants).toHaveBeenCalledOnce()
     expect(api.myUsage).toHaveBeenCalledOnce()
+    expect(api.marketplaceSources).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('课堂笔记')
     expect(wrapper.text()).toContain('已授权')
     expect(wrapper.text()).toContain('保存课堂笔记')
     expect(wrapper.text()).toContain('8 条')
     expect(wrapper.text()).toContain('2.0 KB')
-    expect(wrapper.text()).toContain('推荐或申请安装插件')
+    expect(wrapper.text()).toContain('从可信插件市场申请')
   })
 })

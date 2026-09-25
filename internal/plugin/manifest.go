@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,32 +16,35 @@ const (
 
 	ManifestAPIVersionV1      = "campusos.plugin/v1"
 	ManifestAPIVersionV2      = "campusos.plugin/v2"
+	ManifestAPIVersionV3      = "campusos.plugin/v3"
 	CurrentManifestAPIVersion = ManifestAPIVersionV1 // default for legacy packages
 	HostAPIVersionV1          = "v1"
 	HostAPIVersionV2          = "v2"
+	HostAPIVersionV3          = "v3"
 	CurrentHostAPIVersion     = HostAPIVersionV1 // default for legacy packages
 )
 
 // Manifest 插件清单（plugin.yaml 的结构定义）
 type Manifest struct {
-	APIVersion     string              `yaml:"api_version,omitempty" json:"api_version"`
-	HostAPIVersion string              `yaml:"host_api_version,omitempty" json:"host_api_version"`
-	Name           string              `yaml:"name" json:"name"`
-	DisplayName    string              `yaml:"display_name" json:"display_name"`
-	Version        string              `yaml:"version" json:"version"`
-	Description    string              `yaml:"description" json:"description"`
-	Author         string              `yaml:"author" json:"author"`
-	Runtime        string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin
-	Scope          string              `yaml:"scope" json:"scope"`     // system / user
-	Capabilities   []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
-	Compatibility  CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
-	Lifecycle      LifecycleConfig     `yaml:"lifecycle,omitempty" json:"lifecycle"`
-	UI             UIContribution      `yaml:"ui,omitempty" json:"ui,omitempty"`
-	Type           string              `yaml:"type,omitempty" json:"type,omitempty"`
-	ManagedData    ManagedDataConfig   `yaml:"managed_data,omitempty" json:"managed_data,omitempty"`
-	Files          FileCapability      `yaml:"files,omitempty" json:"files,omitempty"`
-	Release        ReleaseConfig       `yaml:"release,omitempty" json:"release,omitempty"`
-	Experience     ExperienceConfig    `yaml:"experience,omitempty" json:"experience,omitempty"`
+	APIVersion             string              `yaml:"api_version,omitempty" json:"api_version"`
+	HostAPIVersion         string              `yaml:"host_api_version,omitempty" json:"host_api_version"`
+	Name                   string              `yaml:"name" json:"name"`
+	DisplayName            string              `yaml:"display_name" json:"display_name"`
+	Version                string              `yaml:"version" json:"version"`
+	Description            string              `yaml:"description" json:"description"`
+	Author                 string              `yaml:"author" json:"author"`
+	Runtime                string              `yaml:"runtime" json:"runtime"` // grpc / wasm / builtin / none
+	Scope                  string              `yaml:"scope" json:"scope"`     // system / user
+	Capabilities           []string            `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+	CapabilityDeclarations []CapabilityRequest `yaml:"capability_declarations,omitempty" json:"capability_declarations,omitempty"`
+	Compatibility          CompatibilityConfig `yaml:"compatibility,omitempty" json:"compatibility"`
+	Lifecycle              LifecycleConfig     `yaml:"lifecycle,omitempty" json:"lifecycle"`
+	UI                     UIContribution      `yaml:"ui,omitempty" json:"ui,omitempty"`
+	Type                   string              `yaml:"type,omitempty" json:"type,omitempty"`
+	ManagedData            ManagedDataConfig   `yaml:"managed_data,omitempty" json:"managed_data,omitempty"`
+	Files                  FileCapability      `yaml:"files,omitempty" json:"files,omitempty"`
+	Release                ReleaseConfig       `yaml:"release,omitempty" json:"release,omitempty"`
+	Experience             ExperienceConfig    `yaml:"experience,omitempty" json:"experience,omitempty"`
 
 	// 事件订阅
 	Events EventsConfig `yaml:"events" json:"events"`
@@ -61,7 +66,8 @@ const (
 	ActivationRestart       = "restart"
 	ActivationPluginRestart = "plugin-restart"
 	ActivationHot           = "hot"
-	CurrentUIContract       = "campusos.ui/v1"
+	LegacyUIContract        = "campusos.ui/v1"
+	CurrentUIContract       = "campusos.ui/v2"
 )
 
 type LifecycleConfig struct {
@@ -107,6 +113,17 @@ type UserPermission struct {
 	Revocable bool     `yaml:"revocable" json:"revocable"`
 }
 
+// CapabilityRequest is a Manifest v3 request. Risk, consent and data
+// classification remain host-owned catalog metadata; a package supplies only
+// its need, purpose and requested scope.
+type CapabilityRequest struct {
+	Code     string                 `yaml:"code" json:"code"`
+	Required bool                   `yaml:"required,omitempty" json:"required"`
+	Purpose  string                 `yaml:"purpose" json:"purpose"`
+	Scope    string                 `yaml:"scope,omitempty" json:"scope,omitempty"`
+	Limits   map[string]interface{} `yaml:"limits,omitempty" json:"limits,omitempty"`
+}
+
 type StorageConfig struct {
 	Type   string        `yaml:"type" json:"type"` // sqlite / postgresql / none
 	SQLite *SQLiteConfig `yaml:"sqlite,omitempty" json:"sqlite,omitempty"`
@@ -118,6 +135,7 @@ type SQLiteConfig struct {
 
 const (
 	PluginTypeExternal = "external"
+	PluginTypeBuiltin  = "builtin"
 	OwnerSystem        = "system"
 	OwnerUser          = "user"
 )
@@ -181,13 +199,21 @@ type ConfigSchema struct {
 }
 
 type ConfigField struct {
-	Key         string         `yaml:"key" json:"key"`
-	Label       string         `yaml:"label" json:"label"`
-	Type        string         `yaml:"type" json:"type"`
-	Description string         `yaml:"description,omitempty" json:"description,omitempty"`
-	Required    bool           `yaml:"required,omitempty" json:"required,omitempty"`
-	Default     interface{}    `yaml:"default,omitempty" json:"default,omitempty"`
-	Options     []ConfigOption `yaml:"options,omitempty" json:"options,omitempty"`
+	Key         string                 `yaml:"key" json:"key"`
+	Label       string                 `yaml:"label" json:"label"`
+	Type        string                 `yaml:"type" json:"type"`
+	Description string                 `yaml:"description,omitempty" json:"description,omitempty"`
+	Required    bool                   `yaml:"required,omitempty" json:"required,omitempty"`
+	Default     interface{}            `yaml:"default,omitempty" json:"default,omitempty"`
+	Options     []ConfigOption         `yaml:"options,omitempty" json:"options,omitempty"`
+	Format      string                 `yaml:"format,omitempty" json:"format,omitempty"`
+	Pattern     string                 `yaml:"pattern,omitempty" json:"pattern,omitempty"`
+	Min         *float64               `yaml:"min,omitempty" json:"min,omitempty"`
+	Max         *float64               `yaml:"max,omitempty" json:"max,omitempty"`
+	MinLength   int                    `yaml:"min_length,omitempty" json:"min_length,omitempty"`
+	MaxLength   int                    `yaml:"max_length,omitempty" json:"max_length,omitempty"`
+	Secret      bool                   `yaml:"secret,omitempty" json:"secret,omitempty"`
+	DependsOn   map[string]interface{} `yaml:"depends_on,omitempty" json:"depends_on,omitempty"`
 }
 
 type ConfigOption struct {
@@ -221,14 +247,14 @@ func (m *Manifest) Validate() error {
 	if m.APIVersion == "" {
 		m.APIVersion = CurrentManifestAPIVersion
 	}
-	if m.APIVersion != ManifestAPIVersionV1 && m.APIVersion != ManifestAPIVersionV2 {
-		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s, %s)", m.APIVersion, ManifestAPIVersionV1, ManifestAPIVersionV2)
+	if m.APIVersion != ManifestAPIVersionV1 && m.APIVersion != ManifestAPIVersionV2 && m.APIVersion != ManifestAPIVersionV3 {
+		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s, %s, %s)", m.APIVersion, ManifestAPIVersionV1, ManifestAPIVersionV2, ManifestAPIVersionV3)
 	}
 	if m.HostAPIVersion == "" {
 		m.HostAPIVersion = CurrentHostAPIVersion
 	}
-	if m.HostAPIVersion != HostAPIVersionV1 && m.HostAPIVersion != HostAPIVersionV2 {
-		return fmt.Errorf("manifest: unsupported host_api_version %q (supported: %s, %s)", m.HostAPIVersion, HostAPIVersionV1, HostAPIVersionV2)
+	if m.HostAPIVersion != HostAPIVersionV1 && m.HostAPIVersion != HostAPIVersionV2 && m.HostAPIVersion != HostAPIVersionV3 {
+		return fmt.Errorf("manifest: unsupported host_api_version %q (supported: %s, %s, %s)", m.HostAPIVersion, HostAPIVersionV1, HostAPIVersionV2, HostAPIVersionV3)
 	}
 	if m.Name == "" {
 		return fmt.Errorf("manifest: name is required")
@@ -239,8 +265,8 @@ func (m *Manifest) Validate() error {
 	if m.Runtime == "" {
 		m.Runtime = "grpc"
 	}
-	if m.Runtime != "grpc" && m.Runtime != "wasm" && m.Runtime != "builtin" {
-		return fmt.Errorf("manifest: runtime must be 'grpc', 'wasm' or 'builtin', got '%s'", m.Runtime)
+	if m.Runtime != "grpc" && m.Runtime != "process" && m.Runtime != "wasm" && m.Runtime != "builtin" && m.Runtime != "none" {
+		return fmt.Errorf("manifest: runtime must be 'process', 'grpc', 'wasm', 'builtin' or 'none', got '%s'", m.Runtime)
 	}
 	if m.Scope == "" {
 		if m.Runtime == "builtin" {
@@ -272,11 +298,19 @@ func (m *Manifest) Validate() error {
 	if err := m.validateConfigSchema(); err != nil {
 		return err
 	}
+	if err := m.validateProcessContract(); err != nil {
+		return err
+	}
 	if err := m.validateUI(); err != nil {
 		return err
 	}
 	if m.APIVersion == ManifestAPIVersionV2 {
 		if err := m.validateV2(); err != nil {
+			return err
+		}
+	}
+	if m.APIVersion == ManifestAPIVersionV3 {
+		if err := m.validateV3(); err != nil {
 			return err
 		}
 	}
@@ -301,6 +335,77 @@ func (m *Manifest) validateExperience() error {
 }
 
 func (m *Manifest) IsV2() bool { return m != nil && m.APIVersion == ManifestAPIVersionV2 }
+
+func (m *Manifest) IsV3() bool { return m != nil && m.APIVersion == ManifestAPIVersionV3 }
+
+func (m *Manifest) validateV3() error {
+	if m.Type == "" {
+		if m.Runtime == "builtin" {
+			m.Type = PluginTypeBuiltin
+		} else {
+			m.Type = PluginTypeExternal
+		}
+	}
+	if m.Type == PluginTypeBuiltin {
+		if m.Runtime != "builtin" || m.Scope != ScopeSystem {
+			return errors.New("manifest: builtin v3 plugins must use builtin runtime and system scope")
+		}
+	} else if m.Type != PluginTypeExternal {
+		return fmt.Errorf("manifest: v3 type must be %q or %q", PluginTypeExternal, PluginTypeBuiltin)
+	}
+	if m.HostAPIVersion != HostAPIVersionV3 {
+		return fmt.Errorf("manifest: v3 requires host_api_version %q", HostAPIVersionV3)
+	}
+	if len(m.CapabilityDeclarations) == 0 {
+		return errors.New("manifest: v3 requires capability_declarations")
+	}
+	seen := map[string]bool{}
+	for index, request := range m.CapabilityDeclarations {
+		descriptor, known := CapabilityByCode(request.Code)
+		if !known {
+			return fmt.Errorf("manifest: capability_declarations[%d] uses unknown capability %q", index, request.Code)
+		}
+		if seen[request.Code] {
+			return fmt.Errorf("manifest: capability %q is duplicated", request.Code)
+		}
+		seen[request.Code] = true
+		if strings.TrimSpace(request.Purpose) == "" || len([]rune(request.Purpose)) > 500 {
+			return fmt.Errorf("manifest: capability %q requires a purpose of at most 500 characters", request.Code)
+		}
+		if request.Scope == "" {
+			m.CapabilityDeclarations[index].Scope = descriptor.Scope
+		} else if request.Scope != descriptor.Scope {
+			return fmt.Errorf("manifest: capability %q scope must be %q", request.Code, descriptor.Scope)
+		}
+		if request.Limits != nil {
+			for key := range request.Limits {
+				if strings.Contains(key, "*") || strings.TrimSpace(key) == "" {
+					return fmt.Errorf("manifest: capability %q has an invalid limit key", request.Code)
+				}
+			}
+		}
+	}
+	for _, permission := range m.Permissions.API {
+		if permission.Resource == "*" {
+			return errors.New("manifest: v3 does not allow wildcard API permissions")
+		}
+		for _, action := range permission.Actions {
+			if action == "*" {
+				return errors.New("manifest: v3 does not allow wildcard API permissions")
+			}
+		}
+	}
+	if len(m.Events.Subscribe) > 0 && !seen["event.system.subscribe"] {
+		return errors.New("manifest: v3 event subscriptions require capability event.system.subscribe")
+	}
+	if err := m.validateManagedData(); err != nil {
+		return err
+	}
+	if err := m.validateFiles(); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (m *Manifest) Collection(name string) (DataCollection, bool) {
 	if m == nil {
@@ -443,7 +548,13 @@ func (m *Manifest) applyLifecycleDefaults() {
 		switch {
 		case m.Runtime == "wasm":
 			m.Lifecycle.Backend.ActivationMode = ActivationHot
-		case m.Runtime == "grpc":
+		case m.Runtime == "none":
+			// A UI-only v4 package has no backend process to start. It still
+			// participates in lifecycle and authorization state, so it uses the
+			// same hot transition as a Wasm package rather than pretending to be
+			// a compiled builtin module.
+			m.Lifecycle.Backend.ActivationMode = ActivationHot
+		case m.Runtime == "grpc" || m.Runtime == "process":
 			m.Lifecycle.Backend.ActivationMode = ActivationPluginRestart
 		case m.Runtime == "builtin" && m.Scope == ScopeSystem:
 			m.Lifecycle.Backend.ActivationMode = ActivationRestart
@@ -508,6 +619,23 @@ func (m *Manifest) validateConfigSchema() error {
 		}
 		if field.Type == "select" && len(field.Options) == 0 {
 			return fmt.Errorf("manifest: config_schema field %q requires options", field.Key)
+		}
+		if field.Secret && field.Default != nil {
+			return fmt.Errorf("manifest: secret config field %q cannot declare a default value", field.Key)
+		}
+		if field.Min != nil && field.Max != nil && *field.Min > *field.Max {
+			return fmt.Errorf("manifest: config_schema field %q min cannot exceed max", field.Key)
+		}
+		if field.MinLength < 0 || field.MaxLength < 0 || (field.MaxLength > 0 && field.MinLength > field.MaxLength) {
+			return fmt.Errorf("manifest: config_schema field %q has invalid length limits", field.Key)
+		}
+		if field.Format != "" && field.Format != "email" && field.Format != "url" && field.Format != "hostname" {
+			return fmt.Errorf("manifest: config_schema field %q has unsupported format %q", field.Key, field.Format)
+		}
+		if field.Pattern != "" {
+			if _, err := regexp.Compile(field.Pattern); err != nil {
+				return fmt.Errorf("manifest: config_schema field %q has invalid pattern: %v", field.Key, err)
+			}
 		}
 	}
 	return nil

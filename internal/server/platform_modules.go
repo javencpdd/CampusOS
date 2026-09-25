@@ -17,6 +17,7 @@ import (
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
+	pluginv4 "github.com/campusos/CampusOS/internal/plugin/v4"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -163,22 +164,26 @@ func (m *featureRegistryModule) Catalog() *modulecatalog.Catalog     { return m.
 func (m *featureRegistryModule) Handler() *platformfeature.Handler   { return m.handler }
 
 type pluginPlatformModule struct {
-	owner       *Server
-	events      *eventBusModule
-	features    *featureRegistryModule
-	app         *platformmodule.AppContext
-	repository  plugin.PluginRepository
-	marketStore plugin.MarketStore
-	manager     *plugin.Manager
-	market      *plugin.MarketService
-	grpcRuntime *plugingrpc.GRPCRuntime
-	handler     *plugin.Handler
-	hostAPI     *hostapi.HostAPIServer
-	cancel      context.CancelFunc
+	owner              *Server
+	events             *eventBusModule
+	features           *featureRegistryModule
+	app                *platformmodule.AppContext
+	repository         plugin.PluginRepository
+	marketStore        plugin.MarketStore
+	authorizationStore plugin.AuthorizationStore
+	authorization      *plugin.AuthorizationService
+	secretStore        plugin.SecretStore
+	secrets            *plugin.SecretService
+	manager            *plugin.Manager
+	market             *plugin.MarketService
+	grpcRuntime        *plugingrpc.GRPCRuntime
+	handler            *plugin.Handler
+	hostAPI            *hostapi.HostAPIServer
+	cancel             context.CancelFunc
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore, authorizationStore plugin.AuthorizationStore, secretStore plugin.SecretStore) *pluginPlatformModule {
+	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore, authorizationStore: authorizationStore, secretStore: secretStore}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
@@ -202,7 +207,10 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	}
 	m.grpcRuntime = plugingrpc.NewGRPCRuntime()
 	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
+	m.manager.RegisterRuntime("process", m.grpcRuntime)
 	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
+	m.manager.RegisterRuntime("builtin", plugin.NewBuiltinRuntime())
+	m.manager.RegisterRuntime("none", plugin.NewNoneRuntime())
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
 		return errors.New("authoritative feature registry is unavailable")
@@ -239,8 +247,46 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return fmt.Errorf("plugin platform dependencies are not registered")
 	}
 	m.owner.registerDefaultSubscriptions(m.events.EventBus())
+	if plugin.V4DevelopmentSourceEnabled() {
+		if err := m.manager.InstallV4DevelopmentSources(plugin.V4PluginsDirFromEnv()); err != nil {
+			return fmt.Errorf("install v4 development plugin release: %w", err)
+		}
+	}
+	if err := m.manager.LoadV4Releases(plugin.V4PluginsDirFromEnv(), plugin.V4UIOriginFromEnv()); err != nil {
+		return fmt.Errorf("load v4 plugin releases: %w", err)
+	}
 	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
 		log.Printf("⚠️  加载插件失败: %v", err)
+	}
+	m.authorization = plugin.NewAuthorizationService(m.authorizationStore, m.repository, func(name string) bool {
+		installed, found := m.manager.GetPlugin(name)
+		return found && installed != nil && installed.Status == plugin.StatusRunning
+	})
+	m.manager.SetAuthorizationService(m.authorization)
+	if secrets, err := plugin.NewSecretServiceFromEnv(m.secretStore); err != nil {
+		log.Printf("⚠️ 插件 Secret Store 未启用: %v", err)
+	} else {
+		m.secrets = secrets
+	}
+	for _, installed := range m.manager.ListPlugins() {
+		if installed == nil || installed.Manifest == nil {
+			continue
+		}
+		if _, err := m.authorization.SyncInstalled(ctx, installed, ""); err != nil {
+			// A semantic version is an immutable security identity. A changed package
+			// must never inherit the grants recorded for the old digest, but one bad
+			// development package must not take the whole CampusOS API offline. Keep
+			// the plugin disabled and let an administrator install a bumped version.
+			reason := "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
+			if disableErr := m.manager.Quarantine(installed.Manifest.Name, reason); disableErr != nil {
+				log.Printf("⚠️  插件 %s 授权事实校验失败，且无法自动停用: %v（原始错误: %v）", installed.Manifest.Name, disableErr, err)
+			} else {
+				log.Printf("⚠️  插件 %s 已隔离：同版本包内容或能力声明发生变化，请提升插件版本后重新安装（%v）", installed.Manifest.Name, err)
+			}
+		}
+	}
+	if err := m.ensurePDFViewerDefaultGrants(ctx); err != nil {
+		return fmt.Errorf("initialize PDF Viewer administrator grants: %w", err)
 	}
 	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
 	m.manager.StartDesiredPlugins(plugin.ScopeUser)
@@ -263,10 +309,25 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		installed, found := m.manager.GetPlugin(name)
 		return found && installed != nil && installed.Status == plugin.StatusRunning
 	})
+	m.market.SetAuthorizationService(m.authorization)
+	if localStorage, ok := userStorage.(*corestorage.LocalAdapter); ok {
+		m.market.SetUserInstallProvisioner(func(_ context.Context, pluginName, userID string) error {
+			release, found := m.manager.V4Release(pluginName)
+			if !found || release.Release.Manifest == nil || release.Release.Manifest.Configuration.User == nil {
+				return nil
+			}
+			_, _, err := pluginv4.InitializeUserConfig(release.Release.Path, userID, pluginv4.UserConfigOptions{
+				PersonalSpaceRoot: localStorage.Root(),
+				PluginVersion:     release.Release.Manifest.Version,
+				Generation:        release.Release.Digest,
+			})
+			return err
+		})
+	}
 	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
 		return fmt.Errorf("sync plugin market catalog: %w", err)
 	}
-	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market))
+	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market), plugin.WithAuthorizationService(m.authorization), plugin.WithSecretService(m.secrets))
 	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
 		return err
 	}
@@ -276,6 +337,47 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	healthContext, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
+	return nil
+}
+
+// ensurePDFViewerDefaultGrants creates auditable, revocable administrator
+// grants for the compiled first-party reader. It is not an authorization
+// bypass: a later administrator denial/revocation immediately wins, and every
+// user still supplies their own consent for restricted file reads.
+func (m *pluginPlatformModule) ensurePDFViewerDefaultGrants(ctx context.Context) error {
+	if m.authorization == nil || !m.authorization.Available() {
+		return errors.New("plugin authorization service is unavailable")
+	}
+	if _, installed := m.manager.V4Release(plugin.PDFViewerV4PluginName); !installed {
+		// The host remains available when an administrator has not installed a
+		// release yet. Preview requests then safely fall back to the existing
+		// authenticated download path instead of making API startup fail.
+		return nil
+	}
+	version, err := m.authorization.ActiveVersion(ctx, plugin.PDFViewerV4PluginName)
+	if err != nil {
+		return err
+	}
+	for _, capability := range []string{"article_attachment.self.preview", "personal_space_file.self.read", "plugin_ui.surface.open", "plugin_record.self.read", "plugin_record.self.write"} {
+		// Set only the initial grant. An existing deny/revoke is a deliberate
+		// administrator decision and must never be overwritten at startup.
+		overview, err := m.authorization.Overview(ctx, plugin.PDFViewerV4PluginName, "")
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, grant := range overview.AdminGrants {
+			if grant.CapabilityCode == capability {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if _, err := m.authorization.SetAdminGrant(ctx, version.ID, capability, "granted", "系统首次注册第一方 PDF Viewer 的可撤销默认能力", map[string]interface{}{"scope": "self"}, "", nil); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -342,6 +444,8 @@ func (m *pluginPlatformModule) startHostAPI() error {
 	}
 	api.SetPermissionChecker(permission)
 	api.SetMarketService(m.market)
+	api.SetAuthorizationService(m.authorization)
+	api.SetSecretService(m.secrets)
 	server := hostapi.NewHostAPIServer(api, m.owner.cfg.HostAPI.Addr, m.manager.GetPlugin)
 	server.SetPluginAuthenticator(m.manager.AuthorizeHostAPI)
 	if err := server.Start(); err != nil {

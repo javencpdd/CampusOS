@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // PluginStatus 插件状态
@@ -44,20 +46,28 @@ const (
 
 // Plugin 插件实例
 type Plugin struct {
-	ID                 string        `json:"id"`
-	Manifest           *Manifest     `json:"manifest"`
-	Status             PluginStatus  `json:"status"`
-	BackendState       BackendState  `json:"backend_state"`
-	FrontendState      FrontendState `json:"frontend_state"`
-	Health             HealthState   `json:"health"`
-	DesiredEnabled     bool          `json:"desired_enabled"`
-	ErrorMsg           string        `json:"error_message,omitempty"`
-	Directory          string        `json:"directory"`
-	InstalledBy        string        `json:"installed_by"`
-	Checksum           string        `json:"checksum,omitempty"`
-	PackageSize        int64         `json:"package_size,omitempty"`
-	HostToken          string        `json:"-"`
-	HostTokenExpiresAt time.Time     `json:"-"`
+	ID             string        `json:"id"`
+	Manifest       *Manifest     `json:"manifest"`
+	Status         PluginStatus  `json:"status"`
+	BackendState   BackendState  `json:"backend_state"`
+	FrontendState  FrontendState `json:"frontend_state"`
+	Health         HealthState   `json:"health"`
+	DesiredEnabled bool          `json:"desired_enabled"`
+	ErrorMsg       string        `json:"error_message,omitempty"`
+	Directory      string        `json:"directory"`
+	InstalledBy    string        `json:"installed_by"`
+	Checksum       string        `json:"checksum,omitempty"`
+	PackageSize    int64         `json:"package_size,omitempty"`
+	// IsolatedUI means the plugin's UI metadata lives exclusively in the v4
+	// immutable release catalog. The legacy manifest remains intentionally UI
+	// empty and acts only as the adapter for lifecycle and authorization data.
+	IsolatedUI         bool      `json:"-"`
+	HostToken          string    `json:"-"`
+	HostTokenExpiresAt time.Time `json:"-"`
+}
+
+func pluginHasFrontend(plugin *Plugin) bool {
+	return plugin != nil && (plugin.IsolatedUI || (plugin.Manifest != nil && !plugin.Manifest.UI.Empty()))
 }
 
 // LifecycleState is the frontend-safe lifecycle view for one plugin.
@@ -101,10 +111,34 @@ type ExtensionRuntime interface {
 
 // EventMessage 传递给插件的事件消息
 type EventMessage struct {
-	Type    string      `json:"type"`
-	Source  string      `json:"source"`
-	Subject string      `json:"subject"`
-	Data    interface{} `json:"data"`
+	SpecVersion string      `json:"spec_version"`
+	ID          string      `json:"id"`
+	Type        string      `json:"type"`
+	Source      string      `json:"source"`
+	Subject     string      `json:"subject"`
+	Time        time.Time   `json:"time"`
+	TraceID     string      `json:"trace_id,omitempty"`
+	Actor       string      `json:"actor,omitempty"`
+	DataSchema  string      `json:"data_schema,omitempty"`
+	Data        interface{} `json:"data"`
+}
+
+func (e *EventMessage) Normalize() {
+	if e == nil {
+		return
+	}
+	if e.SpecVersion == "" {
+		e.SpecVersion = "campusos.event/v1"
+	}
+	if e.ID == "" {
+		e.ID = uuid.NewString()
+	}
+	if e.Time.IsZero() {
+		e.Time = time.Now().UTC()
+	}
+	if e.TraceID == "" {
+		e.TraceID = e.ID
+	}
 }
 
 // PluginResponse 插件对事件的响应

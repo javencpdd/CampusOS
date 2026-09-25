@@ -124,18 +124,25 @@ type CatalogEntry struct {
 	DataCapabilities []string         `json:"data_capabilities,omitempty"`
 	UserPermissions  []UserPermission `json:"user_permissions,omitempty"`
 	Experience       ExperienceConfig `json:"experience,omitempty"`
+	TrustedBuiltin   bool             `json:"trusted_builtin,omitempty"`
 	UpdatedAt        time.Time        `json:"updated_at"`
 }
 
 type InstallRequest struct {
-	ID         int64      `json:"id"`
-	PluginName string     `json:"plugin_name"`
-	UserID     string     `json:"user_id"`
-	Message    string     `json:"message,omitempty"`
-	Status     string     `json:"status"`
-	ReviewedBy string     `json:"reviewed_by,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	ReviewedAt *time.Time `json:"reviewed_at,omitempty"`
+	ID               int64      `json:"id"`
+	PluginName       string     `json:"plugin_name"`
+	MarketSourceID   string     `json:"market_source_id,omitempty"`
+	MarketPluginID   string     `json:"market_plugin_id,omitempty"`
+	MarketListingURL string     `json:"market_listing_url,omitempty"`
+	MarketPackageURL string     `json:"market_package_url,omitempty"`
+	MarketVersion    string     `json:"market_version,omitempty"`
+	MarketPublisher  string     `json:"market_publisher,omitempty"`
+	UserID           string     `json:"user_id"`
+	Message          string     `json:"message,omitempty"`
+	Status           string     `json:"status"`
+	ReviewedBy       string     `json:"reviewed_by,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
 }
 
 type PluginRelease struct {
@@ -190,7 +197,15 @@ type MarketStore interface {
 	DeleteFile(ctx context.Context, pluginName, ownerID, fileID string) (PluginFile, error)
 	FileUsage(ctx context.Context, pluginName, ownerID string) (int64, error)
 	UpsertCatalog(ctx context.Context, entry CatalogEntry) (CatalogEntry, error)
+	// DeleteCatalog removes a stale projection entry. The catalog is not an
+	// installation ledger: it must only contain manifests discovered in the
+	// current Plugin Manager snapshot.
+	DeleteCatalog(ctx context.Context, pluginName string) error
 	ListCatalog(ctx context.Context, visibility string) ([]CatalogEntry, error)
+	UpsertMarketplaceSource(ctx context.Context, source MarketplaceSource) (MarketplaceSource, error)
+	GetMarketplaceSource(ctx context.Context, sourceID string) (MarketplaceSource, error)
+	ListMarketplaceSources(ctx context.Context, enabledOnly bool) ([]MarketplaceSource, error)
+	DeleteMarketplaceSource(ctx context.Context, sourceID string) error
 	CreateInstallRequest(ctx context.Context, request InstallRequest) (InstallRequest, error)
 	ListInstallRequests(ctx context.Context, status string) ([]InstallRequest, error)
 	ReviewInstallRequest(ctx context.Context, id int64, reviewer, status string) (InstallRequest, error)
@@ -206,15 +221,18 @@ type ManifestResolver func(name string) (*Manifest, bool)
 type PluginActiveResolver func(name string) bool
 
 type MarketService struct {
-	store     MarketStore
-	storage   corestorage.Port
-	manifests ManifestResolver
-	active    PluginActiveResolver
-	now       func() time.Time
+	store         MarketStore
+	storage       corestorage.Port
+	manifests     ManifestResolver
+	active        PluginActiveResolver
+	authorization *AuthorizationService
+	marketplaces  MarketplaceCatalogClient
+	provisionUser UserInstallProvisioner
+	now           func() time.Time
 }
 
 func NewMarketService(store MarketStore, storage corestorage.Port, manifests ManifestResolver) *MarketService {
-	return &MarketService{store: store, storage: storage, manifests: manifests, now: time.Now}
+	return &MarketService{store: store, storage: storage, manifests: manifests, marketplaces: NewHTTPSMarketplaceCatalogClient(), now: time.Now}
 }
 
 // SetPluginActiveResolver binds user-facing runtime calls to the external
@@ -223,6 +241,29 @@ func NewMarketService(store MarketStore, storage corestorage.Port, manifests Man
 // use this gate.
 func (s *MarketService) SetPluginActiveResolver(resolver PluginActiveResolver) {
 	s.active = resolver
+}
+
+// SetAuthorizationService switches Manifest v3 user-data calls to the unified
+// declaration/admin-grant/user-consent decision path. Manifest v1/v2 keep the
+// time-limited legacy grant adapter during the compatibility window.
+func (s *MarketService) SetAuthorizationService(service *AuthorizationService) {
+	s.authorization = service
+}
+
+// SetMarketplaceCatalogClient swaps the transport only for controlled tests or
+// a platform-owned integration. User requests still resolve their target from
+// an enabled persisted source; callers never supply an arbitrary URL.
+func (s *MarketService) SetMarketplaceCatalogClient(client MarketplaceCatalogClient) {
+	if client != nil {
+		s.marketplaces = client
+	}
+}
+
+// SetUserInstallProvisioner binds a successful first-time user addition to
+// host-owned configuration provisioning. A provisioner must be idempotent:
+// database retries may occur after the file pair was safely written.
+func (s *MarketService) SetUserInstallProvisioner(provisioner UserInstallProvisioner) {
+	s.provisionUser = provisioner
 }
 
 func (s *MarketService) Available() bool {
@@ -241,11 +282,17 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 	for _, entry := range existing {
 		visibilityByPlugin[entry.PluginName] = entry.Visibility
 	}
+	active := make(map[string]struct{}, len(plugins))
 	for _, installed := range plugins {
-		if installed == nil || installed.Manifest == nil || installed.Manifest.Runtime == "builtin" || !installed.Manifest.IsV2() {
+		if installed == nil || installed.Manifest == nil || (!installed.Manifest.IsV2() && !installed.Manifest.IsV3()) {
 			continue
 		}
 		manifest := installed.Manifest
+		isTrustedBuiltin := isManagedBuiltinManifest(manifest)
+		if manifest.Runtime == "builtin" && !isTrustedBuiltin {
+			continue
+		}
+		active[manifest.Name] = struct{}{}
 		capabilities := []string{}
 		if len(manifest.ManagedData.Collections) > 0 {
 			capabilities = append(capabilities, "managed-data")
@@ -259,18 +306,42 @@ func (s *MarketService) SyncCatalog(ctx context.Context, plugins []*Plugin) erro
 				break
 			}
 		}
-		if len(manifest.Permissions.User) > 0 {
+		if len(manifest.Permissions.User) > 0 || len(manifest.CapabilityDeclarations) > 0 {
 			capabilities = append(capabilities, "user-consent")
+		}
+		if isTrustedBuiltin {
+			capabilities = append(capabilities, "trusted-builtin")
 		}
 		entry := CatalogEntry{
 			PluginName: manifest.Name, DisplayName: manifest.DisplayName, Description: manifest.Description,
 			Version: manifest.Version, Runtime: manifest.Runtime, Visibility: CatalogDraft,
-			PackageChecksum: installed.Checksum, RiskLevel: catalogRiskLevel(manifest), DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, Experience: normalizedExperience(manifest), UpdatedAt: s.now(),
+			PackageChecksum: installed.Checksum, RiskLevel: catalogRiskLevel(manifest), DataCapabilities: capabilities, UserPermissions: manifest.Permissions.User, Experience: normalizedExperience(manifest), TrustedBuiltin: isTrustedBuiltin, UpdatedAt: s.now(),
 		}
 		if visibility, ok := visibilityByPlugin[manifest.Name]; ok {
 			entry.Visibility = visibility
 		}
+		if (isTrustedBuiltin || isSystemManagedExternalRelease(installed)) && entry.Visibility != CatalogHidden {
+			// First-party compiled UI is safe to list as soon as it is registered;
+			// data access still requires the separate administrator grant and user
+			// consent records, so publication never grants file access. This also
+			// repairs a former default draft row after an in-place v1.1 upgrade;
+			// only an explicit hidden state is preserved.
+			entry.Visibility = CatalogPublished
+		}
 		if _, err := s.store.UpsertCatalog(ctx, entry); err != nil {
+			return err
+		}
+	}
+	// Keep catalog publication state only for releases which are actually
+	// discoverable now. In particular, this retires the former
+	// builtin.pdf-viewer projection after the v4 package replaces it. Keeping
+	// that row creates a second PDF entry and lets an obsolete package look
+	// available even though it cannot be invoked by the current manager.
+	for _, entry := range existing {
+		if _, ok := active[entry.PluginName]; ok {
+			continue
+		}
+		if err := s.store.DeleteCatalog(ctx, entry.PluginName); err != nil {
 			return err
 		}
 	}
@@ -299,6 +370,34 @@ func normalizedExperience(manifest *Manifest) ExperienceConfig {
 		experience.DisabledBehavior = "停用或撤销授权不会自动删除你的数据；可在插件中心导出或删除。"
 	}
 	return experience
+}
+
+// isManagedBuiltinManifest is deliberately derived from the current compiled
+// manifest instead of persisted in plugin_catalog_entries. A catalog row must
+// never be able to make an uploaded package look first-party after a restart.
+func isManagedBuiltinManifest(manifest *Manifest) bool {
+	return manifest != nil && manifest.Runtime == "builtin" && manifest.Scope == ScopeSystem && manifest.Type == PluginTypeBuiltin
+}
+
+// isSystemManagedExternalRelease is deliberately narrower than “external”.
+// A package imported by an administrator stays draft until it is explicitly
+// published. The platform's verified, isolated release bundled with the
+// system (currently campusos.pdf-viewer) is already installed by the trusted
+// host and must be visible in the user catalog without a second manual step.
+func isSystemManagedExternalRelease(installed *Plugin) bool {
+	return installed != nil && installed.Manifest != nil && installed.Manifest.Type == PluginTypeExternal && installed.IsolatedUI && installed.InstalledBy == "system"
+}
+
+func (s *MarketService) hydrateCatalogTrust(entries []CatalogEntry) []CatalogEntry {
+	for index := range entries {
+		entries[index].TrustedBuiltin = false
+		if s == nil || s.manifests == nil {
+			continue
+		}
+		manifest, found := s.manifests(entries[index].PluginName)
+		entries[index].TrustedBuiltin = found && isManagedBuiltinManifest(manifest)
+	}
+	return entries
 }
 
 func catalogRiskLevel(manifest *Manifest) string {
@@ -332,7 +431,7 @@ func (s *MarketService) SetCatalogVisibility(ctx context.Context, pluginName, vi
 			if saveErr == nil {
 				s.audit(ctx, pluginName, actorID, "catalog.visibility", "success", map[string]interface{}{"visibility": visibility})
 			}
-			return saved, saveErr
+			return s.hydrateCatalogTrust([]CatalogEntry{saved})[0], saveErr
 		}
 	}
 	return CatalogEntry{}, ErrMarketNotFound
@@ -343,7 +442,11 @@ func (s *MarketService) Catalog(ctx context.Context, publishedOnly bool) ([]Cata
 	if publishedOnly {
 		visibility = CatalogPublished
 	}
-	return s.store.ListCatalog(ctx, visibility)
+	entries, err := s.store.ListCatalog(ctx, visibility)
+	if err != nil {
+		return nil, err
+	}
+	return s.hydrateCatalogTrust(entries), nil
 }
 
 func (s *MarketService) Grant(ctx context.Context, pluginName, userID string, permissions []string) (UserGrant, error) {
@@ -368,6 +471,12 @@ func (s *MarketService) Grant(ctx context.Context, pluginName, userID string, pe
 	for _, permission := range permissions {
 		if !allowed[permission] {
 			return UserGrant{}, fmt.Errorf("%w: plugin does not declare user permission %s", ErrMarketDenied, permission)
+		}
+	}
+	if s.provisionUser != nil {
+		if err := s.provisionUser(ctx, pluginName, userID); err != nil {
+			s.audit(ctx, pluginName, userID, "user.install", "failed", map[string]interface{}{"reason": "configuration_provision_failed"})
+			return UserGrant{}, err
 		}
 	}
 	grant, err := s.store.UpsertGrant(ctx, UserGrant{
@@ -906,7 +1015,7 @@ func (s *MarketService) SaveRelease(ctx context.Context, release PluginRelease, 
 // signature state. Its inputs come from the host package precheck, never from
 // an administrator-supplied release form.
 func (s *MarketService) RecordImportedRelease(ctx context.Context, manifest *Manifest, checksum, signatureState, actorID string) (PluginRelease, error) {
-	if manifest == nil || !manifest.IsV2() || manifest.Runtime == "builtin" || checksum == "" {
+	if manifest == nil || (!manifest.IsV2() && !manifest.IsV3()) || manifest.Runtime == "builtin" || checksum == "" {
 		return PluginRelease{}, fmt.Errorf("%w: imported release metadata is incomplete", ErrMarketInvalidInput)
 	}
 	if signatureState != "verified" && signatureState != "unsigned" && signatureState != "untrusted" && signatureState != "invalid" {
@@ -946,7 +1055,7 @@ func (s *MarketService) userManifest(pluginName string) (*Manifest, error) {
 	if !ok || manifest == nil {
 		return nil, ErrMarketNotFound
 	}
-	if !manifest.IsV2() || manifest.Runtime == "builtin" {
+	if (!manifest.IsV2() && !manifest.IsV3()) || (manifest.Runtime == "builtin" && !isManagedBuiltinManifest(manifest)) {
 		return nil, ErrMarketUnsupported
 	}
 	return manifest, nil
@@ -984,13 +1093,41 @@ func (s *MarketService) requireUserGrant(ctx context.Context, pluginName, userID
 		s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "catalog_not_published"})
 		return ErrMarketDenied
 	}
+	manifest, err := s.userManifest(pluginName)
+	if err != nil {
+		return ErrMarketDenied
+	}
+	if manifest.IsV3() {
+		capability := ""
+		parts := strings.SplitN(permission, ":", 2)
+		if len(parts) == 2 {
+			capability = legacyUserCapabilityCode(parts[0], parts[1])
+		}
+		if capability == "" || s.authorization == nil {
+			s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "unified_authorization_unavailable"})
+			return ErrMarketDenied
+		}
+		decision := s.authorization.Authorize(ctx, AuthorizationInput{
+			PluginName:      pluginName,
+			PluginVersion:   manifest.Version,
+			CapabilityCode:  capability,
+			OperationCode:   "managed-rest." + permission,
+			ActorUserID:     userID,
+			ResourceOwnerID: userID,
+			ResourceScope:   map[string]interface{}{"scope": "self"},
+		})
+		if !decision.Allow {
+			s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"capability": capability, "reason_code": decision.ReasonCode, "request_id": decision.RequestID})
+			return fmt.Errorf("%w: %s", ErrMarketDenied, decision.Message)
+		}
+		return nil
+	}
 	grant, err := s.store.GetGrant(ctx, pluginName, userID)
 	if err != nil {
 		s.audit(ctx, pluginName, userID, "authorization.check", "denied", map[string]interface{}{"permission": permission, "reason": "grant_missing"})
 		return ErrMarketDenied
 	}
-	manifest, err := s.userManifest(pluginName)
-	if err != nil || grant.Status != GrantEnabled || grant.Version != manifest.Version || !containsString(grant.Permissions, permission) {
+	if grant.Status != GrantEnabled || grant.Version != manifest.Version || !containsString(grant.Permissions, permission) {
 		reason := "permission_missing"
 		if grant.Status != GrantEnabled {
 			reason = "grant_revoked"
@@ -1255,13 +1392,14 @@ type MemoryMarketStore struct {
 	grants   map[string]UserGrant
 	files    map[string]PluginFile
 	catalog  map[string]CatalogEntry
+	sources  map[string]MarketplaceSource
 	requests map[int64]InstallRequest
 	releases map[string][]PluginRelease
 	audits   []MarketAudit
 }
 
 func NewMemoryMarketStore() *MemoryMarketStore {
-	return &MemoryMarketStore{records: map[string]ManagedRecord{}, grants: map[string]UserGrant{}, files: map[string]PluginFile{}, catalog: map[string]CatalogEntry{}, requests: map[int64]InstallRequest{}, releases: map[string][]PluginRelease{}}
+	return &MemoryMarketStore{records: map[string]ManagedRecord{}, grants: map[string]UserGrant{}, files: map[string]PluginFile{}, catalog: map[string]CatalogEntry{}, sources: map[string]MarketplaceSource{}, requests: map[int64]InstallRequest{}, releases: map[string][]PluginRelease{}}
 }
 
 func recordStoreKey(pluginName, ownerType, ownerID, collection, key string) string {
@@ -1478,6 +1616,13 @@ func (m *MemoryMarketStore) UpsertCatalog(_ context.Context, entry CatalogEntry)
 	return entry, nil
 }
 
+func (m *MemoryMarketStore) DeleteCatalog(_ context.Context, pluginName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.catalog, pluginName)
+	return nil
+}
+
 func (m *MemoryMarketStore) ListCatalog(_ context.Context, visibility string) ([]CatalogEntry, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -1491,11 +1636,75 @@ func (m *MemoryMarketStore) ListCatalog(_ context.Context, visibility string) ([
 	return items, nil
 }
 
+func (m *MemoryMarketStore) UpsertMarketplaceSource(_ context.Context, source MarketplaceSource) (MarketplaceSource, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if existing, found := m.sources[source.ID]; found {
+		source.CreatedAt, source.CreatedBy = existing.CreatedAt, existing.CreatedBy
+	}
+	m.sources[source.ID] = source
+	return source, nil
+}
+
+func (m *MemoryMarketStore) GetMarketplaceSource(_ context.Context, sourceID string) (MarketplaceSource, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	source, found := m.sources[sourceID]
+	if !found {
+		return MarketplaceSource{}, ErrMarketNotFound
+	}
+	return source, nil
+}
+
+func (m *MemoryMarketStore) ListMarketplaceSources(_ context.Context, enabledOnly bool) ([]MarketplaceSource, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	items := []MarketplaceSource{}
+	for _, source := range m.sources {
+		if !enabledOnly || source.Status == MarketplaceSourceEnabled {
+			items = append(items, source)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].DisplayName == items[j].DisplayName {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].DisplayName < items[j].DisplayName
+	})
+	return items, nil
+}
+
+func (m *MemoryMarketStore) DeleteMarketplaceSource(_ context.Context, sourceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, found := m.sources[sourceID]; !found {
+		return ErrMarketNotFound
+	}
+	for _, request := range m.requests {
+		if request.MarketSourceID == sourceID {
+			return ErrMarketConflict
+		}
+	}
+	delete(m.sources, sourceID)
+	return nil
+}
+
 func (m *MemoryMarketStore) CreateInstallRequest(_ context.Context, request InstallRequest) (InstallRequest, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	sourceID, pluginID := request.MarketSourceID, request.MarketPluginID
+	// Legacy service callers are retained for old in-process tests only. They
+	// never reach an HTTP route, but must keep their original per-plugin
+	// duplicate semantics in the development memory profile.
+	if sourceID == "" && pluginID == "" {
+		sourceID, pluginID = "legacy", request.PluginName
+	}
 	for _, existing := range m.requests {
-		if existing.PluginName == request.PluginName && existing.UserID == request.UserID && existing.Status == RequestPending {
+		existingSourceID, existingPluginID := existing.MarketSourceID, existing.MarketPluginID
+		if existingSourceID == "" && existingPluginID == "" {
+			existingSourceID, existingPluginID = "legacy", existing.PluginName
+		}
+		if existingSourceID == sourceID && existingPluginID == pluginID && existing.UserID == request.UserID && existing.Status == RequestPending {
 			return InstallRequest{}, ErrMarketConflict
 		}
 	}

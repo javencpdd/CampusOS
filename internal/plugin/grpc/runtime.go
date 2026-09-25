@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -39,7 +40,7 @@ type pluginProcess struct {
 func NewGRPCRuntime() *GRPCRuntime {
 	return &GRPCRuntime{
 		processes:  make(map[string]*pluginProcess),
-		httpClient: http.DefaultClient,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -53,16 +54,22 @@ func (r *GRPCRuntime) Start(_ context.Context, p *plugin.Plugin) error {
 		return fmt.Errorf("plugin '%s' already running", p.ID)
 	}
 
+	if p == nil || p.Manifest == nil {
+		return fmt.Errorf("plugin manifest is required")
+	}
 	// 查找插件可执行文件。Windows 发行物通常为 plugin.exe，而 Unix
 	// 发行物保持 plugin；两者都不允许从目录外解析。
 	binaryPath := pluginBinaryPath(p.Directory)
+	layout, err := plugin.PreparePluginStorage(os.Getenv("PLUGIN_DATA_DIR"), p.Manifest.Name)
+	if err != nil {
+		return fmt.Errorf("prepare plugin private storage: %w", err)
+	}
 	cmd := exec.Command(binaryPath)
 	cmd.Dir = p.Directory
-	cmd.Env = append(cmd.Environ(),
-		"CAMPUSOS_PLUGIN_NAME="+p.Manifest.Name,
-		"CAMPUSOS_PLUGIN_TOKEN="+p.HostToken,
-		"CAMPUSOS_HOST_API_URL=http://127.0.0.1:18080",
-	)
+	// Never inherit the API process environment. In particular this prevents a
+	// process plugin from receiving DATABASE_URL, PostgreSQL/JWT/SMTP secrets or
+	// the platform's Docker configuration merely because it is a child process.
+	cmd.Env = pluginProcessEnvironment(os.Environ(), p, layout)
 	cmd.Stdout = &logWriter{pluginName: p.ID}
 	cmd.Stderr = &logWriter{pluginName: p.ID}
 
@@ -97,6 +104,55 @@ func (r *GRPCRuntime) Start(_ context.Context, p *plugin.Plugin) error {
 	}()
 
 	return nil
+}
+
+// pluginProcessEnvironment is intentionally an allow-list rather than a
+// deny-list. New platform secrets therefore remain private by default. It is
+// not an OS sandbox: deployment must still run process plugins under a
+// separate identity/container with a restricted filesystem and network.
+func pluginProcessEnvironment(hostEnv []string, p *plugin.Plugin, layout plugin.StorageLayout) []string {
+	windows := runtime.GOOS == "windows"
+	env := make([]string, 0, 12)
+	seen := make(map[string]struct{})
+	for _, entry := range hostEnv {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok || !safePluginProcessEnvironmentKey(key, windows) {
+			continue
+		}
+		normalized := key
+		if windows {
+			normalized = strings.ToUpper(key)
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		env = append(env, entry)
+	}
+	env = append(env,
+		"CAMPUSOS_PLUGIN_NAME="+p.Manifest.Name,
+		"CAMPUSOS_PLUGIN_TOKEN="+p.HostToken,
+		"CAMPUSOS_HOST_API_URL=http://127.0.0.1:18080",
+		"CAMPUSOS_PLUGIN_DATA_DIR="+layout.DataDir,
+		"CAMPUSOS_PLUGIN_CONFIG_PATH="+layout.ConfigPath,
+		"CAMPUSOS_PLUGIN_STORAGE_CONTRACT=v1",
+	)
+	return env
+}
+
+func safePluginProcessEnvironmentKey(key string, windows bool) bool {
+	lookup := key
+	if windows {
+		lookup = strings.ToUpper(key)
+		switch lookup {
+		case "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP":
+			return true
+		}
+	}
+	if key == "PATH" || key == "LANG" || key == "TZ" || strings.HasPrefix(key, "LC_") {
+		return true
+	}
+	return false
 }
 
 func (r *GRPCRuntime) Stop(_ context.Context, name string) error {
@@ -259,7 +315,7 @@ func parseLoopbackEndpoint(pluginName, field, rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
+func (r *GRPCRuntime) HealthCheck(ctx context.Context, pluginName string) error {
 	r.mu.RLock()
 	proc, ok := r.processes[pluginName]
 	r.mu.RUnlock()
@@ -283,6 +339,31 @@ func (r *GRPCRuntime) HealthCheck(_ context.Context, pluginName string) error {
 		err := proc.cmd.Process.Signal(syscall.Signal(0))
 		if err != nil {
 			return fmt.Errorf("plugin '%s' process not alive: %w", pluginName, err)
+		}
+	}
+	if proc.plugin != nil && proc.plugin.Manifest != nil && proc.plugin.Manifest.Runtime == "process" {
+		rawURL, _ := proc.plugin.Manifest.Config["health_url"].(string)
+		endpoint, err := parseLoopbackEndpoint(pluginName, "health_url", rawURL)
+		if err != nil {
+			return err
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+		if err != nil {
+			return err
+		}
+		request.Header.Set("X-CampusOS-Process-Contract", plugin.ProcessContractVersion)
+		request.Header.Set("X-CampusOS-Plugin", proc.plugin.Manifest.Name)
+		request.Header.Set("X-CampusOS-Plugin-Token", proc.plugin.HostToken)
+		response, err := r.client().Do(request)
+		if err != nil {
+			return fmt.Errorf("plugin '%s' process health request failed: %w", pluginName, err)
+		}
+		defer response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			return fmt.Errorf("plugin '%s' process health returned HTTP %d", pluginName, response.StatusCode)
+		}
+		if response.Header.Get("X-CampusOS-Process-Contract") != plugin.ProcessContractVersion {
+			return fmt.Errorf("plugin '%s' process contract handshake mismatch", pluginName)
 		}
 	}
 	return nil

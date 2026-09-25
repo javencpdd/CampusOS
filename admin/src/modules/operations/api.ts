@@ -49,3 +49,24 @@ export const reliabilityApi = {
       { headers: { "Idempotency-Key": idempotencyKey } },
     ),
 };
+
+export type AssetGovernanceAction = {
+  reason: string;
+  confirm_asset_id?: string;
+};
+
+// This API is intentionally aggregate-first.  It never requests a file list,
+// filename, owner identity, object key, or a payload preview from Admin.
+export const assetGovernanceApi = {
+  summary: () => api.get("/admin/assets/summary"),
+  previewPurge: (assetID: string) =>
+    api.get(`/admin/assets/${encodeURIComponent(assetID)}/purge-preview`),
+  quarantine: (assetID: string, body: AssetGovernanceAction) =>
+    api.post(`/admin/assets/${encodeURIComponent(assetID)}/quarantine`, body),
+  restore: (assetID: string, body: AssetGovernanceAction) =>
+    api.post(`/admin/assets/${encodeURIComponent(assetID)}/restore`, body),
+  purge: (assetID: string, body: AssetGovernanceAction) =>
+    api.delete(`/admin/assets/${encodeURIComponent(assetID)}/purge`, {
+      data: body,
+    }),
+};

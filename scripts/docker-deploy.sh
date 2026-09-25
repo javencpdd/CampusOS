@@ -39,6 +39,7 @@ init_env() {
   replace_placeholder "__CHALLENGE_IP_HASH_SECRET__" "$(random_hex 32)"
   replace_placeholder "__SESSION_IP_HASH_SECRET__" "$(random_hex 32)"
   replace_placeholder "__MFA_ENCRYPTION_SECRET__" "$(random_hex 32)"
+  replace_placeholder "__PLUGIN_SECRET_KEY__" "$(random_hex 32)"
   echo "Created $ENV_FILE with mode 0600."
   echo "Review email, public URL and production settings before exposing CampusOS to a network."
 }

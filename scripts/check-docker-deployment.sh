@@ -13,6 +13,8 @@ required=(
   deploy/docker/Dockerfile
   deploy/docker/dev-api.sh
   deploy/docker/dev-frontend.sh
+  deploy/docker/dev-plugin-ui.sh
+  deploy/docker/plugin-ui-server.mjs
   deploy/docker/entrypoint.sh
   deploy/docker/nginx-spa.conf
   deploy/docker/nginx-docs.conf
@@ -76,6 +78,7 @@ sed -i \
   -e 's/^CAMPUSOS_DEV_WEB_BIND=.*/CAMPUSOS_DEV_WEB_BIND=0.0.0.0/' \
   -e 's/^CAMPUSOS_DEV_ADMIN_BIND=.*/CAMPUSOS_DEV_ADMIN_BIND=0.0.0.0/' \
   -e 's/^CAMPUSOS_DEV_DOCS_BIND=.*/CAMPUSOS_DEV_DOCS_BIND=0.0.0.0/' \
+  -e 's/^CAMPUSOS_DEV_PLUGIN_UI_BIND=.*/CAMPUSOS_DEV_PLUGIN_UI_BIND=0.0.0.0/' \
   "$lan_dev_env"
 docker compose --env-file "$lan_dev_env" -f compose.dev.yml config >"$lan_dev_rendered"
 cp deploy/docker/.env.dev.example "$smtp_dev_env"
@@ -99,6 +102,11 @@ for service in postgres redis nats api web admin docs; do
   fi
 done
 
+if ! grep -q '^  plugin-ui:' "$dev_rendered"; then
+  echo "rendered Docker development stack is missing service: plugin-ui" >&2
+  exit 1
+fi
+
 grep -q '^  maintenance:' "$deploy_rendered"
 grep -q 'target: api' "$deploy_rendered"
 grep -q 'target: web' "$deploy_rendered"
@@ -112,16 +120,18 @@ grep -q 'source: go-build-cache' "$dev_rendered"
 grep -q 'source: web-node-modules' "$dev_rendered"
 grep -q 'source: admin-node-modules' "$dev_rendered"
 grep -q 'source: docs-node-modules' "$dev_rendered"
+grep -q 'source: plugin-ui-node-modules' "$dev_rendered"
 grep -q 'target: web-dev' "$dev_rendered"
 grep -q 'target: admin-dev' "$dev_rendered"
 grep -q 'target: docs-dev' "$dev_rendered"
+grep -q 'target: plugin-ui-dev' "$dev_rendered"
 grep -q 'CAMPUSOS_DEV_UID' "$dev_rendered"
 grep -q 'EMAIL_PROVIDER: fake' "$dev_rendered"
 grep -q 'EMAIL_SMTP_PORT: "587"' "$dev_rendered"
 grep -q 'EMAIL_PROVIDER: smtp' "$smtp_dev_rendered"
 grep -q 'EMAIL_SMTP_HOST: smtp.example.test' "$smtp_dev_rendered"
 grep -q 'EMAIL_SMTP_PASSWORD: compose-contract-secret' "$smtp_dev_rendered"
-test "$(grep -c 'host_ip: 0.0.0.0' "$lan_dev_rendered")" -eq 3
+test "$(grep -c 'host_ip: 0.0.0.0' "$lan_dev_rendered")" -eq 4
 grep -q 'host_ip: 127.0.0.1' "$lan_dev_rendered"
 grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.sh
 grep -q 'CAMPUSOS_DEV_ALLOW_LAN' scripts/docker-dev.ps1
@@ -176,6 +186,7 @@ grep -q -- '--internal' scripts/docker-component.ps1
 bash -n \
   deploy/docker/dev-api.sh \
   deploy/docker/dev-frontend.sh \
+  deploy/docker/dev-plugin-ui.sh \
   deploy/docker/entrypoint.sh \
   deploy/docker/restore-container.sh \
   scripts/docker-component.sh \

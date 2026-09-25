@@ -124,6 +124,23 @@ func (h *Handler) Preview(c *gin.Context) {
 	}
 	response.Success(c, item)
 }
+func (h *Handler) CreatePDFInvocation(c *gin.Context) {
+	owner, ok := documentOwner(c)
+	if !ok {
+		return
+	}
+	var req PDFInvocationRequest
+	if e := requestutil.BindJSONStrict(c, &req); e != nil {
+		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "presentation", "reason": "请选择弹窗、侧边栏、全屏或新标签页预览方式"})
+		return
+	}
+	invocation, e := h.service.CreatePDFInvocation(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(req.Presentation))
+	if e != nil {
+		writePDFPreviewError(c, e)
+		return
+	}
+	response.Created(c, invocation)
+}
 func (h *Handler) Save(c *gin.Context) {
 	owner, ok := documentOwner(c)
 	if !ok {
@@ -208,6 +225,27 @@ func (h *Handler) Download(c *gin.Context) {
 	c.Header("Content-Length", strconv.FormatInt(object.Object.SizeBytes, 10))
 	c.Status(http.StatusOK)
 	_, _ = io.Copy(c.Writer, object.Reader)
+}
+
+func writePDFPreviewError(c *gin.Context, err error) {
+	var previewErr *PDFPreviewError
+	if errors.As(err, &previewErr) {
+		status := previewErr.Status
+		if status == 0 {
+			status = http.StatusServiceUnavailable
+		}
+		code := previewErr.Code
+		if code == 0 {
+			code = 73001
+		}
+		response.Error(c, status, code, previewErr.Message)
+		return
+	}
+	if errors.Is(err, ErrPDFPreviewUnavailable) {
+		response.Error(c, http.StatusServiceUnavailable, 73001, "PDF 预览插件暂不可用，请稍后重试或下载后使用本地阅读器打开。")
+		return
+	}
+	response.WriteError(c, err)
 }
 func documentOwner(c *gin.Context) (string, bool) {
 	raw, ok := c.Get("user_id")

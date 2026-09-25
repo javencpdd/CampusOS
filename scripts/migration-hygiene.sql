@@ -116,7 +116,7 @@ INNER JOIN campusos_constraint_hygiene_catalog second_constraint
    AND second_constraint.definition = first_constraint.definition;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_hygiene', 'v0.13-index-v1',
+    'schema_hygiene', 'v1.0-clean-baseline-v1',
     'database', current_database(),
     'checked_at', now(),
     'issues', COALESCE(

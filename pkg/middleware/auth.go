@@ -44,6 +44,7 @@ func JWTAuth(jwtMgr *auth.JWTManager, verifiers ...AccessSessionVerifier) gin.Ha
 
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("nickname", displayName(claims))
 		c.Set("session_id", claims.SessionID)
 		c.Set("auth_version", claims.AuthVersion)
 		c.Next()
@@ -65,12 +66,26 @@ func OptionalJWT(jwtMgr *auth.JWTManager, verifiers ...AccessSessionVerifier) gi
 			if claims, err := verifyClaims(c, jwtMgr, verifier, tokenString); err == nil {
 				c.Set("user_id", claims.UserID)
 				c.Set("username", claims.Username)
+				c.Set("nickname", displayName(claims))
 				c.Set("session_id", claims.SessionID)
 				c.Set("auth_version", claims.AuthVersion)
 			}
 		}
 		c.Next()
 	}
+}
+
+// displayName keeps callers built against older access tokens working during
+// a rolling deployment. The verified SessionService overwrites Nickname with
+// the current identity value before this middleware exposes it.
+func displayName(claims *auth.JWTClaims) string {
+	if claims != nil && strings.TrimSpace(claims.Nickname) != "" {
+		return claims.Nickname
+	}
+	if claims != nil {
+		return claims.Username
+	}
+	return ""
 }
 
 func firstSessionVerifier(values []AccessSessionVerifier) AccessSessionVerifier {

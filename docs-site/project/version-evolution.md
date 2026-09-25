@@ -1,7 +1,7 @@
 # v0.1-v0.14 版本演进
 
-CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿景同时保留为当前承诺。当前发布基线是
-`v0.13.0`；v0.1-v0.12 均已退出执行状态，v0.13 也已经封版。项目所有者已确认 v0.14-dev 当前代码验证完成并完成开发收尾，但仍未通过 Final 发布门禁。
+CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿景同时保留为当前承诺。当前统一版本为
+`v1.1.0-dev`（`v1.1-dev` 主线），尚未宣布正式发布；v0.14-dev 已确认开发收尾。v1.0 的计划内 P0/P1 仓库实现已完成，当前处于发布候选证据收集阶段。
 
 ## 演进主线
 
@@ -20,7 +20,9 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 | v0.11 | 可靠命令与事件 | TxKernel、Outbox、lease/fencing、dead-letter、重放和 Webhook |
 | v0.12 | 可信账号和结构化社区 | 邮件验证/恢复、Session、管理员准入、两级板块、互助和二手 |
 | v0.13 | 可运营、双端和可移植交付 | 错误合同、指标、MFA、外观双端门禁、响应式、通知/批量治理和 Docker |
-| v0.14 | 学期治理与个人工作区基础 | AcademicTerm、对象账本、受管课表、私有文档版本、安全内容编辑核心与受限运营摘要；Final 保持未发布 |
+| v0.14 | 学期治理与个人工作区基础 | AcademicTerm、对象账本、受管课表、私有文档版本、安全内容编辑核心与受限运营摘要；项目所有者确认版本收尾 |
+| v1.0 | 插件生态与三层授权 | clean baseline、统一授权服务、Grant/Consent/Delegation/Secret UI、Host API v3、process runtime、SDK/CLI 与受管数据闭环已实现；目标环境发布证据待收集 |
+| v1.1 | 图文附件与自包含 PDF 插件 | 文章附件、认证 Range、`campusos.pdf-viewer` v4 独立发布包、隔离 UI/Bridge、三层授权与用户配置目录已有 v1.1-dev 实现；目标浏览器、恢复与性能证据待收集 |
 
 ## 如何阅读历史计划
 
@@ -37,7 +39,7 @@ CampusOS 的版本计划是架构决策和验收历史，不是把所有旧愿�
 
 - CampusOS 是模块化单体，不是单模块，也没有拆成大量微服务。
 - Core Module、Built-in Feature、External Plugin 和 Resource Package 使用不同生命周期和数据目录。
-- 当前数据库包含 49 个追加 migration；静态旧表清单不能替代 Admin 只读架构和数据库检查器。
+- 当前数据库使用单一 `000001_v1_1_schema_baseline`，包含 88 张业务表和 2 张 migration 系统表；它是测试数据可清空前提下把旧开发链收敛后的新起点，后续 migration 从 `000002` 起追加。静态旧表清单不能替代 Admin 只读架构和数据库检查器。
 - v0.14-dev 的 P0/P1 实现可在仓库 `docs/进度/v0.14-dev/v0.14.5-dev.md` 中追溯；当前逐项审查、可恢复对账、预览安全降级 receipt 和文档同步见 `v0.14.9-dev.md`，项目所有者验证后的开发收尾与命名统一见 `v0.14.11-dev.md`。真实历史数据 apply、Linux 目标环境和正式发布审查仍是 Final 门禁。
 - `runtime: grpc` 是历史兼容名称，当前进程扩展使用受限 loopback HTTP 合同，不是标准 protobuf gRPC。
 - 当前 MCP 能力是受控的 MCP-like 集成，不应描述为完整标准 MCP Server。

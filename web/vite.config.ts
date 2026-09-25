@@ -18,7 +18,10 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: apiProxyTarget,
-        changeOrigin: true,
+        // Keep the browser's Host header. The API uses it only to form the
+        // separate plugin-UI origin (same host, port 3003); rewriting it to
+        // Docker's internal `api:8080` leaks an unresolvable name to users.
+        changeOrigin: false,
       },
     },
   },

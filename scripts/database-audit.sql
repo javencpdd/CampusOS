@@ -35,7 +35,7 @@ INSERT INTO campusos_audit_results VALUES
 )),
 ('sessions.user_id orphan', 'orphan', (SELECT count(*) FROM sessions s LEFT JOIN users u ON u.id = s.user_id WHERE u.id IS NULL)),
 ('active session missing refresh digest', 'identity', (SELECT count(*) FROM sessions WHERE deleted_at IS NULL AND revoked_at IS NULL AND (refresh_token_digest IS NULL OR refresh_token_digest !~ '^[0-9a-f]{64}$'))),
-('session stores raw refresh token', 'identity', (SELECT count(*) FROM sessions WHERE refresh_token IS NOT NULL)),
+('invalid session ip hash', 'identity', (SELECT count(*) FROM sessions WHERE deleted_at IS NULL AND ip_hash <> '' AND ip_hash !~ '^[0-9a-f]{64}$')),
 ('session missing token family', 'identity', (SELECT count(*) FROM sessions WHERE deleted_at IS NULL AND (token_family_id IS NULL OR btrim(token_family_id) = ''))),
 ('active session expires before creation', 'identity', (SELECT count(*) FROM sessions WHERE deleted_at IS NULL AND expires_at <= created_at)),
 ('threads.author_id orphan', 'orphan', (SELECT count(*) FROM threads t LEFT JOIN users u ON u.id = t.author_id WHERE u.id IS NULL)),

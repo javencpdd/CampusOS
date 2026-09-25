@@ -53,3 +53,14 @@ RUN --mount=type=cache,id=campusos-docs-pnpm,target=/pnpm/store \
     pnpm config set store-dir /pnpm/store \
     && pnpm install --frozen-lockfile \
     && sha256sum pnpm-lock.yaml | cut -d' ' -f1 >.campusos-lock-sha
+
+FROM frontend-dev AS plugin-ui-dev
+WORKDIR /opt/campusos-deps/plugins/campusos.pdf-viewer/frontend
+COPY plugins/campusos.pdf-viewer/frontend/package.json plugins/campusos.pdf-viewer/frontend/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=campusos-plugin-ui-pnpm,target=/pnpm/store \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm install --frozen-lockfile \
+    && sha256sum pnpm-lock.yaml | cut -d' ' -f1 >.campusos-lock-sha
+COPY deploy/docker/dev-plugin-ui.sh /usr/local/bin/campusos-dev-plugin-ui
+COPY deploy/docker/plugin-ui-server.mjs /usr/local/bin/campusos-plugin-ui-server.mjs
+RUN chmod 0755 /usr/local/bin/campusos-dev-plugin-ui

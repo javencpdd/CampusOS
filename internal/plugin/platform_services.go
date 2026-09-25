@@ -11,6 +11,7 @@ type CapabilityClass string
 
 const (
 	ExternalPlugin CapabilityClass = "external-plugin"
+	BuiltinPlugin  CapabilityClass = "builtin-plugin"
 )
 
 // OperationTracker is a narrow platform callback for file-backed plugin
@@ -81,10 +82,20 @@ func clonePlugin(item *Plugin) *Plugin {
 	return &copyPlugin
 }
 func (c *PluginCatalog) Classify(manifest *Manifest) CapabilityClass {
+	if manifest != nil && manifest.Runtime == "builtin" && manifest.Scope == ScopeSystem && manifest.Type == PluginTypeBuiltin {
+		return BuiltinPlugin
+	}
 	return ExternalPlugin
 }
 func (c *PluginCatalog) ListExternal() []*Plugin {
-	return c.List()
+	all := c.List()
+	result := make([]*Plugin, 0, len(all))
+	for _, item := range all {
+		if item != nil && c.Classify(item.Manifest) == ExternalPlugin {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 type RuntimeRegistry struct {
@@ -206,6 +217,11 @@ type EventRegistry struct {
 	runtimes      *RuntimeRegistry
 	audit         *AuditLogService
 	lifecycle     *LifecycleService
+	authorization *AuthorizationService
+}
+
+func (r *EventRegistry) SetAuthorizationService(service *AuthorizationService) {
+	r.authorization = service
 }
 
 func NewEventRegistry(catalog *PluginCatalog, runtimes *RuntimeRegistry, audit *AuditLogService, lifecycle *LifecycleService) *EventRegistry {

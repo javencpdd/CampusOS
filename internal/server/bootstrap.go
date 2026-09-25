@@ -41,15 +41,17 @@ import (
 )
 
 type infrastructureBootstrap struct {
-	runtime     *platformruntime.Runtime
-	modules     *platformmodule.Registry
-	bus         eventbus.EventBus
-	memoryBus   *eventbus.MemoryEventBus
-	cache       cache.Cache
-	metrics     *observability.Collector
-	database    *pgxpool.Pool
-	databaseErr error
-	pluginRepo  plugin.PluginRepository
+	runtime                  *platformruntime.Runtime
+	modules                  *platformmodule.Registry
+	bus                      eventbus.EventBus
+	memoryBus                *eventbus.MemoryEventBus
+	cache                    cache.Cache
+	metrics                  *observability.Collector
+	database                 *pgxpool.Pool
+	databaseErr              error
+	pluginRepo               plugin.PluginRepository
+	pluginAuthorizationStore plugin.AuthorizationStore
+	pluginSecretStore        plugin.SecretStore
 }
 
 func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
@@ -97,14 +99,18 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	}
 	pluginRepo := plugin.PluginRepository(plugin.NewMemoryPluginRepository())
 	marketStore := plugin.MarketStore(plugin.NewMemoryMarketStore())
+	authorizationStore := plugin.AuthorizationStore(plugin.NewMemoryAuthorizationStore())
+	secretStore := plugin.SecretStore(plugin.NewMemorySecretStore())
 	if pool != nil {
 		pluginRepo = plugin.NewPgPluginRepository(pool)
 		marketStore = plugin.NewPgMarketStore(pool)
+		authorizationStore = plugin.NewPgAuthorizationStore(pool)
+		secretStore = authorizationStore.(plugin.SecretStore)
 	}
 	events := newEventBusModule(s.cfg)
 	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
-	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore)
+	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore)
 	identityModule := identitycore.NewModule(identitycore.Config{
 		JWT:                   s.newJWTManager(),
 		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,
@@ -147,12 +153,47 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-space") },
 	})
+	var personalDocumentsModule *personaldocuments.Module
+	personalDocumentReader := personalDocumentPDFReader{service: func() *personaldocuments.Service {
+		if personalDocumentsModule == nil {
+			return nil
+		}
+		return personalDocumentsModule.Service()
+	}}
 	richtextModule := richtext.NewModule(richtext.ModuleConfig{
 		AssetStoreConfig: func() richtext.AssetStoreConfig {
 			return richtext.AssetStoreConfigFromPluginConfig(features.Registry().Config("controlled-richtext-article"), features.Registry().Config("personal-space"))
 		},
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
+		},
+		PDFViewerEnabled: func() bool {
+			// PDF preview is now solely the self-contained v4 external release.
+			// Do not retain a feature.pdf-viewer compatibility switch here: it
+			// would both expose a duplicate built-in entry and disable the real
+			// plugin after the descriptor is removed.
+			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerV4PluginName)
+			return found && installed != nil && installed.Status == plugin.StatusRunning && installed.DesiredEnabled
+		},
+		PDFViewerAuthorizer: func(ctx context.Context, input richtext.PDFViewerAuthorizationInput) error {
+			if plugins.authorization == nil || !plugins.authorization.Available() {
+				return &richtext.PDFViewerAuthorizationError{Reason: "unavailable", Message: "PDF 预览插件授权服务暂不可用，请确认数据库迁移完成后重试。"}
+			}
+			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: input.PluginKey, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
+			if !result.Allow {
+				return &richtext.PDFViewerAuthorizationError{Reason: string(result.ReasonCode), Message: result.Message}
+			}
+			return nil
+		},
+		PersonalDocumentPDFReader:        personalDocumentReader,
+		PersonalDocumentAttachmentReader: personalDocumentReader,
+		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
+			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
+				if identityModule.Permissions() == nil {
+					return false, nil
+				}
+				return identityModule.Permissions().Check(ctx, user, resource, action)
+			})
 		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{
@@ -161,9 +202,19 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		},
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled("personal-schedule") },
 	})
-	personalDocumentsModule := personaldocuments.NewModule(personaldocuments.ModuleConfig{
+	personalDocumentsModule = personaldocuments.NewModule(personaldocuments.ModuleConfig{
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled(personaldocuments.FeatureID)
+		},
+		PDFPreviewInvoker: func(ctx context.Context, owner, documentID, presentation string) (personaldocuments.PDFPreviewInvocation, error) {
+			if richtextModule.Service() == nil {
+				return personaldocuments.PDFPreviewInvocation{}, personalDocumentPDFPreviewUnavailable()
+			}
+			invocation, err := richtextModule.Service().CreatePersonalDocumentPDFInvocation(ctx, owner, documentID, presentation)
+			if err != nil {
+				return personaldocuments.PDFPreviewInvocation{}, mapPersonalDocumentPDFPreviewError(err)
+			}
+			return personaldocuments.PDFPreviewInvocation{ID: invocation.ID}, nil
 		},
 	})
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
@@ -350,7 +401,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.appContext = appRuntime.AppContext()
 	s.modules = appRuntime.Registry()
 	s.bus = events.EventBus()
-	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo}, nil
+	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
 }
 func (b *infrastructureBootstrap) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -164,6 +164,120 @@ runtime: wasm
 	}
 }
 
+func TestQuarantinePersistsVisibleIntegrityFailure(t *testing.T) {
+	dir := writePluginManifest(t, `name: integrity-conflict
+version: 0.1.0
+runtime: wasm
+`)
+	manager := NewManager()
+	repo := NewMemoryPluginRepository()
+	manager.SetPluginRepository(repo)
+	manager.RegisterRuntime("wasm", newFakeRuntime())
+	installed, err := manager.Install(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Quarantine("integrity-conflict", "same version digest changed"); err != nil {
+		t.Fatal(err)
+	}
+	if installed.Status != StatusError || installed.BackendState != BackendError || installed.Health != HealthUnavailable {
+		t.Fatalf("unexpected quarantine state: %+v", installed)
+	}
+	if installed.DesiredEnabled || installed.ErrorMsg == "" {
+		t.Fatalf("quarantine must disable startup and expose recovery reason: %+v", installed)
+	}
+	record, err := repo.GetByName(context.Background(), "integrity-conflict")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Status != string(StatusError) || record.ErrorMsg == "" {
+		t.Fatalf("quarantine was not persisted: %+v", record)
+	}
+}
+
+func TestImmutableReleaseUpgradeRecoversOnlyAutomaticQuarantine(t *testing.T) {
+	record := &PluginRecord{
+		Version:  "2.0.0-dev.1",
+		Status:   string(StatusError),
+		ErrorMsg: immutableReleaseUpgradeQuarantineReason,
+	}
+
+	v4Release := &Plugin{
+		IsolatedUI: true,
+		Manifest:   &Manifest{Name: "campusos.pdf-viewer", Version: "2.0.0-dev.2", Runtime: "none"},
+	}
+	if !shouldRecoverImmutableReleaseUpgrade(record, v4Release) {
+		t.Fatal("expected a version-bumped isolated UI release to recover the automatic quarantine")
+	}
+
+	sameVersion := clonePlugin(v4Release)
+	sameVersionManifest := *v4Release.Manifest
+	sameVersionManifest.Version = record.Version
+	sameVersion.Manifest = &sameVersionManifest
+	if shouldRecoverImmutableReleaseUpgrade(record, sameVersion) {
+		t.Fatal("same-version declaration changes must remain quarantined")
+	}
+
+	normalImportedPlugin := clonePlugin(v4Release)
+	normalImportedPlugin.IsolatedUI = false
+	if shouldRecoverImmutableReleaseUpgrade(record, normalImportedPlugin) {
+		t.Fatal("imported non-builtin plugins must not auto-recover from persisted quarantine")
+	}
+
+	differentFailure := *record
+	differentFailure.ErrorMsg = "administrator stopped this plugin"
+	if shouldRecoverImmutableReleaseUpgrade(&differentFailure, v4Release) {
+		t.Fatal("only the specific automatic integrity quarantine may be recovered")
+	}
+}
+
+func TestSyncPluginRecordPreservesV4ReleaseDigestAcrossVersionUpgrade(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMemoryPluginRepository()
+	if err := repo.Save(ctx, &PluginRecord{
+		Name:        "campusos.pdf-viewer",
+		Version:     "2.0.0-dev.1",
+		Status:      string(StatusError),
+		ErrorMsg:    immutableReleaseUpgradeQuarantineReason,
+		Checksum:    "old-release-digest",
+		Runtime:     "none",
+		InstalledBy: "system",
+	}); err != nil {
+		t.Fatalf("seed persisted v4 release: %v", err)
+	}
+
+	manager := NewManager()
+	manager.SetPluginRepository(repo)
+	release := &Plugin{
+		ID:             "campusos.pdf-viewer",
+		Manifest:       &Manifest{Name: "campusos.pdf-viewer", Version: "2.0.0-dev.2", Runtime: "none"},
+		Status:         StatusInstalled,
+		BackendState:   BackendInstalled,
+		FrontendState:  FrontendLoaded,
+		Health:         HealthUnknown,
+		DesiredEnabled: true,
+		InstalledBy:    "system",
+		Checksum:       "new-release-digest",
+		IsolatedUI:     true,
+	}
+	if err := manager.packages.syncPluginRecord(ctx, release); err != nil {
+		t.Fatalf("sync v4 release: %v", err)
+	}
+	if release.Checksum != "new-release-digest" {
+		t.Fatalf("v4 release digest was overwritten by old persisted digest: %q", release.Checksum)
+	}
+	if release.Status != StatusInstalled || !release.DesiredEnabled || release.ErrorMsg != "" {
+		t.Fatalf("v4 release did not recover the automatic upgrade quarantine: %+v", release)
+	}
+	persisted, err := repo.GetByName(ctx, release.ID)
+	if err != nil {
+		t.Fatalf("read synced v4 release: %v", err)
+	}
+	if persisted.Version != "2.0.0-dev.2" || persisted.Checksum != "new-release-digest" {
+		t.Fatalf("unexpected persisted v4 release identity: %+v", persisted)
+	}
+}
+
 func TestManagerPersistsLifecycleStatus(t *testing.T) {
 	dir := writePluginManifest(t, `
 name: persisted-lifecycle

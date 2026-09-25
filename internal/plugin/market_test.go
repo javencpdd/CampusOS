@@ -2,8 +2,14 @@ package plugin
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +52,176 @@ func TestMarketServiceScopesRecordsAndRequiresGrant(t *testing.T) {
 	}
 	if err := service.DeleteUserRecord(ctx, manifest.Name, "user-a", "notes", "first", 1); !errors.Is(err, ErrMarketVersionMismatch) {
 		t.Fatalf("stale delete = %v, want version mismatch", err)
+	}
+}
+
+func TestMarketServiceSyncCatalogRemovesRetiredPluginProjection(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := NewMemoryMarketStore()
+	if _, err := store.UpsertCatalog(context.Background(), CatalogEntry{
+		PluginName: "builtin.pdf-viewer", DisplayName: "PDF 文档预览", Version: "1.1.3-dev", Runtime: "builtin", Visibility: CatalogPublished,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(store, storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest}}); err != nil {
+		t.Fatal(err)
+	}
+	items, err := store.ListCatalog(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].PluginName != manifest.Name {
+		t.Fatalf("catalog after sync = %#v, want only active %q", items, manifest.Name)
+	}
+}
+
+func TestMarketServicePublishesSystemManagedExternalRelease(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest, IsolatedUI: true, InstalledBy: "system"}}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := service.Catalog(context.Background(), true)
+	if err != nil || len(entries) != 1 || entries[0].PluginName != manifest.Name {
+		t.Fatalf("system external release must be in user catalog: %#v, %v", entries, err)
+	}
+	if _, err := service.SetCatalogVisibility(context.Background(), manifest.Name, CatalogHidden, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest, IsolatedUI: true, InstalledBy: "system"}}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = service.Catalog(context.Background(), true)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("explicit hidden state must remain hidden: %#v, %v", entries, err)
+	}
+}
+
+type marketplaceClientStub struct {
+	items []MarketplaceListing
+	err   error
+}
+
+func (s marketplaceClientStub) Search(context.Context, MarketplaceSource, string) ([]MarketplaceListing, error) {
+	return append([]MarketplaceListing(nil), s.items...), s.err
+}
+
+func trustedMarketplaceSource() MarketplaceSource {
+	return MarketplaceSource{
+		ID: "campus-official-market", DisplayName: "CampusOS 官方市场", CatalogURL: "https://market.example/catalog",
+		PublicKey: base64.StdEncoding.EncodeToString(make([]byte, 32)), Status: MarketplaceSourceEnabled,
+	}
+}
+
+func TestMarketServiceRequestsOnlyVerifiedAllowlistedMarketplaceListing(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	source := trustedMarketplaceSource()
+	if _, err := service.SaveMarketplaceSource(context.Background(), source, "1"); err != nil {
+		t.Fatal(err)
+	}
+	service.SetMarketplaceCatalogClient(marketplaceClientStub{items: []MarketplaceListing{{
+		PluginID: "calendar-assistant", DisplayName: "日程助手", Description: "校园日程", Version: "1.2.0", Publisher: "CampusOS",
+		ListingURL: "https://market.example/plugins/calendar-assistant", PackageURL: "https://market.example/packages/calendar-assistant.cosp",
+	}}})
+	request, err := service.RequestMarketplaceInstall(context.Background(), source.ID, "calendar-assistant", "10001", "需要日程能力")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.MarketSourceID != source.ID || request.MarketPluginID != "calendar-assistant" || request.MarketPackageURL != "https://market.example/packages/calendar-assistant.cosp" {
+		t.Fatalf("market request must persist the trusted source snapshot: %#v", request)
+	}
+	if _, err := service.RequestMarketplaceInstall(context.Background(), "unknown-market", "calendar-assistant", "10001", ""); !errors.Is(err, ErrMarketNotFound) {
+		t.Fatalf("unknown marketplace request = %v, want not found", err)
+	}
+	source.Status = MarketplaceSourceDisabled
+	if _, err := service.SaveMarketplaceSource(context.Background(), source, "1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.RequestMarketplaceInstall(context.Background(), source.ID, "calendar-assistant", "10002", ""); !errors.Is(err, ErrMarketDenied) {
+		t.Fatalf("disabled marketplace request = %v, want denied", err)
+	}
+}
+
+func TestMarketServiceRejectsMarketplaceListingOutsidePinnedHost(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	source := trustedMarketplaceSource()
+	if _, err := service.SaveMarketplaceSource(context.Background(), source, "1"); err != nil {
+		t.Fatal(err)
+	}
+	service.SetMarketplaceCatalogClient(marketplaceClientStub{items: []MarketplaceListing{{
+		PluginID: "calendar-assistant", DisplayName: "日程助手", Version: "1.2.0",
+		ListingURL: "https://market.example/plugins/calendar-assistant", PackageURL: "https://untrusted.example/package.cosp",
+	}}})
+	if _, err := service.SearchMarketplace(context.Background(), source.ID, "calendar", "10001"); !errors.Is(err, ErrMarketInvalidInput) {
+		t.Fatalf("cross-market listing = %v, want invalid input", err)
+	}
+}
+
+func TestHTTPSMarketplaceCatalogClientVerifiesSignatureAndPinnedHost(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseURL := ""
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/catalog" || request.URL.Query().Get("q") != "calendar" {
+			http.Error(w, "unexpected request", http.StatusBadRequest)
+			return
+		}
+		payload, marshalErr := json.Marshal(map[string]any{
+			"api_version": marketplaceCatalogVersion,
+			"source_id":   "campus-official-market",
+			"items": []MarketplaceListing{{
+				PluginID: "calendar-assistant", DisplayName: "日程助手", Description: "校园日程", Version: "1.2.0",
+				ListingURL: baseURL + "/plugins/calendar-assistant", PackageURL: baseURL + "/packages/calendar-assistant.cosp",
+			}},
+		})
+		if marshalErr != nil {
+			http.Error(w, marshalErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("X-CampusOS-Market-Signature", base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, payload)))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+	baseURL = server.URL
+	source := MarketplaceSource{
+		ID: "campus-official-market", DisplayName: "CampusOS 官方市场", CatalogURL: server.URL + "/catalog",
+		PublicKey: base64.StdEncoding.EncodeToString(publicKey), Status: MarketplaceSourceEnabled,
+	}
+	client := NewHTTPSMarketplaceCatalogClient().(*httpsMarketplaceCatalogClient)
+	client.client = server.Client()
+	items, err := client.Search(context.Background(), source, "calendar")
+	if err != nil || len(items) != 1 || items[0].PluginID != "calendar-assistant" {
+		t.Fatalf("signed market search = %#v, %v", items, err)
 	}
 }
 
@@ -187,6 +363,27 @@ func TestMarketServiceRequiresPublishedCatalogForNewConsent(t *testing.T) {
 	}
 	if _, err := service.Grant(context.Background(), manifest.Name, "user-a", nil); !errors.Is(err, ErrMarketDenied) {
 		t.Fatalf("draft catalog grant = %v, want denied", err)
+	}
+}
+
+func TestMarketCatalogDoesNotTrustAnExternalPackage(t *testing.T) {
+	manifest := mustV2MarketManifest(t)
+	storage, err := corestorage.NewLocalAdapter(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewMarketService(NewMemoryMarketStore(), storage, func(name string) (*Manifest, bool) {
+		return manifest, name == manifest.Name
+	})
+	if err := service.SyncCatalog(context.Background(), []*Plugin{{Manifest: manifest}}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := service.Catalog(context.Background(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].PluginName != manifest.Name || entries[0].TrustedBuiltin {
+		t.Fatalf("external package must not be marked as a trusted builtin: %#v", entries)
 	}
 }
 

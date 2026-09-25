@@ -1,6 +1,6 @@
 # 开发者学习路线
 
-> 适用版本：`v0.13.0`  
+> 更新时间：2026-09-25；当前统一版本 `v1.1.0-dev`，插件开发主线 `v1.1-dev`；尚未宣布正式发布
 > 目标：从第一次启动到完成一份可提交的改动
 
 这是一条按阶段组织的路线，不要求一次读完全部文档。每阶段都有完成标志；达到后再进入下一步。
@@ -74,8 +74,8 @@ STOP_EXISTING=true make dev-all
 | --- | --- |
 | 平台完整性和安全边界 | `internal/modules/core/` |
 | 编译期可启停功能 | `internal/modules/features/` |
-| 可独立安装的扩展 | `data/plugins/<id>/` |
-| 插件运行数据 | `data/plugin_data/<id>/` |
+| 可独立安装的扩展 | `plugins/<key>/` 与 `plugins/.installed/` |
+| 用户级插件配置 | `data/personal-space/<user-id>/plugins/<key>/` |
 | 主题、风格和 Agent 资源 | `data/resources/<type>/<id>/` |
 | 用户文件和课表 | `data/personal-space/<user-id>/` |
 
@@ -121,7 +121,7 @@ Web/Admin/Docs 改动还要运行各自的组件测试、lint 或 build。具体
 
 | 方向 | 阅读顺序 |
 | --- | --- |
-| External Plugin | [插件体系](/plugins/overview) → [课表插件教程](/plugins/schedule-plugin-tutorial) → [Manifest](/plugins/manifest) → [Host API](/plugins/host-api) |
+| External Plugin | [插件体系](/plugins/overview) → [PDF Viewer 教程](/plugins/pdf-viewer-tutorial) → [Manifest](/plugins/manifest) → [隔离 UI 与 Bridge](/plugins/frontend-runtime) |
 | 权限和版主 | [权限配置](/guide/permission-configuration) → [版主管理 API](/api/moderation) |
 | API 客户端 | [接口约定](/api/overview) → [认证与社区](/api/community) → [当前契约](/api/contracts) |
 | 风格包 | [风格包与沙箱 SDK](/plugins/style-packs) → [版本兼容](/plugins/compatibility) |
