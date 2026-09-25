@@ -1,6 +1,8 @@
 # 插件前端运行时与 Extension Gateway
 
-> 适用基线：v1.1 External Plugin UI Runtime（`campusos.ui/v1` 兼容、`campusos.ui/v2` 当前扩展）
+> 适用基线：v1.1；本文的声明式 `campusos.ui/v1/v2`、Action Gateway 为旧包兼容路径。
+> 新 v4 插件使用 `campusos.plugin/v4`、`campusos.ui/v3`、隔离 iframe 和 Host Bridge，
+> 先读[当前 Manifest](../../../docs-site/plugins/manifest.md)及[PDF Viewer 示例](../../../docs-site/plugins/pdf-viewer-tutorial.md)。
 
 ## 1. 一句话理解
 
@@ -75,7 +77,7 @@ Action。插件只能给出已经声明的 `surface_id` 和允许的 Presentatio
 Session Token；宿主负责最终展示和所有读取授权。可直接参考
 [Plugin UI v2 开发与验收](Plugin%20UI%20v2开发与验收.md) 与 `examples/plugins/v2-managed-example`。
 
-复杂编辑器、地图和图表可以声明 `renderer: trusted-module`，但 `module_id` 必须存在于 Core 编译期白名单。当前没有远程 Vue 模块加载，也不允许插件读取全局 Router、Store、JWT 或其他插件 DOM。
+旧版复杂组件的 `renderer: trusted-module` 只接受 Core 编译期白名单；v4 不通过此入口加载代码，而使用独立来源的隔离 UI。插件仍不得读取全局 Router、Store、JWT 或其他插件 DOM。
 
 ## 4. Gateway 与可信上下文
 
