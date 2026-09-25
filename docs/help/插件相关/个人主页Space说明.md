@@ -1,7 +1,7 @@
 # CampusOS 个人主页 Space 说明
 
 > 文档状态：Personal Space 专项参考，不是新开发者必读入口。
-> 当前基线：`v0.13.0`；接口最终以 OpenAPI 和路由矩阵为准。
+> 当前代码基线：`v1.1.0-dev`；接口以 `internal/transport/httpapi/router.go` 和生成合同为准。
 > 更新时间：2026-08-02
 
 ## 1. 功能定位
@@ -323,15 +323,10 @@ data/resources/space-style-packs/<name>/
 
 ## 3. 数据表
 
-迁移文件：
+当前空库由以下迁移创建相关表；旧 v0.x 的 `000007`、`000009`、`000042` 文件已不在可执行链中：
 
 ```text
-migrations/000007_add_user_spaces.up.sql
-migrations/000007_add_user_spaces.down.sql
-migrations/000009_add_user_space_styles.up.sql
-migrations/000009_add_user_space_styles.down.sql
-migrations/000042_v13_user_storage_quotas.up.sql
-migrations/000042_v13_user_storage_quotas.down.sql
+migrations/000001_v1_1_schema_baseline.up.sql
 ```
 
 核心表：

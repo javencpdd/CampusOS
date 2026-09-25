@@ -1,8 +1,9 @@
 # CampusOS 插件配置 Schema 说明
 
 > 初始日期：2026-07-07
-> 当前基线：`v0.13.0`；本文只说明仍兼容的 `config_schema`。新插件还应遵守 Manifest v2、
-> Host API v2 和当前插件教程。
+> 当前基线：`v1.1.0-dev`；本文仅适用于 Manifest v1-v3 的 `config_schema` 兼容路径。
+> 新 v4 插件使用 `configuration.system` / `configuration.user` 引用包内 JSON Schema 和 defaults，
+> 不复制下文 `config_schema.fields`；见[当前 v4 Manifest](../../../docs-site/plugins/manifest.md)。
 
 ## 1. 设计目标
 
