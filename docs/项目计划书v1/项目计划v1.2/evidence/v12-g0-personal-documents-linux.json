@@ -1,0 +1,345 @@
+{
+  "schema": "campusos.v12-g0-personal-documents/v1",
+  "generated_at": "2026-09-26T05:40:17.009649+00:00",
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "database": "postgres:16-alpine",
+    "database_mount": "tmpfs",
+    "api_bind": "loopback",
+    "object_storage": "isolated_temporary_directory"
+  },
+  "migration_count": 3,
+  "fixture": {
+    "owner_users": 2,
+    "threads": 7,
+    "public": 2,
+    "private": 2,
+    "moderated": 2,
+    "trashed": 1,
+    "stale_legacy_status": 2,
+    "personal_documents": 2,
+    "document_format": "text",
+    "document_bytes": 62
+  },
+  "scope": "private_txt_owner_download_trash_restore",
+  "public_visibility_checks": {
+    "public_list": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "override_attempt": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "public_detail": {
+      "http_status": 200
+    },
+    "private_detail": {
+      "http_status": 404
+    },
+    "taken_down_detail": {
+      "http_status": 404
+    },
+    "trashed_detail": {
+      "http_status": 404
+    },
+    "stale_private_detail": {
+      "http_status": 404
+    },
+    "stale_moderated_detail": {
+      "http_status": 404
+    }
+  },
+  "checks": {
+    "login_a": {
+      "http_status": 200
+    },
+    "create_a": {
+      "http_status": 201
+    },
+    "login_b": {
+      "http_status": 200
+    },
+    "create_b": {
+      "http_status": 201
+    },
+    "admin_login": {
+      "http_status": 200
+    },
+    "anonymous_list": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "admin_own_list": {
+      "http_status": 200
+    },
+    "list_a": {
+      "http_status": 200
+    },
+    "metadata_a": {
+      "http_status": 200
+    },
+    "content_a": {
+      "http_status": 200
+    },
+    "download_a": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "bd10f0234d0033b58790ce9ab9756ca6bdeb327739bb5b46412a286d13c65e85",
+      "private_download_headers": "passed"
+    },
+    "versions_a": {
+      "http_status": 200
+    },
+    "cross_owner_metadata_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_metadata_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_metadata_a": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_content_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_content_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_content_a": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_download_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_download_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_download_a": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_versions_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_versions_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_versions_a": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_version_download_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "foreign_version_on_own_document_a": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "list_b": {
+      "http_status": 200
+    },
+    "metadata_b": {
+      "http_status": 200
+    },
+    "content_b": {
+      "http_status": 200
+    },
+    "download_b": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "d9074e72a3b6b9619796f85c866a7a615b0c1fea3e9673d116a816b7e0642cea",
+      "private_download_headers": "passed"
+    },
+    "versions_b": {
+      "http_status": 200
+    },
+    "cross_owner_metadata_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_metadata_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_metadata_b": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_content_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_content_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_content_b": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_download_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_download_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_download_b": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_versions_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_versions_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "anonymous_versions_b": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "cross_owner_version_download_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "foreign_version_on_own_document_b": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "forged_owner_create": {
+      "http_status": 400,
+      "error_code": "personal_document.invalid"
+    },
+    "cross_owner_trash": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "cross_owner_restore": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_trash": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_restore": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "owner_trash": {
+      "http_status": 200
+    },
+    "active_list_after_trash": {
+      "http_status": 200
+    },
+    "trash_list": {
+      "http_status": 200
+    },
+    "owner_trash_download": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "bd10f0234d0033b58790ce9ab9756ca6bdeb327739bb5b46412a286d13c65e85",
+      "private_download_headers": "passed"
+    },
+    "cross_owner_trash_download": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "admin_trash_download": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "stale_restore": {
+      "http_status": 409,
+      "error_code": "personal_document.version_conflict"
+    },
+    "after_rejected_restore": {
+      "http_status": 200
+    },
+    "owner_restore": {
+      "http_status": 200
+    },
+    "restored_download": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "bd10f0234d0033b58790ce9ab9756ca6bdeb327739bb5b46412a286d13c65e85",
+      "private_download_headers": "passed"
+    },
+    "cross_owner_restored_download": {
+      "http_status": 404,
+      "error_code": "personal_document.not_found"
+    },
+    "empty_trash_after_restore": {
+      "http_status": 200
+    },
+    "other_owner_unaffected": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "d9074e72a3b6b9619796f85c866a7a615b0c1fea3e9673d116a816b7e0642cea",
+      "private_download_headers": "passed"
+    },
+    "concurrent_trash": {
+      "http_statuses": [
+        200,
+        409
+      ],
+      "committed": 1
+    },
+    "concurrent_trash_state": {
+      "http_status": 200
+    },
+    "restore_after_concurrent_trash": {
+      "http_status": 200
+    },
+    "final_download": {
+      "http_status": 200,
+      "bytes": 31,
+      "sha256": "bd10f0234d0033b58790ce9ab9756ca6bdeb327739bb5b46412a286d13c65e85",
+      "private_download_headers": "passed"
+    },
+    "final_active_list": {
+      "http_status": 200
+    }
+  },
+  "document_revisions": {
+    "initial": 1,
+    "trashed": 2,
+    "restored": 3,
+    "after_concurrent_trash": 4,
+    "final": 5,
+    "content_version_unchanged": true
+  },
+  "filesystem_checks": {
+    "owner_directories": 2,
+    "objects": 2,
+    "bytes_match": true
+  },
+  "database_checks": {
+    "documents": 2,
+    "owners": 2,
+    "active_documents": 2,
+    "versions": 2,
+    "objects": 2,
+    "valid_current_object_refs": 2,
+    "object_bytes": 62,
+    "balanced_owner_ledgers": 2
+  }
+}

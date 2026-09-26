@@ -43,6 +43,21 @@ api_pid=""
 container_started=false
 
 cleanup() {
+  local drill_exit_code=$?
+  if (( drill_exit_code != 0 )) && [[ -f "$work_dir/api.log" ]]; then
+    # Keep failure diagnostics useful without printing SQL, payloads or secrets.
+    python3 - "$work_dir/api.log" <<'PYERROR'
+import re
+import sys
+from pathlib import Path
+for line in Path(sys.argv[1]).read_text(errors='replace').splitlines():
+    if '[ERROR]' not in line:
+        continue
+    code = re.search(r'\(SQLSTATE ([0-9A-Z]{5})\)', line)
+    if code:
+        print('isolated API PostgreSQL error: SQLSTATE ' + code.group(1), file=sys.stderr)
+PYERROR
+  fi
   if [[ -n "$api_pid" ]]; then
     kill "$api_pid" 2>/dev/null || true
     wait "$api_pid" 2>/dev/null || true
