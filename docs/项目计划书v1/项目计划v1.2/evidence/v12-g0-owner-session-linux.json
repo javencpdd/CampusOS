@@ -1,0 +1,174 @@
+{
+  "schema": "campusos.v12-g0-owner-session/v1",
+  "generated_at": "2026-09-26T04:52:25.777816+00:00",
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "database": "postgres:16-alpine",
+    "database_mount": "tmpfs",
+    "api_bind": "loopback"
+  },
+  "migration_count": 3,
+  "fixture": {
+    "owner_users": 2,
+    "threads": 7,
+    "public": 2,
+    "private": 2,
+    "moderated": 2,
+    "trashed": 1,
+    "stale_legacy_status": 2,
+    "authenticated_owners": 2,
+    "credential_source": "disposable_verified_accounts_bcrypt"
+  },
+  "public_visibility_checks": {
+    "public_list": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "override_attempt": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "public_detail": {
+      "http_status": 200
+    },
+    "private_detail": {
+      "http_status": 404
+    },
+    "taken_down_detail": {
+      "http_status": 404
+    },
+    "trashed_detail": {
+      "http_status": 404
+    },
+    "stale_private_detail": {
+      "http_status": 404
+    },
+    "stale_moderated_detail": {
+      "http_status": 404
+    }
+  },
+  "checks": {
+    "wrong_password": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "login_a": {
+      "http_status": 200,
+      "user_id": "2001",
+      "cookie_contract": "passed"
+    },
+    "me_a": {
+      "http_status": 200
+    },
+    "login_b": {
+      "http_status": 200,
+      "user_id": "2002",
+      "cookie_contract": "passed"
+    },
+    "me_b": {
+      "http_status": 200
+    },
+    "anonymous_private": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "owner_private": {
+      "http_status": 200
+    },
+    "cross_owner_private": {
+      "http_status": 404,
+      "error_code": "thread.not_found"
+    },
+    "anonymous_taken_down": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "owner_taken_down": {
+      "http_status": 200
+    },
+    "cross_owner_taken_down": {
+      "http_status": 404,
+      "error_code": "thread.not_found"
+    },
+    "anonymous_trashed": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "owner_trashed": {
+      "http_status": 200
+    },
+    "cross_owner_trashed": {
+      "http_status": 404,
+      "error_code": "thread.not_found"
+    },
+    "anonymous_stale_private": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "owner_stale_private": {
+      "http_status": 200
+    },
+    "cross_owner_stale_private": {
+      "http_status": 404,
+      "error_code": "thread.not_found"
+    },
+    "anonymous_stale_moderated": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "owner_stale_moderated": {
+      "http_status": 200
+    },
+    "cross_owner_stale_moderated": {
+      "http_status": 404,
+      "error_code": "thread.not_found"
+    },
+    "cross_owner_public": {
+      "http_status": 200
+    },
+    "logout_without_csrf": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "owner_a_after_rejected_logout": {
+      "http_status": 200
+    },
+    "logout_a": {
+      "http_status": 200,
+      "cookies_cleared": true
+    },
+    "revoked_access_me": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "revoked_access_private": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "revoked_refresh": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "owner_b_after_a_logout": {
+      "http_status": 200
+    },
+    "refresh_b_without_csrf": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "refresh_b": {
+      "http_status": 200
+    },
+    "owner_b_after_refresh": {
+      "http_status": 200
+    },
+    "rotated_access_b": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    }
+  },
+  "scope": "two_user_login_owner_visibility_logout_refresh"
+}

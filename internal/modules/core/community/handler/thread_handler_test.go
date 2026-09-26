@@ -2,12 +2,14 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -65,5 +67,37 @@ func TestCreateThreadUsesJWTContext(t *testing.T) {
 	}
 	if payload.Data.AuthorName != "Alice" {
 		t.Fatalf("expected author_name to use nickname, got %q", payload.Data.AuthorName)
+	}
+}
+
+// The public route must supply the canonical visibility facts even when a
+// caller tries to choose a different publication or moderation state.
+type publicListFilterRecorder struct {
+	repository.ThreadRepository
+	filter domain.ThreadListFilter
+}
+
+func (r *publicListFilterRecorder) List(_ context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	r.filter = filter
+	return []*domain.Thread{}, 0, nil
+}
+
+func TestPublicThreadListForcesCanonicalVisibility(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := &publicListFilterRecorder{}
+	router := gin.New()
+	router.GET("/threads", NewThreadHandler(service.NewThreadService(repo, nil)).ListThreads)
+	req := httptest.NewRequest(http.MethodGet, "/threads?status=all&publication_status=private&moderation_status=taken_down&deletion_status=trashed", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("public list status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	got := repo.filter
+	if got.Status != string(domain.ThreadStatusPublished) ||
+		got.PublicationStatus != string(domain.PublicationStatusPublished) ||
+		got.ModerationStatus != string(domain.ModerationStatusClear) ||
+		got.DeletionStatus != string(domain.DeletionStatusActive) || got.IncludeTrashed {
+		t.Fatalf("public list passed unsafe visibility filter: %+v", got)
 	}
 }

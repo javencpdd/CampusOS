@@ -1,0 +1,221 @@
+{
+  "schema": "campusos.v12-g0-admin-admission/v1",
+  "generated_at": "2026-09-26T05:13:13.020262+00:00",
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "database": "postgres:16-alpine",
+    "database_mount": "tmpfs",
+    "api_bind": "loopback"
+  },
+  "migration_count": 3,
+  "fixture": {
+    "owner_users": 2,
+    "threads": 7,
+    "public": 2,
+    "private": 2,
+    "moderated": 2,
+    "trashed": 1,
+    "stale_legacy_status": 2,
+    "credentialed_users": 2,
+    "bootstrap_admins": 1,
+    "role_assigned_admins": 1
+  },
+  "scope": "current_admin_admission_suspend_restore_baseline",
+  "mfa_policy_mode": "off",
+  "public_visibility_checks": {
+    "public_list": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "override_attempt": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "public_detail": {
+      "http_status": 200
+    },
+    "private_detail": {
+      "http_status": 404
+    },
+    "taken_down_detail": {
+      "http_status": 404
+    },
+    "trashed_detail": {
+      "http_status": 404
+    },
+    "stale_private_detail": {
+      "http_status": 404
+    },
+    "stale_moderated_detail": {
+      "http_status": 404
+    }
+  },
+  "checks": {
+    "user_a_login": {
+      "http_status": 200,
+      "user_id": "2001"
+    },
+    "user_b_login": {
+      "http_status": 200,
+      "user_id": "2002"
+    },
+    "anonymous_admin_read": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "ordinary_user_admin_login": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "ordinary_user_admin_read": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "ordinary_user_admin_suspend": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "bootstrap_admin_login": {
+      "http_status": 200,
+      "user_id": "1000000000000000001"
+    },
+    "initial_admin_list": {
+      "http_status": 200
+    },
+    "assign_fixture_admin": {
+      "http_status": 200
+    },
+    "target_admission_active": {
+      "http_status": 200
+    },
+    "target_admin_login": {
+      "http_status": 200,
+      "user_id": "2001"
+    },
+    "target_admin_read": {
+      "http_status": 200
+    },
+    "baseline_user_session_admitted_after_role_grant": {
+      "http_status": 200
+    },
+    "ordinary_user_still_denied": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "read_mfa_policy": {
+      "http_status": 200
+    },
+    "suspend_target": {
+      "http_status": 200
+    },
+    "suspended_admin_login": {
+      "http_status": 401,
+      "error_code": "auth.required"
+    },
+    "suspended_old_admin_access": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "suspended_old_user_access": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "suspended_old_refresh": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "stale_suspend_rejected": {
+      "http_status": 409,
+      "error_code": "identity.admin_admission.version_conflict"
+    },
+    "suspended_subject_user_login": {
+      "http_status": 200,
+      "user_id": "2001"
+    },
+    "suspended_new_user_session_admin_denied": {
+      "http_status": 403,
+      "error_code": "permission.denied"
+    },
+    "suspended_subject_own_private": {
+      "http_status": 200
+    },
+    "ordinary_user_unaffected": {
+      "http_status": 200
+    },
+    "last_admin_before": {
+      "http_status": 200
+    },
+    "last_admin_suspend_rejected": {
+      "http_status": 409,
+      "error_code": "identity.admin_admission.last_active"
+    },
+    "last_admin_after": {
+      "http_status": 200
+    },
+    "stale_restore_rejected": {
+      "http_status": 409,
+      "error_code": "identity.admin_admission.version_conflict"
+    },
+    "restore_target": {
+      "http_status": 200
+    },
+    "restored_old_access_still_invalid": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "restored_old_refresh_still_invalid": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "restored_admin_login": {
+      "http_status": 200,
+      "user_id": "2001"
+    },
+    "restored_admin_access": {
+      "http_status": 200
+    },
+    "admission_audits": {
+      "http_status": 200,
+      "successful_mutations": 2
+    },
+    "concurrent_suspend_by_1000000000000000001": {
+      "http_status": 200
+    },
+    "concurrent_suspend_by_2001": {
+      "http_status": 409,
+      "error_code": "identity.admin_admission.last_active"
+    },
+    "concurrent_admin_state": {
+      "http_status": 200,
+      "active_count": 1
+    },
+    "concurrent_paused_session_invalid": {
+      "http_status": 401,
+      "error_code": "auth.invalid_token"
+    },
+    "concurrent_restore": {
+      "http_status": 200
+    },
+    "final_admin_state": {
+      "http_status": 200,
+      "active_count": 2
+    },
+    "final_admission_audits": {
+      "http_status": 200,
+      "successful_mutations": 4
+    }
+  },
+  "admission_versions": {
+    "before": 2,
+    "suspended": 3,
+    "restored": 4
+  },
+  "known_identity_domain_gaps": [
+    "admin_credential_account_references_user_account",
+    "admin_role_assignment_automatically_creates_admission",
+    "existing_user_session_can_enter_admin_after_role_grant"
+  ]
+}

@@ -33,6 +33,26 @@ func TestServerRoutesHaveAuthorizationContracts(t *testing.T) {
 	}
 }
 
+func TestAPIIndexIsIncludedInRouteContract(t *testing.T) {
+	root, err := FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes, err := ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range routes {
+		if route.Method == "GET" && route.Path == "/api/v1" {
+			if route.Handler != "httpapi.APIIndex" || route.ModuleOwner != "core.platform-api" || route.Audience != "public" {
+				t.Fatalf("unexpected API index contract: %+v", route)
+			}
+			return
+		}
+	}
+	t.Fatal("GET /api/v1 is missing from the route contract")
+}
+
 func TestAdminRouteContractsIncludeManagementPlaneAdmission(t *testing.T) {
 	root, err := FindRepositoryRoot(".")
 	if err != nil {

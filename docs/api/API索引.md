@@ -69,6 +69,8 @@ CampusOS 通过 Gin 暴露带版本前缀的 HTTP 路由。当前路由级权威
 
 ## 4. 结构化帖子类型与板块策略 API
 
+`GET /threads` 的公开列表只返回当前发布、审核放行且未删除的帖子；客户端提供状态筛选不能扩大可见范围。详情读取仍由 Community Core 重新核对资源状态。
+
 `thread_type` 是稳定业务类型，和正文渲染用的 `content_format` 分开。当前固定类型为
 `discussion`、`article`、`mutual_aid` 与 `secondhand`。每个 board 有独立的
 创建策略；历史 board 默认只允许前两项。策略影响新建请求，不会删除或隐藏已经存在的内容。

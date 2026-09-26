@@ -6,6 +6,7 @@
 
 | Method | Path | Operation | Module | Handler | Auth | Permission Code | Ownership | Scope | Audit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `GET` | `/api/v1` | `http.get.api.v1` | `core.platform-api` | `httpapi.APIIndex` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/health` | `http.get.api.v1.health` | `core.identity` | `userHandler.HealthCheck` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/home/config` | `http.get.api.v1.home.config` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |
 | `GET` | `/api/v1/home/logo` | `http.get.api.v1.home.logo` | `feature.appearance` | `d.Homepage` | `none` | `-` | `none` | `public` | `request-log-read` |

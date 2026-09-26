@@ -3,6 +3,23 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/v1",
+      "handler": "httpapi.APIIndex",
+      "module_owner": "core.platform-api",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.get.api.v1",
+      "legacy_aliases": [
+        "http.get.api.v1",
+        "httpapi.get.api.v1"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/health",
       "handler": "userHandler.HealthCheck",
       "module_owner": "core.identity",
