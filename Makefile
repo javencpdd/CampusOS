@@ -31,9 +31,25 @@ lint:
 contracts:
 	go run ./cmd/campusos-contracts --write
 
-contracts-check: plugin-v4-check
+contracts-check: plugin-v4-check v12-principal-contract-check v12-thread-policy-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check
 	go run ./cmd/campusos-contracts --check
 	go run ./cmd/campusos-capability-contract
+
+.PHONY: v12-principal-contract-check
+v12-principal-contract-check:
+	node scripts/check-v12-principal-contract.mjs
+
+.PHONY: v12-thread-policy-contract-check
+v12-thread-policy-contract-check:
+	node scripts/check-v12-thread-policy-contract.mjs
+
+.PHONY: v12-board-delegation-contract-check
+v12-board-delegation-contract-check:
+	node scripts/check-v12-board-delegation-contract.mjs
+
+.PHONY: v12-plugin-v5-shape-contract-check
+v12-plugin-v5-shape-contract-check:
+	node scripts/check-v12-plugin-v5-shape-contract.mjs
 
 .PHONY: plugin-v4-check
 plugin-v4-check:

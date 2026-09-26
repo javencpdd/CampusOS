@@ -379,3 +379,26 @@ export class CampusExtensionClient {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 }
+
+// Target v1.2 G1 data contract; does not enable a runtime authorization path.
+export { PRINCIPAL_CONTEXT_VERSION } from "./principal";
+export type { PrincipalKind, PrincipalRef, PrincipalContextV1, PrincipalContextErrorCode } from "./principal";
+
+export { THREAD_PUBLIC_READ_CONTRACT, THREAD_PUBLIC_READ_POLICY } from "./thread-public-read-policy";
+export type {
+  ThreadResourceRef, ThreadPublicReadFactsV1, ThreadPublicReadRequestV1,
+  ThreadPublicReadDecisionV1, ThreadPublicReadErrorCode,
+} from "./thread-public-read-policy";
+
+export { BOARD_DELEGATION_CONTRACT } from "./board-delegation";
+export type {
+  BoardGovernanceAction, BoardGrantAtomV1, BoardDelegationBoundV1, BoardDelegationRequestV1,
+  BoardDelegationDenyReason, BoardDelegationDecisionV1, BoardDelegationErrorCode,
+} from "./board-delegation";
+
+export { PLUGIN_V5_API_VERSION } from "./plugin-v5-package-shape";
+export type {
+  PluginV5Runtime, PluginV5UiAudience, PluginV5ExtensionPoint, PluginV5UiArtifact,
+  PluginV5BackendArtifact, PluginV5ProviderShape, PluginV5PackageShape,
+  PluginV5ReleaseEnvelope, PluginV5ShapeErrorCode,
+} from "./plugin-v5-package-shape";

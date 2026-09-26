@@ -1,0 +1,349 @@
+{
+  "schema": "campusos.v12-g1-principal-acceptance/v1",
+  "generated_at": "2026-09-26T16:07:08.565Z",
+  "scope": "G1 target DTO/schema only; no credential, Policy, HTTP or PostgreSQL isolation acceptance",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "offline contract checks passed",
+  "typescript_modes": [
+    "public SDK: strict",
+    "isolated DTO: strict + exactOptionalPropertyTypes"
+  ],
+  "runtime_acceptance": "not applicable to this slice; V12-02a/02c/02d/03c remain pending",
+  "fixtures": [
+    {
+      "name": "anonymous",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "user",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "admin",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "integration",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "worker",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "user-other-strength",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "admin-other-strength",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-on-behalf-of-user",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "worker-on-behalf-of-user",
+      "expected": "valid",
+      "passed": true
+    },
+    {
+      "name": "user-cross-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "admin-cross-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "integration-cross-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-cross-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "worker-cross-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-kind-author",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-kind-moderator",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-kind-superadmin",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-kind-service",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-kind-empty",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-contract",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-actor",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-authentication_strength",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-credential_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-contract",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-actor",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-audience",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-authentication_strength",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-credential_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "forged-roles",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "forged-user_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "forged-token",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "forged-owner_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "nested-role-injection",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-35",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-36",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-37",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-38",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-39",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-40",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-id-41",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-root-42",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-root-43",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-root-44",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "invalid-root-45",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "anonymous-credential_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "anonymous-effective_subject",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "anonymous-delegation_id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "user-cannot-impersonate",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "admin-cannot-impersonate",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "integration-cannot-impersonate",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-missing-delegation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-missing-subject",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-admin-impersonation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-null-delegation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "worker-missing-delegation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "worker-missing-subject",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "worker-admin-impersonation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "worker-null-delegation",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "unsupported-version",
+      "expected": "principal.contract_unsupported",
+      "passed": true
+    },
+    {
+      "name": "unknown-strength",
+      "expected": "principal.context_invalid",
+      "passed": true
+    },
+    {
+      "name": "anonymous-has-no-id",
+      "expected": "principal.context_invalid",
+      "passed": true
+    }
+  ],
+  "domain_combinations": 180,
+  "typescript_fixtures": 57,
+  "files_sha256": {
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "sdk/typescript/tests/principal-context-v1.fixtures.json": "3fb6d650fde10c39cb619421dd75eb840c68c678212a1d4c66a64bf0dc860441",
+    "docs/api/principal-context-v1.errors.json": "4c5a2e7d4165ef1ce76595768ce14c5d63206bc8040c760950c6799d0344e140",
+    "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
+    "sdk/typescript/src/index.ts": "41f052386e69d2746bef4ef760aac9f6ff96e6d11c9fa517fd65942e08fe04e6",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-principal-contract.mjs": "6a45a05c3e15a03f7767e2cefd4d7cad48f383011dbe8df68aec951e0945c715"
+  }
+}

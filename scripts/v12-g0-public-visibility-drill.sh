@@ -15,13 +15,19 @@ export GOCACHE="$repo_root/.cache/v12-g0/go-cache"
 authenticated=false
 admin_admission=false
 personal_documents=false
+plugin_baseline=false
+capacity=false
+browser_baseline=false
 case "${1:-}" in
   --authenticated) authenticated=true; shift ;;
   --admin-admission) authenticated=true; admin_admission=true; shift ;;
   --personal-documents) authenticated=true; personal_documents=true; shift ;;
+  --plugin-baseline) authenticated=true; plugin_baseline=true; shift ;;
+  --capacity) authenticated=true; plugin_baseline=true; capacity=true; shift ;;
+  --browser-baseline) authenticated=true; plugin_baseline=true; browser_baseline=true; shift ;;
 esac
 if (( $# > 1 )) || [[ "${1:-}" == --* ]]; then
-  echo "usage: $0 [--authenticated|--admin-admission|--personal-documents] [evidence.json]" >&2
+  echo "usage: $0 [--authenticated|--admin-admission|--personal-documents|--plugin-baseline|--capacity|--browser-baseline] [evidence.json]" >&2
   exit 2
 fi
 work_dir="$(mktemp -d "$repo_root/.cache/v12-g0-visibility.XXXXXX")"
@@ -39,6 +45,20 @@ fi
 if [[ "$personal_documents" == true ]]; then
   output="${1:-$repo_root/.cache/v12-g0-personal-documents.json}"
 fi
+if [[ "$plugin_baseline" == true ]]; then
+  output="${1:-$repo_root/.cache/v12-g0-plugin-baseline.json}"
+fi
+if [[ "$capacity" == true ]]; then
+  output="${1:-$repo_root/.cache/v12-g0-capacity.json}"
+fi
+if [[ "$browser_baseline" == true ]]; then
+  output="${1:-$repo_root/.cache/v12-g0-browser.json}"
+fi
+plugin_output="$output"
+if [[ "$capacity" == true || "$browser_baseline" == true ]]; then
+  plugin_output="$work_dir/plugin-baseline.json"
+fi
+extra_pids=()
 api_pid=""
 container_started=false
 
@@ -58,6 +78,10 @@ for line in Path(sys.argv[1]).read_text(errors='replace').splitlines():
         print('isolated API PostgreSQL error: SQLSTATE ' + code.group(1), file=sys.stderr)
 PYERROR
   fi
+  for child in "${extra_pids[@]}"; do
+    kill "$child" 2>/dev/null || true
+    wait "$child" 2>/dev/null || true
+  done
   if [[ -n "$api_pid" ]]; then
     kill "$api_pid" 2>/dev/null || true
     wait "$api_pid" 2>/dev/null || true
@@ -76,6 +100,8 @@ jwt_secret="$(random_secret)"
 challenge_secret="$(random_secret)"
 mfa_secret="$(random_secret)"
 api_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+
+plugin_ui_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
 
 docker run --rm -d --name "$container" \
   --tmpfs /var/lib/postgresql/data:rw,size=512m \
@@ -153,10 +179,15 @@ go build -o "$work_dir/campusos-server" ./cmd/server
 mkdir -p "$work_dir/modules" "$work_dir/data/resources" "$work_dir/data/plugins" "$work_dir/plugins"
 cp -a modules/. "$work_dir/modules/"
 cp -a data/resources/. "$work_dir/data/resources/"
+if [[ "$plugin_baseline" == true ]]; then
+  env -u NODE_TLS_REJECT_UNAUTHORIZED pnpm --dir plugins/campusos.pdf-viewer/frontend build >"$work_dir/plugin-build.log"
+  go run ./cmd/campusosctl plugin v4 pack --out "$work_dir/pdf.tar.gz" plugins/campusos.pdf-viewer >"$work_dir/plugin-install.log"
+  go run ./cmd/campusosctl plugin v4 install --root "$work_dir/plugins" "$work_dir/pdf.tar.gz" >>"$work_dir/plugin-install.log"
+fi
 (
   cd "$work_dir"
   exec env -i PATH="$PATH" \
-    CAMPUSOS_ENV=test CAMPUSOS_INSTANCE_MODE=single \
+    CAMPUSOS_ENV=test CAMPUSOS_INSTANCE_MODE=single GOMAXPROCS=8 \
     SERVER_HOST=127.0.0.1 SERVER_PORT="$api_port" \
     DATABASE_DSN="postgres://campusos:$postgres_password@127.0.0.1:$postgres_port/$database?sslmode=disable" \
     REDIS_ENABLED=false HOST_API_ENABLED=false AI_ENABLED=false EMAIL_PROVIDER=fake \
@@ -168,6 +199,7 @@ cp -a data/resources/. "$work_dir/data/resources/"
     AUTH_MFA_ACTIVE_KEY_ID=g0 AUTH_MFA_ENCRYPTION_KEYS="g0:$mfa_secret" \
     PLUGINS_DIR="$work_dir/data/plugins" PLUGIN_DATA_DIR="$work_dir/data/plugin_data" \
     CAMPUSOS_PLUGIN_V4_DIR="$work_dir/plugins" CAMPUSOS_PLUGIN_V4_DEV_SOURCE=false \
+    CAMPUSOS_PLUGIN_UI_ORIGIN="http://127.0.0.1:$plugin_ui_port" \
     MODULE_DATA_DIR="$work_dir/data/module_data" RESOURCE_DIR="$work_dir/data/resources" \
     "$work_dir/campusos-server"
 ) >"$work_dir/api.log" 2>&1 &
@@ -247,7 +279,7 @@ output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 print(f'G0 public visibility passed: 2 of 7 fixture threads visible; evidence={output}')
 PY
 
-if [[ "$authenticated" == true && "$admin_admission" == false && "$personal_documents" == false ]]; then
+if [[ "$authenticated" == true && "$admin_admission" == false && "$personal_documents" == false && "$plugin_baseline" == false ]]; then
   V12_G0_BASE_URL="http://127.0.0.1:$api_port" \
   V12_G0_OWNER_A_PASSWORD="$owner_a_password" V12_G0_OWNER_B_PASSWORD="$owner_b_password" \
   V12_G0_PUBLIC_EVIDENCE="$public_output" V12_G0_OUTPUT="$output" \
@@ -311,4 +343,48 @@ output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
 print(f'G0 personal documents HTTP/storage/database checks passed; evidence={output}')
 PYREPORT
+fi
+
+if [[ "$plugin_baseline" == true ]]; then
+  V12_G0_BASE_URL="http://127.0.0.1:$api_port" \
+  V12_G0_OWNER_A_PASSWORD="$owner_a_password" V12_G0_OWNER_B_PASSWORD="$owner_b_password" \
+  V12_G0_BOOTSTRAP_PASSWORD="$bootstrap_secret" V12_G0_WORK_DIR="$work_dir" \
+  V12_G0_PUBLIC_EVIDENCE="$public_output" V12_G0_OUTPUT="$plugin_output" \
+    python3 scripts/v12-g0-plugin-check.py
+fi
+
+if [[ "$capacity" == true ]]; then
+  V12_G0_BASE_URL="http://127.0.0.1:$api_port" \
+  V12_G0_OWNER_A_PASSWORD="$owner_a_password" V12_G0_OWNER_B_PASSWORD="$owner_b_password" \
+  V12_G0_BOOTSTRAP_PASSWORD="$bootstrap_secret" V12_G0_WORK_DIR="$work_dir" \
+  V12_G0_DB_CONTAINER="$container" V12_G0_DB_NAME="$database" \
+  V12_G0_DB_PASSWORD="$postgres_password" V12_G0_API_PID="$api_pid" V12_G0_OUTPUT="$output" \
+    python3 scripts/v12-g0-capacity-check.py
+fi
+
+if [[ "$browser_baseline" == true ]]; then
+  web_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+  admin_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+  (cd web; exec env -u NODE_TLS_REJECT_UNAUTHORIZED CAMPUSOS_API_PROXY_TARGET="http://127.0.0.1:$api_port" \
+    node node_modules/vite/bin/vite.js --host 127.0.0.1 --port "$web_port" --strictPort) >"$work_dir/web.log" 2>&1 &
+  extra_pids+=("$!")
+  (cd admin; exec env -u NODE_TLS_REJECT_UNAUTHORIZED CAMPUSOS_API_PROXY_TARGET="http://127.0.0.1:$api_port" \
+    node node_modules/vite/bin/vite.js --host 127.0.0.1 --port "$admin_port" --strictPort) >"$work_dir/admin.log" 2>&1 &
+  extra_pids+=("$!")
+  CAMPUSOS_PLUGIN_V4_DIR="$work_dir/plugins" CAMPUSOS_PLUGIN_UI_HOST=127.0.0.1 \
+    CAMPUSOS_PLUGIN_UI_PORT="$plugin_ui_port" node deploy/docker/plugin-ui-server.mjs >"$work_dir/plugin-ui.log" 2>&1 &
+  extra_pids+=("$!")
+  for port in "$web_port" "$admin_port" "$plugin_ui_port"; do
+    for attempt in $(seq 1 80); do
+      if curl -fsS "http://127.0.0.1:$port/" >/dev/null 2>&1 || curl -fsS "http://127.0.0.1:$port/health" >/dev/null 2>&1; then break; fi
+      if (( attempt == 80 )); then echo "G0 browser service did not become ready" >&2; exit 1; fi
+      sleep 0.25
+    done
+  done
+  V12_G0_WEB_URL="http://127.0.0.1:$web_port" V12_G0_ADMIN_URL="http://127.0.0.1:$admin_port" \
+  V12_G0_BASE_URL="http://127.0.0.1:$api_port" V12_G0_WORK_DIR="$work_dir" \
+  V12_G0_OWNER_A_PASSWORD="$owner_a_password" V12_G0_OWNER_B_PASSWORD="$owner_b_password" \
+  V12_G0_BOOTSTRAP_PASSWORD="$bootstrap_secret" V12_G0_OUTPUT="$output" \
+  CHROME_BIN="$(command -v google-chrome || command -v chromium)" \
+    node scripts/v12-g0-browser-check.mjs
 fi

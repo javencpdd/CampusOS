@@ -4,6 +4,8 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 
 const root = resolve(process.env.CAMPUSOS_PLUGIN_V4_DIR || '/workspace/plugins', '.installed')
 const port = Number(process.env.CAMPUSOS_PLUGIN_UI_PORT || '3003')
+// Native disposable drills bind loopback; containers retain their internal bind.
+const host = process.env.CAMPUSOS_PLUGIN_UI_HOST || '0.0.0.0'
 const frameAncestors = process.env.CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS || '*'
 const mimeTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -70,4 +72,4 @@ createServer((request, response) => {
     'X-Content-Type-Options': 'nosniff',
   })
   createReadStream(target).pipe(response)
-}).listen(port, '0.0.0.0', () => console.log(`CampusOS plugin UI gateway listening on ${port}`))
+}).listen(port, host, () => console.log(`CampusOS plugin UI gateway listening on ${port}`))

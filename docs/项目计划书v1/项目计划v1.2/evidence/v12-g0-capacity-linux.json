@@ -1,0 +1,4338 @@
+{
+  "schema": "campusos.v12-g0-capacity/v1",
+  "generated_at": "2026-09-26T10:28:27.624621+00:00",
+  "profile_sha256": "05ccea6997c7076b3038680fed3f1c232477996800d6f6506fed3c187c1c391c",
+  "profile": {
+    "schema": "campusos.v12-g0-capacity-profile/v1",
+    "purpose": "Initial G0 reference, not a release or production capacity claim",
+    "environment": "isolated Linux x86_64; current host; loopback PostgreSQL 16; tmpfs 512 MiB; GOMAXPROCS=8",
+    "threads": 10000,
+    "discussion_threads": 7000,
+    "mutual_aid_threads": 1500,
+    "secondhand_threads": 1500,
+    "personal_documents": 200,
+    "owners": 2,
+    "installed_plugins": 1,
+    "concurrency": 8,
+    "samples_per_endpoint": 100,
+    "page_size": 20,
+    "max_p95_ms": 1000,
+    "max_api_rss_bytes": 536870912,
+    "max_db_empty_wait_seconds": 1,
+    "max_queue_age_seconds": 300,
+    "max_failed_requests": 0,
+    "max_unauthorized_successes": 0,
+    "future_same_profile_regression_budget": {
+      "max_p95_regression_ratio": 0.2,
+      "max_goroutine_growth_ratio": 0.2,
+      "max_heap_alloc_growth_ratio": 0.5
+    },
+    "windows_wsl2_acceptance_stage": "V12-08b"
+  },
+  "environment": {
+    "os": "Linux",
+    "kernel": "6.8.0-138-generic",
+    "arch": "x86_64",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
+    "logical_cpus": 72,
+    "cpu_affinity_count": 72,
+    "host_memory_bytes": 33519325184,
+    "api_gomaxprocs": 8,
+    "database": "postgres:16-alpine",
+    "database_mount": "tmpfs",
+    "api_bind": "loopback"
+  },
+  "fixture_counts": {
+    "threads": 10000,
+    "mutual_aid_threads": 1500,
+    "secondhand_threads": 1500,
+    "documents": 200,
+    "versions": 202,
+    "objects": 202,
+    "bytes": 799856,
+    "balanced_ledgers": 2
+  },
+  "endpoints": [
+    {
+      "name": "health",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 2.196,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.953,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.11,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.939,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.297,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.427,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.429,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.313,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.196,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.004,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.187,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.794,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.985,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.792,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.37,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.128,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.458,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.285,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.849,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.833,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.462,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.857,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.425,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.437,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.006,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.195,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.172,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.318,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.095,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.532,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.745,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.761,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.393,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.619,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.438,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.402,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.123,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.356,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.87,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.039,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.107,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.49,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.274,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.908,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.037,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.922,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.044,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.932,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.519,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.872,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.725,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.468,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.995,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.172,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.313,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.29,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.554,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.207,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 173.104,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 171.274,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 48.478,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 62.441,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 45.11,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 22.713,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 27.647,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 25.614,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.651,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.774,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.479,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.012,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.815,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.341,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.54,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.813,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 7.481,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.394,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.938,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.335,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.941,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 0.691,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.132,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.954,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 10.249,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 8.981,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 7.913,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.32,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 8.564,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.295,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.703,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.659,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.317,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.946,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.528,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.194,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.136,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.939,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.558,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.114,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.178,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 1.194,
+          "valid": true,
+          "bytes": 144,
+          "item_count": null
+        }
+      ],
+      "p50_ms": 1.872,
+      "p95_ms": 27.647,
+      "p99_ms": 171.274
+    },
+    {
+      "name": "threads",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 46.908,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 71.523,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 50.082,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 85.882,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.239,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.311,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 68.897,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 41.394,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.707,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.799,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.881,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 40.304,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.245,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.666,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.359,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 34.13,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 45.323,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 50.094,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.075,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.682,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.592,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.936,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.112,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.638,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 39.735,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.648,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 39.999,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.146,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.933,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.639,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 43.03,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 40.286,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 56.718,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.16,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.426,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 54.507,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 40.367,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.907,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.428,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.17,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 132.685,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 134.916,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 132.903,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 180.922,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 131.271,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 135.846,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 124.856,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 55.774,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 44.438,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.24,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 67.473,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.076,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.642,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.675,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 46.622,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 57.091,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 43.484,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.015,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.51,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.491,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.575,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.329,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 45.68,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.571,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.523,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 46.474,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 39.041,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 44.132,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 56.207,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 28.708,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.98,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 48.997,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.047,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.287,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 45.989,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.407,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.562,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.17,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 57.898,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 49.841,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 40.579,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.463,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.723,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 29.26,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 64.169,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.086,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 45.058,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 58.0,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 46.872,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 46.055,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.611,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 34.198,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.23,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 34.348,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.256,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 56.376,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.008,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.823,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.786,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 34.8,
+          "valid": true,
+          "bytes": 29734,
+          "item_count": 20
+        }
+      ],
+      "p50_ms": 42.463,
+      "p95_ms": 131.271,
+      "p99_ms": 135.846
+    },
+    {
+      "name": "mutual_aid",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 18.428,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 15.595,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 11.722,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.987,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 13.091,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 10.507,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.204,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 13.638,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.484,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.708,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.732,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.719,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 15.201,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 14.02,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 10.032,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 10.8,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 17.114,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 12.64,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 15.942,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 14.329,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 12.32,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 15.422,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 94.138,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 11.623,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 77.422,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 78.957,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 48.074,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 68.059,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 41.775,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 35.748,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.189,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.547,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.412,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.929,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.282,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.168,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.385,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.285,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.131,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.818,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.641,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.013,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.358,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.684,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.694,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.033,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.107,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.632,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.129,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.002,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 28.372,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 29.993,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.402,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.851,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.345,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.566,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.238,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 14.092,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.977,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.148,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 12.278,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.97,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 15.982,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.179,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.216,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.317,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.552,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.762,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.845,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 26.042,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.783,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.347,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.059,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.965,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.006,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.687,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.903,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 17.128,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.818,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.941,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 17.777,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.566,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.494,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.248,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.387,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.467,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.625,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.896,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.403,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.679,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.193,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 244.508,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 293.059,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 281.145,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 275.509,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 310.433,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 170.975,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.362,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 68.663,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.044,
+          "valid": true,
+          "bytes": 36646,
+          "item_count": 20
+        }
+      ],
+      "p50_ms": 21.131,
+      "p95_ms": 170.975,
+      "p99_ms": 293.059
+    },
+    {
+      "name": "secondhand",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 84.073,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 91.669,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 77.412,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 56.392,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 65.647,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 62.753,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 70.457,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.221,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 39.017,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.818,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.438,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 28.602,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.72,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.401,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.159,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.631,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.425,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.549,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 14.881,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.054,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 26.733,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.68,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.647,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.663,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 75.738,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 84.2,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 77.675,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 68.937,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 62.09,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 75.087,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 78.572,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.8,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.274,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 40.023,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.362,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.172,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.647,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 34.993,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.441,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 18.171,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.258,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 22.656,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.463,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.508,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.863,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.168,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 29.31,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 16.54,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.727,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.117,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 69.337,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 54.966,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 68.928,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.858,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.936,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 48.756,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 54.219,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 44.365,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.704,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 44.2,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 39.94,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.441,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 37.879,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 38.763,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 363.565,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 364.526,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 356.748,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 357.132,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 86.489,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 48.051,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 383.1,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 61.502,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 29.223,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 32.087,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 47.889,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 26.839,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.127,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 50.232,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 51.717,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 57.985,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 65.364,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 60.73,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 63.085,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 52.484,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 42.135,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 36.141,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 33.566,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 30.518,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.468,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 25.259,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 20.221,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 27.901,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.153,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.496,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 21.192,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.546,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 24.25,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 31.443,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 19.615,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        },
+        {
+          "http_status": 200,
+          "ms": 23.696,
+          "valid": true,
+          "bytes": 37666,
+          "item_count": 20
+        }
+      ],
+      "p50_ms": 37.879,
+      "p95_ms": 91.669,
+      "p99_ms": 364.526
+    },
+    {
+      "name": "private_documents",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 19.272,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.045,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 20.728,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.124,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.498,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 17.44,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 18.51,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 20.068,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.85,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.891,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.045,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.14,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.688,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.75,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.23,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.031,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.677,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.054,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.267,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.886,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.497,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.017,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 15.239,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.376,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 16.529,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.494,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.489,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.635,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.22,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 5.701,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 5.984,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.469,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.716,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 14.297,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.624,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.217,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.115,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.222,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.35,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.781,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 3.921,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.917,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.194,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.444,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.012,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.754,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.334,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 233.827,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 230.4,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 27.85,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 18.313,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 35.372,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 58.033,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 33.129,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.646,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.955,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.614,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 15.165,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.917,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.366,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.579,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.478,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.565,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.818,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.816,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.102,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.178,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.037,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.868,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 5.595,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.559,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.542,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.811,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.022,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.039,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.219,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.387,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.2,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.562,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 11.941,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 13.546,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.755,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.598,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 12.829,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.875,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 13.257,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.546,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.471,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.85,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.641,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 6.875,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 7.171,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 10.016,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 5.843,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.278,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 9.426,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 8.394,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 3.496,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 4.618,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        },
+        {
+          "http_status": 200,
+          "ms": 4.963,
+          "valid": true,
+          "bytes": 56345,
+          "item_count": 100
+        }
+      ],
+      "p50_ms": 9.22,
+      "p95_ms": 27.85,
+      "p99_ms": 230.4
+    },
+    {
+      "name": "private_pdf",
+      "samples": [
+        {
+          "http_status": 200,
+          "ms": 7.587,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.122,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 8.291,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 7.435,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.551,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 12.91,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.372,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 8.643,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.455,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.125,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.828,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.918,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.591,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.847,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.473,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.157,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.752,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.683,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.353,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.466,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.827,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.965,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.441,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.473,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.879,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.059,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.952,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.986,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.801,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.9,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 8.229,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.663,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 85.765,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.724,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 104.931,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 12.653,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 20.984,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 36.759,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 26.501,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 13.996,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.451,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.041,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.775,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.466,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.882,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.591,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.358,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.67,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.33,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.931,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.541,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.313,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.655,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.047,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.573,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.471,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.89,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.956,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.183,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.191,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.438,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.191,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.764,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.332,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.519,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.689,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.925,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.629,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.852,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.087,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.07,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.079,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.809,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.086,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.891,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.151,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.753,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.654,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.011,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.45,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.039,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.959,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.855,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.871,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.875,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 6.02,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.702,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.085,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.596,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.227,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.942,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.158,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.379,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.917,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 2.956,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.658,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 3.294,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 5.356,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.345,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        },
+        {
+          "http_status": 200,
+          "ms": 4.637,
+          "valid": true,
+          "bytes": 581,
+          "item_count": null
+        }
+      ],
+      "p50_ms": 4.764,
+      "p95_ms": 13.996,
+      "p99_ms": 85.765
+    }
+  ],
+  "runtime_before": {
+    "goroutines": 10,
+    "heap_alloc_bytes": 4628600,
+    "heap_objects": 37996
+  },
+  "runtime_after": {
+    "goroutines": 10,
+    "heap_alloc_bytes": 5433232,
+    "heap_objects": 36946
+  },
+  "database_after": {
+    "acquired_connections": 0,
+    "idle_connections": 9,
+    "total_connections": 9,
+    "maximum_connections": 25,
+    "acquire_count": 5791,
+    "acquire_duration_seconds": 0.087115133,
+    "canceled_acquire_count": 0,
+    "empty_acquire_count": 4,
+    "empty_acquire_wait_seconds": 0.083365172
+  },
+  "api_memory_bytes": {
+    "VmHWM": 38780928,
+    "VmRSS": 38780928
+  },
+  "reliability": {
+    "health": "healthy",
+    "dead": 0,
+    "oldest_pending_age_seconds": 0
+  },
+  "initial_reference": true,
+  "regression_comparison": "no earlier same-profile reference",
+  "gates": "passed"
+}

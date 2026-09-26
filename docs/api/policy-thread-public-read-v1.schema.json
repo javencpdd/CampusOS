@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:campusos:policy:thread-public-read:v1",
+  "title": "G1 target public-thread policy contract; no runtime endpoint",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/request"
+    },
+    {
+      "$ref": "#/definitions/decision"
+    }
+  ],
+  "definitions": {
+    "thread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "community.thread"
+        },
+        "id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        }
+      }
+    },
+    "board": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "community.board"
+        },
+        "id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource",
+        "owner",
+        "board",
+        "facts_version",
+        "publication_status",
+        "moderation_status",
+        "deletion_status"
+      ],
+      "properties": {
+        "resource": {
+          "$ref": "#/definitions/thread"
+        },
+        "owner": {
+          "$ref": "urn:campusos:principal:v1#/definitions/user"
+        },
+        "board": {
+          "$ref": "#/definitions/board"
+        },
+        "facts_version": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "publication_status": {
+          "enum": [
+            "draft",
+            "published",
+            "private"
+          ]
+        },
+        "moderation_status": {
+          "enum": [
+            "clear",
+            "pending",
+            "rejected",
+            "taken_down"
+          ]
+        },
+        "deletion_status": {
+          "enum": [
+            "active",
+            "trashed",
+            "purged"
+          ]
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "request_id",
+        "policy",
+        "principal",
+        "facts"
+      ],
+      "properties": {
+        "contract": {
+          "const": "campusos.policy.thread-public-read/v1"
+        },
+        "request_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "policy": {
+          "const": "community.thread.public_read/v1"
+        },
+        "principal": {
+          "$ref": "urn:campusos:principal:v1"
+        },
+        "facts": {
+          "$ref": "#/definitions/facts"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "request_id",
+        "policy",
+        "resource",
+        "facts_version",
+        "effect",
+        "reason",
+        "obligations"
+      ],
+      "properties": {
+        "contract": {
+          "const": "campusos.policy.thread-public-read/v1"
+        },
+        "request_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "policy": {
+          "const": "community.thread.public_read/v1"
+        },
+        "resource": {
+          "$ref": "#/definitions/thread"
+        },
+        "facts_version": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "effect": {
+          "enum": [
+            "allow",
+            "deny"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "policy.public_read",
+            "policy.resource_not_public"
+          ]
+        },
+        "obligations": {
+          "type": "array"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "effect": {
+              "const": "allow"
+            },
+            "reason": {
+              "const": "policy.public_read"
+            },
+            "obligations": {
+              "minItems": 1,
+              "maxItems": 1,
+              "items": {
+                "const": "recheck_current_facts"
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "effect": {
+              "const": "deny"
+            },
+            "reason": {
+              "const": "policy.resource_not_public"
+            },
+            "obligations": {
+              "maxItems": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

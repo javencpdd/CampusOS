@@ -1,0 +1,18 @@
+{
+  "contract": "campusos.principal/v1",
+  "status": "target-contract-only",
+  "errors": [
+    {
+      "code": "principal.context_invalid",
+      "http_status": 400,
+      "retryable": false,
+      "message": "Invalid principal context"
+    },
+    {
+      "code": "principal.contract_unsupported",
+      "http_status": 400,
+      "retryable": false,
+      "message": "Unsupported principal contract"
+    }
+  ]
+}

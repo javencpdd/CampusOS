@@ -1,0 +1,27 @@
+{
+  "schema": "campusos.v12-g0-capacity-profile/v1",
+  "purpose": "Initial G0 reference, not a release or production capacity claim",
+  "environment": "isolated Linux x86_64; current host; loopback PostgreSQL 16; tmpfs 512 MiB; GOMAXPROCS=8",
+  "threads": 10000,
+  "discussion_threads": 7000,
+  "mutual_aid_threads": 1500,
+  "secondhand_threads": 1500,
+  "personal_documents": 200,
+  "owners": 2,
+  "installed_plugins": 1,
+  "concurrency": 8,
+  "samples_per_endpoint": 100,
+  "page_size": 20,
+  "max_p95_ms": 1000,
+  "max_api_rss_bytes": 536870912,
+  "max_db_empty_wait_seconds": 1,
+  "max_queue_age_seconds": 300,
+  "max_failed_requests": 0,
+  "max_unauthorized_successes": 0,
+  "future_same_profile_regression_budget": {
+    "max_p95_regression_ratio": 0.2,
+    "max_goroutine_growth_ratio": 0.2,
+    "max_heap_alloc_growth_ratio": 0.5
+  },
+  "windows_wsl2_acceptance_stage": "V12-08b"
+}

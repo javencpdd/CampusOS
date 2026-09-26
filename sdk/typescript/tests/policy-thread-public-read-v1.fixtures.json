@@ -1,0 +1,1868 @@
+{
+  "contract": "campusos.policy.thread-public-read/v1",
+  "cases": [
+    {
+      "name": "public-anonymous",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "publication_status-draft",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "draft",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "publication_status-private",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "private",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "moderation_status-pending",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "pending",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "moderation_status-rejected",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "rejected",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "moderation_status-taken_down",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "taken_down",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "deletion_status-trashed",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "trashed"
+        }
+      }
+    },
+    {
+      "name": "deletion_status-purged",
+      "target": "request",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "purged"
+        }
+      }
+    },
+    {
+      "name": "allow-with-recheck",
+      "target": "decision",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts"
+        ]
+      }
+    },
+    {
+      "name": "deny-without-obligations",
+      "target": "decision",
+      "valid": true,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "deny",
+        "reason": "policy.resource_not_public",
+        "obligations": []
+      }
+    },
+    {
+      "name": "missing-contract",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-request_id",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-policy",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-principal",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-facts",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-resource",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-owner",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-board",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-facts_version",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-publication_status",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-moderation_status",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "missing-fact-deletion_status",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-publication_status-",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-publication_status-None",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": null,
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-publication_status-future_state",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "future_state",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-moderation_status-",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-moderation_status-None",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": null,
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-moderation_status-future_state",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "future_state",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-deletion_status-",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": ""
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-deletion_status-None",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": null
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-deletion_status-future_state",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "future_state"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "wrong-kind-owner",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "admin",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "wrong-kind-board",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.group",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "wrong-kind-resource",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "personal.document",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "extra-fact-status",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active",
+          "status": "published"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "extra-fact-allowed",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active",
+          "allowed": true
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "extra-fact-sql",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active",
+          "sql": "1=1"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "extra-fact-roles",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active",
+          "roles": [
+            "admin"
+          ]
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "extra-fact-body",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active",
+          "body": "synthetic-body"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-version-39",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "invalid-version-40",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": null,
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-version-41",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": 17,
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-version-42",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts 1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "invalid-version-43",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1\n",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      }
+    },
+    {
+      "name": "cross-domain-principal",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "password",
+          "credential_id": "c-1"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "unsupported-contract",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v2",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "unsupported-policy",
+      "target": "request",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "global.allow/v1",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "facts": {
+          "resource": {
+            "kind": "community.thread",
+            "id": "thread-1"
+          },
+          "owner": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "board": {
+            "kind": "community.board",
+            "id": "board-1"
+          },
+          "facts_version": "facts-1",
+          "publication_status": "published",
+          "moderation_status": "clear",
+          "deletion_status": "active"
+        }
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-47",
+      "target": "request",
+      "valid": false,
+      "value": null,
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-48",
+      "target": "request",
+      "valid": false,
+      "value": [],
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-49",
+      "target": "request",
+      "valid": false,
+      "value": {},
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-50",
+      "target": "request",
+      "valid": false,
+      "value": true,
+      "compile_reject": true
+    },
+    {
+      "name": "deny-inconsistent-effect",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.resource_not_public",
+        "obligations": []
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "deny-inconsistent-reason",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "deny",
+        "reason": "policy.public_read",
+        "obligations": []
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "allow-obligation-missing",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": []
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "allow-obligation-unknown",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "skip_authorization"
+        ]
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "allow-obligation-duplicate",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts",
+          "recheck_current_facts"
+        ]
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "decision-token-injection",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts"
+        ],
+        "token": "not-a-token"
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "decision-missing-request_id",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts"
+        ]
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "decision-missing-resource",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "facts_version": "facts-1",
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts"
+        ]
+      },
+      "compile_reject": true
+    },
+    {
+      "name": "decision-missing-facts_version",
+      "target": "decision",
+      "valid": false,
+      "value": {
+        "contract": "campusos.policy.thread-public-read/v1",
+        "request_id": "request-1",
+        "policy": "community.thread.public_read/v1",
+        "resource": {
+          "kind": "community.thread",
+          "id": "thread-1"
+        },
+        "effect": "allow",
+        "reason": "policy.public_read",
+        "obligations": [
+          "recheck_current_facts"
+        ]
+      },
+      "compile_reject": true
+    }
+  ]
+}

@@ -1,0 +1,480 @@
+{
+  "schema": "campusos.v12-g1-thread-policy-acceptance/v1",
+  "generated_at": "2026-09-26T16:28:18.882Z",
+  "scope": "G1 public-thread ResourceFacts/Decision schema and executable specification; not production authorization",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline contract acceptance passed",
+  "runtime_acceptance": "pending V12-02a/02b; no HTTP, PG, credential, grant or concurrency integration claim",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "public-anonymous",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "publication_status-draft",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "publication_status-private",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "moderation_status-pending",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "moderation_status-rejected",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "moderation_status-taken_down",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "deletion_status-trashed",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "deletion_status-purged",
+      "target": "request",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "allow-with-recheck",
+      "target": "decision",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "deny-without-obligations",
+      "target": "decision",
+      "expected_valid": true,
+      "passed": true
+    },
+    {
+      "name": "missing-contract",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-request_id",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-policy",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-principal",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-facts",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-resource",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-owner",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-board",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-facts_version",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-publication_status",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-moderation_status",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "missing-fact-deletion_status",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-publication_status-",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-publication_status-None",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-publication_status-future_state",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-moderation_status-",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-moderation_status-None",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-moderation_status-future_state",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-deletion_status-",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-deletion_status-None",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-deletion_status-future_state",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "wrong-kind-owner",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "wrong-kind-board",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "wrong-kind-resource",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "extra-fact-status",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "extra-fact-allowed",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "extra-fact-sql",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "extra-fact-roles",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "extra-fact-body",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-version-39",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-version-40",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-version-41",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-version-42",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-version-43",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "cross-domain-principal",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "unsupported-contract",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "unsupported-policy",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-root-47",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-root-48",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-root-49",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "invalid-root-50",
+      "target": "request",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "deny-inconsistent-effect",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "deny-inconsistent-reason",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "allow-obligation-missing",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "allow-obligation-unknown",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "allow-obligation-duplicate",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "decision-token-injection",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "decision-missing-request_id",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "decision-missing-resource",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    },
+    {
+      "name": "decision-missing-facts_version",
+      "target": "decision",
+      "expected_valid": false,
+      "passed": true
+    }
+  ],
+  "state_principal_combinations": 360,
+  "relationship_combinations": {
+    "actual_owner": 72,
+    "admin_same_id": 72,
+    "delegated_owner": 72
+  },
+  "binding_checks": [
+    {
+      "name": "unchanged",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "wrong-decision-request_id",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wrong-decision-facts_version",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wrong-decision-policy",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wrong-decision-resource",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "missing-recheck",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "changed-publication_status",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-moderation_status",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-deletion_status",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-facts_version",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-resource",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-owner",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "changed-board",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "missing-current-fact",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "forged-allow-on-private",
+      "expected": "policy.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "fact-key-order-independent",
+      "expected": "allow",
+      "passed": true
+    }
+  ],
+  "typescript_fixtures": 57,
+  "files_sha256": {
+    "docs/api/policy-thread-public-read-v1.schema.json": "f98dd6aa90a558392d8b83b8029238ab2b38d32ecd9366662ede36093d79a880",
+    "sdk/typescript/tests/policy-thread-public-read-v1.fixtures.json": "6819e910328e61f41c9af52049dd45d96ae6334a11d28705741e7261e0233dd2",
+    "docs/api/policy-thread-public-read-v1.errors.json": "318e46e101578daa7196602006aa25c5cd4ca577076365493513ae68c009906b",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "sdk/typescript/src/thread-public-read-policy.ts": "c77f27cfac6c6121dc9bd11c6a9d89fa76d66d9e3d089bd3b99db3c5ba1027d0",
+    "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
+    "sdk/typescript/src/index.ts": "1db1e3048fd38565bb8cdf33d610840a5f80ac0464ceb37dffc41596fe24ee70",
+    "sdk/typescript/tests/principal-context-v1.fixtures.json": "3fb6d650fde10c39cb619421dd75eb840c68c678212a1d4c66a64bf0dc860441",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-thread-policy-contract.mjs": "40ff5bbc30d2dc8f3d819f1fc3e8092b7b5bf177178e370fe0627c808802b6d4"
+  }
+}

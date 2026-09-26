@@ -1,0 +1,68 @@
+{
+  "schema": "campusos.v12-g0-exit/v1",
+  "generated_at": "2026-09-26T15:29:03.295729+00:00",
+  "stage": "V12-G0",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Current code/data/scenario baseline with user-confirmed Linux scale; not v1.2 feature or release acceptance",
+  "reference_commit": "603d0427554fa13757c69ea4671ae865e5c67244",
+  "worktree_dirty": true,
+  "code_sha256": {
+    "internal/modules/core/community/service/thread_service.go": "51e2476e1bf16766a8a2e1e06e3fa7f974feb9c702cab3d3fa0a6cd7df24f3a2",
+    "internal/modules/core/community/service/thread_list_visibility_test.go": "005b546b72574568072690295303d9b59c4d3b0c2c92b766115ff429001cba18",
+    "internal/modules/features/personaldocuments/repository.go": "966909c0d3bf2373cd414d6b9e57d1ea6e959399337b3fcedbed32789d2ebb09",
+    "scripts/v12-g0-public-visibility-drill.sh": "9b6bb31980d938596b4e9cbb110a766a2f65ab406be22dfd4f45a51683b58ecb",
+    "scripts/v12-g0-plugin-check.py": "d9506f94db2f01a2b392bad912d3a7488e99c2f1837408379cc3307117ec253c",
+    "scripts/v12-g0-capacity-check.py": "afda5b5569863fdae774a3072a1f5b136482c05f12c8d8cbe26df67e9154fcd9",
+    "scripts/v12-g0-browser-check.mjs": "2e86e10b33b4377e284c05854564161b533bd0be54fcbdd6fc3885ac60e066c8",
+    "deploy/docker/plugin-ui-server.mjs": "e1360c892845d56a6de1c6f2a679e6d47346e916470c43db61581083a80bfc39",
+    "scripts/test-dev-mode-compat.sh": "05e13802736a16450ddc80a943bdf4512c5ffa8b814d7a3789522f166827553a"
+  },
+  "evidence_sha256": {
+    "v12-g0-final-baseline.json": "1f2543f71869f56bb64281fa92c00ada3de485ed4ae601303de1b346c74adf55",
+    "v12-g0-live-linux.json": "973e3701dca38051447a775ffc00972f8679d180544ef9f71d768bf0b6fd2ab3",
+    "v12-g0-public-visibility-linux.json": "6a581e153f8e525c2e93a7bee8b09c5d1b45cc26b3ccf43a5969ce647c8f1ba8",
+    "v12-g0-owner-session-linux.json": "308c1e7b9fc3efac8c9fdc0e6d3bd2ef070a00de0d2a4a3032ac13a4ce30bb2b",
+    "v12-g0-admin-admission-linux.json": "0cfd21fa866f499aac0b335f1260bb156af33c8c647a1f1dcabf1dae0a1540ca",
+    "v12-g0-personal-documents-linux.json": "55225a56eff733c287ca1bbb2339ab277edcf6fd6cc6a81ba0cdf037b506c9d1",
+    "v12-g0-plugin-documents-linux.json": "37ea6389ed84077eb5c3b4a9256066e2ddbf08c9c0fb6e2a1004e504f366e498",
+    "v12-g0-capacity-profile.json": "05ccea6997c7076b3038680fed3f1c232477996800d6f6506fed3c187c1c391c",
+    "v12-g0-capacity-linux.json": "33528739dfb1d51e3f20e59a3dc94fa7e6d1ee7c21a0563ea2824ad882adbcb3",
+    "v12-g0-browser-linux.json": "28978522de0ac3d909bcd31031852d7925b38672cd02f1edc06de0d3afec9e50"
+  },
+  "screenshots_sha256": {
+    "v12-g0-browser/desktop-admin.png": "56148bc9503c0d5f6f70b20ffdd96a2e0cb1ac23ffa687426c153bc82aa7ad84",
+    "v12-g0-browser/desktop-documents.png": "ea5d190b0362df9a83b09ee5690ebe482c3942abc78b1c2a84b32ef27165969b",
+    "v12-g0-browser/desktop-pdf.png": "d474ace70d147fd2349666f04cf401411586043522f753fb14c8fc286b2ab6cc",
+    "v12-g0-browser/mobile-admin.png": "05342c4f4d8e11fa414cb8a5d6b70dd6fddebda45ae9627ed6ac1155ea333bd4",
+    "v12-g0-browser/mobile-documents.png": "51498466249d73dfa94e0fdbbc74678c936ece1355d4f0b56defa68a87f00bd5",
+    "v12-g0-browser/mobile-pdf.png": "e05f751e9ad611991845dae2422a6813b0d23208a80a58e1801245c9f76b4487"
+  },
+  "acceptance_matrix": {
+    "code_data_ownership": "v12-g0-final-baseline.json",
+    "runtime_route_contract": "349 routes; internal/transport/httpapi/route_contract_test.go; full Go suite passed",
+    "public_private_moderated_deleted": "v12-g0-public-visibility-linux.json; v12-g0-browser-linux.json plugin_and_document_checks",
+    "two_users_sessions": "v12-g0-owner-session-linux.json",
+    "current_admin_admission": "v12-g0-admin-admission-linux.json",
+    "private_txt_lifecycle": "v12-g0-personal-documents-linux.json",
+    "installed_plugin_upload_revoke_disable": "v12-g0-browser-linux.json plugin_and_document_checks",
+    "reference_scale_and_thresholds": "v12-g0-capacity-profile.json; v12-g0-capacity-linux.json",
+    "desktop_mobile_web_admin": "v12-g0-browser-linux.json",
+    "reset_boundary": "Only new campusos-v12-g0-visibility-* tmpfs containers and mktemp work directories; no shared reset; own processes/containers cleaned"
+  },
+  "future_stage_acceptance": {
+    "V12-G1": "Not started; G0 dependency satisfied",
+    "V12-02d": "Independent Admin/User identity domains",
+    "V12-03..08": "v5 packages, runtime isolation, upgrade/rollback and non-invasive install targets",
+    "V12-08b": "Windows/WSL2 real environment, full backup/restore and release-scale performance",
+    "V12-09..14": "Knowledge/RAG evaluation; initial G0 samples do not prove future retrieval quality"
+  },
+  "known_current_limits": [
+    "v4 authorization adapter and bootstrap defaults remain",
+    "Admin admission still coupled to user identity",
+    "DOCX/server converter unavailable; private download works",
+    "mutual-aid and secondhand still use per-item detail reads",
+    "Initial capacity reference only; no earlier comparable reference for a release regression claim"
+  ]
+}

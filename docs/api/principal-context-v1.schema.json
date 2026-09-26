@@ -1,0 +1,306 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:campusos:principal:v1",
+  "title": "CampusOS Principal Context v1 (G1 target contract; not a credential)",
+  "description": "Host-constructed context only. Structural validation never authenticates a caller or authorizes a resource.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "actor",
+    "audience",
+    "authentication_strength"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.principal/v1"
+    },
+    "actor": {
+      "type": "object"
+    },
+    "audience": {
+      "type": "string"
+    },
+    "authentication_strength": {
+      "type": "string"
+    },
+    "credential_id": {
+      "$ref": "#/definitions/opaqueID"
+    },
+    "effective_subject": {
+      "$ref": "#/definitions/user"
+    },
+    "delegation_id": {
+      "$ref": "#/definitions/opaqueID"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/anonymous"
+        },
+        "audience": {
+          "const": "public"
+        },
+        "authentication_strength": {
+          "enum": [
+            "none"
+          ]
+        },
+        "credential_id": false,
+        "effective_subject": false,
+        "delegation_id": false
+      }
+    },
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/user"
+        },
+        "audience": {
+          "const": "user"
+        },
+        "authentication_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        },
+        "effective_subject": false,
+        "delegation_id": false
+      },
+      "required": [
+        "credential_id"
+      ]
+    },
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/admin"
+        },
+        "audience": {
+          "const": "admin"
+        },
+        "authentication_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        },
+        "effective_subject": false,
+        "delegation_id": false
+      },
+      "required": [
+        "credential_id"
+      ]
+    },
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/integration"
+        },
+        "audience": {
+          "const": "integration_api"
+        },
+        "authentication_strength": {
+          "enum": [
+            "credential"
+          ]
+        },
+        "effective_subject": false,
+        "delegation_id": false
+      },
+      "required": [
+        "credential_id"
+      ]
+    },
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/plugin_instance"
+        },
+        "audience": {
+          "const": "host_api"
+        },
+        "authentication_strength": {
+          "enum": [
+            "workload"
+          ]
+        }
+      },
+      "required": [
+        "credential_id"
+      ],
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "effective_subject"
+                ]
+              },
+              {
+                "required": [
+                  "delegation_id"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "effective_subject",
+            "delegation_id"
+          ]
+        }
+      ]
+    },
+    {
+      "properties": {
+        "actor": {
+          "$ref": "#/definitions/worker"
+        },
+        "audience": {
+          "const": "worker"
+        },
+        "authentication_strength": {
+          "enum": [
+            "workload"
+          ]
+        }
+      },
+      "required": [
+        "credential_id"
+      ],
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "effective_subject"
+                ]
+              },
+              {
+                "required": [
+                  "delegation_id"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "effective_subject",
+            "delegation_id"
+          ]
+        }
+      ]
+    }
+  ],
+  "definitions": {
+    "opaqueID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "not": {
+        "pattern": "[^A-Za-z0-9._:-]"
+      }
+    },
+    "anonymous": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "anonymous"
+        }
+      }
+    },
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "user"
+        },
+        "id": {
+          "$ref": "#/definitions/opaqueID"
+        }
+      }
+    },
+    "admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "admin"
+        },
+        "id": {
+          "$ref": "#/definitions/opaqueID"
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "integration"
+        },
+        "id": {
+          "$ref": "#/definitions/opaqueID"
+        }
+      }
+    },
+    "plugin_instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "plugin_instance"
+        },
+        "id": {
+          "$ref": "#/definitions/opaqueID"
+        }
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "worker"
+        },
+        "id": {
+          "$ref": "#/definitions/opaqueID"
+        }
+      }
+    }
+  }
+}

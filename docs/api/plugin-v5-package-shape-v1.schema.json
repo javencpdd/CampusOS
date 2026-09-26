@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-package-shape-v1.schema.json",
+  "title": "CampusOS v5 package shape projection (G1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["api_version", "publisher", "key", "version", "host_contracts", "runtime", "provides"],
+  "properties": {
+    "api_version": { "const": "campusos.plugin/v5" },
+    "publisher": { "$ref": "#/definitions/name" },
+    "key": { "$ref": "#/definitions/name" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$" },
+    "host_contracts": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^campusos\\.host/v[1-9][0-9]*$" }
+    },
+    "runtime": { "enum": ["none", "wasm", "container"] },
+    "ui": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/ui" } },
+    "backend": { "$ref": "#/definitions/backend" },
+    "provides": { "type": "array", "items": { "$ref": "#/definitions/provider" } }
+  },
+  "allOf": [
+    { "if": { "properties": { "runtime": { "const": "none" } } },
+      "then": { "required": ["ui"], "not": { "required": ["backend"] } },
+      "else": { "required": ["backend"] } }
+  ],
+  "definitions": {
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[a-zA-Z0-9_./-]+$" },
+    "ui": {
+      "type": "object", "additionalProperties": false,
+      "required": ["audience", "entrypoint", "digest"],
+      "properties": {
+        "audience": { "enum": ["user", "admin"] },
+        "entrypoint": { "$ref": "#/definitions/path" },
+        "digest": { "$ref": "#/definitions/digest" }
+      }
+    },
+    "backend": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact", "transport"],
+      "properties": {
+        "artifact": { "oneOf": [
+          { "type": "object", "additionalProperties": false, "required": ["kind", "path", "digest"],
+            "properties": { "kind": { "const": "wasm" }, "path": { "$ref": "#/definitions/path" }, "digest": { "$ref": "#/definitions/digest" } } },
+          { "type": "object", "additionalProperties": false, "required": ["kind", "image"],
+            "properties": { "kind": { "const": "container" }, "image": { "type": "string", "pattern": "^[a-zA-Z0-9._:/-]+@sha256:[0-9a-f]{64}$" } } }
+        ] },
+        "transport": { "enum": ["host-call", "http", "grpc"] }
+      }
+    },
+    "provider": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "point", "contract_version"],
+      "properties": {
+        "id": { "$ref": "#/definitions/name" },
+        "point": { "enum": ["preview.renderer", "ai.chat", "knowledge.source"] },
+        "contract_version": { "const": "v1" }
+      }
+    }
+  }
+}

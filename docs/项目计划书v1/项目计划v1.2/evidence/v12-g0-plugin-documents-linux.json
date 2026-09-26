@@ -1,0 +1,275 @@
+{
+  "schema": "campusos.v12-g0-plugin-documents/v1",
+  "generated_at": "2026-09-26T10:20:04.060636+00:00",
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "database": "postgres:16-alpine",
+    "database_mount": "tmpfs",
+    "api_bind": "loopback"
+  },
+  "migration_count": 3,
+  "fixture": {
+    "owner_users": 2,
+    "threads": 7,
+    "public": 2,
+    "private": 2,
+    "moderated": 2,
+    "trashed": 1,
+    "stale_legacy_status": 2,
+    "plugin": "campusos.pdf-viewer",
+    "plugin_version": "2.0.0-dev.2",
+    "uploaded_documents": 5,
+    "formats": [
+      "text",
+      "markdown",
+      "campusdoc",
+      "pdf",
+      "docx"
+    ]
+  },
+  "public_visibility_checks": {
+    "public_list": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "override_attempt": {
+      "http_status": 200,
+      "visible_count": 2,
+      "total": 2
+    },
+    "public_detail": {
+      "http_status": 200
+    },
+    "private_detail": {
+      "http_status": 404
+    },
+    "taken_down_detail": {
+      "http_status": 404
+    },
+    "trashed_detail": {
+      "http_status": 404
+    },
+    "stale_private_detail": {
+      "http_status": 404
+    },
+    "stale_moderated_detail": {
+      "http_status": 404
+    }
+  },
+  "checks": {
+    "login_a": {
+      "http_status": 200
+    },
+    "login_b": {
+      "http_status": 200
+    },
+    "login_admin": {
+      "http_status": 200
+    },
+    "installed_plugin": {
+      "http_status": 200
+    },
+    "anonymous_admin_plugin": {
+      "http_status": 401,
+      "code": 20001
+    },
+    "user_cannot_disable_plugin": {
+      "http_status": 403,
+      "code": 20004
+    },
+    "authorization": {
+      "http_status": 200
+    },
+    "upload_g0.txt": {
+      "http_status": 201
+    },
+    "download_g0.txt": {
+      "http_status": 200,
+      "bytes": 8,
+      "sha256": "c770e154aeccb2db9cdecaa09397477caecb99157b86b7deddd330261471f585"
+    },
+    "cross_owner_g0.txt": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "preview_g0.txt": {
+      "http_status": 200
+    },
+    "upload_g0.md": {
+      "http_status": 201
+    },
+    "download_g0.md": {
+      "http_status": 200,
+      "bytes": 14,
+      "sha256": "74691459e32d9e46e0903f895deb80382ddcb3c9a16ea7992e9dddbfba908cf2"
+    },
+    "cross_owner_g0.md": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "preview_g0.md": {
+      "http_status": 200
+    },
+    "upload_g0.campusdoc": {
+      "http_status": 201
+    },
+    "download_g0.campusdoc": {
+      "http_status": 200,
+      "bytes": 57,
+      "sha256": "029b39034eb4714d1e388b65e5eb4c175dceda5bbb3a0ef16a39dd7bd7536a3f"
+    },
+    "cross_owner_g0.campusdoc": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "preview_g0.campusdoc": {
+      "http_status": 200
+    },
+    "upload_g0.pdf": {
+      "http_status": 201
+    },
+    "download_g0.pdf": {
+      "http_status": 200,
+      "bytes": 581,
+      "sha256": "1b4ed35bd51a5cbcb562c1146f7d58b937f8afa0966dae731c6c7c52eb730df3"
+    },
+    "cross_owner_g0.pdf": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "preview_g0.pdf": {
+      "http_status": 200
+    },
+    "upload_g0.docx": {
+      "http_status": 201
+    },
+    "download_g0.docx": {
+      "http_status": 200,
+      "bytes": 450,
+      "sha256": "4d7d9cc9f226d0ad9bd722071f532e5789de95d3461133411d82ef39474dced9"
+    },
+    "cross_owner_g0.docx": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "preview_g0.docx": {
+      "http_status": 200
+    },
+    "reject_fake.pdf": {
+      "http_status": 400,
+      "code": 77002
+    },
+    "reject_active.pdf": {
+      "http_status": 400,
+      "code": 77002
+    },
+    "reject_external.docx": {
+      "http_status": 400,
+      "code": 77002
+    },
+    "reject_html.txt": {
+      "http_status": 400,
+      "code": 77002
+    },
+    "preview_without_consent": {
+      "http_status": 403,
+      "code": 73003
+    },
+    "consent_personal_space_file.self.read": {
+      "http_status": 200
+    },
+    "cross_owner_create_invocation": {
+      "http_status": 404,
+      "code": 77003
+    },
+    "create_invocation": {
+      "http_status": 201
+    },
+    "invocation_metadata": {
+      "http_status": 200
+    },
+    "invocation_bytes": {
+      "http_status": 200,
+      "bytes": 581,
+      "sha256": "1b4ed35bd51a5cbcb562c1146f7d58b937f8afa0966dae731c6c7c52eb730df3"
+    },
+    "cross_owner_invocation": {
+      "http_status": 410,
+      "code": 73004
+    },
+    "admin_invocation": {
+      "http_status": 410,
+      "code": 73004
+    },
+    "revoke_user_consent": {
+      "http_status": 200
+    },
+    "old_invocation_after_consent_revoke": {
+      "http_status": 403,
+      "code": 73003
+    },
+    "owner_download_after_consent_revoke": {
+      "http_status": 200,
+      "bytes": 581,
+      "sha256": "1b4ed35bd51a5cbcb562c1146f7d58b937f8afa0966dae731c6c7c52eb730df3"
+    },
+    "restore_user_consent": {
+      "http_status": 200
+    },
+    "revoke_admin_grant": {
+      "http_status": 200
+    },
+    "old_invocation_after_admin_revoke": {
+      "http_status": 403,
+      "code": 73003
+    },
+    "restore_admin_grant": {
+      "http_status": 200
+    },
+    "disable_plugin": {
+      "http_status": 200
+    },
+    "disabled_invocation": {
+      "http_status": 503,
+      "code": 73001
+    },
+    "disabled_plugin_owner_download": {
+      "http_status": 200,
+      "bytes": 581,
+      "sha256": "1b4ed35bd51a5cbcb562c1146f7d58b937f8afa0966dae731c6c7c52eb730df3"
+    },
+    "enable_plugin": {
+      "http_status": 200
+    },
+    "new_invocation_after_enable": {
+      "http_status": 201
+    },
+    "reenabled_plugin_bytes": {
+      "http_status": 200,
+      "bytes": 581,
+      "sha256": "1b4ed35bd51a5cbcb562c1146f7d58b937f8afa0966dae731c6c7c52eb730df3"
+    },
+    "save_text_revision": {
+      "http_status": 200
+    },
+    "stale_text_save": {
+      "http_status": 409,
+      "code": 77005
+    },
+    "restore_historical_version": {
+      "http_status": 200
+    },
+    "restored_historical_bytes": {
+      "http_status": 200,
+      "bytes": 8,
+      "sha256": "c770e154aeccb2db9cdecaa09397477caecb99157b86b7deddd330261471f585"
+    }
+  },
+  "known_limits": [
+    "v4 uses existing authorization adapter",
+    "binary converter unavailable",
+    "not v5 lifecycle acceptance"
+  ]
+}

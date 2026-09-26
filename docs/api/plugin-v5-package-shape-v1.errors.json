@@ -1,0 +1,12 @@
+{
+  "contract": "campusos.plugin-shape/v1",
+  "errors": [
+    {"code": "plugin.shape_invalid", "http_status": 400, "retryable": false},
+    {"code": "plugin.host_contract_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.artifact_mismatch", "http_status": 400, "retryable": false},
+    {"code": "plugin.contribution_empty", "http_status": 400, "retryable": false},
+    {"code": "plugin.duplicate_contribution", "http_status": 400, "retryable": false},
+    {"code": "plugin.release_identity_mismatch", "http_status": 400, "retryable": false},
+    {"code": "plugin.release_digest_conflict", "http_status": 409, "retryable": false}
+  ]
+}
