@@ -1,0 +1,340 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/scope-delegation-v1.schema.json",
+  "title": "G1 exact Scope and authority-bound delegation target",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "actor",
+    "management",
+    "bound",
+    "candidate",
+    "now_ms",
+    "facts_version"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.scope-delegation/v1"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "authentication_strength"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "authentication_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        }
+      }
+    },
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "active",
+        "expires_at_ms"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "identity.role.assign",
+            "plugin.grant.manage",
+            "integration.grant.manage"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "scope",
+        "not_before_ms",
+        "expires_at_ms",
+        "required_strength",
+        "status",
+        "delegable"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "knowledge.source.read",
+            "plugin.config.system.read",
+            "integration.webhook.invoke",
+            "personal.document.read"
+          ]
+        },
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "public_collection"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "system_config"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "endpoint"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "not_before_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "revoked"
+          ]
+        },
+        "delegable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "scope",
+        "not_before_ms",
+        "expires_at_ms",
+        "required_strength",
+        "recipient"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "knowledge.source.read",
+            "plugin.config.system.read",
+            "integration.webhook.invoke",
+            "personal.document.read"
+          ]
+        },
+        "scope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "public_collection"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "system_config"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "ids"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "endpoint"
+                },
+                "ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "not_before_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        },
+        "recipient": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "user",
+                "integration",
+                "plugin"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    },
+    "now_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "facts_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  }
+}

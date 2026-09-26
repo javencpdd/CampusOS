@@ -1,0 +1,40 @@
+{
+  "contract": "campusos.plugin-resource-install/v1",
+  "errors": [
+    {
+      "code": "plugin.resource_request_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.resource_policy_unavailable",
+      "http_status": 503,
+      "retryable": true
+    },
+    {
+      "code": "plugin.resource_grant_missing",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.resource_grant_expired",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.network_target_forbidden",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.install_mutation_forbidden",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.host_fingerprint_changed",
+      "http_status": 400,
+      "retryable": false
+    }
+  ]
+}

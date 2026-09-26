@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-install-plan-v1.schema.json",
+  "title": "CampusOS v5 non-invasive install mutation plan (G1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "plugin_key",
+    "mutations",
+    "host_before",
+    "host_after"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.plugin-install-plan/v1"
+    },
+    "plugin_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"
+    },
+    "mutations": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/definitions/mutation"
+      }
+    },
+    "host_before": {
+      "$ref": "#/definitions/fingerprint"
+    },
+    "host_after": {
+      "$ref": "#/definitions/fingerprint"
+    }
+  },
+  "definitions": {
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "namespace"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "plugin_package",
+            "plugin_config",
+            "plugin_data",
+            "installation_record",
+            "grant_record",
+            "operation_record",
+            "audit_record"
+          ]
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"
+        }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "dependencies",
+        "binary",
+        "frontends",
+        "schema"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "dependencies": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "binary": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "frontends": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

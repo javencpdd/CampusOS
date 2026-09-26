@@ -1,0 +1,32 @@
+{
+  "contract": "campusos.host-capabilities/v1",
+  "host_contract": "campusos.host/v1",
+  "items": [
+    {
+      "code": "community.thread.public.read",
+      "scope_kind": "public",
+      "data_classification": "public",
+      "consent_required": false
+    },
+    {
+      "code": "plugin.records.self.read",
+      "scope_kind": "self",
+      "data_classification": "sensitive",
+      "consent_required": true
+    },
+    {
+      "code": "knowledge.collection.public.search",
+      "scope_kind": "collection",
+      "data_classification": "public",
+      "consent_required": false,
+      "available_public_collection_ids": ["collection-public-a", "collection-public-b"]
+    },
+    {
+      "code": "plugin.config.system.read",
+      "scope_kind": "system_config",
+      "data_classification": "internal",
+      "consent_required": false,
+      "available_config_keys": ["display.locale", "display.theme"]
+    }
+  ]
+}

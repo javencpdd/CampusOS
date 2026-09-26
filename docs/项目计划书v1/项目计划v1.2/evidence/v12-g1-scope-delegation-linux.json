@@ -1,0 +1,157 @@
+{
+  "schema": "campusos.v12-g1-scope-delegation-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:50.867Z",
+  "scope": "G1 non-board exact Scope, admin management authority, single complete bound, time and MFA subset",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 02a/02c/03b transactional grants, machine/plugin principals and real endpoint enforcement",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "collection-subset",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "config-keys",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "exact-endpoint",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "user-admin-role-cannot-grant-plugin",
+      "expected": "scope.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "admin-no-mfa",
+      "expected": "scope.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "management-wrong-action",
+      "expected": "scope.management_denied",
+      "passed": true
+    },
+    {
+      "name": "management-expired",
+      "expected": "scope.management_denied",
+      "passed": true
+    },
+    {
+      "name": "management-revoked",
+      "expected": "scope.management_denied",
+      "passed": true
+    },
+    {
+      "name": "bound-suspended",
+      "expected": "scope.bound_inactive",
+      "passed": true
+    },
+    {
+      "name": "bound-revoked",
+      "expected": "scope.bound_inactive",
+      "passed": true
+    },
+    {
+      "name": "bound-nondelegable",
+      "expected": "scope.bound_inactive",
+      "passed": true
+    },
+    {
+      "name": "bound-expired",
+      "expected": "scope.bound_inactive",
+      "passed": true
+    },
+    {
+      "name": "wrong-action",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "wrong-scope-kind",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "outside-collection",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "wide-collection",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "candidate-before-now",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "candidate-after-bound",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "mfa-downgrade",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "private-document",
+      "expected": "scope.non_delegable",
+      "passed": true
+    },
+    {
+      "name": "user-recipient",
+      "expected": "scope.recipient_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wildcard-endpoint",
+      "expected": "scope.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "raw-secret",
+      "expected": "scope.input_invalid",
+      "passed": true
+    }
+  ],
+  "rechecks": [
+    {
+      "name": "revocation",
+      "passed": true
+    },
+    {
+      "name": "bound-expiration",
+      "passed": true
+    },
+    {
+      "name": "management-expiration",
+      "passed": true
+    },
+    {
+      "name": "scope-narrowing",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/scope-delegation-v1.schema.json": "d63e8b1e9702c71f5bbcd29b84c90dd2ea0c6b6c7ca1b4136f2aa8952ecbb683",
+    "docs/api/scope-delegation-v1.errors.json": "6a03d0157f57694097e62bca2011c63db11cd423db9b44ba201309e4629f4015",
+    "sdk/typescript/src/scope-delegation.ts": "9b2210f35d7b37b92924fb4876023d97211a8ed7f9865b6d665fd90b3a94d085",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "scripts/check-v12-scope-delegation-contract.mjs": "5dea36069ea2bbf61cb840b9de1dc7373c10d87916f2b69b267b65ec54b18388"
+  }
+}

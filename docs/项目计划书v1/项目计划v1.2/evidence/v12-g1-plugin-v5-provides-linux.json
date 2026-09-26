@@ -1,0 +1,250 @@
+{
+  "schema": "campusos.v12-g1-plugin-v5-provides-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:31.117Z",
+  "scope": "G1 three typed extension point declarations and bounded DTOs",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 03a/03c/08a/14c: no package install, dispatcher invocation, real ACL or provider response trust claimed",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "three-points",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "preview-only",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "chat-only",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "source-only",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "chat-no-host-private",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "unknown-point",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-version",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "input-schema-replaced",
+      "expected": "plugin.extension_schema_mismatch",
+      "passed": true
+    },
+    {
+      "name": "output-schema-replaced",
+      "expected": "plugin.extension_schema_mismatch",
+      "passed": true
+    },
+    {
+      "name": "unknown-capability",
+      "expected": "plugin.extension_capability_unsupported",
+      "passed": true
+    },
+    {
+      "name": "empty-capabilities",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "duplicated-capability",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "private-chat",
+      "expected": "plugin.extension_data_mode_unsupported",
+      "passed": true
+    },
+    {
+      "name": "private-source",
+      "expected": "plugin.extension_data_mode_unsupported",
+      "passed": true
+    },
+    {
+      "name": "duplicate-contribution",
+      "expected": "plugin.duplicate_contribution",
+      "passed": true
+    },
+    {
+      "name": "missing-shape-contribution",
+      "expected": "plugin.contribution_shape_mismatch",
+      "passed": true
+    },
+    {
+      "name": "mismatched-point",
+      "expected": "plugin.contribution_shape_mismatch",
+      "passed": true
+    },
+    {
+      "name": "missing-detail",
+      "expected": "plugin.contribution_shape_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wrong-host",
+      "expected": "plugin.extension_point_unsupported",
+      "passed": true
+    },
+    {
+      "name": "catalog-version",
+      "expected": "plugin.extension_catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-duplicate-point",
+      "expected": "plugin.extension_catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-private-chat",
+      "expected": "plugin.extension_catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-redefined-schema",
+      "expected": "plugin.extension_catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "config-schema-remote",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "config-schema-traversal",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    },
+    {
+      "name": "config-schema-relative",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "extra-owner-field",
+      "expected": "plugin.provides_invalid",
+      "passed": true
+    }
+  ],
+  "point_combinations": 36,
+  "dto_fixtures": [
+    {
+      "name": "preview_renderer_request",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "preview_renderer_response",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_request",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_response",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_request",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_response",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "preview_renderer_request-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "preview_renderer_response-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_request-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_response-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_request-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_response-owner-injection",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_request-private",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "ai_chat_request-user-token",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_request-unbounded",
+      "expected": "rejected",
+      "passed": true
+    },
+    {
+      "name": "knowledge_source_response-insecure-url",
+      "expected": "rejected",
+      "passed": true
+    }
+  ],
+  "typescript_positive": 9,
+  "typescript_negative": 4,
+  "files_sha256": {
+    "docs/api/plugin-v5-provides-v1.schema.json": "171d40d5294ab9180880c91ed95292c615464c0c8e9baa91600b3b46a7e52dc8",
+    "docs/api/plugin-v5-extension-catalog-v1.schema.json": "fb55f318e07b96db731b1b4a184b2621d9d5e3106b57721bed388138673afc0f",
+    "docs/api/plugin-v5-extension-dtos-v1.schema.json": "3ca77d318b8453e707127f6c48c95db43c75867418985f2ccd35f13d93fba69a",
+    "docs/api/plugin-v5-package-shape-v1.schema.json": "261d7845115800ae789cfb4c517ce1d4ded3124d9f6ca92658aecc8ff125930f",
+    "sdk/typescript/tests/plugin-v5-extension-catalog.fixture.json": "445430cfb3f7b6b7d28e800aa4030b4cfc9f11cb2634b33e314504b99a2c3c7c",
+    "docs/api/plugin-v5-provides-v1.errors.json": "3a73c264b6015a476d49478ddf67c754a1eca434209f09dcb2897a8bc7406c38",
+    "sdk/typescript/src/plugin-v5-provides.ts": "7155cfa4d89d5e95c73cd52db112f926825b82e0a74fd09ddb6dfb8526e3e56b",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-plugin-v5-provides-contract.mjs": "97aa68a61c4b65c254e91cd1223c7056de1e5c23372db0e16be3c6a4865fd202"
+  }
+}

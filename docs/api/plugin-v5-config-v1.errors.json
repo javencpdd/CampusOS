@@ -1,0 +1,35 @@
+{
+  "contract": "campusos.plugin-config/v1",
+  "errors": [
+    {
+      "code": "plugin.config_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.config_schema_unsupported",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.config_defaults_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.config_revision_conflict",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.config_selector_forbidden",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.secret_ref_invalid",
+      "http_status": 400,
+      "retryable": false
+    }
+  ]
+}

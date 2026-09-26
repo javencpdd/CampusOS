@@ -1,0 +1,35 @@
+{
+  "contract": "campusos.resource-policy/v1",
+  "errors": [
+    {
+      "code": "policy.invalid",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "policy.unknown_action",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "policy.principal_wrong_domain",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "policy.resource_unavailable",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "policy.scope_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "policy.facts_changed",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

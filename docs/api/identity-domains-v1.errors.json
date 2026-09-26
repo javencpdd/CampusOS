@@ -1,0 +1,55 @@
+{
+  "contract": "campusos.identity-domains/v1",
+  "errors": [
+    {
+      "code": "identity.domain_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "identity.domain_not_isolated",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "identity.cross_domain_credential",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.challenge_wrong_domain",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.admin_auto_activation_forbidden",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.account_inactive",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.admin_bootstrap_forbidden",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.admin_mfa_required",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "identity.last_security_admin",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "identity.admin_actor_required",
+      "http_status": 403,
+      "retryable": false
+    }
+  ]
+}

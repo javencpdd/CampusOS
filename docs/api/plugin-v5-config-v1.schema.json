@@ -1,0 +1,228 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "definition": {
+      "$ref": "#/definitions/definition"
+    },
+    "update": {
+      "$ref": "#/definitions/update"
+    },
+    "current_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "available_profiles": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    },
+    "available_public_collections": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    }
+  },
+  "required": [
+    "definition",
+    "update",
+    "current_revision",
+    "available_profiles",
+    "available_public_collections"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-config-v1.schema.json",
+  "title": "CampusOS v5 bounded config, update and selector decision (G1)",
+  "definitions": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 512
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512
+        }
+      },
+      "required": [
+        "type",
+        "title"
+      ]
+    },
+    "schema_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "properties": {
+          "type": "object",
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]{0,63}$": {
+              "$ref": "#/definitions/field"
+            }
+          },
+          "additionalProperties": false
+        },
+        "required": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "additionalProperties",
+        "properties",
+        "required"
+      ]
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "const": "campusos.plugin-config/v1"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^v[1-9][0-9]*$"
+        },
+        "schema": {
+          "$ref": "#/definitions/schema_spec"
+        },
+        "defaults": {
+          "type": "object",
+          "maxProperties": 32
+        },
+        "selectors": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+              },
+              "kind": {
+                "enum": [
+                  "profile",
+                  "public_collection"
+                ]
+              }
+            },
+            "required": [
+              "field",
+              "kind"
+            ]
+          }
+        },
+        "secret_names": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          }
+        }
+      },
+      "required": [
+        "contract",
+        "version",
+        "schema",
+        "defaults",
+        "selectors",
+        "secret_names"
+      ]
+    },
+    "update": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "values": {
+          "type": "object",
+          "maxProperties": 32
+        },
+        "secret_refs": {
+          "type": "object",
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_.-]{0,63}$": {
+              "type": "string",
+              "pattern": "^secret-ref:[a-z0-9-]{2,128}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "expected_revision",
+        "values",
+        "secret_refs"
+      ]
+    }
+  }
+}

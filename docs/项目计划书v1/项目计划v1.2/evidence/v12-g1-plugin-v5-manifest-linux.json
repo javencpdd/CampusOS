@@ -1,0 +1,145 @@
+{
+  "schema": "campusos.v12-g1-plugin-manifest-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:43.630Z",
+  "scope": "G1 full v5 wire Manifest: shape, consumes, provides, resources, config, private data and immutable release identity",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 03a/03b: package bytes/signatures, real catalog, installer and Runtime still unimplemented",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "headless-wasm",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "headless-container",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "ui-only",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "combined",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "missing-consumes",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-config",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-data",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "undeclared-extension",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "wrong-input-schema",
+      "expected": "plugin.manifest_schema_mismatch",
+      "passed": true
+    },
+    {
+      "name": "unknown-capability",
+      "expected": "plugin.manifest_capability_unpublished",
+      "passed": true
+    },
+    {
+      "name": "scope-mismatch",
+      "expected": "plugin.manifest_capability_unpublished",
+      "passed": true
+    },
+    {
+      "name": "private-profile",
+      "expected": "plugin.manifest_capability_unpublished",
+      "passed": true
+    },
+    {
+      "name": "resource-missing",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "resource-quota",
+      "expected": "plugin.manifest_resource_invalid",
+      "passed": true
+    },
+    {
+      "name": "unsafe-rollback",
+      "expected": "plugin.manifest_upgrade_unrecoverable",
+      "passed": true
+    },
+    {
+      "name": "raw-secret",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "remote-schema-ref",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "runtime-artifact-mismatch",
+      "expected": "plugin.manifest_shape_mismatch",
+      "passed": true
+    },
+    {
+      "name": "empty-headless",
+      "expected": "plugin.manifest_shape_mismatch",
+      "passed": true
+    },
+    {
+      "name": "install-script",
+      "expected": "plugin.manifest_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-host",
+      "expected": "plugin.manifest_schema_mismatch",
+      "passed": true
+    },
+    {
+      "name": "duplicate-contribution",
+      "expected": "plugin.manifest_extension_unpublished",
+      "passed": true
+    }
+  ],
+  "release_recheck": {
+    "expected": "plugin.manifest_release_mismatch",
+    "passed": true
+  },
+  "files_sha256": {
+    "docs/api/plugin-v5-manifest-v1.schema.json": "c670a49741fc596dd5eece275bcabc903c307a22d69bf4200ef7574016bf2326",
+    "docs/api/plugin-v5-manifest-v1.errors.json": "917546c8f99fee8af6a66c01cb255f66ecba1d8b3f04f1379edfe00a34610dd6",
+    "docs/api/plugin-v5-package-shape-v1.schema.json": "261d7845115800ae789cfb4c517ce1d4ded3124d9f6ca92658aecc8ff125930f",
+    "docs/api/plugin-v5-consumes-v1.schema.json": "6e3f9ef74f0ddc826679931eb32535847c46c6003e65c91cb1a0515b64e8363e",
+    "docs/api/plugin-v5-provides-v1.schema.json": "171d40d5294ab9180880c91ed95292c615464c0c8e9baa91600b3b46a7e52dc8",
+    "docs/api/plugin-v5-config-v1.schema.json": "5edfa6b171037250b2a3ddd94c4b787afb48afac7683817ae28b11eb044b07e0",
+    "docs/api/plugin-v5-host-resources-v1.schema.json": "6623b5618061f7d63d746ae5ec7cdf2f1176777b4dccf0a5b765206a2f4e152b",
+    "sdk/typescript/tests/plugin-v5-host-catalog.fixture.json": "5d01fa8c8a2f20d5c8c815872fd73268aae82745fdf443d04066cb37376de66b",
+    "sdk/typescript/tests/plugin-v5-extension-catalog.fixture.json": "445430cfb3f7b6b7d28e800aa4030b4cfc9f11cb2634b33e314504b99a2c3c7c",
+    "sdk/typescript/src/plugin-v5-manifest.ts": "1b9bc3411eafb91870c38208bfc43fdde04cb0f9af300af8e02469227f4ed498",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "scripts/check-v12-plugin-v5-manifest-contract.mjs": "81df3fa794bbc8b2f72deaeabd54ecb04ece8b3f119e84b8c550315efa7a6ba8"
+  }
+}

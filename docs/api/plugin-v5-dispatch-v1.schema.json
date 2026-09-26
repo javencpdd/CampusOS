@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-dispatch-v1.schema.json",
+  "title": "G1 bidirectional plugin invocation decision input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "direction",
+    "call",
+    "trusted"
+  ],
+  "properties": {
+    "direction": {
+      "enum": [
+        "host_to_plugin",
+        "plugin_to_host"
+      ]
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contract",
+        "target",
+        "instance_generation",
+        "deadline_ms",
+        "request_bytes",
+        "response_limit_bytes"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contract": {
+          "const": "campusos.plugin-dispatch/v1"
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "host_api",
+                "contribution"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "request_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "response_limit_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "trusted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "now_ms",
+        "current_generation",
+        "desired_state",
+        "observed_state",
+        "global_installed",
+        "user_install_required",
+        "user_installed",
+        "grant_active",
+        "consent_required",
+        "consent_active",
+        "declared",
+        "published",
+        "feature_enabled",
+        "instance_audience",
+        "credential_expires_at_ms",
+        "selected_id",
+        "max_request_bytes",
+        "max_response_bytes",
+        "max_deadline_ms"
+      ],
+      "properties": {
+        "now_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "desired_state": {
+          "enum": [
+            "enabled",
+            "disabled",
+            "uninstalled"
+          ]
+        },
+        "observed_state": {
+          "enum": [
+            "ready",
+            "pending",
+            "failed",
+            "stopped"
+          ]
+        },
+        "global_installed": {
+          "type": "boolean"
+        },
+        "user_install_required": {
+          "type": "boolean"
+        },
+        "user_installed": {
+          "type": "boolean"
+        },
+        "grant_active": {
+          "type": "boolean"
+        },
+        "consent_required": {
+          "type": "boolean"
+        },
+        "consent_active": {
+          "type": "boolean"
+        },
+        "declared": {
+          "type": "boolean"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "feature_enabled": {
+          "type": "boolean"
+        },
+        "instance_audience": {
+          "enum": [
+            "host-api",
+            "other"
+          ]
+        },
+        "credential_expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "max_request_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_response_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_deadline_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

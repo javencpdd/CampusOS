@@ -1,0 +1,50 @@
+{
+  "contract": "campusos.plugin-event/v1",
+  "errors": [
+    {
+      "code": "plugin.event_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_uncommitted",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_expired",
+      "http_status": 410,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_stale_generation",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_subscription_missing",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_grant_revoked",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_runtime_unavailable",
+      "http_status": 503,
+      "retryable": true
+    },
+    {
+      "code": "plugin.event_too_large",
+      "http_status": 413,
+      "retryable": false
+    },
+    {
+      "code": "plugin.event_dead_letter",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

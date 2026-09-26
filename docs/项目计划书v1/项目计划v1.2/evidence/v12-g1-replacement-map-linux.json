@@ -1,0 +1,148 @@
+{
+  "schema": "campusos.v12-g1-replacement-map-acceptance/v1",
+  "generated_at": "2026-09-26T20:25:29.718Z",
+  "scope": "G1 old mechanisms tracked to exact current code anchors, target contract and responsibility stage",
+  "implementation": "passed",
+  "automation": "passed",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2"
+  },
+  "target_environment": "linux offline source/contract mapping acceptance passed",
+  "runtime_acceptance": "pending per item in 02a/02d/03a/03b/03c; current paths intentionally remain live until replacements pass",
+  "entries": [
+    {
+      "id": "identity.jwt_shared",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.middleware_shared",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.user_session",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.role_auto_admin",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.admin_user_join",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.sql_admin_trigger",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "identity.admin_recovery_user",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "policy.user_only_check",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "policy.grant_by_execution",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.legacy_manifest",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.v4_ui_self_only",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.v4_adapter",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.legacy_manager",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.legacy_capability_map",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.untyped_scope",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    },
+    {
+      "id": "plugin.legacy_event",
+      "source_anchor_present": true,
+      "target_contract_present": true,
+      "stage_present": true,
+      "runtime_status": "pending",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/v1.2旧机制删除与替换清单.json": "d0c6e7a23755ff830470b268af2666a079429bd75efebd3ce7148126d450bff9",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "e4eaf6d19cb221c1c6d81133db5460f1688c31122c6b3d004e35927f6df3dbbe",
+    "scripts/check-v12-g1-replacement-map.mjs": "79e11cd978a08e38cd77ad26963053422a1eafc8390a60cd52cc51331e5e2ca0"
+  }
+}

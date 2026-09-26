@@ -1,0 +1,184 @@
+{
+  "schema": "campusos.v12-g1-identity-domains-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:41.058Z",
+  "scope": "G1 independent User/Admin credentials, session, challenge, bootstrap and last-admin target",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending V12-02d PostgreSQL/Memory account, token, refresh, MFA, recovery and audit",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "admin-valid",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "user-valid-same-id",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "admin-with-user-issuer",
+      "expected": "identity.cross_domain_credential",
+      "passed": true
+    },
+    {
+      "name": "admin-with-user-audience",
+      "expected": "identity.cross_domain_credential",
+      "passed": true
+    },
+    {
+      "name": "admin-with-user-key_id",
+      "expected": "identity.cross_domain_credential",
+      "passed": true
+    },
+    {
+      "name": "admin-with-user-credential_store",
+      "expected": "identity.cross_domain_credential",
+      "passed": true
+    },
+    {
+      "name": "admin-with-user-session_store",
+      "expected": "identity.cross_domain_credential",
+      "passed": true
+    },
+    {
+      "name": "shared-issuer",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-audience",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-key_id",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-credential_store",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-session_store",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-recovery_store",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "shared-role_store",
+      "expected": "identity.domain_not_isolated",
+      "passed": true
+    },
+    {
+      "name": "user-challenge-for-admin-access",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "user-challenge-for-admin-refresh",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "user-challenge-for-admin-mfa",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "user-challenge-for-admin-email",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "user-challenge-for-admin-recovery",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "other-account-recovery",
+      "expected": "identity.challenge_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "role-auto-admin",
+      "expected": "identity.admin_auto_activation_forbidden",
+      "passed": true
+    },
+    {
+      "name": "suspended",
+      "expected": "identity.account_inactive",
+      "passed": true
+    },
+    {
+      "name": "revoked",
+      "expected": "identity.account_inactive",
+      "passed": true
+    },
+    {
+      "name": "admin-create",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "admin-create-by-user",
+      "expected": "identity.admin_actor_required",
+      "passed": true
+    },
+    {
+      "name": "admin-create-no-mfa",
+      "expected": "identity.admin_mfa_required",
+      "passed": true
+    },
+    {
+      "name": "last-admin-suspend",
+      "expected": "identity.last_security_admin",
+      "passed": true
+    },
+    {
+      "name": "last-admin-revoke",
+      "expected": "identity.last_security_admin",
+      "passed": true
+    },
+    {
+      "name": "bootstrap-only-first",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "bootstrap-with-admin",
+      "expected": "identity.admin_bootstrap_forbidden",
+      "passed": true
+    },
+    {
+      "name": "bootstrap-by-user",
+      "expected": "identity.admin_bootstrap_forbidden",
+      "passed": true
+    },
+    {
+      "name": "unknown-challenge",
+      "expected": "identity.domain_invalid",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/identity-domains-v1.schema.json": "42c7a7b1a3f29efc2118633c9f16393a8da3de86175832a32b9da596d448fd82",
+    "docs/api/identity-domains-v1.errors.json": "bab85dcf10527465c81f10076fbe8026d0b3d0e2e067810561aee6cdc7588413",
+    "sdk/typescript/src/identity-domains.ts": "50da16aa9d0256389a8d7ad58cdf673f6691fa3c9ed2888fdd44a140d0556187",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "scripts/check-v12-identity-domains-contract.mjs": "a84f3cd029d14dc5cbb47ccdc449537238f1bf3da0c7a006667fad995cbce5d6"
+  }
+}
