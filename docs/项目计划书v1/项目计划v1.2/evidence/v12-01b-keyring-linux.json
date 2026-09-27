@@ -1,0 +1,49 @@
+{
+  "schema": "campusos.v12-stage-slice-exit/v1",
+  "generated_at": "2026-09-27T12:18:11.414834+00:00",
+  "stage": "V12-01b",
+  "slice": "shared_keyring_plugin_secret_pg_restore",
+  "stage_status": "partial",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "postgres_server_version_num": 160014,
+    "postgres_image": "postgres:16-alpine",
+    "database_storage": "owned tmpfs; container removed on exit",
+    "postgres_bind": "127.0.0.1 random host port",
+    "restore_database": "campusos_v12_01b_keyring_restored"
+  },
+  "checks": {
+    "migrations_000001_to_000006_and_checksum": "passed",
+    "current_and_historical_database_gate": "passed",
+    "legacy_aes_gcm_row_read_after_active_key_change": "passed",
+    "new_write_uses_active_key_and_old_row_rotates": "passed",
+    "missing_old_key_fails_closed_new_key_still_reads": "passed",
+    "owner_scope_and_plaintext_storage_negative": "passed",
+    "pg_dump_restore_and_reopened_service_read": "passed"
+  },
+  "restore_scope": "encrypted plugin_secret_values rows and current migration state only; no complete-system credential generation recovery",
+  "source_sha256": {
+    "internal/platform/security/keyring.go": "9542994e4815db2c3271d02d3bc575b7eee83d8e5651b4a616da87f21054d441",
+    "internal/platform/security/keyring_test.go": "83d0d2e77a32950b372e1bf2c8ebb222339f0bab9a4311b6f833e23c7901827e",
+    "internal/plugin/secret.go": "72aa028794979aec97b40975162106d176e59663c7dca486f02482cccfaa719c",
+    "internal/plugin/secret_test.go": "1c4296d77487639030ad3d81db0d49a9c906f23dc2078e69028be36760fcfbe2",
+    "internal/plugin/secret_keyring_pg_integration_test.go": "8f04c5daeea6f93c1683bdaba9244fe329dad5381555c7db707f0486f2f79bec",
+    "compose.dev.yml": "7e80aed0e282e2faccefc6d9cfb7f0f6969fbab4782df01de29ac5936a535ccd",
+    "deploy/docker/components/compose.api.yml": "a1e9f6b380c6d643c0e4f7e316be57264182bb669e25e341864b2583d3d772dc",
+    ".env.example": "8b8f0b66a21788bef29f85e211d0ad4fa0ba9e92e50f24c9dd6421ab725cc467",
+    "deploy/docker/.env.dev.example": "a8b2bc6daa5aba1c181fe8ba23431bf405e2dd3a42798330402667eba2f0f059",
+    "deploy/docker/.env.example": "1b711509f8106e1b22de8ac1bae7f42ce926f8f714ee481dcd5f7d2ee0c8ef9a",
+    "scripts/docker-dev.sh": "a26232f745d9bec5132ef832c57564a835a0bd61d13d48d863efa32ea2a76d9e",
+    "scripts/docker-dev.ps1": "c50a072370446e1837656b57b43a4a7fa3d11764d89d518bbfc5ca7abfda48e9",
+    "docs/api/v1.2插件配置Schema与Secret分流合同.md": "778ae0b4d9cf0a4bc02582d2757d981a4f5d88861d27e564ac99c40bd8a0f561",
+    "docs/architecture/配置与运行边界.md": "bc72012cc3ec6b6a95e2fcf89ae7223098fb5ac34c65fb1163af6033ca9d9e04",
+    "docs/help/系统设计相关/插件三层授权与v3开发指南.md": "f8374473a24657bd9226369692b73deb8495851fd06fe9d486396a3e7b33c5a6",
+    "docs-site/deployment/docker-development.md": "2a3dc7df7357f5ba990c784c64d8e8bcbcd52827357f6826adc1b5a227678482",
+    "README.md": "1097b6cef13e3e1e7115a51d7b1e7417964899b6797248ca861111d248c51992",
+    "scripts/v12-01b-keyring-drill.sh": "cda4167badea4ffcdffdd2f61484da17a6f698f6aa57c6c8cf2175272302a060"
+  }
+}

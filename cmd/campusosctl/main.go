@@ -37,6 +37,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runStorage(args[1:], stdout, stderr)
 	case "schedule":
 		return runSchedule(args[1:], stdout, stderr)
+	case "secret":
+		return runSecret(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		printUsage(stdout)
 		return 0
@@ -454,6 +456,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  identity  local system-account recovery commands")
 	fmt.Fprintln(w, "  storage   local user-storage reconciliation commands")
 	fmt.Fprintln(w, "  schedule  historical schedule adoption commands")
+	fmt.Fprintln(w, "  secret    local plugin Secret key rotation commands")
 }
 
 func printPluginUsage(w io.Writer) {

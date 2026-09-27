@@ -84,6 +84,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 绑定时，应配置 SMTP；只开发 API 或使用预置开发管理员时可以保留 `fake`。
 自动导入只是一次兼容迁移；创建后以 `.env.dev.local` 为两种共享开发模式的配置事实源。
 
+插件 Secret 换加密密钥时，在本地配置中同时设置 `CAMPUSOS_SECRET_ACTIVE_KEY_ID` 和 `CAMPUSOS_SECRET_ENCRYPTION_KEYS`；后者用 `key-id:32字节hex或Base64`、逗号分隔列出当前及仍被旧密文引用的密钥。新写入只用 active ID，旧行不会自动重加密；缺少旧 ID 时读取拒绝。改动配置后运行 `docker-dev.* up` 使 API 容器重新读取环境，勿把密钥写入插件包或前端。未设置这两个变量时仍使用旧的单密钥配置。
+
 后续启动直接使用：
 
 ```bash

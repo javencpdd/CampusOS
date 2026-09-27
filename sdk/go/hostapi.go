@@ -465,23 +465,3 @@ func (c *HostClient) StorageSet(ctx context.Context, key, value string) error {
 func (c *HostClient) StorageDelete(ctx context.Context, key string) error {
 	return c.Call(ctx, "StorageDelete", StorageDeleteRequest{PluginName: c.pluginName, Key: key}, nil)
 }
-
-type SecretRequest struct {
-	SecretName string `json:"secret_name"`
-	UserID     string `json:"user_id,omitempty"`
-}
-type SecretResponse struct {
-	SecretName string `json:"secret_name"`
-	Value      string `json:"value"`
-}
-
-func (c *HostClient) GetSystemSecret(ctx context.Context, name string) (string, error) {
-	var response SecretResponse
-	err := c.Call(ctx, "GetSystemSecret", SecretRequest{SecretName: name}, &response)
-	return response.Value, err
-}
-func (c *HostClient) GetUserSecret(ctx context.Context, userID, name string) (string, error) {
-	var response SecretResponse
-	err := c.Call(ctx, "GetUserSecret", SecretRequest{SecretName: name, UserID: userID}, &response)
-	return response.Value, err
-}

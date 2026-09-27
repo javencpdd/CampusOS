@@ -19,12 +19,6 @@
       "capability_code": ""
     },
     {
-      "method": "GetSystemSecret",
-      "resource": "secret",
-      "action": "read",
-      "capability_code": ""
-    },
-    {
       "method": "GetThread",
       "resource": "thread",
       "action": "read",
@@ -39,12 +33,6 @@
     {
       "method": "GetUserContact",
       "resource": "user_contact",
-      "action": "read",
-      "capability_code": ""
-    },
-    {
-      "method": "GetUserSecret",
-      "resource": "secret",
       "action": "read",
       "capability_code": ""
     },

@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -22,17 +23,22 @@ func scanSecret(row pgx.Row) (SecretMetadata, error) {
 
 const secretSelect = `SELECT id,plugin_id,owner_user_id,secret_name,key_version,algorithm,ciphertext,nonce,status,metadata,created_at,rotated_at,revoked_at FROM plugin_secret_values `
 
+func lockSecretIdentity(ctx context.Context, tx pgx.Tx, pluginID int64, owner *int64, name string) error {
+	ownerKey := "system"
+	if owner != nil {
+		ownerKey = fmt.Sprintf("%d", *owner)
+	}
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("secret:%d:%s:%s", pluginID, ownerKey, name))
+	return err
+}
+
 func (s *PgAuthorizationStore) PutSecret(ctx context.Context, value SecretMetadata) (SecretMetadata, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return SecretMetadata{}, err
 	}
 	defer tx.Rollback(ctx)
-	ownerKey := "system"
-	if value.OwnerUserID != nil {
-		ownerKey = fmt.Sprintf("%d", *value.OwnerUserID)
-	}
-	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("secret:%d:%s:%s", value.PluginID, ownerKey, value.SecretName)); err != nil {
+	if err = lockSecretIdentity(ctx, tx, value.PluginID, value.OwnerUserID, value.SecretName); err != nil {
 		return SecretMetadata{}, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE plugin_secret_values SET status='rotated',rotated_at=NOW() WHERE plugin_id=$1 AND owner_user_id IS NOT DISTINCT FROM $2 AND secret_name=$3 AND status='active'`, value.PluginID, value.OwnerUserID, value.SecretName); err != nil {
@@ -48,6 +54,43 @@ func (s *PgAuthorizationStore) PutSecret(ctx context.Context, value SecretMetada
 	}
 	return maskSecret(saved), nil
 }
+
+// ReplaceSecretIfCurrent changes only the encrypted envelope of the same
+// active row. The identity lock serializes it with PutSecret and RevokeSecret;
+// the row and old-envelope predicates make every stale read fail closed.
+func (s *PgAuthorizationStore) ReplaceSecretIfCurrent(ctx context.Context, expected, replacement SecretMetadata) (SecretMetadata, error) {
+	if !sameActiveSecretIdentity(expected, replacement) {
+		return SecretMetadata{}, ErrSecretChanged
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return SecretMetadata{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err = lockSecretIdentity(ctx, tx, expected.PluginID, expected.OwnerUserID, expected.SecretName); err != nil {
+		return SecretMetadata{}, err
+	}
+	saved, err := scanSecret(tx.QueryRow(ctx, `UPDATE plugin_secret_values
+		SET key_version=$1,algorithm=$2,ciphertext=$3,nonce=$4
+		WHERE id=$5 AND plugin_id=$6 AND owner_user_id IS NOT DISTINCT FROM $7
+			AND secret_name=$8 AND status='active' AND revoked_at IS NULL
+			AND key_version=$9 AND algorithm=$10 AND nonce=$11 AND ciphertext=$12
+		RETURNING id,plugin_id,owner_user_id,secret_name,key_version,algorithm,ciphertext,nonce,status,metadata,created_at,rotated_at,revoked_at`,
+		replacement.KeyVersion, replacement.Algorithm, replacement.Ciphertext, replacement.Nonce,
+		expected.ID, expected.PluginID, expected.OwnerUserID, expected.SecretName,
+		expected.KeyVersion, expected.Algorithm, expected.Nonce, expected.Ciphertext))
+	if errors.Is(err, ErrMarketNotFound) {
+		return SecretMetadata{}, ErrSecretChanged
+	}
+	if err != nil {
+		return SecretMetadata{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return SecretMetadata{}, err
+	}
+	return maskSecret(saved), nil
+}
+
 func (s *PgAuthorizationStore) ActiveSecret(ctx context.Context, pluginID int64, owner *int64, name string) (SecretMetadata, error) {
 	return scanSecret(s.pool.QueryRow(ctx, secretSelect+`WHERE plugin_id=$1 AND owner_user_id IS NOT DISTINCT FROM $2 AND secret_name=$3 AND status='active' AND revoked_at IS NULL`, pluginID, owner, name))
 }
@@ -68,11 +111,22 @@ func (s *PgAuthorizationStore) ListSecrets(ctx context.Context, pluginID int64, 
 	return result, rows.Err()
 }
 func (s *PgAuthorizationStore) RevokeSecret(ctx context.Context, pluginID int64, owner *int64, name string) error {
-	result, err := s.pool.Exec(ctx, `UPDATE plugin_secret_values SET status='revoked',revoked_at=NOW() WHERE plugin_id=$1 AND owner_user_id IS NOT DISTINCT FROM $2 AND secret_name=$3 AND status='active' AND revoked_at IS NULL`, pluginID, owner, name)
-	if err == nil && result.RowsAffected() == 0 {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err = lockSecretIdentity(ctx, tx, pluginID, owner, name); err != nil {
+		return err
+	}
+	result, err := tx.Exec(ctx, `UPDATE plugin_secret_values SET status='revoked',revoked_at=NOW() WHERE plugin_id=$1 AND owner_user_id IS NOT DISTINCT FROM $2 AND secret_name=$3 AND status='active' AND revoked_at IS NULL`, pluginID, owner, name)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
 		return ErrMarketNotFound
 	}
-	return err
+	return tx.Commit(ctx)
 }
 
 var _ SecretStore = (*PgAuthorizationStore)(nil)

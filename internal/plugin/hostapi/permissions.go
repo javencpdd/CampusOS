@@ -38,8 +38,6 @@ var hostAPIMethodPermissions = map[string]HostAPIPermission{
 	"RecordList":       {Resource: "managed_data", Action: "read"},
 	"RecordUpdate":     {Resource: "managed_data", Action: "write"},
 	"RecordDelete":     {Resource: "managed_data", Action: "delete"},
-	"GetSystemSecret":  {Resource: "secret", Action: "read"},
-	"GetUserSecret":    {Resource: "secret", Action: "read"},
 }
 
 func PermissionForMethod(method string) (HostAPIPermission, bool) {
@@ -47,12 +45,6 @@ func PermissionForMethod(method string) (HostAPIPermission, bool) {
 	permission.Method = method
 	if descriptor, known := plugin.CapabilityForPermission(permission.Resource, permission.Action); known {
 		permission.CapabilityCode = descriptor.Code
-	}
-	if method == "GetSystemSecret" {
-		permission.CapabilityCode = "secret.system.read"
-	}
-	if method == "GetUserSecret" {
-		permission.CapabilityCode = "secret.self.read"
 	}
 	return permission, ok
 }
