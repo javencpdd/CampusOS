@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="5024" height="3388" viewBox="0 0 5024 3388">
-<metadata>campusos_schema_sha256=7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70;tables=89;foreign_keys=106</metadata>
+<metadata>campusos_schema_sha256=6f9b7c08af971026f574b7b5667b783f0c1f379573f0b8ccb0bcb90174ce88aa;tables=89;foreign_keys=106</metadata>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#667085"/></marker></defs>
 <rect width="100%" height="100%" fill="#f8fafc"/>
 <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
@@ -61,7 +61,7 @@
 <path d="M 634.0,3201.0 L 785.1,3196.3 L 924.2,3182.8 L 1052.4,3161.1 L 1170.7,3132.3 L 1280.2,3097.0 L 1382.1,3056.1 L 1477.5,3010.3 L 1567.3,2960.5 L 1652.8,2907.5 L 1735.0,2852.1 L 1815.1,2795.1 L 1894.0,2737.2 L 1972.9,2679.4 L 2053.0,2622.4 L 2135.2,2567.0 L 2220.7,2514.0 L 2310.5,2464.2 L 2405.9,2418.4 L 2507.8,2377.5 L 2617.3,2342.2 L 2735.6,2313.4 L 2863.8,2291.7 L 3002.9,2278.2 L 3154.0,2273.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_secret_values_owner_user_id_fkey: plugin_secret_values(owner_user_id) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE CASCADE</title></path>
 <path d="M 634.0,3201.0 L 785.1,3196.3 L 924.2,3182.8 L 1052.4,3161.1 L 1170.7,3132.3 L 1280.2,3097.0 L 1382.1,3056.1 L 1477.5,3010.3 L 1567.3,2960.5 L 1652.8,2907.5 L 1735.0,2852.1 L 1815.1,2795.1 L 1894.0,2737.2 L 1972.9,2679.4 L 2053.0,2622.4 L 2135.2,2567.0 L 2220.7,2514.0 L 2310.5,2464.2 L 2405.9,2418.4 L 2507.8,2377.5 L 2617.3,2342.2 L 2735.6,2313.4 L 2863.8,2291.7 L 3002.9,2278.2 L 3154.0,2273.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>plugin_secret_values_created_by_fkey: plugin_secret_values(created_by) → users(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE SET NULL</title></path>
 <path d="M 634.0,3201.0 L 785.1,3197.4 L 924.2,3187.0 L 1052.4,3170.5 L 1170.7,3148.4 L 1280.2,3121.4 L 1382.1,3090.1 L 1477.5,3055.1 L 1567.3,3017.1 L 1652.8,2976.5 L 1735.0,2934.1 L 1815.1,2890.5 L 1894.0,2846.2 L 1972.9,2802.0 L 2053.0,2758.4 L 2135.2,2716.0 L 2220.7,2675.4 L 2310.5,2637.4 L 2405.9,2602.4 L 2507.8,2571.1 L 2617.3,2544.1 L 2735.6,2522.0 L 2863.8,2505.5 L 3002.9,2495.1 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_user: plugin_ui_invocations(user_id) → users(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
-<path d="M 1252.0,1540.5 L 1366.1,1545.3 L 1471.0,1559.2 L 1567.8,1581.4 L 1657.1,1610.9 L 1739.7,1647.1 L 1816.7,1689.1 L 1888.6,1736.0 L 1956.4,1787.1 L 2021.0,1841.4 L 2083.0,1898.2 L 2143.4,1956.7 L 2203.0,2016.0 L 2262.6,2075.3 L 2323.0,2133.8 L 2385.0,2190.6 L 2449.6,2244.9 L 2517.4,2296.0 L 2589.3,2342.9 L 2666.3,2384.9 L 2748.9,2421.1 L 2838.2,2450.6 L 2935.0,2472.8 L 3039.9,2486.7 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_article: plugin_ui_invocations(article_content_id) → richtext_article_contents(id), 父 1 : 子 0..N, 子表必须引用父表, ON DELETE CASCADE</title></path>
+<path d="M 1252.0,1540.5 L 1366.1,1545.3 L 1471.0,1559.2 L 1567.8,1581.4 L 1657.1,1610.9 L 1739.7,1647.1 L 1816.7,1689.1 L 1888.6,1736.0 L 1956.4,1787.1 L 2021.0,1841.4 L 2083.0,1898.2 L 2143.4,1956.7 L 2203.0,2016.0 L 2262.6,2075.3 L 2323.0,2133.8 L 2385.0,2190.6 L 2449.6,2244.9 L 2517.4,2296.0 L 2589.3,2342.9 L 2666.3,2384.9 L 2748.9,2421.1 L 2838.2,2450.6 L 2935.0,2472.8 L 3039.9,2486.7 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_article: plugin_ui_invocations(article_content_id) → richtext_article_contents(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE CASCADE</title></path>
 <path d="M 4390.0,2061.0 L 4350.1,2063.2 L 4313.3,2069.5 L 4279.4,2079.5 L 4248.2,2092.9 L 4219.2,2109.3 L 4192.3,2128.3 L 4167.1,2149.5 L 4143.3,2172.6 L 4120.7,2197.2 L 4099.0,2222.9 L 4077.9,2249.4 L 4057.0,2276.2 L 4036.1,2303.1 L 4015.0,2329.6 L 3993.3,2355.3 L 3970.7,2379.9 L 3946.9,2403.0 L 3921.7,2424.2 L 3894.8,2443.2 L 3865.8,2459.6 L 3834.6,2473.0 L 3800.7,2483.0 L 3763.9,2489.3 L 3724.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_asset: plugin_ui_invocations(asset_id) → user_assets(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
 <path d="M 1252.0,1360.0 L 1366.1,1365.7 L 1471.0,1382.3 L 1567.8,1408.6 L 1657.1,1443.8 L 1739.7,1486.9 L 1816.7,1536.8 L 1888.6,1592.6 L 1956.4,1653.4 L 2021.0,1718.0 L 2083.0,1785.6 L 2143.4,1855.2 L 2203.0,1925.8 L 2262.6,1996.3 L 2323.0,2065.9 L 2385.0,2133.5 L 2449.6,2198.1 L 2517.4,2258.9 L 2589.3,2314.7 L 2666.3,2364.6 L 2748.9,2407.7 L 2838.2,2442.9 L 2935.0,2469.2 L 3039.9,2485.8 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_attachment: plugin_ui_invocations(attachment_id) → richtext_article_attachments(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE RESTRICT</title></path>
 <path d="M 2488.0,620.0 L 2527.9,629.5 L 2564.7,656.8 L 2598.6,700.4 L 2629.8,758.6 L 2658.8,829.8 L 2685.7,912.4 L 2710.9,1004.8 L 2734.7,1105.2 L 2757.3,1212.2 L 2779.0,1324.0 L 2800.1,1439.1 L 2821.0,1555.8 L 2841.9,1672.4 L 2863.0,1787.5 L 2884.7,1899.3 L 2907.3,2006.3 L 2931.1,2106.7 L 2956.3,2199.1 L 2983.2,2281.7 L 3012.2,2352.9 L 3043.4,2411.1 L 3077.3,2454.7 L 3114.1,2482.0 L 3154.0,2491.5" fill="none" stroke="#98a2b3" stroke-width="1.4" opacity="0.72" marker-end="url(#arrow)"><title>fk_plugin_ui_invocations_personal_document: plugin_ui_invocations(personal_document_id) → personal_documents(id), 父 1 : 子 0..N, 子表可选引用父表, ON DELETE CASCADE</title></path>
@@ -155,11 +155,11 @@
 <rect x="64" y="419" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="419" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="446" font-size="16" font-weight="700" fill="#101828">authorization_audits</text>
-<text x="622" y="445" text-anchor="end" font-size="12" fill="#475467">16 字段 / 0 外键</text>
+<text x="622" y="445" text-anchor="end" font-size="12" fill="#475467">17 字段 / 0 外键</text>
 <text x="77" y="482" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="157" y="482" font-size="13" fill="#344054">id</text>
 <text x="622" y="482" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="157" y="507" font-size="12" fill="#98a2b3">… 其余 15 个字段详见中文说明</text>
+<text x="157" y="507" font-size="12" fill="#98a2b3">… 其余 16 个字段详见中文说明</text>
 <rect x="64" y="537" width="570" height="227" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="537" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="564" font-size="16" font-weight="700" fill="#101828">identity_account_recovery_cases</text>
@@ -882,7 +882,7 @@
 <text x="3167" y="2466" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="3247" y="2466" font-size="13" fill="#344054">user_id</text>
 <text x="3712" y="2466" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="3167" y="2491" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
+<text x="3167" y="2491" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="3247" y="2491" font-size="13" fill="#344054">article_content_id</text>
 <text x="3712" y="2491" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="3167" y="2516" font-size="12" font-weight="700" fill="#175cd3">FK</text>
@@ -1184,6 +1184,6 @@
 <text x="4483" y="2098" font-size="13" fill="#344054">storage_object_id</text>
 <text x="4948" y="2098" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="4483" y="2123" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
-<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：7c49aab7ae89e35c</text>
+<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：6f9b7c08af971026</text>
 </g>
 </svg>

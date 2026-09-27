@@ -551,7 +551,7 @@ func (s *MFAService) DisableFromLocalRecovery(ctx context.Context, userID, reaso
 		return err
 	}
 	return s.execute(ctx, reliability.Command{
-		Code: "identity.mfa.local_recovery", ActorID: userID, ActorType: "local_operator", ResourceType: "identity_mfa_method", ResourceID: userID,
+		Code: "identity.mfa.local_recovery", ActorID: "local-cli", ActorType: "system", ResourceType: "identity_mfa_method", ResourceID: userID,
 		OperationCode: "cli.identity.mfa.local_recovery", PermissionCode: "identity.mfa.local_recovery", Event: &event,
 	}, func(commandCtx context.Context) error {
 		method, methodErr := s.repo.GetActiveTOTPForUpdate(commandCtx, userID)
@@ -697,7 +697,7 @@ func (s *MFAService) recordPolicyAudit(ctx context.Context, actorID string, mode
 		return nil
 	}
 	return s.audits.RecordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: "identity.mfa_policy.update", OperationCode: "http.identity.mfa_policy.update",
+		ActorKind: "user", ActorID: actorID, PermissionCode: "identity.mfa_policy.update", OperationCode: "http.identity.mfa_policy.update",
 		ResourceType: "identity_mfa_policy", ResourceID: "admin", Outcome: "allow", Reason: "mode=" + string(mode),
 	})
 }
@@ -710,7 +710,7 @@ func (s *MFAService) recordLocalRecoveryAudit(ctx context.Context, userID, reaso
 		return nil
 	}
 	return s.audits.RecordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: userID, PermissionCode: "identity.mfa.local_recovery", OperationCode: "cli.identity.mfa.local_recovery",
+		ActorKind: "system", ActorID: "local-cli", PermissionCode: "identity.mfa.local_recovery", OperationCode: "cli.identity.mfa.local_recovery",
 		ResourceType: "identity_mfa_method", ResourceID: userID, Outcome: "allow", Reason: strings.TrimSpace(reason),
 	})
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -641,43 +642,81 @@ func NewMemoryAuthorizationStore() *MemoryAuthorizationStore {
 }
 
 func (m *MemoryAuthorizationStore) SyncVersion(_ context.Context, pluginID int64, manifest *Manifest, digest, fingerprint string, declarations []CapabilityDeclaration, _ *int64) (PluginVersion, error) {
+	if manifest == nil {
+		return PluginVersion{}, errors.New("manifest is required")
+	}
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		return PluginVersion{}, fmt.Errorf("marshal plugin manifest: %w", err)
+	}
+	manifestMap := map[string]interface{}{}
+	if err := json.Unmarshal(manifestJSON, &manifestMap); err != nil {
+		return PluginVersion{}, fmt.Errorf("decode plugin manifest: %w", err)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id, version := range m.versions {
-		if version.PluginID == pluginID && version.Version == manifest.Version {
-			if version.PackageDigest != digest || version.PermissionFingerprint != fingerprint {
-				return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest or capability fingerprint changed", manifest.Version)
-			}
-			version.LifecycleStatus = "active"
-			m.versions[id], m.active[manifest.Name] = version, id
-			m.setDeclarations(id, declarations)
-			return version, nil
+		if version.PluginID != pluginID {
+			continue
 		}
+		if version.Version != manifest.Version {
+			if version.PackageDigest == digest {
+				return PluginVersion{}, fmt.Errorf("plugin package digest is already assigned to version %s", version.Version)
+			}
+			continue
+		}
+		if version.PackageDigest != digest || version.PermissionFingerprint != fingerprint ||
+			version.ManifestAPIVersion != manifest.APIVersion || version.HostAPIVersion != manifest.HostAPIVersion ||
+			!reflect.DeepEqual(version.Manifest, manifestMap) {
+			return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest, capability fingerprint or manifest changed", manifest.Version)
+		}
+		m.retireActiveVersions(pluginID, id)
+		version.LifecycleStatus = "active"
+		m.versions[id], m.active[manifest.Name] = version, id
+		return clonePluginVersion(version), nil
 	}
 	id := idgen.New()
-	manifestMap := map[string]interface{}{}
-	data, _ := json.Marshal(manifest)
-	_ = json.Unmarshal(data, &manifestMap)
 	version := PluginVersion{ID: id, PluginID: pluginID, PluginName: manifest.Name, Version: manifest.Version, PackageDigest: digest, SignatureState: "unsigned", Channel: "stable", LifecycleStatus: "active", ManifestAPIVersion: manifest.APIVersion, HostAPIVersion: manifest.HostAPIVersion, PermissionFingerprint: fingerprint, Manifest: manifestMap, CreatedAt: time.Now()}
-	if old := m.active[manifest.Name]; old != 0 {
-		previous := m.versions[old]
-		previous.LifecycleStatus = "retired"
-		m.versions[old] = previous
-	}
+	m.retireActiveVersions(pluginID, 0)
 	m.versions[id], m.active[manifest.Name] = version, id
 	m.setDeclarations(id, declarations)
-	return version, nil
+	return clonePluginVersion(version), nil
+}
+
+func (m *MemoryAuthorizationStore) retireActiveVersions(pluginID, exceptID int64) {
+	for id, version := range m.versions {
+		if version.PluginID == pluginID && id != exceptID && version.LifecycleStatus == "active" {
+			version.LifecycleStatus = "retired"
+			m.versions[id] = version
+		}
+	}
 }
 
 func (m *MemoryAuthorizationStore) setDeclarations(versionID int64, items []CapabilityDeclaration) {
 	copyItems := make([]CapabilityDeclaration, len(items))
 	for index := range items {
 		copyItems[index] = items[index]
+		copyItems[index].ResourceScope = cloneAuthorizationMap(items[index].ResourceScope)
 		copyItems[index].ID = idgen.New()
 		copyItems[index].PluginVersionID = versionID
 		copyItems[index].CreatedAt = time.Now()
 	}
 	m.declarations[versionID] = copyItems
+}
+
+func cloneAuthorizationMap(value map[string]interface{}) map[string]interface{} {
+	if value == nil {
+		return nil
+	}
+	encoded, _ := json.Marshal(value)
+	var clone map[string]interface{}
+	_ = json.Unmarshal(encoded, &clone)
+	return clone
+}
+
+func clonePluginVersion(value PluginVersion) PluginVersion {
+	value.Manifest = cloneAuthorizationMap(value.Manifest)
+	return value
 }
 
 func (m *MemoryAuthorizationStore) ActiveVersion(_ context.Context, name string) (PluginVersion, error) {
@@ -687,7 +726,7 @@ func (m *MemoryAuthorizationStore) ActiveVersion(_ context.Context, name string)
 	if !ok {
 		return PluginVersion{}, ErrMarketNotFound
 	}
-	return value, nil
+	return clonePluginVersion(value), nil
 }
 func (m *MemoryAuthorizationStore) VersionByID(_ context.Context, id int64) (PluginVersion, error) {
 	m.mu.RLock()
@@ -696,12 +735,16 @@ func (m *MemoryAuthorizationStore) VersionByID(_ context.Context, id int64) (Plu
 	if !ok {
 		return PluginVersion{}, ErrMarketNotFound
 	}
-	return value, nil
+	return clonePluginVersion(value), nil
 }
 func (m *MemoryAuthorizationStore) ListDeclarations(_ context.Context, id int64) ([]CapabilityDeclaration, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return append([]CapabilityDeclaration(nil), m.declarations[id]...), nil
+	result := append([]CapabilityDeclaration(nil), m.declarations[id]...)
+	for index := range result {
+		result[index].ResourceScope = cloneAuthorizationMap(result[index].ResourceScope)
+	}
+	return result, nil
 }
 func grantKey(versionID int64, code string) string {
 	return strconv.FormatInt(versionID, 10) + ":" + code

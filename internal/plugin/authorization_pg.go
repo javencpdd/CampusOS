@@ -19,27 +19,39 @@ func NewPgAuthorizationStore(pool *pgxpool.Pool) *PgAuthorizationStore {
 }
 
 func (s *PgAuthorizationStore) SyncVersion(ctx context.Context, pluginID int64, manifest *Manifest, digest, fingerprint string, declarations []CapabilityDeclaration, actor *int64) (PluginVersion, error) {
+	if manifest == nil {
+		return PluginVersion{}, errors.New("manifest is required")
+	}
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		return PluginVersion{}, fmt.Errorf("marshal plugin manifest: %w", err)
+	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return PluginVersion{}, err
 	}
 	defer tx.Rollback(ctx)
-	var existingID int64
-	var existingDigest string
-	var existingFingerprint string
-	err = tx.QueryRow(ctx, `SELECT id,package_digest,permission_fingerprint FROM plugin_versions WHERE plugin_id=$1 AND version=$2`, pluginID, manifest.Version).Scan(&existingID, &existingDigest, &existingFingerprint)
-	isNew := errors.Is(err, pgx.ErrNoRows)
-	if err == nil && (existingDigest != digest || existingFingerprint != fingerprint) {
-		return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest or capability fingerprint changed", manifest.Version)
+	// Activation is serialized per plugin so competing SyncVersion calls cannot
+	// race the one-active-version index while retiring their predecessor.
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("version:%d", pluginID)); err != nil {
+		return PluginVersion{}, err
 	}
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	var existingID int64
+	var existingDigest, existingFingerprint, existingManifestAPI, existingHostAPI string
+	var sameManifest bool
+	err = tx.QueryRow(ctx, `SELECT id,package_digest,permission_fingerprint,manifest_api_version,host_api_version,manifest=$3::jsonb FROM plugin_versions WHERE plugin_id=$1 AND version=$2`, pluginID, manifest.Version, string(manifestJSON)).Scan(&existingID, &existingDigest, &existingFingerprint, &existingManifestAPI, &existingHostAPI, &sameManifest)
+	isNew := errors.Is(err, pgx.ErrNoRows)
+	if err == nil && (existingDigest != digest || existingFingerprint != fingerprint ||
+		existingManifestAPI != manifest.APIVersion || existingHostAPI != manifest.HostAPIVersion || !sameManifest) {
+		return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest, capability fingerprint or manifest changed", manifest.Version)
+	}
+	if err != nil && !isNew {
 		return PluginVersion{}, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE plugin_versions SET lifecycle_status='retired',retired_at=COALESCE(retired_at,NOW()) WHERE plugin_id=$1 AND lifecycle_status='active' AND ($2::bigint=0 OR id<>$2)`, pluginID, existingID); err != nil {
 		return PluginVersion{}, err
 	}
-	manifestJSON, _ := json.Marshal(manifest)
-	if existingID == 0 {
+	if isNew {
 		existingID = idgen.New()
 		_, err = tx.Exec(ctx, `INSERT INTO plugin_versions (id,plugin_id,version,package_digest,signature_state,channel,lifecycle_status,manifest_api_version,host_api_version,permission_fingerprint,manifest,metadata,created_by,created_at,activated_at) VALUES ($1,$2,$3,$4,'unsigned','stable','active',$5,$6,$7,$8::jsonb,'{}'::jsonb,$9,NOW(),NOW())`, existingID, pluginID, manifest.Version, digest, manifest.APIVersion, manifest.HostAPIVersion, fingerprint, string(manifestJSON), actor)
 	} else {
@@ -50,7 +62,10 @@ func (s *PgAuthorizationStore) SyncVersion(ctx context.Context, pluginID int64, 
 	}
 	if isNew {
 		for _, declaration := range declarations {
-			scopeJSON, _ := json.Marshal(nonNilMap(declaration.ResourceScope))
+			scopeJSON, marshalErr := json.Marshal(nonNilMap(declaration.ResourceScope))
+			if marshalErr != nil {
+				return PluginVersion{}, fmt.Errorf("marshal capability %s scope: %w", declaration.CapabilityCode, marshalErr)
+			}
 			_, err = tx.Exec(ctx, `INSERT INTO plugin_capability_declarations (id,plugin_version_id,capability_code,purpose,risk_level,required,resource_scope,data_classification,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,NOW())`, idgen.New(), existingID, declaration.CapabilityCode, declaration.Purpose, declaration.RiskLevel, declaration.Required, string(scopeJSON), declaration.DataClassification)
 			if err != nil {
 				return PluginVersion{}, err

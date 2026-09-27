@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 用法：POSTGRES_CONTAINER=campusos-dev-postgres-1 ./scripts/test-v1-database-baseline.sh
-# 在专用临时数据库中验证 v1.1 clean baseline、前向修订、参考数据、回滚、重置和 checksum 漂移门禁。
+# 在专用临时数据库中验证冻结的 v1.1 000001–000003，不执行后续 v1.2 migration。
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,11 +10,14 @@ POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-campusos-postgres}"
 DB_USER="${DB_USER:-campusos}"
 DB_PASSWORD="${DB_PASSWORD:-campusos_dev}"
 drill_db="${CAMPUSOS_V1_DRILL_DB:-campusos_v1_database_baseline_drill}"
-temp_migrations=""
+baseline_migrations="$(mktemp -d)"
+drift_migrations=""
+cp migrations/00000[1-3]_v1_1_*.sql "$baseline_migrations/"
 
 cleanup() {
-  if [[ -n "$temp_migrations" && -d "$temp_migrations" ]]; then
-    rm -rf -- "$temp_migrations"
+  rm -rf -- "$baseline_migrations"
+  if [[ -n "$drift_migrations" && -d "$drift_migrations" ]]; then
+    rm -rf -- "$drift_migrations"
   fi
   docker exec -e PGPASSWORD="$DB_PASSWORD" "$POSTGRES_CONTAINER" \
     psql -U "$DB_USER" -d postgres -q -c "DROP DATABASE IF EXISTS $drill_db WITH (FORCE);" >/dev/null 2>&1 || true
@@ -41,6 +44,7 @@ run_migrate() {
   export CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker
   export POSTGRES_CONTAINER DB_USER DB_PASSWORD
   export DB_NAME="$drill_db" CAMPUSOS_ENV=test CAMPUSOS_RESET_CONFIRM="$drill_db"
+  export MIGRATIONS_DIR="$baseline_migrations"
   ./scripts/migrate.sh "$@"
 }
 
@@ -54,6 +58,8 @@ run_migrate check >/dev/null
 
 require_equals "migration count" "$(psql_scalar "SELECT count(*) FROM schema_migrations;")" "3"
 require_equals "public table count" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")" "91"
+require_equals "v1.1 audit actor ID type" "$(psql_scalar "SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='authorization_audits' AND column_name='actor_id';")" "bigint"
+require_equals "v1.1 audit actor kind absent" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='authorization_audits' AND column_name='actor_kind';")" "0"
 require_equals "legacy permission table removed" "$(psql_scalar "SELECT to_regclass('public.permissions') IS NULL;")" "t"
 require_equals "raw session secret columns removed" "$(psql_scalar "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='sessions' AND column_name IN ('refresh_token','ip_address');")" "0"
 require_equals "refresh digest required" "$(psql_scalar "SELECT is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='sessions' AND column_name='refresh_token_digest';")" "NO"
@@ -74,20 +80,24 @@ require_equals "v1.1 trusted market source table" "$(psql_scalar "SELECT count(*
 require_equals "process runtime accepted" "$(psql_scalar "INSERT INTO plugins(id,name,display_name,version,runtime,status,config,installed_at,updated_at) VALUES(900000000001,'runtime-contract-probe','Runtime Contract Probe','1.0.0','process','installed','{}'::jsonb,NOW(),NOW()); DELETE FROM plugins WHERE id=900000000001; SELECT 'ok';")" "ok"
 require_equals "foreign-key leading index coverage" "$(psql_scalar "SELECT count(*) FROM pg_constraint fk WHERE fk.contype='f' AND fk.connamespace='public'::regnamespace AND NOT EXISTS (SELECT 1 FROM pg_index idx WHERE idx.indrelid=fk.conrelid AND idx.indisvalid AND (idx.indkey::smallint[])[0:cardinality(fk.conkey)-1] @> fk.conkey);")" "0"
 
+# The live schema contract advances with v1.2. Keep this historical gate on
+# v1.1 data integrity/index hygiene and its explicit assertions above.
 CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER="$POSTGRES_CONTAINER" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$drill_db" \
-  ./scripts/database-check.sh all >/dev/null
+  ./scripts/database-check.sh audit >/dev/null
+CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER="$POSTGRES_CONTAINER" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$drill_db" \
+  ./scripts/database-check.sh hygiene >/dev/null
 
-temp_migrations="$(mktemp -d)"
-cp migrations/*.sql "$temp_migrations/"
-printf '\n-- intentional checksum drift\n' >>"$temp_migrations/000001_v1_1_schema_baseline.up.sql"
+drift_migrations="$(mktemp -d)"
+cp "$baseline_migrations"/*.sql "$drift_migrations/"
+printf '\n-- intentional checksum drift\n' >>"$drift_migrations/000001_v1_1_schema_baseline.up.sql"
 if CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
-   DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$drill_db" MIGRATIONS_DIR="$temp_migrations" \
+   DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$drill_db" MIGRATIONS_DIR="$drift_migrations" \
    ./scripts/migrate.sh check >/dev/null 2>&1; then
   echo "checksum drift was not rejected" >&2
   exit 1
 fi
-rm -rf -- "$temp_migrations"
-temp_migrations=""
+rm -rf -- "$drift_migrations"
+drift_migrations=""
 
 require_equals "trusted market rollback guard setup" "$(psql_scalar "INSERT INTO plugin_market_sources(id,display_name,catalog_url,public_key,status) VALUES('drill-market','Drill Market','https://market.example/catalog','drill-key','enabled'); SELECT 'ok';")" "ok"
 if run_migrate down >/dev/null 2>&1; then

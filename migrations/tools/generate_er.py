@@ -378,6 +378,28 @@ def parse_alter_constraints(sql: str, tables: dict[str, Table]) -> None:
                     if column.unique:
                         table.unique_sets.append([column.name])
                 continue
+            alter_type = re.match(
+                rf'ALTER\s+COLUMN\s+({IDENT})\s+TYPE\s+(.+?)(?:\s+USING\s+.+)?$',
+                action.strip(), re.I | re.S,
+            )
+            if alter_type:
+                column_name = unquote_ident(alter_type.group(1))
+                column = table.column(column_name)
+                if column is None:
+                    raise ValueError(f"ALTER TYPE references missing column {table_name}.{column_name}")
+                column.type_sql = re.sub(r'\s+', ' ', alter_type.group(2).strip())
+                continue
+            alter_nullable = re.match(
+                rf'ALTER\s+COLUMN\s+({IDENT})\s+(SET|DROP)\s+NOT\s+NULL$',
+                action.strip(), re.I | re.S,
+            )
+            if alter_nullable:
+                column_name = unquote_ident(alter_nullable.group(1))
+                column = table.column(column_name)
+                if column is None:
+                    raise ValueError(f"ALTER NULLABILITY references missing column {table_name}.{column_name}")
+                column.nullable = alter_nullable.group(2).upper() == 'DROP'
+                continue
             constraint = re.match(
                 rf'ADD\s+CONSTRAINT\s+({IDENT})\s+(.+)$', action.strip(), re.I | re.S
             )

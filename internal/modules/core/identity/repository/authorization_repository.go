@@ -3,10 +3,14 @@ package repository
 import (
 	"context"
 	"errors"
+	"regexp"
 	"time"
 )
 
 var ErrLastGlobalRoleAssignment = errors.New("cannot revoke the last global role assignment")
+var ErrInvalidAuthorizationAuditActor = errors.New("invalid authorization audit actor")
+
+var authorizationAuditActorID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]*$`)
 
 // PermissionDefinition is the stable, environment-independent permission
 // catalog entry. Numeric IDs remain internal database keys; Code is used by
@@ -52,6 +56,7 @@ type RouteOperation struct {
 type AuthorizationAudit struct {
 	ID             int64     `json:"id"`
 	RequestID      string    `json:"request_id,omitempty"`
+	ActorKind      string    `json:"actor_kind"`
 	ActorID        string    `json:"actor_id,omitempty"`
 	PermissionCode string    `json:"permission_code,omitempty"`
 	OperationCode  string    `json:"operation_code,omitempty"`
@@ -63,6 +68,20 @@ type AuthorizationAudit struct {
 	Reason         string    `json:"reason,omitempty"`
 	IPAddress      string    `json:"ip_address,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+func validateAuthorizationAuditActor(audit AuthorizationAudit) error {
+	switch audit.ActorKind {
+	case "anonymous":
+		if audit.ActorID == "" {
+			return nil
+		}
+	case "user", "admin", "integration", "plugin_instance", "worker", "system":
+		if len(audit.ActorID) <= 128 && authorizationAuditActorID.MatchString(audit.ActorID) {
+			return nil
+		}
+	}
+	return ErrInvalidAuthorizationAuditActor
 }
 
 // AuthorizationRepository is an optional v10 extension of RoleRepository.

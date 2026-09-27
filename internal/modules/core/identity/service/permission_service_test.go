@@ -273,6 +273,55 @@ func TestPermissionServiceActorRoleAdministrationCannotBypassServicePolicy(t *te
 	if _, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3003", "3002", "moderator", []int64{13}); !errors.Is(err, ErrPermissionEscalation) {
 		t.Fatalf("member must not grant moderator scope, got %v", err)
 	}
+	audits, err := service.ListAuthorizationAudits(ctx, 10)
+	if err != nil || len(audits) != 3 {
+		t.Fatalf("role mutation audits: items=%#v err=%v", audits, err)
+	}
+	for _, audit := range audits {
+		if audit.ActorKind != "user" || audit.ActorID != "3001" {
+			t.Fatalf("role mutation actor must remain in the user domain: %#v", audit)
+		}
+	}
+}
+
+func TestPermissionServiceAuditActorKindFollowsCredentialDomain(t *testing.T) {
+	ctx := context.Background()
+	service := NewPermissionService(repository.NewMemoryRoleRepository(), nil)
+	service.RecordHTTPAuthorizationDecision(ctx, "73001", "identity.role.assign", "http.identity.role.assign", "allow", "", "request-user", "203.0.113.10")
+	service.RecordHTTPAuthorizationDecision(ctx, "", "identity.role.assign", "http.identity.role.assign", "deny", "missing credential", "request-anonymous", "203.0.113.11")
+	if err := service.RecordContentAuthorizationDecision(ctx, "73002", "community.thread.take_down", 17, "allow", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RecordContentAuthorizationDecision(ctx, "", "community.thread.take_down", 17, "deny", "missing credential"); err != nil {
+		t.Fatal(err)
+	}
+	service.RecordRouteDecision(ctx, repository.AuthorizationAudit{
+		ActorKind: "integration", ActorID: "key:1", OperationCode: "test.integration.route", Outcome: "allow",
+	})
+	audits, err := service.ListAuthorizationAudits(ctx, 10)
+	if err != nil || len(audits) != 5 {
+		t.Fatalf("authorization decisions: items=%#v err=%v", audits, err)
+	}
+	found := map[string]bool{}
+	for _, audit := range audits {
+		switch {
+		case audit.RequestID == "request-user":
+			found["http-user"] = audit.ActorKind == "user" && audit.ActorID == "73001"
+		case audit.RequestID == "request-anonymous":
+			found["http-anonymous"] = audit.ActorKind == "anonymous" && audit.ActorID == ""
+		case audit.OperationCode == "community.content.community_thread_take_down" && audit.ActorID == "73002":
+			found["content-user"] = audit.ActorKind == "user"
+		case audit.OperationCode == "community.content.community_thread_take_down" && audit.ActorID == "":
+			found["content-anonymous"] = audit.ActorKind == "anonymous"
+		case audit.OperationCode == "test.integration.route":
+			found["route-explicit"] = audit.ActorKind == "integration" && audit.ActorID == "key:1"
+		}
+	}
+	for _, path := range []string{"http-user", "http-anonymous", "content-user", "content-anonymous", "route-explicit"} {
+		if !found[path] {
+			t.Fatalf("%s actor domain missing or incorrect: %#v", path, audits)
+		}
+	}
 }
 
 func TestProtectedGlobalRoleRevocationKeepsOneAdministratorUnderConcurrency(t *testing.T) {

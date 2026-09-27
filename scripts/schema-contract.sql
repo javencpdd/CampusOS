@@ -57,7 +57,7 @@ BEGIN
         'plugins.backend_state', 'plugins.frontend_state', 'plugins.health_state', 'plugins.ui_revision',
         'user_spaces.style_manifest', 'plugin_catalog_entries.experience',
         'permission_definitions.code', 'role_permissions.permission_id', 'route_operations.operation_code',
-        'route_permission_bindings.route_operation_id', 'authorization_audits.permission_code',
+        'route_permission_bindings.route_operation_id', 'authorization_audits.actor_kind', 'authorization_audits.actor_id', 'authorization_audits.permission_code',
         'authorization_audits.command_id', 'platform_outbox.status', 'platform_outbox.schema_version',
         'platform_command_audits.command_code', 'platform_operation_runs.status',
         'webhook_deliveries.delivery_key', 'webhook_endpoints.max_concurrent', 'webhook_endpoints.rate_limit_per_minute', 'outbox_consumer_receipts.consumer_name', 'platform_outbox_attempts.status',
@@ -126,7 +126,7 @@ BEGIN
         'chk_secondhand_details_trade_status', 'chk_secondhand_details_location_scope',
         'chk_secondhand_details_version',
         'chk_permission_definition_code', 'chk_permission_definition_risk', 'chk_permission_definition_audit',
-        'chk_route_operation_code', 'chk_authorization_audits_outcome',
+        'chk_route_operation_code', 'chk_authorization_audits_outcome', 'chk_authorization_audits_actor',
         'chk_platform_outbox_status', 'chk_platform_outbox_attempts', 'chk_platform_outbox_attempt_status', 'chk_platform_operation_status',
         'chk_platform_retention_run_mode', 'chk_platform_retention_run_status',
         'chk_academic_terms_year', 'chk_academic_terms_semester', 'chk_academic_terms_first_week_monday',
@@ -183,7 +183,7 @@ BEGIN
         'idx_mutual_aid_details_status_updated', 'idx_mutual_aid_details_created_by_updated',
         'idx_secondhand_details_status_updated', 'idx_secondhand_details_created_by_updated',
         'idx_posts_thread_floor', 'idx_sessions_expires_at', 'idx_user_roles_scope_lookup',
-        'idx_plugins_runtime_state', 'uk_permission_definitions_code', 'uk_route_operations_code',
+        'idx_authorization_audits_actor', 'idx_plugins_runtime_state', 'uk_permission_definitions_code', 'uk_route_operations_code',
         'uk_role_permissions_active', 'uk_route_permission_bindings_active',
         'uk_platform_outbox_idempotency', 'uk_platform_operation_idempotency',
         'uk_webhook_deliveries_delivery_key',
@@ -208,6 +208,36 @@ BEGIN
         RAISE EXCEPTION 'schema contract missing indexes: %', missing;
     END IF;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'authorization_audits'
+          AND column_name = 'actor_kind' AND is_nullable = 'NO'
+          AND data_type = 'character varying' AND character_maximum_length = 32
+    ) OR NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'authorization_audits'
+          AND column_name = 'actor_id' AND is_nullable = 'YES'
+          AND data_type = 'character varying' AND character_maximum_length = 128
+    ) THEN
+        RAISE EXCEPTION 'authorization audit actor columns have incorrect shape';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_identity_immutable'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 19
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_capability_declarations'::regclass
+          AND tgname = 'trg_plugin_declaration_immutable'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 19
+    ) THEN
+        RAISE EXCEPTION 'plugin version identity update guards are missing or disabled';
+    END IF;
+
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
     INTO missing
     FROM pg_constraint fk
@@ -226,7 +256,7 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v1.1-personal-document-preview-v1',
+    'schema_contract', 'v1.2-plugin-version-identity-v1',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'

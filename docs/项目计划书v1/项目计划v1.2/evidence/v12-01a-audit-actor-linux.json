@@ -1,0 +1,34 @@
+{
+  "schema": "campusos.v12-01a-authorization-audit-drill/v1",
+  "generated_at": "2026-09-27T00:17:55.809498+00:00",
+  "stage": "V12-01a",
+  "target_environment": "passed",
+  "environment": {
+    "os": "linux",
+    "architecture": "x86_64",
+    "postgres_server_version_num": 160014,
+    "postgres_image": "postgres:16-alpine",
+    "database_storage": "temporary container tmpfs",
+    "postgres_bind": "127.0.0.1",
+    "api_bind": "127.0.0.1"
+  },
+  "checks": {
+    "v11_only_first_three_migrations": "passed",
+    "legacy_unknown_and_user_backfill": "passed",
+    "actor_kind_and_id_constraints": "passed",
+    "same_id_separate_domains": "passed",
+    "admin_down_guard": "passed",
+    "opaque_user_down_guard": "passed",
+    "noncanonical_numeric_user_down_guard": "passed",
+    "representable_down_preserves_rows": "passed",
+    "up_down_up_and_checksum": "passed",
+    "current_database_and_historical_v11_gate": "passed",
+    "postgres_repository_targeted_test": "passed",
+    "api_health_and_community_list": "passed"
+  },
+  "source_sha256": {
+    "migrations/000004_v1_2_authorization_audit_actor.up.sql": "4b84ac68abb6d755e4c80fc6d0c7fe9003179891314920a2beb025746f692532",
+    "migrations/000004_v1_2_authorization_audit_actor.down.sql": "b687d018632160ceaeb8e65425689a49eeaaaa8efaa9345c85a6653a897d5e51",
+    "scripts/v12-01a-authorization-audit-drill.sh": "fc1b9ca05187a0bee3a76c37710c226a9f42a86bfee36080a233b964e2e9d744"
+  }
+}

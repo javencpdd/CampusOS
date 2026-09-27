@@ -315,7 +315,7 @@ func (s *PermissionService) AssignRoleByActor(ctx context.Context, actorID, user
 	}
 	if assigned {
 		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.role.assign",
+			ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.role.assign",
 			ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
 		}); err != nil {
 			return false, err
@@ -404,7 +404,7 @@ func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, user
 		}
 	}
 	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
+		ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
 		ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
 	}); err != nil {
 		return false, err
@@ -471,7 +471,7 @@ func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context
 	}
 	if changed {
 		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.moderator.scope.replace",
+			ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.moderator.scope.replace",
 			ScopeType: "category", ResourceType: "user_role", ResourceID: userID + ":" + roleName, Outcome: "allow",
 		}); err != nil {
 			return false, err
@@ -553,7 +553,7 @@ func (s *PermissionService) CreateCustomRole(ctx context.Context, actorID, name,
 	if err := catalog.ReplaceRolePermissions(ctx, role.ID, permissionCodes, actorID); err != nil {
 		return nil, err
 	}
-	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"}); err != nil {
+	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"}); err != nil {
 		return nil, err
 	}
 	return role, nil
@@ -589,7 +589,7 @@ func (s *PermissionService) UpdateRolePermissions(ctx context.Context, actorID s
 	if err := catalog.ReplaceRolePermissions(ctx, roleID, permissionCodes, actorID); err != nil {
 		return err
 	}
-	return s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
+	return s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
 }
 
 func (s *PermissionService) ListAuthorizationAudits(ctx context.Context, limit int) ([]repository.AuthorizationAudit, error) {
@@ -617,7 +617,7 @@ func (s *PermissionService) RecordRouteDecision(ctx context.Context, audit repos
 // preserving request-level allow/deny evidence for high-risk administration.
 func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context, actorID, permissionCode, operationCode, outcome, reason, requestID, ipAddress string) {
 	_ = s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
+		ActorKind: userCredentialAuditActorKind(actorID), ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
 		Outcome: outcome, Reason: reason, RequestID: requestID, IPAddress: ipAddress,
 	})
 }
@@ -628,9 +628,18 @@ func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context,
 func (s *PermissionService) RecordContentAuthorizationDecision(ctx context.Context, actorID, permissionCode string, scopeID int64, outcome, reason string) error {
 	scope := scopeID
 	return s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: permissionCode, OperationCode: "community.content." + strings.ReplaceAll(permissionCode, ".", "_"),
+		ActorKind: userCredentialAuditActorKind(actorID), ActorID: actorID, PermissionCode: permissionCode, OperationCode: "community.content." + strings.ReplaceAll(permissionCode, ".", "_"),
 		ScopeType: "category", ScopeID: &scope, ResourceType: "thread", Outcome: outcome, Reason: reason,
 	})
+}
+
+// Current HTTP and Community authorization decisions use User credentials.
+// A missing credential is recorded in the anonymous domain on deny paths.
+func userCredentialAuditActorKind(actorID string) string {
+	if strings.TrimSpace(actorID) == "" {
+		return "anonymous"
+	}
+	return "user"
 }
 
 func (s *PermissionService) assertActorMayAssignRole(ctx context.Context, actorID string, roleID int64) error {

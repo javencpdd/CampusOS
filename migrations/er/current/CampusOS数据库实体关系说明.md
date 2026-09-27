@@ -1,6 +1,6 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70;tables=89;foreign_keys=106 -->
+<!-- campusos-er:schema_sha256=6f9b7c08af971026f574b7b5667b783f0c1f379573f0b8ccb0bcb90174ce88aa;tables=89;foreign_keys=106 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
@@ -11,7 +11,7 @@
 - 一对一/可选一对一关系：**12**
 - 一对多关系：**94**
 - 推断的逻辑多对多关系：**5**
-- Schema 指纹：`7c49aab7ae89e35c260ea5dad4118a7f72904bd772a129cec770c343d5b50d70`
+- Schema 指纹：`6f9b7c08af971026f574b7b5667b783f0c1f379573f0b8ccb0bcb90174ce88aa`
 
 ## 1. 生成范围与判定规则
 
@@ -20,6 +20,8 @@
 - `000001_v1_1_schema_baseline.up.sql`
 - `000002_v1_1_ui_only_plugin_runtime.up.sql`
 - `000003_v1_1_trusted_market_sources.up.sql`
+- `000004_v1_2_authorization_audit_actor.up.sql`
+- `000005_v1_2_plugin_version_identity.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -33,7 +35,7 @@
 | --- | --- | ---: | --- | ---: | ---: |
 | 身份与访问控制 | `accounts` | 15 | `id` | 1 | 3 |
 | 身份与访问控制 | `api_keys` | 11 | `id` | 0 | 0 |
-| 身份与访问控制 | `authorization_audits` | 16 | `id` | 0 | 0 |
+| 身份与访问控制 | `authorization_audits` | 17 | `id` | 0 | 0 |
 | 身份与访问控制 | `identity_account_recovery_cases` | 14 | `id` | 4 | 0 |
 | 身份与访问控制 | `identity_admin_accounts` | 14 | `id` | 3 | 0 |
 | 身份与访问控制 | `identity_challenge_policies` | 8 | `id` | 1 | 0 |
@@ -192,7 +194,7 @@
 | `users` | `plugin_secret_values` | `plugin_secret_values_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_secret_values` | `plugin_secret_values_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `users` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
-| `richtext_article_contents` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_article` | `article_content_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `richtext_article_contents` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_article` | `article_content_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `user_assets` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `richtext_article_attachments` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_attachment` | `attachment_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `personal_documents` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_personal_document` | `personal_document_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -309,7 +311,7 @@
 | --- | --- | --- | --- | --- |
 | `id` | `bigint` | PK/NN | 否 | `—` |
 | `request_id` | `varchar(128)` | NN | 否 | `''::character varying` |
-| `actor_id` | `bigint` | — | 是 | `—` |
+| `actor_id` | `varchar(128)` | — | 是 | `—` |
 | `permission_code` | `varchar(160)` | NN | 否 | `''::character varying` |
 | `operation_code` | `varchar(200)` | NN | 否 | `''::character varying` |
 | `scope_type` | `varchar(32)` | NN | 否 | `''::character varying` |
@@ -323,6 +325,7 @@
 | `command_id` | `varchar(64)` | — | 是 | `—` |
 | `trace_id` | `varchar(128)` | — | 是 | `—` |
 | `resource_version` | `varchar(128)` | — | 是 | `—` |
+| `actor_kind` | `varchar(32)` | NN | 否 | `—` |
 
 #### `identity_account_recovery_cases`
 
@@ -1659,7 +1662,7 @@
 | `user_id` | `bigint` | FK/NN | 否 | `—` |
 | `plugin_key` | `varchar(120)` | NN | 否 | `—` |
 | `surface_id` | `varchar(160)` | NN | 否 | `—` |
-| `article_content_id` | `bigint` | FK/NN | 否 | `—` |
+| `article_content_id` | `bigint` | FK | 是 | `—` |
 | `asset_id` | `bigint` | FK | 是 | `—` |
 | `attachment_id` | `bigint` | FK | 是 | `—` |
 | `presentation` | `varchar(20)` | NN | 否 | `—` |

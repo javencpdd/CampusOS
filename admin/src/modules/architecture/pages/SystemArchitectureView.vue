@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000003（v1.1）</el-tag
+        >当前迁移 000001 - 000005（v1.1 基线 + v1.2 授权审计/插件版本身份）</el-tag
       >
     </section>
 
@@ -670,17 +670,18 @@ const databaseTables: DbTable[] = [
     name: "authorization_audits",
     title: "授权记录",
     domain: "identity",
-    purpose: "保存授权判定、角色调整与作用域变更的最小结构化审计证据。",
+    purpose: "保存带主体域的授权判定、角色调整与作用域变更审计证据。",
     fields: [
+      "actor_kind",
       "actor_id",
       "permission_code",
       "operation_code",
       "scope_type",
       "outcome",
     ],
-    migration: "000001",
+    migration: "000001 / 000004",
     relationshipNote:
-      "记录 request_id、原因和资源摘要，不保存 Session、Token、JWT 私钥或 Secret。",
+      "actor_kind + actor_id 标识审计主体；仅 user 主体的 actor_id 与 users.id 有逻辑关联，不是通用外键。历史无主体记录为 legacy_unknown；不保存 Session、Token、JWT 私钥或 Secret。",
   },
   {
     name: "platform_outbox",
@@ -1023,24 +1024,25 @@ const databaseTables: DbTable[] = [
     name: "plugin_versions",
     title: "不可变插件版本",
     domain: "plugin",
-    purpose: "按插件保存包摘要、签名状态、API 版本、权限指纹和生命周期。",
+    purpose: "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 阻止已建版本身份字段被原地改写。",
     fields: [
       "plugin_id",
       "version",
       "package_digest",
       "signature_state",
       "permission_fingerprint",
+      "manifest",
       "lifecycle_status",
     ],
-    migration: "000001",
+    migration: "000001 / 000005",
     relationshipNote:
-      "plugin_id 外键指向 plugins；一个插件最多一个 active 版本。",
+      "plugin_id 外键指向 plugins；一个插件最多一个 active 版本，生命周期切换保留版本 ID。",
   },
   {
     name: "plugin_capability_declarations",
     title: "插件能力声明",
     domain: "plugin",
-    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级。",
+    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止既有声明原地改写。",
     fields: [
       "plugin_version_id",
       "capability_code",
@@ -1048,9 +1050,9 @@ const databaseTables: DbTable[] = [
       "risk_level",
       "resource_scope",
     ],
-    migration: "000001",
+    migration: "000001 / 000005",
     relationshipNote:
-      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源。",
+      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源；声明增删仍由后续发布流程约束。",
   },
   {
     name: "plugin_admin_grants",
@@ -2001,7 +2003,7 @@ const relations: Relation[] = [
     target: "authorization_audits",
     sourceCardinality: "1",
     targetCardinality: "N",
-    label: "id -> actor_id",
+    label: "仅 actor_kind=user：id -> actor_id（逻辑）",
     domains: ["identity"],
   },
   {
@@ -2749,6 +2751,24 @@ const migrations = [
       "plugin_market_sources",
       "plugin_install_requests（来源与快照字段）",
     ],
+  },
+  {
+    version: "000004",
+    file: "000004_v1_2_authorization_audit_actor.up.sql",
+    title: "v1.2 授权审计主体域",
+    scope: "Core Identity 授权审计",
+    summary:
+      "为授权审计增加 actor_kind，并将 actor_id 扩展为可表示不同主体域的不透明字符串；历史无主体记录标记 legacy_unknown。当前管理入口仍使用 User 凭据，独立 Admin 身份域由后续阶段实施。",
+    tables: ["authorization_audits（主体域、ID 形状和复合索引）"],
+  },
+  {
+    version: "000005",
+    file: "000005_v1_2_plugin_version_identity.up.sql",
+    title: "v1.2 插件版本发布身份",
+    scope: "Plugin Platform 版本仓储",
+    summary:
+      "阻止既有插件版本的包摘要、Manifest、API 版本和权限指纹等身份字段原地改写，并阻止既有能力声明原地改写；仍允许版本生命周期切换和旧插件卸载时的级联删除。",
+    tables: ["plugin_versions（身份更新触发器）", "plugin_capability_declarations（声明更新触发器）"],
   },
 ];
 const tableByName = (name: string) =>
