@@ -79,7 +79,7 @@ BEGIN
         'asset_lifecycle_audits.id', 'asset_lifecycle_audits.asset_id', 'asset_lifecycle_audits.actor_user_id', 'asset_lifecycle_audits.actor_type', 'asset_lifecycle_audits.action', 'asset_lifecycle_audits.created_at',
         'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
         'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
-        'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint',
+        'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint', 'plugin_versions.activated_at',
         'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
         'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
         'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
@@ -236,6 +236,28 @@ BEGIN
           AND tgtype & 19 = 19
     ) THEN
         RAISE EXCEPTION 'plugin version identity update guards are missing or disabled';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_publication_guard'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 23 = 23
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_capability_declarations'::regclass
+          AND tgname = 'trg_plugin_declaration_membership_guard'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 15 = 15
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_revoke_delegations'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 17
+    ) THEN
+        RAISE EXCEPTION 'plugin publication and delegation revocation guards are missing or disabled';
     END IF;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)

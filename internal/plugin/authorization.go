@@ -204,6 +204,31 @@ func (s *AuthorizationService) ActiveVersion(ctx context.Context, pluginName str
 	return s.store.ActiveVersion(ctx, pluginName)
 }
 
+// RequireActiveVersion binds a version ID to the named plugin's current release.
+func (s *AuthorizationService) RequireActiveVersion(ctx context.Context, pluginName string, versionID int64) error {
+	if pluginName == "" {
+		return errors.New("version mismatch")
+	}
+	_, err := s.requireActiveVersion(ctx, pluginName, versionID)
+	return err
+}
+
+func (s *AuthorizationService) requireActiveVersion(ctx context.Context, pluginName string, versionID int64) (PluginVersion, error) {
+	if !s.Available() || versionID <= 0 {
+		return PluginVersion{}, errors.New("version mismatch")
+	}
+	version, err := s.store.VersionByID(ctx, versionID)
+	if err != nil || version.PluginName == "" || version.LifecycleStatus != "active" ||
+		(pluginName != "" && version.PluginName != pluginName) {
+		return PluginVersion{}, errors.New("version mismatch")
+	}
+	active, err := s.store.ActiveVersion(ctx, version.PluginName)
+	if err != nil || active.ID != version.ID || active.LifecycleStatus != "active" {
+		return PluginVersion{}, errors.New("version mismatch")
+	}
+	return version, nil
+}
+
 func (s *AuthorizationService) SyncInstalled(ctx context.Context, installed *Plugin, actorID string) (PluginVersion, error) {
 	if !s.Available() || installed == nil || installed.Manifest == nil {
 		return PluginVersion{}, errors.New("plugin authorization service is unavailable")
@@ -372,6 +397,9 @@ func (s *AuthorizationService) SetAdminGrant(ctx context.Context, versionID int6
 	if parsed, err := strconv.ParseInt(actorID, 10, 64); err == nil && parsed > 0 {
 		actor = &parsed
 	}
+	if _, err := s.requireActiveVersion(ctx, "", versionID); err != nil {
+		return AdminGrant{}, err
+	}
 	return s.store.SetAdminGrant(ctx, AdminGrant{ID: idgen.New(), PluginVersionID: versionID, CapabilityCode: capabilityCode, Status: status, GrantedScope: nonNilMap(scope), PolicyRevision: time.Now().UTC().UnixNano(), DecidedBy: actor, Reason: strings.TrimSpace(reason), ExpiresAt: expiresAt, CreatedAt: s.now(), UpdatedAt: s.now()})
 }
 
@@ -409,10 +437,13 @@ func (s *AuthorizationService) SetUserConsent(ctx context.Context, userID string
 	if status == "revoked" {
 		consent.RevokedAt = &now
 	}
+	if _, err := s.requireActiveVersion(ctx, "", versionID); err != nil {
+		return UserConsent{}, err
+	}
 	return s.store.SetUserConsent(ctx, consent)
 }
 
-func (s *AuthorizationService) IssueDelegation(ctx context.Context, userID string, versionID int64, capabilities []string, scope map[string]interface{}, ttl time.Duration) (Delegation, string, error) {
+func (s *AuthorizationService) IssueDelegation(ctx context.Context, pluginName, userID string, versionID int64, capabilities []string, scope map[string]interface{}, ttl time.Duration) (Delegation, string, error) {
 	parsed, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil || parsed <= 0 {
 		return Delegation{}, "", errors.New("valid authenticated user is required")
@@ -424,8 +455,11 @@ func (s *AuthorizationService) IssueDelegation(ctx context.Context, userID strin
 	if len(capabilities) == 0 {
 		return Delegation{}, "", errors.New("delegation requires at least one capability")
 	}
+	if err := s.RequireActiveVersion(ctx, pluginName, versionID); err != nil {
+		return Delegation{}, "", err
+	}
 	for _, code := range capabilities {
-		result := s.Authorize(ctx, AuthorizationInput{PluginVersion: strconv.FormatInt(versionID, 10), CapabilityCode: code, OperationCode: "delegation.issue", ActorUserID: userID, ResourceOwnerID: userID})
+		result := s.Authorize(ctx, AuthorizationInput{PluginName: pluginName, PluginVersion: strconv.FormatInt(versionID, 10), CapabilityCode: code, OperationCode: "delegation.issue", ActorUserID: userID, ResourceOwnerID: userID})
 		if !result.Allow {
 			return Delegation{}, "", fmt.Errorf("%w: %s", ErrAuthorizationDenied, result.ReasonCode)
 		}
@@ -435,6 +469,9 @@ func (s *AuthorizationService) IssueDelegation(ctx context.Context, userID strin
 		return Delegation{}, "", err
 	}
 	token := "cosd_" + hex.EncodeToString(raw)
+	if err := s.RequireActiveVersion(ctx, pluginName, versionID); err != nil {
+		return Delegation{}, "", err
+	}
 	now := s.now()
 	delegation := Delegation{ID: idgen.New(), PluginVersionID: versionID, SubjectUserID: parsed, TokenDigest: tokenDigest(token), GrantedCapabilities: capabilities, ResourceScope: nonNilMap(scope), Status: "active", NotBefore: now, ExpiresAt: now.Add(ttl), CreatedBy: &parsed, CreatedAt: now}
 	created, err := s.store.CreateDelegation(ctx, delegation)
@@ -534,20 +571,22 @@ func (s *AuthorizationService) Authorize(ctx context.Context, input Authorizatio
 			decision.PolicyRevision = consent.PolicyRevision
 		}
 	}
+	// A release can change while grants and consent are being read. Recheck the
+	// selected version before returning an allow decision.
+	if err := s.RequireActiveVersion(ctx, version.PluginName, version.ID); err != nil {
+		return s.finishDecision(ctx, decision, result, ReasonVersionMismatch, descriptor)
+	}
 	decision.Outcome = "allow"
 	return s.finishDecision(ctx, decision, result, ReasonAllow, descriptor)
 }
 
 func (s *AuthorizationService) resolveVersion(ctx context.Context, input AuthorizationInput) (PluginVersion, error) {
 	if id, err := strconv.ParseInt(input.PluginVersion, 10, 64); err == nil && id > 0 {
-		version, versionErr := s.store.VersionByID(ctx, id)
-		if versionErr != nil || (input.PluginName != "" && version.PluginName != input.PluginName) {
-			return PluginVersion{}, errors.New("version mismatch")
-		}
-		return version, nil
+		return s.requireActiveVersion(ctx, input.PluginName, id)
 	}
 	version, err := s.store.ActiveVersion(ctx, input.PluginName)
-	if err != nil || (input.PluginVersion != "" && version.Version != input.PluginVersion) {
+	if err != nil || version.PluginName != input.PluginName || version.LifecycleStatus != "active" ||
+		(input.PluginVersion != "" && version.Version != input.PluginVersion) {
 		return PluginVersion{}, errors.New("version mismatch")
 	}
 	return version, nil
@@ -558,7 +597,12 @@ func (s *AuthorizationService) finishDecision(ctx context.Context, decision Auth
 	if reason == ReasonAllow {
 		decision.Outcome = "allow"
 	}
-	_ = s.store.SaveAuthorizationDecision(ctx, decision)
+	if err := s.store.SaveAuthorizationDecision(ctx, decision); err != nil && reason == ReasonAllow {
+		result.Allow = false
+		result.ReasonCode = ReasonSystemPolicy
+		result.Message = authorizationMessage(ReasonSystemPolicy)
+		return result
+	}
 	result.Allow = reason == ReasonAllow
 	result.ReasonCode = reason
 	result.Message = authorizationMessage(reason)
@@ -688,6 +732,14 @@ func (m *MemoryAuthorizationStore) retireActiveVersions(pluginID, exceptID int64
 		if version.PluginID == pluginID && id != exceptID && version.LifecycleStatus == "active" {
 			version.LifecycleStatus = "retired"
 			m.versions[id] = version
+			retiredAt := time.Now()
+			for digest, delegation := range m.delegations {
+				if delegation.PluginVersionID == id && delegation.Status == "active" {
+					delegation.Status = "revoked"
+					delegation.RevokedAt = &retiredAt
+					m.delegations[digest] = delegation
+				}
+			}
 		}
 	}
 }
@@ -773,9 +825,20 @@ func (m *MemoryAuthorizationStore) ListAdminGrants(_ context.Context, versionID 
 	sort.Slice(result, func(i, j int) bool { return result[i].CapabilityCode < result[j].CapabilityCode })
 	return result, nil
 }
+func (m *MemoryAuthorizationStore) requireActiveVersionLocked(versionID int64) error {
+	version, ok := m.versions[versionID]
+	if !ok || version.LifecycleStatus != "active" || m.active[version.PluginName] != versionID {
+		return errors.New("version mismatch")
+	}
+	return nil
+}
+
 func (m *MemoryAuthorizationStore) SetAdminGrant(_ context.Context, value AdminGrant) (AdminGrant, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.requireActiveVersionLocked(value.PluginVersionID); err != nil {
+		return AdminGrant{}, err
+	}
 	if previous, ok := m.admin[grantKey(value.PluginVersionID, value.CapabilityCode)]; ok {
 		value.PolicyRevision = previous.PolicyRevision + 1
 	}
@@ -806,6 +869,9 @@ func (m *MemoryAuthorizationStore) ListUserConsents(_ context.Context, userID, v
 func (m *MemoryAuthorizationStore) SetUserConsent(_ context.Context, value UserConsent) (UserConsent, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.requireActiveVersionLocked(value.PluginVersionID); err != nil {
+		return UserConsent{}, err
+	}
 	key := consentKey(value.UserID, value.PluginVersionID, value.CapabilityCode)
 	if previous, ok := m.consents[key]; ok {
 		value.PolicyRevision = previous.PolicyRevision + 1
@@ -816,6 +882,9 @@ func (m *MemoryAuthorizationStore) SetUserConsent(_ context.Context, value UserC
 func (m *MemoryAuthorizationStore) CreateDelegation(_ context.Context, value Delegation) (Delegation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.requireActiveVersionLocked(value.PluginVersionID); err != nil {
+		return Delegation{}, err
+	}
 	m.delegations[value.TokenDigest] = value
 	return value, nil
 }

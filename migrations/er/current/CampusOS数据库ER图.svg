@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="5024" height="3388" viewBox="0 0 5024 3388">
-<metadata>campusos_schema_sha256=6f9b7c08af971026f574b7b5667b783f0c1f379573f0b8ccb0bcb90174ce88aa;tables=89;foreign_keys=106</metadata>
+<metadata>campusos_schema_sha256=85958092838b2c012536e05ed930f23122cb1a8eb3672d8d08bde7b8a76fc325;tables=89;foreign_keys=106</metadata>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#667085"/></marker></defs>
 <rect width="100%" height="100%" fill="#f8fafc"/>
 <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
@@ -1184,6 +1184,6 @@
 <text x="4483" y="2098" font-size="13" fill="#344054">storage_object_id</text>
 <text x="4948" y="2098" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="4483" y="2123" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
-<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：6f9b7c08af971026</text>
+<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：85958092838b2c01</text>
 </g>
 </svg>

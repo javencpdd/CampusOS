@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000005（v1.1 基线 + v1.2 授权审计/插件版本身份）</el-tag
+        >当前迁移 000001 - 000006（v1.1 基线 + v1.2 授权审计/插件版本发布守卫）</el-tag
       >
     </section>
 
@@ -1024,7 +1024,7 @@ const databaseTables: DbTable[] = [
     name: "plugin_versions",
     title: "不可变插件版本",
     domain: "plugin",
-    purpose: "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 阻止已建版本身份字段被原地改写。",
+    purpose: "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 固定版本身份，000006 以首次激活时间封存发布状态并在退役时撤销短期委托。",
     fields: [
       "plugin_id",
       "version",
@@ -1033,8 +1033,9 @@ const databaseTables: DbTable[] = [
       "permission_fingerprint",
       "manifest",
       "lifecycle_status",
+      "activated_at",
     ],
-    migration: "000001 / 000005",
+    migration: "000001 / 000005 / 000006",
     relationshipNote:
       "plugin_id 外键指向 plugins；一个插件最多一个 active 版本，生命周期切换保留版本 ID。",
   },
@@ -1042,7 +1043,7 @@ const databaseTables: DbTable[] = [
     name: "plugin_capability_declarations",
     title: "插件能力声明",
     domain: "plugin",
-    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止既有声明原地改写。",
+    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止原地改写，000006 阻止已发布版本的声明集合增删。",
     fields: [
       "plugin_version_id",
       "capability_code",
@@ -1050,9 +1051,9 @@ const databaseTables: DbTable[] = [
       "risk_level",
       "resource_scope",
     ],
-    migration: "000001 / 000005",
+    migration: "000001 / 000005 / 000006",
     relationshipNote:
-      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源；声明增删仍由后续发布流程约束。",
+      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源；仅未曾激活的 staged 版本可增删声明，删除父版本时仍可级联清理。",
   },
   {
     name: "plugin_admin_grants",
@@ -1090,7 +1091,7 @@ const databaseTables: DbTable[] = [
     name: "plugin_delegations",
     title: "短期委托凭证",
     domain: "plugin",
-    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态。",
+    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态；000006 在版本退役时永久撤销该版本未失效委托。",
     fields: [
       "plugin_version_id",
       "subject_user_id",
@@ -1098,7 +1099,7 @@ const databaseTables: DbTable[] = [
       "granted_capabilities",
       "expires_at",
     ],
-    migration: "000001",
+    migration: "000001 / 000006",
     relationshipNote:
       "不保存明文 Token；权限不得超过管理员 Grant 与用户 Consent 的交集。",
   },
@@ -2769,6 +2770,19 @@ const migrations = [
     summary:
       "阻止既有插件版本的包摘要、Manifest、API 版本和权限指纹等身份字段原地改写，并阻止既有能力声明原地改写；仍允许版本生命周期切换和旧插件卸载时的级联删除。",
     tables: ["plugin_versions（身份更新触发器）", "plugin_capability_declarations（声明更新触发器）"],
+  },
+  {
+    version: "000006",
+    file: "000006_v1_2_plugin_publication_seal.up.sql",
+    title: "v1.2 插件发布声明封存与委托撤销",
+    scope: "Plugin Platform 版本仓储",
+    summary:
+      "回填既有已发布版本的 activated_at，阻止已发布版本回到 staged 或修改声明集合；版本退役时永久撤销其短期委托。回滚只移除本迁移守卫，保留数据和撤销结果。",
+    tables: [
+      "plugin_versions（发布状态与退役撤销触发器）",
+      "plugin_capability_declarations（声明集合守卫）",
+      "plugin_delegations（退役委托撤销）",
+    ],
   },
 ];
 const tableByName = (name: string) =>

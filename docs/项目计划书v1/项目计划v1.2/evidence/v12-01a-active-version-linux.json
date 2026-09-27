@@ -1,0 +1,38 @@
+{
+  "schema": "campusos.v12-01a-active-version-drill/v1",
+  "generated_at": "2026-09-27T05:27:49.435189+00:00",
+  "stage": "V12-01a",
+  "target_environment": "passed",
+  "environment": {
+    "os": "linux",
+    "architecture": "x86_64",
+    "postgres_server_version_num": 160014,
+    "postgres_image": "postgres:16-alpine",
+    "database_storage": "temporary container tmpfs",
+    "postgres_bind": "127.0.0.1",
+    "api_bind": "127.0.0.1"
+  },
+  "checks": {
+    "migrations_up_and_checksum": "passed",
+    "current_database_and_historical_v11_gate": "passed",
+    "postgres_active_version_targeted_test": "passed",
+    "single_active_version_database_invariant": "passed",
+    "gin_http_versioned_handler_targeted_test": "passed",
+    "api_health_and_community_list": "passed"
+  },
+  "http_coverage": "Versioned mutation responses were exercised by the Gin HTTP handler test; the separately booted API was checked for health and community list only.",
+  "source_sha256": {
+    "migrations/000005_v1_2_plugin_version_identity.up.sql": "e0032c0e6c1f2a7c5ed9dba9df90ac458f9a067ad0281928d9a5caadbb27a61d",
+    "migrations/000005_v1_2_plugin_version_identity.down.sql": "066a8c414ecedf25ea406b9f2b04d1c3365f1c0bfd5d6b3012aea0f196ba2f2d",
+    "migrations/000006_v1_2_plugin_publication_seal.up.sql": "4cffa1b722becc359592b1aefa33a26aa8e55ad774ec8a4d76c455fc78a208e2",
+    "migrations/000006_v1_2_plugin_publication_seal.down.sql": "0adf3c8b091ed485817868e88f426acd2b21d833cd5d250932b5c35e57f462c9",
+    "internal/plugin/authorization.go": "9cc3dce502f900f7722df26c93d801be041be0b77e0dd18955a9c02cdd2b37e1",
+    "internal/plugin/authorization_pg.go": "958e2d21544c734b11e7510f8e8fdc3b618ceadc22ca20cedc318e1832e3fa98",
+    "internal/plugin/authorization_handler.go": "930be3bc979cd235abc2518e9ae0512dd19d1ce8bf2f419324f1d605428a7bc9",
+    "internal/plugin/authorization_active_version_test.go": "6cc814f9392a51fd2fa300bba244089da476aa00e7783874779d423c69437224",
+    "internal/plugin/authorization_active_version_pg_integration_test.go": "6445876950c8f4cd7a8c1c6bd3c1b700a8151d3cb94edcf629db50e8e00033c1",
+    "internal/plugin/authorization_version_handler_test.go": "890f7bd6d8dd7e4d82998427123b81453cba4ca48d7fa92a2ace2a374674d975",
+    "internal/transport/httpapi/router.go": "3e2775a2e1a69c57edd01d07b6051ea67b1a2785e86d76b2a48c610437703e1b",
+    "scripts/v12-01a-active-version-drill.sh": "2fb51f9572f5824b9ca5ecc83b2c140aa42fa5c21eaa9598677432b14a4c186c"
+  }
+}
