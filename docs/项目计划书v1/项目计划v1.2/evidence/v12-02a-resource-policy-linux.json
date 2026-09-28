@@ -1,0 +1,198 @@
+{
+  "schema": "campusos.v12-02a-resource-policy-acceptance/v1",
+  "generated_at": "2026-09-28T05:13:31.320938+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Five named resource predicates, strict host DTO codecs, and same-call decision/current-snapshot checking; pure Go Port only",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "execution": "native Linux race-enabled compiled test binaries with env -i; no database, HTTP endpoint, credential verifier, cache, network, or shared instance mutated"
+  },
+  "checks": {
+    "TestResourcePolicyCodecRoundTrip": "passed",
+    "TestResourcePolicyCodecRejectsAmbiguousInput": "passed",
+    "TestResourcePolicyTimePrecision": "passed",
+    "TestResourcePolicyDecisionCodec": "passed",
+    "TestResourcePolicyG1WireCorpus": "passed",
+    "TestResourcePolicyNamedActions": "passed",
+    "TestResourcePolicyDomainsStatesAndNoDelegationPrivilege": "passed",
+    "TestResourcePolicyGrantMustBeSingleWitness": "passed",
+    "TestResourcePolicyMalformedTypedInput": "passed",
+    "TestResourcePolicyDecisionBindingAndCurrentFacts": "passed",
+    "TestResourcePolicyReadDecisionBindings": "passed",
+    "TestResourcePolicyParallelWithoutCache": "passed"
+  },
+  "coverage": {
+    "g1_named_fixtures": 22,
+    "g1_original_matrix": 75,
+    "principal_domain_status_combinations": 300,
+    "native_go_oracle_outputs": 397,
+    "go_allow_outputs": 49,
+    "go_deny_outputs": 347,
+    "go_input_rejections": 1,
+    "strict_codec_test_groups": 4,
+    "same_call_binding_checks": 33,
+    "parallel_callers": 64
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/principal.go": "9badd0e5bcfde16a54dfc1afac8a37d78bd2cfc029ea8d00d1c74098e5611e29",
+    "internal/modules/core/identity/port/strict_json.go": "d98d04404836c361eff759195360c6b6bb8c987e8e6a78d26b037b2ccf5af254",
+    "internal/modules/core/identity/port/resource_policy.go": "69aae3f1de7ab3e206d662b960baa4f819048815e0115c49dcb26e78917913bb",
+    "internal/modules/core/identity/port/resource_policy_test.go": "481ed3cf81d73b6cbe59b2de595a73566a91418ed35bfc5622873c6ecbba1e09",
+    "internal/modules/core/identity/policy/resource.go": "7ebd830dd672582e54101e78e2f5aad86dbce87dafdc85637877def16bc23cf7",
+    "internal/modules/core/identity/policy/resource_test.go": "a701170a5c61b3cd8859c070f294cc3eaa0a24a4f4bc087f6e2bd67ecfb3fd96",
+    "internal/modules/core/identity/policy/resource_interop_test.go": "145a9491c4589389422058641ec2751766f521c0c6d33d39d4f411e48c080221",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "docs/api/resource-policy-v1.schema.json": "d556bd812d47d4dd0dc3c80002e2b36bf83feee7ae2e54cf917438958fdc0bfc",
+    "docs/api/resource-policy-decision-v1.schema.json": "980d42f0d7a47f01da639a0ef2d4bd52c9da3a6c1d20e9379ad8907b63012a52",
+    "docs/api/resource-policy-v1.errors.json": "47842517a4035809d546b1bf1bbe3af3bb33c676a63a43220de5fd1af0940efb",
+    "docs/api/v1.2其他资源与动作策略合同.md": "df794fd6b31bc1090412aab20c755118c68e6e69b0b41df465e50ad777ebf1cb",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "2735ca2ecb925dc84b0240ad997261f32b0f644c528b585631d6175db57ff881",
+    "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
+    "sdk/typescript/src/resource-policy.ts": "bd0fb00f490bfef0ae88c90acecb6e36939e254094989fc5952b3390835d9810",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-resource-policy-contract.mjs": "76de270e4de0130c6859a451cd01f0355a391a62a797c9fee0d24bbdfcc059b2",
+    "scripts/check-v12-02a-resource-output.mjs": "e521e40e1654274563f8674b6cb1383e79d153894b960b4fce60a9586bd07bba",
+    "scripts/v12-02a-resource-policy-drill.sh": "504772da10853ef8aa9d5d17841e472248fda104e741b9c50f0cd0466ff265bf"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-public-policy-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-public-policy-linux.json",
+      "sha256": "1be23dc325b2f05865a5f6141f51d64cc7b7d7603b655d0309d91a3778f9cda6",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "g1-contract": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/g1-contract.log",
+      "sha256": "9452dd042752fe2decd933e781b430069f5071684e98b6230c04857669bb0953"
+    },
+    "generate-oracle": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/generate-oracle.log",
+      "sha256": "6fec93d7e5a2ff6d729e3b4c0d6b5ad5674aa574da297531ceddf53debe3beb4"
+    },
+    "targeted": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/targeted.log",
+      "sha256": "f02d168fb41402e94d7efab59f3788afa74dc0bbd5c7ded16ac2a99b2932f5e4"
+    },
+    "build-port": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/build-port.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-policy": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/build-policy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native-port": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/native-port.log",
+      "sha256": "38d8eb4ec3811ac9040646b2f617259eb76581a0b9a2029a7abc2ec6fa1b76ae"
+    },
+    "native-policy": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/native-policy.log",
+      "sha256": "065cae4cf94918f56eba86710a561432a5d833cf417c881236bc60f12475223c"
+    },
+    "verify-oracle": {
+      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/verify-oracle.log",
+      "sha256": "67aa946c746e591fd943ac2253a51a56a83d85f2746a593ce486b350b2ab7af3"
+    }
+  },
+  "native_binary_sha256": {
+    "resource-port.test": "0b3cfdd5c601d194b82288b08f6fc7b28a106028b1a853c7e9e62a5aa6d155a4",
+    "resource-policy.test": "a44b3c924180c8668a22d3fa7058f227608da813677df830450ba48c9ed37191"
+  },
+  "oracle_corpus": {
+    "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/g1-cases.json",
+    "sha256": "9dfb06ffbf12f1de7984ce9cc3583c70c0b1bf09fd86acfee7457071ecb572ac"
+  },
+  "actual_go_output": {
+    "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/go-output.json",
+    "sha256": "e5b835db2f5ab0a90a15ab4a0850667274fba90b018e8ed83ca1bcc13ff5482d"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/go-all.log",
+      "log_sha256": "21b93072d1ee3a2218d277d0dac310f7e6364a098787cc913c4247074d6f0faa"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/architecture.log",
+      "log_sha256": "9226764e66559cd08b9cd3c8d91beee0fa58d18f965ad960ce23b5541761dfe8"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/docs-build.log",
+      "log_sha256": "e4daa2f797d3e08d2e595e0e15bec1a3ca35fccb61555f6c57513086d11764c0"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/docs-links.log",
+      "log_sha256": "bc403f27c474c789e54d4a3c37bc976f6a896ee64b5ed76f77f9d658c1a3f037"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/line-endings.log",
+      "log_sha256": "ca042e0ddbed32039a6ceb7b248ccf8e751953f9038faf7a571841edbcd7aeb7"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No production HTTP route, session/credential verifier, database repository, global fact loader, cache, or authorization write path changed.",
+    "The Port validates host-supplied facts only; JSON validity does not authenticate a caller or authorize a real resource.",
+    "The caller must reload facts/grants in its own transaction, re-evaluate, write required audit atomically, and choose read/return ordering.",
+    "Delegation action/scope/time/MFA subset policy and current PermissionService replacement remain later V12-02a work.",
+    "Community/Knowledge/Personal Document factual loading, ABA version behavior, PG/Memory/HTTP/browser and concurrency integration remain V12-02b/02d/09a work."
+  ]
+}
