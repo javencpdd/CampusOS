@@ -73,7 +73,12 @@ docker run --rm -d --name "$container" \
   -p 127.0.0.1::5432 postgres:16-alpine >/dev/null
 container_started=true
 for attempt in $(seq 1 80); do
-  if docker exec "$container" pg_isready -U campusos -d "$database" >/dev/null 2>&1; then break; fi
+  # The image starts a temporary Unix-socket server during init. Require the
+  # final TCP listener and an actual query before treating the database ready.
+  if docker exec "$container" pg_isready -h 127.0.0.1 -U campusos -d "$database" >/dev/null 2>&1 &&
+      [[ "$(psql_scalar "$database" 'SELECT 1;' 2>/dev/null || true)" == 1 ]]; then
+    break
+  fi
   if (( attempt == 80 )); then echo "isolated PostgreSQL did not become ready" >&2; exit 1; fi
   sleep 0.25
 done
@@ -90,8 +95,8 @@ pg_port="$(docker port "$container" 5432/tcp | awk -F: '/127\.0\.0\.1/ {print $N
 database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/$database?sslmode=disable"
 run_migrate "$database" up >"$work_dir/migrate.log"
 run_migrate "$database" check >>"$work_dir/migrate.log"
-[[ "$(psql_scalar "$database" 'SELECT count(*) FROM schema_migrations;')" == 6 ]] || {
-  echo "expected 6 current migrations" >&2; exit 1;
+[[ "$(psql_scalar "$database" 'SELECT count(*) FROM schema_migrations;')" == 7 ]] || {
+  echo "expected 7 current migrations" >&2; exit 1;
 }
 CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER="$container" \
   DB_USER=campusos DB_PASSWORD="$pg_password" DB_NAME="$database" \
@@ -162,7 +167,7 @@ report = {
         'restore_database': 'campusos_v12_01b_keyring_restored',
     },
     'checks': {
-        'migrations_000001_to_000006_and_checksum': 'passed',
+        'migrations_000001_to_000007_and_checksum': 'passed',
         'current_and_historical_database_gate': 'passed',
         'legacy_aes_gcm_row_read_after_active_key_change': 'passed',
         'new_write_uses_active_key_and_old_row_rotates': 'passed',

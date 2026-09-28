@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000006（v1.1 基线 + v1.2 授权审计/插件版本发布守卫）</el-tag
+        >当前迁移 000001 - 000007（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储）</el-tag
       >
     </section>
 
@@ -1119,6 +1119,24 @@ const databaseTables: DbTable[] = [
     migration: "000001",
     relationshipNote:
       "支持系统级和用户级 Secret；active 名称使用 NULLS NOT DISTINCT 唯一索引。",
+  },
+  {
+    name: "plugin_configurations",
+    title: "插件 v5 受管配置",
+    domain: "plugin",
+    purpose:
+      "按不可变插件版本与系统/用户作用域保存有限普通配置和独立 opaque Secret 引用；revision 支持事务比较更新，配置定义来自版本 Manifest。",
+    fields: [
+      "plugin_version_id",
+      "owner_user_id",
+      "definition_version",
+      "revision",
+      "values",
+      "secret_refs",
+    ],
+    migration: "000007",
+    relationshipNote:
+      "plugin_version_id 外键指向 plugin_versions，owner_user_id 可选外键指向 users；NULLS NOT DISTINCT 限定每版本/owner 一份当前配置。",
   },
   {
     name: "plugin_authorization_decisions",
@@ -2593,6 +2611,24 @@ const relations: Relation[] = [
     domains: ["plugin"],
   },
   {
+    id: "versions-v5-configurations",
+    source: "plugin_versions",
+    target: "plugin_configurations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_version_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "users-v5-configurations",
+    source: "users",
+    target: "plugin_configurations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> owner_user_id (nullable)",
+    domains: ["identity", "plugin"],
+  },
+  {
     id: "versions-decisions-v1",
     source: "plugin_versions",
     target: "plugin_authorization_decisions",
@@ -2612,7 +2648,7 @@ const storageRows = [
     contents: [
       "用户、登录凭据、管理员准入账号、会话、角色与权限",
       "版块、主题、回复、标签、通知和审计",
-      "插件元数据、Webhook、Message、AI 调用与样式快照",
+      "插件元数据、v5 受管配置（普通值与 Secret 引用分列）、Webhook、Message、AI 调用与样式快照",
     ],
     note: "由 migrations/ 和 schema_migrations 管理版本。",
   },
@@ -2783,6 +2819,15 @@ const migrations = [
       "plugin_capability_declarations（声明集合守卫）",
       "plugin_delegations（退役委托撤销）",
     ],
+  },
+  {
+    version: "000007",
+    file: "000007_v1_2_plugin_v5_configurations.up.sql",
+    title: "v1.2 插件 v5 受管配置仓储",
+    scope: "Plugin Platform 配置仓储",
+    summary:
+      "每个不可变插件版本按系统/用户作用域保存普通值与 opaque Secret 引用，revision 支持事务 CAS；数据非空时拒绝回滚。",
+    tables: ["plugin_configurations（版本/owner 外键、引用形状与唯一作用域）"],
   },
 ];
 const tableByName = (name: string) =>

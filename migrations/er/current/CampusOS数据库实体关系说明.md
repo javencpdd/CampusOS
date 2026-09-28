@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=85958092838b2c012536e05ed930f23122cb1a8eb3672d8d08bde7b8a76fc325;tables=89;foreign_keys=106 -->
+<!-- campusos-er:schema_sha256=ae49d427d205db70c5ce5403e9c0481db142d5d33ae2883a6fda57ce7c06e12e;tables=90;foreign_keys=108 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**89**
-- 物理外键：**106**
+- 实体表：**90**
+- 物理外键：**108**
 - 一对一/可选一对一关系：**12**
-- 一对多关系：**94**
+- 一对多关系：**96**
 - 推断的逻辑多对多关系：**5**
-- Schema 指纹：`85958092838b2c012536e05ed930f23122cb1a8eb3672d8d08bde7b8a76fc325`
+- Schema 指纹：`ae49d427d205db70c5ce5403e9c0481db142d5d33ae2883a6fda57ce7c06e12e`
 
 ## 1. 生成范围与判定规则
 
@@ -23,6 +23,7 @@
 - `000004_v1_2_authorization_audit_actor.up.sql`
 - `000005_v1_2_plugin_version_identity.up.sql`
 - `000006_v1_2_plugin_publication_seal.up.sql`
+- `000007_v1_2_plugin_v5_configurations.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -53,7 +54,7 @@
 | 身份与访问控制 | `roles` | 7 | `id` | 0 | 2 |
 | 身份与访问控制 | `sessions` | 20 | `id` | 1 | 0 |
 | 身份与访问控制 | `user_roles` | 7 | `id` | 2 | 0 |
-| 身份与访问控制 | `users` | 12 | `id` | 0 | 48 |
+| 身份与访问控制 | `users` | 12 | `id` | 0 | 49 |
 | 社区与内容 | `categories` | 18 | `id` | 1 | 4 |
 | 社区与内容 | `category_thread_type_policies` | 5 | `category_id, thread_type` | 1 | 0 |
 | 社区与内容 | `likes` | 7 | `id` | 1 | 0 |
@@ -82,6 +83,7 @@
 | 插件生态与授权 | `plugin_authorization_decisions` | 16 | `id` | 5 | 0 |
 | 插件生态与授权 | `plugin_capability_declarations` | 9 | `id` | 1 | 2 |
 | 插件生态与授权 | `plugin_catalog_entries` | 12 | `plugin_name` | 0 | 0 |
+| 插件生态与授权 | `plugin_configurations` | 9 | `id` | 2 | 0 |
 | 插件生态与授权 | `plugin_delegations` | 12 | `id` | 3 | 1 |
 | 插件生态与授权 | `plugin_file_metadata` | 11 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_install_requests` | 14 | `id` | 1 | 0 |
@@ -96,7 +98,7 @@
 | 插件生态与授权 | `plugin_ui_invocations` | 16 | `id` | 5 | 0 |
 | 插件生态与授权 | `plugin_user_consents` | 13 | `id` | 2 | 1 |
 | 插件生态与授权 | `plugin_user_grants` | 9 | `id` | 0 | 0 |
-| 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 3 |
+| 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 4 |
 | 插件生态与授权 | `plugins` | 24 | `id` | 1 | 2 |
 | 平台可靠性与集成 | `ai_call_logs` | 12 | `id` | 0 | 0 |
 | 平台可靠性与集成 | `audit_logs` | 12 | `id` | 0 | 0 |
@@ -186,6 +188,8 @@
 | `plugin_user_consents` | `plugin_authorization_decisions` | `plugin_authorization_decisions_user_consent_id_fkey` | `user_consent_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugin_delegations` | `plugin_authorization_decisions` | `plugin_authorization_decisions_delegation_id_fkey` | `delegation_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugin_versions` | `plugin_capability_declarations` | `plugin_capability_declarations_plugin_version_id_fkey` | `plugin_version_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `plugin_versions` | `plugin_configurations` | `plugin_configurations_plugin_version_id_fkey` | `plugin_version_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `users` | `plugin_configurations` | `plugin_configurations_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `plugin_versions` | `plugin_delegations` | `plugin_delegations_plugin_version_id_fkey` | `plugin_version_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_delegations` | `plugin_delegations_subject_user_id_fkey` | `subject_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_delegations` | `plugin_delegations_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
@@ -689,7 +693,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：48
+- 出站外键：0；入站外键：49
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -1420,6 +1424,29 @@
 | `user_permissions` | `jsonb` | NN | 否 | `'[]'::jsonb` |
 | `experience` | `jsonb` | NN | 否 | `'{}'::jsonb` |
 
+#### `plugin_configurations`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：2；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `BIGINT` | PK | 是 | `—` |
+| `plugin_version_id` | `BIGINT` | FK/NN | 否 | `—` |
+| `owner_user_id` | `BIGINT` | FK | 是 | `—` |
+| `definition_version` | `VARCHAR(128)` | NN | 否 | `—` |
+| `revision` | `BIGINT` | NN | 否 | `1` |
+| `values` | `JSONB` | NN | 否 | `'{}'::jsonb` |
+| `secret_refs` | `JSONB` | NN | 否 | `'{}'::jsonb` |
+| `created_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+| `updated_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+
+外键明细：
+
+- `plugin_configurations_plugin_version_id_fkey`：`plugin_configurations(plugin_version_id)` → `plugin_versions(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+- `plugin_configurations_owner_user_id_fkey`：`plugin_configurations(owner_user_id)` → `users(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+
 #### `plugin_delegations`
 
 - 主键：`id`
@@ -1733,7 +1760,7 @@
 
 - 主键：`id`
 - 唯一列集：(plugin_id, version)；(plugin_id, package_digest)
-- 出站外键：2；入站外键：3
+- 出站外键：2；入站外键：4
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |

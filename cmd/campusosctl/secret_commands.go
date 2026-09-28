@@ -63,6 +63,16 @@ func runSecret(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch args[0] {
+	case "inspect-key":
+		if len(args) == 2 && (args[1] == "help" || args[1] == "-h" || args[1] == "--help") {
+			printSecretUsage(stdout)
+			return 0
+		}
+		if err := runSecretInspectKey(args[1:], stdout); err != nil {
+			fmt.Fprintf(stderr, "secret inspect-key: %v\n", err)
+			return 1
+		}
+		return 0
 	case "rewrap":
 		if len(args) == 2 && (args[1] == "help" || args[1] == "-h" || args[1] == "--help") {
 			printSecretUsage(stdout)
@@ -85,6 +95,7 @@ func runSecret(args []string, stdout, stderr io.Writer) int {
 
 func printSecretUsage(writer io.Writer) {
 	fmt.Fprintln(writer, secretRewrapUsage)
+	fmt.Fprintln(writer, secretInspectKeyUsage)
 	fmt.Fprintln(writer, "")
 	fmt.Fprintln(writer, "Defaults to a read-only preview. Apply processes at most one bounded batch after the current candidate count matches --expected-count and an operation audit is recorded. DATABASE_DSN and both CAMPUSOS_SECRET_* keyring variables must be set in the local environment.")
 }

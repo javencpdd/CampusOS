@@ -70,5 +70,10 @@ func (s *Server) Run() error {
 		return err
 	}
 	defer infra.Stop()
+	stopRotation, err := startSecretRotation(infra)
+	if err != nil {
+		return err
+	}
+	defer stopRotation()
 	return s.runApplication(infra)
 }

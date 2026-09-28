@@ -84,7 +84,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 绑定时，应配置 SMTP；只开发 API 或使用预置开发管理员时可以保留 `fake`。
 自动导入只是一次兼容迁移；创建后以 `.env.dev.local` 为两种共享开发模式的配置事实源。
 
-插件 Secret 换加密密钥时，在本地配置中同时设置 `CAMPUSOS_SECRET_ACTIVE_KEY_ID` 和 `CAMPUSOS_SECRET_ENCRYPTION_KEYS`；后者用 `key-id:32字节hex或Base64`、逗号分隔列出当前及仍被旧密文引用的密钥。新写入只用 active ID，旧行不会自动重加密；缺少旧 ID 时读取拒绝。改动配置后运行 `docker-dev.* up` 使 API 容器重新读取环境，勿把密钥写入插件包或前端。未设置这两个变量时仍使用旧的单密钥配置。
+插件 Secret 换加密密钥时，在本地配置中同时设置 `CAMPUSOS_SECRET_ACTIVE_KEY_ID` 和 `CAMPUSOS_SECRET_ENCRYPTION_KEYS`；后者用 `key-id:32字节hex或Base64`、逗号分隔列出当前及仍被旧密文引用的密钥。新写入只用 active ID，后台默认关闭，旧行需运维命令或显式开启 Worker 才会重加密；缺少旧 ID 时读取拒绝。改动配置后运行 `docker-dev.* up` 使 API 容器重新读取环境，勿把密钥写入插件包或前端。未设置这两个变量时仍使用旧的单密钥配置。
+
+显式设置 `CAMPUSOS_SECRET_ROTATION_ENABLED=true` 可启用后台活跃行重封装，默认关闭；`CAMPUSOS_SECRET_ROTATION_INTERVAL` 默认 `5m`（1s–24h）。它需要 PostgreSQL 和完整旧读 Keyring，首次处理等待一个周期，每轮最多 25 插件、每插件 100 行；坏密文插件记录失败并继续其他插件，租约/审计基础设施故障停止 Worker，修复后重启。历史/撤销行及旧备份仍需旧 key，退钥前使用宿主 `campusosctl secret inspect-key --key-id ID` 核对全表引用与恢复需求；零快照不证明备份无引用。修改配置后运行 `docker-dev.* up` 应用到 API 进程。
 
 后续启动直接使用：
 

@@ -95,8 +95,8 @@ pg_port="$(docker port "$container" 5432/tcp | awk -F: '/127\.0\.0\.1/ {print $N
 database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/$database?sslmode=disable"
 run_migrate "$database" up >"$work_dir/migrate.log"
 run_migrate "$database" check >>"$work_dir/migrate.log"
-[[ "$(psql_scalar "$database" 'SELECT count(*) FROM schema_migrations;')" == 6 ]] || {
-  echo "expected 6 current migrations" >&2; exit 1;
+[[ "$(psql_scalar "$database" 'SELECT count(*) FROM schema_migrations;')" == 7 ]] || {
+  echo "expected 7 current migrations" >&2; exit 1;
 }
 CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=docker POSTGRES_CONTAINER="$container" \
   DB_USER=campusos DB_PASSWORD="$pg_password" DB_NAME="$database" \
@@ -157,7 +157,7 @@ report = {
         'restore_database': 'campusos_v12_01b_rewrap_restored',
     },
     'checks': {
-        'migrations_000001_to_000006_and_checksum': 'passed',
+        'migrations_000001_to_000007_and_checksum': 'passed',
         'current_and_historical_database_gate': 'passed',
         'old_system_and_user_active_rows_rewrapped_in_place': 'passed',
         'new_key_only_reads_all_active_fixture_rows': 'passed',

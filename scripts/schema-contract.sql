@@ -11,7 +11,7 @@ BEGIN
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
         'plugin_publishers', 'plugin_versions', 'plugin_capability_declarations', 'plugin_admin_grants',
-        'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_authorization_decisions',
+        'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_configurations', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',
         'richtext_article_assets', 'user_assets', 'richtext_article_attachments', 'plugin_ui_invocations', 'asset_lifecycle_audits',
         'content_revisions', 'content_moderation_cases', 'content_moderation_actions',
@@ -83,6 +83,9 @@ BEGIN
         'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
         'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
         'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
+        'plugin_configurations.plugin_version_id', 'plugin_configurations.owner_user_id',
+        'plugin_configurations.definition_version', 'plugin_configurations.revision',
+        'plugin_configurations.values', 'plugin_configurations.secret_refs',
         'plugin_authorization_decisions.request_id', 'plugin_authorization_decisions.outcome'
     ]) expected
     WHERE NOT EXISTS (
@@ -158,7 +161,9 @@ BEGIN
         'fk_asset_lifecycle_audits_asset', 'fk_asset_lifecycle_audits_actor',
         'fk_richtext_article_assets_user_asset',
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
-        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome'
+        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome',
+        'chk_plugin_configurations_definition_version', 'chk_plugin_configurations_revision',
+        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated
@@ -195,6 +200,7 @@ BEGIN
         'uk_plugin_publishers_slug_active', 'uk_plugin_versions_version', 'uk_plugin_versions_active',
         'uk_plugin_capability_declaration', 'uk_plugin_admin_grants_current', 'uk_plugin_user_consents_current',
         'uk_plugin_delegations_token_digest', 'uk_plugin_secret_values_active', 'uk_plugin_authorization_request',
+        'uq_plugin_configurations_scope', 'idx_plugin_configurations_owner',
         'idx_plugin_admin_grants_declaration', 'idx_plugin_user_consents_declaration',
         'idx_plugin_authorization_declaration'
         ,'uq_user_assets_storage_object', 'idx_user_assets_owner_status_updated', 'idx_user_assets_owner_kind_updated',
@@ -278,7 +284,7 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v1.2-plugin-version-identity-v1',
+    'schema_contract', 'v1.2-plugin-v5-config-v1',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'

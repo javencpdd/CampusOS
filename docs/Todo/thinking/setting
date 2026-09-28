@@ -70,3 +70,5 @@ rsync -a skills/campusos-dev-nocommit/ /home/jack/.codex/skills/campusos-dev-noc
 ################################################
 
 感觉可以考虑将论坛和zotero结合一下，搞个插件，可以显示用户自己的阅读笔记
+
+针对版主应该有些特殊的权限设置，至少可以支撑为板块设置违禁词的外部插件

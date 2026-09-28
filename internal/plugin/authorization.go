@@ -653,11 +653,19 @@ func containsAuthorizationString(items []string, target string) bool {
 }
 
 func scopeContains(granted, requested map[string]interface{}) bool {
+	// A Secret use must match one complete, host-approved binding. Generic
+	// grants with an empty scope must never authorize a Secret ref, Profile,
+	// target or purpose by omission.
+	if binding, requestedBinding := requested["secret_binding"]; requestedBinding {
+		if !secretBindingInScope(granted["secret_bindings"], binding) {
+			return false
+		}
+	}
 	if len(requested) == 0 || len(granted) == 0 {
 		return true
 	}
 	for key, value := range requested {
-		if key == "scope" {
+		if key == "scope" || key == "secret_binding" {
 			continue
 		}
 		allowed, exists := granted[key]
@@ -666,6 +674,29 @@ func scopeContains(granted, requested map[string]interface{}) bool {
 		}
 	}
 	return true
+}
+
+func secretBindingInScope(raw, requested interface{}) bool {
+	var bindings []interface{}
+	switch typed := raw.(type) {
+	case []interface{}:
+		bindings = typed
+	case []map[string]interface{}:
+		for _, binding := range typed {
+			bindings = append(bindings, binding)
+		}
+	default:
+		return false
+	}
+	if len(bindings) == 0 || len(bindings) > 32 {
+		return false
+	}
+	for _, binding := range bindings {
+		if canonicalJSON(binding) == canonicalJSON(requested) {
+			return true
+		}
+	}
+	return false
 }
 
 // MemoryAuthorizationStore keeps the same policy semantics for tests and the
