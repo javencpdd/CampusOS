@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02a-resource-policy-acceptance/v1",
-  "generated_at": "2026-09-28T05:13:31.320938+00:00",
+  "generated_at": "2026-10-09T18:47:18.283535+00:00",
   "stage": "V12-02a",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -54,7 +54,7 @@
     "docs/api/resource-policy-decision-v1.schema.json": "980d42f0d7a47f01da639a0ef2d4bd52c9da3a6c1d20e9379ad8907b63012a52",
     "docs/api/resource-policy-v1.errors.json": "47842517a4035809d546b1bf1bbe3af3bb33c676a63a43220de5fd1af0940efb",
     "docs/api/v1.2其他资源与动作策略合同.md": "df794fd6b31bc1090412aab20c755118c68e6e69b0b41df465e50ad777ebf1cb",
-    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "2735ca2ecb925dc84b0240ad997261f32b0f644c528b585631d6175db57ff881",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7e9d3186d2bede973f11d3a7e12c8c565fc804361ff6762ffe3e467792d4b7b3",
     "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
     "sdk/typescript/src/resource-policy.ts": "bd0fb00f490bfef0ae88c90acecb6e36939e254094989fc5952b3390835d9810",
     "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
@@ -86,54 +86,54 @@
     },
     "v12-02a-public-policy-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-public-policy-linux.json",
-      "sha256": "1be23dc325b2f05865a5f6141f51d64cc7b7d7603b655d0309d91a3778f9cda6",
+      "sha256": "46b922df8b595758bb072d3c4e17c67fa812414770802652955ce4bb9549f55f",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     }
   },
   "target_logs": {
     "g1-contract": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/g1-contract.log",
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/g1-contract.log",
       "sha256": "9452dd042752fe2decd933e781b430069f5071684e98b6230c04857669bb0953"
     },
     "generate-oracle": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/generate-oracle.log",
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/generate-oracle.log",
       "sha256": "6fec93d7e5a2ff6d729e3b4c0d6b5ad5674aa574da297531ceddf53debe3beb4"
     },
     "targeted": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/targeted.log",
-      "sha256": "f02d168fb41402e94d7efab59f3788afa74dc0bbd5c7ded16ac2a99b2932f5e4"
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/targeted.log",
+      "sha256": "a9bad4179268ba042ed6de0e2ca84fafc330f433d507f9cfd2b839e51392b40d"
     },
     "build-port": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/build-port.log",
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/build-port.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "build-policy": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/build-policy.log",
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/build-policy.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "native-port": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/native-port.log",
-      "sha256": "38d8eb4ec3811ac9040646b2f617259eb76581a0b9a2029a7abc2ec6fa1b76ae"
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/native-port.log",
+      "sha256": "9c42697f67e6c2195882b13aa7510cfb7b80702ad4f5d3bbd50aeb60eef1fdbb"
     },
     "native-policy": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/native-policy.log",
-      "sha256": "065cae4cf94918f56eba86710a561432a5d833cf417c881236bc60f12475223c"
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/native-policy.log",
+      "sha256": "4c24fb07b051c6269545f5903c46eb4eaecc929f371bc98f9196ef1a4fa22e0e"
     },
     "verify-oracle": {
-      "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/verify-oracle.log",
+      "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/verify-oracle.log",
       "sha256": "67aa946c746e591fd943ac2253a51a56a83d85f2746a593ce486b350b2ab7af3"
     }
   },
   "native_binary_sha256": {
-    "resource-port.test": "0b3cfdd5c601d194b82288b08f6fc7b28a106028b1a853c7e9e62a5aa6d155a4",
-    "resource-policy.test": "a44b3c924180c8668a22d3fa7058f227608da813677df830450ba48c9ed37191"
+    "resource-port.test": "6e7f703c594d9580f9b35f6941522cc886e607e586326ca88a3c970089ce1079",
+    "resource-policy.test": "05f32ab5f72c68648411ae182962775f7ea7951a218d5affe5e42b05ff6bfd17"
   },
   "oracle_corpus": {
-    "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/g1-cases.json",
+    "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/g1-cases.json",
     "sha256": "9dfb06ffbf12f1de7984ce9cc3583c70c0b1bf09fd86acfee7457071ecb572ac"
   },
   "actual_go_output": {
-    "path": ".cache/v12-02a-resource/resource-policy.E9vlVN/go-output.json",
+    "path": ".cache/v12-02a-resource/resource-policy.BRWAEt/go-output.json",
     "sha256": "e5b835db2f5ab0a90a15ab4a0850667274fba90b018e8ed83ca1bcc13ff5482d"
   },
   "common_gates_status": "passed",
@@ -142,49 +142,49 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/go-all.log",
-      "log_sha256": "21b93072d1ee3a2218d277d0dac310f7e6364a098787cc913c4247074d6f0faa"
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/go-all.log",
+      "log_sha256": "63c1cea30204cf0b7e03dbd0d9e827155de417468d81cd1fef4f735a206e9923"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/contracts.log",
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/architecture.log",
-      "log_sha256": "9226764e66559cd08b9cd3c8d91beee0fa58d18f965ad960ce23b5541761dfe8"
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/architecture.log",
+      "log_sha256": "bc5839e9606844c75a2efcd8f308321d07f980b71795c80f87f8506545c33488"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/docs-build.log",
-      "log_sha256": "e4daa2f797d3e08d2e595e0e15bec1a3ca35fccb61555f6c57513086d11764c0"
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/docs-build.log",
+      "log_sha256": "8c0249762c5cb9cf31ffed365e7385e04bd144e239415d22c222999ea65575e0"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/docs-links.log",
-      "log_sha256": "bc403f27c474c789e54d4a3c37bc976f6a896ee64b5ed76f77f9d658c1a3f037"
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/line-endings.log",
-      "log_sha256": "ca042e0ddbed32039a6ceb7b248ccf8e751953f9038faf7a571841edbcd7aeb7"
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a-resource/resource-policy.E9vlVN/diff.log",
+      "local_log": ".cache/v12-02a-resource/resource-policy.BRWAEt/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

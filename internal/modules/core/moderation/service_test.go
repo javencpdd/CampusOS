@@ -11,7 +11,7 @@ import (
 	communityrepo "github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	communitysvc "github.com/campusos/CampusOS/internal/modules/core/community/service"
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
-	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	identityportadapt "github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
 	identityrepo "github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/modules/core/identity/service"
 )
@@ -60,11 +60,12 @@ func TestCategoryModeratorCanOnlyGovernAssignedCategories(t *testing.T) {
 	if _, err := permissionSvc.AssignRole(ctx, "9001", 1); err != nil {
 		t.Fatalf("assign test administrator: %v", err)
 	}
-	service := NewService(identityport.NewPermissionModerationPolicy(permissionSvc), communitycore.NewModerationGateway(categoryRepo, threadRepo, postRepo, threadSvc, postSvc), audit, Config{
+	wireTestDelegationChain(t, permissionSvc, userRepo, "10", "20")
+	service := NewService(identityportadapt.NewPermissionModerationPolicy(permissionSvc), communitycore.NewModerationGateway(categoryRepo, threadRepo, postRepo, threadSvc, postSvc), audit, Config{
 		AllowPin: true, AllowLock: true, AllowDeletePost: true,
 	})
 
-	assignment, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"10"}, OperationContext{TraceID: "scope-test"})
+	assignment, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"10"}, moderatorAdminOperation("scope-test"))
 	if err != nil {
 		t.Fatalf("set moderator categories: %v", err)
 	}

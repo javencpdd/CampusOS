@@ -939,7 +939,9 @@ var memoryPermissions = map[string]map[string]bool{
 	"moderator": {
 		"user:read":   true,
 		"thread:read": true, "thread:pin": true, "thread:lock": true,
-		"post:read": true, "post:delete": true,
+		// thread:delete/post:delete execution moved to identity delegation
+		// grants in V12-02a; the moderator role no longer carries them.
+		"post:read": true,
 	},
 	"member": {
 		"thread:read": true, "thread:write": true,
@@ -1028,7 +1030,7 @@ func (r *MemoryRoleRepository) seedAuthorizationCatalog() {
 		action   string
 		roles    []string
 	}{
-		{"community.thread.take_down", "thread", "delete", []string{"admin", "moderator"}},
+		{"community.thread.take_down", "thread", "delete", []string{"admin"}},
 		{"community.thread.review", "thread", "write", []string{"admin"}},
 		{"community.thread.direct_restore", "thread", "delete", []string{"admin"}},
 		{"community.thread.restore", "thread", "delete", []string{"admin"}},

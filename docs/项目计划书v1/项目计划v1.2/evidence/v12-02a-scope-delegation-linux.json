@@ -1,0 +1,198 @@
+{
+  "schema": "campusos.v12-02a-scope-delegation-acceptance/v1",
+  "generated_at": "2026-10-09T18:49:37.232701+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "campusos.scope-delegation/v1 non-board exact-scope delegation judgement and strict host DTO codec; pure Go Port only",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "execution": "native Linux race-enabled compiled test binaries with env -i; no database, HTTP endpoint, credential verifier, cache, network, or shared instance mutated"
+  },
+  "checks": {
+    "TestScopeDelegationCodecRoundTrip": "passed",
+    "TestScopeDelegationCodecRejectsAmbiguousInput": "passed",
+    "TestScopeDelegationTimePrecision": "passed",
+    "TestScopeDelegationG1WireCorpus": "passed",
+    "TestScopeDelegationAcceptedScopes": "passed",
+    "TestScopeDelegationDenySequence": "passed",
+    "TestScopeDelegationEndpointShapes": "passed",
+    "TestScopeDelegationMalformedTypedInput": "passed",
+    "TestScopeDelegationParallelWithoutCache": "passed"
+  },
+  "coverage": {
+    "g1_fixtures": 23,
+    "matrix_combinations": 47,
+    "native_go_oracle_outputs": 70,
+    "go_accepted_outputs": 17,
+    "go_deny_outputs": 49,
+    "go_input_rejections": 4,
+    "strict_codec_test_groups": 3,
+    "endpoint_shape_cases": 12,
+    "parallel_callers": 64
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/strict_json.go": "d98d04404836c361eff759195360c6b6bb8c987e8e6a78d26b037b2ccf5af254",
+    "internal/modules/core/identity/port/resource_policy.go": "69aae3f1de7ab3e206d662b960baa4f819048815e0115c49dcb26e78917913bb",
+    "internal/modules/core/identity/port/scope_delegation_policy.go": "9eeab5bc183878dcb835ee0971bd8c3a329329686f6782d6958ccc1921db174b",
+    "internal/modules/core/identity/port/scope_delegation_policy_test.go": "67368f37a1cd63eba0dd08b21ea585e8103245b8ce987e06596fda0b4fa3c270",
+    "internal/modules/core/identity/policy/scope_delegation.go": "cc9815805fcb9f88c832bf25e46a168a0f47cb18ef0226ba24f38d63867ba819",
+    "internal/modules/core/identity/policy/scope_delegation_test.go": "1da49c40b8c91ed6e28b9d58cf3c40b2b85e8e42f45faad913ffb960984a12e4",
+    "internal/modules/core/identity/policy/scope_delegation_interop_test.go": "8fe3e48235de25fc30ec0698ef89b33711db70fd93fcc5307de92aba7ae3c0ea",
+    "docs/api/scope-delegation-v1.schema.json": "d63e8b1e9702c71f5bbcd29b84c90dd2ea0c6b6c7ca1b4136f2aa8952ecbb683",
+    "docs/api/scope-delegation-v1.errors.json": "6a03d0157f57694097e62bca2011c63db11cd423db9b44ba201309e4629f4015",
+    "docs/api/v1.2其他Scope与委托边界合同.md": "3e89f84679641ec69452770991f98eea95b45f4dfd38710d0624b17091b895a6",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7e9d3186d2bede973f11d3a7e12c8c565fc804361ff6762ffe3e467792d4b7b3",
+    "sdk/typescript/src/scope-delegation.ts": "9b2210f35d7b37b92924fb4876023d97211a8ed7f9865b6d665fd90b3a94d085",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-scope-delegation-contract.mjs": "5dea36069ea2bbf61cb840b9de1dc7373c10d87916f2b69b267b65ec54b18388",
+    "scripts/check-v12-02a-scope-delegation-output.mjs": "8ed47cdbd1c36ad36214280e68f6852b12b6f2abb171da1bf8428e6dc2faf4c2",
+    "scripts/v12-02a-scope-delegation-drill.sh": "31c56966cb710429150dc5d95b6e4daaf14d22a1325b213706a4bdb89023b30d"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-resource-policy-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-resource-policy-linux.json",
+      "sha256": "9c1f83cb74475c648372043940fc28f7bb8e6a3956bd43ff59713a57cc41e340",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-board-delegation-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-board-delegation-linux.json",
+      "sha256": "c4fae8202f2414e2625663ca28a2512335aa2b6f6878edb08e5b491ddda4d511",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "g1-contract": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/g1-contract.log",
+      "sha256": "bc31a1394251a457899146aa2ff8a38b243640dedb5f1271113365b38ae4af59"
+    },
+    "generate-oracle": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/generate-oracle.log",
+      "sha256": "27ef85a5480c0af5ad92a10b27a7e846202ca35997b96ae3de24fd4b5df58d13"
+    },
+    "targeted": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/targeted.log",
+      "sha256": "e7453f8d6cc47035f21688ff0eb142390702c5c3573218ba17b4acc6abacfca6"
+    },
+    "build-port": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/build-port.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-policy": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/build-policy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native-port": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/native-port.log",
+      "sha256": "d79e44181ae5d9fb3f5d7973bd05895ca3f730ac37679b82491e0a7298847cc5"
+    },
+    "native-policy": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/native-policy.log",
+      "sha256": "a91c81e678ee4da7a1227d41ce3ea57ac89e1c896849026909f8c95c42086f9a"
+    },
+    "verify-oracle": {
+      "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/verify-oracle.log",
+      "sha256": "5d066ee6331ba80225c062d558ae49f3515163d30ca067189f76fc7579179055"
+    }
+  },
+  "native_binary_sha256": {
+    "scope-port.test": "6e7f703c594d9580f9b35f6941522cc886e607e586326ca88a3c970089ce1079",
+    "scope-policy.test": "05f32ab5f72c68648411ae182962775f7ea7951a218d5affe5e42b05ff6bfd17"
+  },
+  "oracle_corpus": {
+    "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/g1-cases.json",
+    "sha256": "d16e27b3a62f71a5cf325a21d47cdd3b4de6b78f6f9ef160b665652a0a69256f"
+  },
+  "actual_go_output": {
+    "path": ".cache/v12-02a-scope/scope-delegation.zDtU6i/go-output.json",
+    "sha256": "896669a21e4d42557d4ca717770cca8223b650dcd149f155207de2a2284bfdd9"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/go-all.log",
+      "log_sha256": "2589199cdab9fa663acaf600173d4526db0196397497555d3ecbbdf3ea8e31bf"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/architecture.log",
+      "log_sha256": "0399746088de2a70c231daec7984893c6e87ba732b8b98629c218f7c743b0a31"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/docs-build.log",
+      "log_sha256": "305fc8b8c4d7703f6571273a86b0eae4f2dd915734fd7090a02c58fcabb57e98"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-scope/scope-delegation.zDtU6i/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No production HTTP route, session/credential verifier, database repository, global authority loader, cache, egress path, or authorization write path changed.",
+    "The Port validates host-supplied facts only; JSON validity does not authenticate a caller, and management/bound facts are never client-asserted.",
+    "An accepted proposal is not a committed grant: the caller must reload facts in its own transaction, re-evaluate, and write the grant and required audit atomically.",
+    "Machine/plugin principal construction, real endpoint egress enforcement, and transactional grant repositories remain V12-02c/03b work.",
+    "The current PermissionService execution/grant path replacement remains later V12-02a work; admin identity domain separation remains V12-02d.",
+    "Corpus numeric values stay within the JS safe-integer range so the frozen Node oracle and the exact Go integer codec agree; wider int64 values are covered by codec unit tests only."
+  ]
+}

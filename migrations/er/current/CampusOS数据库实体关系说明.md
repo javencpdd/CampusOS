@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=ae49d427d205db70c5ce5403e9c0481db142d5d33ae2883a6fda57ce7c06e12e;tables=90;foreign_keys=108 -->
+<!-- campusos-er:schema_sha256=302c5d1d4e804cd8ddf6d874a8bf031bf4502c5f1f65d3a78e4ab493a067460f;tables=91;foreign_keys=108 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**90**
+- 实体表：**91**
 - 物理外键：**108**
 - 一对一/可选一对一关系：**12**
 - 一对多关系：**96**
 - 推断的逻辑多对多关系：**5**
-- Schema 指纹：`ae49d427d205db70c5ce5403e9c0481db142d5d33ae2883a6fda57ce7c06e12e`
+- Schema 指纹：`302c5d1d4e804cd8ddf6d874a8bf031bf4502c5f1f65d3a78e4ab493a067460f`
 
 ## 1. 生成范围与判定规则
 
@@ -24,6 +24,7 @@
 - `000005_v1_2_plugin_version_identity.up.sql`
 - `000006_v1_2_plugin_publication_seal.up.sql`
 - `000007_v1_2_plugin_v5_configurations.up.sql`
+- `000008_v1_2_identity_delegations.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -42,6 +43,7 @@
 | 身份与访问控制 | `identity_admin_accounts` | 14 | `id` | 3 | 0 |
 | 身份与访问控制 | `identity_challenge_policies` | 8 | `id` | 1 | 0 |
 | 身份与访问控制 | `identity_challenge_rate_limits` | 5 | `scope, subject_digest, window_started_at` | 0 | 0 |
+| 身份与访问控制 | `identity_delegations` | 16 | `id` | 0 | 0 |
 | 身份与访问控制 | `identity_email_challenges` | 18 | `id` | 1 | 1 |
 | 身份与访问控制 | `identity_legacy_email_placeholders` | 7 | `id` | 1 | 0 |
 | 身份与访问控制 | `identity_mfa_policies` | 6 | `id` | 1 | 0 |
@@ -425,6 +427,31 @@
 | `window_started_at` | `timestamptz` | PK/NN | 否 | `—` |
 | `request_count` | `integer` | NN | 否 | `0` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+
+#### `identity_delegations`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `VARCHAR(128)` | PK | 是 | `—` |
+| `kind` | `VARCHAR(16)` | NN | 否 | `—` |
+| `subject_kind` | `VARCHAR(16)` | NN | 否 | `—` |
+| `subject_id` | `VARCHAR(128)` | NN | 否 | `—` |
+| `action` | `VARCHAR(128)` | NN | 否 | `—` |
+| `board_id` | `VARCHAR(128)` | — | 是 | `—` |
+| `not_before` | `TIMESTAMPTZ` | NN | 否 | `—` |
+| `expires_at` | `TIMESTAMPTZ` | NN | 否 | `—` |
+| `required_strength` | `VARCHAR(16)` | — | 是 | `—` |
+| `delegable` | `BOOLEAN` | NN | 否 | `false` |
+| `status` | `VARCHAR(16)` | NN | 否 | `'active'` |
+| `version` | `BIGINT` | NN | 否 | `1` |
+| `created_by` | `VARCHAR(128)` | NN | 否 | `''` |
+| `created_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+| `updated_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+| `revoked_at` | `TIMESTAMPTZ` | — | 是 | `—` |
 
 #### `identity_email_challenges`
 

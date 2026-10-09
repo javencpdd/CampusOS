@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02a-public-policy-acceptance/v1",
-  "generated_at": "2026-09-28T00:30:06.800365+00:00",
+  "generated_at": "2026-10-09T18:46:01.975043+00:00",
   "stage": "V12-02a",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -80,36 +80,36 @@
   },
   "target_logs": {
     "targeted": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/targeted.log",
-      "sha256": "68c005de07f3e230f99b6fe72a0cec856abd1019f5238be2e69d8cbb7d7b895b"
+      "path": ".cache/v12-02a/public-policy.jHKicP/targeted.log",
+      "sha256": "8a724a4c3d2b1936c44d7ccb9b0b6258658766d9ca8091c5522af0e40a5c92d3"
     },
     "build-principal": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/build-principal.log",
+      "path": ".cache/v12-02a/public-policy.jHKicP/build-principal.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "build-policy": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/build-policy.log",
+      "path": ".cache/v12-02a/public-policy.jHKicP/build-policy.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "native-principal": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/native-principal.log",
-      "sha256": "48ffb9cd2c143aed27fcc034a8086c14464c6a5d3c30e18d59212901a425827f"
+      "path": ".cache/v12-02a/public-policy.jHKicP/native-principal.log",
+      "sha256": "d7649d3390f1491aee15c835c52f70704f7d5bdfca8087b27a4d48376cd9f905"
     },
     "native-policy": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/native-policy.log",
-      "sha256": "c16a9c8ae19f243b6be42daa41b320475e25b75d5d36463b0e8c355588c1e72b"
+      "path": ".cache/v12-02a/public-policy.jHKicP/native-policy.log",
+      "sha256": "061e571ad0a503ecdd8e3b1931e8f23f3f00b2f4ad71fb25d4c12c92b8295580"
     },
     "wire-interop": {
-      "path": ".cache/v12-02a/public-policy.l6o7Kx/wire-interop.log",
+      "path": ".cache/v12-02a/public-policy.jHKicP/wire-interop.log",
       "sha256": "a8a249fa9814c0c2016e07e71344a2fe5c8e10cbcd8ea7c6b7226fae5bc5c600"
     }
   },
   "native_binary_sha256": {
-    "principal.test": "b05f610f545acdce26d0907ff89fb7220ec08cc5185d6aa86372aa02c8096352",
-    "policy.test": "84d085c50194d067aab96a56d2d50fcb26c2bcf9bacf6064cf5ee0a8efbd7740"
+    "principal.test": "6e7f703c594d9580f9b35f6941522cc886e607e586326ca88a3c970089ce1079",
+    "policy.test": "05f32ab5f72c68648411ae182962775f7ea7951a218d5affe5e42b05ff6bfd17"
   },
   "actual_go_output": {
-    "path": ".cache/v12-02a/public-policy.l6o7Kx/go-output.json",
+    "path": ".cache/v12-02a/public-policy.jHKicP/go-output.json",
     "sha256": "877c33c05613fe5f02115c2dbcaeeff91504814a95a012e2c69e53db199106d5"
   },
   "common_gates_status": "passed",
@@ -118,49 +118,49 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/go-all.log",
-      "log_sha256": "7c0b3047184a8cbcf507a81fc9a4d336b3b295ec14db5cd38e0a5ab00c4ced89"
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/go-all.log",
+      "log_sha256": "3c7be11790f3d588e06d960b50617261a1156490ff5bc08d4b96d2ee50de99e3"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/contracts.log",
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/architecture.log",
-      "log_sha256": "98cf73780d2503f1609d84384b59a8dd753d633d63b1820f25227e20f8e118a2"
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/architecture.log",
+      "log_sha256": "0d7ff5f99c75414ea3fdb82eee6a2aeee14d4590470de3895f5cb8064c4b1ac9"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/docs-build.log",
-      "log_sha256": "ece39f826f749cb8d824c4bbe9ee1176a7aa850912594741d98cfabeab9b9220"
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/docs-build.log",
+      "log_sha256": "1d14050124cb8bee70bc3804b30b4c91180889cb11a1730e4c23375357c3718a"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/docs-links.log",
-      "log_sha256": "35ea2e0a4ce43b351bec992e6d7b499f6cd121749631b7974bd175ead85823dd"
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/line-endings.log",
-      "log_sha256": "b2f390cc08d6aadf92db4386a9a3b02c85513f1f00c95dcb1e4b087478db2f46"
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02a/public-policy.l6o7Kx/diff.log",
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

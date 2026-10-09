@@ -1,0 +1,205 @@
+{
+  "schema": "campusos.v12-02a-board-delegation-acceptance/v1",
+  "generated_at": "2026-10-09T18:48:28.800025+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "campusos.board-delegation/v1 proposal judgement, strict host DTO codecs, and pre-commit decision/current-snapshot checking; pure Go Port only",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "execution": "native Linux race-enabled compiled test binaries with env -i; no database, HTTP endpoint, credential verifier, cache, network, or shared instance mutated"
+  },
+  "checks": {
+    "TestBoardDelegationCodecRoundTrip": "passed",
+    "TestBoardDelegationCodecRejectsAmbiguousInput": "passed",
+    "TestBoardDelegationTimePrecision": "passed",
+    "TestBoardDelegationDecisionCodec": "passed",
+    "TestBoardDelegationG1WireCorpus": "passed",
+    "TestBoardDelegationAllowAndWitnessOrder": "passed",
+    "TestBoardDelegationDenySequence": "passed",
+    "TestBoardDelegationBatchIsAtomic": "passed",
+    "TestBoardDelegationMalformedTypedInput": "passed",
+    "TestBoardDelegationDecisionBindingAndCurrentFacts": "passed",
+    "TestBoardDelegationDenyDecisionConsumption": "passed",
+    "TestBoardDelegationParallelWithoutCache": "passed"
+  },
+  "coverage": {
+    "g1_fixtures": 54,
+    "subset_combinations": 72,
+    "principal_domain_status_combinations": 90,
+    "native_go_oracle_outputs": 216,
+    "go_allow_outputs": 10,
+    "go_deny_outputs": 189,
+    "go_input_rejections": 17,
+    "strict_codec_test_groups": 4,
+    "same_call_binding_checks": 21,
+    "parallel_callers": 64
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/principal.go": "9badd0e5bcfde16a54dfc1afac8a37d78bd2cfc029ea8d00d1c74098e5611e29",
+    "internal/modules/core/identity/port/strict_json.go": "d98d04404836c361eff759195360c6b6bb8c987e8e6a78d26b037b2ccf5af254",
+    "internal/modules/core/identity/port/resource_policy.go": "69aae3f1de7ab3e206d662b960baa4f819048815e0115c49dcb26e78917913bb",
+    "internal/modules/core/identity/port/board_delegation_policy.go": "b481c308af12ee518988a6cf17b810c945d755e6bfd0da7f37c1a7e4789f2c1d",
+    "internal/modules/core/identity/port/board_delegation_policy_test.go": "6d84e4f2352f6efe892c741e45d9b565bd346bc4968b5f1f19ef92c42c3b674e",
+    "internal/modules/core/identity/policy/board_delegation.go": "fabd85f685d6227965aa5f6f01d6cc261203ed50c0a01d51721504dd081bd91e",
+    "internal/modules/core/identity/policy/board_delegation_test.go": "8ea342c8e196d455b94fe169cd5dd649433a2f501d4db0af2a35ddd8143f187b",
+    "internal/modules/core/identity/policy/board_delegation_interop_test.go": "54006e4e2e14fd18107353f4b80479c4494b422c2c5b747a9d81ac7a84d78c5f",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "docs/api/board-delegation-v1.schema.json": "2d69a04e31b4b3140eb80169d2b9d86102ef9d24f210582546a6a9c5e552f269",
+    "docs/api/board-delegation-v1.errors.json": "7518d53838fcf5c4ea39436e61f73a1ce703c49f3ca73bf9b6754ea850bbf5e4",
+    "docs/api/v1.2版块治理委托上限合同.md": "a64daee7a69329ef6ad51ec84979d4ac4d5bc10b6251fab354d580140653b16d",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7e9d3186d2bede973f11d3a7e12c8c565fc804361ff6762ffe3e467792d4b7b3",
+    "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
+    "sdk/typescript/src/board-delegation.ts": "f00e040f64ee3cc042a1400273613e03a87d3940622e75aa17300663a1f07e7c",
+    "sdk/typescript/tests/board-delegation-v1.fixtures.json": "b8526d000e589267f3d65cbd4eba946fe8033d769d4ab11a3f7ce33e197d3f67",
+    "sdk/typescript/tests/principal-context-v1.fixtures.json": "3fb6d650fde10c39cb619421dd75eb840c68c678212a1d4c66a64bf0dc860441",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-board-delegation-contract.mjs": "188ba46fef9965d4d00976f58279e38bb2d5cec9b94b0d21215c43db220f7949",
+    "scripts/check-v12-02a-board-delegation-output.mjs": "440ce9a1042ac5990853a63be700a366b8ec62e0eb3b71c87f48ee612dc171d6",
+    "scripts/v12-02a-board-delegation-drill.sh": "f20e59ab08b535aaaba6db5476093b37df61bed5e63dc44333842182f74d9401"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-public-policy-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-public-policy-linux.json",
+      "sha256": "46b922df8b595758bb072d3c4e17c67fa812414770802652955ce4bb9549f55f",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-resource-policy-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-resource-policy-linux.json",
+      "sha256": "9c1f83cb74475c648372043940fc28f7bb8e6a3956bd43ff59713a57cc41e340",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "g1-contract": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/g1-contract.log",
+      "sha256": "0c8f42141208fa30ddedbf98874ed0290adc7f0982fc71214d82620158ada77b"
+    },
+    "generate-oracle": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/generate-oracle.log",
+      "sha256": "e7b93446352844d0909f6cf27b92e0a19a23b744509fe4ce3bf4ef5483abec8c"
+    },
+    "targeted": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/targeted.log",
+      "sha256": "d808ed01ef4c0514dde1c4a4e241ac4507be37859de35fbcc41a7672895fb00a"
+    },
+    "build-port": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/build-port.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-policy": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/build-policy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native-port": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/native-port.log",
+      "sha256": "635c1766ed0f9fd4a984c6e6ce17a3aec10fa0819e826136848f3b19e8b41000"
+    },
+    "native-policy": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/native-policy.log",
+      "sha256": "43cd3d3a5d88e85c5067830c941d5f7555f0320ad4cda304350e171fda2f3872"
+    },
+    "verify-oracle": {
+      "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/verify-oracle.log",
+      "sha256": "540fb12c54092ee4a6d4f06c660ec96cac4bdfe938ca6d8050cad40fa55a2608"
+    }
+  },
+  "native_binary_sha256": {
+    "delegation-port.test": "6e7f703c594d9580f9b35f6941522cc886e607e586326ca88a3c970089ce1079",
+    "delegation-policy.test": "05f32ab5f72c68648411ae182962775f7ea7951a218d5affe5e42b05ff6bfd17"
+  },
+  "oracle_corpus": {
+    "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/g1-cases.json",
+    "sha256": "c775c582553c6a42c518df6dd200c6091d1edb2022c67a092c9ae0ca22d70f8a"
+  },
+  "actual_go_output": {
+    "path": ".cache/v12-02a-delegation/board-delegation.LxVCmC/go-output.json",
+    "sha256": "3a1e5cec4c25f98d49b3b9847beb0e1e4713d439541e1e072acab35271da76e3"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/go-all.log",
+      "log_sha256": "2b7cc2ee432ddabfbe30807d60747680fb6e0653cfc6521a1df80e190ea1a1a5"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/architecture.log",
+      "log_sha256": "0399746088de2a70c231daec7984893c6e87ba732b8b98629c218f7c743b0a31"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/docs-build.log",
+      "log_sha256": "ee2848484f8af6acc7f9a11e6187fe11837757c1147d0b80d485c50b3ee13c88"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation/board-delegation.LxVCmC/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No production HTTP route, session/credential verifier, database repository, global authority loader, cache, or authorization write path changed.",
+    "The Port validates host-supplied facts only; JSON validity does not authenticate a caller, and delegable:true is never client-asserted.",
+    "The caller must reload management/bounds/recipient/boards in its own transaction, re-evaluate, write the grant and required audit atomically, and reject after revocation commits.",
+    "The current PermissionService execution/grant path replacement and real identity wiring remain later V12-02a work; admin identity domain separation remains V12-02d; application service and transaction integration remain V12-02b.",
+    "Non-board scope delegation (knowledge.source.read, plugin.config.system.read, integration.webhook.invoke) follows the separate scope-delegation contract in V12-02c/03b."
+  ]
+}

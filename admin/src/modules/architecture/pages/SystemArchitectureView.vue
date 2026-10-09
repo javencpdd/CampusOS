@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000007（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储）</el-tag
+        >当前迁移 000001 - 000008（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托）</el-tag
       >
     </section>
 
@@ -404,6 +404,30 @@ const databaseTables: DbTable[] = [
     migration: "000001",
     relationshipNote:
       "user_id 与 credential_account_id 均由外键保护；全局 admin 角色变更通过数据库触发器同步 active/revoked，suspended 不会被普通角色刷新静默恢复。",
+  },
+  {
+    name: "identity_delegations",
+    title: "身份委托授予基线",
+    domain: "identity",
+    purpose:
+      "分离执行权与委托权：management 行见证管理员的 identity.role.assign 授予权，bound 行是管理员在精确版块上的可委托上限，grant 行是普通用户持有的版块治理执行权；全部有限期半开窗口，revoked 终态并以 version 做 CAS。",
+    fields: [
+      "id",
+      "kind",
+      "subject_kind",
+      "subject_id",
+      "action",
+      "board_id",
+      "not_before",
+      "expires_at",
+      "required_strength",
+      "delegable",
+      "status",
+      "version",
+    ],
+    migration: "000008",
+    relationshipNote:
+      "subject_id 与 board_id 是不透明文本引用，无外键；分别逻辑对应 users/管理员准入主体与 categories 叶子版块，当前性与窗口由服务层每次重新求值。",
   },
   {
     name: "identity_legacy_email_placeholders",
@@ -1693,6 +1717,24 @@ const relations: Relation[] = [
     domains: ["identity"],
   },
   {
+    id: "users-identity-delegations",
+    source: "users",
+    target: "identity_delegations",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "logical id -> subject_id",
+    domains: ["identity"],
+  },
+  {
+    id: "categories-identity-delegations",
+    source: "categories",
+    target: "identity_delegations",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "logical id -> board_id",
+    domains: ["identity", "community"],
+  },
+  {
     id: "accounts-admin-accounts",
     source: "accounts",
     target: "identity_admin_accounts",
@@ -2828,6 +2870,15 @@ const migrations = [
     summary:
       "每个不可变插件版本按系统/用户作用域保存普通值与 opaque Secret 引用，revision 支持事务 CAS；数据非空时拒绝回滚。",
     tables: ["plugin_configurations（版本/owner 外键、引用形状与唯一作用域）"],
+  },
+  {
+    version: "000008",
+    file: "000008_v1_2_identity_delegations.up.sql",
+    title: "v1.2 身份委托授予基线",
+    scope: "Identity 执行权/委托权分离",
+    summary:
+      "新增 identity_delegations，以 management/bound/grant 三类有限期委托分离执行权与委托权；种子从现有准入、叶子版块与版主范围转换，并把两个治理动作移出 moderator 角色目录；存在种子后写入的数据时拒绝回滚。",
+    tables: ["identity_delegations（kind/subject/action/board 形状 CHECK、半开窗口、revoked 终态、version CAS）"],
   },
 ];
 const tableByName = (name: string) =>

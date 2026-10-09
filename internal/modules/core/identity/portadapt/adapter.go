@@ -1,10 +1,11 @@
-package port
+package portadapt
 
 import (
 	"context"
 	"errors"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -39,12 +40,12 @@ func (r *ServiceSessionVerifier) VerifyAccess(ctx context.Context, claims *auth.
 	return r.lookup.VerifyAccess(ctx, claims)
 }
 
-func (r *ServiceAccountReader) GetEmailAccount(ctx context.Context, userID string) (EmailAccount, error) {
+func (r *ServiceAccountReader) GetEmailAccount(ctx context.Context, userID string) (identityport.EmailAccount, error) {
 	value, err := r.lookup.GetEmailAccount(ctx, userID)
 	if err != nil {
-		return EmailAccount{}, err
+		return identityport.EmailAccount{}, err
 	}
-	return EmailAccount{
+	return identityport.EmailAccount{
 		UserID:               value.UserID,
 		IdentifierNormalized: value.IdentifierNormalized,
 		VerificationState:    string(value.VerificationState),
@@ -63,15 +64,15 @@ func NewServiceChallengeDispatchReader(lookup ChallengeDispatchLookup) *ServiceC
 	return &ServiceChallengeDispatchReader{lookup: lookup}
 }
 
-func (r *ServiceChallengeDispatchReader) Dispatch(ctx context.Context, challengeID string) (ChallengeDispatch, error) {
+func (r *ServiceChallengeDispatchReader) Dispatch(ctx context.Context, challengeID string) (identityport.ChallengeDispatch, error) {
 	value, err := r.lookup.Dispatch(ctx, challengeID)
 	if err != nil {
 		if errors.Is(err, service.ErrChallengeInvalid) || errors.Is(err, repository.ErrChallengeNotFound) {
-			return ChallengeDispatch{}, ErrChallengeNotDeliverable
+			return identityport.ChallengeDispatch{}, identityport.ErrChallengeNotDeliverable
 		}
-		return ChallengeDispatch{}, err
+		return identityport.ChallengeDispatch{}, err
 	}
-	return ChallengeDispatch{
+	return identityport.ChallengeDispatch{
 		ChallengeID: value.ChallengeID,
 		PublicID:    value.PublicID,
 		Purpose:     string(value.Purpose),
@@ -84,27 +85,27 @@ func (r *ServiceChallengeDispatchReader) Dispatch(ctx context.Context, challenge
 func NewRepositoryUserReader(repository repository.UserRepository) *RepositoryUserReader {
 	return &RepositoryUserReader{repository: repository}
 }
-func (r *RepositoryUserReader) GetUser(ctx context.Context, id string) (User, error) {
+func (r *RepositoryUserReader) GetUser(ctx context.Context, id string) (identityport.User, error) {
 	value, err := r.repository.GetByID(ctx, id)
 	if err != nil {
-		return User{}, err
+		return identityport.User{}, err
 	}
 	return userProjection(value), nil
 }
 
-func (r *RepositoryUserReader) GetUserByUsername(ctx context.Context, username string) (User, error) {
+func (r *RepositoryUserReader) GetUserByUsername(ctx context.Context, username string) (identityport.User, error) {
 	value, err := r.repository.GetByUsername(ctx, username)
 	if err != nil {
-		return User{}, err
+		return identityport.User{}, err
 	}
 	return userProjection(value), nil
 }
 
-func userProjection(value *domain.User) User {
+func userProjection(value *domain.User) identityport.User {
 	if value == nil {
-		return User{}
+		return identityport.User{}
 	}
-	return User{
+	return identityport.User{
 		ID:       value.ID,
 		Username: value.Username,
 		Nickname: value.Nickname,

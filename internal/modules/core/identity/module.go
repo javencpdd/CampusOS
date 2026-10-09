@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	delegationsvc "github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/handler"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	identityportadapt "github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
@@ -30,6 +32,7 @@ const (
 	portAdminAdmission          = "identity.admin-admission"
 	portMFA                     = "identity.mfa"
 	portModeration              = "identity.moderation-policy"
+	portSessionStrength         = "identity.session-strength"
 )
 
 type Config struct {
@@ -67,6 +70,7 @@ type Module struct {
 	sessions          repository.SessionRepository
 	recoveryCases     repository.RecoveryCaseRepository
 	mfa               repository.MFARepository
+	delegations       repository.DelegationRepository
 
 	userService            *service.UserService
 	challengeService       *service.ChallengeService
@@ -74,6 +78,7 @@ type Module struct {
 	sessionService         *service.SessionService
 	recoveryService        *service.RecoveryService
 	permissionService      *service.PermissionService
+	delegationService      *delegationsvc.Service
 	adminAccessService     *service.AdminAccessService
 	adminAdmissionService  *service.AdminAdmissionService
 	mfaService             *service.MFAService
@@ -161,6 +166,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("identity MFA repository adapter has incompatible type %T", mfaValue)
 	}
+	delegationValue, ok := app.Lookup(portDelegationRepository)
+	if !ok {
+		return errors.New("identity delegation repository adapter is not bound by profile")
+	}
+	delegationRepository, ok := delegationValue.(repository.DelegationRepository)
+	if !ok {
+		return fmt.Errorf("identity delegation repository adapter has incompatible type %T", delegationValue)
+	}
 	m.app = app
 	m.users = userRepository
 	m.roles = roleRepository
@@ -170,13 +183,35 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.sessions = sessionRepository
 	m.recoveryCases = recoveryCases
 	m.mfa = mfaRepository
+	m.delegations = delegationRepository
 	m.permissionService = service.NewPermissionService(m.roles, m.users)
 	m.permissionService.SetAdminAccountRepository(m.adminAccounts)
+	var authorizationCatalog repository.AuthorizationRepository
+	if catalog, ok := m.roles.(repository.AuthorizationRepository); ok {
+		authorizationCatalog = catalog
+	}
+	m.delegationService = delegationsvc.NewService(m.delegations, m.users, authorizationCatalog)
+	m.permissionService.SetDelegationService(m.delegationService)
 	m.adminAccessService = service.NewAdminAccessService(m.adminAccounts)
-	if err := app.Provide(portUserReader, identityport.NewRepositoryUserReader(userRepository)); err != nil {
+	if err := app.Provide(portUserReader, identityportadapt.NewRepositoryUserReader(userRepository)); err != nil {
 		return err
 	}
-	return app.Provide(portModeration, identityport.ModerationPolicy(identityport.NewPermissionModerationPolicy(m.permissionService)))
+	if err := app.Provide(portSessionStrength, sessionStrengthReader{module: m}); err != nil {
+		return err
+	}
+	return app.Provide(portModeration, identityport.ModerationPolicy(identityportadapt.NewPermissionModerationPolicy(m.permissionService)))
+}
+
+// sessionStrengthReader resolves the session service lazily because module
+// services are constructed in Start, after other modules have registered.
+type sessionStrengthReader struct{ module *Module }
+
+func (r sessionStrengthReader) AuthenticationStrengthForSession(ctx context.Context, sessionID string) (string, error) {
+	sessions := r.module.Sessions()
+	if sessions == nil {
+		return "", errors.New("identity session service is unavailable")
+	}
+	return sessions.AuthenticationStrengthForSession(ctx, sessionID)
 }
 
 func (m *Module) Start(context.Context) error {
@@ -254,6 +289,9 @@ func (m *Module) Start(context.Context) error {
 		challenges.SetReliability(reliable)
 		sessions.SetReliability(reliable)
 		recovery.SetReliability(reliable)
+		if m.delegationService != nil {
+			m.delegationService.SetReliability(reliable)
+		}
 	}
 	var authorizationCatalog repository.AuthorizationRepository
 	if catalog, ok := m.roles.(repository.AuthorizationRepository); ok {
@@ -297,13 +335,13 @@ func (m *Module) Start(context.Context) error {
 		ChallengePolicy: handler.NewChallengePolicyHandler(challengePolicies),
 		AdminAdmission:  handler.NewAdminAdmissionHandler(adminAdmissions),
 	}
-	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityport.NewServiceAccountReader(users))); err != nil {
+	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityportadapt.NewServiceAccountReader(users))); err != nil {
 		return err
 	}
-	if err := m.app.Provide(portChallengeDispatchReader, identityport.ChallengeDispatchReader(identityport.NewServiceChallengeDispatchReader(challenges))); err != nil {
+	if err := m.app.Provide(portChallengeDispatchReader, identityport.ChallengeDispatchReader(identityportadapt.NewServiceChallengeDispatchReader(challenges))); err != nil {
 		return err
 	}
-	if err := m.app.Provide(portSessionVerifier, identityport.SessionVerifier(identityport.NewServiceSessionVerifier(sessions))); err != nil {
+	if err := m.app.Provide(portSessionVerifier, identityport.SessionVerifier(identityportadapt.NewServiceSessionVerifier(sessions))); err != nil {
 		return err
 	}
 	if err := m.app.Provide(portAuthorization, identityport.Authorization(permissions)); err != nil {

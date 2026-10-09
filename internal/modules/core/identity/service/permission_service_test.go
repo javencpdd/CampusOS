@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -164,6 +165,8 @@ func TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation(t *testi
 		}
 	}
 	service := NewPermissionService(repository.NewMemoryRoleRepository(), users)
+	delegations := repository.NewMemoryDelegationRepository()
+	service.SetDelegationService(delegation.NewService(delegations, users, nil))
 	if _, err := service.AssignRole(ctx, "2001", 1); err != nil {
 		t.Fatal(err)
 	}
@@ -173,8 +176,22 @@ func TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation(t *testi
 	if changed, err := service.ReplaceCategoryRoleScopes(ctx, "2002", "moderator", []int64{12}); err != nil || !changed {
 		t.Fatalf("assign moderator category: changed=%v err=%v", changed, err)
 	}
+	// The moderator role no longer carries the governance codes in its catalog
+	// entry; a category scope row alone must not authorize them.
+	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 12); err != nil || allowed {
+		t.Fatalf("role scope without delegation grant allowed=%v err=%v", allowed, err)
+	}
+	// A committed delegation grant is the execution fact.
+	now := time.Now()
+	if err := delegations.InsertDelegations(ctx, []repository.Delegation{
+		{ID: "test-grant-2002-12", Kind: repository.DelegationKindGrant, SubjectKind: "user", SubjectID: "2002",
+			Action: "community.thread.take_down", BoardID: "12",
+			NotBefore: now.Add(-time.Hour), ExpiresAt: now.Add(24 * time.Hour), RequiredStrength: "password", CreatedBy: "test"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 12); err != nil || !allowed {
-		t.Fatalf("scoped moderation code allowed=%v err=%v", allowed, err)
+		t.Fatalf("scoped delegation grant allowed=%v err=%v", allowed, err)
 	}
 	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 99); err != nil || allowed {
 		t.Fatalf("outside moderation scope allowed=%v err=%v", allowed, err)
@@ -267,10 +284,10 @@ func TestPermissionServiceActorRoleAdministrationCannotBypassServicePolicy(t *te
 	if revoked, err := service.RevokeRoleByActor(ctx, "3001", "3002", 1); err != nil || !revoked {
 		t.Fatalf("authorized actor revoke revoked=%v err=%v", revoked, err)
 	}
-	if changed, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3001", "3002", "moderator", []int64{12}); err != nil || !changed {
+	if changed, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3001", "3002", "moderator", []int64{12}, nil); err != nil || !changed {
 		t.Fatalf("authorized actor moderator scope change changed=%v err=%v", changed, err)
 	}
-	if _, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3003", "3002", "moderator", []int64{13}); !errors.Is(err, ErrPermissionEscalation) {
+	if _, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3003", "3002", "moderator", []int64{13}, nil); !errors.Is(err, ErrPermissionEscalation) {
 		t.Fatalf("member must not grant moderator scope, got %v", err)
 	}
 	audits, err := service.ListAuthorizationAudits(ctx, 10)

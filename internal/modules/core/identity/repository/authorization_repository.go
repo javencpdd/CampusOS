@@ -8,6 +8,10 @@ import (
 )
 
 var ErrLastGlobalRoleAssignment = errors.New("cannot revoke the last global role assignment")
+
+// ErrInvalidRoleAssignment is the canonical invalid-scope sentinel shared by
+// the service, port and adapter packages without creating import cycles.
+var ErrInvalidRoleAssignment = errors.New("invalid role assignment")
 var ErrInvalidAuthorizationAuditActor = errors.New("invalid authorization audit actor")
 
 var authorizationAuditActorID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]*$`)

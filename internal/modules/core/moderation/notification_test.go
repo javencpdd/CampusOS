@@ -13,6 +13,7 @@ import (
 	communitysvc "github.com/campusos/CampusOS/internal/modules/core/community/service"
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	identityportadapt "github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
 	identityrepo "github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	identitysvc "github.com/campusos/CampusOS/internal/modules/core/identity/service"
 )
@@ -71,7 +72,8 @@ func newModeratorNotificationFixture(t *testing.T) (*Service, *recordingModerati
 	if _, err := permissionSvc.AssignRole(ctx, "9001", 1); err != nil {
 		t.Fatalf("assign test administrator: %v", err)
 	}
-	service := NewService(identityport.NewPermissionModerationPolicy(permissionSvc),
+	wireTestDelegationChain(t, permissionSvc, userRepo, "10", "20", "30")
+	service := NewService(identityportadapt.NewPermissionModerationPolicy(permissionSvc),
 		communitycore.NewModerationGateway(categoryRepo, threadRepo, postRepo, threadSvc, postSvc),
 		NewMemoryAuditStore(), Config{AllowPin: true, AllowLock: true, AllowDeletePost: true})
 	notifier := &recordingModerationNotifier{}
@@ -83,7 +85,7 @@ func TestSetModeratorCategoriesNotifiesGrantAndRevoke(t *testing.T) {
 	ctx := context.Background()
 	service, notifier := newModeratorNotificationFixture(t)
 
-	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"10", "20"}, OperationContext{TraceID: "grant"}); err != nil {
+	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"10", "20"}, moderatorAdminOperation("grant")); err != nil {
 		t.Fatalf("grant categories: %v", err)
 	}
 	if len(notifier.granted) != 1 || notifier.granted[0] != "1001:10,20" {
@@ -93,7 +95,7 @@ func TestSetModeratorCategoriesNotifiesGrantAndRevoke(t *testing.T) {
 		t.Fatalf("initial grant must not revoke anything: %#v", notifier.revoked)
 	}
 
-	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"20", "30"}, OperationContext{TraceID: "update"}); err != nil {
+	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"20", "30"}, moderatorAdminOperation("update")); err != nil {
 		t.Fatalf("update categories: %v", err)
 	}
 	if len(notifier.granted) != 2 || notifier.granted[1] != "1001:30" {
@@ -103,14 +105,14 @@ func TestSetModeratorCategoriesNotifiesGrantAndRevoke(t *testing.T) {
 		t.Fatalf("revoke must only cover removed boards: %#v", notifier.revoked)
 	}
 
-	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"20", "30"}, OperationContext{TraceID: "idempotent"}); err != nil {
+	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", []string{"20", "30"}, moderatorAdminOperation("idempotent")); err != nil {
 		t.Fatalf("idempotent update: %v", err)
 	}
 	if len(notifier.granted) != 2 || len(notifier.revoked) != 1 {
 		t.Fatalf("unchanged assignment must not re-notify: granted=%#v revoked=%#v", notifier.granted, notifier.revoked)
 	}
 
-	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", nil, OperationContext{TraceID: "clear"}); err != nil {
+	if _, err := service.SetModeratorCategories(ctx, "9001", "1001", nil, moderatorAdminOperation("clear")); err != nil {
 		t.Fatalf("clear categories: %v", err)
 	}
 	if len(notifier.revoked) != 2 || notifier.revoked[1] != "1001:20,30" {
@@ -139,7 +141,7 @@ func (p *selfAssignablePolicy) ReplaceCategoryRoleScopes(_ context.Context, user
 	return p.replace(userID, categoryIDs)
 }
 
-func (p *selfAssignablePolicy) ReplaceCategoryRoleScopesByActor(_ context.Context, _, userID, _ string, categoryIDs []int64) (bool, error) {
+func (p *selfAssignablePolicy) ReplaceCategoryRoleScopesByActor(_ context.Context, _, userID, _ string, categoryIDs []int64, _ identityport.BoardFactsProvider) (bool, error) {
 	return p.replace(userID, categoryIDs)
 }
 

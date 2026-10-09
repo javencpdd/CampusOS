@@ -94,6 +94,13 @@ func (m *Module) Start(context.Context) error {
 	service.SetEnabledChecker(func() bool { return true })
 	m.service = service
 	m.handler = NewHandler(service)
+	// The session strength fact source is provided by Identity at Register time;
+	// when absent, delegation writes fail closed instead of assuming strength.
+	if strengthValue, exists := m.app.Lookup("identity.session-strength"); exists {
+		if reader, compatible := strengthValue.(identityport.SessionStrengthReader); compatible {
+			m.handler.SetSessionStrengthReader(reader)
+		}
+	}
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 
 	communitydomain "github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identitydelegation "github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
 
@@ -66,6 +67,10 @@ type Access struct {
 type OperationContext struct {
 	TraceID   string
 	IPAddress string
+	// AuthenticationStrength and CredentialID carry the admin entry's verified
+	// session facts into the delegation chain; empty values fail closed.
+	AuthenticationStrength string
+	CredentialID           string
 }
 
 type Service struct {
@@ -181,7 +186,11 @@ func (s *Service) SetModeratorCategories(ctx context.Context, actorID, userID st
 	if err != nil {
 		return ModeratorAssignment{}, err
 	}
-	changed, err := s.permissions.ReplaceCategoryRoleScopesByActor(ctx, actorID, userID, "moderator", parsedIDs)
+	ctx = identitydelegation.WithActorProof(ctx, identitydelegation.ActorProof{
+		AuthenticationStrength: operation.AuthenticationStrength,
+		CredentialID:           operation.CredentialID,
+	})
+	changed, err := s.permissions.ReplaceCategoryRoleScopesByActor(ctx, actorID, userID, "moderator", parsedIDs, s.boardFactsProvider(categoryIDs))
 	if err != nil {
 		return ModeratorAssignment{}, err
 	}
@@ -195,6 +204,28 @@ func (s *Service) SetModeratorCategories(ctx context.Context, actorID, userID st
 		s.notifyModeratorScopeChange(ctx, actorID, userID, before.Categories, after.Categories)
 	}
 	return after, nil
+}
+
+// boardFactsProvider reloads the current lifecycle state of every candidate
+// board from Community on each invocation, including inside the delegation
+// write transaction. Non-board groups and deleted categories fail closed.
+func (s *Service) boardFactsProvider(categoryIDs []string) identityport.BoardFactsProvider {
+	return func(ctx context.Context) ([]identityport.BoardDelegationBoard, error) {
+		boards := make([]identityport.BoardDelegationBoard, 0, len(categoryIDs))
+		for _, id := range categoryIDs {
+			category, err := s.community.GetCategory(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			if category == nil || category.NodeKind != "board" {
+				return nil, ErrInvalidScope
+			}
+			boards = append(boards, identityport.BoardDelegationBoard{
+				Kind: "community.board", ID: category.ID, Status: string(category.LifecycleStatus),
+			})
+		}
+		return boards, nil
+	}
 }
 
 // notifyModeratorScopeChange informs the affected user about newly granted and
