@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-host-catalog-v1.schema.json",
+  "title": "Host-owned v5 capability catalog snapshot for consumes negotiation (G1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "host_contract",
+    "items"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.host-capabilities/v1"
+    },
+    "host_contract": {
+      "type": "string",
+      "pattern": "^campusos\\.host/v[1-9][0-9]*$"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/definitions/item"
+      }
+    }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "scope_kind",
+        "data_classification",
+        "consent_required"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.]{2,127}$"
+        },
+        "scope_kind": {
+          "enum": [
+            "public",
+            "self",
+            "collection",
+            "system_config"
+          ]
+        },
+        "data_classification": {
+          "enum": [
+            "public",
+            "internal",
+            "sensitive",
+            "restricted"
+          ]
+        },
+        "consent_required": {
+          "type": "boolean"
+        },
+        "available_public_collection_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+          }
+        },
+        "available_config_keys": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "collection"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "available_public_collection_ids"
+            ],
+            "properties": {
+              "data_classification": {
+                "const": "public"
+              }
+            },
+            "not": {
+              "required": [
+                "available_config_keys"
+              ]
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "available_public_collection_ids"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "system_config"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "available_config_keys"
+            ],
+            "properties": {
+              "data_classification": {
+                "const": "internal"
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "available_config_keys"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "self"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "consent_required": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "public"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data_classification": {
+                "const": "public"
+              },
+              "consent_required": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "collection"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "consent_required": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "system_config"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "consent_required": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

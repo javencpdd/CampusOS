@@ -1,0 +1,35 @@
+{
+  "contract": "campusos.plugin-lifecycle/v1",
+  "errors": [
+    {
+      "code": "plugin.lifecycle_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.lifecycle_generation_conflict",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.lifecycle_publication_forbidden",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.lifecycle_drain_incomplete",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.lifecycle_rollback_unverifiable",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.lifecycle_release_order",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

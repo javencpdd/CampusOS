@@ -1,0 +1,264 @@
+{
+  "schema": "campusos.v12-g1-plugin-events-lifecycle-acceptance/v1",
+  "generated_at": "2026-09-26T20:22:38.273Z",
+  "scope": "G1 whitelisted event metadata, bounded delivery, desired/observed generation and publication order",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 03b/03c persistent Operation/Outbox, Runner drain, crash recovery and real event delivery",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "group": "event",
+      "name": "public-event",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "event-plugin.lifecycle.changed/v1",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "event-knowledge.source.public.changed/v1",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-body",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-prompt",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-owner",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-secret",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-raw_outbox",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "forbidden-payload-acl",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "unknown-event",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "unbounded-event-ttl",
+      "expected": "plugin.event_invalid",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "uncommitted",
+      "expected": "plugin.event_uncommitted",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "expired",
+      "expected": "plugin.event_expired",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "future-event",
+      "expected": "plugin.event_expired",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "stale-generation",
+      "expected": "plugin.event_stale_generation",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "unsubscribed",
+      "expected": "plugin.event_subscription_missing",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "grant-revoked",
+      "expected": "plugin.event_grant_revoked",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "runtime-failed",
+      "expected": "plugin.event_runtime_unavailable",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "oversize",
+      "expected": "plugin.event_too_large",
+      "passed": true
+    },
+    {
+      "group": "event",
+      "name": "dead-letter",
+      "expected": "plugin.event_dead_letter",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "enabled-ready",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "upgrade-ready",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "upgrade-snapshot",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "upgrade-no-snapshot",
+      "expected": "plugin.lifecycle_rollback_unverifiable",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "upgrade-same-generation",
+      "expected": "plugin.lifecycle_generation_conflict",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "upgrade-before-ready",
+      "expected": "plugin.lifecycle_publication_forbidden",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "published-without-global_installed",
+      "expected": "plugin.lifecycle_publication_forbidden",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "published-without-grant_active",
+      "expected": "plugin.lifecycle_publication_forbidden",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "published-failed",
+      "expected": "plugin.lifecycle_publication_forbidden",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "published-disabled",
+      "expected": "plugin.lifecycle_publication_forbidden",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "revoke-stops-new-calls",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "revoke-still-accepting",
+      "expected": "plugin.lifecycle_release_order",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "revoke-inflight",
+      "expected": "plugin.lifecycle_drain_incomplete",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "uninstall-stops-new-calls",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "uninstall-still-accepting",
+      "expected": "plugin.lifecycle_release_order",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "uninstall-inflight",
+      "expected": "plugin.lifecycle_drain_incomplete",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "disable-stops-new-calls",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "disable-still-accepting",
+      "expected": "plugin.lifecycle_release_order",
+      "passed": true
+    },
+    {
+      "group": "lifecycle",
+      "name": "disable-inflight",
+      "expected": "plugin.lifecycle_drain_incomplete",
+      "passed": true
+    }
+  ],
+  "core_transaction_independence": {
+    "condition": "event delivery decision never changes committed core transaction",
+    "passed": true
+  },
+  "files_sha256": {
+    "docs/api/plugin-v5-event-v1.schema.json": "561712a92bd52c5eb0cc664537b4ecf8769994b56adf15550fcf8ed6e1f9c323",
+    "docs/api/plugin-v5-event-v1.errors.json": "d6b75628c003cea5cb784ce3458f9e717eb14022f5c7caf22699efce0456f212",
+    "docs/api/plugin-v5-lifecycle-v1.schema.json": "59139b4fb40624311768ea0d26c31ed21e39fdc33593fbe7d97b47f43efbd8b8",
+    "docs/api/plugin-v5-lifecycle-v1.errors.json": "fee33d441a9d9c4c382fedf32bc670805abcd89b249bec5a01bddd8190c26717",
+    "sdk/typescript/src/plugin-v5-events.ts": "6f279fff4144cfc30ccb1b81e5b94a320a3d0ce4dbb2a38faa2b2bf45ddf66ef",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "scripts/check-v12-plugin-v5-events-contract.mjs": "260c582b8f4e2f412ab8a48f141307b64e26315e71e1ce65eaeb3f169dc38ec1"
+  }
+}

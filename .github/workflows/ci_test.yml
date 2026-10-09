@@ -114,6 +114,23 @@ jobs:
       - name: Run Go tests
         run: go test ./... -v -count=1
 
+      # contracts-check also validates the v1.2 Principal SDK Schema.
+      - name: Setup pnpm for contract checks
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js for contract checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: sdk/typescript/pnpm-lock.yaml
+
+      - name: Install SDK contract dependencies
+        run: pnpm --dir sdk/typescript install --frozen-lockfile
+
       - name: Check API and authorization contract drift
         run: make contracts-check
 

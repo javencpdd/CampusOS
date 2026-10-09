@@ -19,43 +19,59 @@ func NewPgAuthorizationStore(pool *pgxpool.Pool) *PgAuthorizationStore {
 }
 
 func (s *PgAuthorizationStore) SyncVersion(ctx context.Context, pluginID int64, manifest *Manifest, digest, fingerprint string, declarations []CapabilityDeclaration, actor *int64) (PluginVersion, error) {
+	if manifest == nil {
+		return PluginVersion{}, errors.New("manifest is required")
+	}
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		return PluginVersion{}, fmt.Errorf("marshal plugin manifest: %w", err)
+	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return PluginVersion{}, err
 	}
 	defer tx.Rollback(ctx)
-	var existingID int64
-	var existingDigest string
-	var existingFingerprint string
-	err = tx.QueryRow(ctx, `SELECT id,package_digest,permission_fingerprint FROM plugin_versions WHERE plugin_id=$1 AND version=$2`, pluginID, manifest.Version).Scan(&existingID, &existingDigest, &existingFingerprint)
-	isNew := errors.Is(err, pgx.ErrNoRows)
-	if err == nil && (existingDigest != digest || existingFingerprint != fingerprint) {
-		return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest or capability fingerprint changed", manifest.Version)
+	// Activation is serialized per plugin so competing SyncVersion calls cannot
+	// race the one-active-version index while retiring their predecessor.
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("version:%d", pluginID)); err != nil {
+		return PluginVersion{}, err
 	}
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	var existingID int64
+	var existingDigest, existingFingerprint, existingManifestAPI, existingHostAPI string
+	var sameManifest bool
+	err = tx.QueryRow(ctx, `SELECT id,package_digest,permission_fingerprint,manifest_api_version,host_api_version,manifest=$3::jsonb FROM plugin_versions WHERE plugin_id=$1 AND version=$2`, pluginID, manifest.Version, string(manifestJSON)).Scan(&existingID, &existingDigest, &existingFingerprint, &existingManifestAPI, &existingHostAPI, &sameManifest)
+	isNew := errors.Is(err, pgx.ErrNoRows)
+	if err == nil && (existingDigest != digest || existingFingerprint != fingerprint ||
+		existingManifestAPI != manifest.APIVersion || existingHostAPI != manifest.HostAPIVersion || !sameManifest) {
+		return PluginVersion{}, fmt.Errorf("plugin version %s is immutable: package digest, capability fingerprint or manifest changed", manifest.Version)
+	}
+	if err != nil && !isNew {
 		return PluginVersion{}, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE plugin_versions SET lifecycle_status='retired',retired_at=COALESCE(retired_at,NOW()) WHERE plugin_id=$1 AND lifecycle_status='active' AND ($2::bigint=0 OR id<>$2)`, pluginID, existingID); err != nil {
 		return PluginVersion{}, err
 	}
-	manifestJSON, _ := json.Marshal(manifest)
-	if existingID == 0 {
+	if isNew {
 		existingID = idgen.New()
-		_, err = tx.Exec(ctx, `INSERT INTO plugin_versions (id,plugin_id,version,package_digest,signature_state,channel,lifecycle_status,manifest_api_version,host_api_version,permission_fingerprint,manifest,metadata,created_by,created_at,activated_at) VALUES ($1,$2,$3,$4,'unsigned','stable','active',$5,$6,$7,$8::jsonb,'{}'::jsonb,$9,NOW(),NOW())`, existingID, pluginID, manifest.Version, digest, manifest.APIVersion, manifest.HostAPIVersion, fingerprint, string(manifestJSON), actor)
-	} else {
-		_, err = tx.Exec(ctx, `UPDATE plugin_versions SET lifecycle_status='active',retired_at=NULL,activated_at=COALESCE(activated_at,NOW()) WHERE id=$1`, existingID)
-	}
-	if err != nil {
-		return PluginVersion{}, err
+		// Build declarations while staged, then publish the complete release.
+		if _, err = tx.Exec(ctx, `INSERT INTO plugin_versions (id,plugin_id,version,package_digest,signature_state,channel,lifecycle_status,manifest_api_version,host_api_version,permission_fingerprint,manifest,metadata,created_by,created_at) VALUES ($1,$2,$3,$4,'unsigned','stable','staged',$5,$6,$7,$8::jsonb,'{}'::jsonb,$9,NOW())`, existingID, pluginID, manifest.Version, digest, manifest.APIVersion, manifest.HostAPIVersion, fingerprint, string(manifestJSON), actor); err != nil {
+			return PluginVersion{}, err
+		}
 	}
 	if isNew {
 		for _, declaration := range declarations {
-			scopeJSON, _ := json.Marshal(nonNilMap(declaration.ResourceScope))
+			scopeJSON, marshalErr := json.Marshal(nonNilMap(declaration.ResourceScope))
+			if marshalErr != nil {
+				return PluginVersion{}, fmt.Errorf("marshal capability %s scope: %w", declaration.CapabilityCode, marshalErr)
+			}
 			_, err = tx.Exec(ctx, `INSERT INTO plugin_capability_declarations (id,plugin_version_id,capability_code,purpose,risk_level,required,resource_scope,data_classification,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,NOW())`, idgen.New(), existingID, declaration.CapabilityCode, declaration.Purpose, declaration.RiskLevel, declaration.Required, string(scopeJSON), declaration.DataClassification)
 			if err != nil {
 				return PluginVersion{}, err
 			}
 		}
+	}
+	if _, err = tx.Exec(ctx, `UPDATE plugin_versions SET lifecycle_status='active',retired_at=NULL,activated_at=COALESCE(activated_at,NOW()) WHERE id=$1`, existingID); err != nil {
+		return PluginVersion{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return PluginVersion{}, err
@@ -83,6 +99,16 @@ func (s *PgAuthorizationStore) ActiveVersion(ctx context.Context, name string) (
 }
 func (s *PgAuthorizationStore) VersionByID(ctx context.Context, id int64) (PluginVersion, error) {
 	return scanPluginVersion(s.pool.QueryRow(ctx, versionSelect+`pv.id=$1`, id))
+}
+
+// Hold the release row through each version-bound write. A concurrent
+// SyncVersion lifecycle UPDATE must wait, or this check observes retirement.
+func requireActiveVersionTx(ctx context.Context, tx pgx.Tx, versionID int64) error {
+	var status string
+	if err := tx.QueryRow(ctx, `SELECT pv.lifecycle_status FROM plugin_versions pv JOIN plugins p ON p.id=pv.plugin_id WHERE pv.id=$1 AND p.deleted_at IS NULL FOR SHARE OF pv`, versionID).Scan(&status); err != nil || status != "active" {
+		return errors.New("version mismatch")
+	}
+	return nil
 }
 
 func (s *PgAuthorizationStore) ListDeclarations(ctx context.Context, versionID int64) ([]CapabilityDeclaration, error) {
@@ -142,6 +168,9 @@ func (s *PgAuthorizationStore) SetAdminGrant(ctx context.Context, value AdminGra
 		return AdminGrant{}, err
 	}
 	defer tx.Rollback(ctx)
+	if err := requireActiveVersionTx(ctx, tx, value.PluginVersionID); err != nil {
+		return AdminGrant{}, err
+	}
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("admin:%d:%s", value.PluginVersionID, value.CapabilityCode)); err != nil {
 		return AdminGrant{}, err
 	}
@@ -203,6 +232,9 @@ func (s *PgAuthorizationStore) SetUserConsent(ctx context.Context, value UserCon
 		return UserConsent{}, err
 	}
 	defer tx.Rollback(ctx)
+	if err := requireActiveVersionTx(ctx, tx, value.PluginVersionID); err != nil {
+		return UserConsent{}, err
+	}
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, fmt.Sprintf("consent:%d:%d:%s", value.UserID, value.PluginVersionID, value.CapabilityCode)); err != nil {
 		return UserConsent{}, err
 	}
@@ -238,9 +270,24 @@ func scanDelegation(row pgx.Row) (Delegation, error) {
 	return value, nil
 }
 func (s *PgAuthorizationStore) CreateDelegation(ctx context.Context, value Delegation) (Delegation, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return Delegation{}, err
+	}
+	defer tx.Rollback(ctx)
+	if err := requireActiveVersionTx(ctx, tx, value.PluginVersionID); err != nil {
+		return Delegation{}, err
+	}
 	caps, _ := json.Marshal(value.GrantedCapabilities)
 	scope, _ := json.Marshal(nonNilMap(value.ResourceScope))
-	return scanDelegation(s.pool.QueryRow(ctx, `INSERT INTO plugin_delegations (id,plugin_version_id,subject_user_id,token_digest,granted_capabilities,resource_scope,status,not_before,expires_at,created_by,created_at) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9,$10,$11) RETURNING id,plugin_version_id,subject_user_id,token_digest,granted_capabilities,resource_scope,status,not_before,expires_at,revoked_at,created_by,created_at`, value.ID, value.PluginVersionID, value.SubjectUserID, value.TokenDigest, string(caps), string(scope), value.Status, value.NotBefore, value.ExpiresAt, value.CreatedBy, value.CreatedAt))
+	created, err := scanDelegation(tx.QueryRow(ctx, `INSERT INTO plugin_delegations (id,plugin_version_id,subject_user_id,token_digest,granted_capabilities,resource_scope,status,not_before,expires_at,created_by,created_at) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9,$10,$11) RETURNING id,plugin_version_id,subject_user_id,token_digest,granted_capabilities,resource_scope,status,not_before,expires_at,revoked_at,created_by,created_at`, value.ID, value.PluginVersionID, value.SubjectUserID, value.TokenDigest, string(caps), string(scope), value.Status, value.NotBefore, value.ExpiresAt, value.CreatedBy, value.CreatedAt))
+	if err != nil {
+		return Delegation{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Delegation{}, err
+	}
+	return created, nil
 }
 func (s *PgAuthorizationStore) DelegationByDigest(ctx context.Context, digest string) (Delegation, error) {
 	return scanDelegation(s.pool.QueryRow(ctx, `SELECT id,plugin_version_id,subject_user_id,token_digest,granted_capabilities,resource_scope,status,not_before,expires_at,revoked_at,created_by,created_at FROM plugin_delegations WHERE token_digest=$1`, digest))

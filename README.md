@@ -32,7 +32,7 @@ Linux、WSL2 或 Git Bash：
 ./scripts/docker-dev.sh setup --start
 ```
 
-首次 `setup` 会创建本地配置。默认 `EMAIL_PROVIDER=fake` 不发送验证码；需要邮件验证时在 `.env.dev.local` 填写 SMTP 配置后再运行 `up`。
+首次 `setup` 会创建本地配置。默认 `EMAIL_PROVIDER=fake` 不发送验证码；需要邮件验证时在 `.env.dev.local` 填写 SMTP 配置后再运行 `up`。 插件 Secret 后台换钥默认关闭；启用时须在该本地配置中保留旧读密钥，操作说明见[Docker 开发文档](docs-site/deployment/docker-development.md)。
 
 | 服务 | 默认地址 |
 | --- | --- |

@@ -51,6 +51,10 @@ func (h *Handler) AdminSetCapabilityGrant(c *gin.Context) {
 		h.authorizationError(c, errors.New("插件版本编号无效"))
 		return
 	}
+	if err := service.RequireActiveVersion(c.Request.Context(), c.Param("name"), versionID); err != nil {
+		h.authorizationError(c, err)
+		return
+	}
 	var input struct {
 		Status    string                 `json:"status"`
 		Reason    string                 `json:"reason"`
@@ -79,6 +83,10 @@ func (h *Handler) SetMyCapabilityConsent(c *gin.Context) {
 		h.authorizationError(c, errors.New("插件版本编号无效"))
 		return
 	}
+	if err := service.RequireActiveVersion(c.Request.Context(), c.Param("name"), versionID); err != nil {
+		h.authorizationError(c, err)
+		return
+	}
 	var input struct {
 		Status string                 `json:"status"`
 		Scope  map[string]interface{} `json:"scope"`
@@ -105,6 +113,10 @@ func (h *Handler) IssueMyDelegation(c *gin.Context) {
 		h.authorizationError(c, errors.New("插件版本编号无效"))
 		return
 	}
+	if err := service.RequireActiveVersion(c.Request.Context(), c.Param("name"), versionID); err != nil {
+		h.authorizationError(c, err)
+		return
+	}
 	var input struct {
 		Capabilities []string               `json:"capabilities"`
 		Scope        map[string]interface{} `json:"scope"`
@@ -114,7 +126,7 @@ func (h *Handler) IssueMyDelegation(c *gin.Context) {
 		h.authorizationError(c, err)
 		return
 	}
-	delegation, token, err := service.IssueDelegation(c.Request.Context(), marketUserID(c), versionID, input.Capabilities, input.Scope, time.Duration(input.TTLSeconds)*time.Second)
+	delegation, token, err := service.IssueDelegation(c.Request.Context(), c.Param("name"), marketUserID(c), versionID, input.Capabilities, input.Scope, time.Duration(input.TTLSeconds)*time.Second)
 	if err != nil {
 		h.authorizationError(c, err)
 		return

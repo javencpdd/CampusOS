@@ -1,0 +1,245 @@
+{
+  "schema": "campusos.v14-g0-baseline/v3",
+  "generated_at": "2026-09-25T22:43:49.514556026Z",
+  "application_version": "1.1.0-dev",
+  "git": {
+    "commit": "90a0aaf93a823996c927e8cf87b4743fba84c090",
+    "branch": "djw-update",
+    "dirty": true
+  },
+  "environment": {
+    "goos": "linux",
+    "goarch": "amd64",
+    "go_version": "go1.25.0",
+    "logical_cpus": 72,
+    "memory_kib": 32733672
+  },
+  "contracts": {
+    "version": "v1.1",
+    "routes": 348,
+    "audience_counts": {
+      "admin": 154,
+      "authenticated": 148,
+      "public": 46
+    },
+    "sha256": "f57bdeef5f711fbc965f547e229560531aef628fc4c83bf4e535bca071e3209f",
+    "schema_sha256": "ea8acb21da91444f372c7d0ec07cafc1fba6f0c7421f7b5a047a86a19efdbd15",
+    "openapi_sha256": "4db8eda2d20117dd2c10d70cb1a5f9c08f3ca0ea2b1ad825789ec5e0ea6ded72",
+    "route_operation_sha256": "f57bdeef5f711fbc965f547e229560531aef628fc4c83bf4e535bca071e3209f",
+    "permission_catalog_sha256": "f429d54ad7818218e344ff90e474969e470d4a072c70132e5fdc4724d841593f"
+  },
+  "database": {
+    "migration_count": 3,
+    "latest_migration": "000003_v1_1_trusted_market_sources",
+    "sha256": "321e6cc6049220bf20a0fb2ac8760b971ab35c53326922e381cac7a4b75456a7"
+  },
+  "modules": {
+    "count": 25,
+    "kind_counts": {
+      "builtin-feature": 13,
+      "core": 12
+    },
+    "ids": [
+      "core.academic-term",
+      "core.community",
+      "core.content-editor",
+      "core.email-delivery",
+      "core.event-bus",
+      "core.feature-registry",
+      "core.identity",
+      "core.moderation",
+      "core.observability",
+      "core.plugin-platform",
+      "core.reliability",
+      "core.user-storage",
+      "feature.ai-gateway",
+      "feature.appearance",
+      "feature.controlled-richtext-article",
+      "feature.integration-overview",
+      "feature.mcp",
+      "feature.message",
+      "feature.mutual-aid",
+      "feature.personal-documents",
+      "feature.personal-schedule",
+      "feature.personal-space",
+      "feature.platform-log",
+      "feature.secondhand",
+      "feature.webhook"
+    ],
+    "sha256": "f52237328494ad7cc1ceea480b821c0bae49026aa08a1ad5eb8f9e21f05b8f1c",
+    "manifest_sha256": "f52237328494ad7cc1ceea480b821c0bae49026aa08a1ad5eb8f9e21f05b8f1c"
+  },
+  "external_plugins": {
+    "count": 2,
+    "runtime_counts": {
+      "grpc": 1,
+      "wasm": 1
+    },
+    "names": [
+      "hello-plugin",
+      "hello-wasm"
+    ],
+    "sha256": "e4306bd06f8e37a7cd8cf3ac5b5870dfe1781a798f6289a1f4939447c557a705"
+  },
+  "v4_plugin_sources": {
+    "count": 1,
+    "packages": [
+      {
+        "key": "campusos.pdf-viewer",
+        "version": "2.0.0-dev.2",
+        "runtime": "none"
+      }
+    ],
+    "sha256": "6943b57e94c7a33c1c285b273f176f2f5c31b58b527e3b3d8b25915e50e76809"
+  },
+  "v4_installed_releases": {
+    "count": 0,
+    "packages": [],
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "resources": {
+    "count": 5,
+    "type_counts": {
+      "homepage-pack": 1,
+      "space-style-pack": 2,
+      "theme": 2
+    },
+    "packages": [
+      {
+        "id": "aurora-campus",
+        "type": "theme",
+        "version": "0.2.0",
+        "tree_sha256": "c75326bbde99842d5428721dd294bd9b45193330a30e71fe94dccc2e3ffdc188"
+      },
+      {
+        "id": "campus-canvas",
+        "type": "theme",
+        "version": "0.1.0",
+        "tree_sha256": "3c1ff02a7a347ed8b7895316206be328c70df29078efafdc2976a2bf5605c4c8"
+      },
+      {
+        "id": "campus-hero",
+        "type": "homepage-pack",
+        "version": "0.1.0",
+        "tree_sha256": "96474780c208e640da8ab28d6f6e1b996c4471b9748ec98af6dc418432fe82e1"
+      },
+      {
+        "id": "clean-blog",
+        "type": "space-style-pack",
+        "version": "0.1.0",
+        "tree_sha256": "660891629837651c6b7ab4cd73ca90d6efd9f31c4ad7651d1284ca74f73b2f6c"
+      },
+      {
+        "id": "kinetic-journal",
+        "type": "space-style-pack",
+        "version": "0.1.0",
+        "tree_sha256": "9846efe7865c0b7569f17ce54298ed9403571369e00d5402b52b8ac30a4a5680"
+      }
+    ],
+    "sha256": "1e190b7ed8c9f253b45f0481178c803c056eb1e92bee95c1a8b63d6a797e87d1"
+  },
+  "tooling": {
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "postgresql": "unavailable",
+    "docker": "Docker version 29.8.1, build 4a63305",
+    "docker_compose": "Docker Compose version v5.5.1"
+  },
+  "user_storage": {
+    "root": "data/personal-space",
+    "user_count": 1,
+    "file_count": 3,
+    "total_bytes": 733246,
+    "symlink_count": 0,
+    "unknown_path_count": 0,
+    "unreadable_file_count": 0
+  },
+  "schedules": {
+    "json_file_count": 0,
+    "valid_term_keys": [],
+    "malformed_file_count": 0,
+    "missing_active_index_count": 0
+  },
+  "bundles": [
+    {
+      "name": "web",
+      "status": "measured",
+      "js_bytes": 475530,
+      "css_bytes": 367019,
+      "js_budget": 500000,
+      "css_budget": 400000,
+      "largest_js": "index-B3dXwupJ.js",
+      "largest_css": "index-B9RPbfdR.css"
+    },
+    {
+      "name": "admin",
+      "status": "measured",
+      "js_bytes": 109015,
+      "css_bytes": 358272,
+      "js_budget": 250000,
+      "css_budget": 400000,
+      "largest_js": "framework-qeh5C0sM.js",
+      "largest_css": "index-CowG1Tc5.css"
+    },
+    {
+      "name": "docs-site",
+      "status": "measured",
+      "js_bytes": 62338,
+      "css_bytes": 137553,
+      "largest_js": "deployment_docker-development.md.krfgi0f-.js",
+      "largest_css": "style.B17T6aRL.css"
+    }
+  ],
+  "structured_queries": [
+    {
+      "feature": "mutualaid",
+      "detail_fetch_mode": "per-item Store.Get",
+      "detail_reads_for_n_items": "N",
+      "budget_state": "violates constant-query target"
+    },
+    {
+      "feature": "secondhand",
+      "detail_fetch_mode": "per-item Store.Get",
+      "detail_reads_for_n_items": "N",
+      "budget_state": "violates constant-query target"
+    }
+  ],
+  "http": [
+    {
+      "path": "/api/v1/health",
+      "samples": 100,
+      "status": 200,
+      "response_bytes": 144,
+      "p50_ms": 0.479,
+      "p95_ms": 0.705,
+      "p99_ms": 0.903
+    },
+    {
+      "path": "/api/v1/threads?page=1\u0026page_size=20",
+      "samples": 100,
+      "status": 200,
+      "response_bytes": 165,
+      "p50_ms": 1.226,
+      "p95_ms": 2.364,
+      "p99_ms": 6.5
+    },
+    {
+      "path": "/api/v1/mutual-aid/threads?page=1\u0026page_size=20",
+      "samples": 100,
+      "status": 200,
+      "response_bytes": 163,
+      "p50_ms": 1.747,
+      "p95_ms": 2.847,
+      "p99_ms": 3.586
+    },
+    {
+      "path": "/api/v1/secondhand/threads?page=1\u0026page_size=20",
+      "samples": 100,
+      "status": 200,
+      "response_bytes": 163,
+      "p50_ms": 1.051,
+      "p95_ms": 1.502,
+      "p99_ms": 1.606
+    }
+  ]
+}

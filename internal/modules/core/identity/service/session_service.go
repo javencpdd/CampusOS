@@ -299,6 +299,20 @@ func (s *SessionService) VerifyAccess(ctx context.Context, claims *auth.JWTClaim
 	return nil
 }
 
+// AuthenticationStrengthForSession returns the verified session's current
+// strength ("password" or "mfa") for host-side actor proofs. It never upgrades
+// a session: an inactive, expired or unknown session is simply invalid.
+func (s *SessionService) AuthenticationStrengthForSession(ctx context.Context, sessionID string) (string, error) {
+	session, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
+		return "", ErrSessionInvalid
+	}
+	if session.AuthenticationStrength == domain.MFAAuthenticationTOTP {
+		return "mfa", nil
+	}
+	return "password", nil
+}
+
 // MarkMFA records a successful current-session step-up and returns a fresh
 // Access Token bound to the same server-side session. The Refresh credential
 // remains HttpOnly and is not returned or rotated by this operation.

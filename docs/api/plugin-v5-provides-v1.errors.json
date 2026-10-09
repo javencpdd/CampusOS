@@ -1,0 +1,13 @@
+{
+  "contract": "campusos.plugin-provides/v1",
+  "errors": [
+    {"code": "plugin.provides_invalid", "http_status": 400, "retryable": false},
+    {"code": "plugin.extension_catalog_unavailable", "http_status": 503, "retryable": true},
+    {"code": "plugin.extension_point_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.extension_schema_mismatch", "http_status": 400, "retryable": false},
+    {"code": "plugin.extension_capability_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.extension_data_mode_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.contribution_shape_mismatch", "http_status": 400, "retryable": false},
+    {"code": "plugin.duplicate_contribution", "http_status": 400, "retryable": false}
+  ]
+}

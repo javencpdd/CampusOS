@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -449,47 +448,11 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 		filter.DeletionStatus = string(domain.DeletionStatusActive)
 	}
 
-	// 尝试从缓存获取（仅缓存第一页无筛选条件的查询）
-	cacheKey := fmt.Sprintf("threads:list:%d:%d:%s:%s:%s", filter.Page, filter.PageSize, filter.Status, filter.ContentFormat, filter.ThreadType)
-	cacheablePublicList := filter.Status == string(domain.ThreadStatusPublished) &&
-		filter.Keyword == "" &&
-		filter.CategoryID == "" &&
-		filter.CategoryIDs == nil &&
-		filter.AuthorID == "" &&
-		filter.ContentFormat == "" &&
-		filter.ThreadType == "" &&
-		filter.Tag == "" &&
-		len(filter.AnyTags) == 0 &&
-		filter.PublicationStatus == string(domain.PublicationStatusPublished) &&
-		filter.ModerationStatus == string(domain.ModerationStatusClear) &&
-		filter.DeletionStatus == string(domain.DeletionStatusActive)
-	if s.cache != nil && cacheablePublicList {
-		type cachedResult struct {
-			Threads []*domain.Thread `json:"threads"`
-			Total   int64            `json:"total"`
-		}
-		var cached cachedResult
-		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
-			log.Printf("📦 缓存命中: %s", cacheKey)
-			return cached.Threads, cached.Total, nil
-		}
-	}
-
-	threads, total, err := s.repo.List(ctx, filter)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// 写入缓存（5 分钟 TTL）
-	if s.cache != nil && cacheablePublicList {
-		type cachedResult struct {
-			Threads []*domain.Thread `json:"threads"`
-			Total   int64            `json:"total"`
-		}
-		_ = s.cache.Set(ctx, cacheKey, cachedResult{Threads: threads, Total: total}, 5*time.Minute)
-	}
-
-	return threads, total, nil
+	// A cached list contains resource visibility and body data. Best-effort
+	// invalidation cannot authorize a later request: writers in another service
+	// or an in-flight cache fill can leave private/moderated content readable.
+	// Keep rows and pagination totals on the authoritative repository path.
+	return s.repo.List(ctx, filter)
 }
 
 // expandGroupCategoryFilter keeps the category_id HTTP contract stable while

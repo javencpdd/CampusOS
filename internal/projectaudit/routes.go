@@ -21,7 +21,8 @@ const (
 )
 
 var (
-	routePattern                 = regexp.MustCompile(`^\s*(public|authenticated|admin)(.*?)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]+)",(.*)$`)
+	routePattern                 = regexp.MustCompile(`^\s*(public|authenticated|admin)(.*?)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]*)",(.*)$`)
+	packageHandlerPattern        = regexp.MustCompile(`^\s*([A-Za-z_][A-Za-z_0-9]*)\s*\)`)
 	legacyRoutePermissionPattern = regexp.MustCompile(`\.Permission\("([^"]+)",\s*"([^"]+)"\)`)
 	permissionCodePattern        = regexp.MustCompile(`\.PermissionCode\("([^"]+)"\)`)
 	operationPattern             = regexp.MustCompile(`\.Operation\("([^"]+)"\)`)
@@ -69,10 +70,14 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		group, prefix := matches[1], matches[2]
 		method, routePath, arguments := matches[3], matches[4], matches[5]
 		selectors := selectorPattern.FindAllStringSubmatch(arguments, -1)
-		if len(selectors) == 0 {
-			return nil, fmt.Errorf("route at line %d has no handler selector", lineNumber)
+		var handler string
+		if len(selectors) > 0 {
+			handler = selectors[len(selectors)-1][1] + "." + selectors[len(selectors)-1][2]
+		} else if match := packageHandlerPattern.FindStringSubmatch(arguments); len(match) > 0 {
+			handler = "httpapi." + match[1]
+		} else {
+			return nil, fmt.Errorf("route at line %d has no handler", lineNumber)
 		}
-		handler := selectors[len(selectors)-1][1] + "." + selectors[len(selectors)-1][2]
 		route := RouteContract{
 			Method:      method,
 			Path:        APIPrefix + routePath,

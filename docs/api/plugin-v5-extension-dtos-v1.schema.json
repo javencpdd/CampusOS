@@ -1,0 +1,294 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-extension-dtos-v1.schema.json",
+  "title": "CampusOS v5 host-owned extension DTOs (G1)",
+  "definitions": {
+    "preview_renderer_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "deadline_ms",
+        "resource_ref",
+        "mime_type"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        },
+        "resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "mime_type": {
+          "const": "application/pdf"
+        }
+      }
+    },
+    "preview_renderer_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "ui_slot_id",
+        "resource_revision"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ui_slot_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "resource_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "ai_chat_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "deadline_ms",
+        "prompt",
+        "context_class"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "context_class": {
+          "enum": [
+            "public",
+            "none"
+          ]
+        }
+      }
+    },
+    "ai_chat_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "text",
+        "input_tokens",
+        "output_tokens",
+        "finish_reason"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 50000
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "finish_reason": {
+          "enum": [
+            "completed",
+            "length"
+          ]
+        }
+      }
+    },
+    "knowledge_source_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "deadline_ms",
+        "binding_id",
+        "limit"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deadline_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        },
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "knowledge_source_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "contribution_id",
+        "instance_generation",
+        "items"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "contribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "external_id",
+              "revision",
+              "title",
+              "text"
+            ],
+            "properties": {
+              "external_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 50000
+              },
+              "source_url": {
+                "type": "string",
+                "pattern": "^https://",
+                "maxLength": 2048
+              }
+            }
+          }
+        },
+        "next_cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    }
+  }
+}

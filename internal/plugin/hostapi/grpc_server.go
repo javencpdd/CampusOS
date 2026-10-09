@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -395,7 +394,6 @@ type HostAPIv2 struct {
 	configRepo    plugin.PluginRepository
 	permission    PermissionChecker
 	authorization *plugin.AuthorizationService
-	secrets       *plugin.SecretService
 }
 
 type PermissionChecker interface {
@@ -459,7 +457,6 @@ func (h *HostAPIv2) SetPermissionChecker(permission PermissionChecker) {
 func (h *HostAPIv2) SetAuthorizationService(service *plugin.AuthorizationService) {
 	h.authorization = service
 }
-func (h *HostAPIv2) SetSecretService(service *plugin.SecretService) { h.secrets = service }
 
 type TrustedPluginCall struct {
 	ActorUserID     string
@@ -785,35 +782,6 @@ func HandleHostAPIRequestForPluginContext(hostAPI *HostAPIv2, manifest *plugin.M
 			return nil, fmt.Errorf("delete managed record: %w", err)
 		}
 		return json.Marshal(map[string]bool{"success": true})
-
-	case "GetSystemSecret", "GetUserSecret":
-		if hostAPI.secrets == nil || hostAPI.authorization == nil {
-			return nil, errors.New("secret service is not configured")
-		}
-		var req struct {
-			SecretName string `json:"secret_name"`
-			UserID     string `json:"user_id,omitempty"`
-		}
-		if err := json.Unmarshal(body, &req); err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-		version, err := hostAPI.authorization.ActiveVersion(ctx, manifest.Name)
-		if err != nil {
-			return nil, fmt.Errorf("resolve plugin version: %w", err)
-		}
-		var owner *int64
-		if method == "GetUserSecret" {
-			parsed, parseErr := strconv.ParseInt(req.UserID, 10, 64)
-			if parseErr != nil || parsed <= 0 {
-				return nil, errors.New("valid user_id is required")
-			}
-			owner = &parsed
-		}
-		value, err := hostAPI.secrets.Resolve(ctx, version.PluginID, owner, req.SecretName)
-		if err != nil {
-			return nil, fmt.Errorf("resolve plugin secret: %w", err)
-		}
-		return json.Marshal(map[string]interface{}{"secret_name": req.SecretName, "value": value})
 
 	default:
 		return nil, errors.New("unknown method: " + method)

@@ -21,30 +21,33 @@ import (
 	"time"
 
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
+	pluginv4 "github.com/campusos/CampusOS/internal/plugin/v4"
 	"gopkg.in/yaml.v3"
 )
 
 // baselineSchema is deliberately versioned so a stored G0 snapshot can be
 // interpreted without guessing which evidence fields were available.
-const baselineSchema = "campusos.v14-g0-baseline/v2"
+const baselineSchema = "campusos.v14-g0-baseline/v3"
 
 type snapshot struct {
-	Schema             string              `json:"schema"`
-	GeneratedAt        time.Time           `json:"generated_at"`
-	ApplicationVersion string              `json:"application_version"`
-	Git                gitSnapshot         `json:"git"`
-	Environment        environmentSnapshot `json:"environment"`
-	Contracts          contractSnapshot    `json:"contracts"`
-	Database           databaseSnapshot    `json:"database"`
-	Modules            moduleSnapshot      `json:"modules"`
-	ExternalPlugins    pluginSnapshot      `json:"external_plugins"`
-	Resources          resourceSnapshot    `json:"resources"`
-	Tooling            toolingSnapshot     `json:"tooling"`
-	UserStorage        storageSnapshot     `json:"user_storage"`
-	Schedules          scheduleSnapshot    `json:"schedules"`
-	Bundles            []bundleSnapshot    `json:"bundles"`
-	StructuredQueries  []querySnapshot     `json:"structured_queries"`
-	HTTP               []httpSnapshot      `json:"http,omitempty"`
+	Schema              string              `json:"schema"`
+	GeneratedAt         time.Time           `json:"generated_at"`
+	ApplicationVersion  string              `json:"application_version"`
+	Git                 gitSnapshot         `json:"git"`
+	Environment         environmentSnapshot `json:"environment"`
+	Contracts           contractSnapshot    `json:"contracts"`
+	Database            databaseSnapshot    `json:"database"`
+	Modules             moduleSnapshot      `json:"modules"`
+	ExternalPlugins     pluginSnapshot      `json:"external_plugins"`
+	V4PluginSources     v4PluginSnapshot    `json:"v4_plugin_sources"`
+	V4InstalledReleases v4PluginSnapshot    `json:"v4_installed_releases"`
+	Resources           resourceSnapshot    `json:"resources"`
+	Tooling             toolingSnapshot     `json:"tooling"`
+	UserStorage         storageSnapshot     `json:"user_storage"`
+	Schedules           scheduleSnapshot    `json:"schedules"`
+	Bundles             []bundleSnapshot    `json:"bundles"`
+	StructuredQueries   []querySnapshot     `json:"structured_queries"`
+	HTTP                []httpSnapshot      `json:"http,omitempty"`
 }
 
 type gitSnapshot struct {
@@ -91,6 +94,22 @@ type pluginSnapshot struct {
 	Runtimes map[string]int `json:"runtime_counts"`
 	Names    []string       `json:"names"`
 	SHA256   string         `json:"sha256"`
+}
+
+// The legacy external_plugins field reads data/plugins. V4 source and
+// verified installed releases are separate populations and must not be
+// interpreted as runnable merely because a source manifest exists.
+type v4PluginSnapshot struct {
+	Count    int            `json:"count"`
+	Packages []v4PluginItem `json:"packages"`
+	SHA256   string         `json:"sha256"`
+}
+
+type v4PluginItem struct {
+	Key     string `json:"key"`
+	Version string `json:"version"`
+	Runtime string `json:"runtime"`
+	Digest  string `json:"digest,omitempty"`
 }
 
 type resourceSnapshot struct {
@@ -246,6 +265,12 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 		return nil, err
 	}
 	if result.ExternalPlugins, err = collectPlugins(absRoot); err != nil {
+		return nil, err
+	}
+	if result.V4PluginSources, err = collectV4PluginSources(absRoot); err != nil {
+		return nil, err
+	}
+	if result.V4InstalledReleases, err = collectV4InstalledReleases(absRoot); err != nil {
 		return nil, err
 	}
 	if result.Resources, err = collectResources(absRoot); err != nil {
@@ -601,6 +626,43 @@ func collectPlugins(root string) (pluginSnapshot, error) {
 		result.Names = append(result.Names, manifest.Name)
 	}
 	sort.Strings(result.Names)
+	return result, nil
+}
+
+func collectV4PluginSources(root string) (v4PluginSnapshot, error) {
+	paths, err := pluginv4.FindSourcePackages(filepath.Join(root, "plugins"))
+	if err != nil {
+		return v4PluginSnapshot{}, err
+	}
+	result := v4PluginSnapshot{Packages: []v4PluginItem{}}
+	manifests := make([]string, 0, len(paths))
+	for _, path := range paths {
+		manifest, err := pluginv4.ValidateSourceDirectory(path)
+		if err != nil {
+			return v4PluginSnapshot{}, fmt.Errorf("inspect v4 source %s: %w", path, err)
+		}
+		result.Packages = append(result.Packages, v4PluginItem{Key: manifest.Key, Version: manifest.Version, Runtime: manifest.Backend.Runtime})
+		manifests = append(manifests, filepath.Join(path, "plugin.yaml"))
+	}
+	result.Count = len(result.Packages)
+	result.SHA256 = digestFiles(root, manifests)
+	return result, nil
+}
+
+func collectV4InstalledReleases(root string) (v4PluginSnapshot, error) {
+	releases, err := pluginv4.DiscoverInstalledReleases(filepath.Join(root, "plugins"))
+	if err != nil {
+		return v4PluginSnapshot{}, err
+	}
+	result := v4PluginSnapshot{Packages: []v4PluginItem{}}
+	var fingerprint strings.Builder
+	for _, release := range releases {
+		item := v4PluginItem{Key: release.Manifest.Key, Version: release.Manifest.Version, Runtime: release.Manifest.Backend.Runtime, Digest: release.Digest}
+		result.Packages = append(result.Packages, item)
+		fmt.Fprintf(&fingerprint, "%s\x00%s\x00%s\n", item.Key, item.Version, item.Digest)
+	}
+	result.Count = len(result.Packages)
+	result.SHA256 = digestBytes([]byte(fingerprint.String()))
 	return result, nil
 }
 

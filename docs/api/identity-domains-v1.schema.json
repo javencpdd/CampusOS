@@ -1,0 +1,272 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/identity-domains-v1.schema.json",
+  "title": "G1 independent User/Admin identity target",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "domains",
+    "request"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.identity-domains/v1"
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user",
+        "admin"
+      ],
+      "properties": {
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "issuer",
+            "audience",
+            "key_id",
+            "credential_store",
+            "session_store",
+            "recovery_store",
+            "role_store"
+          ],
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "key_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "credential_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "session_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "recovery_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "role_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        },
+        "admin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "issuer",
+            "audience",
+            "key_id",
+            "credential_store",
+            "session_store",
+            "recovery_store",
+            "role_store"
+          ],
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "audience": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "key_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "credential_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "session_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "recovery_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "role_store": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "account_id",
+        "issuer",
+        "audience",
+        "key_id",
+        "credential_store",
+        "session_store",
+        "challenge_kind",
+        "challenge_domain",
+        "target_account_id",
+        "status",
+        "activation_source"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "credential_store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_store": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "challenge_kind": {
+          "enum": [
+            "access",
+            "refresh",
+            "mfa",
+            "email",
+            "recovery"
+          ]
+        },
+        "challenge_domain": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "target_account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "revoked"
+          ]
+        },
+        "activation_source": {
+          "enum": [
+            "direct",
+            "bootstrap",
+            "user_role"
+          ]
+        }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "actor_kind",
+        "actor_mfa",
+        "target_admin_id",
+        "target_is_security_admin",
+        "active_security_admins",
+        "bootstrap_enabled",
+        "audit_reason"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "bootstrap",
+            "create",
+            "suspend",
+            "revoke",
+            "restore"
+          ]
+        },
+        "actor_kind": {
+          "enum": [
+            "user",
+            "admin",
+            "system"
+          ]
+        },
+        "actor_mfa": {
+          "type": "boolean"
+        },
+        "target_admin_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "target_is_security_admin": {
+          "type": "boolean"
+        },
+        "active_security_admins": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bootstrap_enabled": {
+          "type": "boolean"
+        },
+        "audit_reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    }
+  }
+}

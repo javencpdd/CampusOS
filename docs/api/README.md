@@ -21,6 +21,7 @@
 | 当前机器合同 | `openapi-v0.6-current.yaml`、`http-routes-v0.6.json`、`error-catalog-v0.13.json` | 客户端生成和 CI 漂移检查的优先依据 |
 | 权限与插件合同 | `Host-API-v2受管数据合同.md`、`plugin-manifest-v2.schema.json`、`plugin-permissions-v2.json` | External Plugin 只能使用声明并获批的能力 |
 | 业务专项说明 | `v0.12会话与Token安全流程.md`、`v0.13管理员准入API.md`、`v0.13多因素认证API.md` | 与 OpenAPI 一起阅读，不单独推断隐藏字段 |
+| v1.2 G1 目标合同（尚未接入运行时） | [18 条退出矩阵](v1.2-G1合同退出矩阵.json)、[主体与资源 Policy](v1.2主体上下文合同.md)、[其他 Scope/委托](v1.2其他Scope与委托边界合同.md)、[独立身份域](v1.2独立身份域合同.md)、[完整 v5 Manifest](v1.2插件v5完整Manifest目标合同.md)、[双向调用/事件/生命周期](v1.2插件双向调用事件与生命周期合同.md)、[旧机制替换清单](v1.2旧机制删除与替换清单.md) | G1 目标合同及 Linux 离线验收已完成；当前 HTTP/DB/插件运行时仍以现行生成合同为准 |
 | 历史兼容合同 | `openapi-v0.3-pre.yaml`、Host API v1 | 只用于旧客户端迁移和行为比较 |
 
 ## 变更规则

@@ -628,11 +628,14 @@ func (r *PgRoleRepository) ListRouteOperations(ctx context.Context) ([]RouteOper
 }
 
 func (r *PgRoleRepository) RecordAuthorizationAudit(ctx context.Context, audit AuthorizationAudit) error {
+	if err := validateAuthorizationAuditActor(audit); err != nil {
+		return err
+	}
 	if audit.CreatedAt.IsZero() {
 		audit.CreatedAt = time.Now().UTC()
 	}
-	_, err := r.db(ctx).Exec(ctx, `INSERT INTO authorization_audits (id,request_id,actor_id,permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at)
-		VALUES ($1,$2,NULLIF($3,'')::bigint,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, idgen.New(), audit.RequestID, audit.ActorID, audit.PermissionCode, audit.OperationCode, audit.ScopeType, audit.ScopeID, audit.ResourceType, audit.ResourceID, audit.Outcome, audit.Reason, audit.IPAddress, audit.CreatedAt)
+	_, err := r.db(ctx).Exec(ctx, `INSERT INTO authorization_audits (id,request_id,actor_kind,actor_id,permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at)
+		VALUES ($1,$2,$3,NULLIF($4,''),$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, idgen.New(), audit.RequestID, audit.ActorKind, audit.ActorID, audit.PermissionCode, audit.OperationCode, audit.ScopeType, audit.ScopeID, audit.ResourceType, audit.ResourceID, audit.Outcome, audit.Reason, audit.IPAddress, audit.CreatedAt)
 	return err
 }
 
@@ -640,7 +643,7 @@ func (r *PgRoleRepository) ListAuthorizationAudits(ctx context.Context, limit in
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	rows, err := r.db(ctx).Query(ctx, `SELECT id,request_id,COALESCE(actor_id::text,''),permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at
+	rows, err := r.db(ctx).Query(ctx, `SELECT id,request_id,actor_kind,COALESCE(actor_id,''),permission_code,operation_code,scope_type,scope_id,resource_type,resource_id,outcome,reason,ip_address,created_at
 		FROM authorization_audits ORDER BY created_at DESC,id DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
@@ -649,7 +652,7 @@ func (r *PgRoleRepository) ListAuthorizationAudits(ctx context.Context, limit in
 	items := make([]AuthorizationAudit, 0)
 	for rows.Next() {
 		item := AuthorizationAudit{}
-		if err := rows.Scan(&item.ID, &item.RequestID, &item.ActorID, &item.PermissionCode, &item.OperationCode, &item.ScopeType, &item.ScopeID, &item.ResourceType, &item.ResourceID, &item.Outcome, &item.Reason, &item.IPAddress, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.RequestID, &item.ActorKind, &item.ActorID, &item.PermissionCode, &item.OperationCode, &item.ScopeType, &item.ScopeID, &item.ResourceType, &item.ResourceID, &item.Outcome, &item.Reason, &item.IPAddress, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -936,7 +939,9 @@ var memoryPermissions = map[string]map[string]bool{
 	"moderator": {
 		"user:read":   true,
 		"thread:read": true, "thread:pin": true, "thread:lock": true,
-		"post:read": true, "post:delete": true,
+		// thread:delete/post:delete execution moved to identity delegation
+		// grants in V12-02a; the moderator role no longer carries them.
+		"post:read": true,
 	},
 	"member": {
 		"thread:read": true, "thread:write": true,
@@ -1025,7 +1030,7 @@ func (r *MemoryRoleRepository) seedAuthorizationCatalog() {
 		action   string
 		roles    []string
 	}{
-		{"community.thread.take_down", "thread", "delete", []string{"admin", "moderator"}},
+		{"community.thread.take_down", "thread", "delete", []string{"admin"}},
 		{"community.thread.review", "thread", "write", []string{"admin"}},
 		{"community.thread.direct_restore", "thread", "delete", []string{"admin"}},
 		{"community.thread.restore", "thread", "delete", []string{"admin"}},
@@ -1261,6 +1266,9 @@ func (r *MemoryRoleRepository) ListRouteOperations(_ context.Context) ([]RouteOp
 }
 
 func (r *MemoryRoleRepository) RecordAuthorizationAudit(_ context.Context, audit AuthorizationAudit) error {
+	if err := validateAuthorizationAuditActor(audit); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if audit.ID == 0 {

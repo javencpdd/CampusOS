@@ -1,0 +1,36 @@
+{
+  "contract": "campusos.policy.thread-public-read/v1",
+  "status": "target-contract-only",
+  "errors": [
+    {
+      "code": "policy.input_invalid",
+      "http_status": 400,
+      "retryable": false,
+      "message": "Invalid policy input"
+    },
+    {
+      "code": "policy.contract_unsupported",
+      "http_status": 400,
+      "retryable": false,
+      "message": "Unsupported policy contract"
+    },
+    {
+      "code": "policy.resource_not_public",
+      "http_status": 404,
+      "retryable": false,
+      "message": "Resource not found"
+    },
+    {
+      "code": "policy.decision_mismatch",
+      "http_status": 500,
+      "retryable": false,
+      "message": "Invalid policy decision"
+    },
+    {
+      "code": "policy.facts_changed",
+      "http_status": 409,
+      "retryable": false,
+      "message": "Resource changed; reload before retrying"
+    }
+  ]
+}

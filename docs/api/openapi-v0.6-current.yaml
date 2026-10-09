@@ -6,6 +6,25 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1:
+    get:
+      operationId: httpapi_APIIndex
+      summary: GET /api/v1
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.platform-api
+      x-campusos-scope: public
+      x-campusos-operation: http.get.api.v1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /api/v1/admin/academic-terms:
     get:
       operationId: d_AcademicTerm

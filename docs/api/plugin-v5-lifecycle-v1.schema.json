@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-lifecycle-v1.schema.json",
+  "title": "G1 desired/observed and contribution publication target",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "operation_id",
+    "operation",
+    "phase",
+    "desired",
+    "observed",
+    "current_generation",
+    "requested_generation",
+    "global_installed",
+    "grant_active",
+    "accepting_new_calls",
+    "published",
+    "inflight_calls",
+    "config_migration",
+    "private_data_mutation",
+    "snapshot_verified",
+    "drain_strategy"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.plugin-lifecycle/v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "operation": {
+      "enum": [
+        "install",
+        "enable",
+        "disable",
+        "upgrade",
+        "revoke",
+        "uninstall"
+      ]
+    },
+    "phase": {
+      "enum": [
+        "prepare",
+        "switch",
+        "final"
+      ]
+    },
+    "desired": {
+      "enum": [
+        "enabled",
+        "disabled",
+        "uninstalled"
+      ]
+    },
+    "observed": {
+      "enum": [
+        "pending",
+        "ready",
+        "failed",
+        "stopped"
+      ]
+    },
+    "current_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requested_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "global_installed": {
+      "type": "boolean"
+    },
+    "grant_active": {
+      "type": "boolean"
+    },
+    "accepting_new_calls": {
+      "type": "boolean"
+    },
+    "published": {
+      "type": "boolean"
+    },
+    "config_migration": {
+      "type": "boolean"
+    },
+    "private_data_mutation": {
+      "type": "boolean"
+    },
+    "snapshot_verified": {
+      "type": "boolean"
+    },
+    "inflight_calls": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "drain_strategy": {
+      "enum": [
+        "drain",
+        "cancel"
+      ]
+    }
+  }
+}

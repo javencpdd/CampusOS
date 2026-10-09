@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/resource-policy-decision-v1.schema.json",
+  "title": "CampusOS G1 additional resource Policy decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "effect", "reason", "facts_version", "policy_version", "obligations"],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "effect": { "enum": ["allow", "deny"] },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "facts_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "obligations": { "type": "array", "uniqueItems": true,
+      "items": { "enum": ["recheck_facts", "required_audit"] } }
+  }
+}

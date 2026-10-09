@@ -88,6 +88,38 @@ class GenerateERTest(unittest.TestCase):
         self.assertIsNotNone(child.column("parent_id"))
         self.assertEqual(child.foreign_keys[0].child_columns, ["parent_id"])
 
+    def test_forward_alter_column_type_and_nullability(self) -> None:
+        sql = """
+        CREATE TABLE public.audit_events (
+            id bigint PRIMARY KEY,
+            actor_id bigint,
+            legacy_note text NOT NULL
+        );
+        ALTER TABLE ONLY public.audit_events
+            ALTER COLUMN actor_id TYPE character varying(128) USING actor_id::text,
+            ADD COLUMN actor_kind character varying(32);
+        ALTER TABLE public.audit_events
+            ALTER COLUMN actor_kind SET NOT NULL,
+            ALTER COLUMN legacy_note DROP NOT NULL;
+        """
+        audit = generate_er.parse_schema(sql)["audit_events"]
+        self.assertEqual(audit.column("actor_id").type_sql, "character varying(128)")
+        self.assertTrue(audit.column("actor_id").nullable)
+        self.assertEqual(audit.column("actor_kind").type_sql, "character varying(32)")
+        self.assertFalse(audit.column("actor_kind").nullable)
+        self.assertTrue(audit.column("legacy_note").nullable)
+
+    def test_current_authorization_audit_actor_projection(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        migrations = root / "migrations"
+        audit = generate_er.parse_schema(
+            generate_er.read_sql_files(migrations)
+        )["authorization_audits"]
+        self.assertEqual(audit.column("actor_id").type_sql, "character varying(128)")
+        self.assertTrue(audit.column("actor_id").nullable)
+        self.assertEqual(audit.column("actor_kind").type_sql, "character varying(32)")
+        self.assertFalse(audit.column("actor_kind").nullable)
+
     def test_current_migrations_generate_three_consistent_artifacts(self) -> None:
         root = Path(__file__).resolve().parents[2]
         migrations = root / "migrations"

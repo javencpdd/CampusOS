@@ -1,0 +1,178 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "const": "campusos.resource-policy/v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "principal": {
+      "$ref": "urn:campusos:principal:v1"
+    },
+    "action": {
+      "enum": [
+        "community.thread.edit",
+        "community.thread.take_down",
+        "community.post.delete",
+        "personal.document.read",
+        "knowledge.source.read"
+      ]
+    },
+    "facts": {
+      "$ref": "#/definitions/facts"
+    },
+    "grants": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/definitions/grant"
+      }
+    },
+    "evaluated_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "policy_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "required": [
+    "contract",
+    "request_id",
+    "principal",
+    "action",
+    "facts",
+    "grants",
+    "evaluated_at_ms",
+    "policy_version"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/resource-policy-v1.schema.json",
+  "title": "CampusOS G1 additional resource Policy request (host-constructed facts)",
+  "definitions": {
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "thread",
+            "post",
+            "document",
+            "knowledge_source"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "board_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "collection_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "enum": [
+            "active",
+            "draft",
+            "published",
+            "private",
+            "archived",
+            "deleted"
+          ]
+        },
+        "publication_status": {
+          "enum": [
+            "draft",
+            "published",
+            "private"
+          ]
+        },
+        "origin_visible": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "status",
+        "version"
+      ]
+    },
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject_kind": {
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "subject_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "action": {
+          "enum": [
+            "community.thread.take_down",
+            "community.post.delete"
+          ]
+        },
+        "board_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        },
+        "required_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        }
+      },
+      "required": [
+        "subject_kind",
+        "subject_id",
+        "action",
+        "board_id",
+        "expires_at_ms",
+        "status",
+        "required_strength"
+      ]
+    }
+  }
+}

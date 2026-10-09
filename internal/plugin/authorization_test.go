@@ -99,7 +99,7 @@ func TestAuthorizationScopeInactiveUnknownAndDelegation(t *testing.T) {
 	if got := service.Authorize(ctx, AuthorizationInput{PluginName: version.PluginName, CapabilityCode: "missing.capability", OperationCode: "unknown"}); got.ReasonCode != ReasonUnknownOperation {
 		t.Fatalf("unknown operation: got %s", got.ReasonCode)
 	}
-	delegation, token, err := service.IssueDelegation(ctx, "42", version.ID, []string{code}, map[string]interface{}{"scope": "self"}, time.Minute)
+	delegation, token, err := service.IssueDelegation(ctx, version.PluginName, "42", version.ID, []string{code}, map[string]interface{}{"scope": "self"}, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

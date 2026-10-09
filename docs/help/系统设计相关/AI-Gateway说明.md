@@ -1,12 +1,12 @@
 # CampusOS AI Gateway 说明
 
-> 日期：2026-07-01
-> 范围：v0.4-dev AI Gateway 最小内核
-> 文档状态：已实现最小内核的专项参考；完整 Agent 产品、知识库和代码执行器尚未实现。
+> 最初交付：v0.4-dev；按 v1.1.0-dev 代码复核：2026-09-26
+> 当前实现：`internal/modules/features/ai/` 的 `integration.ai` Feature；配置在 `pkg/config` 和 `.env.example`
+> 边界：仅 OpenAI-compatible ChatCompletion、受控管理员状态/日志接口；知识库、RAG、Agent 和代码执行器仍未实现。
 
 ## 1. 当前定位
 
-AI Gateway 用于把 CampusOS 内部的 AI 调用统一收口，避免插件、后台、MCP、Webhook 或机器人适配器直接绑定某一个模型厂商。
+AI Gateway 将已接入的内部聊天模型调用收口到一个 Feature。目前没有开放给 External Plugin、MCP、Webhook 或机器人适配器的通用 AI Host API；这些只是后续扩展方向。
 
 当前已完成的是后端最小内核：
 

@@ -3,18 +3,22 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
+	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
 var (
-	ErrInvalidRoleAssignment  = errors.New("invalid role assignment")
+	ErrInvalidRoleAssignment  = repository.ErrInvalidRoleAssignment
 	ErrRoleAssignmentNotFound = errors.New("role assignment not found")
 	ErrProtectedRole          = errors.New("protected role")
 	ErrRoleRequiresScope      = errors.New("role requires an explicit scope")
@@ -33,6 +37,7 @@ type PermissionService struct {
 	roleRepo      repository.RoleRepository
 	userRepo      UserLookup
 	adminAccounts repository.AdminAccountRepository
+	delegations   *delegation.Service
 	reliable      *reliability.Service
 }
 
@@ -43,6 +48,22 @@ func NewPermissionService(roleRepo repository.RoleRepository, userRepo UserLooku
 func (s *PermissionService) SetAdminAccountRepository(adminAccounts repository.AdminAccountRepository) {
 	s.adminAccounts = adminAccounts
 }
+
+// SetDelegationService wires the V12-02a delegation chain. The two governance
+// actions are then judged from current delegation grants; without the service
+// those codes fail closed to the catalog path's remaining grant sources.
+func (s *PermissionService) SetDelegationService(delegations *delegation.Service) {
+	s.delegations = delegations
+}
+
+// governanceDelegationCodes are the board-scoped execution rights that V12-02a
+// moved out of the moderator role catalog into windowed delegation grants.
+var governanceDelegationCodes = map[string]bool{
+	"community.thread.take_down": true,
+	"community.post.delete":      true,
+}
+
+func isGovernanceDelegationCode(code string) bool { return governanceDelegationCodes[code] }
 
 func (s *PermissionService) SetReliability(reliable *reliability.Service) {
 	s.reliable = reliable
@@ -119,6 +140,8 @@ func (s *PermissionService) CheckCode(ctx context.Context, userID, code string) 
 
 // CheckScoped checks a permission against a server-derived data scope. Global
 // grants remain valid, while category grants only match their category ID.
+// The two governance codes are judged from current delegation grants (unioned
+// with global catalog grants) instead of the moderator role's category rows.
 func (s *PermissionService) CheckScoped(ctx context.Context, userID string, resource, action, scopeType string, scopeID int64) (bool, error) {
 	if scopeType == "" || scopeID <= 0 {
 		return false, ErrInvalidRoleAssignment
@@ -128,7 +151,43 @@ func (s *PermissionService) CheckScoped(ctx context.Context, userID string, reso
 			return false, err
 		}
 	}
+	if code, ok := legacyGovernanceCode(resource, action); ok {
+		return s.checkGovernanceGrant(ctx, userID, code, scopeType, scopeID)
+	}
 	return s.roleRepo.HasScopedPermission(ctx, userID, resource, action, scopeType, scopeID)
+}
+
+// legacyGovernanceCode maps the legacy resource/action pair of a delegated
+// governance code; all other pairs stay on the catalog path.
+func legacyGovernanceCode(resource, action string) (string, bool) {
+	code := permissioncode.FromLegacy(resource, action)
+	if code != "" && isGovernanceDelegationCode(code) {
+		return code, true
+	}
+	return "", false
+}
+
+// checkGovernanceGrant evaluates the category-scoped governance codes as
+// global catalog grant ∪ active delegation grant. The legacy role tables are
+// no longer consulted for these codes.
+func (s *PermissionService) checkGovernanceGrant(ctx context.Context, userID, code, scopeType string, scopeID int64) (bool, error) {
+	if scopeType != "category" {
+		return false, nil
+	}
+	if catalog, ok := s.authorizationRepository(); ok {
+		allowed, err := catalog.HasScopedPermissionCode(ctx, userID, code, scopeType, scopeID)
+		if err == nil && allowed {
+			return true, nil
+		}
+		if err != nil && !isCatalogUnavailable(err) {
+			return false, err
+		}
+	}
+	if s.delegations == nil {
+		return false, nil
+	}
+	proof := delegation.ActorProofFrom(ctx)
+	return s.delegations.HasActiveGovernanceGrant(ctx, userID, code, strconv.FormatInt(scopeID, 10), proof.AuthenticationStrength, time.Now())
 }
 
 func (s *PermissionService) CheckCodeScoped(ctx context.Context, userID, code, scopeType string, scopeID int64) (bool, error) {
@@ -142,6 +201,9 @@ func (s *PermissionService) CheckCodeScoped(ctx context.Context, userID, code, s
 		if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
 			return false, err
 		}
+	}
+	if isGovernanceDelegationCode(code) && scopeType == "category" {
+		return s.checkGovernanceGrant(ctx, userID, code, scopeType, scopeID)
 	}
 	if catalog, ok := s.authorizationRepository(); ok {
 		allowed, err := catalog.HasScopedPermissionCode(ctx, userID, code, scopeType, scopeID)
@@ -175,6 +237,22 @@ func (s *PermissionService) HasAnyScopedPermissionCode(ctx context.Context, user
 		if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
 			return false, err
 		}
+	}
+	if isGovernanceDelegationCode(code) && scopeType == "category" {
+		if catalog, ok := s.authorizationRepository(); ok {
+			allowed, err := catalog.HasAnyScopedPermissionCode(ctx, userID, code, scopeType)
+			if err == nil && allowed {
+				return true, nil
+			}
+			if err != nil && !isCatalogUnavailable(err) {
+				return false, err
+			}
+		}
+		if s.delegations == nil {
+			return false, nil
+		}
+		proof := delegation.ActorProofFrom(ctx)
+		return s.delegations.HasAnyActiveGovernanceGrant(ctx, userID, code, proof.AuthenticationStrength, time.Now())
 	}
 	if catalog, ok := s.authorizationRepository(); ok {
 		allowed, err := catalog.HasAnyScopedPermissionCode(ctx, userID, code, scopeType)
@@ -315,7 +393,7 @@ func (s *PermissionService) AssignRoleByActor(ctx context.Context, actorID, user
 	}
 	if assigned {
 		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.role.assign",
+			ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.role.assign",
 			ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
 		}); err != nil {
 			return false, err
@@ -404,7 +482,7 @@ func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, user
 		}
 	}
 	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
+		ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
 		ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",
 	}); err != nil {
 		return false, err
@@ -439,15 +517,18 @@ func (s *PermissionService) ReplaceCategoryRoleScopes(ctx context.Context, userI
 }
 
 // ReplaceCategoryRoleScopesByActor is the service-side administration path
-// for moderator scopes. It prevents an internal caller from bypassing the
-// route middleware and granting a role whose effective permissions exceed the
-// actor's own permissions.
-func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context, actorID, userID, roleName string, categoryIDs []int64) (bool, error) {
+// for moderator scopes. Role scopes still carry the moderator role's
+// low-risk codes, while the two governance actions move through the
+// delegation policy chain: additions are a batch proposal judged from current
+// management/bound/recipient/board facts, and removals are permanent
+// revocations. The actor's admin/MFA proof arrives via the command context
+// from the admin entry; without it the delegation step fails closed.
+func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context, actorID, userID, roleName string, categoryIDs []int64, boards delegation.BoardFactsProvider) (bool, error) {
 	if s.reliable != nil && !transaction.Active(ctx) {
 		var changed bool
 		err := s.executeCommand(ctx, actorID, "identity.moderator.scope.replace", "user_role", userID+":"+roleName, func(commandCtx context.Context) error {
 			var commandErr error
-			changed, commandErr = s.ReplaceCategoryRoleScopesByActor(commandCtx, actorID, userID, roleName, categoryIDs)
+			changed, commandErr = s.ReplaceCategoryRoleScopesByActor(commandCtx, actorID, userID, roleName, categoryIDs, boards)
 			return commandErr
 		})
 		return changed, err
@@ -469,9 +550,17 @@ func (s *PermissionService) ReplaceCategoryRoleScopesByActor(ctx context.Context
 	if err != nil {
 		return false, err
 	}
+	if role.Name == "moderator" && s.delegations != nil {
+		proof := delegation.ActorProofFrom(ctx)
+		actor := delegation.Actor{ID: actorID, AuthenticationStrength: proof.AuthenticationStrength, CredentialID: proof.CredentialID}
+		if err := s.replaceGovernanceGrants(ctx, actor, userID, categoryIDs, boards); err != nil {
+			return false, err
+		}
+		changed = true
+	}
 	if changed {
 		if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
-			ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.moderator.scope.replace",
+			ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.assign", OperationCode: "identity.moderator.scope.replace",
 			ScopeType: "category", ResourceType: "user_role", ResourceID: userID + ":" + roleName, Outcome: "allow",
 		}); err != nil {
 			return false, err
@@ -553,7 +642,7 @@ func (s *PermissionService) CreateCustomRole(ctx context.Context, actorID, name,
 	if err := catalog.ReplaceRolePermissions(ctx, role.ID, permissionCodes, actorID); err != nil {
 		return nil, err
 	}
-	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"}); err != nil {
+	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.create", OperationCode: "http.identity.role.create", ResourceType: "role", ResourceID: strconv.FormatInt(role.ID, 10), Outcome: "allow"}); err != nil {
 		return nil, err
 	}
 	return role, nil
@@ -589,7 +678,7 @@ func (s *PermissionService) UpdateRolePermissions(ctx context.Context, actorID s
 	if err := catalog.ReplaceRolePermissions(ctx, roleID, permissionCodes, actorID); err != nil {
 		return err
 	}
-	return s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
+	return s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.update_permissions", OperationCode: "http.identity.role.update_permissions", ResourceType: "role", ResourceID: strconv.FormatInt(roleID, 10), Outcome: "allow"})
 }
 
 func (s *PermissionService) ListAuthorizationAudits(ctx context.Context, limit int) ([]repository.AuthorizationAudit, error) {
@@ -617,7 +706,7 @@ func (s *PermissionService) RecordRouteDecision(ctx context.Context, audit repos
 // preserving request-level allow/deny evidence for high-risk administration.
 func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context, actorID, permissionCode, operationCode, outcome, reason, requestID, ipAddress string) {
 	_ = s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
+		ActorKind: userCredentialAuditActorKind(actorID), ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
 		Outcome: outcome, Reason: reason, RequestID: requestID, IPAddress: ipAddress,
 	})
 }
@@ -628,9 +717,76 @@ func (s *PermissionService) RecordHTTPAuthorizationDecision(ctx context.Context,
 func (s *PermissionService) RecordContentAuthorizationDecision(ctx context.Context, actorID, permissionCode string, scopeID int64, outcome, reason string) error {
 	scope := scopeID
 	return s.recordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: permissionCode, OperationCode: "community.content." + strings.ReplaceAll(permissionCode, ".", "_"),
+		ActorKind: userCredentialAuditActorKind(actorID), ActorID: actorID, PermissionCode: permissionCode, OperationCode: "community.content." + strings.ReplaceAll(permissionCode, ".", "_"),
 		ScopeType: "category", ScopeID: &scope, ResourceType: "thread", Outcome: outcome, Reason: reason,
 	})
+}
+
+// Current HTTP and Community authorization decisions use User credentials.
+// A missing credential is recorded in the anonymous domain on deny paths.
+func userCredentialAuditActorKind(actorID string) string {
+	if strings.TrimSpace(actorID) == "" {
+		return "anonymous"
+	}
+	return "user"
+}
+
+// replaceGovernanceGrants aligns the two delegated governance grants with the
+// desired category set: additions go through the delegation policy chain,
+// removals are permanent revocations. Callers run inside the command
+// transaction, so the whole diff commits or rolls back together.
+func (s *PermissionService) replaceGovernanceGrants(ctx context.Context, actor delegation.Actor, userID string, categoryIDs []int64, boards delegation.BoardFactsProvider) error {
+	current, err := s.delegations.ListActiveGrants(ctx, userID)
+	if err != nil {
+		return err
+	}
+	desired := make(map[string]bool, len(categoryIDs)*2)
+	for _, categoryID := range categoryIDs {
+		board := strconv.FormatInt(categoryID, 10)
+		for code := range governanceDelegationCodes {
+			desired[code+"\x00"+board] = true
+		}
+	}
+	kept := make(map[string]bool, len(current))
+	for _, grant := range current {
+		if !isGovernanceDelegationCode(grant.Action) {
+			continue
+		}
+		key := grant.Action + "\x00" + grant.BoardID
+		if desired[key] {
+			kept[key] = true
+			continue
+		}
+		if err := s.delegations.RevokeDelegation(ctx, actor, grant.ID); err != nil {
+			return err
+		}
+	}
+	var candidates []delegation.GrantCandidate
+	for key := range desired {
+		if kept[key] {
+			continue
+		}
+		parts := strings.SplitN(key, "\x00", 2)
+		candidates = append(candidates, delegation.GrantCandidate{Action: parts[0], BoardID: parts[1]})
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].Action != candidates[j].Action {
+			return candidates[i].Action < candidates[j].Action
+		}
+		return candidates[i].BoardID < candidates[j].BoardID
+	})
+	requestID := "moderator-scope-" + strconv.FormatInt(idgen.New(), 10)
+	decision, err := s.delegations.GrantBoardDelegations(ctx, actor, userID, candidates, boards, requestID)
+	if err != nil {
+		return err
+	}
+	if decision.Effect != "allow" {
+		return &delegation.DelegationDeniedError{Reason: decision.Reason}
+	}
+	return nil
 }
 
 func (s *PermissionService) assertActorMayAssignRole(ctx context.Context, actorID string, roleID int64) error {

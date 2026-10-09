@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identitydelegation "github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
@@ -12,11 +13,18 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service        *Service
+	strengthReader identityport.SessionStrengthReader
 }
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// SetSessionStrengthReader wires the identity session fact source used to
+// build the delegation actor proof for admin grant routes.
+func (h *Handler) SetSessionStrengthReader(reader identityport.SessionStrengthReader) {
+	h.strengthReader = reader
 }
 
 func (h *Handler) Status(c *gin.Context) {
@@ -70,7 +78,7 @@ func (h *Handler) SetModerator(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "请求参数错误")
 		return
 	}
-	item, err := h.service.SetModeratorCategories(c.Request.Context(), actorID, c.Param("id"), req.CategoryIDs, operationContext(c))
+	item, err := h.service.SetModeratorCategories(c.Request.Context(), actorID, c.Param("id"), req.CategoryIDs, h.operationContext(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -92,7 +100,7 @@ func (h *Handler) setPinned(c *gin.Context, pinned bool) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	thread, err := h.service.SetPinned(c.Request.Context(), actorID, c.Param("id"), pinned, operationContext(c))
+	thread, err := h.service.SetPinned(c.Request.Context(), actorID, c.Param("id"), pinned, h.operationContext(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -114,7 +122,7 @@ func (h *Handler) setLocked(c *gin.Context, locked bool) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	thread, err := h.service.SetLocked(c.Request.Context(), actorID, c.Param("id"), locked, operationContext(c))
+	thread, err := h.service.SetLocked(c.Request.Context(), actorID, c.Param("id"), locked, h.operationContext(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -128,7 +136,7 @@ func (h *Handler) DeletePost(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	if err := h.service.DeletePost(c.Request.Context(), actorID, c.Param("id"), c.Param("post_id"), operationContext(c)); err != nil {
+	if err := h.service.DeletePost(c.Request.Context(), actorID, c.Param("id"), c.Param("post_id"), h.operationContext(c)); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -144,13 +152,23 @@ func currentUserID(c *gin.Context) (string, bool) {
 	return userID, ok && userID != ""
 }
 
-func operationContext(c *gin.Context) OperationContext {
+func (h *Handler) operationContext(c *gin.Context) OperationContext {
 	traceID, _ := c.Get("trace_id")
 	traceIDText, _ := traceID.(string)
-	return OperationContext{TraceID: traceIDText, IPAddress: c.ClientIP()}
+	operation := OperationContext{TraceID: traceIDText, IPAddress: c.ClientIP()}
+	if sessionID := c.GetString("session_id"); sessionID != "" && h.strengthReader != nil {
+		// The session record is the strength fact source; a lookup failure
+		// leaves the proof empty and the delegation chain fails closed.
+		if strength, err := h.strengthReader.AuthenticationStrengthForSession(c.Request.Context(), sessionID); err == nil {
+			operation.AuthenticationStrength = strength
+			operation.CredentialID = sessionID
+		}
+	}
+	return operation
 }
 
 func writeError(c *gin.Context, err error) {
+	var delegationDenied *identitydelegation.DelegationDeniedError
 	switch {
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusServiceUnavailable, 71001, "版主插件当前未运行；系统级插件启停需要重启 API 后生效")
@@ -160,6 +178,8 @@ func writeError(c *gin.Context, err error) {
 		response.Error(c, http.StatusForbidden, 20004, "你不是该板块的版主，不能执行此操作")
 	case errors.Is(err, ErrInvalidScope), errors.Is(err, identityport.ErrInvalidScope):
 		response.Error(c, http.StatusBadRequest, 71003, "板块范围参数无效")
+	case errors.As(err, &delegationDenied):
+		response.Error(c, http.StatusForbidden, 20004, "授予未通过委托上限校验："+delegationDenied.Reason)
 	case errors.Is(err, identityport.ErrUserNotFound):
 		response.Error(c, http.StatusNotFound, 30004, "目标用户不存在")
 	case errors.Is(err, communityport.ErrCategoryNotFound):

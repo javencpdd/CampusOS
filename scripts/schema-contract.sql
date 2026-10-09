@@ -11,7 +11,7 @@ BEGIN
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
         'plugin_publishers', 'plugin_versions', 'plugin_capability_declarations', 'plugin_admin_grants',
-        'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_authorization_decisions',
+        'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_configurations', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',
         'richtext_article_assets', 'user_assets', 'richtext_article_attachments', 'plugin_ui_invocations', 'asset_lifecycle_audits',
         'content_revisions', 'content_moderation_cases', 'content_moderation_actions',
@@ -57,7 +57,7 @@ BEGIN
         'plugins.backend_state', 'plugins.frontend_state', 'plugins.health_state', 'plugins.ui_revision',
         'user_spaces.style_manifest', 'plugin_catalog_entries.experience',
         'permission_definitions.code', 'role_permissions.permission_id', 'route_operations.operation_code',
-        'route_permission_bindings.route_operation_id', 'authorization_audits.permission_code',
+        'route_permission_bindings.route_operation_id', 'authorization_audits.actor_kind', 'authorization_audits.actor_id', 'authorization_audits.permission_code',
         'authorization_audits.command_id', 'platform_outbox.status', 'platform_outbox.schema_version',
         'platform_command_audits.command_code', 'platform_operation_runs.status',
         'webhook_deliveries.delivery_key', 'webhook_endpoints.max_concurrent', 'webhook_endpoints.rate_limit_per_minute', 'outbox_consumer_receipts.consumer_name', 'platform_outbox_attempts.status',
@@ -79,10 +79,13 @@ BEGIN
         'asset_lifecycle_audits.id', 'asset_lifecycle_audits.asset_id', 'asset_lifecycle_audits.actor_user_id', 'asset_lifecycle_audits.actor_type', 'asset_lifecycle_audits.action', 'asset_lifecycle_audits.created_at',
         'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
         'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
-        'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint',
+        'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint', 'plugin_versions.activated_at',
         'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
         'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
         'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
+        'plugin_configurations.plugin_version_id', 'plugin_configurations.owner_user_id',
+        'plugin_configurations.definition_version', 'plugin_configurations.revision',
+        'plugin_configurations.values', 'plugin_configurations.secret_refs',
         'plugin_authorization_decisions.request_id', 'plugin_authorization_decisions.outcome'
     ]) expected
     WHERE NOT EXISTS (
@@ -126,7 +129,7 @@ BEGIN
         'chk_secondhand_details_trade_status', 'chk_secondhand_details_location_scope',
         'chk_secondhand_details_version',
         'chk_permission_definition_code', 'chk_permission_definition_risk', 'chk_permission_definition_audit',
-        'chk_route_operation_code', 'chk_authorization_audits_outcome',
+        'chk_route_operation_code', 'chk_authorization_audits_outcome', 'chk_authorization_audits_actor',
         'chk_platform_outbox_status', 'chk_platform_outbox_attempts', 'chk_platform_outbox_attempt_status', 'chk_platform_operation_status',
         'chk_platform_retention_run_mode', 'chk_platform_retention_run_status',
         'chk_academic_terms_year', 'chk_academic_terms_semester', 'chk_academic_terms_first_week_monday',
@@ -158,7 +161,9 @@ BEGIN
         'fk_asset_lifecycle_audits_asset', 'fk_asset_lifecycle_audits_actor',
         'fk_richtext_article_assets_user_asset',
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
-        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome'
+        'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome',
+        'chk_plugin_configurations_definition_version', 'chk_plugin_configurations_revision',
+        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated
@@ -183,7 +188,7 @@ BEGIN
         'idx_mutual_aid_details_status_updated', 'idx_mutual_aid_details_created_by_updated',
         'idx_secondhand_details_status_updated', 'idx_secondhand_details_created_by_updated',
         'idx_posts_thread_floor', 'idx_sessions_expires_at', 'idx_user_roles_scope_lookup',
-        'idx_plugins_runtime_state', 'uk_permission_definitions_code', 'uk_route_operations_code',
+        'idx_authorization_audits_actor', 'idx_plugins_runtime_state', 'uk_permission_definitions_code', 'uk_route_operations_code',
         'uk_role_permissions_active', 'uk_route_permission_bindings_active',
         'uk_platform_outbox_idempotency', 'uk_platform_operation_idempotency',
         'uk_webhook_deliveries_delivery_key',
@@ -195,6 +200,7 @@ BEGIN
         'uk_plugin_publishers_slug_active', 'uk_plugin_versions_version', 'uk_plugin_versions_active',
         'uk_plugin_capability_declaration', 'uk_plugin_admin_grants_current', 'uk_plugin_user_consents_current',
         'uk_plugin_delegations_token_digest', 'uk_plugin_secret_values_active', 'uk_plugin_authorization_request',
+        'uq_plugin_configurations_scope', 'idx_plugin_configurations_owner',
         'idx_plugin_admin_grants_declaration', 'idx_plugin_user_consents_declaration',
         'idx_plugin_authorization_declaration'
         ,'uq_user_assets_storage_object', 'idx_user_assets_owner_status_updated', 'idx_user_assets_owner_kind_updated',
@@ -206,6 +212,58 @@ BEGIN
     WHERE to_regclass('public.' || expected) IS NULL;
     IF missing IS NOT NULL THEN
         RAISE EXCEPTION 'schema contract missing indexes: %', missing;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'authorization_audits'
+          AND column_name = 'actor_kind' AND is_nullable = 'NO'
+          AND data_type = 'character varying' AND character_maximum_length = 32
+    ) OR NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'authorization_audits'
+          AND column_name = 'actor_id' AND is_nullable = 'YES'
+          AND data_type = 'character varying' AND character_maximum_length = 128
+    ) THEN
+        RAISE EXCEPTION 'authorization audit actor columns have incorrect shape';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_identity_immutable'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 19
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_capability_declarations'::regclass
+          AND tgname = 'trg_plugin_declaration_immutable'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 19
+    ) THEN
+        RAISE EXCEPTION 'plugin version identity update guards are missing or disabled';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_publication_guard'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 23 = 23
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_capability_declarations'::regclass
+          AND tgname = 'trg_plugin_declaration_membership_guard'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 15 = 15
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.plugin_versions'::regclass
+          AND tgname = 'trg_plugin_version_revoke_delegations'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A')
+          AND tgtype & 19 = 17
+    ) THEN
+        RAISE EXCEPTION 'plugin publication and delegation revocation guards are missing or disabled';
     END IF;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
@@ -226,7 +284,7 @@ BEGIN
 END $$;
 
 SELECT jsonb_pretty(jsonb_build_object(
-    'schema_contract', 'v1.1-personal-document-preview-v1',
+    'schema_contract', 'v1.2-plugin-v5-config-v1',
     'database', current_database(),
     'validated_at', now(),
     'status', 'pass'

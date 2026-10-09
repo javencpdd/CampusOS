@@ -1,0 +1,136 @@
+{
+  "schema": "campusos.v12-g1-plugin-config-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:36.027Z",
+  "scope": "G1 bounded JSON Schema subset, defaults, selectors, Secret refs and revision compare",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 01b/03b/04/07: no config persistence, Secret Broker, UI form or transaction concurrency claimed",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "valid",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "version-race",
+      "expected": "plugin.config_revision_conflict",
+      "passed": true
+    },
+    {
+      "name": "default-out-of-range",
+      "expected": "plugin.config_defaults_invalid",
+      "passed": true
+    },
+    {
+      "name": "default-profile-unavailable",
+      "expected": "plugin.config_defaults_invalid",
+      "passed": true
+    },
+    {
+      "name": "update-profile-unavailable",
+      "expected": "plugin.config_selector_forbidden",
+      "passed": true
+    },
+    {
+      "name": "update-collection-private",
+      "expected": "plugin.config_selector_forbidden",
+      "passed": true
+    },
+    {
+      "name": "value-out-of-range",
+      "expected": "plugin.config_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-value",
+      "expected": "plugin.config_invalid",
+      "passed": true
+    },
+    {
+      "name": "remote-ref",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "script",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "nested-array",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "secret-field-in-normal-config",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "raw-secret",
+      "expected": "plugin.secret_ref_invalid",
+      "passed": true
+    },
+    {
+      "name": "placeholder",
+      "expected": "plugin.secret_ref_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-secret-name",
+      "expected": "plugin.secret_ref_invalid",
+      "passed": true
+    },
+    {
+      "name": "selector-field-missing",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "selector-field-numeric",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "duplicate-selectors",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    },
+    {
+      "name": "unknown-definition-field",
+      "expected": "plugin.config_invalid",
+      "passed": true
+    },
+    {
+      "name": "bad-schema-bounds",
+      "expected": "plugin.config_schema_unsupported",
+      "passed": true
+    }
+  ],
+  "selector_rechecks": [
+    {
+      "name": "profile-removed",
+      "passed": true
+    },
+    {
+      "name": "collection-removed",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/plugin-v5-config-v1.schema.json": "5edfa6b171037250b2a3ddd94c4b787afb48afac7683817ae28b11eb044b07e0",
+    "docs/api/plugin-v5-config-v1.errors.json": "14af0fe714605257affdb56cd22e4432a8176052eefc33b3cd8236006d22cd02",
+    "sdk/typescript/src/plugin-v5-config.ts": "d92108d33999072dfe0a5ff34bdb55dda2f07cf55dd4a631d3f6abb884be4636",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-plugin-v5-config-contract.mjs": "c950561ce037a82695642daa96bb74507435328c83cd1923e33d37f682484beb"
+  }
+}

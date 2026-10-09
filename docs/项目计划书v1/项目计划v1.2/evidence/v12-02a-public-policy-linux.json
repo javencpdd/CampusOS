@@ -1,0 +1,173 @@
+{
+  "schema": "campusos.v12-02a-public-policy-acceptance/v1",
+  "generated_at": "2026-10-09T18:46:01.975043+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Principal structural validation -> named public visibility decision -> same-call binding/current facts check; pure Go Port only",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "execution": "native Linux race-enabled compiled test binaries, env -i; no DB/cache credentials or network/HTTP entry"
+  },
+  "checks": {
+    "TestPrincipalG1Fixtures": "passed",
+    "TestPrincipalDomainMatrix": "passed",
+    "TestPrincipalStrictJSON": "passed",
+    "TestPrincipalContractErrorPriority": "passed",
+    "TestPrincipalOpaqueIDAndDelegation": "passed",
+    "TestThreadPublicReadG1Fixtures": "passed",
+    "TestThreadPublicReadStatePrincipalMatrix": "passed",
+    "TestThreadPublicReadDecisionBindingAndCurrentFacts": "passed",
+    "TestThreadPublicReadStrictJSON": "passed",
+    "TestThreadPublicReadParallelWithoutCache": "passed"
+  },
+  "coverage": {
+    "principal_g1_fixtures": 63,
+    "principal_domain_combinations": 180,
+    "policy_g1_fixtures": 60,
+    "state_principal_combinations": 360,
+    "binding_current_fact_checks": 21,
+    "parallel_callers": 64,
+    "native_go_ajv_outputs": 360
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/principal.go": "9badd0e5bcfde16a54dfc1afac8a37d78bd2cfc029ea8d00d1c74098e5611e29",
+    "internal/modules/core/identity/port/principal_test.go": "05fc958d116aeca5ef36a7fc34746e366c9e31dabab28e0f78e0880f90e031b2",
+    "internal/modules/core/identity/port/strict_json.go": "d98d04404836c361eff759195360c6b6bb8c987e8e6a78d26b037b2ccf5af254",
+    "internal/modules/core/identity/port/thread_public_read_policy.go": "0670ccedd4e5e53b5ba3655f7b69dab5e09a1236cb00bbe68bd786ac43053867",
+    "internal/modules/core/identity/policy/thread_public_read.go": "3c9808c7151a7791cf495829c812145c346f298f9b426b40b5c0c20a1f119fb4",
+    "internal/modules/core/identity/policy/thread_public_read_test.go": "d9d371a9f595a028d20c3eb30d682f128b283a87dca458fab5e92f4af8700ee8",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "docs/api/policy-thread-public-read-v1.schema.json": "f98dd6aa90a558392d8b83b8029238ab2b38d32ecd9366662ede36093d79a880",
+    "docs/api/principal-context-v1.errors.json": "4c5a2e7d4165ef1ce76595768ce14c5d63206bc8040c760950c6799d0344e140",
+    "docs/api/policy-thread-public-read-v1.errors.json": "318e46e101578daa7196602006aa25c5cd4ca577076365493513ae68c009906b",
+    "sdk/typescript/tests/principal-context-v1.fixtures.json": "3fb6d650fde10c39cb619421dd75eb840c68c678212a1d4c66a64bf0dc860441",
+    "sdk/typescript/tests/policy-thread-public-read-v1.fixtures.json": "6819e910328e61f41c9af52049dd45d96ae6334a11d28705741e7261e0233dd2",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-02a-policy-output.mjs": "079fe8f1c5bbe3ddbd95cf35acf200e67ce7a259f7a4955a0cbca5cbf6fc429d",
+    "scripts/v12-02a-public-policy-drill.sh": "78c16b7790631eeb8fe46b13074781d09c87aeb4178a7b7b99269f1f247e4071",
+    "docs/api/v1.2主体上下文合同.md": "3107e83cfdc676cb5b284ffbaf92d2df2612cf760dc6e9732dc95252e5421635",
+    "docs/api/v1.2公开帖子事实与策略合同.md": "90c62d912430ad4607b9a28ca34b6ea4c43f594da54649321591bef877d58dfa"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots remain unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots remain unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots remain unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots remain unchanged"
+    }
+  },
+  "target_logs": {
+    "targeted": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/targeted.log",
+      "sha256": "8a724a4c3d2b1936c44d7ccb9b0b6258658766d9ca8091c5522af0e40a5c92d3"
+    },
+    "build-principal": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/build-principal.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-policy": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/build-policy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native-principal": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/native-principal.log",
+      "sha256": "d7649d3390f1491aee15c835c52f70704f7d5bdfca8087b27a4d48376cd9f905"
+    },
+    "native-policy": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/native-policy.log",
+      "sha256": "061e571ad0a503ecdd8e3b1931e8f23f3f00b2f4ad71fb25d4c12c92b8295580"
+    },
+    "wire-interop": {
+      "path": ".cache/v12-02a/public-policy.jHKicP/wire-interop.log",
+      "sha256": "a8a249fa9814c0c2016e07e71344a2fe5c8e10cbcd8ea7c6b7226fae5bc5c600"
+    }
+  },
+  "native_binary_sha256": {
+    "principal.test": "6e7f703c594d9580f9b35f6941522cc886e607e586326ca88a3c970089ce1079",
+    "policy.test": "05f32ab5f72c68648411ae182962775f7ea7951a218d5affe5e42b05ff6bfd17"
+  },
+  "actual_go_output": {
+    "path": ".cache/v12-02a/public-policy.jHKicP/go-output.json",
+    "sha256": "877c33c05613fe5f02115c2dbcaeeff91504814a95a012e2c69e53db199106d5"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/go-all.log",
+      "log_sha256": "3c7be11790f3d588e06d960b50617261a1156490ff5bc08d4b96d2ee50de99e3"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/architecture.log",
+      "log_sha256": "0d7ff5f99c75414ea3fdb82eee6a2aeee14d4590470de3895f5cb8064c4b1ac9"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/docs-build.log",
+      "log_sha256": "1d14050124cb8bee70bc3804b30b4c91180889cb11a1730e4c23375357c3718a"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a/public-policy.jHKicP/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No production route/session/credential adapter switched; valid JSON is not authentication.",
+    "Current facts and content loading, ABA-safe facts version, read/return ordering and list/count/page integration remain V12-02b.",
+    "Other named actions, delegation action/scope/time/strength subset policy and existing permission/grant path replacement remain V12-02a.",
+    "Independent Admin domain remains V12-02d; this is not HTTP/PG/browser acceptance or full V12-02a exit."
+  ]
+}

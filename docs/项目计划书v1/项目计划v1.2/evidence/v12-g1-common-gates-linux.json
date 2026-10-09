@@ -1,0 +1,76 @@
+{
+  "schema": "campusos.v12-g1-common-gates/v1",
+  "generated_at": "2026-09-26T20:29:04.928055+00:00",
+  "platform": "linux",
+  "target_environment": "linux local source/contract/documentation gates",
+  "commands": [
+    {
+      "name": "sdk_build",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "sdk/typescript",
+        "build"
+      ],
+      "exit_code": 0,
+      "output": "\n> @campusos/plugin-sdk@1.1.0-dev build /home/jack/bbs/bbs01/CampusOS/sdk/typescript\n> tsc -p tsconfig.json\n\n",
+      "output_sha256": "e7ee4ea3cabdefc088d2fa8ad8215b96ab3c9c037f986c9f36650d47cd3743ce"
+    },
+    {
+      "name": "contracts_architecture",
+      "argv": [
+        "make",
+        "contracts-check",
+        "architecture-check"
+      ],
+      "exit_code": 0,
+      "output": "go run ./cmd/campusos-plugin-v4-check -root plugins\nok campusos.pdf-viewer 2.0.0-dev.2\nnode scripts/check-v12-principal-contract.mjs\nPrincipal v1: 63 fixtures, 180 domain combinations, 57 TypeScript fixtures passed\nnode scripts/check-v12-thread-policy-contract.mjs\nThread policy: 60 schema fixtures, 360 state/principal combinations, 16 binding checks, 57 TypeScript fixtures passed\nnode scripts/check-v12-board-delegation-contract.mjs\nBoard delegation: 54 fixtures, 72 subset combinations, 17 rechecks, 52/37 TS request/decision fixtures passed\nnode scripts/check-v12-plugin-v5-shape-contract.mjs\nPlugin v5 shape: 27 fixtures, 48 shape combinations, 4/5 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-consumes-contract.mjs\nPlugin v5 consumes: 34 fixtures, 64 scope combinations, 3 catalog rechecks, 4/5 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-provides-contract.mjs\nPlugin v5 provides: 27 declarations, 36 point combinations, 16 DTO cases, 9/4 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-resource-install-contract.mjs\nPlugin v5 resource/install: 25 fixtures, 45 numeric intersections, 2/2 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-config-contract.mjs\nPlugin v5 config: 20 fixtures, 2 selector rechecks, 1/3 TS positive/negative types passed\nnode scripts/check-v12-resource-policy-contract.mjs\nResource Policy: 22 fixtures, 75 combinations, 7 rechecks, 2/2 TS positive/negative types passed\nnode scripts/check-v12-identity-domains-contract.mjs\nIdentity domains: 32 fixtures, 1/4 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-manifest-contract.mjs\nPlugin v5 full Manifest: 22 fixtures, 1 release recheck, 2/3 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-dispatch-contract.mjs\nPlugin v5 dispatch: 30 fixtures, 4 rechecks, 1/3 TS positive/negative types passed\nnode scripts/check-v12-plugin-v5-events-contract.mjs\nPlugin v5 events/lifecycle: 20 event + 19 lifecycle fixtures, 2/3 TS positive/negative types passed\nnode scripts/check-v12-scope-delegation-contract.mjs\nScope delegation: 23 fixtures, 4 rechecks, 1/3 TS positive/negative types passed\nnode scripts/check-v12-g1-replacement-map.mjs\nG1 replacement map: 16 exact source anchors, target contracts and stages passed\nnode scripts/check-v12-g1-exit.mjs\nV12-G1 exit: G0 passed, 18 DTO/error/evidence clauses passed on Linux offline target\ngo run ./cmd/campusos-contracts --check\nok /home/jack/bbs/bbs01/CampusOS/docs/api/http-routes-v0.6.json\nok /home/jack/bbs/bbs01/CampusOS/docs/api/HTTP路由与授权矩阵-v0.6.md\nok /home/jack/bbs/bbs01/CampusOS/docs/api/openapi-v0.6-current.yaml\nok /home/jack/bbs/bbs01/CampusOS/docs/api/plugin-permissions-v1.json\nok /home/jack/bbs/bbs01/CampusOS/docs/api/plugin-permissions-v2.json\nok /home/jack/bbs/bbs01/CampusOS/docs/api/Host-API-v1权限目录.md\nok /home/jack/bbs/bbs01/CampusOS/docs/api/error-catalog-v0.13.json\nok /home/jack/bbs/bbs01/CampusOS/docs/api/v0.13统一错误合同.md\nok /home/jack/bbs/bbs01/CampusOS/docs/api/metrics-catalog-v0.13.json\nok /home/jack/bbs/bbs01/CampusOS/docs/api/v0.13可观测性指标目录.md\ngo run ./cmd/campusos-capability-contract\nok docs/api/plugin-capabilities-v1.json\npython3 scripts/check-architecture-boundaries.py\nCampusOS architecture boundary check passed: 0 legacy sources, 0 legacy concrete edges\npython3 scripts/check-frontend-boundaries.py\nCampusOS frontend boundary check passed: no cross-module internal imports\npython3 scripts/test-architecture-checks.py\npython3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .\nCampusOS data architecture sync report\nmigrations: 3 (000001, 000002, 000003)\nschema tables: 91\narchitecture-view tables: 91\nmissing from view: none\nstale in view: none\nunconnected tables (review only): ai_call_logs, builtin_feature_states, configurations, identity_challenge_rate_limits, identity_reserved_identifiers, mcp_audit_logs, message_logs, platform_compatibility_usage, platform_operation_runs, platform_retention_runs, platform_worker_leases, schema_migration_locks, schema_migrations, tags\nlatest migration metadata: repository=000003 view=000003\nexplicit foreign keys: present; review the Admin page wording and relation labels\npython3 migrations/tools/generate_er.py --check\nER 产物一致性检查通过：89 张表，106 条外键。\n.........\n----------------------------------------------------------------------\nRan 9 tests in 0.016s\n\nOK\n",
+      "output_sha256": "5cb9a06c092c79c25fe9d884d8416d737316a8d96e5a45be096e0d2837ed68a8"
+    },
+    {
+      "name": "go_all",
+      "argv": [
+        "go",
+        "test",
+        "./...",
+        "-count=1"
+      ],
+      "exit_code": 0,
+      "output": "ok  \tgithub.com/campusos/CampusOS/cmd/campusos-baseline\t0.076s\n?   \tgithub.com/campusos/CampusOS/cmd/campusos-capability-contract\t[no test files]\nok  \tgithub.com/campusos/CampusOS/cmd/campusos-capacity\t0.033s\n?   \tgithub.com/campusos/CampusOS/cmd/campusos-contracts\t[no test files]\n?   \tgithub.com/campusos/CampusOS/cmd/campusos-plugin-v4-check\t[no test files]\nok  \tgithub.com/campusos/CampusOS/cmd/campusosctl\t1.182s\n?   \tgithub.com/campusos/CampusOS/cmd/server\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/agentcontract\t0.013s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/academicterm\t0.059s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/community\t0.024s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/community/contentbody\t0.023s\n?   \tgithub.com/campusos/CampusOS/internal/modules/core/community/domain\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/community/handler\t0.060s\n?   \tgithub.com/campusos/CampusOS/internal/modules/core/community/port\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/community/repository\t0.023s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/community/service\t0.066s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/contenteditor\t0.019s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/emaildelivery\t0.033s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/identity\t0.053s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/identity/domain\t0.010s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/identity/handler\t0.894s\n?   \tgithub.com/campusos/CampusOS/internal/modules/core/identity/permissioncode\t[no test files]\n?   \tgithub.com/campusos/CampusOS/internal/modules/core/identity/port\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/identity/repository\t0.015s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/identity/service\t1.158s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/moderation\t0.060s\nok  \tgithub.com/campusos/CampusOS/internal/modules/core/userstorage\t1.007s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/ai\t0.043s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/appearance/homepage\t0.066s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/appearance/runtime\t0.053s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/appearance/stylepack\t0.179s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/appearance/webtheme\t0.063s\n?   \tgithub.com/campusos/CampusOS/internal/modules/features/integration\t[no test files]\n?   \tgithub.com/campusos/CampusOS/internal/modules/features/mcp\t[no test files]\n?   \tgithub.com/campusos/CampusOS/internal/modules/features/message\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/mutualaid\t0.040s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/personaldocuments\t0.101s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/personalspace\t0.117s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/platformlog\t0.030s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/richtext\t0.079s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/schedule\t0.127s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/secondhand\t0.051s\nok  \tgithub.com/campusos/CampusOS/internal/modules/features/webhook\t0.064s\nok  \tgithub.com/campusos/CampusOS/internal/platform/feature\t0.085s\nok  \tgithub.com/campusos/CampusOS/internal/platform/module\t0.007s\nok  \tgithub.com/campusos/CampusOS/internal/platform/observability\t0.027s\nok  \tgithub.com/campusos/CampusOS/internal/platform/pluginui\t0.006s\nok  \tgithub.com/campusos/CampusOS/internal/platform/reliability\t0.074s\nok  \tgithub.com/campusos/CampusOS/internal/platform/resource\t0.016s\nok  \tgithub.com/campusos/CampusOS/internal/platform/route\t0.036s\nok  \tgithub.com/campusos/CampusOS/internal/platform/runtime\t0.013s\nok  \tgithub.com/campusos/CampusOS/internal/platform/transaction\t0.012s\n?   \tgithub.com/campusos/CampusOS/internal/platform/version\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/plugin\t0.557s\nok  \tgithub.com/campusos/CampusOS/internal/plugin/grpc\t0.057s\nok  \tgithub.com/campusos/CampusOS/internal/plugin/hostapi\t0.113s\n?   \tgithub.com/campusos/CampusOS/internal/plugin/port\t[no test files]\nok  \tgithub.com/campusos/CampusOS/internal/plugin/v4\t0.137s\nok  \tgithub.com/campusos/CampusOS/internal/plugin/wasm\t0.119s\nok  \tgithub.com/campusos/CampusOS/internal/projectaudit\t0.356s\nok  \tgithub.com/campusos/CampusOS/internal/safehtml\t0.010s\nok  \tgithub.com/campusos/CampusOS/internal/server\t0.393s\nok  \tgithub.com/campusos/CampusOS/internal/transport/httpapi\t0.106s\nok  \tgithub.com/campusos/CampusOS/modules\t0.026s\nok  \tgithub.com/campusos/CampusOS/pkg/apperror\t0.013s\n?   \tgithub.com/campusos/CampusOS/pkg/auth\t[no test files]\n?   \tgithub.com/campusos/CampusOS/pkg/cache\t[no test files]\nok  \tgithub.com/campusos/CampusOS/pkg/config\t0.012s\n?   \tgithub.com/campusos/CampusOS/pkg/database\t[no test files]\n?   \tgithub.com/campusos/CampusOS/pkg/eventbus\t[no test files]\n?   \tgithub.com/campusos/CampusOS/pkg/idgen\t[no test files]\nok  \tgithub.com/campusos/CampusOS/pkg/middleware\t0.035s\nok  \tgithub.com/campusos/CampusOS/pkg/observability\t0.042s\nok  \tgithub.com/campusos/CampusOS/pkg/request\t0.042s\nok  \tgithub.com/campusos/CampusOS/pkg/response\t0.041s\nok  \tgithub.com/campusos/CampusOS/sdk/go\t0.019s\n",
+      "output_sha256": "c22e8fd90d7a4cf2cd6f6df60c7a6bbb38c53c728c5a059e1e48cba3f9874a2a"
+    },
+    {
+      "name": "docs_links",
+      "argv": [
+        "make",
+        "docs-links"
+      ],
+      "exit_code": 0,
+      "output": "python3 scripts/check-doc-links.py\nCampusOS documentation link check passed: 1152 local links\n",
+      "output_sha256": "6a9eb2a68ef71e6033d6d81000b4c841f5640d70cd6c2e35be976fd234b3d469"
+    },
+    {
+      "name": "line_endings",
+      "argv": [
+        "python3",
+        "scripts/check-line-endings.py",
+        "--include-untracked"
+      ],
+      "exit_code": 0,
+      "output": "CampusOS line ending policy: text=1942, binary=95, fixed=0, errors=0, platform=linux\n",
+      "output_sha256": "fadf026afeebdf47a15a64743e56f6c6d02cb66cae19f8cecbff7df109a48878"
+    },
+    {
+      "name": "diff_check",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "status": "passed"
+}

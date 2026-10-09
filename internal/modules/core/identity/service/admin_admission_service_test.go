@@ -57,6 +57,9 @@ func TestAdminAdmissionSuspendRevokesSessionsAuditsAndProtectsLastActive(t *test
 	if audits[0].PermissionCode != "identity.admin_account.suspend" || audits[0].Reason != "offboarding review" {
 		t.Fatalf("unexpected authorization audit: %#v", audits[0])
 	}
+	if audits[0].ActorKind != "user" || audits[0].ActorID != actor.ID {
+		t.Fatalf("shared user credential must remain in the user actor domain: %#v", audits[0])
+	}
 	commands, total, err := reliable.Store().ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 10})
 	foundSuspend := false
 	for _, command := range commands {
@@ -85,6 +88,58 @@ func TestAdminAdmissionSuspendRevokesSessionsAuditsAndProtectsLastActive(t *test
 	}
 	if restored.Account.Status != repository.AdminAccountStatusActive || restored.Account.Version != updated.Account.Version+1 {
 		t.Fatalf("unexpected restored account: %#v", restored.Account)
+	}
+}
+
+func TestAdminAdmissionLocalRestoreRecordsCLIAsSystemActor(t *testing.T) {
+	ctx := context.Background()
+	admission, permissions, _, _, users, reliable := newAdminAdmissionServiceForTest(t)
+	actor := createAdminAdmissionUser(t, ctx, users, permissions, "51101", "local_restore_actor")
+	target := createAdminAdmissionUser(t, ctx, users, permissions, "51102", "local_restore_target")
+	before, err := admission.Get(ctx, target.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	suspended, err := admission.Suspend(ctx, actor.ID, target.ID, AdminAdmissionCommand{
+		ExpectedVersion: before.Account.Version, Reason: "local restore drill",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := admission.RestoreFromLocalRecovery(ctx, target.ID, AdminAdmissionCommand{
+		ExpectedVersion: suspended.Account.Version, Reason: "verified local recovery",
+	})
+	if err != nil {
+		t.Fatalf("local restore: %v", err)
+	}
+	if restored.Account.StatusChangedBy != "" {
+		t.Fatalf("legacy User FK must stay empty for CLI recovery, got %q", restored.Account.StatusChangedBy)
+	}
+	audits, err := admission.ListAudits(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundCLIActor := false
+	for _, audit := range audits {
+		if audit.OperationCode == "cli.identity.admin_account.local_restore" {
+			foundCLIActor = audit.ActorKind == "system" && audit.ActorID == "local-cli" && audit.ResourceID == target.ID
+		}
+	}
+	if !foundCLIActor {
+		t.Fatalf("local restore authorization audit must separate actor and target: %#v", audits)
+	}
+	commands, _, err := reliable.Store().ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundCLIActor = false
+	for _, command := range commands {
+		if command.CommandCode == "identity.admin_account.local_restore" {
+			foundCLIActor = command.ActorType == "system" && command.ActorID == "local-cli" && command.ResourceID == target.ID
+		}
+	}
+	if !foundCLIActor {
+		t.Fatalf("local restore command audit must separate actor and target: %#v", commands)
 	}
 }
 

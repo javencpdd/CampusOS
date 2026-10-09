@@ -445,7 +445,6 @@ func (m *pluginPlatformModule) startHostAPI() error {
 	api.SetPermissionChecker(permission)
 	api.SetMarketService(m.market)
 	api.SetAuthorizationService(m.authorization)
-	api.SetSecretService(m.secrets)
 	server := hostapi.NewHostAPIServer(api, m.owner.cfg.HostAPI.Addr, m.manager.GetPlugin)
 	server.SetPluginAuthenticator(m.manager.AuthorizeHostAPI)
 	if err := server.Start(); err != nil {

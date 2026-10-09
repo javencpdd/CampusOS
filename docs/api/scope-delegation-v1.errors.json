@@ -1,0 +1,45 @@
+{
+  "contract": "campusos.scope-delegation/v1",
+  "errors": [
+    {
+      "code": "scope.input_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "scope.actor_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.management_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.non_delegable",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.bound_inactive",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.outside_bounds",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.recipient_mismatch",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "scope.facts_changed",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

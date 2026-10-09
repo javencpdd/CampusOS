@@ -1,0 +1,80 @@
+{
+  "contract": "campusos.plugin-dispatch/v1",
+  "errors": [
+    {
+      "code": "plugin.call_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.call_target_mismatch",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.instance_stale",
+      "http_status": 409,
+      "retryable": false
+    },
+    {
+      "code": "plugin.call_deadline",
+      "http_status": 408,
+      "retryable": true
+    },
+    {
+      "code": "plugin.call_budget",
+      "http_status": 413,
+      "retryable": false
+    },
+    {
+      "code": "plugin.runtime_unavailable",
+      "http_status": 503,
+      "retryable": true
+    },
+    {
+      "code": "plugin.global_install_required",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.user_install_required",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.grant_revoked",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.consent_required",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.target_unpublished",
+      "http_status": 404,
+      "retryable": false
+    },
+    {
+      "code": "plugin.target_undeclared",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.feature_disabled",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "plugin.instance_credential_invalid",
+      "http_status": 401,
+      "retryable": false
+    },
+    {
+      "code": "plugin.contribution_selection_conflict",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

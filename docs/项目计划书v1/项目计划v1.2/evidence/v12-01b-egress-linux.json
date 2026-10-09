@@ -1,0 +1,39 @@
+{
+  "schema": "campusos.v12-stage-slice-exit/v1",
+  "generated_at": "2026-09-27T23:24:00.196436+00:00",
+  "stage": "V12-01b",
+  "slice": "shared_egress_component_exact_https_origin_dns_pinned_tls",
+  "stage_status": "partial",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go_version": "go version go1.25.0 linux/amd64",
+    "tls_target": "real local ephemeral HTTPS server with synthetic CA",
+    "network_fixture": "package-private deterministic resolver and recording dialer; validated public-IP dial mapped to local TLS socket",
+    "production_dns_or_external_network_tested": false,
+    "ipv6_address_policy": "public 2000::/3 only; full IETF protocol 2001::/23, documentation and transition blocks denied conservatively after IPv4-mapped unmapping",
+    "ipv6_special_registry": "https://www.iana.org/assignments/iana-ipv6-special-registry/"
+  },
+  "checks": {
+    "exact_https_origin_and_input_policy": "passed",
+    "bounded_policy_limits": "passed",
+    "nonpublic_address_rejection": "passed",
+    "local_tls_proxy_bypass_and_fresh_dns_per_connection": "passed",
+    "dns_rebinding_and_mixed_answer_rejected_before_dial": "passed",
+    "redirects_checked_before_secret_forward": "passed",
+    "exact_target_same_origin_307_rejected_before_secret_forward": "passed",
+    "request_response_header_timeout_and_tls_bounds": "passed",
+    "empty_approval_set_denied": "passed"
+  },
+  "scope": "shared in-process Security Egress component only; Host API and Runner routing/containment remain separate stage work",
+  "source_sha256": {
+    "internal/platform/security/egress_policy.go": "c75f8da561df6c1ba8f206db709e70052d4568635edc570c8da0eecb84dcfa61",
+    "internal/platform/security/egress_policy_test.go": "0bf2bde276ac0df5d129bcf4776e2dbe0a33882ba619e40ad748cbc71085178f",
+    "internal/platform/security/egress.go": "5cd7b6215bf98b853efeb797fa9a33290e96060f3ffcef7562c4bbcb65a1078b",
+    "internal/platform/security/egress_test.go": "2d535033476c52e5730bbf359ea77c84d8a357db6e683c5cac4e6277bc830232",
+    "scripts/v12-01b-egress-drill.sh": "4d7e32dae747b643491d6a389d340b3c5719f3c2c718716c51cf166cf1f3115f"
+  }
+}

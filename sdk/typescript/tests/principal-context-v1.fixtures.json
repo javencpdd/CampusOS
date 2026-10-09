@@ -1,0 +1,999 @@
+{
+  "contract": "campusos.principal/v1",
+  "cases": [
+    {
+      "name": "anonymous",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "anonymous"
+        },
+        "audience": "public",
+        "authentication_strength": "none"
+      }
+    },
+    {
+      "name": "user",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "admin",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "admin",
+          "id": "same-42"
+        },
+        "audience": "admin",
+        "authentication_strength": "mfa",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "integration",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "integration",
+          "id": "same-42"
+        },
+        "audience": "integration_api",
+        "authentication_strength": "credential",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "plugin_instance",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "worker",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "user-other-strength",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "mfa",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "admin-other-strength",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "admin",
+          "id": "same-42"
+        },
+        "audience": "admin",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      }
+    },
+    {
+      "name": "plugin_instance-on-behalf-of-user",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "user-7"
+        },
+        "delegation_id": "delegation-9"
+      }
+    },
+    {
+      "name": "worker-on-behalf-of-user",
+      "valid": true,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "user-7"
+        },
+        "delegation_id": "delegation-9"
+      }
+    },
+    {
+      "name": "user-cross-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "admin",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "admin-cross-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "admin",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "mfa",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "integration-cross-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "integration",
+          "id": "same-42"
+        },
+        "audience": "admin",
+        "authentication_strength": "credential",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "plugin_instance-cross-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "worker-cross-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-kind-author",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "author",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-kind-moderator",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "moderator",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-kind-superadmin",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "superadmin",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-kind-service",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "service",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-kind-empty",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-contract",
+      "valid": false,
+      "context": {
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-actor",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-authentication_strength",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-credential_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-contract",
+      "valid": false,
+      "context": {
+        "contract": null,
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-actor",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": null,
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-audience",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": null,
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-authentication_strength",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": null,
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-credential_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": null
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "forged-roles",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42",
+        "roles": [
+          "admin"
+        ]
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "forged-user_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42",
+        "user_id": "7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "forged-token",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42",
+        "token": "synthetic-not-a-token"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "forged-owner_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42",
+        "owner_id": "7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "nested-role-injection",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42",
+          "role": "admin"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-id-35",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": ""
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-36",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "contains space"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-37",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "../7"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-38",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "*"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-39",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "7\n"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-40",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid"
+    },
+    {
+      "name": "invalid-id-41",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": 7
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-42",
+      "valid": false,
+      "context": null,
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-43",
+      "valid": false,
+      "context": {},
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-44",
+      "valid": false,
+      "context": [],
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "invalid-root-45",
+      "valid": false,
+      "context": true,
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "anonymous-credential_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "anonymous"
+        },
+        "audience": "public",
+        "authentication_strength": "none",
+        "credential_id": "x"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "anonymous-effective_subject",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "anonymous"
+        },
+        "audience": "public",
+        "authentication_strength": "none",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        }
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "anonymous-delegation_id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "anonymous"
+        },
+        "audience": "public",
+        "authentication_strength": "none",
+        "delegation_id": "x"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "user-cannot-impersonate",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        },
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "admin-cannot-impersonate",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "admin",
+          "id": "same-42"
+        },
+        "audience": "admin",
+        "authentication_strength": "mfa",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        },
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "integration-cannot-impersonate",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "integration",
+          "id": "same-42"
+        },
+        "audience": "integration_api",
+        "authentication_strength": "credential",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        },
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "plugin_instance-missing-delegation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        }
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "plugin_instance-missing-subject",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "plugin_instance-admin-impersonation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "admin",
+          "id": "7"
+        },
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "plugin_instance-null-delegation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "plugin_instance",
+          "id": "same-42"
+        },
+        "audience": "host_api",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        },
+        "delegation_id": null
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "worker-missing-delegation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        }
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "worker-missing-subject",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "worker-admin-impersonation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "admin",
+          "id": "7"
+        },
+        "delegation_id": "d-7"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "worker-null-delegation",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "worker",
+          "id": "same-42"
+        },
+        "audience": "worker",
+        "authentication_strength": "workload",
+        "credential_id": "credential-42",
+        "effective_subject": {
+          "kind": "user",
+          "id": "7"
+        },
+        "delegation_id": null
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unsupported-version",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v2",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "password",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.contract_unsupported",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-strength",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "user",
+          "id": "same-42"
+        },
+        "audience": "user",
+        "authentication_strength": "super-mfa",
+        "credential_id": "credential-42"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "anonymous-has-no-id",
+      "valid": false,
+      "context": {
+        "contract": "campusos.principal/v1",
+        "actor": {
+          "kind": "anonymous",
+          "id": "anonymous"
+        },
+        "audience": "public",
+        "authentication_strength": "none"
+      },
+      "error_code": "principal.context_invalid",
+      "compile_reject": true
+    }
+  ]
+}

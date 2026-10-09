@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -164,6 +165,8 @@ func TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation(t *testi
 		}
 	}
 	service := NewPermissionService(repository.NewMemoryRoleRepository(), users)
+	delegations := repository.NewMemoryDelegationRepository()
+	service.SetDelegationService(delegation.NewService(delegations, users, nil))
 	if _, err := service.AssignRole(ctx, "2001", 1); err != nil {
 		t.Fatal(err)
 	}
@@ -173,8 +176,22 @@ func TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation(t *testi
 	if changed, err := service.ReplaceCategoryRoleScopes(ctx, "2002", "moderator", []int64{12}); err != nil || !changed {
 		t.Fatalf("assign moderator category: changed=%v err=%v", changed, err)
 	}
+	// The moderator role no longer carries the governance codes in its catalog
+	// entry; a category scope row alone must not authorize them.
+	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 12); err != nil || allowed {
+		t.Fatalf("role scope without delegation grant allowed=%v err=%v", allowed, err)
+	}
+	// A committed delegation grant is the execution fact.
+	now := time.Now()
+	if err := delegations.InsertDelegations(ctx, []repository.Delegation{
+		{ID: "test-grant-2002-12", Kind: repository.DelegationKindGrant, SubjectKind: "user", SubjectID: "2002",
+			Action: "community.thread.take_down", BoardID: "12",
+			NotBefore: now.Add(-time.Hour), ExpiresAt: now.Add(24 * time.Hour), RequiredStrength: "password", CreatedBy: "test"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 12); err != nil || !allowed {
-		t.Fatalf("scoped moderation code allowed=%v err=%v", allowed, err)
+		t.Fatalf("scoped delegation grant allowed=%v err=%v", allowed, err)
 	}
 	if allowed, err := service.CheckCodeScoped(ctx, "2002", "community.thread.take_down", "category", 99); err != nil || allowed {
 		t.Fatalf("outside moderation scope allowed=%v err=%v", allowed, err)
@@ -267,11 +284,60 @@ func TestPermissionServiceActorRoleAdministrationCannotBypassServicePolicy(t *te
 	if revoked, err := service.RevokeRoleByActor(ctx, "3001", "3002", 1); err != nil || !revoked {
 		t.Fatalf("authorized actor revoke revoked=%v err=%v", revoked, err)
 	}
-	if changed, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3001", "3002", "moderator", []int64{12}); err != nil || !changed {
+	if changed, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3001", "3002", "moderator", []int64{12}, nil); err != nil || !changed {
 		t.Fatalf("authorized actor moderator scope change changed=%v err=%v", changed, err)
 	}
-	if _, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3003", "3002", "moderator", []int64{13}); !errors.Is(err, ErrPermissionEscalation) {
+	if _, err := service.ReplaceCategoryRoleScopesByActor(ctx, "3003", "3002", "moderator", []int64{13}, nil); !errors.Is(err, ErrPermissionEscalation) {
 		t.Fatalf("member must not grant moderator scope, got %v", err)
+	}
+	audits, err := service.ListAuthorizationAudits(ctx, 10)
+	if err != nil || len(audits) != 3 {
+		t.Fatalf("role mutation audits: items=%#v err=%v", audits, err)
+	}
+	for _, audit := range audits {
+		if audit.ActorKind != "user" || audit.ActorID != "3001" {
+			t.Fatalf("role mutation actor must remain in the user domain: %#v", audit)
+		}
+	}
+}
+
+func TestPermissionServiceAuditActorKindFollowsCredentialDomain(t *testing.T) {
+	ctx := context.Background()
+	service := NewPermissionService(repository.NewMemoryRoleRepository(), nil)
+	service.RecordHTTPAuthorizationDecision(ctx, "73001", "identity.role.assign", "http.identity.role.assign", "allow", "", "request-user", "203.0.113.10")
+	service.RecordHTTPAuthorizationDecision(ctx, "", "identity.role.assign", "http.identity.role.assign", "deny", "missing credential", "request-anonymous", "203.0.113.11")
+	if err := service.RecordContentAuthorizationDecision(ctx, "73002", "community.thread.take_down", 17, "allow", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RecordContentAuthorizationDecision(ctx, "", "community.thread.take_down", 17, "deny", "missing credential"); err != nil {
+		t.Fatal(err)
+	}
+	service.RecordRouteDecision(ctx, repository.AuthorizationAudit{
+		ActorKind: "integration", ActorID: "key:1", OperationCode: "test.integration.route", Outcome: "allow",
+	})
+	audits, err := service.ListAuthorizationAudits(ctx, 10)
+	if err != nil || len(audits) != 5 {
+		t.Fatalf("authorization decisions: items=%#v err=%v", audits, err)
+	}
+	found := map[string]bool{}
+	for _, audit := range audits {
+		switch {
+		case audit.RequestID == "request-user":
+			found["http-user"] = audit.ActorKind == "user" && audit.ActorID == "73001"
+		case audit.RequestID == "request-anonymous":
+			found["http-anonymous"] = audit.ActorKind == "anonymous" && audit.ActorID == ""
+		case audit.OperationCode == "community.content.community_thread_take_down" && audit.ActorID == "73002":
+			found["content-user"] = audit.ActorKind == "user"
+		case audit.OperationCode == "community.content.community_thread_take_down" && audit.ActorID == "":
+			found["content-anonymous"] = audit.ActorKind == "anonymous"
+		case audit.OperationCode == "test.integration.route":
+			found["route-explicit"] = audit.ActorKind == "integration" && audit.ActorID == "key:1"
+		}
+	}
+	for _, path := range []string{"http-user", "http-anonymous", "content-user", "content-anonymous", "route-explicit"} {
+		if !found[path] {
+			t.Fatalf("%s actor domain missing or incorrect: %#v", path, audits)
+		}
 	}
 }
 

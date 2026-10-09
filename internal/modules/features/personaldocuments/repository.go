@@ -316,7 +316,9 @@ func (r *PgRepository) AppendVersion(ctx context.Context, owner, id string, expe
 	return r.Get(ctx, owner, id)
 }
 func (r *PgRepository) SetStatus(ctx context.Context, owner, id string, expected int64, status string) (DocumentDetail, error) {
-	cmd, e := r.db(ctx).Exec(ctx, `UPDATE personal_documents SET status=$4,version=version+1,updated_at=NOW(),deleted_at=CASE WHEN $4='trashed' THEN NOW() ELSE NULL END WHERE id=$1::bigint AND owner_user_id=$2::bigint AND version=$3`, id, owner, expected, status)
+	// Assignment and CASE otherwise infer different types (varchar/text) for
+	// the reused status parameter, so PostgreSQL rejects it with SQLSTATE 42P08.
+	cmd, e := r.db(ctx).Exec(ctx, `UPDATE personal_documents SET status=$4::text,version=version+1,updated_at=NOW(),deleted_at=CASE WHEN $4::text='trashed' THEN NOW() ELSE NULL END WHERE id=$1::bigint AND owner_user_id=$2::bigint AND version=$3`, id, owner, expected, status)
 	if e != nil {
 		return DocumentDetail{}, e
 	}

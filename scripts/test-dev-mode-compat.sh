@@ -21,7 +21,16 @@ if [[ "${1:-}" == "inspect" ]]; then
   exit 0
 fi
 if [[ "${1:-}" == "exec" ]]; then
-  if [[ "$*" == *" -tAc "* ]]; then
+  # Emulate a fresh current-schema database, including checksum metadata and
+  # lock acquisition. A generic "1" is not PostgreSQL's boolean true ("t").
+  query="${!#}"
+  if [[ "$query" == *"column_name='checksum'"* ]]; then
+    printf 't\n'
+  elif [[ "$query" == *"RETURNING owner_name;"* ]]; then
+    printf '%s\n' "$query" | sed -n "s/.*VALUES (1, '\([^']*\)').*/\1/p"
+  elif [[ "$query" == *"SELECT checksum FROM public.schema_migrations"* ]]; then
+    : # No migration is applied in this launch-contract fixture.
+  elif [[ "$*" == *" -tAc "* ]]; then
     printf '1\n'
   fi
   exit 0

@@ -199,7 +199,7 @@ Content-Type: application/json
 | `PUT` | `/threads/:id` | 作者更新普通帖子。 |
 | `DELETE` | `/threads/:id` | 作者删除普通帖子。 |
 
-私密帖子只能由作者和明确允许的治理主体访问。客户端不要仅根据列表中是否出现来判断权限。
+公开列表始终按服务端的发布、审核与删除状态只返回可公开帖子；请求中的 `status`、`publication_status`、`moderation_status` 和 `deletion_status` 不能扩大可见范围。私密帖子只能由作者和明确允许的治理主体访问。客户端不要仅根据列表中是否出现来判断权限。
 
 ## 站内通知
 

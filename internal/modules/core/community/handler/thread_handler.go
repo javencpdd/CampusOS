@@ -114,6 +114,9 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 		return
 	}
 	filter.Status = string(domain.ThreadStatusPublished)
+	filter.PublicationStatus = string(domain.PublicationStatusPublished)
+	filter.ModerationStatus = string(domain.ModerationStatusClear)
+	filter.DeletionStatus = string(domain.DeletionStatusActive)
 
 	h.respondThreadList(c, filter, pageSize)
 }

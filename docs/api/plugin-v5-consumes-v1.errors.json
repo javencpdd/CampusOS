@@ -1,0 +1,12 @@
+{
+  "contract": "campusos.plugin-consumes/v1",
+  "errors": [
+    {"code": "plugin.consumes_invalid", "http_status": 400, "retryable": false},
+    {"code": "plugin.host_contract_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.catalog_unavailable", "http_status": 503, "retryable": true},
+    {"code": "plugin.capability_unpublished", "http_status": 400, "retryable": false},
+    {"code": "plugin.scope_unsupported", "http_status": 400, "retryable": false},
+    {"code": "plugin.scope_target_unavailable", "http_status": 400, "retryable": false},
+    {"code": "plugin.duplicate_capability", "http_status": 400, "retryable": false}
+  ]
+}

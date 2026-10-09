@@ -1,10 +1,8 @@
 package plugin
 
 import (
+	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -16,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/security"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
@@ -36,51 +35,105 @@ type SecretMetadata struct {
 	Nonce       []byte                 `json:"-"`
 }
 
+// ErrSecretChanged means an active secret was replaced, revoked, or rewrapped
+// after it was read for a conditional key-material update.
+var ErrSecretChanged = errors.New("plugin secret changed during update")
+
 type SecretStore interface {
 	PutSecret(context.Context, SecretMetadata) (SecretMetadata, error)
 	ActiveSecret(context.Context, int64, *int64, string) (SecretMetadata, error)
+	// ReplaceSecretIfCurrent conditionally updates only the encrypted material
+	// of the same active row and observed envelope; all other fields remain unchanged.
+	ReplaceSecretIfCurrent(context.Context, SecretMetadata, SecretMetadata) (SecretMetadata, error)
 	ListSecrets(context.Context, int64, *int64) ([]SecretMetadata, error)
 	RevokeSecret(context.Context, int64, *int64, string) error
 }
 
 type SecretService struct {
-	store      SecretStore
-	aead       cipher.AEAD
-	keyVersion string
-	now        func() time.Time
+	store   SecretStore
+	keyring *security.Keyring
+	now     func() time.Time
 }
 
+// NewSecretService preserves the existing single-key constructor and envelope
+// format. All encryption now passes through the shared platform keyring.
 func NewSecretService(store SecretStore, key []byte, keyVersion string) (*SecretService, error) {
-	if store == nil {
-		return nil, errors.New("plugin secret store is unavailable")
-	}
 	if len(key) != 32 {
 		return nil, errors.New("plugin secret key must be exactly 32 bytes")
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
 	}
 	if strings.TrimSpace(keyVersion) == "" {
 		keyVersion = "v1"
 	}
-	return &SecretService{store: store, aead: aead, keyVersion: keyVersion, now: time.Now}, nil
+	keyring, err := security.NewKeyring(keyVersion, map[string][]byte{keyVersion: key})
+	if err != nil {
+		return nil, err
+	}
+	return NewSecretServiceWithKeyring(store, keyring)
+}
+
+func NewSecretServiceWithKeyring(store SecretStore, keyring *security.Keyring) (*SecretService, error) {
+	if store == nil {
+		return nil, errors.New("plugin secret store is unavailable")
+	}
+	if keyring == nil {
+		return nil, errors.New("plugin secret keyring is unavailable")
+	}
+	return &SecretService{store: store, keyring: keyring, now: time.Now}, nil
 }
 
 func NewSecretServiceFromEnv(store SecretStore) (*SecretService, error) {
+	activeID := strings.TrimSpace(os.Getenv("CAMPUSOS_SECRET_ACTIVE_KEY_ID"))
+	encodedKeys := strings.TrimSpace(os.Getenv("CAMPUSOS_SECRET_ENCRYPTION_KEYS"))
+	if activeID != "" || encodedKeys != "" {
+		if activeID == "" || encodedKeys == "" {
+			return nil, errors.New("CAMPUSOS_SECRET_ACTIVE_KEY_ID and CAMPUSOS_SECRET_ENCRYPTION_KEYS must be configured together")
+		}
+		keys, err := parseSecretEncryptionKeys(encodedKeys)
+		if err != nil {
+			return nil, err
+		}
+		keyring, err := security.NewKeyring(activeID, keys)
+		if err != nil {
+			return nil, err
+		}
+		return NewSecretServiceWithKeyring(store, keyring)
+	}
 	raw := strings.TrimSpace(os.Getenv("CAMPUSOS_PLUGIN_SECRET_KEY"))
 	if raw == "" {
-		return nil, errors.New("CAMPUSOS_PLUGIN_SECRET_KEY is not configured")
+		return nil, errors.New("CAMPUSOS_SECRET_ENCRYPTION_KEYS or CAMPUSOS_PLUGIN_SECRET_KEY is not configured")
 	}
 	key, err := decodeSecretKey(raw)
 	if err != nil {
 		return nil, err
 	}
 	return NewSecretService(store, key, strings.TrimSpace(os.Getenv("CAMPUSOS_PLUGIN_SECRET_KEY_VERSION")))
+}
+
+func parseSecretEncryptionKeys(raw string) (map[string][]byte, error) {
+	if len(raw) > 16*1024 {
+		return nil, errors.New("secret encryption keyring is too large")
+	}
+	entries := strings.Split(raw, ",")
+	if len(entries) == 0 || len(entries) > 16 {
+		return nil, errors.New("secret encryption keyring must contain 1 to 16 keys")
+	}
+	keys := make(map[string][]byte, len(entries))
+	for _, entry := range entries {
+		id, encoded, ok := strings.Cut(strings.TrimSpace(entry), ":")
+		id = strings.TrimSpace(id)
+		if !ok || id == "" || encoded == "" || strings.Contains(encoded, ":") {
+			return nil, errors.New("secret encryption keyring entry is invalid")
+		}
+		if _, duplicate := keys[id]; duplicate {
+			return nil, errors.New("secret encryption keyring has a duplicate ID")
+		}
+		key, err := decodeSecretKey(strings.TrimSpace(encoded))
+		if err != nil {
+			return nil, err
+		}
+		keys[id] = key
+	}
+	return keys, nil
 }
 
 func decodeSecretKey(raw string) ([]byte, error) {
@@ -90,10 +143,17 @@ func decodeSecretKey(raw string) ([]byte, error) {
 	if value, err := base64.StdEncoding.DecodeString(raw); err == nil && len(value) == 32 {
 		return value, nil
 	}
-	return nil, errors.New("CAMPUSOS_PLUGIN_SECRET_KEY must be 64 hexadecimal characters or base64 for 32 bytes")
+	return nil, errors.New("secret encryption key must be 64 hexadecimal characters or base64 for 32 bytes")
 }
 
-func (s *SecretService) Available() bool { return s != nil && s.store != nil && s.aead != nil }
+func (s *SecretService) Available() bool { return s != nil && s.store != nil && s.keyring != nil }
+func (s *SecretService) ActiveKeyID() string {
+	if !s.Available() {
+		return ""
+	}
+	return s.keyring.ActiveKeyID()
+}
+
 func secretAAD(pluginID int64, owner *int64, name string) []byte {
 	ownerText := "system"
 	if owner != nil {
@@ -112,16 +172,15 @@ func (s *SecretService) Put(ctx context.Context, pluginID int64, owner *int64, n
 	if value == "" || len(value) > 64*1024 {
 		return SecretMetadata{}, errors.New("secret value must contain 1 to 65536 bytes")
 	}
-	nonce := make([]byte, s.aead.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
+	envelope, err := s.keyring.Seal([]byte(value), secretAAD(pluginID, owner, name))
+	if err != nil {
 		return SecretMetadata{}, err
 	}
-	ciphertext := s.aead.Seal(nil, nonce, []byte(value), secretAAD(pluginID, owner, name))
 	metadata := map[string]interface{}{}
 	if actor != nil {
 		metadata["created_by"] = strconv.FormatInt(*actor, 10)
 	}
-	return s.store.PutSecret(ctx, SecretMetadata{ID: idgen.New(), PluginID: pluginID, OwnerUserID: owner, SecretName: name, KeyVersion: s.keyVersion, Algorithm: "aes-256-gcm", Status: "active", Metadata: metadata, CreatedAt: s.now(), MaskedValue: "••••••••", Ciphertext: ciphertext, Nonce: nonce})
+	return s.store.PutSecret(ctx, SecretMetadata{ID: idgen.New(), PluginID: pluginID, OwnerUserID: owner, SecretName: name, KeyVersion: envelope.KeyID, Algorithm: envelope.Algorithm, Status: "active", Metadata: metadata, CreatedAt: s.now(), MaskedValue: "••••••••", Ciphertext: envelope.Ciphertext, Nonce: envelope.Nonce})
 }
 
 func (s *SecretService) Resolve(ctx context.Context, pluginID int64, owner *int64, name string) (string, error) {
@@ -132,14 +191,61 @@ func (s *SecretService) Resolve(ctx context.Context, pluginID int64, owner *int6
 	if err != nil {
 		return "", err
 	}
-	if record.Algorithm != "aes-256-gcm" || record.KeyVersion != s.keyVersion {
-		return "", errors.New("plugin secret key version is unavailable; rotate the secret")
-	}
-	plaintext, err := s.aead.Open(nil, record.Nonce, record.Ciphertext, secretAAD(pluginID, owner, name))
+	plaintext, err := s.keyring.Open(security.Envelope{
+		KeyID: record.KeyVersion, Algorithm: record.Algorithm,
+		Nonce: record.Nonce, Ciphertext: record.Ciphertext,
+	}, secretAAD(pluginID, owner, name))
 	if err != nil {
 		return "", errors.New("plugin secret cannot be decrypted")
 	}
 	return string(plaintext), nil
+}
+
+// RewrapActive changes only the encrypted material of the current active row.
+// Decrypting before the active-key check also detects tampering on no-op calls.
+func (s *SecretService) RewrapActive(ctx context.Context, pluginID int64, owner *int64, name string) (SecretMetadata, bool, error) {
+	return s.RewrapActiveIfCurrent(ctx, pluginID, owner, name, 0)
+}
+
+// RewrapActiveIfCurrent also requires the active row to retain its observed ID.
+// A zero expectedID allows callers without a previously observed row to rewrap.
+func (s *SecretService) RewrapActiveIfCurrent(ctx context.Context, pluginID int64, owner *int64, name string, expectedID int64) (SecretMetadata, bool, error) {
+	if !s.Available() {
+		return SecretMetadata{}, false, errors.New("plugin secret service is unavailable")
+	}
+	record, err := s.store.ActiveSecret(ctx, pluginID, owner, name)
+	if err != nil {
+		return SecretMetadata{}, false, err
+	}
+	if expectedID != 0 && record.ID != expectedID {
+		return SecretMetadata{}, false, ErrSecretChanged
+	}
+	aad := secretAAD(pluginID, owner, name)
+	plaintext, err := s.keyring.Open(security.Envelope{
+		KeyID: record.KeyVersion, Algorithm: record.Algorithm,
+		Nonce: record.Nonce, Ciphertext: record.Ciphertext,
+	}, aad)
+	if err != nil {
+		return SecretMetadata{}, false, errors.New("plugin secret cannot be decrypted")
+	}
+	defer clear(plaintext)
+	if record.KeyVersion == s.keyring.ActiveKeyID() {
+		return maskSecret(record), false, nil
+	}
+	envelope, err := s.keyring.Seal(plaintext, aad)
+	if err != nil {
+		return SecretMetadata{}, false, err
+	}
+	replacement := record
+	replacement.KeyVersion = envelope.KeyID
+	replacement.Algorithm = envelope.Algorithm
+	replacement.Nonce = envelope.Nonce
+	replacement.Ciphertext = envelope.Ciphertext
+	updated, err := s.store.ReplaceSecretIfCurrent(ctx, record, replacement)
+	if err != nil {
+		return SecretMetadata{}, false, err
+	}
+	return maskSecret(updated), true, nil
 }
 
 func (s *SecretService) List(ctx context.Context, pluginID int64, owner *int64) ([]SecretMetadata, error) {
@@ -180,6 +286,36 @@ func (s *MemorySecretStore) ActiveSecret(_ context.Context, pluginID int64, owne
 		return SecretMetadata{}, ErrMarketNotFound
 	}
 	return value, nil
+}
+func sameActiveSecretIdentity(expected, replacement SecretMetadata) bool {
+	return expected.ID > 0 && expected.ID == replacement.ID &&
+		expected.PluginID == replacement.PluginID &&
+		sameOptionalInt64(expected.OwnerUserID, replacement.OwnerUserID) &&
+		expected.SecretName == replacement.SecretName &&
+		expected.Status == "active" && replacement.Status == "active"
+}
+
+func (s *MemorySecretStore) ReplaceSecretIfCurrent(_ context.Context, expected, replacement SecretMetadata) (SecretMetadata, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !sameActiveSecretIdentity(expected, replacement) {
+		return SecretMetadata{}, ErrSecretChanged
+	}
+	key := memorySecretKey(expected.PluginID, expected.OwnerUserID, expected.SecretName)
+	current, ok := s.items[key]
+	if !ok || current.ID != expected.ID || current.PluginID != expected.PluginID ||
+		!sameOptionalInt64(current.OwnerUserID, expected.OwnerUserID) ||
+		current.SecretName != expected.SecretName || current.Status != expected.Status || current.RevokedAt != nil ||
+		current.KeyVersion != expected.KeyVersion || current.Algorithm != expected.Algorithm ||
+		!bytes.Equal(current.Nonce, expected.Nonce) || !bytes.Equal(current.Ciphertext, expected.Ciphertext) {
+		return SecretMetadata{}, ErrSecretChanged
+	}
+	current.KeyVersion = replacement.KeyVersion
+	current.Algorithm = replacement.Algorithm
+	current.Nonce = append([]byte(nil), replacement.Nonce...)
+	current.Ciphertext = append([]byte(nil), replacement.Ciphertext...)
+	s.items[key] = current
+	return maskSecret(current), nil
 }
 func (s *MemorySecretStore) ListSecrets(_ context.Context, pluginID int64, owner *int64) ([]SecretMetadata, error) {
 	s.mu.RLock()

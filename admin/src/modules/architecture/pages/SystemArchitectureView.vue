@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000003（v1.1）</el-tag
+        >当前迁移 000001 - 000008（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托）</el-tag
       >
     </section>
 
@@ -406,6 +406,30 @@ const databaseTables: DbTable[] = [
       "user_id 与 credential_account_id 均由外键保护；全局 admin 角色变更通过数据库触发器同步 active/revoked，suspended 不会被普通角色刷新静默恢复。",
   },
   {
+    name: "identity_delegations",
+    title: "身份委托授予基线",
+    domain: "identity",
+    purpose:
+      "分离执行权与委托权：management 行见证管理员的 identity.role.assign 授予权，bound 行是管理员在精确版块上的可委托上限，grant 行是普通用户持有的版块治理执行权；全部有限期半开窗口，revoked 终态并以 version 做 CAS。",
+    fields: [
+      "id",
+      "kind",
+      "subject_kind",
+      "subject_id",
+      "action",
+      "board_id",
+      "not_before",
+      "expires_at",
+      "required_strength",
+      "delegable",
+      "status",
+      "version",
+    ],
+    migration: "000008",
+    relationshipNote:
+      "subject_id 与 board_id 是不透明文本引用，无外键；分别逻辑对应 users/管理员准入主体与 categories 叶子版块，当前性与窗口由服务层每次重新求值。",
+  },
+  {
     name: "identity_legacy_email_placeholders",
     title: "历史邮箱占位标记",
     domain: "identity",
@@ -670,17 +694,18 @@ const databaseTables: DbTable[] = [
     name: "authorization_audits",
     title: "授权记录",
     domain: "identity",
-    purpose: "保存授权判定、角色调整与作用域变更的最小结构化审计证据。",
+    purpose: "保存带主体域的授权判定、角色调整与作用域变更审计证据。",
     fields: [
+      "actor_kind",
       "actor_id",
       "permission_code",
       "operation_code",
       "scope_type",
       "outcome",
     ],
-    migration: "000001",
+    migration: "000001 / 000004",
     relationshipNote:
-      "记录 request_id、原因和资源摘要，不保存 Session、Token、JWT 私钥或 Secret。",
+      "actor_kind + actor_id 标识审计主体；仅 user 主体的 actor_id 与 users.id 有逻辑关联，不是通用外键。历史无主体记录为 legacy_unknown；不保存 Session、Token、JWT 私钥或 Secret。",
   },
   {
     name: "platform_outbox",
@@ -1023,24 +1048,26 @@ const databaseTables: DbTable[] = [
     name: "plugin_versions",
     title: "不可变插件版本",
     domain: "plugin",
-    purpose: "按插件保存包摘要、签名状态、API 版本、权限指纹和生命周期。",
+    purpose: "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 固定版本身份，000006 以首次激活时间封存发布状态并在退役时撤销短期委托。",
     fields: [
       "plugin_id",
       "version",
       "package_digest",
       "signature_state",
       "permission_fingerprint",
+      "manifest",
       "lifecycle_status",
+      "activated_at",
     ],
-    migration: "000001",
+    migration: "000001 / 000005 / 000006",
     relationshipNote:
-      "plugin_id 外键指向 plugins；一个插件最多一个 active 版本。",
+      "plugin_id 外键指向 plugins；一个插件最多一个 active 版本，生命周期切换保留版本 ID。",
   },
   {
     name: "plugin_capability_declarations",
     title: "插件能力声明",
     domain: "plugin",
-    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级。",
+    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止原地改写，000006 阻止已发布版本的声明集合增删。",
     fields: [
       "plugin_version_id",
       "capability_code",
@@ -1048,9 +1075,9 @@ const databaseTables: DbTable[] = [
       "risk_level",
       "resource_scope",
     ],
-    migration: "000001",
+    migration: "000001 / 000005 / 000006",
     relationshipNote:
-      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源。",
+      "版本与能力代码联合唯一，是管理员授权和用户同意的共同事实来源；仅未曾激活的 staged 版本可增删声明，删除父版本时仍可级联清理。",
   },
   {
     name: "plugin_admin_grants",
@@ -1088,7 +1115,7 @@ const databaseTables: DbTable[] = [
     name: "plugin_delegations",
     title: "短期委托凭证",
     domain: "plugin",
-    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态。",
+    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态；000006 在版本退役时永久撤销该版本未失效委托。",
     fields: [
       "plugin_version_id",
       "subject_user_id",
@@ -1096,7 +1123,7 @@ const databaseTables: DbTable[] = [
       "granted_capabilities",
       "expires_at",
     ],
-    migration: "000001",
+    migration: "000001 / 000006",
     relationshipNote:
       "不保存明文 Token；权限不得超过管理员 Grant 与用户 Consent 的交集。",
   },
@@ -1116,6 +1143,24 @@ const databaseTables: DbTable[] = [
     migration: "000001",
     relationshipNote:
       "支持系统级和用户级 Secret；active 名称使用 NULLS NOT DISTINCT 唯一索引。",
+  },
+  {
+    name: "plugin_configurations",
+    title: "插件 v5 受管配置",
+    domain: "plugin",
+    purpose:
+      "按不可变插件版本与系统/用户作用域保存有限普通配置和独立 opaque Secret 引用；revision 支持事务比较更新，配置定义来自版本 Manifest。",
+    fields: [
+      "plugin_version_id",
+      "owner_user_id",
+      "definition_version",
+      "revision",
+      "values",
+      "secret_refs",
+    ],
+    migration: "000007",
+    relationshipNote:
+      "plugin_version_id 外键指向 plugin_versions，owner_user_id 可选外键指向 users；NULLS NOT DISTINCT 限定每版本/owner 一份当前配置。",
   },
   {
     name: "plugin_authorization_decisions",
@@ -1672,6 +1717,24 @@ const relations: Relation[] = [
     domains: ["identity"],
   },
   {
+    id: "users-identity-delegations",
+    source: "users",
+    target: "identity_delegations",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "logical id -> subject_id",
+    domains: ["identity"],
+  },
+  {
+    id: "categories-identity-delegations",
+    source: "categories",
+    target: "identity_delegations",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "logical id -> board_id",
+    domains: ["identity", "community"],
+  },
+  {
     id: "accounts-admin-accounts",
     source: "accounts",
     target: "identity_admin_accounts",
@@ -2001,7 +2064,7 @@ const relations: Relation[] = [
     target: "authorization_audits",
     sourceCardinality: "1",
     targetCardinality: "N",
-    label: "id -> actor_id",
+    label: "仅 actor_kind=user：id -> actor_id（逻辑）",
     domains: ["identity"],
   },
   {
@@ -2590,6 +2653,24 @@ const relations: Relation[] = [
     domains: ["plugin"],
   },
   {
+    id: "versions-v5-configurations",
+    source: "plugin_versions",
+    target: "plugin_configurations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> plugin_version_id",
+    domains: ["plugin"],
+  },
+  {
+    id: "users-v5-configurations",
+    source: "users",
+    target: "plugin_configurations",
+    sourceCardinality: "1",
+    targetCardinality: "N",
+    label: "id -> owner_user_id (nullable)",
+    domains: ["identity", "plugin"],
+  },
+  {
     id: "versions-decisions-v1",
     source: "plugin_versions",
     target: "plugin_authorization_decisions",
@@ -2609,7 +2690,7 @@ const storageRows = [
     contents: [
       "用户、登录凭据、管理员准入账号、会话、角色与权限",
       "版块、主题、回复、标签、通知和审计",
-      "插件元数据、Webhook、Message、AI 调用与样式快照",
+      "插件元数据、v5 受管配置（普通值与 Secret 引用分列）、Webhook、Message、AI 调用与样式快照",
     ],
     note: "由 migrations/ 和 schema_migrations 管理版本。",
   },
@@ -2749,6 +2830,55 @@ const migrations = [
       "plugin_market_sources",
       "plugin_install_requests（来源与快照字段）",
     ],
+  },
+  {
+    version: "000004",
+    file: "000004_v1_2_authorization_audit_actor.up.sql",
+    title: "v1.2 授权审计主体域",
+    scope: "Core Identity 授权审计",
+    summary:
+      "为授权审计增加 actor_kind，并将 actor_id 扩展为可表示不同主体域的不透明字符串；历史无主体记录标记 legacy_unknown。当前管理入口仍使用 User 凭据，独立 Admin 身份域由后续阶段实施。",
+    tables: ["authorization_audits（主体域、ID 形状和复合索引）"],
+  },
+  {
+    version: "000005",
+    file: "000005_v1_2_plugin_version_identity.up.sql",
+    title: "v1.2 插件版本发布身份",
+    scope: "Plugin Platform 版本仓储",
+    summary:
+      "阻止既有插件版本的包摘要、Manifest、API 版本和权限指纹等身份字段原地改写，并阻止既有能力声明原地改写；仍允许版本生命周期切换和旧插件卸载时的级联删除。",
+    tables: ["plugin_versions（身份更新触发器）", "plugin_capability_declarations（声明更新触发器）"],
+  },
+  {
+    version: "000006",
+    file: "000006_v1_2_plugin_publication_seal.up.sql",
+    title: "v1.2 插件发布声明封存与委托撤销",
+    scope: "Plugin Platform 版本仓储",
+    summary:
+      "回填既有已发布版本的 activated_at，阻止已发布版本回到 staged 或修改声明集合；版本退役时永久撤销其短期委托。回滚只移除本迁移守卫，保留数据和撤销结果。",
+    tables: [
+      "plugin_versions（发布状态与退役撤销触发器）",
+      "plugin_capability_declarations（声明集合守卫）",
+      "plugin_delegations（退役委托撤销）",
+    ],
+  },
+  {
+    version: "000007",
+    file: "000007_v1_2_plugin_v5_configurations.up.sql",
+    title: "v1.2 插件 v5 受管配置仓储",
+    scope: "Plugin Platform 配置仓储",
+    summary:
+      "每个不可变插件版本按系统/用户作用域保存普通值与 opaque Secret 引用，revision 支持事务 CAS；数据非空时拒绝回滚。",
+    tables: ["plugin_configurations（版本/owner 外键、引用形状与唯一作用域）"],
+  },
+  {
+    version: "000008",
+    file: "000008_v1_2_identity_delegations.up.sql",
+    title: "v1.2 身份委托授予基线",
+    scope: "Identity 执行权/委托权分离",
+    summary:
+      "新增 identity_delegations，以 management/bound/grant 三类有限期委托分离执行权与委托权；种子从现有准入、叶子版块与版主范围转换，并把两个治理动作移出 moderator 角色目录；存在种子后写入的数据时拒绝回滚。",
+    tables: ["identity_delegations（kind/subject/action/board 形状 CHECK、半开窗口、revoked 终态、version CAS）"],
   },
 ];
 const tableByName = (name: string) =>

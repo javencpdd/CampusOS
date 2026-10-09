@@ -154,6 +154,22 @@ func TestMFAEnrollmentTicketReplayRecoveryAndLocalReset(t *testing.T) {
 	if err != nil || len(audits) == 0 || audits[0].PermissionCode != "identity.mfa.local_recovery" {
 		t.Fatalf("local recovery audit missing: %#v err=%v", audits, err)
 	}
+	if audits[0].ActorKind != "system" || audits[0].ActorID != "local-cli" || audits[0].ResourceID != "73001" {
+		t.Fatalf("local recovery must identify the CLI as actor and user as target: %#v", audits[0])
+	}
+	commands, _, err := service.reliable.Store().ListCommandAudits(ctx, reliability.PageRequest{Page: 1, PageSize: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundCLIActor := false
+	for _, command := range commands {
+		if command.CommandCode == "identity.mfa.local_recovery" {
+			foundCLIActor = command.ActorType == "system" && command.ActorID == "local-cli" && command.ResourceID == "73001"
+		}
+	}
+	if !foundCLIActor {
+		t.Fatalf("local recovery command must identify the CLI as actor: %#v", commands)
+	}
 }
 
 func TestMFASecretProtectorSupportsReadRotationAndFailsClosed(t *testing.T) {
@@ -205,6 +221,28 @@ func TestMFAMetricsUseRegisteredBoundedLabelsAndDoNotExposeSecrets(t *testing.T)
 	}
 	if strings.Contains(metrics, base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(secret)) {
 		t.Fatalf("MFA metrics leaked enrollment secret:\n%s", metrics)
+	}
+}
+
+func TestMFAPolicyUpdateAuditKeepsUserCredentialDomain(t *testing.T) {
+	ctx := context.Background()
+	service, repo, _, _, roles, _ := newMFAServiceForTest(t)
+	before, err := repo.GetPolicy(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.UpdateAdminPolicy(ctx, "73001", MFAAdminPolicyUpdate{
+		Mode: domain.MFAPolicyOff, ExpectedVersion: before.Version,
+	})
+	if err != nil || updated == nil || updated.Policy.Version != before.Version+1 {
+		t.Fatalf("policy update: status=%#v err=%v", updated, err)
+	}
+	audits, err := roles.ListAuthorizationAudits(ctx, 10)
+	if err != nil || len(audits) != 1 {
+		t.Fatalf("policy audit: items=%#v err=%v", audits, err)
+	}
+	if audits[0].ActorKind != "user" || audits[0].ActorID != "73001" || audits[0].ResourceID != "admin" {
+		t.Fatalf("policy update must record the verified user actor: %#v", audits[0])
 	}
 }
 

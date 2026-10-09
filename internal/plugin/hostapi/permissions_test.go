@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -389,6 +391,76 @@ func TestHostAPIServerChecksPluginIdentity(t *testing.T) {
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
+// The legacy secret/read grant must never serialize a raw Secret over Host API.
+// This exercises the real Linux loopback HTTP listener, including plugin identity
+// resolution and the same permission dispatch used by the production server.
+func TestLegacySecretReadsRejectedOnLoopbackHostAPI(t *testing.T) {
+	ctx := t.Context()
+	store := plugin.NewMemorySecretStore()
+	secrets, err := plugin.NewSecretService(store, []byte("0123456789abcdef0123456789abcdef"), "test-v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := int64(42)
+	const rawSecret = "private-mail-token-01b"
+	for _, scopedOwner := range []*int64{nil, &owner} {
+		if _, err := secrets.Put(ctx, 17, scopedOwner, "mail.password", rawSecret, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := manifestWithPermissions("legacy-secret-client",
+		plugin.APIPermission{Resource: "secret", Actions: []string{"read"}},
+		plugin.APIPermission{Resource: "storage", Actions: []string{"write"}},
+	)
+	hostAPI := NewHostAPIv2(nil, nil, nil)
+	server := NewHostAPIServer(hostAPI, ":0", func(name string) (*plugin.Plugin, bool) {
+		if name != manifest.Name {
+			return nil, false
+		}
+		return &plugin.Plugin{ID: name, Manifest: manifest}, true
+	})
+	listener := httptest.NewServer(http.HandlerFunc(server.handleRequest))
+	defer listener.Close()
+
+	for _, method := range []string{"GetSystemSecret", "GetUserSecret"} {
+		t.Run(method, func(t *testing.T) {
+			request, err := http.NewRequestWithContext(ctx, http.MethodPost, listener.URL+"/api/host/"+method, strings.NewReader(`{"secret_name":"mail.password","user_id":"42"}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Header.Set("X-CampusOS-Plugin", manifest.Name)
+			response, err := listener.Client().Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.StatusCode != http.StatusForbidden || strings.Contains(string(body), rawSecret) || strings.Contains(string(body), `"value"`) {
+				t.Fatalf("legacy secret method response: status=%d body=%s", response.StatusCode, body)
+			}
+			if _, ok := PermissionForMethod(method); ok {
+				t.Fatalf("retired method %s remained in permission catalog", method)
+			}
+		})
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, listener.URL+"/api/host/StorageSet", strings.NewReader(`{"plugin_name":"legacy-secret-client","key":"health","value":"ok"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("X-CampusOS-Plugin", manifest.Name)
+	response, err := listener.Client().Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unaffected StorageSet status=%d", response.StatusCode)
 	}
 }
 

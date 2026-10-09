@@ -1,0 +1,30 @@
+{
+  "contract": "campusos.extension-catalog/v1",
+  "host_contract": "campusos.host/v1",
+  "points": [
+    {
+      "point": "preview.renderer",
+      "contract_version": "v1",
+      "input_schema": "campusos.preview.renderer.request/v1",
+      "output_schema": "campusos.preview.renderer.response/v1",
+      "capabilities": ["pdf"],
+      "data_modes": ["authorized_resource"]
+    },
+    {
+      "point": "ai.chat",
+      "contract_version": "v1",
+      "input_schema": "campusos.ai.chat.request/v1",
+      "output_schema": "campusos.ai.chat.response/v1",
+      "capabilities": ["text"],
+      "data_modes": ["public_only", "no_host_private_data"]
+    },
+    {
+      "point": "knowledge.source",
+      "contract_version": "v1",
+      "input_schema": "campusos.knowledge.source.request/v1",
+      "output_schema": "campusos.knowledge.source.response/v1",
+      "capabilities": ["public_text"],
+      "data_modes": ["public_only"]
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "schema": "campusos.v12-02a-delegation-store-acceptance/v1",
+  "generated_at": "2026-10-09T18:51:47.446733+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "identity_delegations migration 000008 with seed conversion, PostgreSQL/Memory repository adapters and isolated PostgreSQL 16 acceptance; no service or HTTP wiring",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port)"
+  },
+  "checks": {
+    "TestDelegationRepositoryRoundTrip": "passed",
+    "TestDelegationRepositoryRejectsInvalidShape": "passed",
+    "TestDelegationRepositoryStatusCAS": "passed",
+    "TestDelegationRepositoryConcurrentCAS": "passed"
+  },
+  "coverage": {
+    "migration_chain": "000001-000008 up + check",
+    "seed_assertions": 7,
+    "sql_constraint_negatives": 6,
+    "down_up_cycle": "000008 down refused with service rows, restored moderator codes, re-up clean",
+    "go_repository_tests": 4,
+    "adapters": [
+      "postgres",
+      "memory"
+    ]
+  },
+  "source_sha256": {
+    "migrations/000008_v1_2_identity_delegations.up.sql": "93e00d4e5ec994b1d44b0e7923add4437826da46565ca9ea46324a90f3321180",
+    "migrations/000008_v1_2_identity_delegations.down.sql": "bc2de101481b4efe6ce19041e4f4dc01a1c18ffba71c0fc1a17f021a384ce6f8",
+    "internal/modules/core/identity/repository/pg_delegation_repository.go": "fe32a1dc1fabc0237f3dfd5a0a107a230f0e62599105e678b5b1484e50472830",
+    "internal/modules/core/identity/repository/pg_delegation_repository_test.go": "eb1377cad3030b0e097064fbf042d0c463b10a94ce3767f57633fe25e2e6cf43",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "e09e31d46d7fbeb0301982a7c62e0b2a4b53aeb26e6ccdc938fe6a6703480f71",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7e9d3186d2bede973f11d3a7e12c8c565fc804361ff6762ffe3e467792d4b7b3",
+    "scripts/v12-02a-delegation-store-drill.sh": "a6ea19d92108a2b205c3f24a66a3eaa71b34777844ae3b8fc3e1b33e7bb7428a"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-board-delegation-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-board-delegation-linux.json",
+      "sha256": "c4fae8202f2414e2625663ca28a2512335aa2b6f6878edb08e5b491ddda4d511",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-scope-delegation-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-scope-delegation-linux.json",
+      "sha256": "27412f6b602c92429c383df4e08c9ad237fee0872207760ffd951eff41bacdb3",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations-pre": {
+      "path": ".cache/v12-02a-delegation-store/store.yrfAtk/migrations-pre.log",
+      "sha256": "7031f73112b2a7159fa5ebd190f29c09b2588c7c319763479dfb229e0a2cc2ca"
+    },
+    "go-repository": {
+      "path": ".cache/v12-02a-delegation-store/store.yrfAtk/go-repository.log",
+      "sha256": "aff595ef22c1512ee6f557c11eff30810706dce043e8787c29d3e556522d50c9"
+    },
+    "down-refused": {
+      "path": ".cache/v12-02a-delegation-store/store.yrfAtk/down-refused.log",
+      "sha256": "e5178ebb04702668d96de8a105410f066955c82150b2a4cc8edab5eab9923cb9"
+    },
+    "down": {
+      "path": ".cache/v12-02a-delegation-store/store.yrfAtk/down.log",
+      "sha256": "53c3f40cc992d65160f7e71cdb0daca4dc579180b14ecf02a65b48a3c3a92e19"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/go-all.log",
+      "log_sha256": "b5a84434ac5cd7958818724bab5051019d1a6445c8fde9a31dd0c5d3b793cd9d"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/architecture.log",
+      "log_sha256": "89b5f1715bb54a0dfaca4adf5edeb2add74002cb5b079b7336e01b1a501305e6"
+    },
+    "database-er": {
+      "command": "python3 migrations/tools/generate_er.py --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/database-er.log",
+      "log_sha256": "7355fa845f8dae0569cd0a7fefcabbdd33e22351e79b48464d0ee334352a5f30"
+    },
+    "architecture-sync": {
+      "command": "check_architecture_sync.py --root .",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/architecture-sync.log",
+      "log_sha256": "b982cb6a42e998a813325acb3fefa3737fd5c0d831d9127d3b4ad007ef924f44"
+    },
+    "admin-build": {
+      "command": "make admin-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/admin-build.log",
+      "log_sha256": "9f86554efc90da6a4a74381d65f48f31ec085afe1202e7ba7779a0b8c08130b0"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/docs-build.log",
+      "log_sha256": "677cecbfc93a77023e009b35ac9af2e0d5455bc584f18d87791c010e2fee3572"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-delegation-store/store.yrfAtk/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "The delegation table is not yet read or written by any production service; DelegationService and PermissionService path replacement are later V12-02a slices.",
+    "Seeded one-year windows and password strength are migration defaults for the disposable test dataset, not a product term policy.",
+    "The moderator role keeps its five non-delegated codes; global role management paths are unchanged in this slice.",
+    "No admin identity domain separation (V12-02d) and no business HTTP wiring (V12-02b) is claimed."
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "contract": "campusos.board-delegation/v1",
+  "status": "target-contract-only",
+  "errors": [
+    {
+      "code": "delegation.input_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "delegation.contract_unsupported",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "delegation.actor_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.mfa_required",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.management_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.recipient_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.board_denied",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.outside_bounds",
+      "http_status": 403,
+      "retryable": false
+    },
+    {
+      "code": "delegation.decision_mismatch",
+      "http_status": 500,
+      "retryable": false
+    },
+    {
+      "code": "delegation.facts_changed",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

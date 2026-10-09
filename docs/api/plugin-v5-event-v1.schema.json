@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-event-v1.schema.json",
+  "title": "G1 sanitized plugin event delivery target",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "delivery"
+  ],
+  "properties": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "event_id",
+        "type",
+        "revision",
+        "created_at_ms",
+        "expires_at_ms",
+        "payload"
+      ],
+      "properties": {
+        "contract": {
+          "const": "campusos.plugin-event/v1"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "enum": [
+            "plugin.lifecycle.changed/v1",
+            "community.thread.public.changed/v1",
+            "knowledge.source.public.changed/v1"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "resource_ref",
+            "state"
+          ],
+          "properties": {
+            "resource_ref": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9.]+:[a-zA-Z0-9_-]{1,128}$"
+            },
+            "state": {
+              "enum": [
+                "available",
+                "changed",
+                "removed",
+                "disabled"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "now_ms",
+        "instance_generation",
+        "current_generation",
+        "subscribed",
+        "grant_active",
+        "runtime_ready",
+        "attempt",
+        "max_attempts",
+        "payload_bytes",
+        "max_bytes",
+        "core_transaction_committed"
+      ],
+      "properties": {
+        "now_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "instance_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "current_generation": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "subscribed": {
+          "type": "boolean"
+        },
+        "grant_active": {
+          "type": "boolean"
+        },
+        "runtime_ready": {
+          "type": "boolean"
+        },
+        "core_transaction_committed": {
+          "type": "boolean"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payload_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

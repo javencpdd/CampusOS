@@ -1,0 +1,95 @@
+{
+  "schema": "campusos.v12-02a-exit-acceptance/v1",
+  "generated_at": "2026-10-09T18:55:01.427519+00:00",
+  "stage": "V12-02a",
+  "stage_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "V12-02a stage exit: pure policy kernels, delegation store/service, and the PermissionService governance path replacement re-accepted against the current tree",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2"
+  },
+  "slices": {
+    "public-policy": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-public-policy-linux.json",
+      "sha256": "46b922df8b595758bb072d3c4e17c67fa812414770802652955ce4bb9549f55f",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "resource-policy": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-resource-policy-linux.json",
+      "sha256": "9c1f83cb74475c648372043940fc28f7bb8e6a3956bd43ff59713a57cc41e340",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "board-delegation": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-board-delegation-linux.json",
+      "sha256": "c4fae8202f2414e2625663ca28a2512335aa2b6f6878edb08e5b491ddda4d511",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "scope-delegation": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-scope-delegation-linux.json",
+      "sha256": "27412f6b602c92429c383df4e08c9ad237fee0872207760ffd951eff41bacdb3",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "delegation-store": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-delegation-store-linux.json",
+      "sha256": "e5bed1a2047e09fd91ececbc4ff48b95d723e6d5d1d0448ff0ad88d2d18defd9",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "delegation-service": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-delegation-service-linux.json",
+      "sha256": "e8b0ad5e68f54db84f568f1bcd27b3907522f2ac7b583f3fb2fdc74169945db9",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    },
+    "permission-path": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-permission-path-linux.json",
+      "sha256": "c15cb56bc3ccd7bb34bcda42fe751111add12d4cd8806e6c17f2011af1869c8b",
+      "slice_status": "completed",
+      "common_gates_status": "passed"
+    }
+  },
+  "target_logs": {
+    "public-policy": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/public-policy.log",
+      "sha256": "4b9b2e51550487a1e33e6e3d23ae01f7388e1adfbb82dc3cf12bac3c481a6586"
+    },
+    "resource-policy": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/resource-policy.log",
+      "sha256": "ada8d9293fd6605cc9c239887c905b81f16cc9fd0e906ec6387f485c2a3ab72c"
+    },
+    "board-delegation": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/board-delegation.log",
+      "sha256": "55fa3a3b892b4a40bb016fbde15d46c6bd3726b3da1bcc4b1a3562c8080fe5e1"
+    },
+    "scope-delegation": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/scope-delegation.log",
+      "sha256": "e884953364e90083679eeb91cb27a4bf4f602c80e2c1adbb3a2c6df7eef9425c"
+    },
+    "delegation-store": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/delegation-store.log",
+      "sha256": "da407e04295948cc11a22786dc51f1b533100447400ba042c4d7d81e3b9018f7"
+    },
+    "delegation-service": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/delegation-service.log",
+      "sha256": "ae5f46bdc61da1224cfbca45709796a93f469a13cc1aafa01fa4b228a091d9eb"
+    },
+    "permission-path": {
+      "path": ".cache/v12-02a-exit/exit.QUo6O9/permission-path.log",
+      "sha256": "2518438f6d7f73d60df14bf957b065fea58e227c695b60b94de79100145c2c50"
+    }
+  },
+  "residual_scope": [
+    "Global role management (assertActorMayGrantCodes callers beyond the moderator category path) keeps the catalog checks pending a future contract; the G1 replacement-map checker still requires pending and is not falsified.",
+    "Admin identity domain separation is V12-02d; business fact wiring, ABA versioning and HTTP entry principals are V12-02b; machine/plugin principals and real egress limits are V12-02c/03b.",
+    "MFA-required delegation grants fail closed on the read path until V12-02b wires entry principals; seeded and default grants use password strength."
+  ]
+}

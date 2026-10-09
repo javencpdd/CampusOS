@@ -1,0 +1,316 @@
+{
+  "schema": "campusos.v12-stage-exit/v1",
+  "generated_at": "2026-09-27T23:51:56.734745+00:00",
+  "stage": "V12-01b",
+  "stage_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "database": "owned PostgreSQL 16 tmpfs, random loopback port; pg_dump/pg_restore into another owned database",
+    "egress": "real loopback TLS with test-only controlled public DNS/dial mapping; no public endpoint contacted",
+    "shared_instance_reset": false
+  },
+  "coverage": {
+    "accepted_components": 10,
+    "component_checks": 82,
+    "current_source_hashes": 97,
+    "common_gates": 11
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "previous accepted bounded stage; historical source digests are not silently rewritten"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "previous accepted bounded stage; historical source digests are not silently rewritten"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "previous accepted bounded stage; historical source digests are not silently rewritten"
+    }
+  },
+  "components": {
+    "secret-retirement": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-retirement-linux.json",
+      "sha256": "4f2ab4259169d0fa95d94694bf904d2508f845294ef8dc2bf9b58c8c6b083c81",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 4,
+      "source_hashes": 12
+    },
+    "keyring": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-keyring-linux.json",
+      "sha256": "6cd4d441e6a4ec3cdbe71689b235d8077fd2331f43ecf4a32c3c7b00c934f56a",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 7,
+      "source_hashes": 18
+    },
+    "secret-rewrap": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-rewrap-linux.json",
+      "sha256": "afacec1a04f32a6b2431438a43d54baefe40395b8590d7cbe1e7995a85059315",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 8,
+      "source_hashes": 8
+    },
+    "secret-batch": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-batch-linux.json",
+      "sha256": "1cd51a429b0d839a6850286d5d1428ac0984295d8e52e1127bd738ad74f2e662",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 9,
+      "source_hashes": 15
+    },
+    "secret-key-inspect": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-key-inspect-linux.json",
+      "sha256": "0b49cda38ad03518c7f18be036f384dd8bf708d6b6913aab39608965081e53c1",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 8,
+      "source_hashes": 8
+    },
+    "v5-config": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-v5-config-linux.json",
+      "sha256": "a5f0614711498f668730e5f4ba6c3dad7eb70e42745ce2c2660025092f4256bf",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 8,
+      "source_hashes": 11
+    },
+    "egress": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-egress-linux.json",
+      "sha256": "9f008a1b49bddc10a18b44574bd2e7fce34f2e79d3d01f54e38ce88a5c6b5c52",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 9,
+      "source_hashes": 5
+    },
+    "resource-policy": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-resource-policy-linux.json",
+      "sha256": "b9f722a190a062b66a8af721e3733747bb0ad7f225b64ea2f5458174f64d48b9",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 8,
+      "source_hashes": 8
+    },
+    "secret-rotation": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-rotation-linux.json",
+      "sha256": "1354198f23a7effa66541edd552d612225a701210e59ed4a9d0a057d7b9cfe90",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 9,
+      "source_hashes": 9
+    },
+    "secret-broker": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-secret-broker-linux.json",
+      "sha256": "f586914dd93176b69a74ff822b949b8f20b1658c187dabfc7a76701643747f0e",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "passed",
+      "checks": 12,
+      "source_hashes": 20
+    }
+  },
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/go-all.log",
+      "log_sha256": "ca8f42cd248ae7abb9ae94477fcf9cd94bbec25851e882bb901114f0c5e59f08"
+    },
+    "security-race": {
+      "command": "go test -race ./internal/plugin ./internal/platform/security -run '^Test(SecretUseBroker|SecretBindingScope|SecretGrantResource|SecretPurposeBudgetRegistry|SecretRotationWorker|RewrapActiveSecretBatch|PluginV5Config|Egress|ResourcePolicy|PurposeBudget)' -count=1",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/security-race.log",
+      "log_sha256": "b98ede0d0eeaa4df326fa394e022f516b437d6cb448433c5ed79a5fa17c60b45"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/architecture.log",
+      "log_sha256": "93e885ba0f939f86e58d12ae68509e4523d79729be327c95d8217d21fadf9db8"
+    },
+    "docker-dev": {
+      "command": "make docker-dev-test",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/docker-dev.log",
+      "log_sha256": "7e355fd6d6f8451a77ac93ea9815e3754173d98e8b2ec3937e52935beb900bb6"
+    },
+    "docker-deploy": {
+      "command": "make docker-deploy-check",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/docker-deploy.log",
+      "log_sha256": "3721aeef76874aed9d73e7685c32ff6cc339b961320e1de673387a2e6fc124f4"
+    },
+    "admin-build": {
+      "command": "make admin-build",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/admin-build.log",
+      "log_sha256": "3337af037802ff3f17012ed7b215d7a65e9cef2caca30a02dc45eb7b23b13138"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/docs-build.log",
+      "log_sha256": "194fbf0576f5a0b27c6e3317049eb842aef8464e23571ee374cea7435ff91aa9"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/docs-links.log",
+      "log_sha256": "eb442ef4df81c96b91e93bceb710320cc865e9b0c708bbb17713d0b31e11ccbc"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/line-endings.log",
+      "log_sha256": "2e63aeee67f2bdd3b5fede0fd92bf04c81b67e0bac4f622107f7b22d717a6afd"
+    },
+    "diff-check": {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "status": "passed",
+      "local_log": ".cache/v12-01b/exit.rszdI2/diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "source_sha256": {
+    "scripts/v12-01b-exit-drill.sh": "ff364fa27a80635f3a947952f5605c3f0a57f4bc8c3860db95e2f047f4e0ce27",
+    "scripts/check-doc-links.py": "fdb6b4ea3d23e54a625347cc0cfe0d8d4436ed853bf86c5db200f5e6648703e3",
+    "docs/api/v1.2插件宿主资源与非侵入式安装合同.md": "6a029d6c4363bf52cfb0d299e8dddb69087d54705bbd288f9078923155b64fec",
+    "docs-site/deployment/docker-development.md": "2e84e24ee55781fd7cf558eaf6255f3a48b4ea441239ebf13d011d6ab40609fe",
+    "docs/help/系统设计相关/v0.13 Docker跨平台部署、迁移与开发指南.md": "21523b06fc4a2471b1ea8274f6a2e67953d20b7769dab0d73ac81a175b8e730a",
+    "internal/plugin/secret_budget_registry.go": "31badcc49ac3eda85e671729333d7a6d2b8bf5789188db189d911fb356bbf1d6",
+    "internal/plugin/secret_budget_registry_test.go": "fa6df58bfabbe90c9dd81bc2910d42acc79314ff4f4c55643caef087ff50875c",
+    "internal/plugin/secret_resource_provider_test.go": "a014fc17eb858e91f9254a0dbe0de73153cf4b5c883400cf073f75ce9d5b4c6a",
+    "internal/plugin/hostapi/grpc_server.go": "962eb8c1dcdbaf9580bd7c543a201f2f628de5218bda1d909e222bdf90f5905f",
+    "internal/plugin/hostapi/permissions.go": "7c1785243007a28eec09db7e2826ed8df293ba79644a55b9003a2efa45498c3b",
+    "internal/plugin/hostapi/permissions_test.go": "972af8fe3f795ce327771b5a01e50a5463a74d775d43efc961a40f5b367b6165",
+    "internal/server/platform_modules.go": "1ae18f5305b2b29e00085b1521bcd300fe63939b781f3583141b945acab5cd20",
+    "sdk/go/hostapi.go": "86e50dad7f09917525d31c3210b3371e8e1d00aa10d071fd4ccbed83d3c7c99a",
+    "docs/api/plugin-permissions-v1.json": "d1b247215a03d9f94e14004225953cdb910f70cd6950b539e0a668824a4ebee6",
+    "docs/api/plugin-permissions-v2.json": "d1b247215a03d9f94e14004225953cdb910f70cd6950b539e0a668824a4ebee6",
+    "docs/api/Host-API-v1权限目录.md": "d24a219d227a11b49edb13b7fad644d7aee28d3f763b5d24d57a64bfe01df72f",
+    "docs/help/系统设计相关/插件三层授权与v3开发指南.md": "80c02c00956e555c3dfd6193cb0d5e76aaa02127fc37e04c9d2ae34f45239c51",
+    "examples/plugins/v1-mail-watcher/README.md": "bfe77ed916a53987f7eaf4085a53985c8f80d6a5e41564aeba232c6c6e22e3bb",
+    "scripts/v12-01b-secret-retirement-drill.sh": "8cb20628565c0bba8576e6fe8326b0a708920c0f65c075392e69501a4a0a509e",
+    "internal/platform/security/keyring.go": "d4e510297542b1fd8d86c42dbc7d3673015ae530516503116679090abc7d0735",
+    "internal/platform/security/keyring_test.go": "83d0d2e77a32950b372e1bf2c8ebb222339f0bab9a4311b6f833e23c7901827e",
+    "internal/plugin/secret.go": "51b742aed587f93f2fb4733e62453b9c1bbea532faa9287846b1c2355a43f476",
+    "internal/plugin/secret_test.go": "1079c01aa4974a20649ad4042ee5800737262eeb9730ec6eb87f50e36db5d5fe",
+    "internal/plugin/secret_keyring_pg_integration_test.go": "8f04c5daeea6f93c1683bdaba9244fe329dad5381555c7db707f0486f2f79bec",
+    "compose.dev.yml": "ec84c45a70667b93cdeb12d4527417a9dca858196a03e410078b18b33ac1127f",
+    "deploy/docker/components/compose.api.yml": "dfbecb4118b2f6f8b108af4f341aeed7a876cbb5524c553157476943891adf49",
+    ".env.example": "c6b91f09055960103d052d390c47da09fd6c13c9d8837f7c2d746bfa8fe9a67f",
+    "deploy/docker/.env.dev.example": "ed5b2613720c8bc9f1508baa3049f18a09d694cd27041c7eecc2ffbb0f91a621",
+    "deploy/docker/.env.example": "81ae8b6470ed25fdca34f56e8b93b1ce5690da44a3ae49f08b1646df04ebfd7e",
+    "scripts/docker-dev.sh": "bbea71b6a714da11c3b216253c47e8187ad02b798ca7deb1cfacd67cff73cfbe",
+    "scripts/docker-dev.ps1": "1c6ef6be06d588aef74908ab7e2b8f529ecc0f0966bcbbd775926d4e067cfad4",
+    "docs/api/v1.2插件配置Schema与Secret分流合同.md": "5146b0d465503a7c54b7128ce52a0b860b90850c0f514f8f0e016edac17a4676",
+    "docs/architecture/配置与运行边界.md": "443af4991f5c3069c260075697d67f379de79129144f8f88a078ce0acdccd96b",
+    "README.md": "ce04d6ab7471b735de6567328d30337009b27ded97246646b0404dc5b82c97d3",
+    "scripts/v12-01b-keyring-drill.sh": "6faefad65a5d3fc762ae2e733e93b1cb888d4fe648aa60efaa28ffeba1ab3795",
+    "internal/plugin/secret_pg.go": "e2b0a80f13f516535c47385b056fa07a42cdf965e5c89a8a9b9e172b01995b3e",
+    "internal/plugin/secret_rewrap_pg_integration_test.go": "b1c94b0c1d3303a0345996863b1f6b149c576ff474391a1432be9ad17977cd61",
+    "scripts/v12-01b-secret-rewrap-drill.sh": "aa89b78a2059e5e3b2a8130d656f7698b8dd29526c7a867bd5965c5d4efe593a",
+    "internal/plugin/secret_rewrap_batch.go": "ef0258a6c2ddf66fb45ba7bbfdfe16e4e5f0b7ea830af0b38b6126a57b3035fb",
+    "internal/plugin/secret_rewrap_batch_test.go": "b5c290e9d784f21bbe5faef894427fb0aa559140fb61b165e1a97b2f9bef0f30",
+    "internal/plugin/secret_rewrap_inventory_pg.go": "a68b16f7b6abf43c26d2914f991ff0161d1b78c179f263ec95ca89bdbb459c0c",
+    "internal/plugin/secret_rewrap_inventory_memory.go": "464eb11de7f412c35599e547ac58e1cd66ba745d09680de89d02f435b6b12c81",
+    "cmd/campusosctl/main.go": "89a8ce1f998e654ee17591c56831e7c2a173fe1f415f0b61f25ef549d670ba42",
+    "cmd/campusosctl/secret_commands.go": "82ef2fb33bf77d6def3b789ce88cf27c5eb25e73dad592efc35c24451dc7e484",
+    "cmd/campusosctl/secret_commands_test.go": "f13d5a4242e2b1dfaa9c9b13a65669840b126ff46dc28d599ef59b1c6455d7b6",
+    "cmd/campusosctl/secret_batch_pg_integration_test.go": "c9e35624c08d5b22ad78c33dc5691a605604e85f46b233cf8fa0610a961d2483",
+    "scripts/v12-01b-secret-batch-drill.sh": "3097d84674159ec2bdce81013dcc44ad95b233d277c5b9614ae7d823e99689f7",
+    "internal/plugin/secret_key_inventory_pg.go": "d4be09fcc5cbaf62e784aba806d5b29787d17bd4b55a66559a1c485a92031a93",
+    "internal/plugin/secret_key_inventory_pg_integration_test.go": "12287f2ee9c2e346c997eedd171a3e2553b89ea8db1d8c8987e3de1ee2c53d44",
+    "cmd/campusosctl/secret_inspect_commands.go": "34af55254b46aeab73683863ed43cd92459ce98ae486ef1cd4bda7527572265a",
+    "cmd/campusosctl/secret_inspect_commands_test.go": "9475c0eb43c08d4a02c723d4a8060151c7159236f0ebca36681d36917203056e",
+    "cmd/campusosctl/secret_key_inspect_pg_integration_test.go": "d35fd83bc3323de3d9c3e5d5d5518defc5f1acedcdbe076b1de9c9480e105625",
+    "scripts/v12-01b-secret-key-inspect-drill.sh": "7da6f7fdd2958e7ef24e1ab52c26e28e9aa3bca79888ff11f068c74df653ce78",
+    "migrations/000007_v1_2_plugin_v5_configurations.up.sql": "f4087e4d61674eca4de0cb00282cc8ee5914e6ffc51f271b07f78256ee12c4b4",
+    "migrations/000007_v1_2_plugin_v5_configurations.down.sql": "5608ac6e957deeaf0ac9466ad7fdc4bdaa14f6f00ecd361f0d7fa7d11be1c799",
+    "internal/plugin/v5_config_contract.go": "19d209fb53edca138affc1ea7dc5e83e336a557e6e0306c1a7e68fca6a7e9f6f",
+    "internal/plugin/v5_config_contract_test.go": "ee4ecc18602b6da4b6959d8d238017b422283722fc6d0677109a2ade656cf2fe",
+    "internal/plugin/v5_config_pg.go": "61739e850035151d32598e5889e741cfc625bf95be547dbf457675a98389683a",
+    "internal/plugin/v5_config_pg_integration_test.go": "0ab9210190db61f43b33b7cbc50932296e2fcac372218c5b0d7411294357258f",
+    "scripts/schema-contract.sql": "a9de6b973dbf6db972a1dbf31a11505e89a36c84883eee9c2c7994e23f7add71",
+    "scripts/v12-01b-v5-config-drill.sh": "b2e65dd5c12814f0695da384c3ed91a734a1b3f481024651afbb95391d3cfc43",
+    "migrations/README.md": "c839e63bf67f405cb17fb7e604f96678c2db9a05a8542dfeab4bf468e8cfa682",
+    "docs/architecture/当前架构概览.md": "f58ab731da01018046b7b9ef913293e9dbd851b740c02f4703017051ca0e0fd2",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "6d8dec9c8493820718ba045189709b2358e505e2232670370a3c22118cf3b2d9",
+    "internal/platform/security/egress_policy.go": "c75f8da561df6c1ba8f206db709e70052d4568635edc570c8da0eecb84dcfa61",
+    "internal/platform/security/egress_policy_test.go": "0bf2bde276ac0df5d129bcf4776e2dbe0a33882ba619e40ad748cbc71085178f",
+    "internal/platform/security/egress.go": "5cd7b6215bf98b853efeb797fa9a33290e96060f3ffcef7562c4bbcb65a1078b",
+    "internal/platform/security/egress_test.go": "2d535033476c52e5730bbf359ea77c84d8a357db6e683c5cac4e6277bc830232",
+    "scripts/v12-01b-egress-drill.sh": "4d7e32dae747b643491d6a389d340b3c5719f3c2c718716c51cf166cf1f3115f",
+    "internal/platform/security/resource_policy.go": "4d345f683045c696c6a54a4e4e78096a36b91e90c07a4a1b43e99e5dd524801a",
+    "internal/platform/security/resource_policy_test.go": "2606da65d10a327161dc60445fec0919a5c9212b2a156bf3aba8c810a1cc8133",
+    "internal/platform/security/resource_policy_budget.go": "27cb983ef87d8eb0fe088fbea9eeb4d64516d8ae34b83777e4468bb31cf20270",
+    "internal/platform/security/resource_policy_budget_test.go": "7928e9658cad19d8f3e867cd0f82dbb14790262aa2ade54f03c75cb099a647a3",
+    "docs/api/plugin-v5-host-resources-v1.schema.json": "6623b5618061f7d63d746ae5ec7cdf2f1176777b4dccf0a5b765206a2f4e152b",
+    "sdk/typescript/src/plugin-v5-resource-install.ts": "e9f0906d5b7ebaecb477884343b2fc57579980aba54ee57545d8b21d8fb58d93",
+    "scripts/check-v12-plugin-v5-resource-install-contract.mjs": "6539985618252c5cd16c55c3e0f35cd25645f3fb934bc5a68a20b7d19ea7d9b6",
+    "scripts/v12-01b-resource-policy-drill.sh": "339febcf0b359b5c6e99f32e2b245f615bc1f01b2504ad689c38c4f53b301214",
+    "internal/plugin/secret_rotation_worker.go": "8588a7c5cd56f07756a124c6d0bb8a2426b6bfdf2cac229a95ce13ee8ad92387",
+    "internal/plugin/secret_rotation_worker_pg.go": "a839c5f842fbc408d0e25ec1ebdc1158a0735f7a298d0655baf54ae6a73d7cae",
+    "internal/plugin/secret_rotation_worker_test.go": "be9ca1da69a98abed1bccfef798b763d0cee133fbbc814ec0e223f034806e9c2",
+    "internal/plugin/secret_rotation_worker_pg_integration_test.go": "b2b61381893d2276c8cef1901308eed7dba24d7df8a5bc65833afd6a12ad93cb",
+    "internal/server/secret_rotation.go": "ea0dee8d4bc522904cd072de0b2de1b2062c831132b5e1096b3e0aa30923bb01",
+    "internal/server/secret_rotation_test.go": "ac58e3b989ea73fdf0ffd7156ede86edd3b5067542910f194320c17a601e52ce",
+    "internal/server/secret_rotation_pg_integration_test.go": "7529375867ff792478deaf49f339ab461054c77eaa59df3ae164d05468784ac2",
+    "internal/server/server.go": "1938e84c9b6818dbcb66594702624148ea984e9918a39a9ed77127eb8e568054",
+    "scripts/v12-01b-secret-rotation-drill.sh": "429e79d2c56d1d97185c440f36e31eb83d8ac87b1def8a66d94418c0b6cb8e73",
+    "internal/plugin/secret_broker.go": "92217deec09c78bb4cc10f2b2866e1434db3f0497fb0f2eaa93c83751e269258",
+    "internal/plugin/secret_broker_test.go": "d1651010fb851b082d7c13951905fd4860cb8c84ba7fb92db4ef48fbf21a6b59",
+    "internal/plugin/secret_broker_policy_test.go": "4973270c532ce2063364e0a6e6d7440cb002b19d70b98159e8e302338d0ebb24",
+    "internal/plugin/secret_broker_audit.go": "05ecb8203e160a480d431d2a702be9d6fe1300e6dbe57ffd69f62903957cb104",
+    "internal/plugin/secret_broker_audit_test.go": "01ed7ba32f177685e596546f9538dfe98ddd8c514fbc76a6e76c7c324816afed",
+    "internal/platform/reliability/pg_store.go": "25727d8d7a2e796f00d448cc6d926f2bfc89b42bb30b4c6528c7d6f42dbdb716",
+    "internal/plugin/secret_broker_pg_integration_test.go": "feefbf2f05ab80fbd67d60f4b350f2ad0beb9ad7ddd979d08db9b611537e96bb",
+    "internal/plugin/secret_resource_provider.go": "0a6a29cea9e9c57459a5fbdee85267f751a555aa1bbbdee428342b02c4e3c521",
+    "internal/plugin/authorization.go": "4247ef0ef0aa2d1c41f0026a6b9b64774b8576403458bfc96848d5d46f31ffa4",
+    "internal/plugin/authorization_pg.go": "958e2d21544c734b11e7510f8e8fdc3b618ceadc22ca20cedc318e1832e3fa98",
+    "scripts/v12-01b-secret-broker-drill.sh": "532b0f98264354834564b50f0017af78804ddfce072970c10dab8cbc6714d022"
+  },
+  "scope": "shared Security/Secret/Egress ports and v5 host-owned configuration repository; Broker usage outcome and charged-unit audits required",
+  "boundaries": {
+    "key_retirement": "full current plugin_secret_values reference snapshot covers all plugins/statuses; history/bad rows and backups still require old keys; snapshot is not automatic deletion permission",
+    "broker": "trusted host dispatch port; exact name/ref/Profile/URL/purpose grants, current config and consent; fixed POST/Bearer and status-only result; runtime Host API binding belongs to 03c/04/05/06",
+    "budgets": "host process-local purpose reservation and Broker version-wide concurrency; usage outcome/charged units persisted before reporting success; durable/distributed and CPU/memory/runner enforcement belong to 05/06",
+    "recovery": "owned configuration/Secret/audit database restore; full system objects/packages/authentication-generation recovery and Windows/WSL2 belong to 08b"
+  }
+}

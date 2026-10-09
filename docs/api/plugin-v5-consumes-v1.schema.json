@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-consumes-v1.schema.json",
+  "title": "CampusOS v5 consumes projection (G1)",
+  "type": "array",
+  "maxItems": 64,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["capability", "scope", "purpose", "required"],
+    "properties": {
+      "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_.]{2,127}$" },
+      "scope": { "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind"],
+          "properties": { "kind": { "const": "public" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind"],
+          "properties": { "kind": { "const": "self" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "collection_ids"],
+          "properties": {
+            "kind": { "const": "collection" },
+            "collection_ids": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$" } }
+          } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "keys"],
+          "properties": {
+            "kind": { "const": "system_config" },
+            "keys": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$" } }
+          } }
+      ] },
+      "purpose": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "\\S" },
+      "required": { "type": "boolean" }
+    }
+  }
+}

@@ -1,0 +1,443 @@
+{
+  "schema": "campusos.v12-g1-board-delegation-acceptance/v1",
+  "generated_at": "2026-09-26T16:39:36.432Z",
+  "scope": "G1 board governance delegation bounds DTO/schema and executable specification only",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline contract acceptance passed",
+  "runtime_acceptance": "pending 02a/02d/02b: no DB writes, revocation races, audit transaction or UI acceptance claimed",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "bounded-grant",
+      "schema_valid": true,
+      "expected": "delegation.allowed",
+      "passed": true
+    },
+    {
+      "name": "same-id-different-domains",
+      "schema_valid": true,
+      "expected": "delegation.allowed",
+      "passed": true
+    },
+    {
+      "name": "equal-bound-window",
+      "schema_valid": true,
+      "expected": "delegation.allowed",
+      "passed": true
+    },
+    {
+      "name": "stronger-auth",
+      "schema_valid": true,
+      "expected": "delegation.allowed",
+      "passed": true
+    },
+    {
+      "name": "password-actor",
+      "schema_valid": true,
+      "expected": "delegation.mfa_required",
+      "passed": true
+    },
+    {
+      "name": "user-cannot-admin-grant",
+      "schema_valid": true,
+      "expected": "delegation.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "anonymous-cannot-grant",
+      "schema_valid": true,
+      "expected": "delegation.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "integration-cannot-grant",
+      "schema_valid": true,
+      "expected": "delegation.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "plugin_instance-cannot-grant",
+      "schema_valid": true,
+      "expected": "delegation.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "worker-cannot-grant",
+      "schema_valid": true,
+      "expected": "delegation.actor_denied",
+      "passed": true
+    },
+    {
+      "name": "management-suspended",
+      "schema_valid": true,
+      "expected": "delegation.management_denied",
+      "passed": true
+    },
+    {
+      "name": "bound-suspended",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "management-revoked",
+      "schema_valid": true,
+      "expected": "delegation.management_denied",
+      "passed": true
+    },
+    {
+      "name": "bound-revoked",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "management-other-actor",
+      "schema_valid": true,
+      "expected": "delegation.management_denied",
+      "passed": true
+    },
+    {
+      "name": "management-expired-boundary",
+      "schema_valid": true,
+      "expected": "delegation.management_denied",
+      "passed": true
+    },
+    {
+      "name": "management-future",
+      "schema_valid": true,
+      "expected": "delegation.management_denied",
+      "passed": true
+    },
+    {
+      "name": "bound-other-actor",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "execution-only",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "bound-expired-boundary",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "bound-not-yet-active",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "grant-start-in-past",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "longer-expiry",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "weaker-auth",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "other-action",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "other-board",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "unknown-board",
+      "schema_valid": true,
+      "expected": "delegation.board_denied",
+      "passed": true
+    },
+    {
+      "name": "archived-board",
+      "schema_valid": true,
+      "expected": "delegation.board_denied",
+      "passed": true
+    },
+    {
+      "name": "recipient-mismatch",
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied",
+      "passed": true
+    },
+    {
+      "name": "recipient-suspended",
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied",
+      "passed": true
+    },
+    {
+      "name": "recipient-deleted",
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied",
+      "passed": true
+    },
+    {
+      "name": "empty-bounds",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "independent-atoms-union",
+      "schema_valid": true,
+      "expected": "delegation.allowed",
+      "passed": true
+    },
+    {
+      "name": "batch-one-outside-rejects-all",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "no-action-board-cross-product",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "no-stitched-time-window",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "no-auth-time-cross-product",
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds",
+      "passed": true
+    },
+    {
+      "name": "unknown-action",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "global-scope",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "admin-recipient",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "weak-workload",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-bounds",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-status",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "time-as-string",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "fractional-time",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "null-facts-version",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-contract",
+      "schema_valid": false,
+      "expected": "delegation.contract_unsupported",
+      "passed": true
+    },
+    {
+      "name": "extra-roles",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-management",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "candidate-extra-delegable",
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "zero-length-window",
+      "schema_valid": true,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "duplicate-board-id",
+      "schema_valid": true,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "duplicate-bound-id",
+      "schema_valid": true,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    },
+    {
+      "name": "duplicate-candidate-pair",
+      "schema_valid": true,
+      "expected": "delegation.input_invalid",
+      "passed": true
+    }
+  ],
+  "subset_combinations": 72,
+  "recheck_cases": [
+    {
+      "name": "unchanged",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "object-key-order-independent",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "authority-version",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "bound-revoked",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "management-suspended",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "recipient-suspended",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "board-archived",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "clock-expired",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "clock-backwards",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "lost-mfa",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "credential-changed",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "candidate-changed",
+      "expected": "delegation.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "wrong-request",
+      "expected": "delegation.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "missing-audit",
+      "expected": "delegation.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "wrong-witness",
+      "expected": "delegation.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "missing-witness",
+      "expected": "delegation.decision_mismatch",
+      "passed": true
+    },
+    {
+      "name": "duplicate-witness",
+      "expected": "delegation.decision_mismatch",
+      "passed": true
+    }
+  ],
+  "typescript_request_fixtures": 52,
+  "typescript_decision_fixtures": 37,
+  "files_sha256": {
+    "docs/api/board-delegation-v1.schema.json": "2d69a04e31b4b3140eb80169d2b9d86102ef9d24f210582546a6a9c5e552f269",
+    "sdk/typescript/tests/board-delegation-v1.fixtures.json": "b8526d000e589267f3d65cbd4eba946fe8033d769d4ab11a3f7ce33e197d3f67",
+    "docs/api/board-delegation-v1.errors.json": "7518d53838fcf5c4ea39436e61f73a1ce703c49f3ca73bf9b6754ea850bbf5e4",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "sdk/typescript/src/board-delegation.ts": "f00e040f64ee3cc042a1400273613e03a87d3940622e75aa17300663a1f07e7c",
+    "sdk/typescript/src/principal.ts": "a91ced9f44327b5169868194fa2fc51576345fc7ee97ac628ae111890d50d8f6",
+    "sdk/typescript/src/index.ts": "8bee6281bea363d229a2c7978a5515f8571e33d3963d005c126fc69996c98817",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-board-delegation-contract.mjs": "188ba46fef9965d4d00976f58279e38bb2d5cec9b94b0d21215c43db220f7949"
+  }
+}

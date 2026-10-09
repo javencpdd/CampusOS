@@ -1,0 +1,380 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:campusos:board-delegation:v1",
+  "title": "G1 target board delegation bounds; host-constructed inputs only",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/request"
+    },
+    {
+      "$ref": "#/definitions/decision"
+    }
+  ],
+  "definitions": {
+    "grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "board_id",
+        "not_before",
+        "expires_at",
+        "required_strength"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "community.thread.take_down",
+            "community.post.delete"
+          ]
+        },
+        "board_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "not_before": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "required_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        }
+      }
+    },
+    "bound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "board_id",
+        "not_before",
+        "expires_at",
+        "required_strength",
+        "id",
+        "actor",
+        "status",
+        "delegable"
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "community.thread.take_down",
+            "community.post.delete"
+          ]
+        },
+        "board_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "not_before": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "required_strength": {
+          "enum": [
+            "password",
+            "mfa"
+          ]
+        },
+        "id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "actor": {
+          "$ref": "urn:campusos:principal:v1#/definitions/admin"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "suspended",
+            "revoked"
+          ]
+        },
+        "delegable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "request_id",
+        "facts_version",
+        "evaluated_at",
+        "principal",
+        "management",
+        "recipient",
+        "boards",
+        "bounds",
+        "candidate"
+      ],
+      "properties": {
+        "contract": {
+          "const": "campusos.board-delegation/v1"
+        },
+        "request_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "facts_version": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "evaluated_at": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 253402300799
+        },
+        "principal": {
+          "$ref": "urn:campusos:principal:v1"
+        },
+        "management": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actor",
+            "action",
+            "status",
+            "not_before",
+            "expires_at"
+          ],
+          "properties": {
+            "actor": {
+              "$ref": "urn:campusos:principal:v1#/definitions/admin"
+            },
+            "action": {
+              "const": "identity.role.assign"
+            },
+            "status": {
+              "enum": [
+                "active",
+                "suspended",
+                "revoked"
+              ]
+            },
+            "not_before": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            },
+            "expires_at": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 253402300799
+            }
+          }
+        },
+        "recipient": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subject",
+            "status"
+          ],
+          "properties": {
+            "subject": {
+              "$ref": "urn:campusos:principal:v1#/definitions/user"
+            },
+            "status": {
+              "enum": [
+                "active",
+                "suspended",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "boards": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id",
+              "status"
+            ],
+            "properties": {
+              "kind": {
+                "const": "community.board"
+              },
+              "id": {
+                "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "archived"
+                ]
+              }
+            }
+          }
+        },
+        "bounds": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/bound"
+          }
+        },
+        "candidate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "recipient",
+            "grants"
+          ],
+          "properties": {
+            "recipient": {
+              "$ref": "urn:campusos:principal:v1#/definitions/user"
+            },
+            "grants": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/definitions/grant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "request_id",
+        "facts_version",
+        "effect",
+        "reason",
+        "witnesses",
+        "obligations"
+      ],
+      "properties": {
+        "contract": {
+          "const": "campusos.board-delegation/v1"
+        },
+        "request_id": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "facts_version": {
+          "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+        },
+        "effect": {
+          "enum": [
+            "allow",
+            "deny"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "delegation.allowed",
+            "delegation.actor_denied",
+            "delegation.mfa_required",
+            "delegation.management_denied",
+            "delegation.recipient_denied",
+            "delegation.board_denied",
+            "delegation.outside_bounds"
+          ]
+        },
+        "witnesses": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "candidate_index",
+              "bound_id"
+            ],
+            "properties": {
+              "candidate_index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 31
+              },
+              "bound_id": {
+                "$ref": "urn:campusos:principal:v1#/definitions/opaqueID"
+              }
+            }
+          }
+        },
+        "obligations": {
+          "type": "array"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "effect": {
+              "const": "allow"
+            },
+            "reason": {
+              "const": "delegation.allowed"
+            },
+            "witnesses": {
+              "minItems": 1
+            },
+            "obligations": {
+              "items": [
+                {
+                  "const": "recheck_authority_in_transaction"
+                },
+                {
+                  "const": "required_audit"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        {
+          "properties": {
+            "effect": {
+              "const": "deny"
+            },
+            "reason": {
+              "enum": [
+                "delegation.actor_denied",
+                "delegation.mfa_required",
+                "delegation.management_denied",
+                "delegation.recipient_denied",
+                "delegation.board_denied",
+                "delegation.outside_bounds"
+              ]
+            },
+            "witnesses": {
+              "maxItems": 0
+            },
+            "obligations": {
+              "maxItems": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

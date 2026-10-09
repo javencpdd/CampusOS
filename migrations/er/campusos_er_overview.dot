@@ -1,0 +1,153 @@
+digraph CampusOS_ER {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.35", ranksep="1.0",
+         splines=polyline, overlap=false, compound=true, concentrate=false,
+         labelloc="t", label="CampusOS v1 — Database Domain Overview", fontsize=20, fontname="Arial"];
+  node [shape=plain, fontname="Arial"];
+  edge [fontname="Arial", fontsize=8, color="#667085", arrowsize=0.7];
+  subgraph cluster_Identity___Access {
+    label="Identity &amp; Access"; color="#DCEBFF"; penwidth=2; style="rounded";
+    n_accounts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>accounts</B></TD></TR></TABLE>>, tooltip="accounts"];
+    n_api_keys [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>api_keys</B></TD></TR></TABLE>>, tooltip="api_keys"];
+    n_authorization_audits [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>authorization_audits</B></TD></TR></TABLE>>, tooltip="authorization_audits"];
+    n_identity_account_recovery_cases [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_account_recovery_cases</B></TD></TR></TABLE>>, tooltip="identity_account_recovery_cases"];
+    n_identity_admin_accounts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_admin_accounts</B></TD></TR></TABLE>>, tooltip="identity_admin_accounts"];
+    n_identity_challenge_policies [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_challenge_policies</B></TD></TR></TABLE>>, tooltip="identity_challenge_policies"];
+    n_identity_challenge_rate_limits [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_challenge_rate_limits</B></TD></TR></TABLE>>, tooltip="identity_challenge_rate_limits"];
+    n_identity_email_challenges [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_email_challenges</B></TD></TR></TABLE>>, tooltip="identity_email_challenges"];
+    n_identity_legacy_email_placeholders [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_legacy_email_placeholders</B></TD></TR></TABLE>>, tooltip="identity_legacy_email_placeholders"];
+    n_identity_mfa_policies [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_mfa_policies</B></TD></TR></TABLE>>, tooltip="identity_mfa_policies"];
+    n_identity_mfa_recovery_codes [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_mfa_recovery_codes</B></TD></TR></TABLE>>, tooltip="identity_mfa_recovery_codes"];
+    n_identity_mfa_tickets [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_mfa_tickets</B></TD></TR></TABLE>>, tooltip="identity_mfa_tickets"];
+    n_identity_mfa_totp_methods [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_mfa_totp_methods</B></TD></TR></TABLE>>, tooltip="identity_mfa_totp_methods"];
+    n_identity_reserved_identifiers [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>identity_reserved_identifiers</B></TD></TR></TABLE>>, tooltip="identity_reserved_identifiers"];
+    n_permission_definitions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>permission_definitions</B></TD></TR></TABLE>>, tooltip="permission_definitions"];
+    n_role_permissions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>role_permissions</B></TD></TR></TABLE>>, tooltip="role_permissions"];
+    n_roles [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>roles</B></TD></TR></TABLE>>, tooltip="roles"];
+    n_sessions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>sessions</B></TD></TR></TABLE>>, tooltip="sessions"];
+    n_user_roles [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>user_roles</B></TD></TR></TABLE>>, tooltip="user_roles"];
+    n_users [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DCEBFF" COLSPAN="3"><B>users</B></TD></TR></TABLE>>, tooltip="users"];
+  }
+  subgraph cluster_Community___Content {
+    label="Community &amp; Content"; color="#E3F4E8"; penwidth=2; style="rounded";
+    n_categories [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>categories</B></TD></TR></TABLE>>, tooltip="categories"];
+    n_category_thread_type_policies [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>category_thread_type_policies</B></TD></TR></TABLE>>, tooltip="category_thread_type_policies"];
+    n_likes [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>likes</B></TD></TR></TABLE>>, tooltip="likes"];
+    n_mutual_aid_details [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>mutual_aid_details</B></TD></TR></TABLE>>, tooltip="mutual_aid_details"];
+    n_notifications [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>notifications</B></TD></TR></TABLE>>, tooltip="notifications"];
+    n_posts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>posts</B></TD></TR></TABLE>>, tooltip="posts"];
+    n_richtext_article_assets [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>richtext_article_assets</B></TD></TR></TABLE>>, tooltip="richtext_article_assets"];
+    n_richtext_article_contents [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>richtext_article_contents</B></TD></TR></TABLE>>, tooltip="richtext_article_contents"];
+    n_secondhand_details [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>secondhand_details</B></TD></TR></TABLE>>, tooltip="secondhand_details"];
+    n_threads [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#E3F4E8" COLSPAN="3"><B>threads</B></TD></TR></TABLE>>, tooltip="threads"];
+  }
+  subgraph cluster_Academic___Schedule {
+    label="Academic &amp; Schedule"; color="#FFF0D8"; penwidth=2; style="rounded";
+    n_academic_terms [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFF0D8" COLSPAN="3"><B>academic_terms</B></TD></TR></TABLE>>, tooltip="academic_terms"];
+    n_user_schedule_preferences [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFF0D8" COLSPAN="3"><B>user_schedule_preferences</B></TD></TR></TABLE>>, tooltip="user_schedule_preferences"];
+    n_user_schedule_terms [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFF0D8" COLSPAN="3"><B>user_schedule_terms</B></TD></TR></TABLE>>, tooltip="user_schedule_terms"];
+  }
+  subgraph cluster_User_Space___Documents {
+    label="User Space &amp; Documents"; color="#EEE5FF"; penwidth=2; style="rounded";
+    n_personal_document_previews [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>personal_document_previews</B></TD></TR></TABLE>>, tooltip="personal_document_previews"];
+    n_personal_document_versions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>personal_document_versions</B></TD></TR></TABLE>>, tooltip="personal_document_versions"];
+    n_personal_documents [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>personal_documents</B></TD></TR></TABLE>>, tooltip="personal_documents"];
+    n_user_space_contents [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>user_space_contents</B></TD></TR></TABLE>>, tooltip="user_space_contents"];
+    n_user_space_style_snapshots [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>user_space_style_snapshots</B></TD></TR></TABLE>>, tooltip="user_space_style_snapshots"];
+    n_user_spaces [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#EEE5FF" COLSPAN="3"><B>user_spaces</B></TD></TR></TABLE>>, tooltip="user_spaces"];
+  }
+  subgraph cluster_Storage {
+    label="Storage"; color="#DFF5F2"; penwidth=2; style="rounded";
+    n_storage_objects [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DFF5F2" COLSPAN="3"><B>storage_objects</B></TD></TR></TABLE>>, tooltip="storage_objects"];
+    n_user_storage_accounts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DFF5F2" COLSPAN="3"><B>user_storage_accounts</B></TD></TR></TABLE>>, tooltip="user_storage_accounts"];
+    n_user_storage_quotas [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DFF5F2" COLSPAN="3"><B>user_storage_quotas</B></TD></TR></TABLE>>, tooltip="user_storage_quotas"];
+    n_user_storage_reservations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#DFF5F2" COLSPAN="3"><B>user_storage_reservations</B></TD></TR></TABLE>>, tooltip="user_storage_reservations"];
+  }
+  subgraph cluster_Plugin_Ecosystem___Authorization {
+    label="Plugin Ecosystem &amp; Authorization"; color="#FFE1E7"; penwidth=2; style="rounded";
+    n_plugin_catalog_entries [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_catalog_entries</B></TD></TR></TABLE>>, tooltip="plugin_catalog_entries"];
+    n_plugin_file_metadata [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_file_metadata</B></TD></TR></TABLE>>, tooltip="plugin_file_metadata"];
+    n_plugin_install_requests [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_install_requests</B></TD></TR></TABLE>>, tooltip="plugin_install_requests"];
+    n_plugin_logs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_logs</B></TD></TR></TABLE>>, tooltip="plugin_logs"];
+    n_plugin_market_audits [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_market_audits</B></TD></TR></TABLE>>, tooltip="plugin_market_audits"];
+    n_plugin_permissions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_permissions</B></TD></TR></TABLE>>, tooltip="plugin_permissions"];
+    n_plugin_records [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_records</B></TD></TR></TABLE>>, tooltip="plugin_records"];
+    n_plugin_releases [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_releases</B></TD></TR></TABLE>>, tooltip="plugin_releases"];
+    n_plugin_user_grants [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugin_user_grants</B></TD></TR></TABLE>>, tooltip="plugin_user_grants"];
+    n_plugins [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#FFE1E7" COLSPAN="3"><B>plugins</B></TD></TR></TABLE>>, tooltip="plugins"];
+  }
+  subgraph cluster_Platform_Reliability___Integration {
+    label="Platform Reliability &amp; Integration"; color="#ECEFF3"; penwidth=2; style="rounded";
+    n_ai_call_logs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>ai_call_logs</B></TD></TR></TABLE>>, tooltip="ai_call_logs"];
+    n_audit_logs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>audit_logs</B></TD></TR></TABLE>>, tooltip="audit_logs"];
+    n_builtin_feature_states [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>builtin_feature_states</B></TD></TR></TABLE>>, tooltip="builtin_feature_states"];
+    n_configurations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>configurations</B></TD></TR></TABLE>>, tooltip="configurations"];
+    n_mcp_audit_logs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>mcp_audit_logs</B></TD></TR></TABLE>>, tooltip="mcp_audit_logs"];
+    n_message_bindings [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>message_bindings</B></TD></TR></TABLE>>, tooltip="message_bindings"];
+    n_message_logs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>message_logs</B></TD></TR></TABLE>>, tooltip="message_logs"];
+    n_outbox_consumer_receipts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>outbox_consumer_receipts</B></TD></TR></TABLE>>, tooltip="outbox_consumer_receipts"];
+    n_webhook_deliveries [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>webhook_deliveries</B></TD></TR></TABLE>>, tooltip="webhook_deliveries"];
+    n_webhook_endpoints [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#ECEFF3" COLSPAN="3"><B>webhook_endpoints</B></TD></TR></TABLE>>, tooltip="webhook_endpoints"];
+  }
+  subgraph cluster_Other {
+    label="Other"; color="#F3F3F3"; penwidth=2; style="rounded";
+    n_content_moderation_actions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>content_moderation_actions</B></TD></TR></TABLE>>, tooltip="content_moderation_actions"];
+    n_content_moderation_cases [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>content_moderation_cases</B></TD></TR></TABLE>>, tooltip="content_moderation_cases"];
+    n_content_revisions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>content_revisions</B></TD></TR></TABLE>>, tooltip="content_revisions"];
+    n_permissions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>permissions</B></TD></TR></TABLE>>, tooltip="permissions"];
+    n_platform_command_audits [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_command_audits</B></TD></TR></TABLE>>, tooltip="platform_command_audits"];
+    n_platform_compatibility_usage [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_compatibility_usage</B></TD></TR></TABLE>>, tooltip="platform_compatibility_usage"];
+    n_platform_operation_runs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_operation_runs</B></TD></TR></TABLE>>, tooltip="platform_operation_runs"];
+    n_platform_outbox [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_outbox</B></TD></TR></TABLE>>, tooltip="platform_outbox"];
+    n_platform_outbox_attempts [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_outbox_attempts</B></TD></TR></TABLE>>, tooltip="platform_outbox_attempts"];
+    n_platform_retention_runs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_retention_runs</B></TD></TR></TABLE>>, tooltip="platform_retention_runs"];
+    n_platform_worker_leases [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>platform_worker_leases</B></TD></TR></TABLE>>, tooltip="platform_worker_leases"];
+    n_route_operations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>route_operations</B></TD></TR></TABLE>>, tooltip="route_operations"];
+    n_route_permission_bindings [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>route_permission_bindings</B></TD></TR></TABLE>>, tooltip="route_permission_bindings"];
+    n_tags [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3"><TR><TD BGCOLOR="#F3F3F3" COLSPAN="3"><B>tags</B></TD></TR></TABLE>>, tooltip="tags"];
+  }
+  n_users -> n_accounts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_accounts_user: accounts(user_id) → users(id)"];
+  n_categories -> n_categories [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL RESTRICT", tooltip="fk_categories_parent: categories(parent_id) → categories(id)"];
+  n_categories -> n_category_thread_type_policies [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_category_thread_type_policy_category: category_thread_type_policies(category_id) → categories(id)"];
+  n_users -> n_configurations [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_configurations_updated_by: configurations(updated_by) → users(id)"];
+  n_users -> n_identity_account_recovery_cases [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_recovery_case_user: identity_account_recovery_cases(user_id) → users(id)"];
+  n_accounts -> n_identity_account_recovery_cases [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_recovery_case_account: identity_account_recovery_cases(account_id) → accounts(id)"];
+  n_identity_email_challenges -> n_identity_account_recovery_cases [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_recovery_case_challenge: identity_account_recovery_cases(challenge_id) → identity_email_challenges(id)"];
+  n_users -> n_identity_account_recovery_cases [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL RESTRICT", tooltip="fk_identity_recovery_case_created_by: identity_account_recovery_cases(created_by) → users(id)"];
+  n_users -> n_identity_admin_accounts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_admin_account_user: identity_admin_accounts(user_id) → users(id)"];
+  n_accounts -> n_identity_admin_accounts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_admin_account_credential: identity_admin_accounts(credential_account_id) → accounts(id)"];
+  n_users -> n_identity_challenge_policies [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL SET NULL", tooltip="fk_identity_challenge_policy_updated_by: identity_challenge_policies(updated_by) → users(id)"];
+  n_accounts -> n_identity_email_challenges [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL RESTRICT", tooltip="fk_identity_email_challenge_account: identity_email_challenges(account_id) → accounts(id)"];
+  n_users -> n_identity_legacy_email_placeholders [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_legacy_placeholder_user: identity_legacy_email_placeholders(user_id) → users(id)"];
+  n_users -> n_identity_mfa_policies [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL SET NULL", tooltip="fk_identity_mfa_policy_updated_by: identity_mfa_policies(updated_by) → users(id)"];
+  n_users -> n_identity_mfa_recovery_codes [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_mfa_recovery_user: identity_mfa_recovery_codes(user_id) → users(id)"];
+  n_identity_mfa_totp_methods -> n_identity_mfa_recovery_codes [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_mfa_recovery_method: identity_mfa_recovery_codes(method_id) → identity_mfa_totp_methods(id)"];
+  n_users -> n_identity_mfa_tickets [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_mfa_ticket_user: identity_mfa_tickets(user_id) → users(id)"];
+  n_users -> n_identity_mfa_totp_methods [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_identity_mfa_totp_user: identity_mfa_totp_methods(user_id) → users(id)"];
+  n_users -> n_likes [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_likes_user: likes(user_id) → users(id)"];
+  n_threads -> n_mutual_aid_details [dir=both, arrowtail=tee, arrowhead=tee, label="1 : 0..1 · DEL RESTRICT", tooltip="fk_mutual_aid_details_thread: mutual_aid_details(thread_id) → threads(id)"];
+  n_users -> n_mutual_aid_details [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_mutual_aid_details_created_by: mutual_aid_details(created_by) → users(id)"];
+  n_users -> n_notifications [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_notifications_user: notifications(user_id) → users(id)"];
+  n_platform_outbox -> n_outbox_consumer_receipts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL CASCADE", tooltip="fk_outbox_consumer_receipt_event: outbox_consumer_receipts(event_id) → platform_outbox(id)"];
+  n_roles -> n_permissions [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_permissions_role: permissions(role_id) → roles(id)"];
+  n_personal_document_versions -> n_personal_documents [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL RESTRICT", tooltip="fk_personal_documents_current_version: personal_documents(current_version_id) → personal_document_versions(id)"];
+  n_platform_outbox -> n_platform_command_audits [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL SET NULL", tooltip="fk_platform_command_audit_event: platform_command_audits(event_id) → platform_outbox(id)"];
+  n_platform_outbox -> n_platform_outbox_attempts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL CASCADE", tooltip="fk_platform_outbox_attempt_event: platform_outbox_attempts(event_id) → platform_outbox(id)"];
+  n_threads -> n_posts [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_posts_thread: posts(thread_id) → threads(id)"];
+  n_threads -> n_richtext_article_assets [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL RESTRICT", tooltip="fk_richtext_assets_thread: richtext_article_assets(thread_id) → threads(id)"];
+  n_threads -> n_richtext_article_contents [dir=both, arrowtail=tee, arrowhead=tee, label="1 : 1 · DEL RESTRICT", tooltip="fk_richtext_contents_thread: richtext_article_contents(thread_id) → threads(id)"];
+  n_roles -> n_role_permissions [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_v10_role_permissions_role: role_permissions(role_id) → roles(id)"];
+  n_permission_definitions -> n_role_permissions [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_v10_role_permissions_permission: role_permissions(permission_id) → permission_definitions(id)"];
+  n_route_operations -> n_route_permission_bindings [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL CASCADE", tooltip="fk_route_permission_operation: route_permission_bindings(route_operation_id) → route_operations(id)"];
+  n_permission_definitions -> n_route_permission_bindings [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_route_permission_definition: route_permission_bindings(permission_id) → permission_definitions(id)"];
+  n_threads -> n_secondhand_details [dir=both, arrowtail=tee, arrowhead=tee, label="1 : 0..1 · DEL RESTRICT", tooltip="fk_secondhand_details_thread: secondhand_details(thread_id) → threads(id)"];
+  n_users -> n_secondhand_details [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_secondhand_details_created_by: secondhand_details(created_by) → users(id)"];
+  n_users -> n_sessions [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_sessions_user: sessions(user_id) → users(id)"];
+  n_users -> n_threads [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_threads_author: threads(author_id) → users(id)"];
+  n_users -> n_user_roles [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_user_roles_user: user_roles(user_id) → users(id)"];
+  n_users -> n_user_space_contents [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_user_space_contents_user: user_space_contents(user_id) → users(id)"];
+  n_users -> n_user_spaces [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_user_spaces_user: user_spaces(user_id) → users(id)"];
+  n_webhook_endpoints -> n_webhook_deliveries [dir=both, arrowtail=tee, arrowhead=crow, label="1 : N · DEL RESTRICT", tooltip="fk_webhook_deliveries_endpoint: webhook_deliveries(endpoint_id) → webhook_endpoints(id)"];
+  n_platform_outbox -> n_webhook_deliveries [dir=both, arrowtail=tee, arrowhead=crow, label="1 : 0..N · DEL SET NULL", tooltip="fk_webhook_deliveries_outbox: webhook_deliveries(outbox_event_id) → platform_outbox(id)"];
+  n_roles -> n_permission_definitions [dir=both, arrowtail=crow, arrowhead=crow, style=dashed, color="#9B51E0", constraint=false, label="M:N via role_permissions", tooltip="association-entity inferred"];
+  n_route_operations -> n_permission_definitions [dir=both, arrowtail=crow, arrowhead=crow, style=dashed, color="#9B51E0", constraint=false, label="M:N via route_permission_bindings", tooltip="association-entity inferred"];
+}

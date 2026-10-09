@@ -1,4 +1,4 @@
-.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check database-er database-er-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v1-database-baseline-check v11-attachment-migration-check v11-asset-governance-migration-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status migrate-check docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
+.PHONY: build run dev dev-all test lint clean contracts contracts-check error-contract-check observability-check v13-reliability-observability-check v13-capacity-check v13-capacity-drill appearance-delivery-check docker-deploy-check line-endings-check docs-links readme-check version-check architecture-check database-er database-er-check reliability-check outbox-check failure-injection-check v12-failure-injection-check structured-thread-check mutual-aid-check secondhand-check identity-email-check identity-challenge-check identity-registration-check identity-session-check identity-recovery-check identity-admin-account-check email-delivery-check category-hierarchy-check frontend-budget data-governance-check generated-files-check v1-database-baseline-check v12-01a-authorization-audit-drill v12-01a-plugin-version-drill v12-01a-active-version-drill v12-01a-exit-drill v11-attachment-migration-check v11-asset-governance-migration-check v14-baseline-check v14-storage-check v14-schedule-check v14-documents-check v13-baseline-check database-check backup restore-drill release-check migrate-up migrate-down migrate-reset migrate-status migrate-check docker-up docker-infra-up docker-tools-up docker-down docker-dev-build docker-dev-up docker-dev-rebuild docker-dev-down docker-dev-test docker-deploy-init docker-deploy-build docker-deploy-up docker-deploy-down web-dev web-build admin-dev admin-build docs-dev docs-build
 
 # 构建
 build:
@@ -31,9 +31,73 @@ lint:
 contracts:
 	go run ./cmd/campusos-contracts --write
 
-contracts-check: plugin-v4-check
+contracts-check: plugin-v4-check v12-principal-contract-check v12-thread-policy-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check v12-plugin-v5-consumes-contract-check v12-plugin-v5-provides-contract-check v12-plugin-v5-resource-install-contract-check v12-plugin-v5-config-contract-check v12-resource-policy-contract-check v12-identity-domains-contract-check v12-plugin-v5-manifest-contract-check v12-plugin-v5-dispatch-contract-check v12-plugin-v5-events-contract-check v12-scope-delegation-contract-check v12-g1-replacement-map-check v12-g1-exit-check
 	go run ./cmd/campusos-contracts --check
 	go run ./cmd/campusos-capability-contract
+
+.PHONY: v12-principal-contract-check
+v12-principal-contract-check:
+	node scripts/check-v12-principal-contract.mjs
+
+.PHONY: v12-thread-policy-contract-check
+v12-thread-policy-contract-check:
+	node scripts/check-v12-thread-policy-contract.mjs
+
+.PHONY: v12-board-delegation-contract-check
+v12-board-delegation-contract-check:
+	node scripts/check-v12-board-delegation-contract.mjs
+
+.PHONY: v12-plugin-v5-shape-contract-check
+v12-plugin-v5-shape-contract-check:
+	node scripts/check-v12-plugin-v5-shape-contract.mjs
+
+.PHONY: v12-plugin-v5-consumes-contract-check
+v12-plugin-v5-consumes-contract-check:
+	node scripts/check-v12-plugin-v5-consumes-contract.mjs
+
+.PHONY: v12-plugin-v5-provides-contract-check
+v12-plugin-v5-provides-contract-check:
+	node scripts/check-v12-plugin-v5-provides-contract.mjs
+
+.PHONY: v12-plugin-v5-resource-install-contract-check
+v12-plugin-v5-resource-install-contract-check:
+	node scripts/check-v12-plugin-v5-resource-install-contract.mjs
+
+.PHONY: v12-plugin-v5-config-contract-check
+v12-plugin-v5-config-contract-check:
+	node scripts/check-v12-plugin-v5-config-contract.mjs
+
+.PHONY: v12-resource-policy-contract-check
+v12-resource-policy-contract-check:
+	node scripts/check-v12-resource-policy-contract.mjs
+
+.PHONY: v12-identity-domains-contract-check
+v12-identity-domains-contract-check:
+	node scripts/check-v12-identity-domains-contract.mjs
+
+.PHONY: v12-plugin-v5-manifest-contract-check
+v12-plugin-v5-manifest-contract-check:
+	node scripts/check-v12-plugin-v5-manifest-contract.mjs
+
+.PHONY: v12-plugin-v5-dispatch-contract-check
+v12-plugin-v5-dispatch-contract-check:
+	node scripts/check-v12-plugin-v5-dispatch-contract.mjs
+
+.PHONY: v12-plugin-v5-events-contract-check
+v12-plugin-v5-events-contract-check:
+	node scripts/check-v12-plugin-v5-events-contract.mjs
+
+.PHONY: v12-scope-delegation-contract-check
+v12-scope-delegation-contract-check:
+	node scripts/check-v12-scope-delegation-contract.mjs
+
+.PHONY: v12-g1-replacement-map-check
+v12-g1-replacement-map-check:
+	node scripts/check-v12-g1-replacement-map.mjs
+
+.PHONY: v12-g1-exit-check
+v12-g1-exit-check:
+	node scripts/check-v12-g1-exit.mjs
 
 .PHONY: plugin-v4-check
 plugin-v4-check:
@@ -178,6 +242,18 @@ v14-documents-check:
 database-check:
 	./scripts/database-check.sh all
 	$(MAKE) v1-database-baseline-check
+
+v12-01a-authorization-audit-drill:
+	bash scripts/v12-01a-authorization-audit-drill.sh
+
+v12-01a-plugin-version-drill:
+	bash scripts/v12-01a-plugin-version-drill.sh
+
+v12-01a-active-version-drill:
+	bash scripts/v12-01a-active-version-drill.sh
+
+v12-01a-exit-drill:
+	bash scripts/v12-01a-exit-drill.sh
 
 backup:
 	./scripts/backup.sh

@@ -1,0 +1,4462 @@
+{
+  "contract": "campusos.board-delegation/v1",
+  "cases": [
+    {
+      "name": "bounded-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.allowed"
+    },
+    {
+      "name": "same-id-different-domains",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "admin-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "admin-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.allowed"
+    },
+    {
+      "name": "equal-bound-window",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1000,
+              "expires_at": 2000,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.allowed"
+    },
+    {
+      "name": "stronger-auth",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "password",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.allowed"
+    },
+    {
+      "name": "password-actor",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "password",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.mfa_required"
+    },
+    {
+      "name": "user-cannot-admin-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "user",
+            "id": "admin-1"
+          },
+          "audience": "user",
+          "credential_id": "c-2",
+          "authentication_strength": "mfa"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.actor_denied"
+    },
+    {
+      "name": "anonymous-cannot-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "anonymous"
+          },
+          "audience": "public",
+          "authentication_strength": "none"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.actor_denied"
+    },
+    {
+      "name": "integration-cannot-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "integration",
+            "id": "admin-1"
+          },
+          "audience": "integration_api",
+          "authentication_strength": "credential",
+          "credential_id": "c-2"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.actor_denied"
+    },
+    {
+      "name": "plugin_instance-cannot-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "plugin_instance",
+            "id": "admin-1"
+          },
+          "audience": "host_api",
+          "authentication_strength": "workload",
+          "credential_id": "c-2"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.actor_denied"
+    },
+    {
+      "name": "worker-cannot-grant",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "worker",
+            "id": "admin-1"
+          },
+          "audience": "worker",
+          "authentication_strength": "workload",
+          "credential_id": "c-2"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.actor_denied"
+    },
+    {
+      "name": "management-suspended",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "suspended",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.management_denied"
+    },
+    {
+      "name": "bound-suspended",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "suspended",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "management-revoked",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "revoked",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.management_denied"
+    },
+    {
+      "name": "bound-revoked",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "revoked",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "management-other-actor",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-2"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.management_denied"
+    },
+    {
+      "name": "management-expired-boundary",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 1000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.management_denied"
+    },
+    {
+      "name": "management-future",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 1001,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.management_denied"
+    },
+    {
+      "name": "bound-other-actor",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-2"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "execution-only",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": false
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "bound-expired-boundary",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 1000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "bound-not-yet-active",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 1001,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "grant-start-in-past",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 999,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "longer-expiry",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 2001,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "weaker-auth",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "password"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "other-action",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.post.delete",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "other-board",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-B",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "unknown-board",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-C",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.board_denied"
+    },
+    {
+      "name": "archived-board",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "archived"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.board_denied"
+    },
+    {
+      "name": "recipient-mismatch",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-2"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied"
+    },
+    {
+      "name": "recipient-suspended",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "suspended"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied"
+    },
+    {
+      "name": "recipient-deleted",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "deleted"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.recipient_denied"
+    },
+    {
+      "name": "empty-bounds",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "independent-atoms-union",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.post.delete",
+            "board_id": "board-B",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-2",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            },
+            {
+              "action": "community.post.delete",
+              "board_id": "board-B",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.allowed"
+    },
+    {
+      "name": "batch-one-outside-rejects-all",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.post.delete",
+            "board_id": "board-B",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-2",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            },
+            {
+              "action": "community.post.delete",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "no-action-board-cross-product",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.post.delete",
+            "board_id": "board-B",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-2",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-B",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "no-stitched-time-window",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 1400,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 1400,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-2",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "no-auth-time-cross-product",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 1400,
+            "required_strength": "password",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-2",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "password"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.outside_bounds"
+    },
+    {
+      "name": "unknown-action",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "*",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "global-scope",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "*",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid"
+    },
+    {
+      "name": "admin-recipient",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "admin",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "weak-workload",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "workload"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "null-bounds",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": null,
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-status",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "future",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "time-as-string",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": "1000",
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "fractional-time",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000.5,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid"
+    },
+    {
+      "name": "null-facts-version",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": null,
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "unknown-contract",
+      "request": {
+        "contract": "campusos.board-delegation/v2",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.contract_unsupported",
+      "compile_reject": true
+    },
+    {
+      "name": "extra-roles",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        },
+        "roles": [
+          "admin"
+        ]
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "missing-management",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "candidate-extra-delegable",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa",
+              "delegable": true
+            }
+          ]
+        }
+      },
+      "schema_valid": false,
+      "expected": "delegation.input_invalid",
+      "compile_reject": true
+    },
+    {
+      "name": "zero-length-window",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1100,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.input_invalid"
+    },
+    {
+      "name": "duplicate-board-id",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "archived"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.input_invalid"
+    },
+    {
+      "name": "duplicate-bound-id",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          },
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "revoked",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.input_invalid"
+    },
+    {
+      "name": "duplicate-candidate-pair",
+      "request": {
+        "contract": "campusos.board-delegation/v1",
+        "request_id": "request-1",
+        "facts_version": "facts-1",
+        "evaluated_at": 1000,
+        "principal": {
+          "contract": "campusos.principal/v1",
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "audience": "admin",
+          "authentication_strength": "mfa",
+          "credential_id": "credential-1"
+        },
+        "management": {
+          "actor": {
+            "kind": "admin",
+            "id": "admin-1"
+          },
+          "action": "identity.role.assign",
+          "status": "active",
+          "not_before": 900,
+          "expires_at": 2000
+        },
+        "recipient": {
+          "subject": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "status": "active"
+        },
+        "boards": [
+          {
+            "kind": "community.board",
+            "id": "board-A",
+            "status": "active"
+          },
+          {
+            "kind": "community.board",
+            "id": "board-B",
+            "status": "active"
+          }
+        ],
+        "bounds": [
+          {
+            "action": "community.thread.take_down",
+            "board_id": "board-A",
+            "not_before": 900,
+            "expires_at": 2000,
+            "required_strength": "mfa",
+            "id": "bound-1",
+            "actor": {
+              "kind": "admin",
+              "id": "admin-1"
+            },
+            "status": "active",
+            "delegable": true
+          }
+        ],
+        "candidate": {
+          "recipient": {
+            "kind": "user",
+            "id": "user-1"
+          },
+          "grants": [
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1800,
+              "required_strength": "mfa"
+            },
+            {
+              "action": "community.thread.take_down",
+              "board_id": "board-A",
+              "not_before": 1100,
+              "expires_at": 1700,
+              "required_strength": "mfa"
+            }
+          ]
+        }
+      },
+      "schema_valid": true,
+      "expected": "delegation.input_invalid"
+    }
+  ]
+}

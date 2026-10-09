@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-host-resources-v1.schema.json",
+  "title": "CampusOS v5 host resource request/grant/ceiling decision (G1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "requested",
+    "host_ceiling",
+    "admin_grant",
+    "grant_status",
+    "grant_expires_at_ms",
+    "now_ms"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.plugin-host-resources/v1"
+    },
+    "requested": {
+      "$ref": "#/definitions/resources"
+    },
+    "host_ceiling": {
+      "$ref": "#/definitions/resources"
+    },
+    "admin_grant": {
+      "$ref": "#/definitions/resources"
+    },
+    "grant_status": {
+      "enum": [
+        "granted",
+        "revoked"
+      ]
+    },
+    "grant_expires_at_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "now_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "definitions": {
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "network_targets",
+        "storage_bytes",
+        "cpu_millis",
+        "memory_mb",
+        "max_concurrency",
+        "timeout_ms"
+      ],
+      "properties": {
+        "network_targets": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 253
+          }
+        },
+        "storage_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10737418240
+        },
+        "cpu_millis": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4000
+        },
+        "memory_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        }
+      }
+    }
+  }
+}

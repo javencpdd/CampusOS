@@ -1,0 +1,192 @@
+{
+  "schema": "campusos.v12-g1-plugin-dispatch-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:46.065Z",
+  "scope": "G1 bidirectional call envelope, generation, grants, consent, feature state and budgets",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 03b/03c/14c real runtime, catalogs, independent permissions and feature integration",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "host-to-plugin",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "plugin-to-host",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "direction-target-mismatch",
+      "expected": "plugin.call_target_mismatch",
+      "passed": true
+    },
+    {
+      "name": "stale-generation",
+      "expected": "plugin.instance_stale",
+      "passed": true
+    },
+    {
+      "name": "expired-deadline",
+      "expected": "plugin.call_deadline",
+      "passed": true
+    },
+    {
+      "name": "excess-deadline",
+      "expected": "plugin.call_deadline",
+      "passed": true
+    },
+    {
+      "name": "large-request",
+      "expected": "plugin.call_budget",
+      "passed": true
+    },
+    {
+      "name": "large-response",
+      "expected": "plugin.call_budget",
+      "passed": true
+    },
+    {
+      "name": "not-installed",
+      "expected": "plugin.global_install_required",
+      "passed": true
+    },
+    {
+      "name": "desired-disabled",
+      "expected": "plugin.runtime_unavailable",
+      "passed": true
+    },
+    {
+      "name": "desired-uninstalled",
+      "expected": "plugin.runtime_unavailable",
+      "passed": true
+    },
+    {
+      "name": "observed-pending",
+      "expected": "plugin.runtime_unavailable",
+      "passed": true
+    },
+    {
+      "name": "observed-failed",
+      "expected": "plugin.runtime_unavailable",
+      "passed": true
+    },
+    {
+      "name": "observed-stopped",
+      "expected": "plugin.runtime_unavailable",
+      "passed": true
+    },
+    {
+      "name": "grant-revoked",
+      "expected": "plugin.grant_revoked",
+      "passed": true
+    },
+    {
+      "name": "personal-install-missing",
+      "expected": "plugin.user_install_required",
+      "passed": true
+    },
+    {
+      "name": "personal-install-present",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "consent-missing",
+      "expected": "plugin.consent_required",
+      "passed": true
+    },
+    {
+      "name": "consent-present",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "feature-disabled",
+      "expected": "plugin.feature_disabled",
+      "passed": true
+    },
+    {
+      "name": "undeclared",
+      "expected": "plugin.target_undeclared",
+      "passed": true
+    },
+    {
+      "name": "unpublished",
+      "expected": "plugin.target_unpublished",
+      "passed": true
+    },
+    {
+      "name": "selection-conflict",
+      "expected": "plugin.contribution_selection_conflict",
+      "passed": true
+    },
+    {
+      "name": "wrong-credential-audience",
+      "expected": "plugin.instance_credential_invalid",
+      "passed": true
+    },
+    {
+      "name": "expired-instance-credential",
+      "expected": "plugin.instance_credential_invalid",
+      "passed": true
+    },
+    {
+      "name": "untrusted-actor",
+      "expected": "plugin.call_invalid",
+      "passed": true
+    },
+    {
+      "name": "untrusted-roles",
+      "expected": "plugin.call_invalid",
+      "passed": true
+    },
+    {
+      "name": "untrusted-secret",
+      "expected": "plugin.call_invalid",
+      "passed": true
+    },
+    {
+      "name": "untrusted-db_connection",
+      "expected": "plugin.call_invalid",
+      "passed": true
+    },
+    {
+      "name": "untrusted-permissions",
+      "expected": "plugin.call_invalid",
+      "passed": true
+    }
+  ],
+  "rechecks": [
+    {
+      "name": "grant-revocation",
+      "passed": true
+    },
+    {
+      "name": "generation-bump",
+      "passed": true
+    },
+    {
+      "name": "user-uninstall",
+      "passed": true
+    },
+    {
+      "name": "feature-stop",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/plugin-v5-dispatch-v1.schema.json": "3db9f48eb1211c275e701f620dee1d0d7145c12852e1a6517c4424af8e79ad5e",
+    "docs/api/plugin-v5-dispatch-v1.errors.json": "1fb5c07a085cb363f235625caff4925cc9b143b9292fc34e1674d3d3bc9bd3fc",
+    "sdk/typescript/src/plugin-v5-dispatch.ts": "ccee59165f13b82869f6a9e68ae022dc9876a1f576dd42dfe9749f3564237d3f",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "scripts/check-v12-plugin-v5-dispatch-contract.mjs": "8f69ab70584a01af3ab8a69e78ff3684362c91f6f5353f7133d31dc77bf967b6"
+  }
+}

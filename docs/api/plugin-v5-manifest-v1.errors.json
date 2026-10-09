@@ -1,0 +1,45 @@
+{
+  "contract": "campusos.plugin/v5",
+  "errors": [
+    {
+      "code": "plugin.manifest_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_shape_mismatch",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_capability_unpublished",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_extension_unpublished",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_schema_mismatch",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_resource_invalid",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_upgrade_unrecoverable",
+      "http_status": 400,
+      "retryable": false
+    },
+    {
+      "code": "plugin.manifest_release_mismatch",
+      "http_status": 409,
+      "retryable": false
+    }
+  ]
+}

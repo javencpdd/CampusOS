@@ -150,7 +150,7 @@ func (s *AdminAdmissionService) Suspend(ctx context.Context, actorID, userID str
 		if _, revokeErr := s.sessions.RevokeAllForCommand(commandCtx, userID, "admin_admission_suspended"); revokeErr != nil {
 			return revokeErr
 		}
-		return s.recordRequiredAudit(commandCtx, actorID, "identity.admin_account.suspend", "http.identity.admin_account.suspend", userID, command.Reason)
+		return s.recordRequiredAudit(commandCtx, "user", actorID, "identity.admin_account.suspend", "http.identity.admin_account.suspend", userID, command.Reason)
 	}
 	if err := s.execute(ctx, reliability.Command{
 		Code: "identity.admin_account.suspend", ActorID: actorID, ActorType: "user",
@@ -174,7 +174,7 @@ func (s *AdminAdmissionService) Restore(ctx context.Context, actorID, userID str
 	if err := s.validateMutation(ctx, actorID, userID, command, "identity.admin_account.restore"); err != nil {
 		return nil, err
 	}
-	return s.restore(ctx, actorID, userID, command, "identity.admin_account.restore", "http.identity.admin_account.restore", "identity.admin_account.restored.v1")
+	return s.restore(ctx, actorID, userID, command, "user", "identity.admin_account.restore", "http.identity.admin_account.restore", "identity.admin_account.restored.v1")
 }
 
 // RestoreFromLocalRecovery is restricted to the local CLI after it has proved
@@ -184,10 +184,16 @@ func (s *AdminAdmissionService) RestoreFromLocalRecovery(ctx context.Context, us
 	if s == nil || !validAdminAdmissionUserID(userID) || !validAdminAdmissionCommand(command) {
 		return nil, ErrAdminAdmissionInvalid
 	}
-	return s.restore(ctx, "", userID, command, "identity.admin_account.local_restore", "cli.identity.admin_account.local_restore", "identity.admin_account.locally_restored.v1")
+	return s.restore(ctx, "", userID, command, "system", "identity.admin_account.local_restore", "cli.identity.admin_account.local_restore", "identity.admin_account.locally_restored.v1")
 }
 
-func (s *AdminAdmissionService) restore(ctx context.Context, actorID, userID string, command AdminAdmissionCommand, commandCode, operationCode, eventType string) (*AdminAdmissionView, error) {
+func (s *AdminAdmissionService) restore(ctx context.Context, actorID, userID string, command AdminAdmissionCommand, actorKind, commandCode, operationCode, eventType string) (*AdminAdmissionView, error) {
+	// The legacy admission row still has a bigint User FK for status_changed_by.
+	// Keep it NULL for local recovery; audit records carry the system actor.
+	auditActorID := actorID
+	if actorKind == "system" {
+		auditActorID = "local-cli"
+	}
 	var updated *repository.AdminAccount
 	event, err := reliability.NewEvent(eventType, "identity_admin_account", userID, map[string]string{
 		"status": repository.AdminAccountStatusActive,
@@ -201,10 +207,10 @@ func (s *AdminAdmissionService) restore(ctx context.Context, actorID, userID str
 		if transitionErr != nil {
 			return transitionErr
 		}
-		return s.recordRequiredAudit(commandCtx, actorID, "identity.admin_account.restore", operationCode, userID, command.Reason)
+		return s.recordRequiredAudit(commandCtx, actorKind, auditActorID, "identity.admin_account.restore", operationCode, userID, command.Reason)
 	}
 	if err := s.execute(ctx, reliability.Command{
-		Code: commandCode, ActorID: actorID, ActorType: localActorType(actorID), ResourceType: "identity_admin_account", ResourceID: userID,
+		Code: commandCode, ActorID: auditActorID, ActorType: actorKind, ResourceType: "identity_admin_account", ResourceID: userID,
 		OperationCode: operationCode, PermissionCode: "identity.admin_account.restore", Event: &event,
 	}, action); err != nil {
 		return nil, err
@@ -276,7 +282,7 @@ func (s *AdminAdmissionService) view(ctx context.Context, account repository.Adm
 	return view, nil
 }
 
-func (s *AdminAdmissionService) recordRequiredAudit(ctx context.Context, actorID, permissionCode, operationCode, userID, reason string) error {
+func (s *AdminAdmissionService) recordRequiredAudit(ctx context.Context, actorKind, actorID, permissionCode, operationCode, userID, reason string) error {
 	if s.audits == nil {
 		if transaction.Active(ctx) {
 			return ErrAdminAdmissionUnavailable
@@ -284,7 +290,7 @@ func (s *AdminAdmissionService) recordRequiredAudit(ctx context.Context, actorID
 		return nil
 	}
 	return s.audits.RecordAuthorizationAudit(ctx, repository.AuthorizationAudit{
-		ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
+		ActorKind: actorKind, ActorID: actorID, PermissionCode: permissionCode, OperationCode: operationCode,
 		ResourceType: "identity_admin_account", ResourceID: userID, Outcome: "allow", Reason: strings.TrimSpace(reason),
 	})
 }
@@ -320,11 +326,4 @@ func validAdminAdmissionUserID(value string) bool {
 func validAdminAdmissionCommand(command AdminAdmissionCommand) bool {
 	reason := strings.TrimSpace(command.Reason)
 	return command.ExpectedVersion >= 1 && reason != "" && len(reason) <= 500
-}
-
-func localActorType(actorID string) string {
-	if strings.TrimSpace(actorID) == "" {
-		return "local_operator"
-	}
-	return "user"
 }

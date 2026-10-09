@@ -5,7 +5,14 @@ import (
 	"errors"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/pkg/auth"
+)
+
+// Cross-package error aliases keep adapters free of service imports.
+var (
+	ErrInvalidScope = repository.ErrInvalidRoleAssignment
+	ErrUserNotFound = repository.ErrUserNotFound
 )
 
 // ErrChallengeNotDeliverable tells the compiled email-delivery Core module
@@ -54,6 +61,12 @@ type SessionVerifier interface {
 	VerifyAccess(context.Context, *auth.JWTClaims) error
 }
 
+// SessionStrengthReader exposes the verified session's authentication strength
+// so admin entries can build an honest actor proof for delegation writes.
+type SessionStrengthReader interface {
+	AuthenticationStrengthForSession(context.Context, string) (string, error)
+}
+
 // ChallengeDispatchReader is reserved for the compiled Core email-delivery
 // module. Its argument is the internal opaque challenge ID carried by the
 // durable event; it returns an ephemeral code after re-checking challenge state.
@@ -87,10 +100,11 @@ type RoleAssignment struct {
 }
 
 // ModerationPolicy is the public identity contract for category-scoped
-// governance. It intentionally exposes no repository or role model.
+// governance. It intentionally exposes no repository or role model. The
+// boards provider reloads candidate board facts for the delegation chain.
 type ModerationPolicy interface {
 	CheckScoped(context.Context, string, string, string, string, int64) (bool, error)
 	ListRoleAssignments(context.Context, string, string) ([]RoleAssignment, error)
 	ReplaceCategoryRoleScopes(context.Context, string, string, []int64) (bool, error)
-	ReplaceCategoryRoleScopesByActor(context.Context, string, string, string, []int64) (bool, error)
+	ReplaceCategoryRoleScopesByActor(context.Context, string, string, string, []int64, BoardFactsProvider) (bool, error)
 }

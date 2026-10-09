@@ -1,0 +1,38 @@
+{
+  "schema": "campusos.v12-stage-slice-exit/v1",
+  "generated_at": "2026-09-27T17:17:41.280214+00:00",
+  "stage": "V12-01b",
+  "slice": "resource_policy_four_way_intersection_and_purpose_budget",
+  "stage_status": "partial",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "race_detector": "enabled",
+    "network": "offline policy evaluation"
+  },
+  "checks": {
+    "g1_schema_sdk_offline_contract": "passed",
+    "four_way_numeric_and_exact_https_origin_intersection": "passed",
+    "revoked_and_expired_grant_denied": "passed",
+    "unsafe_targets_and_undeclared_host_capabilities_denied": "passed",
+    "purpose_reservation_settlement_cancel_unknown_charge": "passed",
+    "concurrent_reservations_no_overspend": "passed",
+    "timeout_keeps_unknown_usage_reserved": "passed",
+    "revocation_cancels_inflight_and_expiry_denies_new": "passed"
+  },
+  "enforcement_scope": "pure resource decision and process-local purpose budget; actual CPU/memory/container isolation belongs to V12-05/06 and shared distributed accounting is not claimed",
+  "source_sha256": {
+    "internal/platform/security/resource_policy.go": "4d345f683045c696c6a54a4e4e78096a36b91e90c07a4a1b43e99e5dd524801a",
+    "internal/platform/security/resource_policy_test.go": "2606da65d10a327161dc60445fec0919a5c9212b2a156bf3aba8c810a1cc8133",
+    "internal/platform/security/resource_policy_budget.go": "27cb983ef87d8eb0fe088fbea9eeb4d64516d8ae34b83777e4468bb31cf20270",
+    "internal/platform/security/resource_policy_budget_test.go": "7928e9658cad19d8f3e867cd0f82dbb14790262aa2ade54f03c75cb099a647a3",
+    "docs/api/plugin-v5-host-resources-v1.schema.json": "6623b5618061f7d63d746ae5ec7cdf2f1176777b4dccf0a5b765206a2f4e152b",
+    "sdk/typescript/src/plugin-v5-resource-install.ts": "e9f0906d5b7ebaecb477884343b2fc57579980aba54ee57545d8b21d8fb58d93",
+    "scripts/check-v12-plugin-v5-resource-install-contract.mjs": "6539985618252c5cd16c55c3e0f35cd25645f3fb934bc5a68a20b7d19ea7d9b6",
+    "scripts/v12-01b-resource-policy-drill.sh": "339febcf0b359b5c6e99f32e2b245f615bc1f01b2504ad689c38c4f53b301214"
+  }
+}

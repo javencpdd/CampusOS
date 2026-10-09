@@ -1,0 +1,168 @@
+{
+  "schema": "campusos.v12-02a-permission-path-acceptance/v1",
+  "generated_at": "2026-10-09T18:55:00.753161+00:00",
+  "stage": "V12-02a",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "PermissionService governance read/grant path replacement: the two board governance codes authorize via current delegation grants unioned with global catalog grants; moderator scope replacement commits role scopes and delegation grants in one command transaction",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port)"
+  },
+  "checks": {
+    "TestPostgreSQLModeratorScopeReplaceCommitsDelegationGrants": "passed",
+    "TestPostgreSQLModeratorScopeReplaceRevokesRemovedBoards": "passed",
+    "TestPostgreSQLModeratorScopeReplaceFailsClosedWithoutProof": "passed",
+    "TestPermissionCatalogUsesStableCodesAndPreventsPrivilegeEscalation": "passed",
+    "TestPostgreSQLGrantCommitAuditAndOutbox": "passed",
+    "TestPostgreSQLConcurrentGrantRevokeRace": "passed"
+  },
+  "coverage": {
+    "path_tests": 6,
+    "kernels": [
+      "delegation service PG suite",
+      "repository PG suite",
+      "policy/port codecs"
+    ],
+    "security_assertions": [
+      "role scope without grant denies",
+      "outside board denies",
+      "missing actor proof fails closed",
+      "global admin catalog grant preserved",
+      "revoked board denied immediately"
+    ]
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/service/permission_service.go": "a16f26bd9308c7d980c9b95933d74e059a24427da97b86bba8cc43c3a3cf99d4",
+    "internal/modules/core/identity/service/permission_service_delegation_test.go": "a6aff88c44432b047d14ebf46a9f3d597364d0bf21610786ef008a2247f99a57",
+    "internal/modules/core/identity/service/session_service.go": "fbd0416b7f17785abc4301db6d350a1f206212c074252e68b596414c3a04b292",
+    "internal/modules/core/identity/delegation/service.go": "d2daf95cf1c647d076f9fbf8a6c623f66bb8a71d1f94f4f4812f55777e544b41",
+    "internal/modules/core/identity/delegation/context.go": "87c93cf2f601f309c0ac3b5a75c966015b041e30f84712199d833743df63855a",
+    "internal/modules/core/identity/repository/pg_delegation_repository.go": "fe32a1dc1fabc0237f3dfd5a0a107a230f0e62599105e678b5b1484e50472830",
+    "internal/modules/core/identity/port/port.go": "2ce521990818247eb1f2dd683740f8e9a3d99c4e3cedc1f00920b8a586156b21",
+    "internal/modules/core/identity/port/board_delegation_policy.go": "b481c308af12ee518988a6cf17b810c945d755e6bfd0da7f37c1a7e4789f2c1d",
+    "internal/modules/core/identity/portadapt/adapter.go": "61b1cc59c4a6df99664527b48028c15bd048a3d888c7c058560c2dd6db1ed388",
+    "internal/modules/core/identity/portadapt/moderation_adapter.go": "f7ac445434bd769cc3084c65b3a013bee87628c25db67d36dabe0c78c6e7c5e4",
+    "internal/modules/core/identity/module.go": "81b75420b7293c1f2f43e91658d50c1dbda08cbc3f43c3f0a7f531e635fe8983",
+    "internal/modules/core/identity/profile.go": "f7c7dedd0909e6f48d6cee0f00d87fd5b6c0aba8eb38074cef650472c70958f1",
+    "internal/modules/core/moderation/service.go": "7620649ddc8fe475f3cd17ef522f8e64e7b3dc04585e3ae054f7a9529e0f35e5",
+    "internal/modules/core/moderation/handler.go": "c9ade77d05c59e66793942b50bd559bdb39be3ae5c31199cbb9dade725efb0b5",
+    "internal/modules/core/moderation/module.go": "a650755a0309ea0ac8568e880cba95d57af40a19574285842a683d9931770275",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7e9d3186d2bede973f11d3a7e12c8c565fc804361ff6762ffe3e467792d4b7b3",
+    "scripts/v12-02a-permission-path-drill.sh": "b57b34f2d099c4041e96208c1c2485560b2be63d952e8967b963f1e5419fc34d"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-board-delegation-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-board-delegation-linux.json",
+      "sha256": "c4fae8202f2414e2625663ca28a2512335aa2b6f6878edb08e5b491ddda4d511",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-delegation-store-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-delegation-store-linux.json",
+      "sha256": "e5bed1a2047e09fd91ececbc4ff48b95d723e6d5d1d0448ff0ad88d2d18defd9",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-delegation-service-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-delegation-service-linux.json",
+      "sha256": "e8b0ad5e68f54db84f568f1bcd27b3907522f2ac7b583f3fb2fdc74169945db9",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02a-permission-path/path.dIyw6a/migrations.log",
+      "sha256": "27a16f67aff0e690e4a2b9109e13ee99d8d621a7bf445e235a22a398ca7aec1b"
+    },
+    "path-tests": {
+      "path": ".cache/v12-02a-permission-path/path.dIyw6a/path-tests.log",
+      "sha256": "a75724d7f763a98257da210bbd674c525fbc926549a18e41222388e5492050dd"
+    },
+    "kernel-tests": {
+      "path": ".cache/v12-02a-permission-path/path.dIyw6a/kernel-tests.log",
+      "sha256": "4690b821b6786ca5ca1fe7a7687a166806edfc4a75b650b114082c2ccd68f976"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/go-all.log",
+      "log_sha256": "69190d9895cd74c76f27333946cea9e6324a5c82cfcc61a702482acd06775bbd"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/architecture.log",
+      "log_sha256": "0399746088de2a70c231daec7984893c6e87ba732b8b98629c218f7c743b0a31"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/docs-build.log",
+      "log_sha256": "f3a15c02d22de95eb721ccf02a0ada7f0a630ffd70a1ea0a1224e158f5d2bcde"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/docs-links.log",
+      "log_sha256": "1e0ae58965d121453b8991f84890cd35f500dd3b7bb581a5000e13e33878a72d"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/line-endings.log",
+      "log_sha256": "87fc7c070e01a88473865d467c1cd9009b54cfb3e242f5a67470280b070387ac"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02a-permission-path/path.dIyw6a/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "Only community.thread.take_down and community.post.delete moved to delegation grants; the moderator role keeps its five low-risk codes and global role management keeps the existing catalog checks pending a future contract.",
+    "Read-path caller strength uses the entry actor proof when present; MFA-required grants fail closed until V12-02b wires entry principals everywhere.",
+    "Admin identity domain separation remains V12-02d; community fact loading/ABA versioning and HTTP wiring of the resource policy remain V12-02b.",
+    "The G1 old-mechanism replacement entries policy.user_only_check and policy.grant_by_execution are covered for the governance category scope only."
+  ]
+}

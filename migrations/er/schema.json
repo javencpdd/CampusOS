@@ -1,0 +1,8088 @@
+{
+  "table_count": 77,
+  "foreign_key_count": 43,
+  "tables": {
+    "academic_terms": {
+      "name": "academic_terms",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "year",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "semester",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "first_week_start",
+          "type_sql": "DATE",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'open'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_default",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "closed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "year",
+          "semester"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "accounts": {
+      "name": "accounts",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "identifier",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "credential",
+          "type_sql": "VARCHAR(512)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "verified",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_accounts_user",
+          "child_table": "accounts",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "ai_call_logs": {
+      "name": "ai_call_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "provider",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "model",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "source",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "duration_ms",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "prompt_tokens",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "completion_tokens",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "total_tokens",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_message",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "api_keys": {
+      "name": "api_keys",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "key",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permissions",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'[]'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_active",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "TRUE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_used_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "audit_logs": {
+      "name": "audit_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "trace_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "before_data",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "after_data",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ip_address",
+          "type_sql": "VARCHAR(45)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "authorization_audits": {
+      "name": "authorization_audits",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "request_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permission_code",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "operation_code",
+          "type_sql": "VARCHAR(200)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "scope_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "scope_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource_type",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "outcome",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ip_address",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "builtin_feature_states": {
+      "name": "builtin_feature_states",
+      "columns": [
+        {
+          "name": "feature_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "desired_enabled",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "effective_enabled",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "pending_restart",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "feature_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "categories": {
+      "name": "categories",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "slug",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "VARCHAR(500)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "icon",
+          "type_sql": "VARCHAR(512)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "parent_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "sort_order",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "post_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_closed",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_categories_parent",
+          "child_table": "categories",
+          "child_columns": [
+            "parent_id"
+          ],
+          "parent_table": "categories",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "category_thread_type_policies": {
+      "name": "category_thread_type_policies",
+      "columns": [
+        {
+          "name": "category_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "thread_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "enabled",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "TRUE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "category_id",
+        "thread_type"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_category_thread_type_policy_category",
+          "child_table": "category_thread_type_policies",
+          "child_columns": [
+            "category_id"
+          ],
+          "parent_table": "categories",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "configurations": {
+      "name": "configurations",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "key",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "value",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "VARCHAR(500)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "category",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_secret",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_configurations_updated_by",
+          "child_table": "configurations",
+          "child_columns": [
+            "updated_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "content_moderation_actions": {
+      "name": "content_moderation_actions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "case_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "before_state",
+          "type_sql": "VARCHAR(96)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "after_state",
+          "type_sql": "VARCHAR(96)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "content_moderation_cases": {
+      "name": "content_moderation_cases",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "opened_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resolved_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "opened_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resolved_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "content_revisions": {
+      "name": "content_revisions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_format",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "tags",
+          "type_sql": "TEXT[]",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "thread_id",
+          "version"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "identity_account_recovery_cases": {
+      "name": "identity_account_recovery_cases",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "public_id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "account_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "target_email_normalized",
+          "type_sql": "VARCHAR(320)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "challenge_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "proof_reference",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(24)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "completed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "cancelled_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_recovery_case_user",
+          "child_table": "identity_account_recovery_cases",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_identity_recovery_case_account",
+          "child_table": "identity_account_recovery_cases",
+          "child_columns": [
+            "account_id"
+          ],
+          "parent_table": "accounts",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_identity_recovery_case_challenge",
+          "child_table": "identity_account_recovery_cases",
+          "child_columns": [
+            "challenge_id"
+          ],
+          "parent_table": "identity_email_challenges",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_identity_recovery_case_created_by",
+          "child_table": "identity_account_recovery_cases",
+          "child_columns": [
+            "created_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_admin_accounts": {
+      "name": "identity_admin_accounts",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "credential_account_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'active'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "activation_source",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'role_assignment'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "activated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "revoked_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_authenticated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_admin_account_user",
+          "child_table": "identity_admin_accounts",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_identity_admin_account_credential",
+          "child_table": "identity_admin_accounts",
+          "child_columns": [
+            "credential_account_id"
+          ],
+          "parent_table": "accounts",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_challenge_policies": {
+      "name": "identity_challenge_policies",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "email_window_minutes",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "email_max_requests",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ip_window_minutes",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ip_max_requests",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_challenge_policy_updated_by",
+          "child_table": "identity_challenge_policies",
+          "child_columns": [
+            "updated_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_challenge_rate_limits": {
+      "name": "identity_challenge_rate_limits",
+      "columns": [
+        {
+          "name": "scope",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "subject_digest",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "window_started_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "request_count",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "scope",
+        "subject_digest",
+        "window_started_at"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "identity_email_challenges": {
+      "name": "identity_email_challenges",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "public_id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "purpose",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "email_normalized",
+          "type_sql": "VARCHAR(320)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "account_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "key_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "nonce",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempt_count",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "max_attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "5",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "verified_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ticket_digest",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ticket_expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "consumed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "invalidated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "requested_ip_hash",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_email_challenge_account",
+          "child_table": "identity_email_challenges",
+          "child_columns": [
+            "account_id"
+          ],
+          "parent_table": "accounts",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_legacy_email_placeholders": {
+      "name": "identity_legacy_email_placeholders",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "placeholder_email",
+          "type_sql": "VARCHAR(320)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "migration_source",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resolved_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_legacy_placeholder_user",
+          "child_table": "identity_legacy_email_placeholders",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_mfa_policies": {
+      "name": "identity_mfa_policies",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(32)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "mode",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'off'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "grace_ends_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_mfa_policy_updated_by",
+          "child_table": "identity_mfa_policies",
+          "child_columns": [
+            "updated_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_mfa_recovery_codes": {
+      "name": "identity_mfa_recovery_codes",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "method_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "code_digest",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": true
+        },
+        {
+          "name": "used_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "code_digest"
+        ]
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_mfa_recovery_user",
+          "child_table": "identity_mfa_recovery_codes",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_identity_mfa_recovery_method",
+          "child_table": "identity_mfa_recovery_codes",
+          "child_columns": [
+            "method_id"
+          ],
+          "parent_table": "identity_mfa_totp_methods",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_mfa_tickets": {
+      "name": "identity_mfa_tickets",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "audience",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "purpose",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ticket_digest",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": true
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "consumed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "max_attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "5",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "ticket_digest"
+        ]
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_mfa_ticket_user",
+          "child_table": "identity_mfa_tickets",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_mfa_totp_methods": {
+      "name": "identity_mfa_totp_methods",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "key_id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "nonce",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ciphertext",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_accepted_step",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "enrollment_expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "confirmed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "disabled_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_identity_mfa_totp_user",
+          "child_table": "identity_mfa_totp_methods",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "identity_reserved_identifiers": {
+      "name": "identity_reserved_identifiers",
+      "columns": [
+        {
+          "name": "identifier_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "identifier_normalized",
+          "type_sql": "VARCHAR(320)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reason",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "identifier_type",
+        "identifier_normalized"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "likes": {
+      "name": "likes",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "target_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "target_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_likes_user",
+          "child_table": "likes",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "mcp_audit_logs": {
+      "name": "mcp_audit_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "tool",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "arguments",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "success",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "message_bindings": {
+      "name": "message_bindings",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "platform",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "external_user_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "display_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "message_logs": {
+      "name": "message_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "platform",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "conversation_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sender_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "direction",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'inbound'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "message_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'text'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "raw_payload",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "mutual_aid_details": {
+      "name": "mutual_aid_details",
+      "columns": [
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "aid_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "aid_status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'open'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deadline",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "location_scope",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "contact_mode",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "thread_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_mutual_aid_details_thread",
+          "child_table": "mutual_aid_details",
+          "child_columns": [
+            "thread_id"
+          ],
+          "parent_table": "threads",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_mutual_aid_details_created_by",
+          "child_table": "mutual_aid_details",
+          "child_columns": [
+            "created_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "notifications": {
+      "name": "notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "type",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action_url",
+          "type_sql": "VARCHAR(512)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_read",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "read_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_notifications_user",
+          "child_table": "notifications",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "outbox_consumer_receipts": {
+      "name": "outbox_consumer_receipts",
+      "columns": [
+        {
+          "name": "consumer_name",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "attempt",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "delivered_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "consumer_name",
+        "event_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_outbox_consumer_receipt_event",
+          "child_table": "outbox_consumer_receipts",
+          "child_columns": [
+            "event_id"
+          ],
+          "parent_table": "platform_outbox",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": ""
+        }
+      ]
+    },
+    "permission_definitions": {
+      "name": "permission_definitions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "code",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "domain",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "risk_level",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'low'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "allowed_scope_types",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'[\"global\"]'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "audit_level",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'standard'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deprecated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "permissions": {
+      "name": "permissions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "role_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "resource",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_permissions_role",
+          "child_table": "permissions",
+          "child_columns": [
+            "role_id"
+          ],
+          "parent_table": "roles",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "personal_document_previews": {
+      "name": "personal_document_previews",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "document_version_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": true
+        },
+        {
+          "name": "preview_object_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_code",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "document_version_id"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "personal_document_versions": {
+      "name": "personal_document_versions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "document_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version_number",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "source_object_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "source_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "size_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sha256",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "restored_from_version_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "document_id",
+          "version_number"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "personal_documents": {
+      "name": "personal_documents",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "owner_user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "document_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'active'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "current_version_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_personal_documents_current_version",
+          "child_table": "personal_documents",
+          "child_columns": [
+            "current_version_id"
+          ],
+          "parent_table": "personal_document_versions",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "platform_command_audits": {
+      "name": "platform_command_audits",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "command_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "command_code",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource_type",
+          "type_sql": "VARCHAR(80)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "resource_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "operation_code",
+          "type_sql": "VARCHAR(200)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permission_code",
+          "type_sql": "VARCHAR(160)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "request_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "trace_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "details",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_platform_command_audit_event",
+          "child_table": "platform_command_audits",
+          "child_columns": [
+            "event_id"
+          ],
+          "parent_table": "platform_outbox",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": ""
+        }
+      ]
+    },
+    "platform_compatibility_usage": {
+      "name": "platform_compatibility_usage",
+      "columns": [
+        {
+          "name": "usage_key",
+          "type_sql": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "usage_kind",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "detail",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "first_seen",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_seen",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "usage_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "usage_key"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "platform_operation_runs": {
+      "name": "platform_operation_runs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "kind",
+          "type_sql": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "subject_type",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "subject_id",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(24)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "idempotency_key",
+          "type_sql": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "details",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_message",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "platform_outbox": {
+      "name": "platform_outbox",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_type",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "schema_version",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'v1'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "aggregate_type",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "aggregate_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "payload",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "headers",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "idempotency_key",
+          "type_sql": "VARCHAR(255)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "max_attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "8",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "available_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "lease_owner",
+          "type_sql": "VARCHAR(160)",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "lease_until",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "lease_generation",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_error",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "dead_lettered_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "platform_outbox_attempts": {
+      "name": "platform_outbox_attempts",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "consumer_name",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "worker_id",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "lease_generation",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempt",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(24)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_message",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "started_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "finished_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_platform_outbox_attempt_event",
+          "child_table": "platform_outbox_attempts",
+          "child_columns": [
+            "event_id"
+          ],
+          "parent_table": "platform_outbox",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": ""
+        }
+      ]
+    },
+    "platform_retention_runs": {
+      "name": "platform_retention_runs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "VARCHAR(96)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "target",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "before_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "eligible_rows",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "mode",
+          "type_sql": "VARCHAR(24)",
+          "nullable": false,
+          "default": "'dry-run'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(24)",
+          "nullable": false,
+          "default": "'completed'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "platform_worker_leases": {
+      "name": "platform_worker_leases",
+      "columns": [
+        {
+          "name": "worker_id",
+          "type_sql": "VARCHAR(160)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_heartbeat_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "worker_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_catalog_entries": {
+      "name": "plugin_catalog_entries",
+      "columns": [
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "display_name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "runtime",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'draft'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "package_checksum",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "risk_level",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "data_capabilities",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "plugin_name"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_file_metadata": {
+      "name": "plugin_file_metadata",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "owner_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "original_name",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "stored_name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_type",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "size_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "storage_key",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "retention",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'user-deletable'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_install_requests": {
+      "name": "plugin_install_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "message",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reviewed_by",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reviewed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_logs": {
+      "name": "plugin_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "level",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": "'info'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "message",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_type",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "trace_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_market_audits": {
+      "name": "plugin_market_audits",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "actor_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "action",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "outcome",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_permissions": {
+      "name": "plugin_permissions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permission_type",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permission_value",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_records": {
+      "name": "plugin_records",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "owner_type",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "owner_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "collection",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "record_key",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "data",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "search_text",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_releases": {
+      "name": "plugin_releases",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "checksum",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "signature_state",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "channel",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'stable'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "rollout_state",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugin_user_grants": {
+      "name": "plugin_user_grants",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "plugin_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "permissions",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(16)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "granted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "revoked_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "plugins": {
+      "name": "plugins",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "display_name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'0.0.0'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "author",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "runtime",
+          "type_sql": "VARCHAR(10)",
+          "nullable": false,
+          "default": "'grpc'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "manifest",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'installed'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "api_key",
+          "type_sql": "VARCHAR(64)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "config",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_message",
+          "type_sql": "TEXT",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "installed_by",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": "'system'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "installed_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "posts": {
+      "name": "posts",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "author_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "author_name",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "parent_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_format",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'markdown'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'published'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "like_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "floor_number",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_posts_thread",
+          "child_table": "posts",
+          "child_columns": [
+            "thread_id"
+          ],
+          "parent_table": "threads",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "richtext_article_assets": {
+      "name": "richtext_article_assets",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "article_content_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "uploader_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "file_url",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "file_name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "file_size",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "mime_type",
+          "type_sql": "VARCHAR(100)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "width",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "height",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_richtext_assets_thread",
+          "child_table": "richtext_article_assets",
+          "child_columns": [
+            "thread_id"
+          ],
+          "parent_table": "threads",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "richtext_article_contents": {
+      "name": "richtext_article_contents",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": true
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "summary",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "cover_url",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_html",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_json",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sanitized_html",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'draft'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "published_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "thread_id"
+        ]
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_richtext_contents_thread",
+          "child_table": "richtext_article_contents",
+          "child_columns": [
+            "thread_id"
+          ],
+          "parent_table": "threads",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "role_permissions": {
+      "name": "role_permissions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "role_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "permission_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_v10_role_permissions_role",
+          "child_table": "role_permissions",
+          "child_columns": [
+            "role_id"
+          ],
+          "parent_table": "roles",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_v10_role_permissions_permission",
+          "child_table": "role_permissions",
+          "child_columns": [
+            "permission_id"
+          ],
+          "parent_table": "permission_definitions",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "roles": {
+      "name": "roles",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "VARCHAR(255)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_system",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "route_operations": {
+      "name": "route_operations",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "operation_code",
+          "type_sql": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "module_owner",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "method",
+          "type_sql": "VARCHAR(12)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "path_template",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "audience",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "legacy_aliases",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "route_permission_bindings": {
+      "name": "route_permission_bindings",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "route_operation_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "permission_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_route_permission_operation",
+          "child_table": "route_permission_bindings",
+          "child_columns": [
+            "route_operation_id"
+          ],
+          "parent_table": "route_operations",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "CASCADE",
+          "on_update": ""
+        },
+        {
+          "name": "fk_route_permission_definition",
+          "child_table": "route_permission_bindings",
+          "child_columns": [
+            "permission_id"
+          ],
+          "parent_table": "permission_definitions",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "secondhand_details": {
+      "name": "secondhand_details",
+      "columns": [
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "price_minor",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "currency",
+          "type_sql": "CHAR(3)",
+          "nullable": false,
+          "default": "'CNY'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "item_condition",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "trade_method",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "trade_status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'available'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "location_scope",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "thread_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_secondhand_details_thread",
+          "child_table": "secondhand_details",
+          "child_columns": [
+            "thread_id"
+          ],
+          "parent_table": "threads",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_secondhand_details_created_by",
+          "child_table": "secondhand_details",
+          "child_columns": [
+            "created_by"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "sessions": {
+      "name": "sessions",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "refresh_token",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "device_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "device_name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "device_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": true,
+          "default": "'web'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "ip_address",
+          "type_sql": "VARCHAR(45)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_agent",
+          "type_sql": "VARCHAR(512)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_active_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_sessions_user",
+          "child_table": "sessions",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "storage_objects": {
+      "name": "storage_objects",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "owner_user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "namespace",
+          "type_sql": "VARCHAR(80)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "purpose",
+          "type_sql": "VARCHAR(120)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "provider",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'local'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "storage_key",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "original_name",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "mime_type",
+          "type_sql": "VARCHAR(160)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "size_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sha256",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "provider",
+          "storage_key"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "tags": {
+      "name": "tags",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "slug",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "description",
+          "type_sql": "VARCHAR(255)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "color",
+          "type_sql": "VARCHAR(7)",
+          "nullable": true,
+          "default": "'#007bff'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "threads": {
+      "name": "threads",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "content_format",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'markdown'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "author_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "author_name",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "category_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'published'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_pinned",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_locked",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "is_highlighted",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "FALSE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "view_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reply_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "like_count",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_post_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "last_post_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "tags",
+          "type_sql": "TEXT[]",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "metadata",
+          "type_sql": "JSONB",
+          "nullable": true,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_threads_author",
+          "child_table": "threads",
+          "child_columns": [
+            "author_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "user_roles": {
+      "name": "user_roles",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "role_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "scope_type",
+          "type_sql": "VARCHAR(20)",
+          "nullable": true,
+          "default": "'global'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "scope_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_user_roles_user",
+          "child_table": "user_roles",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "user_schedule_preferences": {
+      "name": "user_schedule_preferences",
+      "columns": [
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "academic_term_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "user_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "user_schedule_terms": {
+      "name": "user_schedule_terms",
+      "columns": [
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "academic_term_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMPTZ",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "user_id",
+        "academic_term_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "user_space_contents": {
+      "name": "user_space_contents",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "thread_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "excerpt",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "author_name",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "category_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "tags",
+          "type_sql": "TEXT[]",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'published'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "thread_updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "synced_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_user_space_contents_user",
+          "child_table": "user_space_contents",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "user_space_style_snapshots": {
+      "name": "user_space_style_snapshots",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "snapshot_type",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'before_apply'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "style_name",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "style_version",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "theme",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'default'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "layout",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'blog'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "style_manifest",
+          "type_sql": "JSONB",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "user_spaces": {
+      "name": "user_spaces",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "title",
+          "type_sql": "VARCHAR(120)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "bio",
+          "type_sql": "VARCHAR(500)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "avatar",
+          "type_sql": "VARCHAR(512)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "cover_image",
+          "type_sql": "VARCHAR(512)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "theme",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'default'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "layout",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "'blog'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "visibility",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'public'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sync_enabled",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "TRUE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sync_categories",
+          "type_sql": "TEXT[]",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "sync_tags",
+          "type_sql": "TEXT[]",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_user_spaces_user",
+          "child_table": "user_spaces",
+          "child_columns": [
+            "user_id"
+          ],
+          "parent_table": "users",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        }
+      ]
+    },
+    "user_storage_accounts": {
+      "name": "user_storage_accounts",
+      "columns": [
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "used_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "reserved_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "version",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": "1",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "user_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "user_storage_quotas": {
+      "name": "user_storage_quotas",
+      "columns": [
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "quota_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_by",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "user_id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "user_storage_reservations": {
+      "name": "user_storage_reservations",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "user_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "object_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": true
+        },
+        {
+          "name": "reserved_bytes",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "expires_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [
+        [
+          "object_id"
+        ]
+      ],
+      "foreign_keys": []
+    },
+    "users": {
+      "name": "users",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "username",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "nickname",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "email",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "avatar",
+          "type_sql": "VARCHAR(512)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "bio",
+          "type_sql": "VARCHAR(500)",
+          "nullable": true,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'active'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    },
+    "webhook_deliveries": {
+      "name": "webhook_deliveries",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "endpoint_id",
+          "type_sql": "BIGINT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": true,
+          "unique": false
+        },
+        {
+          "name": "event_id",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "event_type",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "target_url",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "status",
+          "type_sql": "VARCHAR(32)",
+          "nullable": false,
+          "default": "'pending'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "attempts",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "response_status",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "error_message",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": [
+        {
+          "name": "fk_webhook_deliveries_endpoint",
+          "child_table": "webhook_deliveries",
+          "child_columns": [
+            "endpoint_id"
+          ],
+          "parent_table": "webhook_endpoints",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "RESTRICT",
+          "on_update": ""
+        },
+        {
+          "name": "fk_webhook_deliveries_outbox",
+          "child_table": "webhook_deliveries",
+          "child_columns": [
+            "outbox_event_id"
+          ],
+          "parent_table": "platform_outbox",
+          "parent_columns": [
+            "id"
+          ],
+          "on_delete": "SET NULL",
+          "on_update": ""
+        }
+      ]
+    },
+    "webhook_endpoints": {
+      "name": "webhook_endpoints",
+      "columns": [
+        {
+          "name": "id",
+          "type_sql": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "pk": true,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "name",
+          "type_sql": "VARCHAR(128)",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "url",
+          "type_sql": "TEXT",
+          "nullable": false,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "secret",
+          "type_sql": "VARCHAR(255)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "events",
+          "type_sql": "TEXT[]",
+          "nullable": false,
+          "default": "'{}'",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "enabled",
+          "type_sql": "BOOLEAN",
+          "nullable": false,
+          "default": "TRUE",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "max_retries",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "2",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "timeout_ms",
+          "type_sql": "INTEGER",
+          "nullable": false,
+          "default": "5000",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_by",
+          "type_sql": "VARCHAR(64)",
+          "nullable": false,
+          "default": "''",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "created_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "updated_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": false,
+          "default": "NOW()",
+          "pk": false,
+          "fk": false,
+          "unique": false
+        },
+        {
+          "name": "deleted_at",
+          "type_sql": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "pk": false,
+          "fk": false,
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique_sets": [],
+      "foreign_keys": []
+    }
+  },
+  "logical_many_to_many": [
+    {
+      "left": "roles",
+      "right": "permission_definitions",
+      "via": "role_permissions",
+      "strength": "association-entity inferred"
+    },
+    {
+      "left": "route_operations",
+      "right": "permission_definitions",
+      "via": "route_permission_bindings",
+      "strength": "association-entity inferred"
+    }
+  ]
+}

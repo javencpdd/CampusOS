@@ -20,6 +20,7 @@ SCAN_ROOTS = (
     ROOT / "docs" / "项目计划书v0",
     ROOT / "docs" / "项目计划书v1",
     ROOT / "docs" / "进度" / "v1.1-dev",
+    ROOT / "docs" / "进度" / "v1.2-dev",
     ROOT / "docs" / "进度" / "v0.6-dev",
     ROOT / "docs" / "进度" / "v0.7-dev",
     ROOT / "docs" / "进度" / "v0.8-dev",

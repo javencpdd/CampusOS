@@ -1,0 +1,179 @@
+{
+  "schema": "campusos.v12-g1-exit/v1",
+  "generated_at": "2026-09-26T20:25:29.840Z",
+  "stage": "V12-G1",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "18 G1 external target contract clauses with Linux offline acceptance; runtime acceptance remains in assigned stages",
+  "dependency": "V12-G0 passed",
+  "clauses": [
+    {
+      "id": "principal",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-principal-linux.json",
+      "passed": true
+    },
+    {
+      "id": "thread_policy",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-thread-policy-linux.json",
+      "passed": true
+    },
+    {
+      "id": "resource_policy",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-resource-policy-linux.json",
+      "passed": true
+    },
+    {
+      "id": "board_delegation",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-board-delegation-linux.json",
+      "passed": true
+    },
+    {
+      "id": "scope_delegation",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-scope-delegation-linux.json",
+      "passed": true
+    },
+    {
+      "id": "identity_domains",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-identity-domains-linux.json",
+      "passed": true
+    },
+    {
+      "id": "v5_shape",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-shape-linux.json",
+      "passed": true
+    },
+    {
+      "id": "v5_release",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-shape-linux.json",
+      "passed": true
+    },
+    {
+      "id": "v5_consumes",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-consumes-linux.json",
+      "passed": true
+    },
+    {
+      "id": "v5_provides",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-provides-linux.json",
+      "passed": true
+    },
+    {
+      "id": "v5_manifest",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-manifest-linux.json",
+      "passed": true
+    },
+    {
+      "id": "host_resources",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-resource-install-linux.json",
+      "passed": true
+    },
+    {
+      "id": "noninvasive_install",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-resource-install-linux.json",
+      "passed": true
+    },
+    {
+      "id": "bounded_config",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-config-linux.json",
+      "passed": true
+    },
+    {
+      "id": "bidirectional_calls",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-dispatch-linux.json",
+      "passed": true
+    },
+    {
+      "id": "events",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-events-linux.json",
+      "passed": true
+    },
+    {
+      "id": "lifecycle",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-plugin-v5-events-linux.json",
+      "passed": true
+    },
+    {
+      "id": "old_mechanism_replacement",
+      "implementation": "passed",
+      "automation": "passed",
+      "target_environment": "linux offline passed",
+      "runtime_status": "pending",
+      "evidence": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-replacement-map-linux.json",
+      "passed": true
+    }
+  ],
+  "runtime_acceptance": "pending V12-01a/01b/02a/02d/03a/03b/03c/04/08a/14c; G1 is contract freeze only",
+  "files_sha256": {
+    "docs/api/v1.2-G1合同退出矩阵.json": "9e008125f1c395a4792a0f232bd04f492cc7e92a1a4a43bea88968721d1a21ed",
+    "scripts/check-v12-g1-exit.mjs": "c2691bc513a28b91b963f314e3915d98407e116c6c3fc336ec6db36b917bfce8"
+  }
+}

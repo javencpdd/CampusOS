@@ -1,0 +1,222 @@
+{
+  "schema": "campusos.v12-g1-plugin-v5-consumes-acceptance/v1",
+  "generated_at": "2026-09-26T19:38:16.274Z",
+  "scope": "G1 v5 consumes projection and host-owned catalog scope negotiation",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 03a/03b/14c: no real catalog publication, Admin Grant, User Consent, Host API call or private source acceptance claimed",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "empty-ui-only",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "public-read",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "self-managed-record",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "public-collection",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "plugin-config",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "all-four",
+      "expected": "accepted",
+      "passed": true
+    },
+    {
+      "name": "unknown-required",
+      "expected": "plugin.capability_unpublished",
+      "passed": true
+    },
+    {
+      "name": "unknown-optional",
+      "expected": "plugin.capability_unpublished",
+      "passed": true
+    },
+    {
+      "name": "public-as-self",
+      "expected": "plugin.scope_unsupported",
+      "passed": true
+    },
+    {
+      "name": "self-as-public",
+      "expected": "plugin.scope_unsupported",
+      "passed": true
+    },
+    {
+      "name": "collection-as-public",
+      "expected": "plugin.scope_unsupported",
+      "passed": true
+    },
+    {
+      "name": "config-as-collection",
+      "expected": "plugin.scope_unsupported",
+      "passed": true
+    },
+    {
+      "name": "private-collection",
+      "expected": "plugin.scope_target_unavailable",
+      "passed": true
+    },
+    {
+      "name": "mixed-public-private",
+      "expected": "plugin.scope_target_unavailable",
+      "passed": true
+    },
+    {
+      "name": "secret-config-key",
+      "expected": "plugin.scope_target_unavailable",
+      "passed": true
+    },
+    {
+      "name": "duplicate-capability",
+      "expected": "plugin.duplicate_capability",
+      "passed": true
+    },
+    {
+      "name": "duplicate-collection-id",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "duplicate-config-key",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "self-claims-user-id",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "public-claims-target",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "wildcard-collection",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "wildcard-config",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "empty-collection",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "empty-purpose",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "missing-required",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "extra-grant",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "unknown-scope",
+      "expected": "plugin.consumes_invalid",
+      "passed": true
+    },
+    {
+      "name": "wrong-host-version",
+      "expected": "plugin.host_contract_unsupported",
+      "passed": true
+    },
+    {
+      "name": "catalog-bad-version",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-duplicate-code",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-private-collection",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-self-without-consent",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-public-with-consent",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    },
+    {
+      "name": "catalog-config-with-secret-class",
+      "expected": "plugin.catalog_unavailable",
+      "passed": true
+    }
+  ],
+  "scope_combinations": 64,
+  "catalog_rechecks": [
+    {
+      "name": "collection-removed",
+      "expected": "plugin.scope_target_unavailable",
+      "passed": true
+    },
+    {
+      "name": "config-key-removed",
+      "expected": "plugin.scope_target_unavailable",
+      "passed": true
+    },
+    {
+      "name": "capability-unpublished",
+      "expected": "plugin.capability_unpublished",
+      "passed": true
+    }
+  ],
+  "typescript_positive_declarations": 4,
+  "typescript_negative_types": 5,
+  "files_sha256": {
+    "docs/api/plugin-v5-consumes-v1.schema.json": "6e3f9ef74f0ddc826679931eb32535847c46c6003e65c91cb1a0515b64e8363e",
+    "docs/api/plugin-v5-host-catalog-v1.schema.json": "ad5675a372f9b63c27b6aec3b0ded4f8f84a350ef1be724ef9f3fe9138ee2916",
+    "docs/api/plugin-v5-package-shape-v1.schema.json": "261d7845115800ae789cfb4c517ce1d4ded3124d9f6ca92658aecc8ff125930f",
+    "sdk/typescript/tests/plugin-v5-host-catalog.fixture.json": "5d01fa8c8a2f20d5c8c815872fd73268aae82745fdf443d04066cb37376de66b",
+    "docs/api/plugin-v5-consumes-v1.errors.json": "bc4a461c0f5863f9aee9f7e77053ba52a6dac770de7950976ee52091ea4e6a5d",
+    "sdk/typescript/src/plugin-v5-consumes.ts": "e87417ef29d95aad57b7cad837bfbe3d065417a09bdf16ade6a4a14607b7038b",
+    "sdk/typescript/src/index.ts": "7df23bdd082824fa3c427c64fdb66e2520241217d5101b02d6de9ac359c901b5",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "docs/api/v1.2插件v5消费能力与范围合同.md": "4509aec76f10f223fc8baad264d8126208b6fe67ac8efe9bd6876c7370171f07",
+    "Makefile": "1994c05f09662cae5350ea03c1536a7c5ab9e342ea9c098fd9dddc832e439077",
+    "scripts/check-v12-plugin-v5-consumes-contract.mjs": "e505bad7f7bb83bba5bf6e29d745f46cc04ae8de7adb5625994dfd5f6257864c"
+  }
+}

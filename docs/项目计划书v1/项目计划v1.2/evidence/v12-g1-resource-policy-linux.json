@@ -1,0 +1,176 @@
+{
+  "schema": "campusos.v12-g1-resource-policy-acceptance/v1",
+  "generated_at": "2026-09-26T20:17:38.513Z",
+  "scope": "G1 author/governance/document/public-source pure Policy target",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "linux offline Node/Ajv/TypeScript contract acceptance passed",
+  "runtime_acceptance": "pending 02a/02b/02d/09a: no live facts load, DB transaction, ACL or HTTP decision claimed",
+  "environment": {
+    "platform": "linux",
+    "node": "v20.20.2",
+    "ajv": "6.15.0",
+    "typescript": "5.9.3"
+  },
+  "fixtures": [
+    {
+      "name": "author-edit",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "other-author",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "admin-is-not-author",
+      "expected": "policy.principal_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "board-governance",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "board-wrong-board",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "board-no-mfa",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "board-revoked",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "board-expired",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "board-other-actor",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "admin-explicit-grant",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "admin-no-mfa",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "delete-post",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "document-owner",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "document-other",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "document-admin",
+      "expected": "policy.principal_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "document-plugin",
+      "expected": "policy.principal_wrong_domain",
+      "passed": true
+    },
+    {
+      "name": "source-public",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "source-private",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "source-origin-hidden",
+      "expected": "policy.scope_denied",
+      "passed": true
+    },
+    {
+      "name": "source-deleted",
+      "expected": "policy.resource_unavailable",
+      "passed": true
+    },
+    {
+      "name": "wrong-resource-kind",
+      "expected": "policy.resource_unavailable",
+      "passed": true
+    },
+    {
+      "name": "unknown-action",
+      "expected": "policy.unknown_action",
+      "passed": true
+    }
+  ],
+  "principal_state_combinations": 75,
+  "rechecks": [
+    {
+      "name": "unchanged",
+      "expected": "allow",
+      "passed": true
+    },
+    {
+      "name": "facts-version",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "board-moved",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "grant-revoked",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "principal-changed",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "policy-version",
+      "expected": "policy.facts_changed",
+      "passed": true
+    },
+    {
+      "name": "audit-missing",
+      "expected": "policy.facts_changed",
+      "passed": true
+    }
+  ],
+  "files_sha256": {
+    "docs/api/resource-policy-v1.schema.json": "d556bd812d47d4dd0dc3c80002e2b36bf83feee7ae2e54cf917438958fdc0bfc",
+    "docs/api/resource-policy-decision-v1.schema.json": "980d42f0d7a47f01da639a0ef2d4bd52c9da3a6c1d20e9379ad8907b63012a52",
+    "docs/api/principal-context-v1.schema.json": "6b14843f042b6531e2de38023fc4eec57d320cac637cd84af8eee248077489d1",
+    "docs/api/resource-policy-v1.errors.json": "47842517a4035809d546b1bf1bbe3af3bb33c676a63a43220de5fd1af0940efb",
+    "sdk/typescript/src/resource-policy.ts": "bd0fb00f490bfef0ae88c90acecb6e36939e254094989fc5952b3390835d9810",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-resource-policy-contract.mjs": "76de270e4de0130c6859a451cd01f0355a391a62a797c9fee0d24bbdfcc059b2"
+  }
+}

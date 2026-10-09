@@ -1,0 +1,151 @@
+{
+  "contract": "campusos.v12-g1-replacement-map/v1",
+  "status": "target_frozen_runtime_pending",
+  "rule": "每项在责任阶段替换并验证后移除旧路径；G1 只冻结责任，不提前删除仍在运行的 v1.1 代码。",
+  "items": [
+    {
+      "id": "identity.jwt_shared",
+      "current_path": "pkg/auth/jwt.go",
+      "current_needle": "type JWTManager struct",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "按 User/Admin 分开 issuer、key、audience 与凭据验证；拒绝双向跨域 Token/Refresh。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.middleware_shared",
+      "current_path": "pkg/middleware/auth.go",
+      "current_needle": "func JWTAuth(",
+      "replacement_stage": "V12-02d",
+      "target_contract": "principal-context-v1.schema.json",
+      "removal_acceptance": "按入口域构造可信 Principal，管理入口不得消费 User Session。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.user_session",
+      "current_path": "internal/modules/core/identity/domain/session.go",
+      "current_needle": "UserID                 string",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "分离 User/Admin Session、Refresh 与恢复用途；同 ID 不合并。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.role_auto_admin",
+      "current_path": "internal/modules/core/identity/service/permission_service.go",
+      "current_needle": "adminAccounts.EnsureActive(ctx, userID, \"role_assignment\")",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "删除角色授予自动创建管理员；只允许显式 bootstrap/create。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.admin_user_join",
+      "current_path": "internal/modules/core/identity/repository/pg_admin_account_repository.go",
+      "current_needle": "INNER JOIN users u ON u.id=aa.user_id",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "管理员账号、凭据、Session、角色绑定独立建模并保留最后管理员保护。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.sql_admin_trigger",
+      "current_path": "migrations/000001_v1_1_schema_baseline.up.sql",
+      "current_needle": "CREATE TRIGGER trg_sync_identity_admin_account_from_role",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "目标迁移移除用户角色自动提升触发器；已发布迁移不原地改写。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "identity.admin_recovery_user",
+      "current_path": "internal/modules/core/identity/service/recovery_service.go",
+      "current_needle": "func (s *RecoveryService) ResetSystemAdministratorPassword",
+      "replacement_stage": "V12-02d",
+      "target_contract": "identity-domains-v1.schema.json",
+      "removal_acceptance": "管理员恢复不得复用用户密码找回或 User Session 撤销路径。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "policy.user_only_check",
+      "current_path": "internal/modules/core/identity/service/permission_service.go",
+      "current_needle": "func (s *PermissionService) CheckCodeScoped",
+      "replacement_stage": "V12-02a",
+      "target_contract": "resource-policy-v1.schema.json",
+      "removal_acceptance": "替换 userID/角色名直查为宿主事实输入的版本化 Policy Port。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "policy.grant_by_execution",
+      "current_path": "internal/modules/core/identity/service/permission_service.go",
+      "current_needle": "func (s *PermissionService) assertActorMayGrantCodes",
+      "replacement_stage": "V12-02a",
+      "target_contract": "scope-delegation-v1.schema.json",
+      "removal_acceptance": "执行权与委托权分离，按完整 Scope、期限和 MFA 子集判定。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.legacy_manifest",
+      "current_path": "internal/plugin/manifest.go",
+      "current_needle": "CurrentManifestAPIVersion = ManifestAPIVersionV1",
+      "replacement_stage": "V12-03a",
+      "target_contract": "plugin-v5-manifest-v1.schema.json",
+      "removal_acceptance": "直接切换 v5 wire；旧包重建，不保留自动 v1/v2/v3 转换。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.v4_ui_self_only",
+      "current_path": "internal/plugin/v4/manifest.go",
+      "current_needle": "capability.Scope != \"self\"",
+      "replacement_stage": "V12-03a",
+      "target_contract": "plugin-v5-manifest-v1.schema.json",
+      "removal_acceptance": "解除 v4 self-only 与强制 UI 限制；无 UI 后端包和三种 Runtime 形态按新合同验证。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.v4_adapter",
+      "current_path": "internal/plugin/v4_runtime.go",
+      "current_needle": "func (m *Manager) RegisterV4Release",
+      "replacement_stage": "V12-03a",
+      "target_contract": "plugin-v5-manifest-v1.schema.json",
+      "removal_acceptance": "替换 v4→legacy Manager 适配，不保留双目录 fallback。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.legacy_manager",
+      "current_path": "internal/plugin/manager.go",
+      "current_needle": "type Manager struct",
+      "replacement_stage": "V12-03b",
+      "target_contract": "plugin-v5-lifecycle-v1.schema.json",
+      "removal_acceptance": "以独立安装、Grant、desired/observed、实例代次和 Operation 替换全局 Manager 状态。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.legacy_capability_map",
+      "current_path": "internal/plugin/authorization.go",
+      "current_needle": "兼容 Manifest v1/v2 的 Host API 权限声明",
+      "replacement_stage": "V12-03c",
+      "target_contract": "plugin-v5-dispatch-v1.schema.json",
+      "removal_acceptance": "删除旧兼容能力映射，用类型化目录和独立授权决定。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.untyped_scope",
+      "current_path": "internal/plugin/authorization.go",
+      "current_needle": "func scopeContains(granted, requested map[string]interface{}) bool",
+      "replacement_stage": "V12-03c",
+      "target_contract": "scope-delegation-v1.schema.json",
+      "removal_acceptance": "替换 map[string]interface{} Scope 比较及兼容 fallback，使用类型化 Scope 与宿主资源政策。",
+      "runtime_status": "pending"
+    },
+    {
+      "id": "plugin.legacy_event",
+      "current_path": "internal/plugin/authorization.go",
+      "current_needle": "兼容 Manifest v1/v2 的事件订阅声明",
+      "replacement_stage": "V12-03c",
+      "target_contract": "plugin-v5-event-v1.schema.json",
+      "removal_acceptance": "删除旧事件订阅兼容；白名单脱敏、代次与 Grant 限流投递。",
+      "runtime_status": "pending"
+    }
+  ]
+}
