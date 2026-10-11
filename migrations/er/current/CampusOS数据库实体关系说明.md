@@ -1,6 +1,6 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=0d9c42f194f746f471a141e0145002f4eea0128b23a6cf31035bc6d40280cbc4;tables=100;foreign_keys=116 -->
+<!-- campusos-er:schema_sha256=8248022f95d9f1a4b462d814c98e88eb9e1360b801155b80a7de4f7d7242976d;tables=100;foreign_keys=116 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
@@ -11,7 +11,7 @@
 - 一对一/可选一对一关系：**14**
 - 一对多关系：**102**
 - 推断的逻辑多对多关系：**6**
-- Schema 指纹：`0d9c42f194f746f471a141e0145002f4eea0128b23a6cf31035bc6d40280cbc4`
+- Schema 指纹：`8248022f95d9f1a4b462d814c98e88eb9e1360b801155b80a7de4f7d7242976d`
 
 ## 1. 生成范围与判定规则
 
@@ -31,6 +31,7 @@
 - `000012_v1_2_remove_admin_role_auto_admission.up.sql`
 - `000013_v1_2_admin_role_permissions.up.sql`
 - `000014_v1_2_admin_permission_codes.up.sql`
+- `000015_v1_2_admin_recovery_index.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
