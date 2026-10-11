@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02d-admin-session-acceptance/v1",
-  "generated_at": "2026-10-10T16:03:28.610505+00:00",
+  "generated_at": "2026-10-11T05:27:45.016947+00:00",
   "stage": "V12-02d",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -40,12 +40,12 @@
   "source_sha256": {
     "migrations/000010_v1_2_admin_sessions.up.sql": "c9ef3a44cf260017a602b7b4e2a247bf8953cf1597bd05c8438154a2244374b7",
     "migrations/000010_v1_2_admin_sessions.down.sql": "5d0436eb1a525b39f4eb9d32cf894aca7824a7bfa24282848220cb24465357d5",
-    "internal/modules/core/identity/service/admin_session_service.go": "904e0d8757014dcaedba44344b20979505ec5904730ebff5c4a723cf0dc38932",
+    "internal/modules/core/identity/service/admin_session_service.go": "2119b103d2d912ffae5c04bba0d5ffc321b78d4e2f845b80495c25fb836a5f84",
     "internal/modules/core/identity/service/admin_session_service_test.go": "0ee79d4bc28a3a7a4b90d2b357b7e11bf4934b8fe7d62730c7b16a29eebfd2e3",
-    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "0d2da187a6fe9d384a80f923b3067a417e564a447ec2ec80edb8f2b7306ae3c9",
-    "pkg/auth/jwt.go": "465e314def8a40718a3f5115d1012422a59b63ff3ec85ac9efc62f1f5c0bc885",
-    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "f7343de75ec0c8e5cddd3882a3620254f4be9830088fbc7c615b9b67ac5a7147",
-    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "1709d9d6580e0b3e83e0d13a9576ef2069d3ae6e54212b4dd92fc326b527f189",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "ee00ff7f748c7e98a4d9cb337f607886b008535f7b56defa4838fe1072dc080d",
+    "pkg/auth/jwt.go": "550c63fc5a47c72d575343598e1f438d5a9b15760bf3df0a8685798e45b3942c",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "7b9a443fb2b8f64e689e6899710ce30947c7531c1f38e569cc5a1ee194c97b52",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
     "scripts/v12-02d-admin-session-drill.sh": "61c5142128afbd9d48ec2947bf5e6202af3f1655f5c476bbec301e12daeb320b"
   },
   "dependencies": {
@@ -76,23 +76,23 @@
     },
     "v12-02d-identity-domains-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
-      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     },
     "v12-02d-admin-store-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
-      "sha256": "87204947f3965911c77eaf0a53d70cebebdf49e21d3dec0e240588825b6ef304",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     }
   },
   "target_logs": {
     "migrations": {
-      "path": ".cache/v12-02d-admin-session/service.pPPUyj/migrations.log",
-      "sha256": "e98058ef50311c9885e48c54e220889db6f0a5d7b0e771568bf1f250e0e8db2d"
+      "path": ".cache/v12-02d-admin-session/service.HQpwQr/migrations.log",
+      "sha256": "71cb17ad3a14d369ed205c837dd3946a1632bdb1b555284fe8a14fbbc67cdf88"
     },
     "service-tests": {
-      "path": ".cache/v12-02d-admin-session/service.pPPUyj/service-tests.log",
-      "sha256": "4fe84d80372dfc58a620b1f5f9ec099bf64553d6f7ff373ea496cc5e0d9f529b"
+      "path": ".cache/v12-02d-admin-session/service.HQpwQr/service-tests.log",
+      "sha256": "4f59587a3c65740a818f5d0f607ac922b0ad4d0a3479f6175e4b67fa3f8e20cf"
     }
   },
   "common_gates_status": "passed",
@@ -101,49 +101,49 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/go-all.log",
-      "log_sha256": "04263848bf2ec2718fc5a3fdcc5d373faceb1dc7680890694e77f838949f60c6"
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/go-all.log",
+      "log_sha256": "e1049d3f5a8b4e781d6358cdf88a7ca9103af7276b9b6640e7223534123fe8b8"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/contracts.log",
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/architecture.log",
-      "log_sha256": "0c9c9232339b788de8cd0f34f7fa4c3909bdfd4a14543222a6ab9ded49d29503"
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/architecture.log",
+      "log_sha256": "0fd75b9f080f0f028420e15289b2e3272cb1763c5253cc51b1195c502aac7200"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/docs-build.log",
-      "log_sha256": "8e031707d06f6ce9f61397588fe836b1540d0e3720e16191f807df22112f8df0"
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/docs-build.log",
+      "log_sha256": "f1e87e9cd9760fdc2d2a8a04833737c36544935c7b3cb7d8ef0368b8d942b5e0"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/docs-links.log",
-      "log_sha256": "22d24cd09a21262dd76a4344071e8dd8d4f134f019b809e349f491ebb7caaffd"
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/line-endings.log",
-      "log_sha256": "38959c2dac46c1eb879a82fa793966ab56f1e503e51aedc42fb86a32f63a0d9b"
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-session/service.pPPUyj/diff.log",
+      "local_log": ".cache/v12-02d-admin-session/service.HQpwQr/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

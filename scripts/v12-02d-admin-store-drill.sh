@@ -65,13 +65,16 @@ cat >"$shim_dir/psql" <<'SHIM'
 exec docker run --rm -i --network "container:$DRILL_DB_CONTAINER" -v "$DRILL_TMP:$DRILL_TMP:ro" -e PGPASSWORD postgres:16-alpine psql "$@"
 SHIM
 chmod +x "$shim_dir/psql"
-run_migrate() {
+run_migrate_dir() {
+  local migration_dir="$1"
+  shift
   CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=host PATH="$shim_dir:$PATH" \
     DRILL_DB_CONTAINER="$container" DRILL_TMP="$TMPDIR" \
     DB_HOST=127.0.0.1 DB_PORT=5432 \
     DB_USER=campusos DB_PASSWORD="$pg_password" DB_NAME="$database" \
-    MIGRATIONS_DIR="migrations" bash scripts/migrate.sh "$@"
+    MIGRATIONS_DIR="$migration_dir" bash scripts/migrate.sh "$@"
 }
+run_migrate() { run_migrate_dir "migrations" "$@"; }
 require_equals() {
   local label="$1" actual="$2" expected="$3"
   if [[ "$actual" != "$expected" ]]; then
@@ -112,7 +115,12 @@ pg_port="$(docker port "$container" 5432/tcp | awk -F: '/127\.0\.0\.1/ {print $N
 [[ "$pg_port" =~ ^[0-9]+$ ]] || { echo "PostgreSQL port is not loopback-bound" >&2; exit 1; }
 database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/$database?sslmode=disable"
 
-run_check migrations run_migrate up
+# This slice validates the 000009 baseline; later chain members are excluded
+# so the rollback semantics under test remain exactly migration 000009.
+stage_dir="$work_dir/migrations-baseline"
+mkdir -p "$stage_dir"
+cp migrations/00000[1-9]_*.sql "$stage_dir/"
+run_check migrations run_migrate_dir "$stage_dir" up
 require_equals "migration count" "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" "9"
 
 # No administrator account, credential or session may be seeded by migrations.
@@ -141,10 +149,10 @@ if run_migrate down >"$work_dir/down-refused.log" 2>&1; then
 fi
 grep -q 'must be exported and removed before rollback' "$work_dir/down-refused.log" || { echo "down refusal lacks the guard message" >&2; cat "$work_dir/down-refused.log" >&2; exit 1; }
 psql_scalar "DELETE FROM admin_role_bindings WHERE granted_by = 'repo-test'; DELETE FROM admin_credentials WHERE account_id LIKE 'repo-test-%'; DELETE FROM admin_accounts;" >/dev/null
-run_migrate down >"$work_dir/down.log" 2>&1
+run_migrate_dir "$stage_dir" down >"$work_dir/down.log" 2>&1
 require_equals "tables dropped" "$(psql_scalar "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('admin_accounts','admin_credentials','admin_roles','admin_role_bindings');")" "0"
 require_equals "migration count after down" "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" "8"
-run_migrate up >>"$work_dir/down.log" 2>&1
+run_migrate_dir "$stage_dir" up >>"$work_dir/down.log" 2>&1
 require_equals "migration count after re-up" "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" "9"
 
 python3 - "$work_dir" "$report" <<'PY'

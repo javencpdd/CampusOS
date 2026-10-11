@@ -18,6 +18,8 @@ func TestAdminAdmissionSuspendRevokesSessionsAuditsAndProtectsLastActive(t *test
 	admission, permissions, accounts, sessions, users, reliable := newAdminAdmissionServiceForTest(t)
 	actor := createAdminAdmissionUser(t, ctx, users, permissions, "51001", "admission_actor")
 	target := createAdminAdmissionUser(t, ctx, users, permissions, "51002", "admission_target")
+	provisionAdminAdmission(t, ctx, accounts, actor.ID)
+	provisionAdminAdmission(t, ctx, accounts, target.ID)
 
 	issued, err := sessions.Issue(ctx, target, SessionMetadata{ClientIP: "203.0.113.101"})
 	if err != nil {
@@ -93,9 +95,11 @@ func TestAdminAdmissionSuspendRevokesSessionsAuditsAndProtectsLastActive(t *test
 
 func TestAdminAdmissionLocalRestoreRecordsCLIAsSystemActor(t *testing.T) {
 	ctx := context.Background()
-	admission, permissions, _, _, users, reliable := newAdminAdmissionServiceForTest(t)
+	admission, permissions, accounts, _, users, reliable := newAdminAdmissionServiceForTest(t)
 	actor := createAdminAdmissionUser(t, ctx, users, permissions, "51101", "local_restore_actor")
 	target := createAdminAdmissionUser(t, ctx, users, permissions, "51102", "local_restore_target")
+	provisionAdminAdmission(t, ctx, accounts, actor.ID)
+	provisionAdminAdmission(t, ctx, accounts, target.ID)
 	before, err := admission.Get(ctx, target.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -155,6 +159,8 @@ func TestAdminAdmissionRollbackLeavesAdmissionActiveWhenSessionRevocationFails(t
 
 	actor := createAdminAdmissionUser(t, ctx, users, permissions, "52001", "rollback_actor")
 	target := createAdminAdmissionUser(t, ctx, users, permissions, "52002", "rollback_target")
+	provisionAdminAdmission(t, ctx, accounts, actor.ID)
+	provisionAdminAdmission(t, ctx, accounts, target.ID)
 	admission, err := NewAdminAdmissionService(accounts, users, permissions, failingAdminAdmissionSessionRevoker{}, roles)
 	if err != nil {
 		t.Fatal(err)
@@ -217,6 +223,16 @@ func createAdminAdmissionUser(t *testing.T, ctx context.Context, users *reposito
 		t.Fatalf("assign admin role for %s: assigned=%v err=%v", user.ID, assigned, err)
 	}
 	return user
+}
+
+// provisionAdminAdmission explicitly opens management-plane admission. Since
+// V12-02d decoupled role assignment from admission, fixtures provision it the
+// same way the independent admin identity domain does.
+func provisionAdminAdmission(t *testing.T, ctx context.Context, accounts *repository.MemoryAdminAccountRepository, userID string) {
+	t.Helper()
+	if _, err := accounts.EnsureActive(ctx, userID, "explicit_provision"); err != nil {
+		t.Fatalf("provision admission for %s: %v", userID, err)
+	}
 }
 
 type failingAdminAdmissionSessionRevoker struct{}

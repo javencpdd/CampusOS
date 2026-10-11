@@ -1,0 +1,154 @@
+{
+  "schema": "campusos.v12-02d-auto-admission-acceptance/v1",
+  "generated_at": "2026-10-11T05:33:38.671948+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "migration 000012 removes the user-role auto-admission SQL trigger and helper; PermissionService stops syncing admission from role assignment or revocation; existing admission rows are preserved",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port; client-container psql)"
+  },
+  "checks": {
+    "TestAdminAccountAdmissionIsIndependentFromRoleAssignment": "passed",
+    "TestPostgreSQLAdminDomainLifecycleAndRace": "passed"
+  },
+  "coverage": {
+    "trigger_before_after": "baseline provisions, post-000012 silent, rollback restores",
+    "legacy_rows_preserved": true,
+    "service_decoupling": "role assignment/revocation no longer touches admission"
+  },
+  "source_sha256": {
+    "migrations/000012_v1_2_remove_admin_role_auto_admission.up.sql": "a6e374898e60b4727394540e502bed274d7d44a45406d2126703058cd5cdb711",
+    "migrations/000012_v1_2_remove_admin_role_auto_admission.down.sql": "65d9e9ce46eaebc3303fe3a64ac385bd55960eb3780fd6d71024cb401cd912fe",
+    "internal/modules/core/identity/service/permission_service.go": "79787496cfc5ffe1332915a537b0886bcd1392e71a89b2bdd3bcda621c461d36",
+    "internal/modules/core/identity/service/admin_access_service_test.go": "98e71256b84ccdcad3991a191f2118ca8b9a0397d3633e86f4e9be9c0ed3873d",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "scripts/v12-02d-auto-admission-drill.sh": "25fd4b29d02f9bebf327dba0fa7b1963a0bdbfee3dee4e04355942c29762ba28"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-service-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-service-linux.json",
+      "sha256": "29792a53896df723104c967c15ee60950103cb1a0d3d07868bad21e6592950b7",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations-to-11": {
+      "path": ".cache/v12-02d-auto-admission/auto.mRxDyB/migrations-to-11.log",
+      "sha256": "9227e9fc0f24e92192738d3ad7b0fe9abfa2e66b679c14b5b0e46ece54e22b69"
+    },
+    "apply-000012": {
+      "path": ".cache/v12-02d-auto-admission/auto.mRxDyB/apply-000012.log",
+      "sha256": "cefdb6e4bd30e3fc25ca8c3af2fa5706c99a7e0d2fc5c1adbe579637fc8c9ed5"
+    },
+    "service-tests": {
+      "path": ".cache/v12-02d-auto-admission/auto.mRxDyB/service-tests.log",
+      "sha256": "db2e46ef5be5df3f81123c50e30134840862db1aa487e53859f5d96e39d90485"
+    },
+    "down": {
+      "path": ".cache/v12-02d-auto-admission/auto.mRxDyB/down.log",
+      "sha256": "5142fe07a3418d1621ead1289747e01079ff486595528824b8d33ea7ffb36257"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/go-all.log",
+      "log_sha256": "835da0443e9398757bf68e9349cc8433cae8b12cf532955edd7c97912c0d2980"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/architecture.log",
+      "log_sha256": "5f24aea6e2626418a99756a7ed5ef221b9be7561902b0885adc0d9cd8a9e6e45"
+    },
+    "database-er": {
+      "command": "python3 migrations/tools/generate_er.py --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/database-er.log",
+      "log_sha256": "c1fc270ab6bbbb3708e900c2b9d0d89f8aa28378a9bae47ca2b704b9c27b3699"
+    },
+    "architecture-sync": {
+      "command": "check_architecture_sync.py --root .",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/architecture-sync.log",
+      "log_sha256": "a8c38af020be0e62a7930c09fa0cc246e7a4854b334e4677240b4b9f686fc893"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/docs-build.log",
+      "log_sha256": "23d1924597c9ac5c1562d5c50f0fdb79e26ccc4bb159e02d9d786f03a8181ed2"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-auto-admission/auto.mRxDyB/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "Legacy admission rows keep serving the current Admin UI; the admin login/session HTTP switch slice replaces the entry path.",
+    "AdminDomainService has no HTTP caller yet; explicit administrator creation arrives with the login routes slice."
+  ]
+}

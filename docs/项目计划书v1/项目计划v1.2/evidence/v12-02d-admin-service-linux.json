@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02d-admin-service-acceptance/v1",
-  "generated_at": "2026-10-10T05:46:54.653835+00:00",
+  "generated_at": "2026-10-11T05:25:07.202075+00:00",
   "stage": "V12-02d",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -40,12 +40,12 @@
     ]
   },
   "source_sha256": {
-    "internal/modules/core/identity/service/admin_domain_service.go": "231189b728fbb5c053e58a996cbe38336786ea032d6513c1f73c4236c040754a",
+    "internal/modules/core/identity/service/admin_domain_service.go": "a348aff2a5ca3f2130dcb8aeebf40c0d12136875e5749240a1f4d9abb0b08d14",
     "internal/modules/core/identity/service/admin_domain_service_test.go": "1bea75d2e98ba5d847019a6aeb49d42c89e25c5e9cab7ce3386a72f5302df18d",
-    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "49a6cfaa54cd12d77c16b41f82f57fb2a9196f7152ec8e5b8f7fbf5f57c298f6",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "ee00ff7f748c7e98a4d9cb337f607886b008535f7b56defa4838fe1072dc080d",
     "internal/modules/core/identity/policy/identity_domains.go": "8155ea6cf07504ad673729b45e7ebb3b7cc1860a9176b803ff665b8e20d0c36a",
     "internal/modules/core/identity/port/identity_domains_policy.go": "e2113bfab5aa62c5cc5995cc3d3b44b56ad9285c730c782daed45a8078240ae1",
-    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "f7aeb6cfd4ad8b39ac5fd7b581532c7cc612bab87f47ccdb058a7ff0020b1e18",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
     "scripts/v12-02d-admin-service-drill.sh": "c11a0876592b25b52eff0637116a5fb9793df1ea50879b889d8ce1b50b5d8ce6"
   },
   "dependencies": {
@@ -76,23 +76,23 @@
     },
     "v12-02d-identity-domains-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
-      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     },
     "v12-02d-admin-store-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
-      "sha256": "87204947f3965911c77eaf0a53d70cebebdf49e21d3dec0e240588825b6ef304",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     }
   },
   "target_logs": {
     "migrations": {
-      "path": ".cache/v12-02d-admin-service/service.WgwKJg/migrations.log",
-      "sha256": "3634f02469f578cbea4606ebf7dfdd725482125a77c905761ea2ae5494b806c8"
+      "path": ".cache/v12-02d-admin-service/service.CwatmZ/migrations.log",
+      "sha256": "71cb17ad3a14d369ed205c837dd3946a1632bdb1b555284fe8a14fbbc67cdf88"
     },
     "service-tests": {
-      "path": ".cache/v12-02d-admin-service/service.WgwKJg/service-tests.log",
-      "sha256": "af37939677c26375c2058cabf744eafcdf124de5f3e090cf101986c71ed68732"
+      "path": ".cache/v12-02d-admin-service/service.CwatmZ/service-tests.log",
+      "sha256": "9c2ed28c27770ebd0ff36e28afdbcbcd4bd39f1ccd0eb0013235e9bd288e9879"
     }
   },
   "common_gates_status": "passed",
@@ -101,49 +101,49 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/go-all.log",
-      "log_sha256": "d856c6b4f16039e57dd4af93ad3d5f312679a2981a2fbe3c0edec132fd5fbdb0"
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/go-all.log",
+      "log_sha256": "696cbe57a9484c0e65832bb6f3f810321c9d05beb874f08d64d65a788d6242ed"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/contracts.log",
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/architecture.log",
-      "log_sha256": "3764142c5000f3b70b65617aaba58b61c2e9b5002defd30b1618388d33474cab"
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/architecture.log",
+      "log_sha256": "5f24aea6e2626418a99756a7ed5ef221b9be7561902b0885adc0d9cd8a9e6e45"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/docs-build.log",
-      "log_sha256": "9b7f6fe7434c92ba615f37565d8021f2558e0319524f6daa8dbda55675ec374f"
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/docs-build.log",
+      "log_sha256": "c91a771aab397934839dd5802aa6f8db12185832a168e082fe724074b9d500cf"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/docs-links.log",
-      "log_sha256": "45a0be306fc2f487ef6b7f23c05a8f652303aaecda78350e37058d2561556b2c"
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/line-endings.log",
-      "log_sha256": "237d0b34009b0cba04e9dbeea2dfee0b6cbb3b07ef1c8ca240f09c9ec3051f9c"
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-admin-service/service.WgwKJg/diff.log",
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

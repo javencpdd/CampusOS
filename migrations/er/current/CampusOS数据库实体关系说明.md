@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=6da21df7d976e9b800abef6c07087b89873ad50c0c7429e9a36f38a30f383116;tables=99;foreign_keys=115 -->
+<!-- campusos-er:schema_sha256=0d9c42f194f746f471a141e0145002f4eea0128b23a6cf31035bc6d40280cbc4;tables=100;foreign_keys=116 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**99**
-- 物理外键：**115**
+- 实体表：**100**
+- 物理外键：**116**
 - 一对一/可选一对一关系：**14**
-- 一对多关系：**101**
+- 一对多关系：**102**
 - 推断的逻辑多对多关系：**6**
-- Schema 指纹：`6da21df7d976e9b800abef6c07087b89873ad50c0c7429e9a36f38a30f383116`
+- Schema 指纹：`0d9c42f194f746f471a141e0145002f4eea0128b23a6cf31035bc6d40280cbc4`
 
 ## 1. 生成范围与判定规则
 
@@ -28,6 +28,9 @@
 - `000009_v1_2_admin_identity_domain.up.sql`
 - `000010_v1_2_admin_sessions.up.sql`
 - `000011_v1_2_admin_mfa_recovery.up.sql`
+- `000012_v1_2_remove_admin_role_auto_admission.up.sql`
+- `000013_v1_2_admin_role_permissions.up.sql`
+- `000014_v1_2_admin_permission_codes.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -121,7 +124,8 @@
 | 其他平台数据 | `admin_mfa_totp` | 12 | `account_id` | 1 | 0 |
 | 其他平台数据 | `admin_recovery_tickets` | 10 | `id` | 1 | 0 |
 | 其他平台数据 | `admin_role_bindings` | 8 | `id` | 2 | 0 |
-| 其他平台数据 | `admin_roles` | 5 | `id` | 0 | 1 |
+| 其他平台数据 | `admin_role_permissions` | 4 | `role_id, permission_code` | 1 | 0 |
+| 其他平台数据 | `admin_roles` | 5 | `id` | 0 | 2 |
 | 其他平台数据 | `admin_sessions` | 18 | `id` | 1 | 0 |
 | 其他平台数据 | `asset_lifecycle_audits` | 7 | `id` | 2 | 0 |
 | 其他平台数据 | `content_moderation_actions` | 9 | `id` | 0 | 0 |
@@ -169,6 +173,7 @@
 | `admin_accounts` | `admin_recovery_tickets` | `admin_recovery_tickets_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `admin_accounts` | `admin_role_bindings` | `admin_role_bindings_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `admin_roles` | `admin_role_bindings` | `admin_role_bindings_role_id_fkey` | `role_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `admin_roles` | `admin_role_permissions` | `admin_role_permissions_role_id_fkey` | `role_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `admin_accounts` | `admin_sessions` | `admin_sessions_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `user_assets` | `asset_lifecycle_audits` | `fk_asset_lifecycle_audits_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `users` | `asset_lifecycle_audits` | `fk_asset_lifecycle_audits_actor` | `actor_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
@@ -2208,11 +2213,28 @@
 - `admin_role_bindings_account_id_fkey`：`admin_role_bindings(account_id)` → `admin_accounts(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
 - `admin_role_bindings_role_id_fkey`：`admin_role_bindings(role_id)` → `admin_roles(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
+#### `admin_role_permissions`
+
+- 主键：`role_id, permission_code`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `role_id` | `VARCHAR(64)` | PK/FK/NN | 否 | `—` |
+| `permission_code` | `VARCHAR(160)` | PK/NN | 否 | `—` |
+| `created_by` | `VARCHAR(128)` | NN | 否 | `'migration-000013'` |
+| `created_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+
+外键明细：
+
+- `admin_role_permissions_role_id_fkey`：`admin_role_permissions(role_id)` → `admin_roles(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+
 #### `admin_roles`
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：1
+- 出站外键：0；入站外键：2
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |

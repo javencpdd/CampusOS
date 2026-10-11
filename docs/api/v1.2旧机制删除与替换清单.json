@@ -37,7 +37,8 @@
       "replacement_stage": "V12-02d",
       "target_contract": "identity-domains-v1.schema.json",
       "removal_acceptance": "删除角色授予自动创建管理员；只允许显式 bootstrap/create。",
-      "runtime_status": "pending"
+      "runtime_status": "replaced",
+      "replaced_evidence": "v12-02d-auto-admission-linux.json"
     },
     {
       "id": "identity.admin_user_join",
@@ -55,7 +56,8 @@
       "replacement_stage": "V12-02d",
       "target_contract": "identity-domains-v1.schema.json",
       "removal_acceptance": "目标迁移移除用户角色自动提升触发器；已发布迁移不原地改写。",
-      "runtime_status": "pending"
+      "runtime_status": "replaced",
+      "replaced_evidence": "v12-02d-auto-admission-linux.json"
     },
     {
       "id": "identity.admin_recovery_user",

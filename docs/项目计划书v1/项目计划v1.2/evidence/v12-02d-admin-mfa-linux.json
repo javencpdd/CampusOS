@@ -1,0 +1,148 @@
+{
+  "schema": "campusos.v12-02d-admin-mfa-acceptance/v1",
+  "generated_at": "2026-10-11T05:31:39.902526+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "AdminMFAService TOTP lifecycle on the independent admin security stores: enrollment seal, confirmation with replay-safe activation, step-up verification upgrading session strength, and admin+MFA actor guards on real PostgreSQL; no HTTP wiring",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port; client-container psql because host /tmp is unreliable for runc exec state)"
+  },
+  "checks": {
+    "TestAdminMFAEnrollmentConfirmAndStepUp": "passed",
+    "TestAdminMFAGuards": "passed",
+    "TestPostgreSQLAdminMFAStepUp": "passed"
+  },
+  "coverage": {
+    "service_tests": 3,
+    "adapters": [
+      "postgres",
+      "memory"
+    ],
+    "semantics": [
+      "enrollment seal",
+      "replay-safe confirmation",
+      "step-up strength upgrade",
+      "actor guards"
+    ]
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/service/admin_mfa_service.go": "dc63c312994d7b50724aec2278b4e926425c4dec2e85d16f6a6eb63bb5af638a",
+    "internal/modules/core/identity/service/admin_mfa_service_test.go": "591a102ee79fd27e8d62157a6f9922d0b90145d4336421a9fb1d359b24123141",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "ee00ff7f748c7e98a4d9cb337f607886b008535f7b56defa4838fe1072dc080d",
+    "internal/modules/core/identity/service/mfa_secret.go": "7ca14f8d024778fce00b4fea16eeeba5cd755a30d29d1e6c1aab646b9f6ca119",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "scripts/v12-02d-admin-mfa-drill.sh": "c1d6334e751eb86a987cc16cb50bb6b1fb4e9b16ed0a4bf2e2e17dee83ac8a2a"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-store-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02d-admin-mfa/service.lNv7Dx/migrations.log",
+      "sha256": "71cb17ad3a14d369ed205c837dd3946a1632bdb1b555284fe8a14fbbc67cdf88"
+    },
+    "service-tests": {
+      "path": ".cache/v12-02d-admin-mfa/service.lNv7Dx/service-tests.log",
+      "sha256": "1df40da2594463e35903e0a15e181ee81410513a4d946ced85aaca8750795248"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/go-all.log",
+      "log_sha256": "b0b04f87026c2ee425f800584e97f3110b5d60a11349ca146f0b68c940f10a39"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/architecture.log",
+      "log_sha256": "3fb6e2b053da809283df6e936ed534f7eadd79800950bcb63d5db8ace0b93326"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/docs-build.log",
+      "log_sha256": "75e8e87ba2f6e017743cf7222cc935c1954920e389b46fa99c73d2d9ec51f1f6"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-mfa/service.lNv7Dx/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No HTTP route or Admin UI consumes the service yet; admin login/session/JWT issuance arrives in later V12-02d slices.",
+    "The bootstrap gate uses deployment configuration only; no default administrator is created by migrations or seeds.",
+    "The legacy admission table and auto-admission trigger still serve the current Admin UI until the runtime switch slice; G1 replacement-map entries remain pending.",
+    "Audit permission_code for bootstrap/create/revoke is intentionally empty pending dedicated admin-domain codes; operation_code carries the precise action."
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "schema": "campusos.v12-02d-http-switch-acceptance/v1",
+  "generated_at": "2026-10-11T05:35:15.238456+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Admin identity domain HTTP switch: admin login/refresh/logout/bootstrap routes, admin-domain session middleware replacing the admission gate for all admin routes, admin permission codes and role bindings, Admin SPA login endpoint switch, and cross-domain token rejection",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port; client-container psql because host /tmp is unreliable for runc exec state)"
+  },
+  "checks": {
+    "TestAdminDomainHTTPBootstrapLoginAndCrossDomainRejection": "passed",
+    "TestAdminSessionLoginRefreshAndVerify": "passed",
+    "TestAdminSessionLoginDeniesInactiveAndWrongPassword": "passed",
+    "TestAdminSessionRevokeCascadesToAccess": "passed",
+    "TestPostgreSQLAdminSessionLifecycleAndReuseRace": "passed"
+  },
+  "coverage": {
+    "service_tests": 5,
+    "routes": [
+      "login",
+      "refresh",
+      "logout",
+      "bootstrap",
+      "accounts lifecycle",
+      "mfa enroll/confirm/step-up"
+    ],
+    "semantics": [
+      "cross-domain rejection",
+      "logout kills refresh",
+      "route permission via admin bindings"
+    ]
+  },
+  "source_sha256": {
+    "migrations/000013_v1_2_admin_role_permissions.up.sql": "0568e7324ab9948950ea8ea61b5c0cc67f3ddbf1e3014eff883db4ee39aa3bda",
+    "migrations/000014_v1_2_admin_permission_codes.up.sql": "2df006df4413966eb09fcd6a6ced205fc97bb4f08f098827aa7989b0fff1f691",
+    "internal/modules/core/identity/handler/admin_domain_handler.go": "f9bf9724e09f547439c0e2a1fadc2d68a6364ac310ced4c01f3a53fecfda4b12",
+    "internal/modules/core/identity/handler/admin_domain_handler_test.go": "a207d7fb8601383e531e3826ad9dcc8154a64064ac3108ff8edb2ccc6ce28e8c",
+    "internal/modules/core/identity/portadapt/admin_domain_adapter.go": "1d69ab61dfbb5034311e9eda462aa8694c5e9b839fc121b00e3d2c9434dbba9f",
+    "internal/modules/core/identity/portadapt/admin_code_adapter.go": "a0f2b31fc34d8577518eee21d3d3ffa2c919353f89e41cef5ecfe5becf43b3cb",
+    "pkg/middleware/admin_domain.go": "f5d20967a0b47ed8aa6215ba40285080adda14da71ca4b0539fac4869d50647a",
+    "pkg/auth/jwt.go": "550c63fc5a47c72d575343598e1f438d5a9b15760bf3df0a8685798e45b3942c",
+    "internal/transport/httpapi/router.go": "a123192a165c2c6fc278d9f76e086eef51f563824a89f9d2c7cc2216c5a7d18d",
+    "internal/transport/httpapi/owned_router.go": "710d3bced98c06fa58872c8a0d71861cd6f03e0ead832e359a6ae48293a7ab44",
+    "internal/modules/core/identity/module.go": "4d8dfa889d4e6905904f5717e3f1fe01b4da8b69db49783569ed7f8ac4ab09d3",
+    "internal/modules/core/identity/profile.go": "3153c223ecde8a43a353b9dc016020190b9df54f5a22d04cffef1e5c3cc34166",
+    "admin/src/modules/identity/api.ts": "733b9fcdefb9bbfca723c97b98731e56cd076ac4633f69350cd5287d2f89c4c3",
+    "admin/src/shared/api/client.ts": "b470a9b42724442ffce58fe676b516af0096c842740f1e9d91c9e45762453224",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "scripts/v12-02d-http-switch-drill.sh": "b77e5efaf34fc749e09ce83ac64c4cf827deb216c16c5175094a8fc8dda56bb2"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-store-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02d-http-switch/service.rXnlIC/migrations.log",
+      "sha256": "71cb17ad3a14d369ed205c837dd3946a1632bdb1b555284fe8a14fbbc67cdf88"
+    },
+    "service-tests": {
+      "path": ".cache/v12-02d-http-switch/service.rXnlIC/service-tests.log",
+      "sha256": "99a9add9f4378405025c69bf017d255f5af9f6e7d428f59ad04658b6e6497eb4"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/go-all.log",
+      "log_sha256": "6f5115fa279179337523d6456a96fec8a04449f800c10dc3b5fe63a0529cc9c9"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/architecture.log",
+      "log_sha256": "7fe9261a7340e2d193a68b7b36d0bc7dce9f213cecfdd84ba7b73ed1b7caaa2e"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/docs-build.log",
+      "log_sha256": "0d6508c25b8078043b98f9969133d37d42ebe2314da4b599734e701395da61c7"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-http-switch/service.rXnlIC/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No HTTP route or Admin UI consumes the service yet; admin login/session/JWT issuance arrives in later V12-02d slices.",
+    "The bootstrap gate uses deployment configuration only; no default administrator is created by migrations or seeds.",
+    "The legacy admission table and auto-admission trigger still serve the current Admin UI until the runtime switch slice; G1 replacement-map entries remain pending.",
+    "Audit permission_code for bootstrap/create/revoke is intentionally empty pending dedicated admin-domain codes; operation_code carries the precise action."
+  ]
+}

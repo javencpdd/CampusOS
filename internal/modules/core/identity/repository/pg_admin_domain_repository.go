@@ -79,11 +79,13 @@ type AdminDomainRepository interface {
 	CreateAccount(ctx context.Context, account AdminDomainAccount) error
 	GetAccountByID(ctx context.Context, id string) (AdminDomainAccount, error)
 	GetAccountByUsername(ctx context.Context, username string) (AdminDomainAccount, error)
+	GetAccountByEmail(ctx context.Context, email string) (AdminDomainAccount, error)
 	SetAccountStatusCAS(ctx context.Context, id string, expectedVersion int64, status, reason, changedBy string, at time.Time) (AdminDomainAccount, bool, error)
 	SetCredentialCAS(ctx context.Context, accountID, hash string, expectedVersion int64, at time.Time) (AdminDomainCredential, bool, error)
 	GetCredential(ctx context.Context, accountID string) (AdminDomainCredential, error)
 	GetRole(ctx context.Context, id string) (AdminDomainRole, error)
 	BindRole(ctx context.Context, binding AdminDomainRoleBinding) error
+	ListActivePermissionCodes(ctx context.Context, accountID string) ([]string, error)
 	RevokeBindingCAS(ctx context.Context, id string, expectedVersion int64, at time.Time) (AdminDomainRoleBinding, bool, error)
 	ListActiveBindings(ctx context.Context, accountID string) ([]AdminDomainRoleBinding, error)
 	CountActiveSecurityAdmins(ctx context.Context) (int, error)
@@ -194,6 +196,18 @@ func (r *PgAdminDomainRepository) GetAccountByUsername(ctx context.Context, user
 	return a, nil
 }
 
+func (r *PgAdminDomainRepository) GetAccountByEmail(ctx context.Context, email string) (AdminDomainAccount, error) {
+	a, err := scanAdminDomainAccount(r.db(ctx).QueryRow(ctx,
+		`SELECT `+adminAccountColumns+` FROM admin_accounts WHERE lower(email) = lower($1)`, email))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdminDomainAccount{}, ErrAdminDomainAccountNotFound
+		}
+		return AdminDomainAccount{}, err
+	}
+	return a, nil
+}
+
 func (r *PgAdminDomainRepository) SetAccountStatusCAS(ctx context.Context, id string, expectedVersion int64, status, reason, changedBy string, at time.Time) (AdminDomainAccount, bool, error) {
 	a, err := scanAdminDomainAccount(r.db(ctx).QueryRow(ctx,
 		`UPDATE admin_accounts
@@ -252,6 +266,29 @@ func (r *PgAdminDomainRepository) GetCredential(ctx context.Context, accountID s
 		return AdminDomainCredential{}, err
 	}
 	return c, nil
+}
+
+func (r *PgAdminDomainRepository) ListActivePermissionCodes(ctx context.Context, accountID string) ([]string, error) {
+	rows, err := r.db(ctx).Query(ctx,
+		`SELECT DISTINCT arp.permission_code
+		   FROM admin_role_bindings b
+		   INNER JOIN admin_role_permissions arp ON arp.role_id = b.role_id
+		   INNER JOIN admin_accounts a ON a.id = b.account_id AND a.status = 'active'
+		  WHERE b.account_id = $1 AND b.status = 'active'
+		  ORDER BY arp.permission_code`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	codes := []string{}
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		codes = append(codes, code)
+	}
+	return codes, rows.Err()
 }
 
 func (r *PgAdminDomainRepository) GetRole(ctx context.Context, id string) (AdminDomainRole, error) {
@@ -336,11 +373,12 @@ func (r *PgAdminDomainRepository) CountActiveSecurityAdmins(ctx context.Context)
 // MemoryAdminDomainRepository is the deterministic Memory profile adapter with
 // the reliability snapshot contract.
 type MemoryAdminDomainRepository struct {
-	mu          sync.RWMutex
-	accounts    map[string]AdminDomainAccount
-	credentials map[string]AdminDomainCredential
-	roles       map[string]AdminDomainRole
-	bindings    map[string]AdminDomainRoleBinding
+	mu              sync.RWMutex
+	accounts        map[string]AdminDomainAccount
+	credentials     map[string]AdminDomainCredential
+	roles           map[string]AdminDomainRole
+	bindings        map[string]AdminDomainRoleBinding
+	rolePermissions map[string]map[string]bool
 }
 
 func NewMemoryAdminDomainRepository() *MemoryAdminDomainRepository {
@@ -350,15 +388,17 @@ func NewMemoryAdminDomainRepository() *MemoryAdminDomainRepository {
 		roles: map[string]AdminDomainRole{
 			"security_admin": {ID: "security_admin", Name: "安全管理员", IsSystem: true},
 		},
-		bindings: make(map[string]AdminDomainRoleBinding),
+		bindings:        make(map[string]AdminDomainRoleBinding),
+		rolePermissions: map[string]map[string]bool{"security_admin": {}},
 	}
 }
 
 type memoryAdminDomainSnapshot struct {
-	Accounts    map[string]AdminDomainAccount     `json:"accounts"`
-	Credentials map[string]AdminDomainCredential  `json:"credentials"`
-	Roles       map[string]AdminDomainRole        `json:"roles"`
-	Bindings    map[string]AdminDomainRoleBinding `json:"bindings"`
+	Accounts        map[string]AdminDomainAccount     `json:"accounts"`
+	Credentials     map[string]AdminDomainCredential  `json:"credentials"`
+	Roles           map[string]AdminDomainRole        `json:"roles"`
+	Bindings        map[string]AdminDomainRoleBinding `json:"bindings"`
+	RolePermissions map[string]map[string]bool        `json:"role_permissions"`
 }
 
 func (r *MemoryAdminDomainRepository) Snapshot() any {
@@ -366,6 +406,7 @@ func (r *MemoryAdminDomainRepository) Snapshot() any {
 	defer r.mu.RUnlock()
 	payload, err := json.Marshal(memoryAdminDomainSnapshot{
 		Accounts: r.accounts, Credentials: r.credentials, Roles: r.roles, Bindings: r.bindings,
+		RolePermissions: r.rolePermissions,
 	})
 	if err != nil {
 		return []byte(nil)
@@ -385,6 +426,9 @@ func (r *MemoryAdminDomainRepository) Restore(value any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.accounts, r.credentials, r.roles, r.bindings = state.Accounts, state.Credentials, state.Roles, state.Bindings
+	if state.RolePermissions != nil {
+		r.rolePermissions = state.RolePermissions
+	}
 }
 
 func (r *MemoryAdminDomainRepository) CreateAccount(_ context.Context, account AdminDomainAccount) error {
@@ -413,6 +457,17 @@ func (r *MemoryAdminDomainRepository) GetAccountByID(_ context.Context, id strin
 		return AdminDomainAccount{}, ErrAdminDomainAccountNotFound
 	}
 	return account, nil
+}
+
+func (r *MemoryAdminDomainRepository) GetAccountByEmail(_ context.Context, email string) (AdminDomainAccount, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, account := range r.accounts {
+		if strings.EqualFold(account.Email, email) {
+			return account, nil
+		}
+	}
+	return AdminDomainAccount{}, ErrAdminDomainAccountNotFound
 }
 
 func (r *MemoryAdminDomainRepository) GetAccountByUsername(_ context.Context, username string) (AdminDomainAccount, error) {
@@ -478,6 +533,29 @@ func (r *MemoryAdminDomainRepository) GetCredential(_ context.Context, accountID
 		return AdminDomainCredential{}, ErrAdminDomainCredentialMissing
 	}
 	return credential, nil
+}
+
+func (r *MemoryAdminDomainRepository) ListActivePermissionCodes(_ context.Context, accountID string) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	account, ok := r.accounts[accountID]
+	if !ok || account.Status != "active" {
+		return []string{}, nil
+	}
+	seen := map[string]bool{}
+	for _, binding := range r.bindings {
+		if binding.AccountID == accountID && binding.Status == "active" {
+			seen[binding.RoleID] = true
+		}
+	}
+	codes := []string{}
+	for roleID := range seen {
+		for code := range r.rolePermissions[roleID] {
+			codes = append(codes, code)
+		}
+	}
+	sort.Strings(codes)
+	return codes, nil
 }
 
 func (r *MemoryAdminDomainRepository) GetRole(_ context.Context, id string) (AdminDomainRole, error) {
@@ -581,6 +659,7 @@ type AdminSessionRepository interface {
 	RevokeSessionCAS(ctx context.Context, id string, expectedVersion int64, reason string, at time.Time) (AdminSession, bool, error)
 	RevokeSessionFamily(ctx context.Context, familyID, reason string, at time.Time) error
 	RevokeSessionsForAccount(ctx context.Context, accountID, reason string, at time.Time) error
+	UpgradeSessionStrengthCAS(ctx context.Context, id string, expectedVersion int64, strength string, mfaAt time.Time, at time.Time) (AdminSession, bool, error)
 }
 
 const adminSessionColumns = `id, account_id, refresh_token_digest, token_family_id, rotated_from_id, rotated_to_id, device_name, user_agent, ip_hash, authentication_strength, mfa_authenticated_at, last_active_at, expires_at, created_at, updated_at, revoked_at, revoke_reason, version`
@@ -685,6 +764,25 @@ func (r *PgAdminSessionRepository) RevokeSessionFamily(ctx context.Context, fami
 		  WHERE token_family_id = $3 AND revoked_at IS NULL`,
 		at, reason, familyID)
 	return err
+}
+
+func (r *PgAdminSessionRepository) UpgradeSessionStrengthCAS(ctx context.Context, id string, expectedVersion int64, strength string, mfaAt time.Time, at time.Time) (AdminSession, bool, error) {
+	s, err := scanAdminSession(r.db(ctx).QueryRow(ctx,
+		`UPDATE admin_sessions
+		    SET authentication_strength = $2, mfa_authenticated_at = $3, last_active_at = $4, updated_at = $4, version = version + 1
+		  WHERE id = $1 AND version = $5 AND revoked_at IS NULL
+		  RETURNING `+adminSessionColumns,
+		id, strength, mfaAt, at, expectedVersion))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			if _, lookupErr := r.GetSessionByID(ctx, id); errors.Is(lookupErr, ErrAdminSessionNotFound) {
+				return AdminSession{}, false, ErrAdminSessionNotFound
+			}
+			return AdminSession{}, false, nil
+		}
+		return AdminSession{}, false, err
+	}
+	return s, true, nil
 }
 
 func (r *PgAdminSessionRepository) RevokeSessionsForAccount(ctx context.Context, accountID, reason string, at time.Time) error {
@@ -852,6 +950,7 @@ type AdminSecurityRepository interface {
 	GetTOTP(ctx context.Context, accountID string) (AdminTOTPMethod, error)
 	ConfirmTOTPCAS(ctx context.Context, accountID string, expectedVersion int64, at time.Time) (AdminTOTPMethod, bool, error)
 	DisableTOTPCAS(ctx context.Context, accountID string, expectedVersion int64, at time.Time) (AdminTOTPMethod, bool, error)
+	RecordAdminTOTPStepCAS(ctx context.Context, accountID string, expectedVersion, step int64, at time.Time) (AdminTOTPMethod, bool, error)
 	CreateAdminTicket(ctx context.Context, ticket AdminSecurityTicket) error
 	GetAdminTicketForUpdate(ctx context.Context, digest string) (AdminSecurityTicket, error)
 	IncrementAdminTicketAttempts(ctx context.Context, id string, at time.Time) (AdminSecurityTicket, error)
@@ -958,6 +1057,22 @@ func (r *PgAdminSecurityRepository) DisableTOTPCAS(ctx context.Context, accountI
 		  WHERE account_id = $1 AND version = $3 AND status <> 'disabled'
 		  RETURNING `+adminTOTPColumns,
 		accountID, at, expectedVersion))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return r.totpCASFailure(ctx, accountID)
+		}
+		return AdminTOTPMethod{}, false, err
+	}
+	return m, true, nil
+}
+
+func (r *PgAdminSecurityRepository) RecordAdminTOTPStepCAS(ctx context.Context, accountID string, expectedVersion, step int64, at time.Time) (AdminTOTPMethod, bool, error) {
+	m, err := scanAdminTOTP(r.db(ctx).QueryRow(ctx,
+		`UPDATE admin_mfa_totp
+		    SET last_accepted_step = $2, updated_at = $3, version = version + 1
+		  WHERE account_id = $1 AND version = $4 AND last_accepted_step < $2
+		  RETURNING `+adminTOTPColumns,
+		accountID, step, at, expectedVersion))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return r.totpCASFailure(ctx, accountID)
@@ -1330,4 +1445,38 @@ func (r *MemoryAdminSecurityRepository) ConsumeRecoveryTicket(_ context.Context,
 	ticket.ConsumedAt = &at
 	r.recovery[id] = ticket
 	return ticket, true, nil
+}
+
+func (r *MemoryAdminSecurityRepository) RecordAdminTOTPStepCAS(_ context.Context, accountID string, expectedVersion, step int64, at time.Time) (AdminTOTPMethod, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	method, ok := r.totp[accountID]
+	if !ok {
+		return AdminTOTPMethod{}, false, ErrAdminDomainTOTPNotFound
+	}
+	if method.Version != expectedVersion || method.LastAcceptedStep >= step {
+		return AdminTOTPMethod{}, false, nil
+	}
+	method.LastAcceptedStep = step
+	method.Version++
+	r.totp[accountID] = method
+	return method, true, nil
+}
+
+func (r *MemoryAdminSessionRepository) UpgradeSessionStrengthCAS(_ context.Context, id string, expectedVersion int64, strength string, mfaAt time.Time, at time.Time) (AdminSession, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	session, ok := r.sessions[id]
+	if !ok {
+		return AdminSession{}, false, ErrAdminSessionNotFound
+	}
+	if session.RevokedAt != nil || session.Version != expectedVersion {
+		return AdminSession{}, false, nil
+	}
+	session.AuthenticationStrength = strength
+	session.MFAAuthenticatedAt = &mfaAt
+	session.LastActiveAt = at
+	session.Version++
+	r.sessions[id] = session
+	return session, true, nil
 }

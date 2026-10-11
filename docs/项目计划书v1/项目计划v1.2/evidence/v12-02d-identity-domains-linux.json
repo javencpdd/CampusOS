@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02d-identity-domains-acceptance/v1",
-  "generated_at": "2026-10-09T19:43:13.231347+00:00",
+  "generated_at": "2026-10-11T05:21:22.962965+00:00",
   "stage": "V12-02d",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -44,8 +44,8 @@
     "internal/modules/core/identity/policy/identity_domains_interop_test.go": "e9da84887085a2bfafae8ae27533d04d6652f0f616f6c8b9b7269130cbc94c69",
     "docs/api/identity-domains-v1.schema.json": "42c7a7b1a3f29efc2118633c9f16393a8da3de86175832a32b9da596d448fd82",
     "docs/api/identity-domains-v1.errors.json": "bab85dcf10527465c81f10076fbe8026d0b3d0e2e067810561aee6cdc7588413",
-    "docs/api/v1.2独立身份域合同.md": "27897c4090968ba4d7db6b15387107bc9859b1436feeea25198fae048f2aaadb",
-    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "15ce6534c241f8e88afad03fbed04922a4bdda3fcf87541803853681ad06525f",
+    "docs/api/v1.2独立身份域合同.md": "9c1d2047663075bbbea0c26fc6b6b4579ff4f01e97bb37b8e13453a8fabdf82f",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
     "sdk/typescript/src/identity-domains.ts": "50da16aa9d0256389a8d7ad58cdf673f6691fa3c9ed2888fdd44a140d0556187",
     "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
     "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
@@ -83,48 +83,48 @@
   },
   "target_logs": {
     "g1-contract": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/g1-contract.log",
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/g1-contract.log",
       "sha256": "98a847480640a74f12b72c2baa9ec093eac4f684d75e84313a5c294a4be85613"
     },
     "generate-oracle": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/generate-oracle.log",
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/generate-oracle.log",
       "sha256": "73120349bed27dd6b79f56a3db782343c0d6d8e8137179ac8face172ce856f95"
     },
     "targeted": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/targeted.log",
-      "sha256": "ade70c33e1cf929ad1cac2f50741885084a5c881f4a03fee5dd22f3047e691c4"
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/targeted.log",
+      "sha256": "2f8da041ff50f8614c091343fc19fb26ca456729089357d4a075203c1b3cc285"
     },
     "build-port": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/build-port.log",
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/build-port.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "build-policy": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/build-policy.log",
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/build-policy.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "native-port": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/native-port.log",
-      "sha256": "070b4330db2921c0725a2616e12a2d55f6164b156ceb9a0b673ba06c8970ccd4"
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/native-port.log",
+      "sha256": "4c4ca0de17d61007f6b1af404d7018a460e195c6792de8ea40e2fba990863adc"
     },
     "native-policy": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/native-policy.log",
-      "sha256": "ecfe35443861ce930ca31e320a34eb4e9e19ced079b983b64840d8c8831c43f3"
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/native-policy.log",
+      "sha256": "44963b6b47e0a8b9c5b4fdd7444129c53ec2f6577391895baab74f95a2e8c0a7"
     },
     "verify-oracle": {
-      "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/verify-oracle.log",
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/verify-oracle.log",
       "sha256": "99063cc74de15fbb8c257ef28e0875c385b398dd620d412c2049e251d0a89735"
     }
   },
   "native_binary_sha256": {
-    "identity-port.test": "44efc612b34d04971db3c77301f732b47c5621083b571a0908c203186a6f81f6",
-    "identity-policy.test": "680645643107d1ffaa6ca323891a7601144d631f37f991de8562cce13ff0e0a2"
+    "identity-port.test": "a4c3fbf5c7dc55d796723709ad5ff044f391057b02bce386bdf2f87c98916b18",
+    "identity-policy.test": "43837f8cab54d5c0a3fc62b24f1284871a6d278a74828b2e535ced2e86baef8b"
   },
   "oracle_corpus": {
-    "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/g1-cases.json",
+    "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/g1-cases.json",
     "sha256": "ac1cf2aa3307e87f9f9741cf406b7f2a8f4e79f4e93a0c52555ba69b039b1819"
   },
   "actual_go_output": {
-    "path": ".cache/v12-02d-identity/identity-domains.YkqaK6/go-output.json",
+    "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/go-output.json",
     "sha256": "5c3314ef952f9c0674cc72a1c12beadfd3a88ae0ddba77a0c20eecaa1c59cc47"
   },
   "common_gates_status": "passed",
@@ -133,49 +133,49 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/go-all.log",
-      "log_sha256": "a8d58d1afcffa0b58ffed32b8bb4f2459cdeb7147311403552c62df6875de5d9"
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/go-all.log",
+      "log_sha256": "454b2d7aaf688b60423bb479e5a1b7b2f4d04b2c1a4cb8ef46c8fb0458eafbe9"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/contracts.log",
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/architecture.log",
-      "log_sha256": "101257883a31865bbf1fa0e33bdf8fdc5c35740935f19f9c953b12c084251721"
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/architecture.log",
+      "log_sha256": "3d3469522949c2bc322834eaadf2593e46968156340c8c03bc4529d118950329"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/docs-build.log",
-      "log_sha256": "774a57f7454c5e7aad8a794fc7f6c7797481a4c5feec47362ad8c73313d830a9"
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/docs-build.log",
+      "log_sha256": "cb1fe5882c420cddc153a7017a74e979494e855fbd227aed2aa138171c4603fd"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/docs-links.log",
-      "log_sha256": "2c8b3a76f20aee94d77834f79d712abe0ee5ecd0e93bf6b77b48f3828e2da13d"
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/line-endings.log",
-      "log_sha256": "75b4df5c84c988cd97bce01bea220691e39de536f04554393ae48084c4118d12"
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-identity/identity-domains.YkqaK6/diff.log",
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

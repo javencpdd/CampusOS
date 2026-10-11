@@ -2,12 +2,14 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/hkdf"
 )
 
 // JWTClaims JWT 声明
@@ -172,6 +174,11 @@ func (m *JWTManager) VerifyAccessToken(tokenString string) (*JWTClaims, error) {
 	return claims, nil
 }
 
+// Secret exposes the signing secret for HKDF domain derivation inside the
+// process only. It must never be logged, returned by an API, or copied into
+// configuration snapshots.
+func (m *JWTManager) Secret() string { return m.cfg.Secret }
+
 func (m *JWTManager) AccessTTL() time.Duration { return m.cfg.AccessTTL }
 
 func (m *JWTManager) RefreshTTL() time.Duration { return m.cfg.RefreshTTL }
@@ -193,4 +200,12 @@ func NewDomainJWTManagers(user JWTConfig, admin JWTConfig) *DomainJWTManagers {
 		panic("identity domains require distinct issuers and audiences")
 	}
 	return &DomainJWTManagers{User: NewJWTManager(user), Admin: NewJWTManager(admin)}
+}
+
+// DeriveDomainSecret derives a per-domain signing secret from a base secret
+// with HKDF-SHA-256 domain separation. Deployments that need independent key
+// custody set the domain secret explicitly instead of deriving it.
+func DeriveDomainSecret(base, domain string) string {
+	key := hkdf.Extract(sha256.New, []byte(base), []byte(domain))
+	return base64.RawURLEncoding.EncodeToString(key)
 }

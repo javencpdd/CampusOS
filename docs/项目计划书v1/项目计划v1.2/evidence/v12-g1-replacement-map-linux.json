@@ -141,8 +141,8 @@
     }
   ],
   "files_sha256": {
-    "docs/api/v1.2旧机制删除与替换清单.json": "d0c6e7a23755ff830470b268af2666a079429bd75efebd3ce7148126d450bff9",
+    "docs/api/v1.2旧机制删除与替换清单.json": "f7051cc897c50ce2eaaefa369e4f1bd76358636b6835a11b4d81f9495cdf4bc6",
     "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "e4eaf6d19cb221c1c6d81133db5460f1688c31122c6b3d004e35927f6df3dbbe",
-    "scripts/check-v12-g1-replacement-map.mjs": "79e11cd978a08e38cd77ad26963053422a1eafc8390a60cd52cc51331e5e2ca0"
+    "scripts/check-v12-g1-replacement-map.mjs": "c693737c1f5f08a22b26969d156b2e569e45fd244404672e611dcaeaa57e4fdf"
   }
 }

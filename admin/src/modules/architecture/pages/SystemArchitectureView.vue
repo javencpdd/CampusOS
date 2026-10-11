@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000011（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复）</el-tag
+        >当前迁移 000001 - 000014（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复/准入解耦/管理域授权）</el-tag
       >
     </section>
 
@@ -493,6 +493,15 @@ const databaseTables: DbTable[] = [
     fields: ["id", "account_id", "refresh_token_digest", "token_family_id", "authentication_strength", "expires_at", "revoked_at", "revoke_reason"],
     migration: "000010",
     relationshipNote: "account_id 外键指向 admin_accounts 并级联删除；refresh 摘要唯一索引。",
+  },
+  {
+    name: "admin_role_permissions",
+    title: "管理域角色权限绑定",
+    domain: "identity",
+    purpose: "管理域角色到共享权限目录的绑定，带管理域主体约束；security_admin 随迁移获得全量非弃用目录。",
+    fields: ["role_id", "permission_code"],
+    migration: "000013",
+    relationshipNote: "role_id 外键指向 admin_roles；permission_code 引用共享目录但不建外键。",
   },
   {
     name: "admin_role_bindings",
@@ -3027,6 +3036,22 @@ const migrations = [
     tables: ["admin_accounts（状态机+version CAS）", "admin_credentials（单凭据+轮换 CAS）", "admin_roles（参考数据）", "admin_role_bindings（活跃唯一部分索引）"],
   },
   {
+    version: "000013",
+    file: "000013_v1_2_admin_role_permissions.up.sql",
+    title: "v1.2 管理域角色权限绑定",
+    scope: "Identity Admin 角色目录",
+    summary: "新增 admin_role_permissions，security_admin 绑定全量非弃用权限目录；独立管理域路由按此表授权。",
+    tables: ["admin_role_permissions（角色到目录绑定）"],
+  },
+  {
+    version: "000014",
+    file: "000014_v1_2_admin_permission_codes.up.sql",
+    title: "v1.2 管理域权限码",
+    scope: "Identity 目录",
+    summary: "新增 identity.admin_account.create/revoke、identity.admin_session.revoke、identity.admin_mfa.manage 四个管理域权限码并绑定 security_admin。",
+    tables: ["permission_definitions（追加 4 条管理域码）"],
+  },
+  {
     version: "000010",
     file: "000010_v1_2_admin_sessions.up.sql",
     title: "v1.2 独立管理员会话存储",
@@ -3043,6 +3068,15 @@ const migrations = [
     summary:
       "新增 admin_mfa_totp、admin_mfa_tickets、admin_recovery_tickets 三张管理域独立存储，与用户域 MFA/恢复表完全分离；存在数据时拒绝回滚。",
     tables: ["admin_mfa_totp（信封+确认/停用状态机）", "admin_mfa_tickets（挑战票据）", "admin_recovery_tickets（恢复票据）"],
+  },
+  {
+    version: "000012",
+    file: "000012_v1_2_remove_admin_role_auto_admission.up.sql",
+    title: "v1.2 移除用户角色自动开通后台",
+    scope: "Identity 准入解耦",
+    summary:
+      "删除 user_roles 自动同步管理员准入的 SQL 触发器与辅助函数（由前向迁移移除，基线文件保持不可变）；应用层角色授予/撤销不再触碰准入事实，管理员只能经独立管理域显式开设。",
+    tables: [],
   },
 ];
 const tableByName = (name: string) =>

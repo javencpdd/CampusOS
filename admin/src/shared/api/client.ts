@@ -30,6 +30,7 @@ api.interceptors.response.use(
       requestPath.includes('/auth/login') ||
       requestPath.includes('/auth/admin/login') ||
       requestPath.includes('/auth/mfa/login/complete') ||
+      requestPath.includes('/admin/identity/login') ||
       requestPath.includes('/auth/refresh')
 	const requiresStepUp =
 	  error.response?.data?.error?.code === 'identity.mfa.step_up_required' &&

@@ -137,6 +137,11 @@ func (s *AdminSessionService) Login(ctx context.Context, username, password stri
 	}
 	account, err := s.admins.GetAccountByUsername(ctx, username)
 	if err != nil {
+		// Admin logins may present either the account username or its contact
+		// email; both resolve only inside the admin domain.
+		account, err = s.admins.GetAccountByEmail(ctx, username)
+	}
+	if err != nil {
 		return nil, ErrAdminLoginDenied
 	}
 	credential, err := s.admins.GetCredential(ctx, account.ID)

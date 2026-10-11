@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	delegationsvc "github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/handler"
@@ -38,6 +40,7 @@ const (
 type Config struct {
 	JWT                   *auth.JWTManager
 	PasswordHashEnabled   bool
+	AdminJWTSecret        string
 	ChallengeActiveKeyID  string
 	ChallengeHMACKeys     map[string]string
 	ChallengeIPHashSecret string
@@ -55,6 +58,7 @@ type HTTPHandlers struct {
 	Role            *handler.RoleHandler
 	ChallengePolicy *handler.ChallengePolicyHandler
 	AdminAdmission  *handler.AdminAdmissionHandler
+	AdminDomain     *handler.AdminDomainHandler
 }
 
 // Module owns Identity application composition. Its Profile adapters are
@@ -71,6 +75,9 @@ type Module struct {
 	recoveryCases     repository.RecoveryCaseRepository
 	mfa               repository.MFARepository
 	delegations       repository.DelegationRepository
+	adminDomains      repository.AdminDomainRepository
+	adminSessions     repository.AdminSessionRepository
+	adminSecurity     repository.AdminSecurityRepository
 
 	userService            *service.UserService
 	challengeService       *service.ChallengeService
@@ -79,6 +86,10 @@ type Module struct {
 	recoveryService        *service.RecoveryService
 	permissionService      *service.PermissionService
 	delegationService      *delegationsvc.Service
+	adminDomainService     *service.AdminDomainService
+	adminSessionService    *service.AdminSessionService
+	adminMFAService        *service.AdminMFAService
+	adminJWT               *auth.JWTManager
 	adminAccessService     *service.AdminAccessService
 	adminAdmissionService  *service.AdminAdmissionService
 	mfaService             *service.MFAService
@@ -174,6 +185,30 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok {
 		return fmt.Errorf("identity delegation repository adapter has incompatible type %T", delegationValue)
 	}
+	adminSessionValue, ok := app.Lookup(portAdminSessionRepository)
+	if !ok {
+		return errors.New("identity admin session repository adapter is not bound by profile")
+	}
+	adminSessionRepository, ok := adminSessionValue.(repository.AdminSessionRepository)
+	if !ok {
+		return fmt.Errorf("identity admin session repository adapter has incompatible type %T", adminSessionValue)
+	}
+	adminSecurityValue, ok := app.Lookup(portAdminSecurityRepository)
+	if !ok {
+		return errors.New("identity admin security repository adapter is not bound by profile")
+	}
+	adminSecurityRepository, ok := adminSecurityValue.(repository.AdminSecurityRepository)
+	if !ok {
+		return fmt.Errorf("identity admin security repository adapter has incompatible type %T", adminSecurityValue)
+	}
+	adminDomainValue, ok := app.Lookup(portAdminDomainRepository)
+	if !ok {
+		return errors.New("identity admin domain repository adapter is not bound by profile")
+	}
+	adminDomainRepository, ok := adminDomainValue.(repository.AdminDomainRepository)
+	if !ok {
+		return fmt.Errorf("identity admin domain repository adapter has incompatible type %T", adminDomainValue)
+	}
 	m.app = app
 	m.users = userRepository
 	m.roles = roleRepository
@@ -192,6 +227,9 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}
 	m.delegationService = delegationsvc.NewService(m.delegations, m.users, authorizationCatalog)
 	m.permissionService.SetDelegationService(m.delegationService)
+	m.adminSessions = adminSessionRepository
+	m.adminSecurity = adminSecurityRepository
+	m.adminDomains = adminDomainRepository
 	m.adminAccessService = service.NewAdminAccessService(m.adminAccounts)
 	if err := app.Provide(portUserReader, identityportadapt.NewRepositoryUserReader(userRepository)); err != nil {
 		return err
@@ -311,6 +349,9 @@ func (m *Module) Start(context.Context) error {
 	}
 	mfa.SetReliability(reliable)
 	mfa.SetMeter(meter)
+	if err := m.startAdminDomainServices(authorizationCatalog, reliable); err != nil {
+		return err
+	}
 	mfa.SetSessionRevoker(sessions)
 	mfa.SetSessionStrengthReader(sessions)
 	challenges.SetMeter(meter)
@@ -334,6 +375,7 @@ func (m *Module) Start(context.Context) error {
 		Role:            handler.NewRoleHandler(permissions),
 		ChallengePolicy: handler.NewChallengePolicyHandler(challengePolicies),
 		AdminAdmission:  handler.NewAdminAdmissionHandler(adminAdmissions),
+		AdminDomain:     handler.NewAdminDomainHandler(m.adminDomainService, m.adminSessionService, m.adminMFAService),
 	}
 	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityportadapt.NewServiceAccountReader(users))); err != nil {
 		return err
@@ -408,3 +450,55 @@ func (m *Module) SyncRouteDescriptors(ctx context.Context, descriptors []platfor
 	}
 	return m.permissionService.SyncRouteOperations(ctx, operations)
 }
+
+// startAdminDomainServices constructs the independent admin identity domain
+// services on the admin stores. The admin JWT issuer/audience/key id are
+// fixed by the v1.2 domain contract; the signing secret derives from the user
+// domain secret with HKDF domain separation unless ADMIN_JWT_SECRET overrides
+// it for independent key custody.
+func (m *Module) startAdminDomainServices(catalog repository.AuthorizationRepository, reliable *reliability.Service) error {
+	adminSecret := m.config.AdminJWTSecret
+	if strings.TrimSpace(adminSecret) == "" && m.config.JWT != nil {
+		adminSecret = auth.DeriveDomainSecret(m.config.JWT.Secret(), "campusos-admin-domain-v1")
+	}
+	if strings.TrimSpace(adminSecret) == "" {
+		adminSecret = "campusos-admin-dev-secret-change-before-production"
+	}
+	accessTTL, refreshTTL := 15*time.Minute, 30*24*time.Hour
+	if m.config.JWT != nil {
+		accessTTL, refreshTTL = m.config.JWT.AccessTTL(), m.config.JWT.RefreshTTL()
+	}
+	m.adminJWT = auth.NewJWTManager(auth.JWTConfig{
+		Secret: adminSecret, Issuer: "campusos-admin", Audience: "admin-api", KeyID: "admin-key",
+		AccessTTL: accessTTL, RefreshTTL: refreshTTL,
+	})
+	domainConfig := service.DefaultAdminDomainConfig()
+	domainConfig.BootstrapEnabled = len(m.config.BootstrapAdminSecret) >= 16
+	m.adminDomainService = service.NewAdminDomainService(m.adminDomains, catalog, domainConfig)
+	m.adminDomainService.SetReliability(reliable)
+	m.adminSessionService = service.NewAdminSessionService(m.adminDomains, m.adminSessions, m.adminJWT)
+	m.adminSessionService.SetReliability(reliable)
+	// Minimal test configurations may omit MFA keys; the admin MFA service
+	// stays unavailable there rather than failing module startup.
+	if strings.TrimSpace(m.config.MFAActiveKeyID) != "" {
+		protector, err := service.NewMFASecretProtector(m.config.MFAActiveKeyID, m.config.MFAEncryptionKeys)
+		if err != nil {
+			return fmt.Errorf("initialize admin MFA secret protector: %w", err)
+		}
+		m.adminMFAService = service.NewAdminMFAService(m.adminDomains, m.adminSecurity, m.adminSessions, protector)
+		m.adminMFAService.SetReliability(reliable)
+	}
+	return nil
+}
+
+// AdminDomainLifecycle exposes the admin account lifecycle service.
+func (m *Module) AdminDomainLifecycle() *service.AdminDomainService { return m.adminDomainService }
+
+// AdminDomainSessions exposes the admin login/refresh service.
+func (m *Module) AdminDomainSessions() *service.AdminSessionService { return m.adminSessionService }
+
+// AdminDomainMFA exposes the admin TOTP service.
+func (m *Module) AdminDomainMFA() *service.AdminMFAService { return m.adminMFAService }
+
+// AdminDomainJWT exposes the admin-domain token manager.
+func (m *Module) AdminDomainJWT() *auth.JWTManager { return m.adminJWT }

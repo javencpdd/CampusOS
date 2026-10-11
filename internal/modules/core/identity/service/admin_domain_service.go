@@ -301,3 +301,18 @@ func (s *AdminDomainService) transitionAdmin(ctx context.Context, actor AdminAct
 		return s.audit(commandCtx, "admin", actor.ID, "identity.admin_domain."+operation, targetID, reason, operation+"-"+targetID)
 	})
 }
+
+// HasCode reports whether an active admin account holds one permission code
+// through its active admin-domain role bindings.
+func (s *AdminDomainService) HasCode(ctx context.Context, accountID, code string) (bool, error) {
+	codes, err := s.admins.ListActivePermissionCodes(ctx, accountID)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range codes {
+		if item == code {
+			return true, nil
+		}
+	}
+	return false, nil
+}

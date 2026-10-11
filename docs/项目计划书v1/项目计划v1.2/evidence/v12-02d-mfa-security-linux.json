@@ -1,6 +1,6 @@
 {
   "schema": "campusos.v12-02d-mfa-security-acceptance/v1",
-  "generated_at": "2026-10-10T16:26:22.233606+00:00",
+  "generated_at": "2026-10-11T05:30:07.091652+00:00",
   "stage": "V12-02d",
   "stage_status": "partial",
   "slice_status": "completed",
@@ -39,11 +39,11 @@
   "source_sha256": {
     "migrations/000011_v1_2_admin_mfa_recovery.up.sql": "7da9e00865df8ecf137d03dd4fd6e6fbb21a1291e2b0b7d0597c94d83d71a7ae",
     "migrations/000011_v1_2_admin_mfa_recovery.down.sql": "5fa86c9de96a7044a9e106715cce47254f2d80c9d2a90dcb3566bc21ae3c7f61",
-    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "6a805c479bdccea016f6f3812faccdb26a1ebe97e34ce550a5c33869f7ef60a6",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "ee00ff7f748c7e98a4d9cb337f607886b008535f7b56defa4838fe1072dc080d",
     "internal/modules/core/identity/repository/pg_admin_security_repository_test.go": "d5052486adc2b1e97dd820b2e3469ea15c7c7d73cbc440057fcf79cc6554bb5e",
-    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "eb65b0e04eca6c618275c6e636afd0e8af62993fff145fb226cbdf6eddb8abbe",
-    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "262026b044f0b8e875de0f655b11d84982fe01b61e8980075302e69b31dbcbc4",
-    "scripts/v12-02d-mfa-security-drill.sh": "0d49dd2c58af8c74e4efaeabc430ce455ce8f1ade08547c8ddd0794d1f1c7df9"
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "7b9a443fb2b8f64e689e6899710ce30947c7531c1f38e569cc5a1ee194c97b52",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "scripts/v12-02d-mfa-security-drill.sh": "334d9911aa81b84406afb16618c5edbb271baa244b784aabb016eece5032fe0e"
   },
   "dependencies": {
     "v12-g0-exit.json": {
@@ -73,25 +73,25 @@
     },
     "v12-02d-identity-domains-linux.json": {
       "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
-      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
       "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
     }
   },
   "target_logs": {
     "migrations": {
-      "path": ".cache/v12-02d-mfa-security/store.U2BOae/migrations.log",
+      "path": ".cache/v12-02d-mfa-security/store.uQEfbp/migrations.log",
       "sha256": "9227e9fc0f24e92192738d3ad7b0fe9abfa2e66b679c14b5b0e46ece54e22b69"
     },
     "go-repository": {
-      "path": ".cache/v12-02d-mfa-security/store.U2BOae/go-repository.log",
-      "sha256": "d5bda0744e83b98cb65a39e9a877ff904322cd435e79545e20a22817282a9530"
+      "path": ".cache/v12-02d-mfa-security/store.uQEfbp/go-repository.log",
+      "sha256": "a177cab94a6fd2029ae65cbf3b01f292a5f13a9fa68918d5da31796b32a48296"
     },
     "down-refused": {
-      "path": ".cache/v12-02d-mfa-security/store.U2BOae/down-refused.log",
-      "sha256": "a880a3af6a7cb35cd0f457481c8ff3be8f61c57a7fb40513d9858f98932ebc15"
+      "path": ".cache/v12-02d-mfa-security/store.uQEfbp/down-refused.log",
+      "sha256": "4ca5d897daaa3cc8cd824983a0fdb4e73c513e405915c2364b50faaa648dd539"
     },
     "down": {
-      "path": ".cache/v12-02d-mfa-security/store.U2BOae/down.log",
+      "path": ".cache/v12-02d-mfa-security/store.uQEfbp/down.log",
       "sha256": "1857f7223f0778f00a17da604d55add6338a5934784e22f063b5df2af97e2198"
     }
   },
@@ -101,70 +101,70 @@
       "command": "go test ./... -count=1",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/go-all.log",
-      "log_sha256": "256cf0eec6b5b241329ebe76dd94e68482841e5a2921f52f6d83d4d9c327770d"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/go-all.log",
+      "log_sha256": "eafe615d130ef0a7d21d80aff7186c966e48b872896ce14dae5a9d612a62fa70"
     },
     "contracts": {
       "command": "make contracts-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/contracts.log",
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/contracts.log",
       "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
     },
     "architecture": {
       "command": "make architecture-check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/architecture.log",
-      "log_sha256": "8ae5ee4f2efafc8c1589e4c736ac5b8b3454029fea7318fff8860cdf6c27269d"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/architecture.log",
+      "log_sha256": "0fd75b9f080f0f028420e15289b2e3272cb1763c5253cc51b1195c502aac7200"
     },
     "database-er": {
       "command": "python3 migrations/tools/generate_er.py --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/database-er.log",
-      "log_sha256": "c76c11a01e159ea9534585162716b1414e2a368aca948062832872ca74876610"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/database-er.log",
+      "log_sha256": "c1fc270ab6bbbb3708e900c2b9d0d89f8aa28378a9bae47ca2b704b9c27b3699"
     },
     "architecture-sync": {
       "command": "check_architecture_sync.py --root .",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/architecture-sync.log",
-      "log_sha256": "e4fa7b2f9d6c952a300c05cc8b42981e05bb0e5e03a66b62d48075675da06478"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/architecture-sync.log",
+      "log_sha256": "a8c38af020be0e62a7930c09fa0cc246e7a4854b334e4677240b4b9f686fc893"
     },
     "admin-build": {
       "command": "make admin-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/admin-build.log",
-      "log_sha256": "4bf62c47b73f175c0f7677f0f06adb6e49514e02768f6cebc323d35816920ff6"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/admin-build.log",
+      "log_sha256": "90174c413ce67b563f8658c52b28819c4c729455efd4d55f03d198419b2e23e0"
     },
     "docs-build": {
       "command": "make docs-build",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/docs-build.log",
-      "log_sha256": "7f822b4ebb7e0d1d48dcce4eb01705d1d7dab856ef839ae9a18f63700450f1eb"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/docs-build.log",
+      "log_sha256": "3568acf1778de521888d2b36799bf741a1071e8c22344024a3fa7b34370ba8e5"
     },
     "docs-links": {
       "command": "make docs-links",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/docs-links.log",
-      "log_sha256": "5e3caf4c761be24a7d35384d8000e726ad00da914ac482abc4aaae00aa084f25"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
     },
     "line-endings": {
       "command": "python3 scripts/check-line-endings.py --include-untracked",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/line-endings.log",
-      "log_sha256": "0bed78e2c04585b07c64324936c43107f2601777a713741375b00175ee93fbc4"
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
     },
     "diff": {
       "command": "git diff --check",
       "status": "passed",
       "exit_code": 0,
-      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/diff.log",
+      "local_log": ".cache/v12-02d-mfa-security/store.uQEfbp/diff.log",
       "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },

@@ -1,7 +1,8 @@
 import api from '../../shared/api/client'
 
 export const authApi = {
-  login: (data: { email: string; password: string }) => api.post('/auth/admin/login', data),
+  login: (data: { email: string; password: string }) =>
+    api.post('/admin/identity/login', { username: data.email, password: data.password }),
   completeMFALogin: (data: { mfa_ticket: string; code: string }) => api.post('/auth/mfa/login/complete', data),
   stepUpMFA: (data: { code: string }) => api.post('/auth/mfa/step-up', data),
   refresh: () => api.post('/auth/refresh'),
