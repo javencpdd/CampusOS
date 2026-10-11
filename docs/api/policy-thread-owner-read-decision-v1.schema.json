@@ -1,0 +1,6 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:campusos:policy:thread-owner-read:decision:v1",
+  "title": "CampusOS thread owner-read decision with complete principal binding",
+  "$ref": "urn:campusos:policy:thread-owner-read:v1#/definitions/decision"
+}

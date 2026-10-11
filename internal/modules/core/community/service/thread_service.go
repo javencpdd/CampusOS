@@ -10,6 +10,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/cache"
@@ -38,6 +39,8 @@ type ThreadService struct {
 	reliable      *reliability.Service
 	typeEnabled   func(domain.ThreadType) bool
 	notifications ThreadNotificationWriter
+	publicPolicy  identityport.ThreadPublicReadPolicy
+	ownerPolicy   identityport.ThreadOwnerReadPolicy
 }
 
 // ContentAuthorization is the narrow server-side policy port used for
@@ -377,47 +380,26 @@ func (s *ThreadService) validateThreadTypePolicy(ctx context.Context, categoryID
 
 // GetThread 获取帖子详情
 func (s *ThreadService) GetThread(ctx context.Context, id string) (*domain.Thread, error) {
-	current, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get thread: %w", err)
-	}
-	if !current.IsPublic() {
-		return nil, repository.ErrThreadNotFound
-	}
-	thread, err := s.repo.IncrementViewCount(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get thread: %w", err)
-	}
-	s.invalidateListCache(ctx)
-	return thread, nil
+	return s.readPublicThread(ctx, id, true)
 }
 
 // GetPublicThread returns the canonical public fact without incrementing a
 // view counter. Profile, MCP and Host API reads use this path so integrations
 // cannot inflate audience metrics as a side effect of synchronization.
 func (s *ThreadService) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
-	thread, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("get thread: %w", err)
-	}
-	if !thread.IsPublic() {
-		return nil, repository.ErrThreadNotFound
-	}
-	return thread, nil
+	return s.readPublicThread(ctx, id, false)
 }
 
+// GetThreadForViewer preserves the legacy bare-ID adapter for in-process
+// callers. Its private branch has no session/Policy acceptance; authenticated
+// HTTP must use GetThreadForPrincipal with a current trusted session proof.
 func (s *ThreadService) GetThreadForViewer(ctx context.Context, id, viewerID string) (*domain.Thread, error) {
 	thread, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get thread: %w", err)
 	}
 	if thread.IsPublic() {
-		thread, err = s.repo.IncrementViewCount(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("get thread: %w", err)
-		}
-		s.invalidateListCache(ctx)
-		return thread, nil
+		return s.readPublicThread(ctx, id, true)
 	}
 	if !thread.IsAuthorVisible(viewerID) {
 		return nil, repository.ErrThreadNotFound
@@ -425,8 +407,26 @@ func (s *ThreadService) GetThreadForViewer(ctx context.Context, id, viewerID str
 	return thread, nil
 }
 
-// ListThreads 获取帖子列表（支持缓存）
+// ListThreads retains the administrative/author filter path. Default and
+// explicitly canonical public filters use the public policy snapshot path.
 func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if filter.Status == "" || (filter.Status == string(domain.ThreadStatusPublished) &&
+		filter.PublicationStatus == string(domain.PublicationStatusPublished) &&
+		filter.ModerationStatus == string(domain.ModerationStatusClear) &&
+		filter.DeletionStatus == string(domain.DeletionStatusActive)) {
+		return s.ListPublicThreads(ctx, filter)
+	}
+	filter, err := s.prepareThreadListFilter(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	if filter.Status == "all" {
+		filter.Status = ""
+	}
+	return s.repo.List(ctx, filter)
+}
+
+func (s *ThreadService) prepareThreadListFilter(ctx context.Context, filter domain.ThreadListFilter) (domain.ThreadListFilter, error) {
 	if filter.Page < 1 {
 		filter.Page = 1
 	}
@@ -434,25 +434,9 @@ func (s *ThreadService) ListThreads(ctx context.Context, filter domain.ThreadLis
 		filter.PageSize = 20
 	}
 	if err := s.expandGroupCategoryFilter(ctx, &filter); err != nil {
-		return nil, 0, fmt.Errorf("resolve thread category filter: %w", err)
+		return filter, fmt.Errorf("resolve thread category filter: %w", err)
 	}
-	includeAllStatuses := filter.Status == "all"
-	if includeAllStatuses {
-		filter.Status = ""
-	}
-	// 默认只显示公开内容。旧 status 条件保留给 v0.9 客户端和数据库兼容。
-	if filter.Status == "" && !includeAllStatuses {
-		filter.Status = string(domain.ThreadStatusPublished)
-		filter.PublicationStatus = string(domain.PublicationStatusPublished)
-		filter.ModerationStatus = string(domain.ModerationStatusClear)
-		filter.DeletionStatus = string(domain.DeletionStatusActive)
-	}
-
-	// A cached list contains resource visibility and body data. Best-effort
-	// invalidation cannot authorize a later request: writers in another service
-	// or an in-flight cache fill can leave private/moderated content readable.
-	// Keep rows and pagination totals on the authoritative repository path.
-	return s.repo.List(ctx, filter)
+	return filter, nil
 }
 
 // expandGroupCategoryFilter keeps the category_id HTTP contract stable while

@@ -94,7 +94,7 @@ func TestPublicThreadListForcesCanonicalVisibility(t *testing.T) {
 		t.Fatalf("public list status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	got := repo.filter
-	if got.Status != string(domain.ThreadStatusPublished) ||
+	if got.Status != "" ||
 		got.PublicationStatus != string(domain.PublicationStatusPublished) ||
 		got.ModerationStatus != string(domain.ModerationStatusClear) ||
 		got.DeletionStatus != string(domain.DeletionStatusActive) || got.IncludeTrashed {

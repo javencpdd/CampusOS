@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,6 +10,9 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -16,12 +20,21 @@ import (
 
 // ThreadHandler 帖子 HTTP 处理器
 type ThreadHandler struct {
-	svc *service.ThreadService
+	svc                  *service.ThreadService
+	ownerSessionVerifier identityport.SessionVerifier
+	ownerStrengthReader  identityport.SessionStrengthReader
 }
 
 // NewThreadHandler 创建帖子处理器
 func NewThreadHandler(svc *service.ThreadService) *ThreadHandler {
 	return &ThreadHandler{svc: svc}
+}
+
+// SetOwnerSessionProof supplies the current Identity session facts required by
+// the authenticated owner read. Missing adapters leave this entry closed.
+func (h *ThreadHandler) SetOwnerSessionProof(verifier identityport.SessionVerifier, reader identityport.SessionStrengthReader) {
+	h.ownerSessionVerifier = verifier
+	h.ownerStrengthReader = reader
 }
 
 type contentPreviewRequest struct {
@@ -80,7 +93,7 @@ func (h *ThreadHandler) GetThread(c *gin.Context) {
 
 	thread, err := h.svc.GetThread(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 40003, err.Error())
+		writePublicThreadReadError(c, err)
 		return
 	}
 
@@ -91,19 +104,62 @@ func (h *ThreadHandler) GetThread(c *gin.Context) {
 // GET /api/v1/threads/:id/me
 func (h *ThreadHandler) GetThreadForCurrentUser(c *gin.Context) {
 	id := c.Param("id")
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
 
-	thread, err := h.svc.GetThreadForViewer(c.Request.Context(), id, userID)
+	thread, err := h.svc.GetThreadForPrincipal(c.Request.Context(), id, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	})
 	if err != nil {
-		response.Error(c, http.StatusNotFound, 40003, err.Error())
+		writePublicThreadReadError(c, err)
 		return
 	}
 
 	response.Success(c, thread)
+}
+
+func (h *ThreadHandler) resolveOwnerPrincipal(ctx context.Context, c *gin.Context) (identityport.PrincipalContext, error) {
+	userID, _, ok := currentUser(c)
+	sessionID := c.GetString("session_id")
+	authVersion := c.GetInt64("auth_version")
+	if !ok || sessionID == "" || authVersion < 1 || h.ownerSessionVerifier == nil || h.ownerStrengthReader == nil {
+		return identityport.PrincipalContext{}, service.ErrThreadOwnerPrincipalUnavailable
+	}
+	claims := &auth.JWTClaims{UserID: userID, SessionID: sessionID, AuthVersion: authVersion, TokenType: auth.AccessTokenType}
+	if err := h.ownerSessionVerifier.VerifyAccess(ctx, claims); err != nil {
+		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
+	}
+	strength, err := h.ownerStrengthReader.AuthenticationStrengthForSession(ctx, sessionID)
+	if err != nil {
+		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
+	}
+	// The strength lookup is a separate authority read. Verify its bound session
+	// again so a revoke/account change during that read cannot create a proof.
+	if err := h.ownerSessionVerifier.VerifyAccess(ctx, claims); err != nil {
+		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
+	}
+	principal := identityport.PrincipalContext{Contract: identityport.PrincipalContract,
+		Actor: identityport.PrincipalRef{Kind: "user", ID: userID}, Audience: "user", AuthenticationStrength: strength, CredentialID: sessionID}
+	if err := principal.Validate(); err != nil {
+		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
+	}
+	return principal, nil
+}
+
+func writePublicThreadReadError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrThreadOwnerPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, repository.ErrThreadNotFound):
+		response.Error(c, http.StatusNotFound, 40003, "thread not found")
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	default:
+		response.WriteError(c, err)
+	}
 }
 
 // ListThreads 获取帖子列表
@@ -113,12 +169,12 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 	if !ok {
 		return
 	}
-	filter.Status = string(domain.ThreadStatusPublished)
-	filter.PublicationStatus = string(domain.PublicationStatusPublished)
-	filter.ModerationStatus = string(domain.ModerationStatusClear)
-	filter.DeletionStatus = string(domain.DeletionStatusActive)
-
-	h.respondThreadList(c, filter, pageSize)
+	threads, total, err := h.svc.ListPublicThreads(c.Request.Context(), filter)
+	if err != nil {
+		writePublicThreadReadError(c, err)
+		return
+	}
+	writeThreadListResponse(c, filter, pageSize, threads, total)
 }
 
 // AdminListThreads 获取管理端帖子列表，包含草稿、私密和归档状态。
@@ -178,7 +234,10 @@ func (h *ThreadHandler) respondThreadList(c *gin.Context, filter domain.ThreadLi
 		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
 		return
 	}
+	writeThreadListResponse(c, filter, pageSize, threads, total)
+}
 
+func writeThreadListResponse(c *gin.Context, filter domain.ThreadListFilter, pageSize int, threads []*domain.Thread, total int64) {
 	totalPages := int(total) / pageSize
 	if int(total)%pageSize > 0 {
 		totalPages++

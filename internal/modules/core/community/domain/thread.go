@@ -17,6 +17,8 @@ const (
 
 // Thread 帖子领域实体
 type Thread struct {
+	// FactsVersion is repository-owned and never accepted from or exposed to HTTP clients.
+	FactsVersion      int64             `json:"-"`
 	ID                string            `json:"id"`
 	ThreadType        ThreadType        `json:"thread_type"`
 	Title             string            `json:"title"`

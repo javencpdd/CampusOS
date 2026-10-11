@@ -131,6 +131,12 @@ def print_text(result: dict[str, object]) -> None:
         "latest migration metadata: "
         f"repository={result['latest_migration']} view={result['advertised_latest_migration'] or 'missing'}"
     )
+    for label, key in (
+        ("migration header current", "migration_header_current"),
+        ("migration timeline current", "migration_timeline_current"),
+        ("foreign key wording current", "foreign_key_wording_current"),
+    ):
+        print(f"{label}: {'yes' if result[key] else 'no'}")
     if result["explicit_foreign_keys"]:
         print("explicit foreign keys: present; review the Admin page wording and relation labels")
     else:

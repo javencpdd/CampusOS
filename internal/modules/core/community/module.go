@@ -240,12 +240,30 @@ func (m *Module) Start(context.Context) error {
 		posts.SetReliability(reliable)
 	}
 	posts.SetCache(appCache)
+	threadHandler := handler.NewThreadHandler(threads)
+	var ownerVerifier identityport.SessionVerifier
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		var compatible bool
+		ownerVerifier, compatible = value.(identityport.SessionVerifier)
+		if !compatible || ownerVerifier == nil {
+			return fmt.Errorf("community owner session verifier port has incompatible type %T", value)
+		}
+	}
+	var ownerStrength identityport.SessionStrengthReader
+	if value, found := m.app.Lookup("identity.session-strength"); found {
+		var compatible bool
+		ownerStrength, compatible = value.(identityport.SessionStrengthReader)
+		if !compatible || ownerStrength == nil {
+			return fmt.Errorf("community owner session strength port has incompatible type %T", value)
+		}
+	}
+	threadHandler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
 	m.threadService = threads
 	m.categoryService = categories
 	m.postService = posts
 	m.notificationService = notifications
 	m.handlers = HTTPHandlers{
-		Thread:       handler.NewThreadHandler(threads),
+		Thread:       threadHandler,
 		Category:     handler.NewCategoryHandler(categories),
 		Post:         handler.NewPostHandler(posts),
 		Notification: handler.NewNotificationHandler(notifications),

@@ -44,7 +44,7 @@ BEGIN
         'sessions.revoke_reason', 'sessions.ip_hash',
         'categories.node_kind', 'categories.lifecycle_status', 'categories.version', 'categories.color',
         'threads.author_id', 'threads.category_id', 'threads.status', 'threads.thread_type',
-        'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision',
+        'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision', 'threads.facts_version',
         'category_thread_type_policies.category_id', 'category_thread_type_policies.thread_type',
         'category_thread_type_policies.enabled',
         'mutual_aid_details.thread_id', 'mutual_aid_details.aid_type', 'mutual_aid_details.aid_status',
@@ -163,7 +163,7 @@ BEGIN
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
         'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome',
         'chk_plugin_configurations_definition_version', 'chk_plugin_configurations_revision',
-        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs'
+        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs', 'chk_threads_facts_version'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated
@@ -264,6 +264,23 @@ BEGIN
           AND tgtype & 19 = 17
     ) THEN
         RAISE EXCEPTION 'plugin publication and delegation revocation guards are missing or disabled';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = 'public.threads'::regclass AND attname = 'facts_version'
+          AND attnotnull AND atttypid = 'bigint'::regtype AND NOT attisdropped
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_sequence
+        WHERE seqrelid = to_regclass('public.thread_facts_version_seq')
+          AND NOT seqcycle AND seqincrement = 1 AND seqtypid = 'bigint'::regtype
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.threads'::regclass AND tgname = 'trg_threads_facts_version'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A') AND tgtype = 23
+          AND tgfoid = to_regprocedure('public.advance_thread_facts_version()')
+    ) THEN
+        RAISE EXCEPTION 'thread facts version column, allocation sequence or write guard is missing or disabled';
     END IF;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)

@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000015（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复/准入解耦/管理域授权/FK 索引补齐）</el-tag
+        >当前迁移 000001 - 000016（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复/准入解耦/管理域授权/FK 索引补齐/帖子事实版本）</el-tag
       >
     </section>
 
@@ -937,10 +937,11 @@ const databaseTables: DbTable[] = [
       "publication_status",
       "moderation_status",
       "deletion_status",
+      "facts_version",
     ],
-    migration: "000001",
+    migration: "000001 / 000016",
     relationshipNote:
-      "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。",
+      "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。facts_version 由数据库序列与触发器维护，覆盖 owner、版块、可见性、正文/修订及治理事实变更；浏览/回复等计数不推进该版本，公开详情返回前按版本复核当前快照。",
   },
   {
     name: "mutual_aid_details",
@@ -2983,7 +2984,7 @@ const migrations = [
     title: "v1.2 授权审计主体域",
     scope: "Core Identity 授权审计",
     summary:
-      "为授权审计增加 actor_kind，并将 actor_id 扩展为可表示不同主体域的不透明字符串；历史无主体记录标记 legacy_unknown。当前管理入口仍使用 User 凭据，独立 Admin 身份域由后续阶段实施。",
+      "为授权审计增加 actor_kind，并将 actor_id 扩展为可表示不同主体域的不透明字符串；历史无主体记录标记 legacy_unknown。本迁移只调整审计主体形状，独立 Admin 身份存储由 000009 起的迁移建立。",
     tables: ["authorization_audits（主体域、ID 形状和复合索引）"],
   },
   {
@@ -3036,22 +3037,6 @@ const migrations = [
     tables: ["admin_accounts（状态机+version CAS）", "admin_credentials（单凭据+轮换 CAS）", "admin_roles（参考数据）", "admin_role_bindings（活跃唯一部分索引）"],
   },
   {
-    version: "000013",
-    file: "000013_v1_2_admin_role_permissions.up.sql",
-    title: "v1.2 管理域角色权限绑定",
-    scope: "Identity Admin 角色目录",
-    summary: "新增 admin_role_permissions，security_admin 绑定全量非弃用权限目录；独立管理域路由按此表授权。",
-    tables: ["admin_role_permissions（角色到目录绑定）"],
-  },
-  {
-    version: "000014",
-    file: "000014_v1_2_admin_permission_codes.up.sql",
-    title: "v1.2 管理域权限码",
-    scope: "Identity 目录",
-    summary: "新增 identity.admin_account.create/revoke、identity.admin_session.revoke、identity.admin_mfa.manage 四个管理域权限码并绑定 security_admin。",
-    tables: ["permission_definitions（追加 4 条管理域码）"],
-  },
-  {
     version: "000010",
     file: "000010_v1_2_admin_sessions.up.sql",
     title: "v1.2 独立管理员会话存储",
@@ -3077,6 +3062,40 @@ const migrations = [
     summary:
       "删除 user_roles 自动同步管理员准入的 SQL 触发器与辅助函数（由前向迁移移除，基线文件保持不可变）；应用层角色授予/撤销不再触碰准入事实，管理员只能经独立管理域显式开设。",
     tables: [],
+  },
+  {
+    version: "000013",
+    file: "000013_v1_2_admin_role_permissions.up.sql",
+    title: "v1.2 管理域角色权限绑定",
+    scope: "Identity Admin 角色目录",
+    summary: "新增 admin_role_permissions，security_admin 绑定全量非弃用权限目录；独立管理域路由按此表授权。",
+    tables: ["admin_role_permissions（角色到目录绑定）"],
+  },
+  {
+    version: "000014",
+    file: "000014_v1_2_admin_permission_codes.up.sql",
+    title: "v1.2 管理域权限码",
+    scope: "Identity 目录",
+    summary: "新增 identity.admin_account.create/revoke、identity.admin_session.revoke、identity.admin_mfa.manage 四个管理域权限码并绑定 security_admin。",
+    tables: ["permission_definitions（追加 4 条管理域码）"],
+  },
+  {
+    version: "000015",
+    file: "000015_v1_2_admin_recovery_index.up.sql",
+    title: "v1.2 管理员恢复票据外键索引",
+    scope: "Identity Admin 恢复存储",
+    summary:
+      "为 admin_recovery_tickets.account_id 增加前导索引，补齐 Schema 合同要求的外键索引；不新增表、不改写迁移历史，回滚仅移除该索引并保留恢复票据。",
+    tables: ["admin_recovery_tickets（account_id 前导索引）"],
+  },
+  {
+    version: "000016",
+    file: "000016_v1_2_thread_facts_version.up.sql",
+    title: "v1.2 帖子公开详情事实版本",
+    scope: "Community 公开详情资源策略",
+    summary:
+      "新增 threads.facts_version，序列分配与触发器覆盖授权和内容事实变更；仅计数变化不推进版本。公开详情在返回正文前按版本复核当前可见快照，列表/批量策略仍待接入；回滚保留正文和修订，分配序列保留以避免重用已观察版本。",
+    tables: ["threads（facts_version、序列与事实更新触发器）"],
   },
 ];
 const tableByName = (name: string) =>

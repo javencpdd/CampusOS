@@ -203,12 +203,7 @@ func (g *moduleContentQuery) ListPublicThreads(ctx context.Context, filter domai
 	if g == nil || g.module == nil || g.module.threadService == nil {
 		return nil, 0, errors.New("community content query is unavailable")
 	}
-	filter.Status = string(domain.ThreadStatusPublished)
-	filter.PublicationStatus = string(domain.PublicationStatusPublished)
-	filter.ModerationStatus = string(domain.ModerationStatusClear)
-	filter.DeletionStatus = string(domain.DeletionStatusActive)
-	filter.IncludeTrashed = false
-	return g.module.threadService.ListThreads(ctx, filter)
+	return g.module.threadService.ListPublicThreads(ctx, filter)
 }
 
 func (g *moduleContentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
@@ -247,12 +242,7 @@ func (g *contentQuery) ListPublicThreads(ctx context.Context, filter domain.Thre
 	if g == nil || g.threadSvc == nil {
 		return nil, 0, errors.New("community content query is unavailable")
 	}
-	filter.Status = string(domain.ThreadStatusPublished)
-	filter.PublicationStatus = string(domain.PublicationStatusPublished)
-	filter.ModerationStatus = string(domain.ModerationStatusClear)
-	filter.DeletionStatus = string(domain.DeletionStatusActive)
-	filter.IncludeTrashed = false
-	return g.threadSvc.ListThreads(ctx, filter)
+	return g.threadSvc.ListPublicThreads(ctx, filter)
 }
 
 func (g *contentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {

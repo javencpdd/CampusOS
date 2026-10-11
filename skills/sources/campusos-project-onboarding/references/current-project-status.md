@@ -1,12 +1,26 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-09-01（Asia/Shanghai）
+> Snapshot date: 2026-10-12（Asia/Shanghai；本轮同步作者详情切片、身份域与 Schema 状态）
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.14.0`
-> Latest implementation stage: `v1.0-dev` (clean database foundation implemented; plugin authorization services and UI remain planned)
-> Migrations: clean baseline `000001` through `000003`; next append-only version is `000004`
+> Latest implementation stage: `v1.2-dev` (V12-02a and V12-02d complete; V12-02b is the next incomplete stage)
+> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000016`; next append-only version is `000017`
 
-The v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
+Current stage authority is `docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md`;
+V12-02d stage exit and remaining Admin recovery/MFA boundaries are recorded in
+`docs/进度/v1.2-dev/v1.2.44-dev.md`. The static Admin architecture view now covers 16 migrations,
+100 application tables and two executor-managed metadata tables; `000015` adds only the leading
+`admin_recovery_tickets.account_id` foreign-key index. `000016` adds sequence/trigger-owned
+`threads.facts_version` for the first V12-02b public-detail slice; content/authorization fact changes
+advance it; counters do not. Public list/count/pagination now share one repository snapshot, followed by
+whole-page policy rechecks including empty pages. Public detail (.46), list (.47), and authenticated
+`/threads/:id/me` owner detail (.48) have Linux PG resource target evidence. Owner reads use an independent
+named Policy, current verified user Session Principal, raw owner/version snapshots and proof rechecks;
+HTTP identity acceptance uses real JWT/SessionService with Memory Identity adapters, separately from PG resources.
+Other Feature private reads, author lists, governance/MFA, batch authorization and effective-permission preview
+remain later work. V12-02b remains partial; this is not v1.2 Final.
+
+Historical v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
 `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`. The v1.0 formal plan is
 `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`; its clean database foundation is documented in
 `01-v1.0数据库全面重构方案.md` and `docs/进度/v1.0-dev/v1.0.1-dev.md`. Do not treat the new plugin tables as proof that
@@ -45,7 +59,7 @@ The four extension categories are not interchangeable:
 
 | Area | Verified baseline |
 | --- | --- |
-| Identity | Verified email registration, Challenge/Ticket, password recovery, email binding, revocable sessions, separate admin admission, TOTP MFA and recovery |
+| Identity | User registration/session/MFA and independent Admin accounts, credentials, roles, sessions and MFA/recovery storage; Admin API rejects User Tokens; user roles no longer create Admin admission; remaining recovery HTTP and route MFA gates are in v1.2.44 |
 | Authorization | Stable Permission Codes, route Operations, global/category scopes, custom roles, moderator bounds, last-admin protection and required audit |
 | Community | Two-level categories with group aggregation, tags, text/rich/Mutual Aid/Secondhand posts, revisions, content governance, replies/floors, notifications and batch admin actions |
 | Structured content | Built-in Mutual Aid and Secondhand modules on the reliable Community transaction boundary |
@@ -55,7 +69,7 @@ The four extension categories are not interchangeable:
 | Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
 | Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
 | Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
-| Database | 84 application tables plus checksum/lock metadata; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
+| Database | 100 application tables plus two checksum/lock metadata tables across migrations `000001`–`000016`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
 
 ## 3. Important Boundaries
 
@@ -177,7 +191,7 @@ Read these before a new task:
 | v0.13 plan and audit | `docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
 | v0.14 implementation plan | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` |
 | v1.0 formal plan and DB design | `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`, `01-v1.0数据库全面重构方案.md` |
-| Current evidence | latest files in `docs/进度/v1.0-dev/` |
+| Current evidence | Verify the v1.2 main plan, `docs/进度/v1.2-dev/v1.2.48-dev.md`, actual source/log digests and reports in `docs/项目计划书v1/项目计划v1.2/evidence/`; do not infer completion from filenames or old summaries |
 | v0.13 final baseline | `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
 
 Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation
