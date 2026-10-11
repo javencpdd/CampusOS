@@ -1,0 +1,171 @@
+{
+  "schema": "campusos.v12-02d-admin-store-acceptance/v1",
+  "generated_at": "2026-10-10T04:24:59.765921+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "migration 000009 admin identity domain stores (accounts/credentials/roles/role bindings) with PostgreSQL/Memory repositories and isolated PostgreSQL 16 acceptance; no service or HTTP wiring",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port)"
+  },
+  "checks": {
+    "TestAdminDomainAccountLifecycle": "passed",
+    "TestAdminDomainCredentialCAS": "passed",
+    "TestAdminDomainRoleBindingsAndSecurityCount": "passed",
+    "TestAdminDomainConcurrentStatusCAS": "passed"
+  },
+  "coverage": {
+    "migration_chain": "000001-000009 up + check",
+    "seed_assertions": 3,
+    "sql_constraint_negatives": 7,
+    "down_up_cycle": "000009 down refused with live accounts, re-up clean",
+    "go_repository_tests": 4,
+    "adapters": [
+      "postgres",
+      "memory"
+    ]
+  },
+  "source_sha256": {
+    "migrations/000009_v1_2_admin_identity_domain.up.sql": "976cd5db958ee3c493fc099b6a55f901b101965e55554f29e4348e687835b7f1",
+    "migrations/000009_v1_2_admin_identity_domain.down.sql": "65c173e225ec145f617a32c4c498937e7a13b352758a62a54fc5a88d441a61bf",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "49a6cfaa54cd12d77c16b41f82f57fb2a9196f7152ec8e5b8f7fbf5f57c298f6",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository_test.go": "3f5c0641bbb79bdc5b74af025cd139a0675db03f45efbc277252261486014ae3",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "8b1492a7504fe99f6bd8e19f9a54bb19d2d8973413675c201d851eca77a440e9",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "e4b2abb22916e211e447ee71db0385df52588bbfb15cf1b17d862bf8ba47568a",
+    "scripts/v12-02d-admin-store-drill.sh": "ad90a6c8e8779902c7f48708726fef73fbdaf0326c90b356b6ab85f73f9ab0e4"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02d-admin-store/store.ikI4A5/migrations.log",
+      "sha256": "3634f02469f578cbea4606ebf7dfdd725482125a77c905761ea2ae5494b806c8"
+    },
+    "go-repository": {
+      "path": ".cache/v12-02d-admin-store/store.ikI4A5/go-repository.log",
+      "sha256": "5caf47c259bc8ceee23de5a03b038020f564c0c9496f39ac35cfb004eee530f2"
+    },
+    "down-refused": {
+      "path": ".cache/v12-02d-admin-store/store.ikI4A5/down-refused.log",
+      "sha256": "b4e38e9960e0aac2becf373911d3f065642d60ec972e097a7e9e23671ce35563"
+    },
+    "down": {
+      "path": ".cache/v12-02d-admin-store/store.ikI4A5/down.log",
+      "sha256": "e830d9cf3be1a4ea9412ea6c37e34ddfa4b363b03677baa16d7be7d79bd3d996"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/go-all.log",
+      "log_sha256": "f056b73eacb6892aec722d1298c1930424f59bac19b5a137608f69ac858a99c4"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/architecture.log",
+      "log_sha256": "ad971deee29216b12e4fff1c733e178cfcf08d8069d1cce06c0cb2ebb1b41c05"
+    },
+    "database-er": {
+      "command": "python3 migrations/tools/generate_er.py --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/database-er.log",
+      "log_sha256": "e0daf0657b638d332de281347a7473ce43d852e25029cc2aa5fd5b55837f85c6"
+    },
+    "architecture-sync": {
+      "command": "check_architecture_sync.py --root .",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/architecture-sync.log",
+      "log_sha256": "e6f8f1425babc7a0b349713476e54f528917f9dce3edb42226325c966863f48e"
+    },
+    "admin-build": {
+      "command": "make admin-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/admin-build.log",
+      "log_sha256": "83f438fc05f5b1f61f19961fc2b97f8d0930e6a0700620a6665dcada7afb1e42"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/docs-build.log",
+      "log_sha256": "3a4f0a3396f5427013f67b68984892728179f4b18f527ad91879cec7ebf3ee07"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/docs-links.log",
+      "log_sha256": "b0264366882c7c6668793d44a71d9599e57779cdfb1cf52bd240aeed15bdc4ba"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/line-endings.log",
+      "log_sha256": "02b07482a8f508d504dbc2633b2605f375332e72977a80ba2e08cf8e77ed4a7f"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-store/store.ikI4A5/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No service, HTTP route, JWT issuer or middleware consumes these tables yet; the runtime domain switch is a later V12-02d slice.",
+    "The legacy admission table identity_admin_accounts, the auto-admission trigger and role_assignment activation remain until their dedicated replacement slices; the G1 replacement-map checker still requires pending for them.",
+    "Admin sessions, MFA, recovery stores and admin-domain role permission bindings arrive in later slices; no default administrator is seeded."
+  ]
+}

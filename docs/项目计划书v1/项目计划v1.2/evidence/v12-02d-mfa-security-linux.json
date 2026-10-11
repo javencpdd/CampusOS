@@ -1,0 +1,176 @@
+{
+  "schema": "campusos.v12-02d-mfa-security-acceptance/v1",
+  "generated_at": "2026-10-10T16:26:22.233606+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "migration 000011 admin MFA/recovery stores (TOTP envelope, MFA tickets, recovery tickets) with PostgreSQL/Memory repositories and isolated PostgreSQL 16 acceptance; no service or HTTP wiring",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port)"
+  },
+  "checks": {
+    "TestAdminDomainAccountLifecycle": "passed",
+    "TestAdminDomainCredentialCAS": "passed",
+    "TestAdminDomainRoleBindingsAndSecurityCount": "passed",
+    "TestAdminDomainConcurrentStatusCAS": "passed",
+    "TestAdminSecurityTOTPLifecycle": "passed",
+    "TestAdminSecurityTicketSingleUse": "passed",
+    "TestAdminRecoveryTicketSingleUse": "passed",
+    "TestAdminSecurityTicketDigestShape": "passed",
+    "TestAdminSecurityConcurrentConsume": "passed"
+  },
+  "coverage": {
+    "migration_chain": "000001-000011 up + check",
+    "seed_assertions": 2,
+    "sql_constraint_negatives": 7,
+    "down_up_cycle": "000011 down refused with live data, re-up clean",
+    "go_repository_tests": 9,
+    "adapters": [
+      "postgres",
+      "memory"
+    ]
+  },
+  "source_sha256": {
+    "migrations/000011_v1_2_admin_mfa_recovery.up.sql": "7da9e00865df8ecf137d03dd4fd6e6fbb21a1291e2b0b7d0597c94d83d71a7ae",
+    "migrations/000011_v1_2_admin_mfa_recovery.down.sql": "5fa86c9de96a7044a9e106715cce47254f2d80c9d2a90dcb3566bc21ae3c7f61",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "6a805c479bdccea016f6f3812faccdb26a1ebe97e34ce550a5c33869f7ef60a6",
+    "internal/modules/core/identity/repository/pg_admin_security_repository_test.go": "d5052486adc2b1e97dd820b2e3469ea15c7c7d73cbc440057fcf79cc6554bb5e",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "eb65b0e04eca6c618275c6e636afd0e8af62993fff145fb226cbdf6eddb8abbe",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "262026b044f0b8e875de0f655b11d84982fe01b61e8980075302e69b31dbcbc4",
+    "scripts/v12-02d-mfa-security-drill.sh": "0d49dd2c58af8c74e4efaeabc430ce455ce8f1ade08547c8ddd0794d1f1c7df9"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02d-mfa-security/store.U2BOae/migrations.log",
+      "sha256": "9227e9fc0f24e92192738d3ad7b0fe9abfa2e66b679c14b5b0e46ece54e22b69"
+    },
+    "go-repository": {
+      "path": ".cache/v12-02d-mfa-security/store.U2BOae/go-repository.log",
+      "sha256": "d5bda0744e83b98cb65a39e9a877ff904322cd435e79545e20a22817282a9530"
+    },
+    "down-refused": {
+      "path": ".cache/v12-02d-mfa-security/store.U2BOae/down-refused.log",
+      "sha256": "a880a3af6a7cb35cd0f457481c8ff3be8f61c57a7fb40513d9858f98932ebc15"
+    },
+    "down": {
+      "path": ".cache/v12-02d-mfa-security/store.U2BOae/down.log",
+      "sha256": "1857f7223f0778f00a17da604d55add6338a5934784e22f063b5df2af97e2198"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/go-all.log",
+      "log_sha256": "256cf0eec6b5b241329ebe76dd94e68482841e5a2921f52f6d83d4d9c327770d"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/architecture.log",
+      "log_sha256": "8ae5ee4f2efafc8c1589e4c736ac5b8b3454029fea7318fff8860cdf6c27269d"
+    },
+    "database-er": {
+      "command": "python3 migrations/tools/generate_er.py --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/database-er.log",
+      "log_sha256": "c76c11a01e159ea9534585162716b1414e2a368aca948062832872ca74876610"
+    },
+    "architecture-sync": {
+      "command": "check_architecture_sync.py --root .",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/architecture-sync.log",
+      "log_sha256": "e4fa7b2f9d6c952a300c05cc8b42981e05bb0e5e03a66b62d48075675da06478"
+    },
+    "admin-build": {
+      "command": "make admin-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/admin-build.log",
+      "log_sha256": "4bf62c47b73f175c0f7677f0f06adb6e49514e02768f6cebc323d35816920ff6"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/docs-build.log",
+      "log_sha256": "7f822b4ebb7e0d1d48dcce4eb01705d1d7dab856ef839ae9a18f63700450f1eb"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/docs-links.log",
+      "log_sha256": "5e3caf4c761be24a7d35384d8000e726ad00da914ac482abc4aaae00aa084f25"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/line-endings.log",
+      "log_sha256": "0bed78e2c04585b07c64324936c43107f2601777a713741375b00175ee93fbc4"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-mfa-security/store.U2BOae/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No service, HTTP route, JWT issuer or middleware consumes these tables yet; the runtime domain switch is a later V12-02d slice.",
+    "The legacy admission table identity_admin_accounts, the auto-admission trigger and role_assignment activation remain until their dedicated replacement slices; the G1 replacement-map checker still requires pending for them.",
+    "Admin sessions, MFA, recovery stores and admin-domain role permission bindings arrive in later slices; no default administrator is seeded."
+  ]
+}

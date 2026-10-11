@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000008（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托）</el-tag
+        >当前迁移 000001 - 000011（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复）</el-tag
       >
     </section>
 
@@ -428,6 +428,80 @@ const databaseTables: DbTable[] = [
     migration: "000008",
     relationshipNote:
       "subject_id 与 board_id 是不透明文本引用，无外键；分别逻辑对应 users/管理员准入主体与 categories 叶子版块，当前性与窗口由服务层每次重新求值。",
+  },
+  {
+    name: "admin_accounts",
+    title: "独立管理员账号",
+    domain: "identity",
+    purpose:
+      "Admin 身份域的独立账号主体：不依赖 users/accounts 外键，同数字 ID 或邮箱不跨域合并；状态机 active/suspended/revoked 带 version CAS 与撤销终态。",
+    fields: ["id", "username", "email", "status", "status_reason", "version", "revoked_at"],
+    migration: "000009",
+    relationshipNote: "无外键；子表经 account_id 外键级联，首个安全管理员只能经受控 bootstrap 开设。",
+  },
+  {
+    name: "admin_credentials",
+    title: "独立管理员凭据",
+    domain: "identity",
+    purpose: "每个管理员账号一份当前密码凭据散列，轮换以 credential_version 做 CAS；不存明文。",
+    fields: ["account_id", "credential_hash", "credential_version", "password_changed_at"],
+    migration: "000009",
+    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
+  },
+  {
+    name: "admin_roles",
+    title: "管理域角色目录",
+    domain: "identity",
+    purpose: "管理域独立角色参考数据；security_admin 标记受最后安全管理员保护的角色。",
+    fields: ["id", "name", "is_system"],
+    migration: "000009",
+    relationshipNote: "与用户域 roles 表无关联；角色 ID 为稳定代码。",
+  },
+  {
+    name: "admin_mfa_totp",
+    title: "管理员 TOTP 密钥封装",
+    domain: "identity",
+    purpose: "Admin 域 TOTP 密钥信封，只存 nonce 与密文及密钥版本引用；登记、确认、停用与步进防重放状态独立管理。",
+    fields: ["account_id", "status", "key_id", "nonce", "ciphertext", "confirmed_at", "disabled_at"],
+    migration: "000011",
+    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
+  },
+  {
+    name: "admin_mfa_tickets",
+    title: "管理员 MFA 票据",
+    domain: "identity",
+    purpose: "Admin 登录与 step-up 的挑战票据：摘要唯一、尝试次数有界、单次消费。",
+    fields: ["id", "account_id", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
+    migration: "000011",
+    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除；与用户域 MFA 票据表无关联。",
+  },
+  {
+    name: "admin_recovery_tickets",
+    title: "管理员恢复票据",
+    domain: "identity",
+    purpose: "Admin 密码重置/TOTP 恢复/账号恢复的单次票据：摘要唯一、尝试有界、域内消费。",
+    fields: ["id", "account_id", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
+    migration: "000011",
+    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
+  },
+  {
+    name: "admin_sessions",
+    title: "独立管理员会话",
+    domain: "identity",
+    purpose:
+      "Admin 域自己的会话与 refresh 家族事实：摘要存储、家族轮换、重放检测整族撤销、认证强度与 MFA 时间；不混用用户会话表。",
+    fields: ["id", "account_id", "refresh_token_digest", "token_family_id", "authentication_strength", "expires_at", "revoked_at", "revoke_reason"],
+    migration: "000010",
+    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除；refresh 摘要唯一索引。",
+  },
+  {
+    name: "admin_role_bindings",
+    title: "管理员角色绑定",
+    domain: "identity",
+    purpose: "连接管理员账号与管理域角色；同账号同角色至多一条 active 绑定，撤销为终态。",
+    fields: ["id", "account_id", "role_id", "granted_by", "status", "version", "revoked_at"],
+    migration: "000009",
+    relationshipNote: "account_id 与 role_id 均为外键；活跃绑定唯一部分索引保证不重复授予。",
   },
   {
     name: "identity_legacy_email_placeholders",
@@ -1717,6 +1791,69 @@ const relations: Relation[] = [
     domains: ["identity"],
   },
   {
+    id: "admin-accounts-credentials",
+    source: "admin_accounts",
+    target: "admin_credentials",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-accounts-totp",
+    source: "admin_accounts",
+    target: "admin_mfa_totp",
+    sourceCardinality: "1",
+    targetCardinality: "0..1",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-accounts-mfa-tickets",
+    source: "admin_accounts",
+    target: "admin_mfa_tickets",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-accounts-recovery-tickets",
+    source: "admin_accounts",
+    target: "admin_recovery_tickets",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-accounts-sessions",
+    source: "admin_accounts",
+    target: "admin_sessions",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-accounts-bindings",
+    source: "admin_accounts",
+    target: "admin_role_bindings",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> account_id",
+    domains: ["identity"],
+  },
+  {
+    id: "admin-roles-bindings",
+    source: "admin_roles",
+    target: "admin_role_bindings",
+    sourceCardinality: "1",
+    targetCardinality: "0..N",
+    label: "id -> role_id",
+    domains: ["identity"],
+  },
+  {
     id: "users-identity-delegations",
     source: "users",
     target: "identity_delegations",
@@ -2879,6 +3016,33 @@ const migrations = [
     summary:
       "新增 identity_delegations，以 management/bound/grant 三类有限期委托分离执行权与委托权；种子从现有准入、叶子版块与版主范围转换，并把两个治理动作移出 moderator 角色目录；存在种子后写入的数据时拒绝回滚。",
     tables: ["identity_delegations（kind/subject/action/board 形状 CHECK、半开窗口、revoked 终态、version CAS）"],
+  },
+  {
+    version: "000009",
+    file: "000009_v1_2_admin_identity_domain.up.sql",
+    title: "v1.2 独立管理员身份域基线",
+    scope: "Identity Admin 独立身份域",
+    summary:
+      "新增 admin_accounts/admin_credentials/admin_roles/admin_role_bindings 四张管理域独立存储，不外键依赖 users/accounts；只播种 security_admin 参考角色，不播种任何账号/凭据；存在账号时拒绝回滚。",
+    tables: ["admin_accounts（状态机+version CAS）", "admin_credentials（单凭据+轮换 CAS）", "admin_roles（参考数据）", "admin_role_bindings（活跃唯一部分索引）"],
+  },
+  {
+    version: "000010",
+    file: "000010_v1_2_admin_sessions.up.sql",
+    title: "v1.2 独立管理员会话存储",
+    scope: "Identity Admin 独立会话",
+    summary:
+      "新增 admin_sessions 管理域独立会话存储，承载 refresh 摘要、家族轮换、重放检测整族撤销与认证强度事实；存在会话时拒绝回滚。",
+    tables: ["admin_sessions（refresh 摘要唯一、家族轮换、重放检测）"],
+  },
+  {
+    version: "000011",
+    file: "000011_v1_2_admin_mfa_recovery.up.sql",
+    title: "v1.2 管理员 MFA/恢复独立存储",
+    scope: "Identity Admin 安全域",
+    summary:
+      "新增 admin_mfa_totp、admin_mfa_tickets、admin_recovery_tickets 三张管理域独立存储，与用户域 MFA/恢复表完全分离；存在数据时拒绝回滚。",
+    tables: ["admin_mfa_totp（信封+确认/停用状态机）", "admin_mfa_tickets（挑战票据）", "admin_recovery_tickets（恢复票据）"],
   },
 ];
 const tableByName = (name: string) =>

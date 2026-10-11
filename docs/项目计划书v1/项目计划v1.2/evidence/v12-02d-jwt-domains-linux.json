@@ -1,0 +1,151 @@
+{
+  "schema": "campusos.v12-02d-jwt-domains-acceptance/v1",
+  "generated_at": "2026-10-10T10:12:09.820810+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "pkg/auth JWT issuer/audience/key/kid per identity domain with cross-domain token rejection; legacy single-domain configuration unchanged",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "execution": "native Linux race-enabled compiled test binary with env -i"
+  },
+  "checks": {
+    "TestDomainJWTManagersNeverVerifyAcrossDomains": "passed",
+    "TestDomainJWTManagerRejectsKidAudienceMismatch": "passed",
+    "TestDomainJWTManagersRefuseSharedIdentity": "passed",
+    "TestJWTManagerKeepsLegacyNoDomainConfig": "passed"
+  },
+  "coverage": {
+    "bidirectional_cross_domain_rejection": true,
+    "kid_audience_issuer_mismatch_rejection": 3,
+    "shared_identity_constructor_guards": 3,
+    "legacy_configuration_compatibility": true
+  },
+  "source_sha256": {
+    "pkg/auth/jwt.go": "465e314def8a40718a3f5115d1012422a59b63ff3ec85ac9efc62f1f5c0bc885",
+    "pkg/auth/jwt_domains_test.go": "f7cbf4b7b363da14c451439c92949ea8a3453c4739d4dab4f19b55e1528cd1e0",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "3b963ebdfa2fccd0deb9d1af96b42c2c73b985cf64e278092ad59b7b59e0b14d",
+    "scripts/v12-02d-jwt-domains-drill.sh": "76b10219848650b613d92109b29c8490a8f99fec14c026b6128e22c1215b829f"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "8391da574da7d803b957d22fa27f2c6860690389dca8dc6ff1553a2cb72a8f00",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-store-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
+      "sha256": "87204947f3965911c77eaf0a53d70cebebdf49e21d3dec0e240588825b6ef304",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-service-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-service-linux.json",
+      "sha256": "ef4554d4d9416a71e6bf8218223a55e2844009c95151e5d33be00dd85c28163d",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "targeted": {
+      "path": ".cache/v12-02d-jwt/jwt.WxNJWN/targeted.log",
+      "sha256": "a3b3dbf19aecef7b4af67dae45dec0d251f72d6f92a893c2f020fae0327e4d3a"
+    },
+    "build": {
+      "path": ".cache/v12-02d-jwt/jwt.WxNJWN/build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native": {
+      "path": ".cache/v12-02d-jwt/jwt.WxNJWN/native.log",
+      "sha256": "b9177e7bc743e8ee12d90e2037c99f5e774974479d18766b4c5a7164b19bef9f"
+    }
+  },
+  "native_binary_sha256": {
+    "auth.test": "f845962b640dc98aee2f3eedc13a32d8daeab2c9e0af166e69518dce905b8011"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/go-all.log",
+      "log_sha256": "0e4c4e0c0783fc32a6bc9494f28f02dbaa5daf02df4aec538d8be7803fb1633c"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/architecture.log",
+      "log_sha256": "baf17d91c7885c31d2c28206d71aebbd749debdb33bbe7f082c5d829f43237fd"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/docs-build.log",
+      "log_sha256": "3f41bacc2e67942b99ddc58ac3fbe86fd304766fb76295186ba4d8e97183574e"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/docs-links.log",
+      "log_sha256": "90d0e413b6bb6072a6c48603f16901ebff002b65554d7d9dd0042240a589351f"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/line-endings.log",
+      "log_sha256": "d8f613079939aba4b4529a5b7bd05a18861c07401a8ad9ce84b249aea3e3ee80"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-jwt/jwt.WxNJWN/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No HTTP middleware, admin login route or session issuance consumes the domain managers yet; that arrives with the admin sessions slice.",
+    "User-domain behavior is unchanged when Audience/KeyID stay empty; deployments opt into separation by configuring both domains.",
+    "The identity module wires a single manager today; per-domain construction follows the admin sessions/HTTP slices."
+  ]
+}
