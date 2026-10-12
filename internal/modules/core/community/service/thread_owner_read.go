@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
@@ -21,6 +22,44 @@ var ErrThreadOwnerPrincipalUnavailable = errors.New("thread owner principal unav
 // Public reads retain their own predicate; a public revocation never switches
 // this invocation to an owner exception.
 func (s *ThreadService) GetThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (port.PrincipalContext, error)) (*domain.Thread, error) {
+	return s.getThreadForPrincipal(ctx, id, resolve, true)
+}
+
+// GetFeatureThreadForPrincipal keeps the same Policy and raw-fact checks as
+// /me while preventing Feature projections from incrementing view counters.
+// Nil resolve is the explicit anonymous public branch, never an owner fallback.
+func (s *ThreadService) GetFeatureThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (port.PrincipalContext, error)) (*domain.Thread, error) {
+	if resolve == nil {
+		return s.readPublicThread(ctx, id, false)
+	}
+	initial, err := resolveThreadOwnerPrincipal(ctx, resolve)
+	if err != nil {
+		return nil, err
+	}
+	if initial.Actor.Kind != "user" || initial.Audience != "user" {
+		return nil, ErrThreadOwnerPrincipalUnavailable
+	}
+	bound := func(ctx context.Context) (port.PrincipalContext, error) {
+		current, err := resolveThreadOwnerPrincipal(ctx, resolve)
+		if err != nil {
+			return port.PrincipalContext{}, err
+		}
+		if !reflect.DeepEqual(initial, current) {
+			return port.PrincipalContext{}, port.ErrPolicyFactsChanged
+		}
+		return current, nil
+	}
+	thread, err := s.getThreadForPrincipal(ctx, id, bound, false)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := bound(ctx); err != nil {
+		return nil, err
+	}
+	return thread, nil
+}
+
+func (s *ThreadService) getThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (port.PrincipalContext, error), incrementView bool) (*domain.Thread, error) {
 	principal, err := resolveThreadOwnerPrincipal(ctx, resolve)
 	if err != nil {
 		return nil, err
@@ -34,7 +73,7 @@ func (s *ThreadService) GetThreadForPrincipal(ctx context.Context, id string, re
 		return nil, err
 	}
 	if facts.PublicationStatus == "published" && facts.ModerationStatus == "clear" && facts.DeletionStatus == "active" {
-		return s.readPublicThread(ctx, id, true)
+		return s.readPublicThread(ctx, id, incrementView)
 	}
 	snapshots, ok := s.repo.(repository.OwnerThreadSnapshotRepository)
 	if !ok {
@@ -124,6 +163,9 @@ func resolveThreadOwnerPrincipal(ctx context.Context, resolve func(context.Conte
 	}
 	principal, err := resolve(ctx)
 	if err != nil {
+		if errors.Is(err, port.ErrPolicyFactsChanged) {
+			return port.PrincipalContext{}, err
+		}
 		return port.PrincipalContext{}, errors.Join(ErrThreadOwnerPrincipalUnavailable, err)
 	}
 	if principal.Validate() != nil {

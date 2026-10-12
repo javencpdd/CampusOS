@@ -58,7 +58,7 @@ func (s *Service) SetReliability(reliable *reliability.Service) {
 }
 
 func NewService(repo Repository, objects corestorage.ObjectPort) (*Service, error) {
-	if repo == nil || objects == nil {
+	if nilDocumentAdapter(repo) || nilDocumentAdapter(objects) {
 		return nil, errors.New("personal documents dependencies are required")
 	}
 	return &Service{repository: repo, objects: objects, enabled: func() bool { return true }, now: time.Now}, nil

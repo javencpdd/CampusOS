@@ -27,11 +27,12 @@
     <section v-if="result" class="detail-grid">
       <article class="content-panel">
         <h3>物品说明</h3>
-        <article
+        <CheckedHTML
           v-if="thread.content_format === 'safe_html'"
           class="content content-rich"
-          v-html="thread.content"
-        ></article>
+          :html="thread.content"
+          :thread-id="thread.id"
+        />
         <p v-else class="content">{{ thread.content }}</p>
       </article>
       <aside class="information-panel">
@@ -83,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+import CheckedHTML from '@/modules/content-editor/CheckedHTML.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

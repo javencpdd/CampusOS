@@ -1,6 +1,6 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-10-12（Asia/Shanghai；本轮同步作者详情切片、身份域与 Schema 状态）
+> Snapshot date: 2026-10-12（Asia/Shanghai；本轮同步本人空间内容列表切片、身份域与 Schema 状态）
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.14.0`
 > Latest implementation stage: `v1.2-dev` (V12-02a and V12-02d complete; V12-02b is the next incomplete stage)
@@ -17,7 +17,10 @@ whole-page policy rechecks including empty pages. Public detail (.46), list (.47
 `/threads/:id/me` owner detail (.48) have Linux PG resource target evidence. Owner reads use an independent
 named Policy, current verified user Session Principal, raw owner/version snapshots and proof rechecks;
 HTTP identity acceptance uses real JWT/SessionService with Memory Identity adapters, separately from PG resources.
-Other Feature private reads, author lists, governance/MFA, batch authorization and effective-permission preview
+Authenticated `/spaces/me/contents` active owner lists (.49) now enforce owner/raw state before atomic
+page/count snapshots and whole-page Policy/complete Session proof rechecks, including empty/disabled results;
+space configuration and projection bind the same complete Principal. Legacy bare-ID queries/projections
+remain separate. Other Feature private reads, other author/admin/trash lists, governance/MFA, batch authorization and effective-permission preview
 remain later work. V12-02b remains partial; this is not v1.2 Final.
 
 Historical v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
@@ -191,7 +194,7 @@ Read these before a new task:
 | v0.13 plan and audit | `docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
 | v0.14 implementation plan | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` |
 | v1.0 formal plan and DB design | `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`, `01-v1.0数据库全面重构方案.md` |
-| Current evidence | Verify the v1.2 main plan, `docs/进度/v1.2-dev/v1.2.48-dev.md`, actual source/log digests and reports in `docs/项目计划书v1/项目计划v1.2/evidence/`; do not infer completion from filenames or old summaries |
+| Current evidence | Verify the v1.2 main plan, `docs/进度/v1.2-dev/v1.2.57-dev.md`, actual source/log digests and reports in `docs/项目计划书v1/项目计划v1.2/evidence/`; do not infer completion from filenames or old summaries |
 | v0.13 final baseline | `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
 
 Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation
@@ -206,3 +209,19 @@ instructions. Planned capabilities must not be reported as implemented without l
 5. Keep API/data compatibility unless the task explicitly authorizes a reset boundary and supplies a replacement migration/rollback path.
 6. Run impact-specific checks plus full Go tests.
 7. Update the canonical guide, current progress evidence and generated contracts when behavior changes.
+
+2026-10-12 后继 .50：个人文档 metadata/list/历史版本/text/preview/download/PDF invocation 用真实 user Session 和 active read Policy，selected version/Object/整页/完整身份返回前复核；9 必需顶层、3 真实 PG、5 格式/30 组合/9 提交竞争、Memory Identity 的实际 JWT HTTP 及共同门禁通过。回收文档只返回本人无版本引用元数据；02b 仍 partial，继续全部剩余路径。
+
+2026-10-12 .51：RichText受检查正文/附件/UserAsset/Invocation三态完成；80必需（13新+67回归）、3真实PG、Memory144/PG72状态域检查/8提交竞争、实际域JWT HTTP和共同门禁通过；旧内联图片、其他Feature/私有文件、作者/治理写、Admin列表、批量/预览仍pending。
+
+2026-10-12 .52互助/二手typed详情/list三态完成：93必需=16新+77回归，6真实PG，每模块Memory108/PG72状态主体检查、合计12提交竞争及JWT HTTP/共同门禁通过；旧内联图片、个人文件、作者/治理写、Admin/批量/预览仍pending。
+
+2026-10-12 .53内联图片实现及20必需目标（5PG）/Web36组件通过：真实父资源引用/Policy与字节/当前Session复核；本人库存私有，Web认证Blob和会话变化清理。实现/自动化/Linux目标与共同门禁通过；个人文件、写入、Admin/批量/预览继续，不声明整阶段完成。
+
+2026-10-12 .54个人空间文件读取：公开头像仅当前active资料或public未停用Space引用，历史仅当前本人；库存/容量/资料与完整Session返回前复核。新增窄CurrentQuotaReader加载持久化配额，不以启动缓存替代当前事实。原文仍由Documents/UserAsset/附件受检查入口负责，无通用Storage Object HTTP下载。补强后21必需/2真实PG/108检查/7竞争及全部共同门禁通过，作者/治理/Admin/批量/预览继续。
+
+2026-10-12 .55 Community discussion作者编辑三态通过：实际edit Policy与完整User Session、事务内账号/会话/资源锁、facts_version+revision CAS、提交前身份及结果授权重验；内容修订/平台审计/outbox原子，计数保留，正文安全规范化，typed Feature独立命令边界。28必需/3真实PG含6提交变化与NOWAIT凭据锁、实际JWT HTTP、共同门禁通过。其余作者生命周期/Feature/治理/MFA/Admin/批量/预览继续，02b未退出。
+
+2026-10-12 .56 本人trash/restore/submit-review三态通过：独立owner lifecycle纯Policy绑定真实raw状态/完整User Session/非复用事实版本，不用read权限写入或假造active；凭据/资源锁与CAS、必需审计/outbox原子，提交前复核。35必需/5真实PG、432纯策略/324服务组合、新增3事务审计回滚/3提交ABA与实际JWT HTTP、共同门禁通过。创建/Feature/治理/Admin/批量/预览继续，02b未退出。
+
+2026-10-12 .57 discussion创建三态通过：当前user/audience与实际raw版块/group/type配置、账号/会话/版块锁、身份与authority前后复核、真实ThreadID/审计/outbox原子；不给未创建资源虚构edit事实。41必需/7真实PG、4合法提交竞争/审计回滚及JWT HTTP与共同门禁通过。Feature/治理/Admin/批量/预览继续，02b未退出。

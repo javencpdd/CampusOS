@@ -8,7 +8,7 @@ description: "Structured campus secondhand listings with CNY price, condition, d
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.community, core.user-storage, core.feature-registry, core.reliability]
+dependencies: [core.identity, core.community, core.user-storage, core.feature-registry, core.reliability]
 presentation_parent: controlled-richtext-article
 implementation: internal/modules/features/secondhand
 config: {}

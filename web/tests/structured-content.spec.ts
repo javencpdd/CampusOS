@@ -41,7 +41,7 @@ describe('structured image-text content helpers', () => {
           'el-tooltip': { template: '<span><slot /></span>' },
           'el-button': { template: '<button @click="$emit(\'click\')"><slot /></button>' },
           'el-input': true,
-          'el-image': true,
+          CheckedImage: true,
           'el-drawer': true,
         },
       },
@@ -59,6 +59,6 @@ describe('structured image-text content helpers', () => {
       '/api/v1/content/assets/images/user-1/image.png',
     )
     expect(wrapper.find('.image-preview-strip').exists()).toBe(true)
-    expect(wrapper.get('el-image-stub').attributes('src')).toBe('/api/v1/content/assets/images/user-1/image.png')
+    expect(wrapper.get('checked-image-stub').attributes('src')).toBe('/api/v1/content/assets/images/user-1/image.png')
   })
 })

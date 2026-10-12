@@ -12,14 +12,24 @@ import (
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
+	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	svc    *Service
-	styles StyleApplication
+	svc                  *Service
+	styles               StyleApplication
+	ownerSessionVerifier identityport.SessionVerifier
+	ownerStrengthReader  identityport.SessionStrengthReader
+}
+
+// SetOwnerSessionProof binds the current Identity proof needed by the owner
+// content-list route. Missing adapters leave only that authenticated entry closed.
+func (h *Handler) SetOwnerSessionProof(verifier identityport.SessionVerifier, reader identityport.SessionStrengthReader) {
+	h.ownerSessionVerifier, h.ownerStrengthReader = verifier, reader
 }
 
 func NewHandler(svc *Service) *Handler {
@@ -137,7 +147,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 // is intentionally separate from public /u/:username/contents so a visitor
 // cannot infer a user's drafts, private posts or moderation history.
 func (h *Handler) ListOwnContents(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -146,12 +156,32 @@ func (h *Handler) ListOwnContents(c *gin.Context) {
 	if !ok {
 		return
 	}
-	contents, total, err := h.svc.ListOwnContents(c.Request.Context(), userID, page, pageSize)
+	contents, total, err := h.svc.ListOwnContentsForPrincipal(c.Request.Context(), func(ctx context.Context) (identityport.PrincipalContext, error) {
+		userID, _ := currentUserID(c)
+		claims := &auth.JWTClaims{UserID: userID, SessionID: c.GetString("session_id"),
+			AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+		return identityport.ResolveUserSessionPrincipal(ctx, h.ownerSessionVerifier, h.ownerStrengthReader, claims)
+	}, page, pageSize)
 	if err != nil {
-		writeSpaceError(c, err)
+		writeOwnContentsReadError(c, err)
 		return
 	}
 	response.List(c, contents, paginationMeta(page, pageSize, total))
+}
+
+func writeOwnContentsReadError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrSpacePluginDisabled):
+		response.Error(c, http.StatusServiceUnavailable, 60006, "personal space feature is disabled")
+	case errors.Is(err, identityport.ErrUserNotFound), errors.Is(err, ErrSpaceNotFound):
+		response.Error(c, http.StatusNotFound, 30004, "space not found")
+	default:
+		response.WriteError(c, err)
+	}
 }
 
 func (h *Handler) UpdateMe(c *gin.Context) {
@@ -478,16 +508,17 @@ func (h *Handler) GetSyncStatus(c *gin.Context) {
 }
 
 func (h *Handler) GetStorageStatus(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	status, err := h.svc.StorageStatus(c.Request.Context(), userID)
+	status, err := h.svc.StorageStatusForPrincipal(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
-		writeSpaceError(c, err)
+		writeCheckedFileReadError(c, err)
 		return
 	}
+	c.Header("Cache-Control", "private, no-store")
 	response.Success(c, status)
 }
 
@@ -596,16 +627,17 @@ func formatSpaceBytes(value int64) string {
 }
 
 func (h *Handler) ListAvatars(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	history, err := h.svc.ListAvatars(c.Request.Context(), userID)
+	history, err := h.svc.ListAvatarsForPrincipal(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
-		writeSpaceError(c, err)
+		writeCheckedFileReadError(c, err)
 		return
 	}
+	c.Header("Cache-Control", "private, no-store")
 	response.Success(c, history)
 }
 
@@ -631,18 +663,38 @@ func (h *Handler) SelectAvatar(c *gin.Context) {
 }
 
 func (h *Handler) ServeAvatarFile(c *gin.Context) {
-	userID := c.Param("user_id")
-	fileName := c.Param("filename")
-	if _, err := strconv.ParseInt(userID, 10, 64); err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, "invalid user_id")
-		return
+	var resolve identityport.SessionPrincipalResolver
+	if c.GetHeader("Authorization") != "" {
+		resolve = h.fileReadPrincipal(c)
 	}
-	filePath, err := h.svc.AvatarFilePath(userID, fileName)
+	image, err := h.svc.ReadAvatarForPrincipal(c.Request.Context(), c.Param("user_id"), c.Param("filename"), resolve)
 	if err != nil {
-		writeSpaceError(c, err)
+		writeCheckedFileReadError(c, err)
 		return
 	}
-	c.File(filePath)
+	corestorage.ServeCheckedImage(c, image)
+}
+
+func (h *Handler) fileReadPrincipal(c *gin.Context) identityport.SessionPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: c.GetString("user_id"), SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.ownerSessionVerifier, h.ownerStrengthReader, claims)
+	}
+}
+
+func writeCheckedFileReadError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.Error(c, 401, 20002, "请重新登录后读取个人文件。")
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.Error(c, 409, 10004, "资源或访问权限已变化，请重新加载。")
+	case errors.Is(err, ErrSpaceFileNotFound):
+		response.Error(c, 404, 75004, "文件不存在或无权访问。")
+	case errors.Is(err, ErrSpacePluginDisabled):
+		response.Error(c, 403, 75001, "个人空间当前未启用。")
+	default:
+		response.Error(c, 503, 10006, "暂时无法检查个人文件访问权限。")
+	}
 }
 
 func (h *Handler) AdminSummary(c *gin.Context) {

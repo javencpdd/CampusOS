@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
 
 var (
@@ -34,6 +35,16 @@ type ContentQuery interface {
 	ListPublicThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 	ListAuthorThreads(context.Context, string, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 }
+
+// AuthenticatedAuthorContentQuery is the owner-only list contract for trusted
+// first-party ingress. resolve must recheck the current user Session; arbitrary
+// actor IDs or parsed Principal DTOs do not satisfy this proof boundary.
+// Owner selection and the raw active predicate are enforced before pagination.
+// Legacy ContentQuery.ListAuthorThreads remains a separate in-process adapter.
+type AuthenticatedAuthorContentQuery interface {
+	ListAuthorThreadsForPrincipal(context.Context, func(context.Context) (identityport.PrincipalContext, error), domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+}
+
 type ThreadReader interface {
 	GetThread(context.Context, string) (Thread, error)
 }
@@ -84,6 +95,13 @@ type ContentGateway interface {
 	RestoreThreadFromTrash(context.Context, string, string) (*domain.Thread, error)
 	ListThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 	InvalidateThreadList(context.Context)
+}
+
+// AuthenticatedThreadQuery is a separate checked read seam for Built-in
+// Features. Nil resolver selects public-only; a user resolver proves current
+// Session ownership. A missing implementation must never use GetThread instead.
+type AuthenticatedThreadQuery interface {
+	GetThreadForPrincipal(context.Context, string, func(context.Context) (identityport.PrincipalContext, error)) (*domain.Thread, error)
 }
 
 type ThreadCreateOptions struct {

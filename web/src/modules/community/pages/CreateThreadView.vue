@@ -225,7 +225,7 @@
     </el-card>
 
     <el-drawer v-model="previewVisible" title="文章预览" size="60%">
-      <article class="article-content" v-html="previewHtml"></article>
+      <CheckedHTML class="article-content" :html="previewHtml" />
     </el-drawer>
     <el-dialog v-model="assetPickerVisible" title="从我的文件添加" width="min(720px, 92vw)">
       <el-tabs v-model="assetPickerSource" class="asset-picker-tabs">
@@ -306,6 +306,7 @@
 </template>
 
 <script setup lang="ts">
+import CheckedHTML from '@/modules/content-editor/CheckedHTML.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { categoryApi, threadApi } from '@/modules/community/api'

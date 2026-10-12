@@ -8,6 +8,7 @@ import (
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
 
 type moderationGateway struct {
@@ -130,6 +131,18 @@ func (g *moduleContentGateway) GetThread(ctx context.Context, id string) (*domai
 	return thread, normalizePublicContentError(err)
 }
 
+func (g *moduleContentGateway) GetThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (identityport.PrincipalContext, error)) (*domain.Thread, error) {
+	delegate, err := g.gateway()
+	if err != nil {
+		return nil, err
+	}
+	if delegate.threadSvc == nil {
+		return nil, identityport.ErrPolicyDecisionMismatch
+	}
+	thread, err := delegate.threadSvc.GetFeatureThreadForPrincipal(ctx, id, resolve)
+	return thread, normalizePublicContentError(err)
+}
+
 func (g *moduleContentGateway) SaveFeatureThread(ctx context.Context, thread *domain.Thread, actorID, action string) (*domain.Thread, error) {
 	delegate, err := g.gateway()
 	if err != nil {
@@ -214,6 +227,14 @@ func (g *moduleContentQuery) GetPublicThread(ctx context.Context, id string) (*d
 	return thread, normalizePublicContentError(err)
 }
 
+func (g *moduleContentQuery) GetThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (identityport.PrincipalContext, error)) (*domain.Thread, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, identityport.ErrPolicyDecisionMismatch
+	}
+	thread, err := g.module.threadService.GetFeatureThreadForPrincipal(ctx, id, resolve)
+	return thread, normalizePublicContentError(err)
+}
+
 func (g *moduleContentQuery) ListAuthorThreads(ctx context.Context, authorID string, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
 	if g == nil || g.module == nil || g.module.threadService == nil {
 		return nil, 0, errors.New("community content query is unavailable")
@@ -250,6 +271,14 @@ func (g *contentQuery) GetPublicThread(ctx context.Context, id string) (*domain.
 		return nil, errors.New("community content query is unavailable")
 	}
 	thread, err := g.threadSvc.GetPublicThread(ctx, id)
+	return thread, normalizePublicContentError(err)
+}
+
+func (g *contentQuery) GetThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (identityport.PrincipalContext, error)) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, identityport.ErrPolicyDecisionMismatch
+	}
+	thread, err := g.threadSvc.GetFeatureThreadForPrincipal(ctx, id, resolve)
 	return thread, normalizePublicContentError(err)
 }
 
@@ -292,7 +321,18 @@ func (g *contentGateway) GetThread(ctx context.Context, id string) (*domain.Thre
 	return thread, normalizePublicContentError(err)
 }
 
+func (g *contentGateway) GetThreadForPrincipal(ctx context.Context, id string, resolve func(context.Context) (identityport.PrincipalContext, error)) (*domain.Thread, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, identityport.ErrPolicyDecisionMismatch
+	}
+	thread, err := g.threadSvc.GetFeatureThreadForPrincipal(ctx, id, resolve)
+	return thread, normalizePublicContentError(err)
+}
+
 func normalizePublicContentError(err error) error {
+	if errors.Is(err, service.ErrThreadOwnerPrincipalUnavailable) {
+		return errors.Join(identityport.ErrUserSessionPrincipalUnavailable, err)
+	}
 	if errors.Is(err, repository.ErrThreadNotFound) {
 		return communityport.ErrThreadNotFound
 	}
@@ -416,4 +456,20 @@ func (g *moderationGateway) DeletePostForModeration(ctx context.Context, id, act
 		return communityport.ErrPostNotFound
 	}
 	return err
+}
+
+// ListAuthorThreadsForPrincipal delegates the complete authenticated owner page
+// to Community. Feature consumers cannot widen ownership or visibility.
+func (g *moduleContentQuery) ListAuthorThreadsForPrincipal(ctx context.Context, resolve func(context.Context) (identityport.PrincipalContext, error), filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	return g.module.threadService.ListThreadsForPrincipal(ctx, resolve, filter)
+}
+
+func (g *contentQuery) ListAuthorThreadsForPrincipal(ctx context.Context, resolve func(context.Context) (identityport.PrincipalContext, error), filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, 0, errors.New("community content query is unavailable")
+	}
+	return g.threadSvc.ListThreadsForPrincipal(ctx, resolve, filter)
 }

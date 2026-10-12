@@ -160,6 +160,11 @@ func (s *ThreadService) SetReliability(reliable *reliability.Service) {
 // their own reliable command; in that case the inner write participates in the
 // active transaction and the outer feature command owns the audit and outbox.
 func (s *ThreadService) executeAuthorCommand(ctx context.Context, actorID, code, threadID, eventType string, action func(context.Context) (*domain.Thread, error)) (*domain.Thread, error) {
+	var bindErr error
+	action, bindErr = s.bindCreateCommand(ctx, actorID, action)
+	if bindErr != nil {
+		return nil, bindErr
+	}
 	if s.reliable == nil || transaction.Active(ctx) {
 		result, err := action(ctx)
 		if err == nil && !transaction.Active(ctx) {
@@ -237,6 +242,13 @@ func (s *ThreadService) executeGovernanceDelete(ctx context.Context, actorID, co
 }
 
 func (s *ThreadService) updateGoverned(ctx context.Context, thread *domain.Thread) error {
+	if facts, ok := ctx.Value(authorWriteFactsKey{}).(authorWriteFacts); ok {
+		guarded, ok := s.repo.(repository.FactsGuardedThreadRepository)
+		if !ok || facts.ID != thread.ID {
+			return ErrThreadAuthorWriteUnavailable
+		}
+		return guarded.UpdateIfFactsVersion(ctx, thread, facts.Version)
+	}
 	if guarded, ok := s.repo.(repository.GovernedThreadRepository); ok {
 		return guarded.UpdateIfRevision(ctx, thread, thread.CurrentRevision-1)
 	}

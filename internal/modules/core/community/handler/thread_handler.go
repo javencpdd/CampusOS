@@ -65,7 +65,7 @@ func (h *ThreadHandler) PreviewContent(c *gin.Context) {
 // CreateThread 创建帖子
 // POST /api/v1/threads
 func (h *ThreadHandler) CreateThread(c *gin.Context) {
-	authorID, authorName, ok := currentUser(c)
+	_, authorName, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -77,9 +77,11 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 		return
 	}
 
-	thread, err := h.svc.CreateThread(c.Request.Context(), authorID, authorName, req)
+	thread, err := h.svc.CreateThreadForPrincipal(c.Request.Context(), authorName, req, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	})
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		writeThreadError(c, err)
 		return
 	}
 
@@ -125,25 +127,12 @@ func (h *ThreadHandler) resolveOwnerPrincipal(ctx context.Context, c *gin.Contex
 	userID, _, ok := currentUser(c)
 	sessionID := c.GetString("session_id")
 	authVersion := c.GetInt64("auth_version")
-	if !ok || sessionID == "" || authVersion < 1 || h.ownerSessionVerifier == nil || h.ownerStrengthReader == nil {
+	if !ok {
 		return identityport.PrincipalContext{}, service.ErrThreadOwnerPrincipalUnavailable
 	}
 	claims := &auth.JWTClaims{UserID: userID, SessionID: sessionID, AuthVersion: authVersion, TokenType: auth.AccessTokenType}
-	if err := h.ownerSessionVerifier.VerifyAccess(ctx, claims); err != nil {
-		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
-	}
-	strength, err := h.ownerStrengthReader.AuthenticationStrengthForSession(ctx, sessionID)
+	principal, err := identityport.ResolveUserSessionPrincipal(ctx, h.ownerSessionVerifier, h.ownerStrengthReader, claims)
 	if err != nil {
-		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
-	}
-	// The strength lookup is a separate authority read. Verify its bound session
-	// again so a revoke/account change during that read cannot create a proof.
-	if err := h.ownerSessionVerifier.VerifyAccess(ctx, claims); err != nil {
-		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
-	}
-	principal := identityport.PrincipalContext{Contract: identityport.PrincipalContract,
-		Actor: identityport.PrincipalRef{Kind: "user", ID: userID}, Audience: "user", AuthenticationStrength: strength, CredentialID: sessionID}
-	if err := principal.Validate(); err != nil {
 		return identityport.PrincipalContext{}, errors.Join(service.ErrThreadOwnerPrincipalUnavailable, err)
 	}
 	return principal, nil
@@ -255,7 +244,7 @@ func writeThreadListResponse(c *gin.Context, filter domain.ThreadListFilter, pag
 // PUT /api/v1/threads/:id
 func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 	id := c.Param("id")
-	authorID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -267,7 +256,9 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 		return
 	}
 
-	thread, err := h.svc.UpdateThread(c.Request.Context(), id, authorID, req)
+	thread, err := h.svc.UpdateThreadForPrincipal(c.Request.Context(), id, req, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	})
 	if err != nil {
 		writeThreadError(c, err)
 		return
@@ -328,13 +319,15 @@ func (h *ThreadHandler) UnlockThread(c *gin.Context) {
 // DELETE /api/v1/threads/:id
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 	id := c.Param("id")
-	authorID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
 
-	if err := h.svc.DeleteThread(c.Request.Context(), id, authorID); err != nil {
+	if _, err := h.svc.AuthorLifecycleForPrincipal(c.Request.Context(), id, "trash", func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	}); err != nil {
 		writeThreadError(c, err)
 		return
 	}
@@ -360,12 +353,14 @@ func (h *ThreadHandler) AdminDeleteThread(c *gin.Context) {
 // SubmitForReview lets an author resubmit content that was rejected or taken
 // down. The service controls the actual state transition.
 func (h *ThreadHandler) SubmitForReview(c *gin.Context) {
-	authorID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	thread, err := h.svc.SubmitForReview(c.Request.Context(), c.Param("id"), authorID)
+	thread, err := h.svc.AuthorLifecycleForPrincipal(c.Request.Context(), c.Param("id"), "submit_review", func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	})
 	if err != nil {
 		writeThreadError(c, err)
 		return
@@ -374,12 +369,14 @@ func (h *ThreadHandler) SubmitForReview(c *gin.Context) {
 }
 
 func (h *ThreadHandler) RestoreOwnTrash(c *gin.Context) {
-	authorID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	thread, err := h.svc.RestoreFromTrash(c.Request.Context(), c.Param("id"), authorID)
+	thread, err := h.svc.AuthorLifecycleForPrincipal(c.Request.Context(), c.Param("id"), "restore", func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveOwnerPrincipal(ctx, c)
+	})
 	if err != nil {
 		writeThreadError(c, err)
 		return
@@ -481,6 +478,16 @@ func requiredReason(c *gin.Context) (string, bool) {
 
 func writeThreadError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, service.ErrThreadOwnerPrincipalUnavailable), errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.Error(c, 401, 20002, "请重新登录后修改内容。")
+	case errors.Is(err, service.ErrThreadAuthorWriteInvalid):
+		response.Error(c, 400, 10001, "正文或发布状态无效，请检查后重试。")
+	case errors.Is(err, service.ErrThreadAuthorWriteDenied):
+		response.Error(c, 403, 20004, "无权修改该内容。")
+	case errors.Is(err, identityport.ErrPolicyFactsChanged), errors.Is(err, repository.ErrThreadRevisionConflict):
+		response.Error(c, 409, 10004, "内容或访问权限已变化，请重新加载。")
+	case errors.Is(err, service.ErrThreadAuthorWriteUnavailable), errors.Is(err, identityport.ErrPolicyDecisionMismatch):
+		response.Error(c, 503, 10006, "暂时无法检查内容写入权限。")
 	case errors.Is(err, repository.ErrThreadNotFound):
 		response.Error(c, http.StatusNotFound, 40003, "thread not found")
 	case errors.Is(err, service.ErrThreadStateConflict):

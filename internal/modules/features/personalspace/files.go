@@ -644,12 +644,20 @@ func (s *LocalFileStore) avatarFiles(userID string) ([]avatarFile, error) {
 	}
 	files := make([]avatarFile, 0, len(entries))
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
 			continue
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return nil, err
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		switch strings.ToLower(filepath.Ext(entry.Name())) {
+		case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+		default:
+			continue
 		}
 		files = append(files, avatarFile{
 			dir:     avatarDir,

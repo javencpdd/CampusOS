@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
-	"github.com/campusos/CampusOS/pkg/auth"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
@@ -20,22 +20,32 @@ import (
 func TestCreateThreadUsesJWTContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice", auth.AccessTokenContext{Nickname: "Alice"})
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
+	e := newOwnerHTTPEnvironment(t)
+	e.owner.Nickname = "Alice"
+	if err := e.users.Update(context.Background(), e.owner); err != nil {
+		t.Fatal(err)
 	}
-
-	threadRepo := repository.NewMemoryThreadRepository()
+	token := e.tokens.AccessToken
+	threadRepo := e.repo
+	cats := repository.NewMemoryCategoryRepository()
+	if err := cats.Create(context.Background(), &domain.Category{ID: "1", NodeKind: domain.CategoryNodeBoard, LifecycleStatus: domain.CategoryLifecycleActive, Version: 1}); err != nil {
+		t.Fatal(err)
+	}
+	types := repository.NewMemoryThreadTypePolicyRepository()
+	if err := types.Replace(context.Background(), "1", []domain.ThreadType{domain.ThreadTypeDiscussion}); err != nil {
+		t.Fatal(err)
+	}
+	gov := repository.NewMemoryContentGovernanceRepository()
+	store := reliability.NewMemoryStore()
 	threadSvc := service.NewThreadService(threadRepo, nil)
+	threadSvc.SetCategoryRepository(cats)
+	threadSvc.SetThreadTypePolicyRepository(types)
+	threadSvc.SetGovernanceRepository(gov)
+	threadSvc.SetReliability(reliability.NewService(transaction.NewMemory(threadRepo, cats, types, gov, store), store))
 	threadHandler := NewThreadHandler(threadSvc)
-
+	threadHandler.SetOwnerSessionProof(e.identity, e.identity)
 	router := gin.New()
-	router.POST("/threads", middleware.JWTAuth(jwtMgr), threadHandler.CreateThread)
+	router.POST("/threads", middleware.JWTAuth(e.jwts.User, e.identity), threadHandler.CreateThread)
 
 	body := bytes.NewBufferString(`{"title":"hello","content":"world","category_id":"1"}`)
 	req := httptest.NewRequest(http.MethodPost, "/threads", body)
@@ -62,7 +72,7 @@ func TestCreateThreadUsesJWTContext(t *testing.T) {
 	if payload.Code != 0 {
 		t.Fatalf("expected code 0, got %d", payload.Code)
 	}
-	if payload.Data.AuthorID != "1001" {
+	if payload.Data.AuthorID != e.owner.ID {
 		t.Fatalf("expected author_id from token, got %q", payload.Data.AuthorID)
 	}
 	if payload.Data.AuthorName != "Alice" {

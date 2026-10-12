@@ -124,14 +124,14 @@ func (r *PgThreadRepository) IncrementReplyCount(ctx context.Context, id string,
 }
 
 func (r *PgThreadRepository) Update(ctx context.Context, thread *domain.Thread) error {
-	return r.update(ctx, thread, nil)
+	return r.update(ctx, thread, nil, nil)
 }
 
 func (r *PgThreadRepository) UpdateIfRevision(ctx context.Context, thread *domain.Thread, expected int) error {
-	return r.update(ctx, thread, &expected)
+	return r.update(ctx, thread, &expected, nil)
 }
 
-func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, expected *int) error {
+func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, expected *int, factsVersion *int64) error {
 	query := `UPDATE threads
 		SET title=$1,
 			content=$2,
@@ -141,9 +141,9 @@ func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, 
 			is_pinned=$6,
 			is_locked=$7,
 			is_highlighted=$8,
-			view_count=$9,
-			reply_count=$10,
-			like_count=$11,
+			view_count=COALESCE($9::bigint,view_count),
+			reply_count=COALESCE($10::bigint,reply_count),
+			like_count=COALESCE($11::bigint,like_count),
 			tags=$12,
 			content_format=$13,
 			publication_status=$14,
@@ -158,7 +158,13 @@ func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, 
 	if expected != nil {
 		query += " AND current_revision = $23"
 	}
+	if factsVersion != nil {
+		query += " AND facts_version = $24"
+	}
 	query += " RETURNING facts_version"
+	if factsVersion != nil {
+		query += ", view_count, reply_count, like_count"
+	}
 	contentFormat := thread.ContentFormat
 	if contentFormat == "" {
 		contentFormat = "markdown"
@@ -174,7 +180,14 @@ func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, 
 	if expected != nil {
 		args = append(args, *expected)
 	}
-	err := r.db(ctx).QueryRow(ctx, query, args...).Scan(&thread.FactsVersion)
+	var err error
+	if factsVersion != nil {
+		args[8], args[9], args[10] = nil, nil, nil
+		args = append(args, *factsVersion)
+		err = r.db(ctx).QueryRow(ctx, query, args...).Scan(&thread.FactsVersion, &thread.ViewCount, &thread.ReplyCount, &thread.LikeCount)
+	} else {
+		err = r.db(ctx).QueryRow(ctx, query, args...).Scan(&thread.FactsVersion)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		if expected != nil {
 			return ErrThreadRevisionConflict
@@ -229,7 +242,11 @@ func (r *PgThreadRepository) purge(ctx context.Context, id string, expected *int
 }
 
 func (r *PgThreadRepository) List(ctx context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
-	where := []string{"deleted_at IS NULL"}
+	return r.listThreadSnapshot(ctx, filter, nil)
+}
+
+func (r *PgThreadRepository) listThreadSnapshot(ctx context.Context, filter domain.ThreadListFilter, fixedPredicates []string) ([]*domain.Thread, int64, error) {
+	where := append([]string{"deleted_at IS NULL"}, fixedPredicates...)
 	args := []interface{}{}
 	argIdx := 1
 

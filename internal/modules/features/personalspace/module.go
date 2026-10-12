@@ -112,6 +112,22 @@ func (m *Module) Start(ctx context.Context) error {
 	if m.app == nil || m.repo == nil || m.users == nil || m.contentQuery == nil || m.storage == nil {
 		return errors.New("personal space module is not registered")
 	}
+	var ownerVerifier identityport.SessionVerifier
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		var compatible bool
+		ownerVerifier, compatible = value.(identityport.SessionVerifier)
+		if !compatible || nilOwnContentsAdapter(ownerVerifier) {
+			return fmt.Errorf("personal space owner session verifier port has incompatible type %T", value)
+		}
+	}
+	var ownerStrength identityport.SessionStrengthReader
+	if value, found := m.app.Lookup("identity.session-strength"); found {
+		var compatible bool
+		ownerStrength, compatible = value.(identityport.SessionStrengthReader)
+		if !compatible || nilOwnContentsAdapter(ownerStrength) {
+			return fmt.Errorf("personal space owner session strength port has incompatible type %T", value)
+		}
+	}
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
 	svc.SetContentQuery(m.contentQuery)
 	svc.SetQuotaManager(m.quotaManager)
@@ -155,6 +171,7 @@ func (m *Module) Start(ctx context.Context) error {
 	m.attacher.AttachSpaceStyleTarget(svc)
 	m.service = svc
 	m.handler = NewHandlerWithStyleApplication(svc, m.styles)
+	m.handler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
 	return m.app.Provide("feature.personal-space.service", svc)
 }
 
@@ -193,7 +210,7 @@ func (r identityUserReader) GetByUsername(ctx context.Context, username string) 
 }
 
 func identityUser(value identityport.User) *identitydomain.User {
-	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Avatar: value.Avatar, Bio: value.Bio}
+	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Avatar: value.Avatar, Bio: value.Bio, Status: identitydomain.UserStatus(value.Status)}
 }
 
 type communityThreadGateway struct{ gateway communityport.ContentGateway }

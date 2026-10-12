@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	personaldocuments "github.com/campusos/CampusOS/internal/modules/features/personaldocuments"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
 	"github.com/campusos/CampusOS/pkg/apperror"
@@ -23,11 +24,11 @@ func (r personalDocumentPDFReader) OpenOwnPDFDocument(ctx context.Context, owner
 	if r.service == nil || r.service() == nil {
 		return richtext.PersonalDocumentPDF{}, richtext.ErrAssetUnavailable
 	}
-	document, object, err := r.service().OpenCurrent(ctx, owner, documentID)
+	document, object, err := r.service().ReadOnly().OpenOwnDocument(ctx, documentAdapterResolver(ctx, owner), documentID)
 	if err != nil {
 		return richtext.PersonalDocumentPDF{}, err
 	}
-	return richtext.PersonalDocumentPDF{ID: document.ID, Name: document.Name, Format: document.Format, Object: object}, nil
+	return richtext.PersonalDocumentPDF{ID: document.ID, Version: document.Version, Name: document.Name, Format: document.Format, Object: object}, nil
 }
 
 // OpenOwnDocumentForAttachment exposes one active, supported personal
@@ -38,7 +39,7 @@ func (r personalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Cont
 	if r.service == nil || r.service() == nil {
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetUnavailable
 	}
-	document, object, err := r.service().OpenCurrent(ctx, owner, documentID)
+	document, object, err := r.service().ReadOnly().OpenOwnDocument(ctx, documentAdapterResolver(ctx, owner), documentID)
 	if err != nil {
 		// Keep the source document owner-scoped and opaque. The caller must not
 		// learn whether an arbitrary document ID exists for another user.
@@ -53,6 +54,23 @@ func (r personalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Cont
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAttachmentType
 	}
 	return richtext.PersonalDocumentAttachment{ID: document.ID, Name: document.Name, Format: document.Format, Object: object}, nil
+}
+
+func documentAdapterResolver(ctx context.Context, owner string) personaldocuments.DocumentPrincipalResolver {
+	resolve := identityport.SessionPrincipalResolverFromContext(ctx)
+	return func(current context.Context) (identityport.PrincipalContext, error) {
+		if resolve == nil {
+			return identityport.PrincipalContext{}, identityport.ErrUserSessionPrincipalUnavailable
+		}
+		p, err := resolve(current)
+		if err != nil {
+			return identityport.PrincipalContext{}, err
+		}
+		if p.Actor.Kind != "user" || p.Actor.ID != owner || p.Audience != "user" || p.Validate() != nil {
+			return identityport.PrincipalContext{}, identityport.ErrUserSessionPrincipalUnavailable
+		}
+		return p, nil
+	}
 }
 
 func personalDocumentPDFPreviewUnavailable() error {

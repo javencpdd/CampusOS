@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 )
@@ -32,7 +33,7 @@ type Module struct {
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID}
+	return []string{"core.identity", "core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -79,11 +80,28 @@ func (m *Module) Start(context.Context) error {
 	if !ok || reliable == nil {
 		return fmt.Errorf("reliability service port has incompatible type %T", reliableValue)
 	}
+	var verifier identityport.SessionVerifier
+	var strength identityport.SessionStrengthReader
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		var ok bool
+		verifier, ok = value.(identityport.SessionVerifier)
+		if !ok || nilFeatureReadPort(verifier) {
+			return fmt.Errorf("typed Feature verifier has incompatible type %T", value)
+		}
+	}
+	if value, found := m.app.Lookup("identity.session-strength"); found {
+		var ok bool
+		strength, ok = value.(identityport.SessionStrengthReader)
+		if !ok || nilFeatureReadPort(strength) {
+			return fmt.Errorf("typed Feature strength has incompatible type %T", value)
+		}
+	}
 	service := NewService(m.store, m.community, m.query)
 	service.SetReliability(reliable)
 	service.SetEnabledChecker(m.enabled)
 	m.service = service
 	m.handler = NewHandler(service)
+	m.handler.SetSessionProof(verifier, strength)
 	return nil
 }
 

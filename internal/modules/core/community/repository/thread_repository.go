@@ -16,6 +16,7 @@ var ErrThreadNotFound = errors.New("thread not found")
 var ErrThreadRevisionConflict = errors.New("thread revision conflict")
 var ErrThreadFactsVersionExhausted = errors.New("thread facts version exhausted")
 var ErrThreadPaginationOverflow = errors.New("thread pagination offset overflow")
+var ErrThreadOwnerListInvalid = errors.New("thread owner list input invalid")
 
 // ThreadRepository 帖子仓储接口
 type ThreadRepository interface {
@@ -49,6 +50,12 @@ type PublicThreadSnapshotRepository interface {
 // checked together; legacy state defaults cannot authorize an owner read.
 type OwnerThreadSnapshotRepository interface {
 	RecheckOwnerThread(context.Context, string, string, int64) (*domain.Thread, error)
+}
+
+// OwnerThreadListSnapshotRepository supplies an owner's active raw-state page
+// and total from one snapshot. The service still owns Policy and session checks.
+type OwnerThreadListSnapshotRepository interface {
+	ListOwnerThreadSnapshot(context.Context, string, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
 }
 
 // MemoryThreadRepository 内存帖子仓储（Demo 用）
@@ -281,10 +288,17 @@ func (r *MemoryThreadRepository) PurgeIfRevision(_ context.Context, id string, e
 func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	return r.listThreadSnapshotLocked(filter, false)
+}
+
+func (r *MemoryThreadRepository) listThreadSnapshotLocked(filter domain.ThreadListFilter, ownerOnly bool) ([]*domain.Thread, int64, error) {
 
 	// 过滤
 	var filtered []*domain.Thread
 	for _, t := range r.threads {
+		if ownerOnly && (t == nil || t.DeletionStatus != domain.DeletionStatusActive || !ownerThreadSnapshotStateValid(t)) {
+			continue
+		}
 		t = cloneThread(t)
 		if filter.CategoryID != "" && t.CategoryID != filter.CategoryID {
 			continue

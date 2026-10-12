@@ -22,6 +22,7 @@ type Service struct {
 	store                            Store
 	community                        communityport.ContentGateway
 	assets                           *LocalAssetStore
+	contentImages                    *corestorage.ContentImageStore
 	objects                          corestorage.ObjectPort
 	enabled                          func() bool
 	pdfViewerEnabled                 func() bool
@@ -42,10 +43,11 @@ type PersonalDocumentPDFReader interface {
 }
 
 type PersonalDocumentPDF struct {
-	ID     string
-	Name   string
-	Format string
-	Object corestorage.ObjectReader
+	ID      string
+	Version int64
+	Name    string
+	Format  string
+	Object  corestorage.ObjectReader
 }
 
 // PersonalDocumentAttachmentReader is the equally narrow composition seam

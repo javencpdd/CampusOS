@@ -103,9 +103,16 @@
         </div>
       </template>
       <template v-if="article">
-        <img v-if="article.cover_url" class="article-cover" :src="article.cover_url" alt="cover" />
+        <CheckedImage
+          v-if="article.cover_url"
+          class="article-cover"
+          :src="article.cover_url"
+          :thread-id="thread.id"
+          article
+          alt="封面"
+        />
         <p v-if="article.summary" class="article-summary">{{ article.summary }}</p>
-        <article class="article-content" v-html="article.sanitized_html"></article>
+        <CheckedHTML class="article-content" :html="article.sanitized_html" :thread-id="thread.id" article />
         <section v-if="isLoggedIn && attachments.length" class="article-attachments" aria-label="文章附件">
           <h3>附件</h3>
           <div v-for="attachment in attachments" :key="attachment.id" class="attachment-card">
@@ -141,11 +148,12 @@
           title="文章附件仅向已登录且有文章访问权限的用户显示。"
         />
       </template>
-      <article
+      <CheckedHTML
         v-else-if="thread.content_format === 'safe_html'"
         class="content safe-html-content"
-        v-html="thread.content"
-      ></article>
+        :html="thread.content"
+        :thread-id="thread.id"
+      />
       <div v-else class="content">{{ thread.content }}</div>
     </el-card>
 
@@ -228,6 +236,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import CheckedHTML from '@/modules/content-editor/CheckedHTML.vue'
+import CheckedImage from '@/modules/content-editor/CheckedImage.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Bottom, Delete, Lock, Top, Unlock } from '@element-plus/icons-vue'

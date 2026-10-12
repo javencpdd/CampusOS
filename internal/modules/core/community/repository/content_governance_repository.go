@@ -36,10 +36,14 @@ func (r *PgContentGovernanceRepository) db(ctx context.Context) transaction.Exec
 }
 
 func (r *PgContentGovernanceRepository) CreateRevision(ctx context.Context, value *domain.ContentRevision) error {
+	tags := value.Tags
+	if tags == nil {
+		tags = []string{}
+	}
 	_, err := r.db(ctx).Exec(ctx, `INSERT INTO content_revisions
 		(id, thread_id, version, title, content, content_format, tags, action, reason, created_by, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, '')::bigint, $11)`,
-		value.ID, value.ThreadID, value.Version, value.Title, value.Content, value.ContentFormat, value.Tags,
+		value.ID, value.ThreadID, value.Version, value.Title, value.Content, value.ContentFormat, tags,
 		value.Action, value.Reason, value.CreatedBy, value.CreatedAt)
 	return err
 }

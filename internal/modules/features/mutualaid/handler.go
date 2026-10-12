@@ -1,6 +1,10 @@
 package mutualaid
 
 import (
+	"context"
+	"errors"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/pkg/auth"
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
@@ -11,7 +15,19 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service  *Service
+	verifier identityport.SessionVerifier
+	strength identityport.SessionStrengthReader
+}
+
+func (h *Handler) SetSessionProof(verifier identityport.SessionVerifier, strength identityport.SessionStrengthReader) {
+	h.verifier, h.strength = verifier, strength
+}
+func (h *Handler) readPrincipal(c *gin.Context) identityport.SessionPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: c.GetString("user_id"), SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.verifier, h.strength, claims)
+	}
 }
 
 func NewHandler(service *Service) *Handler {
@@ -27,7 +43,7 @@ func (h *Handler) ListPublic(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, total, err := h.service.ListPublic(c.Request.Context(), domain.ThreadListFilter{
+	items, total, err := h.service.ListPublicChecked(c.Request.Context(), domain.ThreadListFilter{
 		Page:       page,
 		PageSize:   pageSize,
 		CategoryID: strings.TrimSpace(c.Query("category_id")),
@@ -46,7 +62,7 @@ func (h *Handler) ListPublic(c *gin.Context) {
 }
 
 func (h *Handler) GetPublic(c *gin.Context) {
-	result, err := h.service.GetPublic(c.Request.Context(), c.Param("id"))
+	result, err := h.service.GetForPrincipal(c.Request.Context(), c.Param("id"), nil)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -79,7 +95,8 @@ func (h *Handler) GetMine(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 		return
 	}
-	result, err := h.service.GetMine(c.Request.Context(), c.Param("id"), userID)
+	_ = userID
+	result, err := h.service.GetForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -144,5 +161,14 @@ func currentUser(c *gin.Context) (string, string, bool) {
 }
 
 func writeError(c *gin.Context, err error) {
+	if errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable) {
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+		return
+	}
+	if errors.Is(err, identityport.ErrPolicyFactsChanged) {
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+		return
+	}
+
 	response.WriteError(c, errorTranslator.Translate(err))
 }

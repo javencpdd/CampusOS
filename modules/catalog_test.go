@@ -1,6 +1,9 @@
 package modules
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestCatalogSeparatesModulesFromPlugins(t *testing.T) {
 	catalog, err := Load()
@@ -31,8 +34,11 @@ func TestCatalogSeparatesModulesFromPlugins(t *testing.T) {
 		if !ok || child.Descriptor.PresentationParent != "controlled-richtext-article" {
 			t.Fatalf("%s is not grouped under the image-text capability: %#v", id, child)
 		}
-		if child.Descriptor.Dependencies[1] != "core.user-storage" {
+		if !slices.Contains(child.Descriptor.Dependencies, "core.user-storage") {
 			t.Fatalf("%s does not declare user storage: %#v", id, child.Descriptor.Dependencies)
+		}
+		if !slices.Contains(child.Descriptor.Dependencies, "core.identity") {
+			t.Fatalf("%s does not declare current-session identity proof: %#v", id, child.Descriptor.Dependencies)
 		}
 	}
 }

@@ -140,15 +140,9 @@
             <el-table v-else :data="mediaItems" class="media-table">
               <el-table-column label="预览" width="92">
                 <template #default="{ row }">
-                  <el-image
-                    class="media-preview"
-                    :src="row.url"
-                    :preview-src-list="[row.url]"
-                    fit="cover"
-                    preview-teleported
-                  >
+                  <CheckedImage class="media-preview" :src="row.url" preview>
                     <template #error><span class="media-preview-fallback">图片不可预览</span></template>
-                  </el-image>
+                  </CheckedImage>
                 </template>
               </el-table-column>
               <el-table-column label="来源" width="140">
@@ -233,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import CheckedImage from '@/modules/content-editor/CheckedImage.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'

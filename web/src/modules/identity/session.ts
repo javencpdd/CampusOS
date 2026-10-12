@@ -6,11 +6,14 @@ export function getAccessToken() {
 }
 
 export function setAccessToken(value: string | null) {
-  accessToken = value || null
+  const next = value || null
+  const changed = next !== accessToken
+  accessToken = next
+  if (changed && typeof window !== 'undefined') window.dispatchEvent(new Event('campusos:identity-session-changed'))
 }
 
 export function clearAccessToken() {
-  accessToken = null
+  setAccessToken(null)
 }
 
 export function registerSessionRestorer(restorer: () => Promise<boolean>) {

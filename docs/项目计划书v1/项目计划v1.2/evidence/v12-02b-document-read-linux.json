@@ -1,0 +1,206 @@
+{
+  "schema": "campusos.v12-02b-document-read-acceptance/v1",
+  "generated_at": "2026-10-12T01:24:58.161556+00:00",
+  "stage": "V12-02b",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Private Personal Documents metadata/list, immutable versions, text/preview/download and PDF invocation; current full user Session Principal, document read Policy, selected version/Object facts and final proof recheck. Tombstones expose only owned lifecycle metadata and no byte/version reference.",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres_version_num": 160014,
+    "database": "owned disposable PostgreSQL 16 loopback tmpfs; real document/object repositories plus local bytes"
+  },
+  "checks": {
+    "TestDocumentAuthenticatedHTTPRealSession": "passed",
+    "TestDocumentAuthenticatedHTTPRejectsRevocationDuringRead": "passed",
+    "TestDocumentAuthenticatedListEmptyAndWholeSnapshot": "passed",
+    "TestDocumentAuthenticatedPostgreSQLCommittedRaces": "passed",
+    "TestDocumentAuthenticatedPostgreSQLFormatsAndLifecycle": "passed",
+    "TestDocumentAuthenticatedPostgreSQLWholeListAndHistoricalVersion": "passed",
+    "TestDocumentAuthenticatedReadLifecycle": "passed",
+    "TestDocumentAuthenticatedReadRejectsCommittedFactsChanges": "passed",
+    "TestDocumentAuthenticatedReadRejectsRevocationAndDrift": "passed"
+  },
+  "coverage": {
+    "required_tests": 9,
+    "real_postgres_tests": 3,
+    "formats": 5,
+    "postgres_lifecycle_domain_combinations": 30,
+    "postgres_committed_races": 9,
+    "http": "actual User/Admin domain JWT and Identity SessionService using Memory Identity; missing proof, revoked sessions, same-ID admin, forged owner fields and download body boundaries",
+    "consistency": "whole metadata list/member/order binding; document lifecycle version plus complete metadata, immutable selected version and Object metadata rechecked; byte reads on active owner only; fresh complete session proof before return"
+  },
+  "source_sha256": {
+    "internal/modules/features/personaldocuments/authorized_read.go": "ac790b5fb9f2e8d34252199dc355fab3efed68edc50a1eec6757c719378245ac",
+    "internal/modules/features/personaldocuments/authorized_read_test.go": "72d8b7317b7e89d7c03099621bc43a757c42a71bb1b97d10aa9ad420d7fc2a4a",
+    "internal/modules/features/personaldocuments/authorized_read_http_test.go": "830919e4bf19e64b5058ce78cd76e9e7659157a9fdbb7df6a6db47edb481488c",
+    "internal/modules/features/personaldocuments/authorized_read_postgres_test.go": "87e5ee1ded50cf81459c8b66affa8e59f49c8c095268a9a031b599eb7343b48e",
+    "internal/modules/features/personaldocuments/handler.go": "eed5b0e163964857881ea58588c2c88c8ef708337d29031a697d5eee124bb246",
+    "internal/modules/features/personaldocuments/module.go": "6382ae879d67b4ac4caf66119705f76205d9ba6cac193bc03a6f2a19af8a3b6f",
+    "internal/modules/features/personaldocuments/read_port.go": "4c71417e54bbd96faceb2a156b96780ecd9ecda87b66e6d227f07fedefbb8276",
+    "internal/modules/features/personaldocuments/repository.go": "b5f241046f62776aff1b6374d4630716c4819e62bf921b01677c5904ad61e7c1",
+    "internal/modules/features/personaldocuments/service.go": "6153d509da2072a0e6296e455142856b3ab3970bb289a0f8a770dd18e2bedd14",
+    "internal/modules/features/personaldocuments/service_test.go": "61ae3a18911da7baa0a2e23ea1066bd29f95728d61b511bf9ad39bcb39764e2d",
+    "internal/modules/features/personaldocuments/model.go": "691ab572619460a7c56829f04717c7ece02a4a702b63ec9cd0ec9eea889212b1",
+    "internal/server/personal_document_pdf_viewer.go": "be566fd164d9535ec49001f7e41c8c68eae2ba06dd9bf2380ef4cb8549cf3e75",
+    "internal/modules/core/identity/port/session_principal_context.go": "2170937829240a149de7b3f75f6eeff35cab9e2b524bce6ca7263a33b7687781",
+    "internal/modules/core/identity/port/user_session_principal.go": "33d9a865ec2260820a6439513818963e47a96dc0d7bd037682fbf8eb204eda7e",
+    "internal/modules/core/identity/port/user_session_principal_test.go": "f40d9be28ef29cb415f5879da64f576fa69468893d0046e6ff5ec010251c3c7c",
+    "internal/modules/core/identity/port/resource_policy.go": "69aae3f1de7ab3e206d662b960baa4f819048815e0115c49dcb26e78917913bb",
+    "internal/modules/core/identity/port/resource_policy_test.go": "481ed3cf81d73b6cbe59b2de595a73566a91418ed35bfc5622873c6ecbba1e09",
+    "internal/modules/core/identity/policy/resource.go": "7ebd830dd672582e54101e78e2f5aad86dbce87dafdc85637877def16bc23cf7",
+    "internal/modules/core/identity/policy/resource_test.go": "a701170a5c61b3cd8859c070f294cc3eaa0a24a4f4bc087f6e2bd67ecfb3fd96",
+    "scripts/v12-02b-document-read-drill.sh": "90d8722b5c18a6c4139e8c6268f8d625381e1b473d9dd367f6ac210e6cd2023e",
+    "docs/api/v1.2个人文档读取策略接入合同.md": "6453da5a152df214ae59c0e859b9196259d425dfe7256001cc61641ef84fe9a3",
+    "docs/api/v1.2业务授权接入与阶段验收.md": "37d89e3a39a51451d123612da9267ca4766398207ae709b12f40afe7027e8835",
+    "docs/api/v1.2其他资源与动作策略合同.md": "37a3389601a0092034219d719139713e9b75162313a9842cb8816351fc920b5d",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "61c004ea23d7530f7bd454d2f7a9388616f1b105c965b85d5b81fbce20004d86",
+    "docs/architecture/当前架构概览.md": "c1c25130fb5520fe1c3b811e8135e7e9a70f76d8f908c7a158d7b7dd6402fe63",
+    "docs-site/guide/architecture.md": "cecd9b62b60ecd2cca5a7c890aacf54e5196e8f2c045912d44da2d4156a39ae1",
+    "skills/sources/campusos-project-onboarding/references/current-project-status.md": "847fec844c7bb3e94ca76bb6c4537cd4748a07312b446a28bf00ba6318579b1d",
+    "docs/进度/v1.2-dev/v1.2.50-dev.md": "f2336dfe5a0e07c0aa2000cfcadd83fcc4fa1543df4bb21962bc025ddc098db9"
+  },
+  "dependencies": {
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-exit-linux.json": "f144f872bd91c35d9a9233bd129c40e209ae862bbb09cd14bce0a9b5820dad25",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-owner-list-linux.json": "d9a9cf7896cc8f52b34326168f9d5d2d17ba0c6936abb0904dd01b0b7ae19ef0"
+  },
+  "common_gates_status": "passed",
+  "logs": {
+    "architecture": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/architecture.log",
+      "log_sha256": "4f00480ef27818f91095d95b134f57930123130a914edf5295e3482b60b7d0ad"
+    },
+    "composition": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/composition.log",
+      "log_sha256": "58e9b58eb9fe58647e6f4e55e364a4f3764b986645a6060c949b8d5c78235a23"
+    },
+    "contracts": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/contracts.log",
+      "log_sha256": "349e36ec313302a43a99e36a53c531796514461c7d643574a0670f1098c1aa3f"
+    },
+    "database": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/database.log",
+      "log_sha256": "5e45b274f5cddc25c8032538b266c5efeab84ae42a4ef2d53106ca5adbe7a810"
+    },
+    "diff": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "docs-build": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/docs-build.log",
+      "log_sha256": "00fac4e9b1942e6838f2afd76fc74ad1e1e9d2d7a6900b7a97110df9e0255976"
+    },
+    "docs-links": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/docs-links.log",
+      "log_sha256": "b4f429eb5437d2fc66b7b4b5315e7d4e02b96cfe20e9139d5e327577493c5fd8"
+    },
+    "document-tests": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/document-tests.log",
+      "log_sha256": "10a3592502f96a39fadf86b00a101909babed396491b8056e00f88f01d455b9c"
+    },
+    "go-all": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/go-all.log",
+      "log_sha256": "1abf28234d4c1b1002322b3a4d0844f14839504d371175e4f2b2f73132dbdeb0"
+    },
+    "line-endings": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/line-endings.log",
+      "log_sha256": "6b9ffcb3ec3ba65b5d74e05d6c01735a935840e9a7b2323ca060546b735305a6"
+    },
+    "migrations-check": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/migrations-check.log",
+      "log_sha256": "34c59ef2dbfce51acc0cca3ab3466c6a425ea686c1dc5e024a3576e1252e8292"
+    },
+    "migrations-up": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-document-read/drill.eKHn14/migrations-up.log",
+      "log_sha256": "5525d5180ccf0c0778117965eff553deec1232abfb74dd06783aa3f92c5b63d9"
+    }
+  },
+  "boundaries": [
+    "This document slice alone does not complete V12-02b; author/edit, moderation/MFA, other Feature resources, batch and permission preview remain subsequent paths.",
+    "HTTP credentials use Memory Identity; document/Object storage is accepted separately on real PostgreSQL plus local bytes. No full browser, Windows or whole-stage acceptance claimed.",
+    "Trusted in-process raw service primitives remain implementation helpers; authenticated HTTP/ReadPort and server composition do not authorize private reads with a bare owner string.",
+    "Streaming is authorized immediately before returning a reader; later changes cannot retract already returned bytes.",
+    "No new migration. Existing document versions advance on service save/trash/restore; superuser tampering is outside the application trust boundary."
+  ],
+  "final_docs_sync": {
+    "generated_at": "2026-10-12T01:37:51.338795+00:00",
+    "status": "passed",
+    "logs": {
+      "final-docs-build": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-docs-build.log",
+        "log_sha256": "9c0f584c82209ae9f7c7e6e68f15ff13c022d779bc843a70634f8302a64db794"
+      },
+      "final-docs-links": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-docs-links.log",
+        "log_sha256": "5cecfd7db1c7d7cb7078616b26d6253b824b474e5ad19e920d2910c59cbda5f0"
+      },
+      "final-architecture": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-architecture.log",
+        "log_sha256": "a59c54123f1d2dce8240117fc99b1e81e8f3728deb74356d48b6b7bece9a37f0"
+      },
+      "final-skill": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-skill.log",
+        "log_sha256": "db349825903d66adffea3ecf1bd8e1803043e8a71cf1a051235dabc5371f5bb0"
+      },
+      "final-skill-bridges": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-skill-bridges.log",
+        "log_sha256": "73c56ac991f3a6397b52620f134d53a20062b0c45df00554acf2eff77099e676"
+      },
+      "final-line-endings": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-line-endings.log",
+        "log_sha256": "8b471806a14654a171035b9d69ffa600b9cc9c29644a60917616acab35b44a4c"
+      },
+      "final-diff": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-document-read/drill.eKHn14/final-diff.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "source_changes_since_target_drill": "Only eight documentation files synchronized; all 20 runtime/test/runner sources still match. Final Docs VitePress dead link corrected before passing build.",
+    "predecessor_evidence": "All 76 .49 source/dependency/artifact/log hash references verified at start; 02a/02d dependencies accepted. Historical reports preserved; this slice does not close the stage.",
+    "review": "Read-only local review tightened Object status/version/size/hash and byte digest checks, closed readers on failure and kept tombstone metadata distinct from active read Policy. No peer-agent review claimed."
+  }
+}
