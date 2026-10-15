@@ -473,3 +473,21 @@ func (g *contentQuery) ListAuthorThreadsForPrincipal(ctx context.Context, resolv
 	}
 	return g.threadSvc.ListThreadsForPrincipal(ctx, resolve, filter)
 }
+
+func (g *moduleModerationGateway) DeletePostForPrincipal(ctx context.Context, threadID, postID string, resolve identityport.SessionPrincipalResolver, participant communityport.PostGovernanceParticipant) error {
+	delegate, err := g.gateway()
+	if err != nil {
+		return err
+	}
+	return delegate.DeletePostForPrincipal(ctx, threadID, postID, resolve, participant)
+}
+func (g *moderationGateway) DeletePostForPrincipal(ctx context.Context, threadID, postID string, resolve identityport.SessionPrincipalResolver, participant communityport.PostGovernanceParticipant) error {
+	err := g.postSvc.GovernanceDeleteForPrincipal(ctx, threadID, postID, resolve, participant)
+	if errors.Is(err, repository.ErrPostNotFound) {
+		return communityport.ErrPostNotFound
+	}
+	if errors.Is(err, repository.ErrThreadNotFound) {
+		return communityport.ErrThreadNotFound
+	}
+	return err
+}

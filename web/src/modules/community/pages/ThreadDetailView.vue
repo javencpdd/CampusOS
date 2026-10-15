@@ -80,10 +80,11 @@
             </template>
           </div>
           <div v-if="moderationAccess.can_moderate" class="moderator-actions">
-            <el-tag type="warning" effect="plain">{{ moderationAccess.category?.name }}版主</el-tag>
+            <el-tag type="warning" effect="plain">版主操作</el-tag>
             <el-tooltip v-if="moderationAccess.actions?.pin" :content="thread.is_pinned ? '取消置顶' : '置顶主题'">
               <el-button
                 :icon="thread.is_pinned ? Bottom : Top"
+                :aria-label="thread.is_pinned ? '取消置顶' : '置顶主题'"
                 :type="thread.is_pinned ? 'warning' : 'default'"
                 circle
                 :loading="moderationOperating"
@@ -93,6 +94,7 @@
             <el-tooltip v-if="moderationAccess.actions?.lock" :content="thread.is_locked ? '解锁主题' : '锁定主题'">
               <el-button
                 :icon="thread.is_locked ? Unlock : Lock"
+                :aria-label="thread.is_locked ? '解锁主题' : '锁定主题'"
                 :type="thread.is_locked ? 'warning' : 'default'"
                 circle
                 :loading="moderationOperating"
@@ -173,7 +175,7 @@
             <span>{{ new Date(post.created_at).toLocaleString() }}</span>
             <el-button text type="primary" size="small" @click="setReplyTarget(post)">回复</el-button>
             <el-popconfirm
-              v-if="moderationAccess.actions?.delete_post"
+              v-if="moderationPostDeletes.has(post.id)"
               title="确定以版主身份删除这条回复吗？"
               confirm-button-text="删除"
               cancel-button-text="取消"
@@ -260,6 +262,8 @@ const submitting = ref(false)
 const articleOperating = ref(false)
 const moderationOperating = ref(false)
 const moderationAccess = ref<any>({ plugin_enabled: false, can_moderate: false, actions: {} })
+const moderationPostDeletes = ref(new Set<string>())
+let moderationPreviewRequest = 0
 const replyContent = ref('')
 const replyTarget = ref<any>(null)
 const postsPage = ref(1)
@@ -349,27 +353,73 @@ const loadThread = async () => {
 }
 
 const loadModerationAccess = async () => {
+  const request = ++moderationPreviewRequest
   moderationAccess.value = { plugin_enabled: false, can_moderate: false, actions: {} }
+  moderationPostDeletes.value = new Set()
   if (!userStore.isLoggedIn || !threadID()) return
+  const id = threadID()
+  const viewer = userStore.user?.id
+  const postIDs = posts.value.map((post) => String(post.id))
   try {
-    const result: any = await moderationApi.access(threadID())
-    if (result.code === 0) moderationAccess.value = result.data
+    const result: any = await moderationApi.preview(id, postIDs)
+    if (
+      request !== moderationPreviewRequest ||
+      !userStore.isLoggedIn ||
+      userStore.user?.id !== viewer ||
+      threadID() !== id ||
+      posts.value.map((post) => String(post.id)).join(',') !== postIDs.join(',')
+    ) {
+      return
+    }
+    const preview = result?.data
+    if (
+      result.code !== 0 ||
+      preview?.thread_id !== id ||
+      typeof preview.pin !== 'boolean' ||
+      typeof preview.lock !== 'boolean' ||
+      !Array.isArray(preview.posts) ||
+      preview.posts.length !== postIDs.length ||
+      preview.posts.some((item: any, index: number) => item.id !== postIDs[index] || typeof item.delete !== 'boolean')
+    ) {
+      return
+    }
+    moderationPostDeletes.value = new Set(preview.posts.filter((item: any) => item.delete).map((item: any) => item.id))
+    moderationAccess.value = {
+      can_moderate: preview.pin || preview.lock || moderationPostDeletes.value.size > 0,
+      actions: { pin: preview.pin, lock: preview.lock },
+    }
   } catch {
-    moderationAccess.value = { plugin_enabled: false, can_moderate: false, actions: {} }
+    if (request === moderationPreviewRequest) {
+      moderationAccess.value = { plugin_enabled: false, can_moderate: false, actions: {} }
+      moderationPostDeletes.value = new Set()
+    }
   }
+}
+
+const applyConfirmedThreadFlags = (id: string, result: any) => {
+  const flags = result?.data
+  if (
+    !thread.value ||
+    thread.value.id !== id ||
+    flags?.id !== id ||
+    typeof flags.is_pinned !== 'boolean' ||
+    typeof flags.is_locked !== 'boolean'
+  ) {
+    throw new Error('帖子状态已变化，请重新加载。')
+  }
+  thread.value = { ...thread.value, is_pinned: flags.is_pinned, is_locked: flags.is_locked }
 }
 
 const toggleModeratorPin = async () => {
   if (!thread.value) return
+  const id = threadID()
   moderationOperating.value = true
   try {
-    const result: any = thread.value.is_pinned
-      ? await moderationApi.unpin(threadID())
-      : await moderationApi.pin(threadID())
-    thread.value = result.data
+    const result: any = thread.value.is_pinned ? await moderationApi.unpin(id) : await moderationApi.pin(id)
+    applyConfirmedThreadFlags(id, result)
     ElMessage.success(thread.value.is_pinned ? '主题已置顶' : '已取消置顶')
   } catch (error: any) {
-    ElMessage.error(error?.msg || '版主置顶操作失败')
+    ElMessage.error(error?.msg || error?.message || '版主置顶操作失败')
   } finally {
     moderationOperating.value = false
   }
@@ -377,15 +427,14 @@ const toggleModeratorPin = async () => {
 
 const toggleModeratorLock = async () => {
   if (!thread.value) return
+  const id = threadID()
   moderationOperating.value = true
   try {
-    const result: any = thread.value.is_locked
-      ? await moderationApi.unlock(threadID())
-      : await moderationApi.lock(threadID())
-    thread.value = result.data
+    const result: any = thread.value.is_locked ? await moderationApi.unlock(id) : await moderationApi.lock(id)
+    applyConfirmedThreadFlags(id, result)
     ElMessage.success(thread.value.is_locked ? '主题已锁定' : '主题已解锁')
   } catch (error: any) {
-    ElMessage.error(error?.msg || '版主锁定操作失败')
+    ElMessage.error(error?.msg || error?.message || '版主锁定操作失败')
   } finally {
     moderationOperating.value = false
   }
@@ -485,6 +534,7 @@ const loadPosts = async () => {
     if (res.code === 0) {
       posts.value = res.data?.items || []
       postsTotal.value = res.data?.pagination?.total || 0
+      await loadModerationAccess()
     }
   } catch (e: any) {
     ElMessage.error(e?.msg || '加载回复失败')

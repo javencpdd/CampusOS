@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 )
@@ -67,7 +68,15 @@ func (s *ThreadService) createAuthority(ctx context.Context, boardID string, kin
 		projection := categoryAuthority(group)
 		facts.Group = &projection
 	}
-	types, err := s.typePolicies.List(ctx, boardID)
+	list := s.typePolicies.List
+	if lock {
+		locker, ok := s.typePolicies.(repository.ThreadTypePolicyLocker)
+		if !ok {
+			return facts, ErrThreadAuthorWriteUnavailable
+		}
+		list = locker.ListForUpdate
+	}
+	types, err := list(ctx, boardID)
 	if err != nil {
 		return facts, err
 	}
@@ -123,6 +132,47 @@ func (s *ThreadService) CreateThreadForPrincipal(ctx context.Context, authorName
 	return result, nil
 }
 
+// CreateStructuredThreadForPrincipal accepts only an explicit matching typed
+// participant. No compatibility type default or caller-supplied actor is used.
+func (s *ThreadService) CreateStructuredThreadForPrincipal(ctx context.Context, authorName string, req domain.CreateThreadRequest, opts CreateThreadOptions, participant StructuredThreadParticipant, resolve identityport.SessionPrincipalResolver) (*domain.Thread, error) {
+	if s.reliable == nil || s.governance == nil {
+		return nil, ErrThreadAuthorWriteUnavailable
+	}
+	if nilStructuredParticipant(participant) || !domain.IsKnownThreadType(opts.ThreadType) || opts.ThreadType == domain.ThreadTypeDiscussion || participant.ThreadType() != opts.ThreadType || (opts.Status != domain.ThreadStatusPublished && opts.Status != domain.ThreadStatusPrivate && opts.Status != domain.ThreadStatusDraft) {
+		return nil, ErrThreadAuthorWriteInvalid
+	}
+	p, err := resolveThreadOwnerPrincipal(ctx, resolve)
+	if err != nil {
+		return nil, err
+	}
+	if p.Actor.Kind != "user" || p.Audience != "user" {
+		return nil, ErrThreadAuthorWriteDenied
+	}
+	req.CategoryID = strings.TrimSpace(req.CategoryID)
+	facts, err := s.createAuthority(ctx, req.CategoryID, opts.ThreadType, false)
+	if err != nil {
+		return nil, err
+	}
+	proof := threadCreateProof{Principal: p, Authority: facts, Resolve: resolve}
+	result, err := s.CreateStructuredThreadWithOptions(context.WithValue(ctx, threadCreateProofKey{}, proof), p.Actor.ID, authorName, req, opts, participant)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func nilStructuredParticipant(participant StructuredThreadParticipant) bool {
+	if participant == nil {
+		return true
+	}
+	v := reflect.ValueOf(participant)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	}
+	return false
+}
+
 func (s *ThreadService) bindCreateCommand(ctx context.Context, actorID string, action func(context.Context) (*domain.Thread, error)) (func(context.Context) (*domain.Thread, error), error) {
 	proof, ok := ctx.Value(threadCreateProofKey{}).(threadCreateProof)
 	if !ok {
@@ -162,6 +212,13 @@ func (s *ThreadService) bindCreateCommand(ctx context.Context, actorID string, a
 			return nil, err
 		}
 		if !reflect.DeepEqual(current, proof.Authority) || result == nil || result.AuthorID != p.Actor.ID || result.CategoryID != proof.Authority.Board.ID || result.ThreadType != proof.Authority.Type || result.DeletionStatus != domain.DeletionStatusActive {
+			return nil, identityport.ErrPolicyFactsChanged
+		}
+		stored, err := s.repo.GetByID(tx, result.ID)
+		if err != nil {
+			return nil, err
+		}
+		if stored == nil || stored.ID != result.ID || stored.FactsVersion < 1 || stored.FactsVersion != result.FactsVersion || stored.AuthorID != result.AuthorID || stored.CategoryID != result.CategoryID || stored.ThreadType != result.ThreadType || stored.DeletionStatus != domain.DeletionStatusActive {
 			return nil, identityport.ErrPolicyFactsChanged
 		}
 		return result, nil

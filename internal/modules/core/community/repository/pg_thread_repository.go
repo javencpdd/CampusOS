@@ -32,16 +32,17 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 		contentFormat = "markdown"
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	query := `INSERT INTO threads (id, thread_type, title, content, content_format, author_id, author_name, category_id, status,
 		publication_status, moderation_status, deletion_status, moderation_reason, moderation_by, moderation_at, current_revision,
-		tags, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULLIF($14, '')::bigint, $15, $16, $17, $18, $19)
+		tags, created_at, updated_at, moderation_actor_kind, moderation_actor_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULLIF($14, '')::bigint, $15, $16, $17, $18, $19, $20, $21)
 		RETURNING facts_version`
 	err := r.db(ctx).QueryRow(ctx, query,
 		thread.ID, thread.ThreadType, thread.Title, thread.Content, contentFormat,
 		thread.AuthorID, thread.AuthorName, thread.CategoryID,
 		thread.Status, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
-		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, thread.Tags, thread.CreatedAt, thread.UpdatedAt).Scan(&thread.FactsVersion)
+		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, thread.Tags, thread.CreatedAt, thread.UpdatedAt, thread.ModerationActorKind, thread.ModerationActorID).Scan(&thread.FactsVersion)
 	return err
 }
 
@@ -153,13 +154,15 @@ func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, 
 			moderation_by=NULLIF($18, '')::bigint,
 			moderation_at=$19,
 			current_revision=$20,
-			updated_at=$21
+			updated_at=$21,
+			moderation_actor_kind=$23,
+			moderation_actor_id=$24
 		WHERE id = $22 AND deleted_at IS NULL`
 	if expected != nil {
-		query += " AND current_revision = $23"
+		query += " AND current_revision = $25"
 	}
 	if factsVersion != nil {
-		query += " AND facts_version = $24"
+		query += " AND facts_version = $26"
 	}
 	query += " RETURNING facts_version"
 	if factsVersion != nil {
@@ -170,12 +173,13 @@ func (r *PgThreadRepository) update(ctx context.Context, thread *domain.Thread, 
 		contentFormat = "markdown"
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	args := []interface{}{
 		thread.Title, thread.Content, thread.ThreadType, thread.CategoryID, thread.Status,
 		thread.IsPinned, thread.IsLocked, thread.IsHighlighted,
 		thread.ViewCount, thread.ReplyCount, thread.LikeCount, thread.Tags,
 		contentFormat, thread.PublicationStatus, thread.ModerationStatus, thread.DeletionStatus, thread.ModerationReason,
-		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, time.Now().UTC(), thread.ID,
+		thread.ModerationBy, thread.ModerationAt, thread.CurrentRevision, time.Now().UTC(), thread.ID, thread.ModerationActorKind, thread.ModerationActorID,
 	}
 	if expected != nil {
 		args = append(args, *expected)
@@ -406,7 +410,7 @@ func (r threadListRowScanner) Scan(dest ...interface{}) error {
 
 const threadSelectColumns = `id, thread_type, title, content, content_format, author_id, author_name, category_id, status,
 		publication_status, moderation_status, deletion_status, moderation_reason, COALESCE(moderation_by::text, ''), moderation_at, current_revision,
-		is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at, facts_version`
+		is_pinned, is_locked, is_highlighted, view_count, reply_count, like_count, tags, created_at, updated_at, facts_version, moderation_actor_kind, moderation_actor_id, deleted_at`
 
 func selectThreadSQL(where string) string {
 	return `SELECT ` + threadSelectColumns + ` FROM threads WHERE ` + where + ` AND deleted_at IS NULL`
@@ -418,7 +422,7 @@ func scanThread(row rowScanner) (*domain.Thread, error) {
 		&t.ID, &t.ThreadType, &t.Title, &t.Content, &t.ContentFormat, &t.AuthorID, &t.AuthorName, &t.CategoryID,
 		&t.Status, &t.PublicationStatus, &t.ModerationStatus, &t.DeletionStatus, &t.ModerationReason, &t.ModerationBy, &t.ModerationAt, &t.CurrentRevision,
 		&t.IsPinned, &t.IsLocked, &t.IsHighlighted, &t.ViewCount, &t.ReplyCount, &t.LikeCount,
-		&t.Tags, &t.CreatedAt, &t.UpdatedAt, &t.FactsVersion,
+		&t.Tags, &t.CreatedAt, &t.UpdatedAt, &t.FactsVersion, &t.ModerationActorKind, &t.ModerationActorID, &t.DeletedAt,
 	)
 	return t, err
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="5024" height="3560" viewBox="0 0 5024 3560">
-<metadata>campusos_schema_sha256=94f6237ee21ff566962b43a107c08bdf923509b0d3dbd2d0227287ff1f39b5ad;tables=100;foreign_keys=116</metadata>
+<metadata>campusos_schema_sha256=369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68;tables=100;foreign_keys=116</metadata>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#667085"/></marker></defs>
 <rect width="100%" height="100%" fill="#f8fafc"/>
 <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
@@ -336,18 +336,18 @@
 <rect x="64" y="2503" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="2503" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="2530" font-size="16" font-weight="700" fill="#101828">permission_definitions</text>
-<text x="622" y="2529" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
+<text x="622" y="2529" text-anchor="end" font-size="12" fill="#475467">13 字段 / 0 外键</text>
 <text x="77" y="2566" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="157" y="2566" font-size="13" fill="#344054">id</text>
 <text x="622" y="2566" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="77" y="2591" font-size="12" font-weight="700" fill="#175cd3">UQ/NN</text>
 <text x="157" y="2591" font-size="13" fill="#344054">code</text>
 <text x="622" y="2591" text-anchor="end" font-size="12" fill="#667085">varchar(160)</text>
-<text x="157" y="2616" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<text x="157" y="2616" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
 <rect x="64" y="2646" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="2646" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="2673" font-size="16" font-weight="700" fill="#101828">role_permissions</text>
-<text x="622" y="2672" text-anchor="end" font-size="12" fill="#475467">6 字段 / 2 外键</text>
+<text x="622" y="2672" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
 <text x="77" y="2709" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="157" y="2709" font-size="13" fill="#344054">id</text>
 <text x="622" y="2709" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -357,15 +357,15 @@
 <text x="77" y="2759" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="157" y="2759" font-size="13" fill="#344054">permission_id</text>
 <text x="622" y="2759" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="157" y="2784" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
+<text x="157" y="2784" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
 <rect x="64" y="2814" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="2814" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="2841" font-size="16" font-weight="700" fill="#101828">roles</text>
-<text x="622" y="2840" text-anchor="end" font-size="12" fill="#475467">7 字段 / 0 外键</text>
+<text x="622" y="2840" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
 <text x="77" y="2877" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="157" y="2877" font-size="13" fill="#344054">id</text>
 <text x="622" y="2877" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="157" y="2902" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
+<text x="157" y="2902" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
 <rect x="64" y="2932" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="2932" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="2959" font-size="16" font-weight="700" fill="#101828">sessions</text>
@@ -383,7 +383,7 @@
 <rect x="64" y="3100" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="3100" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="3127" font-size="16" font-weight="700" fill="#101828">user_roles</text>
-<text x="622" y="3126" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="622" y="3126" text-anchor="end" font-size="12" fill="#475467">8 字段 / 2 外键</text>
 <text x="77" y="3163" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="157" y="3163" font-size="13" fill="#344054">id</text>
 <text x="622" y="3163" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -393,7 +393,7 @@
 <text x="77" y="3213" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="157" y="3213" font-size="13" fill="#344054">role_id</text>
 <text x="622" y="3213" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="157" y="3238" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<text x="157" y="3238" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
 <rect x="64" y="3268" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="64" y="3268" width="570" height="40" rx="8" fill="#DCEBFF"/>
 <text x="77" y="3295" font-size="16" font-weight="700" fill="#101828">users</text>
@@ -460,7 +460,7 @@
 <rect x="682" y="873" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="873" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="900" font-size="16" font-weight="700" fill="#101828">posts</text>
-<text x="1240" y="899" text-anchor="end" font-size="12" fill="#475467">15 字段 / 3 外键</text>
+<text x="1240" y="899" text-anchor="end" font-size="12" fill="#475467">18 字段 / 3 外键</text>
 <text x="695" y="936" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="775" y="936" font-size="13" fill="#344054">id</text>
 <text x="1240" y="936" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -473,7 +473,7 @@
 <text x="695" y="1011" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="775" y="1011" font-size="13" fill="#344054">parent_id</text>
 <text x="1240" y="1011" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="775" y="1036" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<text x="775" y="1036" font-size="12" fill="#98a2b3">… 其余 14 个字段详见中文说明</text>
 <rect x="682" y="1066" width="570" height="202" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="1066" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="1093" font-size="16" font-weight="700" fill="#101828">richtext_article_assets</text>
@@ -497,7 +497,7 @@
 <rect x="682" y="1284" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="1284" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="1311" font-size="16" font-weight="700" fill="#101828">richtext_article_attachments</text>
-<text x="1240" y="1310" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="1240" y="1310" text-anchor="end" font-size="12" fill="#475467">8 字段 / 2 外键</text>
 <text x="695" y="1347" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="775" y="1347" font-size="13" fill="#344054">id</text>
 <text x="1240" y="1347" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -507,11 +507,11 @@
 <text x="695" y="1397" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="775" y="1397" font-size="13" fill="#344054">asset_id</text>
 <text x="1240" y="1397" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="775" y="1422" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<text x="775" y="1422" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
 <rect x="682" y="1452" width="570" height="177" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="1452" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="1479" font-size="16" font-weight="700" fill="#101828">richtext_article_contents</text>
-<text x="1240" y="1478" text-anchor="end" font-size="12" fill="#475467">15 字段 / 3 外键</text>
+<text x="1240" y="1478" text-anchor="end" font-size="12" fill="#475467">18 字段 / 3 外键</text>
 <text x="695" y="1515" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="775" y="1515" font-size="13" fill="#344054">id</text>
 <text x="1240" y="1515" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -524,7 +524,7 @@
 <text x="695" y="1590" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="775" y="1590" font-size="13" fill="#344054">updated_by</text>
 <text x="1240" y="1590" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="775" y="1615" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<text x="775" y="1615" font-size="12" fill="#98a2b3">… 其余 14 个字段详见中文说明</text>
 <rect x="682" y="1645" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="1645" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="1672" font-size="16" font-weight="700" fill="#101828">secondhand_details</text>
@@ -539,7 +539,7 @@
 <rect x="682" y="1788" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="682" y="1788" width="570" height="40" rx="8" fill="#E3F4E8"/>
 <text x="695" y="1815" font-size="16" font-weight="700" fill="#101828">threads</text>
-<text x="1240" y="1814" text-anchor="end" font-size="12" fill="#475467">30 字段 / 2 外键</text>
+<text x="1240" y="1814" text-anchor="end" font-size="12" fill="#475467">32 字段 / 2 外键</text>
 <text x="695" y="1851" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="775" y="1851" font-size="13" fill="#344054">id</text>
 <text x="1240" y="1851" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -549,7 +549,7 @@
 <text x="695" y="1901" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="775" y="1901" font-size="13" fill="#344054">category_id</text>
 <text x="1240" y="1901" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="775" y="1926" font-size="12" fill="#98a2b3">… 其余 27 个字段详见中文说明</text>
+<text x="775" y="1926" font-size="12" fill="#98a2b3">… 其余 29 个字段详见中文说明</text>
 <rect x="1300" y="158" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="1300" y="158" width="570" height="40" rx="8" fill="#FFF0D8"/>
 <text x="1313" y="185" font-size="16" font-weight="700" fill="#101828">academic_terms</text>
@@ -657,22 +657,22 @@
 <rect x="1918" y="905" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="1918" y="905" width="570" height="40" rx="8" fill="#EEE5FF"/>
 <text x="1931" y="932" font-size="16" font-weight="700" fill="#101828">user_space_style_snapshots</text>
-<text x="2476" y="931" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="2476" y="931" text-anchor="end" font-size="12" fill="#475467">10 字段 / 0 外键</text>
 <text x="1931" y="968" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="2011" y="968" font-size="13" fill="#344054">id</text>
 <text x="2476" y="968" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="2011" y="993" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<text x="2011" y="993" font-size="12" fill="#98a2b3">… 其余 9 个字段详见中文说明</text>
 <rect x="1918" y="1023" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="1918" y="1023" width="570" height="40" rx="8" fill="#EEE5FF"/>
 <text x="1931" y="1050" font-size="16" font-weight="700" fill="#101828">user_spaces</text>
-<text x="2476" y="1049" text-anchor="end" font-size="12" fill="#475467">23 字段 / 1 外键</text>
+<text x="2476" y="1049" text-anchor="end" font-size="12" fill="#475467">26 字段 / 1 外键</text>
 <text x="1931" y="1086" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="2011" y="1086" font-size="13" fill="#344054">id</text>
 <text x="2476" y="1086" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="1931" y="1111" font-size="12" font-weight="700" fill="#175cd3">FK/NN</text>
 <text x="2011" y="1111" font-size="13" fill="#344054">user_id</text>
 <text x="2476" y="1111" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="2011" y="1136" font-size="12" fill="#98a2b3">… 其余 21 个字段详见中文说明</text>
+<text x="2011" y="1136" font-size="12" fill="#98a2b3">… 其余 24 个字段详见中文说明</text>
 <rect x="2536" y="158" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="2536" y="158" width="570" height="40" rx="8" fill="#DFF5F2"/>
 <text x="2549" y="185" font-size="16" font-weight="700" fill="#101828">storage_objects</text>
@@ -695,14 +695,14 @@
 <rect x="2536" y="419" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="2536" y="419" width="570" height="40" rx="8" fill="#DFF5F2"/>
 <text x="2549" y="446" font-size="16" font-weight="700" fill="#101828">user_storage_quotas</text>
-<text x="3094" y="445" text-anchor="end" font-size="12" fill="#475467">5 字段 / 2 外键</text>
+<text x="3094" y="445" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
 <text x="2549" y="482" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
 <text x="2629" y="482" font-size="13" fill="#344054">user_id</text>
 <text x="3094" y="482" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="2549" y="507" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="2629" y="507" font-size="13" fill="#344054">updated_by</text>
 <text x="3094" y="507" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="2629" y="532" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
+<text x="2629" y="532" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
 <rect x="2536" y="562" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="2536" y="562" width="570" height="40" rx="8" fill="#DFF5F2"/>
 <text x="2549" y="589" font-size="16" font-weight="700" fill="#101828">user_storage_reservations</text>
@@ -1139,14 +1139,14 @@
 <rect x="4390" y="1016" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1016" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1043" font-size="16" font-weight="700" fill="#101828">admin_role_permissions</text>
-<text x="4948" y="1042" text-anchor="end" font-size="12" fill="#475467">4 字段 / 1 外键</text>
+<text x="4948" y="1042" text-anchor="end" font-size="12" fill="#475467">5 字段 / 1 外键</text>
 <text x="4403" y="1079" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
 <text x="4483" y="1079" font-size="13" fill="#344054">role_id</text>
 <text x="4948" y="1079" text-anchor="end" font-size="12" fill="#667085">VARCHAR(64)</text>
 <text x="4403" y="1104" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="1104" font-size="13" fill="#344054">permission_code</text>
 <text x="4948" y="1104" text-anchor="end" font-size="12" fill="#667085">VARCHAR(160)</text>
-<text x="4483" y="1129" font-size="12" fill="#98a2b3">… 其余 2 个字段详见中文说明</text>
+<text x="4483" y="1129" font-size="12" fill="#98a2b3">… 其余 3 个字段详见中文说明</text>
 <rect x="4390" y="1159" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1159" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1186" font-size="16" font-weight="700" fill="#101828">admin_roles</text>
@@ -1172,7 +1172,7 @@
 <rect x="4390" y="1445" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1445" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1472" font-size="16" font-weight="700" fill="#101828">asset_lifecycle_audits</text>
-<text x="4948" y="1471" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="4948" y="1471" text-anchor="end" font-size="12" fill="#475467">9 字段 / 2 外键</text>
 <text x="4403" y="1508" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="1508" font-size="13" fill="#344054">id</text>
 <text x="4948" y="1508" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -1182,31 +1182,31 @@
 <text x="4403" y="1558" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="4483" y="1558" font-size="13" fill="#344054">actor_user_id</text>
 <text x="4948" y="1558" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="4483" y="1583" font-size="12" fill="#98a2b3">… 其余 4 个字段详见中文说明</text>
+<text x="4483" y="1583" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
 <rect x="4390" y="1613" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1613" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1640" font-size="16" font-weight="700" fill="#101828">content_moderation_actions</text>
-<text x="4948" y="1639" text-anchor="end" font-size="12" fill="#475467">9 字段 / 0 外键</text>
+<text x="4948" y="1639" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
 <text x="4403" y="1676" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="1676" font-size="13" fill="#344054">id</text>
 <text x="4948" y="1676" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="4483" y="1701" font-size="12" fill="#98a2b3">… 其余 8 个字段详见中文说明</text>
+<text x="4483" y="1701" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
 <rect x="4390" y="1731" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1731" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1758" font-size="16" font-weight="700" fill="#101828">content_moderation_cases</text>
-<text x="4948" y="1757" text-anchor="end" font-size="12" fill="#475467">8 字段 / 0 外键</text>
+<text x="4948" y="1757" text-anchor="end" font-size="12" fill="#475467">12 字段 / 0 外键</text>
 <text x="4403" y="1794" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="1794" font-size="13" fill="#344054">id</text>
 <text x="4948" y="1794" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="4483" y="1819" font-size="12" fill="#98a2b3">… 其余 7 个字段详见中文说明</text>
+<text x="4483" y="1819" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
 <rect x="4390" y="1849" width="570" height="102" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1849" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1876" font-size="16" font-weight="700" fill="#101828">content_revisions</text>
-<text x="4948" y="1875" text-anchor="end" font-size="12" fill="#475467">11 字段 / 0 外键</text>
+<text x="4948" y="1875" text-anchor="end" font-size="12" fill="#475467">13 字段 / 0 外键</text>
 <text x="4403" y="1912" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="1912" font-size="13" fill="#344054">id</text>
 <text x="4948" y="1912" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="4483" y="1937" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
+<text x="4483" y="1937" font-size="12" fill="#98a2b3">… 其余 12 个字段详见中文说明</text>
 <rect x="4390" y="1967" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="1967" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="1994" font-size="16" font-weight="700" fill="#101828">platform_command_audits</text>
@@ -1305,7 +1305,7 @@
 <rect x="4390" y="3272" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="4390" y="3272" width="570" height="40" rx="8" fill="#F3F3F3"/>
 <text x="4403" y="3299" font-size="16" font-weight="700" fill="#101828">user_assets</text>
-<text x="4948" y="3298" text-anchor="end" font-size="12" fill="#475467">13 字段 / 2 外键</text>
+<text x="4948" y="3298" text-anchor="end" font-size="12" fill="#475467">14 字段 / 2 外键</text>
 <text x="4403" y="3335" font-size="12" font-weight="700" fill="#175cd3">PK/NN</text>
 <text x="4483" y="3335" font-size="13" fill="#344054">id</text>
 <text x="4948" y="3335" text-anchor="end" font-size="12" fill="#667085">bigint</text>
@@ -1315,7 +1315,7 @@
 <text x="4403" y="3385" font-size="12" font-weight="700" fill="#175cd3">FK/UQ/NN</text>
 <text x="4483" y="3385" font-size="13" fill="#344054">storage_object_id</text>
 <text x="4948" y="3385" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="4483" y="3410" font-size="12" fill="#98a2b3">… 其余 10 个字段详见中文说明</text>
-<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：94f6237ee21ff566</text>
+<text x="4483" y="3410" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
+<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：369ecfd2d0b66896</text>
 </g>
 </svg>

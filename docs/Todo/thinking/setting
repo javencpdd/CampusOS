@@ -14,7 +14,7 @@ rsync -a skills/campusos-dev-nocommit/ /home/jack/.codex/skills/campusos-dev-noc
 
 （gpt）
 
-结合我提供的总结文档以及GitHub仓库中已同步的v1.0计划代码，
+结合我提供的总结文档以及GitHub仓库中已同步的v1.2计划代码，
 对当前版本进行深入审查与复盘，重点梳理已完成功能的具体实现情况、存在的问题与不足，
 并在此基础上进行深度思考，形成下一版计划的完整思路。
 下一版计划应以完善现有功能、提升系统健壮性为核心方向，

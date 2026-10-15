@@ -12,6 +12,7 @@ import (
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
+	"github.com/campusos/CampusOS/internal/safehtml"
 	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
@@ -129,17 +130,22 @@ func (h *Handler) ListContentsByUsername(c *gin.Context) {
 }
 
 func (h *Handler) GetMe(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	if body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1)); err != nil || len(body) > 0 {
+		response.Error(c, http.StatusBadRequest, 10001, "资料读取不接受请求正文。")
+		return
+	}
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
 
-	space, err := h.svc.GetOwnSpace(c.Request.Context(), userID)
+	space, err := h.svc.GetOwnSpaceForPrincipal(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
 	}
+	c.Header("Cache-Control", "private, no-store")
 	response.Success(c, space)
 }
 
@@ -185,7 +191,7 @@ func writeOwnContentsReadError(c *gin.Context, err error) {
 }
 
 func (h *Handler) UpdateMe(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -197,7 +203,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 		return
 	}
 
-	space, err := h.svc.UpsertOwnSpace(c.Request.Context(), userID, req)
+	space, err := h.svc.UpsertOwnSpaceForPrincipal(c.Request.Context(), req, h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -269,19 +275,24 @@ func (h *Handler) ExportStylePackage(c *gin.Context) {
 }
 
 func (h *Handler) ApplyStylePackage(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
 
 	var req StylePackage
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
 
-	applied, err := h.styles.ApplySpaceStylePackage(c.Request.Context(), userID, req)
+	command, ok := h.styles.(AuthenticatedSpaceStyleCommands)
+	if !ok || corestorage.NilImageAdapter(command) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	applied, err := command.ApplyOwnSpaceStylePackage(c.Request.Context(), req, h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -326,19 +337,30 @@ func (h *Handler) CustomHTMLExample(c *gin.Context) {
 }
 
 func (h *Handler) ApplyCustomHTML(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
 
 	var req StyleHTMLRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, safehtml.MaxHTMLLength*6+64*1024)
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		var limit *http.MaxBytesError
+		if errors.As(err, &limit) {
+			response.Error(c, 413, 10001, "HTML 内容超过允许的大小。")
+			return
+		}
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
 
-	applied, err := h.styles.ApplySpaceCustomHTML(c.Request.Context(), userID, req.HTML)
+	commands, ok := h.styles.(AuthenticatedSpaceStyleVariants)
+	if !ok || corestorage.NilImageAdapter(commands) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	applied, err := commands.ApplyOwnSpaceCustomHTML(c.Request.Context(), req.HTML, h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -401,16 +423,26 @@ func (h *Handler) StylePackExampleZip(c *gin.Context) {
 }
 
 func (h *Handler) ListSourceStylePacks(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	if body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1)); err != nil || len(body) > 0 {
+		response.Error(c, http.StatusBadRequest, 10001, "源码包目录读取不接受请求正文。")
+		return
+	}
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.styles.ListSpaceStylePacks(c.Request.Context(), userID)
+	catalog, ok := h.styles.(AuthenticatedSpaceStyleCatalog)
+	if !ok {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	result, err := catalog.ListOwnSpaceSourceStylePacks(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
 	}
+	c.Header("Cache-Control", "private, no-store")
 	response.Success(c, result)
 }
 
@@ -427,7 +459,7 @@ func (h *Handler) ServeSourceStylePackAsset(c *gin.Context) {
 }
 
 func (h *Handler) ApplyStylePackZip(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -438,7 +470,12 @@ func (h *Handler) ApplyStylePackZip(c *gin.Context) {
 	}
 	defer file.Close()
 
-	applied, err := h.styles.ApplySpaceStylePackZip(c.Request.Context(), userID, file, size)
+	commands, ok := h.styles.(AuthenticatedSpaceStyleVariants)
+	if !ok || corestorage.NilImageAdapter(commands) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	applied, err := commands.ApplyOwnSpaceStylePackZip(c.Request.Context(), file, size, h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -447,7 +484,7 @@ func (h *Handler) ApplyStylePackZip(c *gin.Context) {
 }
 
 func (h *Handler) ApplySourceStylePack(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -457,7 +494,12 @@ func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	applied, err := h.styles.ApplySpaceSourceStylePack(c.Request.Context(), userID, req.Name)
+	commands, ok := h.styles.(AuthenticatedSpaceStyleVariants)
+	if !ok || corestorage.NilImageAdapter(commands) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	applied, err := commands.ApplyOwnSpaceSourceStylePack(c.Request.Context(), req.Name, h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -466,12 +508,21 @@ func (h *Handler) ApplySourceStylePack(c *gin.Context) {
 }
 
 func (h *Handler) RollbackStyle(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	space, err := h.styles.RollbackSpaceStyle(c.Request.Context(), userID)
+	if body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1)); err != nil || len(body) > 0 {
+		response.Error(c, 400, 10001, "风格回滚不接受请求正文。")
+		return
+	}
+	command, ok := h.styles.(AuthenticatedSpaceStyleCommands)
+	if !ok || corestorage.NilImageAdapter(command) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	space, err := command.RollbackOwnSpaceStyle(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -480,12 +531,21 @@ func (h *Handler) RollbackStyle(c *gin.Context) {
 }
 
 func (h *Handler) RestoreDefaultStyle(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	space, err := h.styles.RestoreDefaultSpaceStyle(c.Request.Context(), userID)
+	if body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1)); err != nil || len(body) > 0 {
+		response.Error(c, 400, 10001, "恢复默认风格不接受请求正文。")
+		return
+	}
+	command, ok := h.styles.(AuthenticatedSpaceStyleCommands)
+	if !ok || corestorage.NilImageAdapter(command) {
+		writeSpaceError(c, ErrSpaceFactsUnavailable)
+		return
+	}
+	space, err := command.RestoreOwnSpaceDefaultStyle(c.Request.Context(), h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
@@ -523,7 +583,7 @@ func (h *Handler) GetStorageStatus(c *gin.Context) {
 }
 
 func (h *Handler) UploadAvatar(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -547,6 +607,13 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 		writeAvatarUploadError(c, ErrSpaceFileTooLarge, maxBytes)
 		return
 	}
+	if form := c.Request.MultipartForm; form != nil {
+		defer form.RemoveAll()
+		if len(form.Value) != 0 || len(form.File) != 1 || len(form.File["file"]) != 1 {
+			response.Error(c, http.StatusBadRequest, 10001, "头像请求只能包含一个文件。")
+			return
+		}
+	}
 	file, err := fileHeader.Open()
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "无法读取所选头像文件，请重新选择。")
@@ -554,7 +621,7 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	}
 	defer file.Close()
 
-	uploaded, err := h.svc.UploadAvatar(c.Request.Context(), userID, fileHeader.Filename, file)
+	uploaded, err := h.svc.UploadAvatarForPrincipal(c.Request.Context(), file, h.fileReadPrincipal(c))
 	if err != nil {
 		writeAvatarUploadError(c, err, maxBytes)
 		return
@@ -564,6 +631,10 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 
 func writeAvatarUploadError(c *gin.Context, err error, maxBytes int64) {
 	switch {
+	case errors.Is(err, corestorage.ErrInlineImageCleanupPending):
+		response.Error(c, http.StatusServiceUnavailable, 75001, "头像未保存，临时文件清理待处理，请稍后重试。")
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable), errors.Is(err, identityport.ErrPolicyFactsChanged), errors.Is(err, ErrSpaceFactsUnavailable), errors.Is(err, ErrSpaceOwnerDenied), errors.Is(err, ErrSpacePluginDisabled):
+		writeSpaceError(c, err)
 	case errors.Is(err, ErrSpaceFileTooLarge):
 		response.ErrorWithDetails(c, http.StatusRequestEntityTooLarge, 10001,
 			fmt.Sprintf("头像文件过大：单个文件最大 %s，请压缩或裁剪后重试。", formatSpaceBytes(maxBytes)), gin.H{
@@ -642,7 +713,7 @@ func (h *Handler) ListAvatars(c *gin.Context) {
 }
 
 func (h *Handler) SelectAvatar(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	_, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
@@ -654,12 +725,29 @@ func (h *Handler) SelectAvatar(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	selected, err := h.svc.SelectAvatar(c.Request.Context(), userID, strings.TrimSpace(req.FileName))
+	selected, err := h.svc.SelectAvatarForPrincipal(c.Request.Context(), strings.TrimSpace(req.FileName), h.fileReadPrincipal(c))
 	if err != nil {
 		writeSpaceError(c, err)
 		return
 	}
 	response.Success(c, selected)
+}
+
+func (h *Handler) CleanupAvatarHistory(c *gin.Context) {
+	if _, ok := currentUserID(c); !ok {
+		response.Error(c, 401, 20001, "unauthorized")
+		return
+	}
+	if body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1)); err != nil || len(body) > 0 {
+		response.Error(c, 400, 10001, "头像清理不接受请求正文。")
+		return
+	}
+	ack, err := h.svc.CleanupAvatarHistoryForPrincipal(c.Request.Context(), h.fileReadPrincipal(c))
+	if err != nil {
+		writeSpaceError(c, err)
+		return
+	}
+	response.Success(c, ack)
 }
 
 func (h *Handler) ServeAvatarFile(c *gin.Context) {
@@ -788,23 +876,62 @@ type uploadedStylePackFile interface {
 }
 
 func openUploadedStylePack(c *gin.Context) (uploadedStylePackFile, int64, bool) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, stylepack.MaxPackageBytes+64*1024)
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
+		if form := c.Request.MultipartForm; form != nil {
+			form.RemoveAll()
+		}
+		var limit *http.MaxBytesError
+		if errors.As(err, &limit) {
+			response.Error(c, 413, 10001, "风格包超过允许的大小。")
+			return nil, 0, false
+		}
 		response.Error(c, http.StatusBadRequest, 10001, "style pack zip file is required")
+		return nil, 0, false
+	}
+	form := c.Request.MultipartForm
+	cleanup := func() error {
+		if form != nil {
+			return form.RemoveAll()
+		}
+		return nil
+	}
+	if form != nil {
+		if len(form.Value) != 0 || len(form.File) != 1 || len(form.File["file"]) != 1 {
+			_ = cleanup()
+			response.Error(c, 400, 10001, "风格包请求只能包含一个文件。")
+			return nil, 0, false
+		}
+	}
+	if fileHeader.Size > stylepack.MaxPackageBytes {
+		_ = cleanup()
+		response.Error(c, 413, 10001, "风格包超过允许的大小。")
 		return nil, 0, false
 	}
 	file, err := fileHeader.Open()
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, 10001, err.Error())
+		_ = cleanup()
+		response.Error(c, http.StatusBadRequest, 10001, "无法读取风格包文件。")
 		return nil, 0, false
 	}
 	reader, ok := file.(uploadedStylePackFile)
 	if !ok {
 		_ = file.Close()
+		_ = cleanup()
 		response.Error(c, http.StatusBadRequest, 10001, "style pack file must be seekable")
 		return nil, 0, false
 	}
-	return reader, fileHeader.Size, true
+	return &stylePackUploadReader{uploadedStylePackFile: reader, cleanup: cleanup}, fileHeader.Size, true
+}
+
+type stylePackUploadReader struct {
+	uploadedStylePackFile
+	cleanup func() error
+}
+
+func (r *stylePackUploadReader) Close() error {
+	return errors.Join(r.uploadedStylePackFile.Close(), r.cleanup())
 }
 
 func currentUserID(c *gin.Context) (string, bool) {
@@ -835,6 +962,16 @@ func paginationMeta(page, pageSize int, total int64) *response.Pagination {
 
 func writeSpaceError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrSpaceFactsUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 75001, "个人空间校验暂不可用，请稍后重试。")
+	case errors.Is(err, ErrSpaceOwnerDenied):
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+	case errors.Is(err, ErrSpaceOwnerInvalid):
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 	case errors.Is(err, ErrInvalidVisibility):
 		response.Error(c, http.StatusBadRequest, 10001, err.Error())
 	case errors.Is(err, ErrInvalidStyleExport):

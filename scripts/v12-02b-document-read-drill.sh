@@ -59,7 +59,8 @@ pg_port="$(docker port "$container" 5432/tcp | awk -F: '/127\.0\.0\.1/ {print $N
 database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/$database?sslmode=disable"
 run_check migrations-up bash scripts/migrate.sh up
 run_check migrations-check bash scripts/migrate.sh check
-[[ "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" == 16 ]] || { echo "expected 16 migrations" >&2; exit 1; }
+expected_migrations="$(python3 -c 'from pathlib import Path; print(len(list(Path("migrations").glob("*.up.sql"))))')"
+[[ "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" == "$expected_migrations" ]] || { echo "expected all current migrations" >&2; exit 1; }
 run_check document-tests env CAMPUSOS_DOCUMENT_TEST_DATABASE_URL="$database_url" \
   go test -race -count=1 -v -run '^TestDocumentAuthenticated' ./internal/modules/features/personaldocuments
 run_check composition go test -race -count=1 ./internal/modules/features/personaldocuments ./internal/server ./internal/modules/core/identity/port

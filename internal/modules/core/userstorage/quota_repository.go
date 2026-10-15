@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -83,15 +84,12 @@ func (r *PgQuotaRepository) List(ctx context.Context) ([]QuotaRecord, error) {
 }
 
 func (r *PgQuotaRepository) Upsert(ctx context.Context, item QuotaRecord) (QuotaRecord, error) {
-	err := r.pool.QueryRow(ctx, `INSERT INTO user_storage_quotas
-		(user_id, quota_bytes, updated_by, created_at, updated_at)
-		VALUES ($1, $2, NULLIF($3, '')::bigint, NOW(), NOW())
-		ON CONFLICT (user_id) DO UPDATE SET
-			quota_bytes = EXCLUDED.quota_bytes,
-			updated_by = EXCLUDED.updated_by,
-			updated_at = NOW()
-		RETURNING user_id::text, quota_bytes, COALESCE(updated_by::text, ''), created_at, updated_at`,
-		item.UserID, item.QuotaBytes, item.UpdatedBy,
-	).Scan(&item.UserID, &item.QuotaBytes, &item.UpdatedBy, &item.CreatedAt, &item.UpdatedAt)
+	err := transaction.NewPostgreSQL(r.pool).Within(ctx, func(tx context.Context) error {
+		db := transaction.ExecutorFor(tx, r.pool)
+		if _, err := db.Exec(tx, objectQuotaAdmissionSQL, item.UserID); err != nil {
+			return err
+		}
+		return db.QueryRow(tx, "INSERT INTO user_storage_quotas(user_id,quota_bytes,updated_by,created_at,updated_at) VALUES($1,$2,NULLIF($3,'')::bigint,NOW(),NOW()) ON CONFLICT(user_id) DO UPDATE SET quota_bytes=EXCLUDED.quota_bytes,updated_by=EXCLUDED.updated_by,updated_at=NOW() RETURNING user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at", item.UserID, item.QuotaBytes, item.UpdatedBy).Scan(&item.UserID, &item.QuotaBytes, &item.UpdatedBy, &item.CreatedAt, &item.UpdatedAt)
+	})
 	return item, err
 }

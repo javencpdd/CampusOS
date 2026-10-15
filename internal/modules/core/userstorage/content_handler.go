@@ -7,6 +7,7 @@ import (
 	"fmt"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/pkg/apperror"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"net/http"
 
@@ -58,13 +59,21 @@ func (h *Handler) UploadContentImage(c *gin.Context) {
 		response.ErrorWithDetails(c, http.StatusBadRequest, 10001, "请选择要插入正文的图片文件。", contentImageUploadDetails(h.images.MaxBytes(), 0))
 		return
 	}
+	if form := c.Request.MultipartForm; form != nil {
+		defer form.RemoveAll()
+		if len(form.Value) != 0 || len(form.File) != 1 || len(form.File["file"]) != 1 {
+			response.Error(c, http.StatusBadRequest, 10001, "图片请求只能包含一个文件，请重新选择后重试。")
+			return
+		}
+	}
 	file, err := fileHeader.Open()
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "无法读取所选图片文件，请重新选择后再试。")
 		return
 	}
 	defer file.Close()
-	asset, err := h.images.Save(userIDValue, fileHeader.Filename, file)
+	_ = userIDValue
+	asset, err := h.images.SaveForPrincipal(c.Request.Context(), file, h.readPrincipal(c))
 	if err != nil {
 		writeContentImageError(c, err, h.images.MaxBytes(), fileHeader.Size)
 		return
@@ -119,6 +128,16 @@ func writeImageReadError(c *gin.Context, err error) {
 
 func writeContentImageError(c *gin.Context, err error, maxBytes, providedBytes int64) {
 	switch {
+	case errors.Is(err, ErrInlineImageCleanupPending):
+		response.Error(c, http.StatusServiceUnavailable, 74001, "图片清理尚未完成，请稍后重试。")
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrInlineImageDenied):
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+	case errors.Is(err, ErrObjectUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 74001, "图片上传校验暂不可用，请稍后重试。")
 	case errors.Is(err, ErrImageNotFound):
 		response.Error(c, http.StatusNotFound, 74004, "正文图片不存在或已被删除。")
 	case errors.Is(err, ErrImageTooLarge):
@@ -134,7 +153,7 @@ func writeContentImageError(c *gin.Context, err error, maxBytes, providedBytes i
 			contentImageDimensionMessage(err), contentImageDimensionDetails(err, maxBytes, providedBytes))
 	case errors.Is(err, ErrUnsafePath):
 		response.Error(c, http.StatusBadRequest, 74002, "图片文件名或请求路径不合法，请重新选择文件后再试。")
-	case errors.Is(err, ErrQuotaExceeded):
+	case errors.Is(err, ErrQuotaExceeded), errors.Is(err, ErrObjectQuota):
 		response.ErrorWithDetails(c, http.StatusConflict, 74003,
 			"个人空间剩余容量不足，无法保存正文图片。请删除不需要的文件，或联系管理员提高空间配额后重试。",
 			contentImageUploadDetails(maxBytes, providedBytes))

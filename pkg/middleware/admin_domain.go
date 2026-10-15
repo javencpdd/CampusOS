@@ -44,7 +44,7 @@ func RequireAdminDomainAccess(jwt *auth.JWTManager, sessions AdminDomainSessionV
 			return
 		}
 		claims, err := jwt.VerifyAccessToken(token)
-		if err != nil || claims.SessionID == "" {
+		if err != nil || claims.SessionID == "" || claims.UserID == "" || claims.AuthVersion != 1 {
 			response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 			c.Abort()
 			return
@@ -55,7 +55,7 @@ func RequireAdminDomainAccess(jwt *auth.JWTManager, sessions AdminDomainSessionV
 			return
 		}
 		facts, err := sessions.VerifyAdminSession(c.Request.Context(), claims.SessionID)
-		if err != nil {
+		if err != nil || facts.AccountID != claims.UserID || (facts.Strength != "password" && facts.Strength != "mfa") {
 			response.ErrorDescriptor(c, apperror.AuthRequired, nil)
 			c.Abort()
 			return
@@ -68,6 +68,7 @@ func RequireAdminDomainAccess(jwt *auth.JWTManager, sessions AdminDomainSessionV
 		c.Set("user_id", facts.AccountID)
 		c.Set("admin_account_id", facts.AccountID)
 		c.Set("session_id", claims.SessionID)
+		c.Set("auth_version", claims.AuthVersion)
 		c.Set("authentication_strength", facts.Strength)
 		c.Next()
 	}

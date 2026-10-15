@@ -1,12 +1,15 @@
 package moderation
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identitydelegation "github.com/campusos/CampusOS/internal/modules/core/identity/delegation"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -15,6 +18,7 @@ import (
 type Handler struct {
 	service        *Service
 	strengthReader identityport.SessionStrengthReader
+	userVerifier   identityport.SessionVerifier
 }
 
 func NewHandler(service *Service) *Handler {
@@ -37,12 +41,41 @@ func (h *Handler) MyAccess(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	access, err := h.service.AccessForThread(c.Request.Context(), userID, c.Query("thread_id"))
+	preview, err := h.service.PreviewForPrincipal(c.Request.Context(), c.Query("thread_id"), nil, h.currentPreviewPrincipal(c, userID))
 	if err != nil {
 		writeError(c, err)
 		return
 	}
-	response.Success(c, access)
+	response.Success(c, gin.H{"can_moderate": preview.Pin || preview.Lock, "actions": gin.H{"pin": preview.Pin, "lock": preview.Lock, "delete_post": false}, "thread_id": preview.ThreadID})
+}
+
+func (h *Handler) currentPreviewPrincipal(c *gin.Context, user string) identityport.SessionPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: user, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.userVerifier, h.strengthReader, claims)
+	}
+}
+
+func (h *Handler) PreviewBatch(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
+		return
+	}
+	var request struct {
+		PostIDs []string `json:"post_ids"`
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16*1024)
+	if err := requestutil.BindJSONStrict(c, &request); err != nil {
+		response.Error(c, http.StatusBadRequest, 10001, "权限预览请求参数无效。")
+		return
+	}
+	preview, err := h.service.PreviewForPrincipal(c.Request.Context(), c.Param("id"), request.PostIDs, h.currentPreviewPrincipal(c, userID))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	response.Success(c, preview)
 }
 
 func (h *Handler) ListModerators(c *gin.Context) {
@@ -95,17 +128,11 @@ func (h *Handler) Unpin(c *gin.Context) {
 }
 
 func (h *Handler) setPinned(c *gin.Context, pinned bool) {
-	actorID, ok := currentUserID(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
+	operation := "unpin"
+	if pinned {
+		operation = "pin"
 	}
-	thread, err := h.service.SetPinned(c.Request.Context(), actorID, c.Param("id"), pinned, h.operationContext(c))
-	if err != nil {
-		writeError(c, err)
-		return
-	}
-	response.Success(c, thread)
+	h.setCurrentThreadFlag(c, operation)
 }
 
 func (h *Handler) Lock(c *gin.Context) {
@@ -117,12 +144,29 @@ func (h *Handler) Unlock(c *gin.Context) {
 }
 
 func (h *Handler) setLocked(c *gin.Context, locked bool) {
+	operation := "unlock"
+	if locked {
+		operation = "lock"
+	}
+	h.setCurrentThreadFlag(c, operation)
+}
+
+func (h *Handler) setCurrentThreadFlag(c *gin.Context, operation string) {
 	actorID, ok := currentUserID(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	thread, err := h.service.SetLocked(c.Request.Context(), actorID, c.Param("id"), locked, h.operationContext(c))
+	if c.Request.Body != nil {
+		body, err := io.ReadAll(io.LimitReader(c.Request.Body, 1))
+		if err != nil || len(body) != 0 {
+			response.Error(c, http.StatusBadRequest, 10001, "此操作不接受请求正文。")
+			return
+		}
+	}
+	thread, err := h.service.SetThreadFlagForPrincipal(c.Request.Context(), c.Param("id"), operation, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.userVerifier, h.strengthReader, &auth.JWTClaims{UserID: actorID, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType})
+	}, h.operationContext(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -136,7 +180,9 @@ func (h *Handler) DeletePost(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	if err := h.service.DeletePost(c.Request.Context(), actorID, c.Param("id"), c.Param("post_id"), h.operationContext(c)); err != nil {
+	if err := h.service.DeletePostForPrincipal(c.Request.Context(), c.Param("id"), c.Param("post_id"), func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.userVerifier, h.strengthReader, &auth.JWTClaims{UserID: actorID, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType})
+	}, h.operationContext(c)); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -170,10 +216,26 @@ func (h *Handler) operationContext(c *gin.Context) OperationContext {
 func writeError(c *gin.Context, err error) {
 	var delegationDenied *identitydelegation.DelegationDeniedError
 	switch {
+	case errors.Is(err, communityport.ErrModerationPreviewInvalid):
+		response.Error(c, http.StatusBadRequest, 10001, "权限预览只接受当前主题下最多50条不同的回复。")
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.Error(c, 401, 20002, "请重新登录后执行治理操作。")
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.Error(c, 409, 10004, "内容或执行授权已变化，请重新加载。")
+	case errors.Is(err, communityport.ErrPostGovernanceDenied):
+		response.Error(c, 403, 20004, "当前账号没有该版块的有效回复删除执行授权。")
+	case errors.Is(err, communityport.ErrPostGovernanceUnavailable), errors.Is(err, ErrPostGovernanceUnavailable):
+		response.Error(c, 503, 71000, "暂时无法检查回复治理权限。")
+	case errors.Is(err, communityport.ErrGovernanceCommandDenied):
+		response.Error(c, 403, 20004, "当前账号没有该版块的有效执行授权。")
+	case errors.Is(err, communityport.ErrGovernanceCommandConflict):
+		response.Error(c, 409, 10004, "内容状态已变化，请重新加载。")
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusServiceUnavailable, 71001, "版主插件当前未运行；系统级插件启停需要重启 API 后生效")
 	case errors.Is(err, ErrActionDisabled):
 		response.Error(c, http.StatusForbidden, 71002, "该版主操作已被管理员关闭")
+	case errors.Is(err, communityport.ErrGovernanceCommandUnavailable), errors.Is(err, identityport.ErrGovernanceAuthorityUnavailable):
+		response.Error(c, 503, 71000, "暂时无法检查版主执行权限。")
 	case errors.Is(err, ErrForbidden):
 		response.Error(c, http.StatusForbidden, 20004, "你不是该板块的版主，不能执行此操作")
 	case errors.Is(err, ErrInvalidScope), errors.Is(err, identityport.ErrInvalidScope):
@@ -191,4 +253,8 @@ func writeError(c *gin.Context, err error) {
 	default:
 		response.Error(c, http.StatusInternalServerError, 71000, "版主管理操作失败")
 	}
+}
+
+func (h *Handler) SetUserSessionVerifier(verifier identityport.SessionVerifier) {
+	h.userVerifier = verifier
 }

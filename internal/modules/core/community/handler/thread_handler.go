@@ -20,9 +20,10 @@ import (
 
 // ThreadHandler 帖子 HTTP 处理器
 type ThreadHandler struct {
-	svc                  *service.ThreadService
-	ownerSessionVerifier identityport.SessionVerifier
-	ownerStrengthReader  identityport.SessionStrengthReader
+	svc                   *service.ThreadService
+	ownerSessionVerifier  identityport.SessionVerifier
+	ownerStrengthReader   identityport.SessionStrengthReader
+	adminSessionAuthority identityport.AdminSessionAuthorityReader
 }
 
 // NewThreadHandler 创建帖子处理器
@@ -35,6 +36,10 @@ func NewThreadHandler(svc *service.ThreadService) *ThreadHandler {
 func (h *ThreadHandler) SetOwnerSessionProof(verifier identityport.SessionVerifier, reader identityport.SessionStrengthReader) {
 	h.ownerSessionVerifier = verifier
 	h.ownerStrengthReader = reader
+}
+
+func (h *ThreadHandler) SetAdminSessionAuthority(reader identityport.AdminSessionAuthorityReader) {
+	h.adminSessionAuthority = reader
 }
 
 type contentPreviewRequest struct {
@@ -270,49 +275,44 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 // PinThread 置顶帖子
 // POST /api/v1/threads/:id/pin
 func (h *ThreadHandler) PinThread(c *gin.Context) {
-	id := c.Param("id")
-	thread, err := h.svc.PinThread(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
-		return
-	}
-	response.Success(c, thread)
+	h.adminFlag(c, "pin")
 }
 
 // UnpinThread 取消置顶
 // POST /api/v1/threads/:id/unpin
 func (h *ThreadHandler) UnpinThread(c *gin.Context) {
-	id := c.Param("id")
-	thread, err := h.svc.UnpinThread(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
-		return
-	}
-	response.Success(c, thread)
+	h.adminFlag(c, "unpin")
 }
 
 // LockThread 锁定帖子
 // POST /api/v1/threads/:id/lock
 func (h *ThreadHandler) LockThread(c *gin.Context) {
-	id := c.Param("id")
-	thread, err := h.svc.LockThread(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
-		return
-	}
-	response.Success(c, thread)
+	h.adminFlag(c, "lock")
 }
 
 // UnlockThread 解锁帖子
 // POST /api/v1/threads/:id/unlock
 func (h *ThreadHandler) UnlockThread(c *gin.Context) {
-	id := c.Param("id")
-	thread, err := h.svc.UnlockThread(c.Request.Context(), id)
+	h.adminFlag(c, "unlock")
+}
+
+func (h *ThreadHandler) resolveAdminPrincipal(ctx context.Context, c *gin.Context) (identityport.PrincipalContext, error) {
+	id := c.GetString("admin_account_id")
+	if id == "" || c.GetString("user_id") != id {
+		return identityport.PrincipalContext{}, identityport.ErrAdminSessionPrincipalUnavailable
+	}
+	return identityport.ResolveAdminSessionPrincipal(ctx, h.adminSessionAuthority, &auth.JWTClaims{UserID: id, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType})
+}
+
+func (h *ThreadHandler) adminFlag(c *gin.Context, operation string) {
+	result, err := h.svc.AdminSetThreadFlag(c.Request.Context(), c.Param("id"), operation, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	})
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
+		writeThreadGovernanceError(c, err)
 		return
 	}
-	response.Success(c, thread)
+	response.Success(c, result)
 }
 
 // DeleteThread 删除帖子
@@ -338,16 +338,7 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 // AdminDeleteThread 管理员删除任意帖子。
 // DELETE /api/v1/admin/threads/:id
 func (h *ThreadHandler) AdminDeleteThread(c *gin.Context) {
-	actorID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
-	}
-	if err := h.svc.AdminDeleteThread(c.Request.Context(), c.Param("id"), actorID); err != nil {
-		writeThreadError(c, err)
-		return
-	}
-	response.NoContent(c)
+	h.adminLifecycle(c, "trash")
 }
 
 // SubmitForReview lets an author resubmit content that was rejected or taken
@@ -385,47 +376,112 @@ func (h *ThreadHandler) RestoreOwnTrash(c *gin.Context) {
 }
 
 func (h *ThreadHandler) AdminTakeDown(c *gin.Context) {
-	h.adminTransition(c, func(actorID, reason string) (*domain.Thread, error) {
-		return h.svc.TakeDown(c.Request.Context(), c.Param("id"), actorID, reason)
-	})
+	h.takeDown(c, true)
 }
 
-func (h *ThreadHandler) AdminApprove(c *gin.Context) {
-	h.adminTransition(c, func(actorID, reason string) (*domain.Thread, error) {
-		return h.svc.Approve(c.Request.Context(), c.Param("id"), actorID, reason)
-	})
-}
+func (h *ThreadHandler) TakeDown(c *gin.Context) { h.takeDown(c, false) }
 
-func (h *ThreadHandler) AdminReject(c *gin.Context) {
-	h.adminTransition(c, func(actorID, reason string) (*domain.Thread, error) {
-		return h.svc.Reject(c.Request.Context(), c.Param("id"), actorID, reason)
-	})
-}
-
-func (h *ThreadHandler) AdminDirectRestore(c *gin.Context) {
-	h.adminTransition(c, func(actorID, reason string) (*domain.Thread, error) {
-		return h.svc.DirectRestore(c.Request.Context(), c.Param("id"), actorID, reason)
-	})
-}
-
-func (h *ThreadHandler) AdminRestoreTrash(c *gin.Context) {
-	h.adminTransition(c, func(actorID, reason string) (*domain.Thread, error) {
-		return h.svc.AdminRestoreFromTrash(c.Request.Context(), c.Param("id"), actorID, reason)
-	})
-}
-
-func (h *ThreadHandler) AdminPurge(c *gin.Context) {
-	actorID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
-	}
+func (h *ThreadHandler) takeDown(c *gin.Context, admin bool) {
 	reason, ok := requiredReason(c)
 	if !ok {
 		return
 	}
-	if err := h.svc.PurgeThread(c.Request.Context(), c.Param("id"), actorID, reason); err != nil {
+	resolve := func(ctx context.Context) (identityport.PrincipalContext, error) {
+		if !admin {
+			return h.resolveOwnerPrincipal(ctx, c)
+		}
+		id := c.GetString("admin_account_id")
+		if id == "" || c.GetString("user_id") != id {
+			return identityport.PrincipalContext{}, identityport.ErrAdminSessionPrincipalUnavailable
+		}
+		return identityport.ResolveAdminSessionPrincipal(ctx, h.adminSessionAuthority, &auth.JWTClaims{UserID: id, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType})
+	}
+	result, err := h.svc.TakeDownForPrincipal(c.Request.Context(), c.Param("id"), reason, resolve)
+	if err != nil {
+		writeThreadGovernanceError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func writeThreadGovernanceError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, identityport.ErrAdminSessionPrincipalUnavailable), errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable), errors.Is(err, service.ErrThreadOwnerPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, service.ErrThreadGovernanceDenied):
+		response.Error(c, 403, 20004, "无权执行该内容操作；管理员请先完成当前 MFA 验证。")
+	case errors.Is(err, repository.ErrModerationCaseChanged):
+		response.Error(c, 409, 10004, "审核记录已变化，请重新加载。")
+	case errors.Is(err, service.ErrThreadGovernanceUnavailable), errors.Is(err, identityport.ErrGovernanceAuthorityUnavailable):
+		response.Error(c, 503, 10006, "暂时无法检查内容治理权限。")
+	default:
 		writeThreadError(c, err)
+	}
+}
+
+func (h *ThreadHandler) AdminApprove(c *gin.Context) {
+	h.adminReview(c, "approve")
+}
+
+func (h *ThreadHandler) AdminReject(c *gin.Context) {
+	h.adminReview(c, "reject")
+}
+
+func (h *ThreadHandler) adminReview(c *gin.Context, operation string) {
+	reason, ok := requiredReason(c)
+	if !ok {
+		return
+	}
+	result, err := h.svc.AdminReviewThread(c.Request.Context(), c.Param("id"), operation, reason, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	})
+	if err != nil {
+		writeThreadGovernanceError(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *ThreadHandler) AdminDirectRestore(c *gin.Context) {
+	h.adminLifecycle(c, "direct_restore")
+}
+
+func (h *ThreadHandler) AdminRestoreTrash(c *gin.Context) {
+	h.adminLifecycle(c, "restore")
+}
+
+func (h *ThreadHandler) adminLifecycle(c *gin.Context, operation string) {
+	reason := ""
+	if operation != "trash" {
+		var ok bool
+		reason, ok = requiredReason(c)
+		if !ok {
+			return
+		}
+	}
+	result, err := h.svc.AdminLifecycleThread(c.Request.Context(), c.Param("id"), operation, reason, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	})
+	if err != nil {
+		writeThreadGovernanceError(c, err)
+		return
+	}
+	if operation == "trash" {
+		response.NoContent(c)
+		return
+	}
+	response.Success(c, result)
+}
+
+func (h *ThreadHandler) AdminPurge(c *gin.Context) {
+	reason, ok := requiredReason(c)
+	if !ok {
+		return
+	}
+	if _, err := h.svc.AdminPurgeThread(c.Request.Context(), c.Param("id"), "purge", reason, func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	}); err != nil {
+		writeThreadGovernanceError(c, err)
 		return
 	}
 	response.NoContent(c)
@@ -442,24 +498,6 @@ func (h *ThreadHandler) AdminModerationActions(c *gin.Context) {
 
 type moderationReasonRequest struct {
 	Reason string `json:"reason"`
-}
-
-func (h *ThreadHandler) adminTransition(c *gin.Context, transition func(string, string) (*domain.Thread, error)) {
-	actorID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
-	}
-	reason, ok := requiredReason(c)
-	if !ok {
-		return
-	}
-	thread, err := transition(actorID, reason)
-	if err != nil {
-		writeThreadError(c, err)
-		return
-	}
-	response.Success(c, thread)
 }
 
 func requiredReason(c *gin.Context) (string, bool) {

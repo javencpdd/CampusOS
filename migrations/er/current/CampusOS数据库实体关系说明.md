@@ -1,6 +1,6 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=94f6237ee21ff566962b43a107c08bdf923509b0d3dbd2d0227287ff1f39b5ad;tables=100;foreign_keys=116 -->
+<!-- campusos-er:schema_sha256=369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68;tables=100;foreign_keys=116 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
@@ -11,7 +11,7 @@
 - 一对一/可选一对一关系：**14**
 - 一对多关系：**102**
 - 推断的逻辑多对多关系：**6**
-- Schema 指纹：`94f6237ee21ff566962b43a107c08bdf923509b0d3dbd2d0227287ff1f39b5ad`
+- Schema 指纹：`369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68`
 
 ## 1. 生成范围与判定规则
 
@@ -33,6 +33,13 @@
 - `000014_v1_2_admin_permission_codes.up.sql`
 - `000015_v1_2_admin_recovery_index.up.sql`
 - `000016_v1_2_thread_facts_version.up.sql`
+- `000017_v1_2_admin_permission_facts_version.up.sql`
+- `000018_v1_2_business_actor_domains.up.sql`
+- `000019_v1_2_post_authority_facts.up.sql`
+- `000020_v1_2_article_authority_facts.up.sql`
+- `000021_v1_2_user_scoped_execution_facts.up.sql`
+- `000022_v1_2_richtext_asset_binding_facts.up.sql`
+- `000023_v1_2_personal_space_facts.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -59,23 +66,23 @@
 | 身份与访问控制 | `identity_mfa_tickets` | 11 | `id` | 1 | 0 |
 | 身份与访问控制 | `identity_mfa_totp_methods` | 12 | `id` | 1 | 1 |
 | 身份与访问控制 | `identity_reserved_identifiers` | 4 | `identifier_type, identifier_normalized` | 0 | 0 |
-| 身份与访问控制 | `permission_definitions` | 12 | `id` | 0 | 2 |
-| 身份与访问控制 | `role_permissions` | 6 | `id` | 2 | 0 |
-| 身份与访问控制 | `roles` | 7 | `id` | 0 | 2 |
+| 身份与访问控制 | `permission_definitions` | 13 | `id` | 0 | 2 |
+| 身份与访问控制 | `role_permissions` | 7 | `id` | 2 | 0 |
+| 身份与访问控制 | `roles` | 8 | `id` | 0 | 2 |
 | 身份与访问控制 | `sessions` | 20 | `id` | 1 | 0 |
-| 身份与访问控制 | `user_roles` | 7 | `id` | 2 | 0 |
+| 身份与访问控制 | `user_roles` | 8 | `id` | 2 | 0 |
 | 身份与访问控制 | `users` | 12 | `id` | 0 | 49 |
 | 社区与内容 | `categories` | 18 | `id` | 1 | 4 |
 | 社区与内容 | `category_thread_type_policies` | 5 | `category_id, thread_type` | 1 | 0 |
 | 社区与内容 | `likes` | 7 | `id` | 1 | 0 |
 | 社区与内容 | `mutual_aid_details` | 10 | `thread_id` | 2 | 0 |
 | 社区与内容 | `notifications` | 12 | `id` | 1 | 0 |
-| 社区与内容 | `posts` | 15 | `id` | 3 | 1 |
+| 社区与内容 | `posts` | 18 | `id` | 3 | 1 |
 | 社区与内容 | `richtext_article_assets` | 12 | `id` | 4 | 0 |
-| 社区与内容 | `richtext_article_attachments` | 7 | `id` | 2 | 1 |
-| 社区与内容 | `richtext_article_contents` | 15 | `id` | 3 | 3 |
+| 社区与内容 | `richtext_article_attachments` | 8 | `id` | 2 | 1 |
+| 社区与内容 | `richtext_article_contents` | 18 | `id` | 3 | 3 |
 | 社区与内容 | `secondhand_details` | 11 | `thread_id` | 2 | 0 |
-| 社区与内容 | `threads` | 30 | `id` | 2 | 6 |
+| 社区与内容 | `threads` | 32 | `id` | 2 | 6 |
 | 学期与日程 | `academic_terms` | 12 | `id` | 2 | 2 |
 | 学期与日程 | `user_schedule_preferences` | 3 | `user_id` | 2 | 0 |
 | 学期与日程 | `user_schedule_terms` | 7 | `user_id, academic_term_id` | 3 | 0 |
@@ -83,11 +90,11 @@
 | 个人空间与文档 | `personal_document_versions` | 10 | `id` | 4 | 3 |
 | 个人空间与文档 | `personal_documents` | 10 | `id` | 2 | 2 |
 | 个人空间与文档 | `user_space_contents` | 13 | `id` | 3 | 0 |
-| 个人空间与文档 | `user_space_style_snapshots` | 9 | `id` | 0 | 0 |
-| 个人空间与文档 | `user_spaces` | 23 | `id` | 1 | 0 |
+| 个人空间与文档 | `user_space_style_snapshots` | 10 | `id` | 0 | 0 |
+| 个人空间与文档 | `user_spaces` | 26 | `id` | 1 | 0 |
 | 统一存储 | `storage_objects` | 15 | `id` | 1 | 5 |
 | 统一存储 | `user_storage_accounts` | 6 | `user_id` | 1 | 0 |
-| 统一存储 | `user_storage_quotas` | 5 | `user_id` | 2 | 0 |
+| 统一存储 | `user_storage_quotas` | 7 | `user_id` | 2 | 0 |
 | 统一存储 | `user_storage_reservations` | 8 | `id` | 2 | 0 |
 | 插件生态与授权 | `plugin_admin_grants` | 12 | `id` | 2 | 1 |
 | 插件生态与授权 | `plugin_authorization_decisions` | 16 | `id` | 5 | 0 |
@@ -126,13 +133,13 @@
 | 其他平台数据 | `admin_mfa_totp` | 12 | `account_id` | 1 | 0 |
 | 其他平台数据 | `admin_recovery_tickets` | 10 | `id` | 1 | 0 |
 | 其他平台数据 | `admin_role_bindings` | 8 | `id` | 2 | 0 |
-| 其他平台数据 | `admin_role_permissions` | 4 | `role_id, permission_code` | 1 | 0 |
+| 其他平台数据 | `admin_role_permissions` | 5 | `role_id, permission_code` | 1 | 0 |
 | 其他平台数据 | `admin_roles` | 5 | `id` | 0 | 2 |
 | 其他平台数据 | `admin_sessions` | 18 | `id` | 1 | 0 |
-| 其他平台数据 | `asset_lifecycle_audits` | 7 | `id` | 2 | 0 |
-| 其他平台数据 | `content_moderation_actions` | 9 | `id` | 0 | 0 |
-| 其他平台数据 | `content_moderation_cases` | 8 | `id` | 0 | 0 |
-| 其他平台数据 | `content_revisions` | 11 | `id` | 0 | 0 |
+| 其他平台数据 | `asset_lifecycle_audits` | 9 | `id` | 2 | 0 |
+| 其他平台数据 | `content_moderation_actions` | 11 | `id` | 0 | 0 |
+| 其他平台数据 | `content_moderation_cases` | 12 | `id` | 0 | 0 |
+| 其他平台数据 | `content_revisions` | 13 | `id` | 0 | 0 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
 | 其他平台数据 | `platform_compatibility_usage` | 6 | `usage_key` | 0 | 0 |
 | 其他平台数据 | `platform_operation_runs` | 11 | `id` | 0 | 0 |
@@ -143,7 +150,7 @@
 | 其他平台数据 | `route_operations` | 8 | `id` | 0 | 1 |
 | 其他平台数据 | `route_permission_bindings` | 5 | `id` | 2 | 0 |
 | 其他平台数据 | `tags` | 9 | `id` | 0 | 0 |
-| 其他平台数据 | `user_assets` | 13 | `id` | 2 | 4 |
+| 其他平台数据 | `user_assets` | 14 | `id` | 2 | 4 |
 
 ## 3. 一对一与可选一对一
 
@@ -651,6 +658,7 @@
 | `deprecated_at` | `timestamptz` | — | 是 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 #### `role_permissions`
 
@@ -666,6 +674,7 @@
 | `created_by` | `varchar(64)` | NN | 否 | `''::character varying` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -687,6 +696,7 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 #### `sessions`
 
@@ -736,6 +746,7 @@
 | `scope_id` | `bigint` | — | 是 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -906,6 +917,9 @@
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
 | `parent_floor_number` | `integer` | NN | 否 | `0` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
+| `deleted_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `deleted_actor_id` | `varchar(128)` | NN | 否 | `''` |
 
 外键明细：
 
@@ -956,6 +970,7 @@
 | `display_order` | `integer` | NN | 否 | `0` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -985,6 +1000,9 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+| `updated_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `updated_actor_id` | `varchar(128)` | NN | 否 | `''` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -1055,6 +1073,8 @@
 | `current_revision` | `integer` | NN | 否 | `0` |
 | `thread_type` | `varchar(32)` | NN | 否 | `'discussion'::character varying` |
 | `facts_version` | `bigint` | NN | 否 | `—` |
+| `moderation_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `moderation_actor_id` | `varchar(128)` | NN | 否 | `''` |
 
 外键明细：
 
@@ -1247,6 +1267,7 @@
 | `layout` | `varchar(64)` | NN | 否 | `'blog'::character varying` |
 | `style_manifest` | `jsonb` | NN | 否 | `'{}'::jsonb` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 #### `user_spaces`
 
@@ -1279,6 +1300,9 @@
 | `disabled_reason` | `text` | NN | 否 | `''::text` |
 | `last_sync_at` | `timestamptz` | — | 是 | `—` |
 | `last_sync_error` | `text` | NN | 否 | `''::text` |
+| `disabled_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `disabled_actor_id` | `varchar(128)` | NN | 否 | `''` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -1346,6 +1370,8 @@
 | `updated_by` | `bigint` | FK | 是 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+| `updated_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `updated_actor_id` | `varchar(128)` | NN | 否 | `''` |
 
 外键明细：
 
@@ -2228,6 +2254,7 @@
 | `permission_code` | `VARCHAR(160)` | PK/NN | 否 | `—` |
 | `created_by` | `VARCHAR(128)` | NN | 否 | `'migration-000013'` |
 | `created_at` | `TIMESTAMPTZ` | NN | 否 | `NOW()` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 
@@ -2293,6 +2320,8 @@
 | `action` | `varchar(48)` | NN | 否 | `—` |
 | `reason` | `varchar(500)` | — | 是 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `actor_ref_id` | `varchar(128)` | NN | 否 | `''` |
 
 外键明细：
 
@@ -2316,6 +2345,8 @@
 | `before_state` | `varchar(96)` | NN | 否 | `''::character varying` |
 | `after_state` | `varchar(96)` | NN | 否 | `''::character varying` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `actor_ref_id` | `varchar(128)` | NN | 否 | `''` |
 
 #### `content_moderation_cases`
 
@@ -2333,6 +2364,10 @@
 | `resolved_by` | `bigint` | — | 是 | `—` |
 | `opened_at` | `timestamptz` | NN | 否 | `now()` |
 | `resolved_at` | `timestamptz` | — | 是 | `—` |
+| `opened_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `opened_actor_id` | `varchar(128)` | NN | 否 | `''` |
+| `resolved_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `resolved_actor_id` | `varchar(128)` | NN | 否 | `''` |
 
 #### `content_revisions`
 
@@ -2353,6 +2388,8 @@
 | `reason` | `text` | NN | 否 | `''::text` |
 | `created_by` | `bigint` | — | 是 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `created_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
+| `created_actor_id` | `varchar(128)` | NN | 否 | `''` |
 
 #### `platform_command_audits`
 
@@ -2570,6 +2607,7 @@
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `trashed_at` | `timestamptz` | — | 是 | `—` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 

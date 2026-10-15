@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strconv"
 	"time"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/policy"
@@ -17,10 +17,10 @@ import (
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
-var ErrThreadAuthorWriteDenied = errors.New("thread author write denied")
-var ErrThreadAuthorWriteInvalid = errors.New("invalid author update request")
+var ErrThreadAuthorWriteDenied = communityport.ErrAuthorCommandDenied
+var ErrThreadAuthorWriteInvalid = communityport.ErrAuthorCommandInvalid
 
-var ErrThreadAuthorWriteUnavailable = errors.New("checked thread author write unavailable")
+var ErrThreadAuthorWriteUnavailable = communityport.ErrAuthorCommandUnavailable
 
 type authorWriteFactsKey struct{}
 type authorWriteFacts struct {

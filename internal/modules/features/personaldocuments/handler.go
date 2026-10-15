@@ -40,6 +40,8 @@ func writeDocumentReadError(c *gin.Context, err error) {
 		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
 	case errors.Is(err, identityport.ErrPolicyFactsChanged):
 		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrDocumentCommandUnavailable), errors.Is(err, ErrDocumentCompensationPending):
+		response.Error(c, http.StatusServiceUnavailable, 73001, "文档写入暂不可用，请稍后重试。")
 	default:
 		response.WriteError(c, err)
 	}
@@ -71,9 +73,10 @@ func (h *Handler) Create(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request", "reason": "请求体格式不正确"})
 		return
 	}
-	item, e := h.service.CreateText(c.Request.Context(), owner, req)
+	_ = owner
+	item, e := h.service.CreateTextForPrincipal(c.Request.Context(), h.principal(c), req)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Created(c, item)
@@ -111,9 +114,10 @@ func (h *Handler) Upload(c *gin.Context) {
 	if name == "" {
 		name = file.Filename
 	}
-	item, e := h.service.Upload(c.Request.Context(), owner, name, format, file.Header.Get("Content-Type"), file.Size, reader)
+	_ = owner
+	item, e := h.service.UploadForPrincipal(c.Request.Context(), h.principal(c), name, format, file.Header.Get("Content-Type"), file.Size, reader)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Created(c, item)
@@ -189,9 +193,10 @@ func (h *Handler) Save(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.Save(c.Request.Context(), owner, c.Param("id"), req)
+	_ = owner
+	item, e := h.service.SaveForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), req)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -219,9 +224,10 @@ func (h *Handler) RestoreVersion(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.RestoreVersion(c.Request.Context(), owner, c.Param("id"), c.Param("version_id"), req.ExpectedVersion)
+	_ = owner
+	item, e := h.service.RestoreVersionForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), c.Param("version_id"), req.ExpectedVersion)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -238,9 +244,10 @@ func (h *Handler) status(c *gin.Context, status string) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.SetStatus(c.Request.Context(), owner, c.Param("id"), req.ExpectedVersion, status)
+	_ = owner
+	item, e := h.service.SetStatusForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), req.ExpectedVersion, status)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)

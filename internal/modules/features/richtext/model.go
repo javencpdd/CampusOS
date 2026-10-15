@@ -67,22 +67,25 @@ const (
 )
 
 type Article struct {
-	ID            string              `json:"id"`
-	ThreadID      string              `json:"thread_id"`
-	Title         string              `json:"title"`
-	Summary       string              `json:"summary,omitempty"`
-	CoverURL      string              `json:"cover_url,omitempty"`
-	ContentHTML   string              `json:"content_html,omitempty"`
-	ContentJSON   json.RawMessage     `json:"content_json,omitempty"`
-	SanitizedHTML string              `json:"sanitized_html"`
-	RenderHTML    string              `json:"render_html,omitempty"`
-	Status        string              `json:"status"`
-	CreatedBy     string              `json:"created_by"`
-	UpdatedBy     string              `json:"updated_by,omitempty"`
-	PublishedAt   *time.Time          `json:"published_at,omitempty"`
-	Attachments   []ArticleAttachment `json:"attachments,omitempty"`
-	CreatedAt     time.Time           `json:"created_at"`
-	UpdatedAt     time.Time           `json:"updated_at"`
+	FactsVersion     int64               `json:"-"`
+	UpdatedActorKind string              `json:"-"`
+	UpdatedActorID   string              `json:"-"`
+	ID               string              `json:"id"`
+	ThreadID         string              `json:"thread_id"`
+	Title            string              `json:"title"`
+	Summary          string              `json:"summary,omitempty"`
+	CoverURL         string              `json:"cover_url,omitempty"`
+	ContentHTML      string              `json:"content_html,omitempty"`
+	ContentJSON      json.RawMessage     `json:"content_json,omitempty"`
+	SanitizedHTML    string              `json:"sanitized_html"`
+	RenderHTML       string              `json:"render_html,omitempty"`
+	Status           string              `json:"status"`
+	CreatedBy        string              `json:"created_by"`
+	UpdatedBy        string              `json:"updated_by,omitempty"`
+	PublishedAt      *time.Time          `json:"published_at,omitempty"`
+	Attachments      []ArticleAttachment `json:"attachments,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
+	UpdatedAt        time.Time           `json:"updated_at"`
 }
 
 type Asset struct {
@@ -265,6 +268,10 @@ type PersonalAssetPDFInvocationRequest struct {
 type AssetGovernanceActionRequest struct {
 	Reason         string `json:"reason" binding:"required,max=500"`
 	ConfirmAssetID string `json:"confirm_asset_id,omitempty"`
+}
+
+type AssetAdminLifecycleRequest struct {
+	Reason string `json:"reason" binding:"required,max=500"`
 }
 
 type PreviewResult struct {

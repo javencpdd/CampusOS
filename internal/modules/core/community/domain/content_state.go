@@ -126,28 +126,34 @@ func (t *Thread) IsActive() bool {
 }
 
 type ContentRevision struct {
-	ID            string    `json:"id"`
-	ThreadID      string    `json:"thread_id"`
-	Version       int       `json:"version"`
-	Title         string    `json:"title"`
-	Content       string    `json:"content"`
-	ContentFormat string    `json:"content_format"`
-	Tags          []string  `json:"tags,omitempty"`
-	Action        string    `json:"action"`
-	Reason        string    `json:"reason,omitempty"`
-	CreatedBy     string    `json:"created_by"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	ThreadID         string    `json:"thread_id"`
+	Version          int       `json:"version"`
+	Title            string    `json:"title"`
+	Content          string    `json:"content"`
+	ContentFormat    string    `json:"content_format"`
+	Tags             []string  `json:"tags,omitempty"`
+	Action           string    `json:"action"`
+	Reason           string    `json:"reason,omitempty"`
+	CreatedBy        string    `json:"created_by"`
+	CreatedActorKind string    `json:"created_actor_kind,omitempty"`
+	CreatedActorID   string    `json:"created_actor_id,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
 type ModerationCase struct {
-	ID         string     `json:"id"`
-	ThreadID   string     `json:"thread_id"`
-	Status     string     `json:"status"`
-	Reason     string     `json:"reason,omitempty"`
-	OpenedBy   string     `json:"opened_by"`
-	ResolvedBy string     `json:"resolved_by,omitempty"`
-	OpenedAt   time.Time  `json:"opened_at"`
-	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
+	ID                string     `json:"id"`
+	ThreadID          string     `json:"thread_id"`
+	Status            string     `json:"status"`
+	Reason            string     `json:"reason,omitempty"`
+	OpenedBy          string     `json:"opened_by"`
+	OpenedActorKind   string     `json:"opened_actor_kind,omitempty"`
+	OpenedActorID     string     `json:"opened_actor_id,omitempty"`
+	ResolvedActorKind string     `json:"resolved_actor_kind,omitempty"`
+	ResolvedActorID   string     `json:"resolved_actor_id,omitempty"`
+	ResolvedBy        string     `json:"resolved_by,omitempty"`
+	OpenedAt          time.Time  `json:"opened_at"`
+	ResolvedAt        *time.Time `json:"resolved_at,omitempty"`
 }
 
 type ModerationAction struct {
@@ -157,6 +163,8 @@ type ModerationAction struct {
 	Action      string    `json:"action"`
 	Reason      string    `json:"reason,omitempty"`
 	ActorID     string    `json:"actor_id"`
+	ActorKind   string    `json:"actor_kind,omitempty"`
+	ActorRefID  string    `json:"actor_ref_id,omitempty"`
 	BeforeState string    `json:"before_state"`
 	AfterState  string    `json:"after_state"`
 	CreatedAt   time.Time `json:"created_at"`

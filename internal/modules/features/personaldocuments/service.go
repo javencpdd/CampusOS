@@ -174,8 +174,7 @@ func (s *Service) Save(ctx context.Context, owner, id string, req SaveRequest) (
 		return s.repository.AppendVersion(commandCtx, owner, id, req.ExpectedVersion, version, strings.TrimSpace(req.Name))
 	})
 	if e != nil {
-		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
-		return DocumentDetail{}, s.translateError(e)
+		return DocumentDetail{}, s.translateError(errors.Join(e, s.discardStagedObject(ctx, owner, object)))
 	}
 	return result, nil
 }
@@ -218,8 +217,7 @@ func (s *Service) RestoreVersion(ctx context.Context, owner, id, versionID strin
 		return s.repository.AppendVersion(commandCtx, owner, id, expected, next, "")
 	})
 	if e != nil {
-		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
-		return DocumentDetail{}, s.translateError(e)
+		return DocumentDetail{}, s.translateError(errors.Join(e, s.discardStagedObject(ctx, owner, object)))
 	}
 	return result, nil
 }
@@ -370,8 +368,7 @@ func (s *Service) createObjectAndDocument(ctx context.Context, owner, name, form
 		return s.repository.Create(commandCtx, d, v)
 	})
 	if e != nil {
-		_ = s.objects.Delete(ctx, owner, object.ID, object.Version)
-		return DocumentDetail{}, s.translateError(e)
+		return DocumentDetail{}, s.translateError(errors.Join(e, s.discardStagedObject(ctx, owner, object)))
 	}
 	return result, nil
 }
@@ -437,13 +434,17 @@ func (s *Service) commitVersion(ctx context.Context, owner, documentID string, v
 		return DocumentDetail{}, errors.New("document version command action is required")
 	}
 	var result DocumentDetail
+	commandCode, operationCode := "personal_documents.preview.request", "document.preview.request"
+	if proof, checked := ctx.Value(documentWriteKey{}).(*documentWriteProof); checked {
+		commandCode, operationCode = "personal_documents.author."+proof.operation, "document.author."+proof.operation
+	}
 	err := s.reliable.Execute(ctx, reliability.Command{
-		Code:           "personal_documents.preview.request",
+		Code:           commandCode,
 		ActorID:        owner,
 		ActorType:      "user",
 		ResourceType:   "personal_document",
 		ResourceID:     documentID,
-		OperationCode:  "document.preview.request",
+		OperationCode:  operationCode,
 		IdempotencyKey: "document.preview.requested:" + version.ID,
 		EventFactory: func() (reliability.Event, error) {
 			return reliability.NewEvent(previewRequestedEvent, "personal_document_version", version.ID, previewRequestPayload{
@@ -454,12 +455,24 @@ func (s *Service) commitVersion(ctx context.Context, owner, documentID string, v
 			})
 		},
 	}, func(commandCtx context.Context) error {
+		proof, checked := ctx.Value(documentWriteKey{}).(*documentWriteProof)
+		if checked {
+			if err := s.checkDocumentWrite(commandCtx, proof, owner, true); err != nil {
+				return err
+			}
+		}
 		var commandErr error
 		result, commandErr = action(commandCtx)
 		if commandErr != nil {
 			return commandErr
 		}
-		return s.recordPreviewState(commandCtx, version)
+		if commandErr = s.recordPreviewState(commandCtx, version); commandErr != nil {
+			return commandErr
+		}
+		if checked {
+			return s.checkDocumentVersionResult(commandCtx, proof, owner, documentID, version, result)
+		}
+		return nil
 	})
 	if err != nil {
 		return DocumentDetail{}, err
@@ -499,9 +512,21 @@ func (s *Service) put(ctx context.Context, owner, name, format, mime string, siz
 	if size < 0 || size > limit {
 		return corestorage.Object{}, s.tooLargeError(format, limit, size)
 	}
+	proof, checked := ctx.Value(documentWriteKey{}).(*documentWriteProof)
+	if checked {
+		if err := s.checkDocumentWrite(ctx, proof, owner, false); err != nil {
+			return corestorage.Object{}, err
+		}
+	}
 	object, e := s.objects.Put(ctx, owner, corestorage.PutRequest{Namespace: "personal-documents", Purpose: "source." + format, OriginalName: name, MimeType: normalizeMime(mime, format), SizeHint: size, Reader: io.LimitReader(reader, limit+1)})
 	if e != nil {
 		return corestorage.Object{}, s.objectError(e, limit, owner, size)
+	}
+	if checked {
+		if object.ID == "" || object.OwnerID != owner || object.Namespace != "personal-documents" || object.Purpose != "source."+format || object.Status != corestorage.ObjectStatusReady || object.Version < 1 || object.DeletedAt != nil || object.SizeBytes != size || object.SHA256 == "" {
+			return corestorage.Object{}, errors.Join(ErrDocumentCommandUnavailable, s.discardStagedObject(ctx, owner, object))
+		}
+		proof.staged = &object
 	}
 	return object, nil
 }
@@ -512,6 +537,9 @@ func (s *Service) enabledError() error {
 	return nil
 }
 func (s *Service) objectError(e error, limit int64, owner string, provided int64) error {
+	if errors.Is(e, corestorage.ErrObjectCompensationPending) {
+		return errors.Join(ErrDocumentCompensationPending, e)
+	}
 	if errors.Is(e, corestorage.ErrObjectQuota) {
 		details := map[string]any{"max_file_bytes": limit, "provided_bytes": provided, "message": "个人空间不足，请删除不需要的文件或联系管理员调整配额"}
 		if usage, usageErr := objectUsage(s.objects, owner); usageErr == nil {

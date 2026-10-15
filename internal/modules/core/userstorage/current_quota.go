@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -40,10 +41,45 @@ func (r *MemoryQuotaRepository) GetOwnerQuota(ctx context.Context, owner string)
 
 func (r *PgQuotaRepository) GetOwnerQuota(ctx context.Context, owner string) (QuotaRecord, bool, error) {
 	var record QuotaRecord
-	err := r.pool.QueryRow(ctx, `SELECT user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at FROM user_storage_quotas WHERE user_id=$1`, owner).
+	err := transaction.ExecutorFor(ctx, r.pool).QueryRow(ctx, `SELECT user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at FROM user_storage_quotas WHERE user_id=$1`, owner).
 		Scan(&record.UserID, &record.QuotaBytes, &record.UpdatedBy, &record.CreatedAt, &record.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return QuotaRecord{}, false, nil
 	}
 	return record, err == nil, err
+}
+
+type objectQuotaRepository interface {
+	GetOwnerQuotaForObjectCommand(context.Context, string) (QuotaRecord, bool, func(), error)
+}
+
+func (a *LocalAdapter) CurrentQuotaForObjectCommand(ctx context.Context, owner string) (QuotaRecord, bool, func(), error) {
+	if !SafeSegment(owner) {
+		return QuotaRecord{}, false, func() {}, ErrUnsafePath
+	}
+	r, ok := a.quotaRepository.(objectQuotaRepository)
+	if !ok || NilImageAdapter(r) {
+		return QuotaRecord{}, false, func() {}, ErrObjectUnavailable
+	}
+	return r.GetOwnerQuotaForObjectCommand(ctx, owner)
+}
+func (r *MemoryQuotaRepository) GetOwnerQuotaForObjectCommand(ctx context.Context, owner string) (QuotaRecord, bool, func(), error) {
+	if err := ctx.Err(); err != nil {
+		return QuotaRecord{}, false, func() {}, err
+	}
+	r.mu.RLock()
+	record, exists := r.items[owner]
+	return record, exists, r.mu.RUnlock, nil
+}
+func (r *PgQuotaRepository) GetOwnerQuotaForObjectCommand(ctx context.Context, owner string) (QuotaRecord, bool, func(), error) {
+	tx, ok := transaction.FromContext(ctx)
+	if !ok {
+		return QuotaRecord{}, false, func() {}, ErrObjectUnavailable
+	}
+	var record QuotaRecord
+	err := tx.QueryRow(ctx, "SELECT user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at FROM user_storage_quotas WHERE user_id=$1 FOR SHARE", owner).Scan(&record.UserID, &record.QuotaBytes, &record.UpdatedBy, &record.CreatedAt, &record.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return QuotaRecord{}, false, func() {}, nil
+	}
+	return record, err == nil, func() {}, err
 }

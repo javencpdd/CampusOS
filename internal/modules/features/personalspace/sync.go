@@ -46,7 +46,7 @@ func (s *Service) HandleThreadEvent(ctx context.Context, event eventbus.Event) e
 	if err != nil {
 		return err
 	}
-	if event.Type == eventbus.EventThreadDeleted {
+	if event.Type == eventbus.EventThreadDeleted || event.Type == eventbus.EventThreadUpdated && thread.ModerationStatus == communitydomain.ModerationStatusTakenDown {
 		return s.deleteSyncedContent(ctx, thread.ID)
 	}
 	return s.SyncThread(ctx, thread)

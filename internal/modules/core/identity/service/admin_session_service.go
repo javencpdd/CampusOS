@@ -276,18 +276,8 @@ func (s *AdminSessionService) rotateLocked(ctx context.Context, current reposito
 // VerifyAccess resolves one admin access session to its current facts. The
 // admin HTTP middleware consumes this Port; user sessions never resolve here.
 func (s *AdminSessionService) VerifyAccess(ctx context.Context, sessionID string) (repository.AdminSession, error) {
-	if s.sessions == nil {
-		return repository.AdminSession{}, ErrAdminSessionUnavailable
-	}
-	session, err := s.sessions.GetSessionByID(ctx, sessionID)
-	if err != nil || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
-		return repository.AdminSession{}, ErrAdminSessionInvalid
-	}
-	account, err := s.admins.GetAccountByID(ctx, session.AccountID)
-	if err != nil || account.Status != "active" {
-		return repository.AdminSession{}, ErrAdminSessionInvalid
-	}
-	return session, nil
+	session, _, err := s.verifiedSession(ctx, "", sessionID)
+	return session, err
 }
 
 // RevokeSession logs out one session; RevokeAllForAccount cascades after

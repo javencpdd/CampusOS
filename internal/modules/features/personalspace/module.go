@@ -11,6 +11,7 @@ import (
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
 
@@ -132,7 +133,19 @@ func (m *Module) Start(ctx context.Context) error {
 	svc.SetContentQuery(m.contentQuery)
 	svc.SetQuotaManager(m.quotaManager)
 	svc.SetPluginEnabledChecker(m.enabled)
+	if value, found := m.app.Lookup("storage.objects"); found {
+		account, compatible := value.(corestorage.InlineImageAccounting)
+		if !compatible || corestorage.NilImageAdapter(account) {
+			return fmt.Errorf("personal space avatar accounting has incompatible type %T", value)
+		}
+		svc.SetAvatarStorage(m.storage, account)
+	}
 	if value, ok := m.app.Lookup("platform.reliability.service"); ok {
+		command, compatible := value.(*reliability.Service)
+		if !compatible || command == nil {
+			return fmt.Errorf("personal space reliability command has incompatible type %T", value)
+		}
+		svc.SetReliability(command)
 		if reporter, ok := value.(CompatibilityReporter); ok {
 			svc.SetCompatibilityReporter(reporter)
 		}

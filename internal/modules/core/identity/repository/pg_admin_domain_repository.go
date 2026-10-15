@@ -373,12 +373,14 @@ func (r *PgAdminDomainRepository) CountActiveSecurityAdmins(ctx context.Context)
 // MemoryAdminDomainRepository is the deterministic Memory profile adapter with
 // the reliability snapshot contract.
 type MemoryAdminDomainRepository struct {
-	mu              sync.RWMutex
-	accounts        map[string]AdminDomainAccount
-	credentials     map[string]AdminDomainCredential
-	roles           map[string]AdminDomainRole
-	bindings        map[string]AdminDomainRoleBinding
-	rolePermissions map[string]map[string]bool
+	mu                  sync.RWMutex
+	accounts            map[string]AdminDomainAccount
+	credentials         map[string]AdminDomainCredential
+	roles               map[string]AdminDomainRole
+	bindings            map[string]AdminDomainRoleBinding
+	rolePermissions     map[string]map[string]bool
+	permissionFacts     map[string]map[string]adminPermissionFact
+	permissionHighWater int64
 }
 
 func NewMemoryAdminDomainRepository() *MemoryAdminDomainRepository {
@@ -394,11 +396,12 @@ func NewMemoryAdminDomainRepository() *MemoryAdminDomainRepository {
 }
 
 type memoryAdminDomainSnapshot struct {
-	Accounts        map[string]AdminDomainAccount     `json:"accounts"`
-	Credentials     map[string]AdminDomainCredential  `json:"credentials"`
-	Roles           map[string]AdminDomainRole        `json:"roles"`
-	Bindings        map[string]AdminDomainRoleBinding `json:"bindings"`
-	RolePermissions map[string]map[string]bool        `json:"role_permissions"`
+	Accounts        map[string]AdminDomainAccount             `json:"accounts"`
+	Credentials     map[string]AdminDomainCredential          `json:"credentials"`
+	Roles           map[string]AdminDomainRole                `json:"roles"`
+	Bindings        map[string]AdminDomainRoleBinding         `json:"bindings"`
+	RolePermissions map[string]map[string]bool                `json:"role_permissions"`
+	PermissionFacts map[string]map[string]adminPermissionFact `json:"permission_facts"`
 }
 
 func (r *MemoryAdminDomainRepository) Snapshot() any {
@@ -406,7 +409,7 @@ func (r *MemoryAdminDomainRepository) Snapshot() any {
 	defer r.mu.RUnlock()
 	payload, err := json.Marshal(memoryAdminDomainSnapshot{
 		Accounts: r.accounts, Credentials: r.credentials, Roles: r.roles, Bindings: r.bindings,
-		RolePermissions: r.rolePermissions,
+		RolePermissions: r.rolePermissions, PermissionFacts: r.permissionFacts,
 	})
 	if err != nil {
 		return []byte(nil)
@@ -428,6 +431,16 @@ func (r *MemoryAdminDomainRepository) Restore(value any) {
 	r.accounts, r.credentials, r.roles, r.bindings = state.Accounts, state.Credentials, state.Roles, state.Bindings
 	if state.RolePermissions != nil {
 		r.rolePermissions = state.RolePermissions
+	}
+	r.permissionFacts = state.PermissionFacts
+	// The allocation high-water mark is outside rollback state, like the
+	// PostgreSQL sequence. Restored rows keep their own original versions.
+	for _, facts := range r.permissionFacts {
+		for _, fact := range facts {
+			if fact.Version > r.permissionHighWater {
+				r.permissionHighWater = fact.Version
+			}
+		}
 	}
 }
 

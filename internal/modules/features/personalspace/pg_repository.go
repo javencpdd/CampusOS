@@ -23,19 +23,20 @@ func (r *PgRepository) GetByUserID(ctx context.Context, userID string) (*Space, 
 	query := `SELECT id, user_id, title, bio, avatar, cover_image, theme, layout,
 		style_name, style_version, style_manifest,
 		visibility, sync_enabled, sync_categories, sync_tags,
-		disabled_at, disabled_by, disabled_reason, last_sync_at, last_sync_error,
+		disabled_at, disabled_by, disabled_reason, last_sync_at, last_sync_error, facts_version, disabled_actor_kind, disabled_actor_id,
 		created_at, updated_at
 		FROM user_spaces WHERE user_id = $1 AND deleted_at IS NULL`
 
 	space := &Space{}
 	var styleManifestJSON []byte
-	err := r.pool.QueryRow(ctx, query, userID).Scan(
+	err := r.db(ctx).QueryRow(ctx, query, userID).Scan(
 		&space.ID, &space.UserID, &space.Title, &space.Bio, &space.Avatar,
 		&space.CoverImage, &space.Theme, &space.Layout,
 		&space.StyleName, &space.StyleVersion, &styleManifestJSON,
 		&space.Visibility,
 		&space.SyncEnabled, &space.SyncCategories, &space.SyncTags,
 		&space.DisabledAt, &space.DisabledBy, &space.DisabledReason, &space.LastSyncAt, &space.LastSyncError,
+		&space.FactsVersion, &space.DisabledActorKind, &space.DisabledActorID,
 		&space.CreatedAt, &space.UpdatedAt,
 	)
 	if err != nil {
@@ -55,14 +56,15 @@ func (r *PgRepository) GetByUserID(ctx context.Context, userID string) (*Space, 
 }
 
 func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
-	ensureDefaults(space)
+	return r.withinSpaceOwner(ctx, space.UserID, func(ctx context.Context) error {
+		ensureDefaults(space)
 
-	styleManifestJSON, err := json.Marshal(styleManifestForSave(space.StyleManifest))
-	if err != nil {
-		return err
-	}
+		styleManifestJSON, err := json.Marshal(styleManifestForSave(space.StyleManifest))
+		if err != nil {
+			return err
+		}
 
-	query := `INSERT INTO user_spaces (
+		query := `INSERT INTO user_spaces (
 			id, user_id, title, bio, avatar, cover_image, theme, layout,
 			style_name, style_version, style_manifest,
 			visibility, sync_enabled, sync_categories, sync_tags,
@@ -95,16 +97,18 @@ func (r *PgRepository) Upsert(ctx context.Context, space *Space) error {
 			last_sync_at = EXCLUDED.last_sync_at,
 			last_sync_error = EXCLUDED.last_sync_error,
 			updated_at = EXCLUDED.updated_at
-		RETURNING id, created_at, updated_at`
+		RETURNING id, created_at, updated_at, facts_version`
 
-	return r.pool.QueryRow(ctx, query,
-		space.ID, space.UserID, space.Title, space.Bio, space.Avatar, space.CoverImage,
-		space.Theme, space.Layout, space.StyleName, space.StyleVersion, string(styleManifestJSON),
-		space.Visibility, space.SyncEnabled,
-		space.SyncCategories, space.SyncTags,
-		space.DisabledAt, space.DisabledBy, space.DisabledReason, space.LastSyncAt, space.LastSyncError,
-		space.CreatedAt, space.UpdatedAt,
-	).Scan(&space.ID, &space.CreatedAt, &space.UpdatedAt)
+		return r.db(ctx).QueryRow(ctx, query,
+			space.ID, space.UserID, space.Title, space.Bio, space.Avatar, space.CoverImage,
+			space.Theme, space.Layout, space.StyleName, space.StyleVersion, string(styleManifestJSON),
+			space.Visibility, space.SyncEnabled,
+			space.SyncCategories, space.SyncTags,
+			space.DisabledAt, space.DisabledBy, space.DisabledReason, space.LastSyncAt, space.LastSyncError,
+			space.CreatedAt, space.UpdatedAt,
+		).Scan(&space.ID, &space.CreatedAt, &space.UpdatedAt, &space.FactsVersion)
+
+	})
 }
 
 func styleManifestForSave(manifest *StyleManifest) interface{} {
@@ -137,7 +141,7 @@ func (r *PgRepository) UpsertContent(ctx context.Context, content *SpaceContent)
 			synced_at = EXCLUDED.synced_at
 		RETURNING id, synced_at`
 
-	err := r.pool.QueryRow(ctx, query,
+	err := r.db(ctx).QueryRow(ctx, query,
 		content.ID, content.UserID, content.ThreadID, content.Title, content.Excerpt,
 		content.AuthorName, content.CategoryID, content.Tags, content.Status,
 		content.ThreadCreatedAt, content.ThreadUpdatedAt, content.SyncedAt,
@@ -160,7 +164,7 @@ func ensureContentDefaults(content *SpaceContent) {
 func (r *PgRepository) DeleteContent(ctx context.Context, threadID string) error {
 	query := `UPDATE user_space_contents SET deleted_at = NOW()
 		WHERE thread_id = $1 AND deleted_at IS NULL`
-	_, err := r.pool.Exec(ctx, query, threadID)
+	_, err := r.db(ctx).Exec(ctx, query, threadID)
 	return err
 }
 
@@ -174,14 +178,14 @@ func (r *PgRepository) ListContentsByUserID(ctx context.Context, userID string, 
 	offset := (page - 1) * pageSize
 
 	var total int64
-	if err := r.pool.QueryRow(ctx,
+	if err := r.db(ctx).QueryRow(ctx,
 		`SELECT COUNT(*) FROM user_space_contents WHERE user_id = $1 AND deleted_at IS NULL`,
 		userID,
 	).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count space contents: %w", err)
 	}
 
-	rows, err := r.pool.Query(ctx, `SELECT id, user_id, thread_id, title, excerpt, author_name,
+	rows, err := r.db(ctx).Query(ctx, `SELECT id, user_id, thread_id, title, excerpt, author_name,
 			category_id, tags, status, thread_created_at, thread_updated_at, synced_at
 		FROM user_space_contents
 		WHERE user_id = $1 AND deleted_at IS NULL
@@ -209,37 +213,41 @@ func (r *PgRepository) ListContentsByUserID(ctx context.Context, userID string, 
 }
 
 func (r *PgRepository) SaveStyleSnapshot(ctx context.Context, snapshot *StyleSnapshot) error {
-	if snapshot.ID == "" {
-		return fmt.Errorf("snapshot id is required")
-	}
-	if snapshot.CreatedAt.IsZero() {
-		snapshot.CreatedAt = time.Now().UTC()
-	}
-	manifestJSON, err := json.Marshal(styleManifestForSave(snapshot.StyleManifest))
-	if err != nil {
-		return err
-	}
-	query := `INSERT INTO user_space_style_snapshots (
+	return r.withinSpaceOwner(ctx, snapshot.UserID, func(ctx context.Context) error {
+		if snapshot.ID == "" {
+			return fmt.Errorf("snapshot id is required")
+		}
+		if snapshot.CreatedAt.IsZero() {
+			snapshot.CreatedAt = time.Now().UTC()
+		}
+		manifestJSON, err := json.Marshal(styleManifestForSave(snapshot.StyleManifest))
+		if err != nil {
+			return err
+		}
+		query := `INSERT INTO user_space_style_snapshots (
 			id, user_id, snapshot_type, style_name, style_version, theme, layout, style_manifest, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`
-	_, err = r.pool.Exec(ctx, query,
-		snapshot.ID, snapshot.UserID, snapshot.SnapshotType, snapshot.StyleName,
-		snapshot.StyleVersion, snapshot.Theme, snapshot.Layout, string(manifestJSON), snapshot.CreatedAt,
-	)
-	return err
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9) RETURNING facts_version`
+		err = r.db(ctx).QueryRow(ctx, query,
+			snapshot.ID, snapshot.UserID, snapshot.SnapshotType, snapshot.StyleName,
+			snapshot.StyleVersion, snapshot.Theme, snapshot.Layout, string(manifestJSON), snapshot.CreatedAt,
+		).Scan(&snapshot.FactsVersion)
+		return err
+
+	})
 }
 
 func (r *PgRepository) GetLatestStyleSnapshot(ctx context.Context, userID string) (*StyleSnapshot, error) {
-	query := `SELECT id, user_id, snapshot_type, style_name, style_version, theme, layout, style_manifest, created_at
+	query := `SELECT id, user_id, snapshot_type, style_name, style_version, theme, layout, style_manifest, created_at, facts_version
 		FROM user_space_style_snapshots
 		WHERE user_id = $1
 		ORDER BY created_at DESC
 		LIMIT 1`
 	snapshot := &StyleSnapshot{}
 	var styleManifestJSON []byte
-	err := r.pool.QueryRow(ctx, query, userID).Scan(
+	err := r.db(ctx).QueryRow(ctx, query, userID).Scan(
 		&snapshot.ID, &snapshot.UserID, &snapshot.SnapshotType, &snapshot.StyleName,
 		&snapshot.StyleVersion, &snapshot.Theme, &snapshot.Layout, &styleManifestJSON, &snapshot.CreatedAt,
+		&snapshot.FactsVersion,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -261,13 +269,13 @@ func (r *PgRepository) UpdateSyncStatus(ctx context.Context, userID string, sync
 	query := `UPDATE user_spaces
 		SET last_sync_at = COALESCE($2, last_sync_at), last_sync_error = $3, updated_at = NOW()
 		WHERE user_id = $1 AND deleted_at IS NULL`
-	_, err := r.pool.Exec(ctx, query, userID, syncedAt, syncErr)
+	_, err := r.db(ctx).Exec(ctx, query, userID, syncedAt, syncErr)
 	return err
 }
 
 func (r *PgRepository) CountContentsByUserID(ctx context.Context, userID string) (int64, error) {
 	var total int64
-	err := r.pool.QueryRow(ctx,
+	err := r.db(ctx).QueryRow(ctx,
 		`SELECT COUNT(*) FROM user_space_contents WHERE user_id = $1 AND deleted_at IS NULL`,
 		userID,
 	).Scan(&total)
@@ -275,11 +283,14 @@ func (r *PgRepository) CountContentsByUserID(ctx context.Context, userID string)
 }
 
 func (r *PgRepository) SetDisabled(ctx context.Context, userID string, disabledAt *time.Time, disabledBy, reason string) error {
-	query := `UPDATE user_spaces
+	return r.withinSpaceOwner(ctx, userID, func(ctx context.Context) error {
+		query := `UPDATE user_spaces
 		SET disabled_at = $2, disabled_by = $3, disabled_reason = $4, updated_at = NOW()
 		WHERE user_id = $1 AND deleted_at IS NULL`
-	_, err := r.pool.Exec(ctx, query, userID, disabledAt, disabledBy, reason)
-	return err
+		_, err := r.db(ctx).Exec(ctx, query, userID, disabledAt, disabledBy, reason)
+		return err
+
+	})
 }
 
 func (r *PgRepository) AdminSummary(ctx context.Context) (*SpaceAdminSummary, error) {
@@ -294,7 +305,7 @@ func (r *PgRepository) AdminSummary(ctx context.Context) (*SpaceAdminSummary, er
 		FROM user_spaces
 		WHERE deleted_at IS NULL`
 	summary := &SpaceAdminSummary{}
-	err := r.pool.QueryRow(ctx, query).Scan(
+	err := r.db(ctx).QueryRow(ctx, query).Scan(
 		&summary.TotalSpaces, &summary.PublicSpaces, &summary.DisabledSpaces,
 		&summary.StyledSpaces, &summary.SyncEnabledSpaces, &summary.LastSyncAt,
 		&summary.SyncErrorSpaces,

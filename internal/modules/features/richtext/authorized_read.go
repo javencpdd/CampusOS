@@ -2,6 +2,7 @@ package richtext
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -13,13 +14,14 @@ import (
 )
 
 type articleReadSnapshot struct {
-	Version     int64
-	AuthorID    string
-	CategoryID  string
-	Publication domain.PublicationStatus
-	Moderation  domain.ModerationStatus
-	Deletion    domain.DeletionStatus
-	Article     *Article
+	BindingFacts []AssetBindingAuthorityFact
+	Version      int64
+	AuthorID     string
+	CategoryID   string
+	Publication  domain.PublicationStatus
+	Moderation   domain.ModerationStatus
+	Deletion     domain.DeletionStatus
+	Article      *Article
 }
 
 func (s *Service) articleReadSnapshot(ctx context.Context, p identityport.PrincipalContext, threadID string) (articleReadSnapshot, error) {
@@ -47,10 +49,19 @@ func (s *Service) articleReadSnapshot(ctx context.Context, p identityport.Princi
 	if article == nil || article.ID == "" || article.ThreadID != threadID || article.CreatedBy != thread.AuthorID || article.Title != thread.Title {
 		return articleReadSnapshot{}, identityport.ErrPolicyDecisionMismatch
 	}
+	var bindingFacts []AssetBindingAuthorityFact
 	if p.Actor.Kind == "user" {
-		attachments, err := s.store.ListAttachments(ctx, article.ID)
+		bindingFacts, err = s.store.LoadArticleBindingAuthorityFacts(ctx, article.ID, false)
 		if err != nil {
 			return articleReadSnapshot{}, err
+		}
+		attachments := make([]ArticleAttachment, 0, len(bindingFacts))
+		for _, fact := range bindingFacts {
+			attachment, err := attachmentFromAuthorityFact(fact)
+			if err != nil {
+				return articleReadSnapshot{}, err
+			}
+			attachments = append(attachments, *attachment)
 		}
 		seen := make(map[string]bool, len(attachments))
 		for _, a := range attachments {
@@ -64,7 +75,7 @@ func (s *Service) articleReadSnapshot(ctx context.Context, p identityport.Princi
 	} else {
 		article.Attachments = nil
 	}
-	return articleReadSnapshot{Version: thread.FactsVersion, AuthorID: thread.AuthorID, CategoryID: thread.CategoryID, Publication: thread.PublicationStatus, Moderation: thread.ModerationStatus, Deletion: thread.DeletionStatus, Article: article}, nil
+	return articleReadSnapshot{BindingFacts: bindingFacts, Version: thread.FactsVersion, AuthorID: thread.AuthorID, CategoryID: thread.CategoryID, Publication: thread.PublicationStatus, Moderation: thread.ModerationStatus, Deletion: thread.DeletionStatus, Article: article}, nil
 }
 
 func nilReadAdapter(v any) bool {
@@ -168,6 +179,7 @@ func closeCheckedAttachment(value AttachmentOpen) {
 }
 
 type personalAssetReadSnapshot struct {
+	Facts  json.RawMessage
 	Asset  UserAsset
 	Object corestorage.Object
 }
@@ -176,7 +188,11 @@ func (s *Service) personalAssetReadSnapshot(ctx context.Context, p identityport.
 	if err := s.ensureEnabled(); err != nil {
 		return personalAssetReadSnapshot{}, err
 	}
-	asset, err := s.store.GetUserAsset(ctx, strings.TrimSpace(assetID))
+	facts, err := s.store.LoadAssetAuthorityFacts(ctx, strings.TrimSpace(assetID), false)
+	if err != nil {
+		return personalAssetReadSnapshot{}, err
+	}
+	asset, err := assetFromAuthorityFact(facts)
 	if err != nil {
 		return personalAssetReadSnapshot{}, err
 	}
@@ -187,7 +203,7 @@ func (s *Service) personalAssetReadSnapshot(ctx context.Context, p identityport.
 	if err != nil {
 		return personalAssetReadSnapshot{}, err
 	}
-	return personalAssetReadSnapshot{Asset: *asset, Object: object}, nil
+	return personalAssetReadSnapshot{Facts: facts, Asset: *asset, Object: object}, nil
 }
 
 func (s *Service) OpenUserAssetForPrincipal(ctx context.Context, assetID string, resolve identityport.SessionPrincipalResolver) (AttachmentOpen, error) {
@@ -208,29 +224,56 @@ func (s *Service) OpenUserAssetForPrincipal(ctx context.Context, assetID string,
 		}, closeCheckedAttachment)
 }
 
+type assetPageReadSnapshot struct {
+	Page  UserAssetPage
+	Facts []json.RawMessage
+}
+
 func (s *Service) UserAssetPageForPrincipal(ctx context.Context, status, cursor string, limit int, resolve identityport.SessionPrincipalResolver) (UserAssetPage, error) {
 	return identityport.ReadBoundProjection(ctx, resolve, false,
-		func(ctx context.Context, p identityport.PrincipalContext) (UserAssetPage, error) {
+		func(ctx context.Context, p identityport.PrincipalContext) (assetPageReadSnapshot, error) {
 			if err := s.ensureEnabled(); err != nil {
-				return UserAssetPage{}, err
+				return assetPageReadSnapshot{}, err
+			}
+			if nilReadAdapter(s.store) {
+				return assetPageReadSnapshot{}, ErrAssetBindingFactsUnavailable
+			}
+			if err := s.store.CheckAssetBindingAuthority(ctx); err != nil {
+				return assetPageReadSnapshot{}, err
 			}
 			page, err := s.ListMyUserAssetPage(ctx, p.Actor.ID, status, cursor, limit)
 			if err != nil {
-				return UserAssetPage{}, err
+				return assetPageReadSnapshot{}, err
 			}
 			expectedStatus := status
 			if expectedStatus == "" {
 				expectedStatus = AssetStatusActive
 			}
+			facts := make([]json.RawMessage, 0, len(page.Items))
 			seen := make(map[string]bool, len(page.Items))
 			for _, asset := range page.Items {
 				if asset == nil || asset.ID == "" || seen[asset.ID] || asset.OwnerID != p.Actor.ID || asset.Version < 1 || (asset.Status != AssetStatusActive && asset.Status != AssetStatusTrashed) || asset.Status != expectedStatus {
-					return UserAssetPage{}, identityport.ErrPolicyDecisionMismatch
+					return assetPageReadSnapshot{}, identityport.ErrPolicyDecisionMismatch
 				}
+				raw, err := s.store.LoadAssetAuthorityFacts(ctx, asset.ID, false)
+				if err != nil {
+					return assetPageReadSnapshot{}, err
+				}
+				actual, err := assetFromAuthorityFact(raw)
+				if err != nil {
+					return assetPageReadSnapshot{}, err
+				}
+				if !reflect.DeepEqual(actual, canonicalReadAsset(asset)) {
+					return assetPageReadSnapshot{}, identityport.ErrPolicyFactsChanged
+				}
+				facts = append(facts, raw)
 				seen[asset.ID] = true
 			}
-			return page, nil
-		}, func(_ context.Context, _ identityport.PrincipalContext, page UserAssetPage) (UserAssetPage, error) {
-			return page, nil
+			if err := s.store.CheckAssetBindingAuthority(ctx); err != nil {
+				return assetPageReadSnapshot{}, err
+			}
+			return assetPageReadSnapshot{Page: page, Facts: facts}, nil
+		}, func(_ context.Context, _ identityport.PrincipalContext, snapshot assetPageReadSnapshot) (UserAssetPage, error) {
+			return snapshot.Page, nil
 		}, nil)
 }

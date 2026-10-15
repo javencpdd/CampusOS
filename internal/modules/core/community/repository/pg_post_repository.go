@@ -24,38 +24,30 @@ func (r *PgPostRepository) db(ctx context.Context) transaction.Executor {
 }
 
 func (r *PgPostRepository) Create(ctx context.Context, post *domain.Post) error {
+	preparePost(post)
 	query := `WITH next_floor AS (
 			SELECT COALESCE(MAX(floor_number), 0) + 1 AS floor_number
 			FROM posts
 			WHERE thread_id = $2
 		)
-		INSERT INTO posts (id, thread_id, author_id, author_name, parent_id, parent_floor_number, content, content_format, status, like_count, floor_number, created_at, updated_at)
+		INSERT INTO posts (id, thread_id, author_id, author_name, parent_id, parent_floor_number, content, content_format, status, like_count, floor_number, created_at, updated_at,metadata,deleted_at,deleted_actor_kind,deleted_actor_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
 			CASE WHEN $11 > 0 THEN $11 ELSE (SELECT floor_number FROM next_floor) END,
-			$12, $13)
-		RETURNING floor_number`
+			$12, $13, $14, $15, $16, $17)
+		RETURNING floor_number,facts_version`
 	err := r.db(ctx).QueryRow(ctx, query,
 		post.ID, post.ThreadID, post.AuthorID, post.AuthorName,
-		post.ParentID, post.ParentFloorNumber, post.Content, "markdown", post.Status,
-		post.LikeCount, post.FloorNumber, post.CreatedAt, post.UpdatedAt).Scan(&post.FloorNumber)
+		post.ParentID, post.ParentFloorNumber, post.Content, post.ContentFormat, post.Status,
+		post.LikeCount, post.FloorNumber, post.CreatedAt, post.UpdatedAt, post.Metadata, post.DeletedAt, post.DeletedActorKind, post.DeletedActorID).Scan(&post.FloorNumber, &post.FactsVersion)
 	return err
 }
 
 func (r *PgPostRepository) GetByID(ctx context.Context, id string) (*domain.Post, error) {
-	query := `SELECT id, thread_id, author_id, author_name, parent_id, parent_floor_number, content, status, like_count, floor_number, created_at, updated_at
-		FROM posts WHERE id = $1 AND deleted_at IS NULL`
-	post := &domain.Post{}
-	err := r.db(ctx).QueryRow(ctx, query, id).Scan(
-		&post.ID, &post.ThreadID, &post.AuthorID, &post.AuthorName,
-		&post.ParentID, &post.ParentFloorNumber, &post.Content, &post.Status,
-		&post.LikeCount, &post.FloorNumber, &post.CreatedAt, &post.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrPostNotFound
-		}
-		return nil, err
+	p, err := scanPost(r.db(ctx).QueryRow(ctx, `SELECT `+postSelectColumns+` FROM posts WHERE id=$1 AND deleted_at IS NULL`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrPostNotFound
 	}
-	return post, nil
+	return p, err
 }
 
 func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, page, pageSize int) ([]*domain.Post, int64, error) {
@@ -74,8 +66,7 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 	}
 
 	offset := (page - 1) * pageSize
-	query := `SELECT id, thread_id, author_id, author_name, parent_id, parent_floor_number, content, status, like_count, floor_number, created_at, updated_at
-		FROM posts WHERE thread_id = $1 AND deleted_at IS NULL ORDER BY floor_number ASC LIMIT $2 OFFSET $3`
+	query := `SELECT ` + postSelectColumns + ` FROM posts WHERE thread_id=$1 AND deleted_at IS NULL ORDER BY floor_number ASC LIMIT $2 OFFSET $3`
 	rows, err := r.db(ctx).Query(ctx, query, threadID, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
@@ -84,11 +75,8 @@ func (r *PgPostRepository) ListByThread(ctx context.Context, threadID string, pa
 
 	var posts []*domain.Post
 	for rows.Next() {
-		post := &domain.Post{}
-		if err := rows.Scan(
-			&post.ID, &post.ThreadID, &post.AuthorID, &post.AuthorName,
-			&post.ParentID, &post.ParentFloorNumber, &post.Content, &post.Status,
-			&post.LikeCount, &post.FloorNumber, &post.CreatedAt, &post.UpdatedAt); err != nil {
+		post, err := scanPost(rows)
+		if err != nil {
 			return nil, 0, err
 		}
 		posts = append(posts, post)

@@ -23,18 +23,22 @@ import (
 )
 
 const (
-	ModuleID                    = "core.identity"
-	portEventBus                = "platform.event-bus"
-	portUserReader              = "identity.user-reader"
-	portAccountReader           = "identity.account-reader"
-	portChallengeDispatchReader = "identity.challenge-dispatch-reader"
-	portSessionVerifier         = "identity.session-verifier"
-	portAuthorization           = "identity.authorization"
-	portAdminAccess             = "identity.admin-access"
-	portAdminAdmission          = "identity.admin-admission"
-	portMFA                     = "identity.mfa"
-	portModeration              = "identity.moderation-policy"
-	portSessionStrength         = "identity.session-strength"
+	ModuleID                         = "core.identity"
+	portEventBus                     = "platform.event-bus"
+	portUserReader                   = "identity.user-reader"
+	portAccountReader                = "identity.account-reader"
+	portChallengeDispatchReader      = "identity.challenge-dispatch-reader"
+	portSessionVerifier              = "identity.session-verifier"
+	portAuthorization                = "identity.authorization"
+	portBoardGovernanceAuthority     = "identity.board-governance-authority"
+	portAdminSessionAuthority        = "identity.admin-session-authority"
+	portAdminExecutionAuthority      = "identity.admin-execution-authority"
+	portUserScopedExecutionAuthority = "identity.user-scoped-execution-authority"
+	portAdminAccess                  = "identity.admin-access"
+	portAdminAdmission               = "identity.admin-admission"
+	portMFA                          = "identity.mfa"
+	portModeration                   = "identity.moderation-policy"
+	portSessionStrength              = "identity.session-strength"
 )
 
 type Config struct {
@@ -387,6 +391,21 @@ func (m *Module) Start(context.Context) error {
 		return err
 	}
 	if err := m.app.Provide(portAuthorization, identityport.Authorization(permissions)); err != nil {
+		return err
+	}
+	executionAuthority := service.NewBoardGovernanceAuthorityService(m.delegations, m.adminDomains, m.adminSessionService)
+	if err := m.app.Provide(portBoardGovernanceAuthority, identityport.BoardGovernanceAuthorityReader(executionAuthority)); err != nil {
+		return err
+	}
+	if err := m.app.Provide(portAdminExecutionAuthority, identityport.AdminExecutionAuthorityReader(executionAuthority)); err != nil {
+		return err
+	}
+	scopedFacts, _ := m.roles.(repository.UserScopedExecutionFactsReader)
+	userExecution := service.NewUserScopedExecutionAuthorityService(scopedFacts, sessions, m.adminAccounts)
+	if err := m.app.Provide(portUserScopedExecutionAuthority, identityport.UserScopedExecutionAuthorityReader(userExecution)); err != nil {
+		return err
+	}
+	if err := m.app.Provide(portAdminSessionAuthority, identityport.AdminSessionAuthorityReader(m.adminSessionService)); err != nil {
 		return err
 	}
 	if err := m.app.Provide(portAdminAccess, m.adminAccessService); err != nil {

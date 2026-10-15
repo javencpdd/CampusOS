@@ -720,56 +720,7 @@ func TestUpdateSpaceLayoutClearsAppliedStyleManifest(t *testing.T) {
 }
 
 func TestApplyStylePackageHandler(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
-
-	router := gin.New()
-	router.POST("/spaces/me/styles/apply", middleware.JWTAuth(jwtMgr), handler.ApplyStylePackage)
-
-	body, err := json.Marshal(validStylePackage())
-	if err != nil {
-		t.Fatalf("marshal package: %v", err)
-	}
-	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/apply", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
-	}
-
-	var payload struct {
-		Code int              `json:"code"`
-		Data StyleApplyResult `json:"data"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if payload.Code != 0 || !payload.Data.Validation.Valid {
-		t.Fatalf("expected valid apply response, got %#v", payload)
-	}
-	if payload.Data.Space == nil || payload.Data.Space.StyleManifest == nil {
-		t.Fatalf("expected applied style space, got %#v", payload.Data.Space)
-	}
+	runSpaceStyleOwnerHTTPCurrent(t)
 }
 
 func TestExampleStylePackagesAreValid(t *testing.T) {

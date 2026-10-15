@@ -109,6 +109,14 @@ func (m *Module) Start(ctx context.Context) error {
 	}
 	var verifier identityport.SessionVerifier
 	var strength identityport.SessionStrengthReader
+	var adminAuthority identityport.AdminSessionAuthorityReader
+	if value, found := m.app.Lookup("identity.admin-session-authority"); found {
+		var ok bool
+		adminAuthority, ok = value.(identityport.AdminSessionAuthorityReader)
+		if !ok || nilReadAdapter(adminAuthority) {
+			return fmt.Errorf("richtext admin session authority has incompatible type %T", value)
+		}
+	}
 	if value, found := m.app.Lookup("identity.session-verifier"); found {
 		var ok bool
 		verifier, ok = value.(identityport.SessionVerifier)
@@ -132,6 +140,13 @@ func (m *Module) Start(ctx context.Context) error {
 		return fmt.Errorf("reliability service port has incompatible type %T", reliabilityValue)
 	}
 	svc := NewService(m.store, m.community)
+	if value, found := m.app.Lookup("identity.admin-execution-authority"); found {
+		reader, ok := value.(identityport.AdminExecutionAuthorityReader)
+		if !ok || nilReadAdapter(reader) {
+			return fmt.Errorf("richtext admin execution authority has incompatible type %T", value)
+		}
+		svc.SetAdminExecutionAuthority(reader)
+	}
 	svc.SetReliability(reliable)
 	svc.SetEnabledChecker(m.enabled)
 	svc.SetPDFViewerEnabledChecker(m.pdfViewerEnabled)
@@ -169,6 +184,7 @@ func (m *Module) Start(ctx context.Context) error {
 	m.service = svc
 	m.handler = NewHandler(svc)
 	m.handler.SetSessionProof(verifier, strength)
+	m.handler.SetAdminSessionAuthority(adminAuthority)
 	retentionContext, cancel := context.WithCancel(ctx)
 	m.retentionCancel, m.retentionDone = cancel, make(chan struct{})
 	go func() {

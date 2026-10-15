@@ -8,6 +8,7 @@ import (
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/observability"
 )
 
@@ -36,7 +37,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", "core.community", platformobservability.ModuleID}
+	return []string{"core.identity", "core.community", platformobservability.ModuleID, reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -104,6 +105,13 @@ func (m *Module) Start(ctx context.Context) error {
 	var verifier identityport.SessionVerifier
 	var strength identityport.SessionStrengthReader
 	if m.app != nil {
+		if v, exists := m.app.Lookup("platform.reliability.service"); exists {
+			reliable, ok := v.(*reliability.Service)
+			if !ok || reliable == nil {
+				return fmt.Errorf("storage image reliability has incompatible type %T", v)
+			}
+			m.contentImages.SetUploadCommand(reliable, m.objects)
+		}
 		if v, ok := m.app.Lookup("community.content-query"); ok {
 			query, ok = v.(communityport.AuthenticatedThreadQuery)
 			if !ok || NilImageAdapter(query) {

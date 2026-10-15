@@ -3,6 +3,7 @@ package mutualaid
 import (
 	"context"
 	"errors"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"strings"
@@ -81,7 +82,8 @@ func (h *Handler) Create(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	result, err := h.service.Create(c.Request.Context(), userID, displayName, req)
+	_ = userID
+	result, err := h.service.CreateForPrincipal(c.Request.Context(), displayName, req, h.readPrincipal(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -115,7 +117,8 @@ func (h *Handler) Update(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	result, err := h.service.Update(c.Request.Context(), c.Param("id"), userID, req)
+	_ = userID
+	result, err := h.service.UpdateForPrincipal(c.Request.Context(), c.Param("id"), req, h.readPrincipal(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -134,7 +137,8 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	result, err := h.service.UpdateStatus(c.Request.Context(), c.Param("id"), userID, req)
+	_ = userID
+	result, err := h.service.UpdateStatusForPrincipal(c.Request.Context(), c.Param("id"), req, h.readPrincipal(c))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -167,6 +171,19 @@ func writeError(c *gin.Context, err error) {
 	}
 	if errors.Is(err, identityport.ErrPolicyFactsChanged) {
 		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+		return
+	}
+
+	if errors.Is(err, communityport.ErrAuthorCommandDenied) {
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+		return
+	}
+	if errors.Is(err, communityport.ErrAuthorCommandInvalid) {
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
+		return
+	}
+	if errors.Is(err, communityport.ErrAuthorCommandUnavailable) || errors.Is(err, identityport.ErrPolicyDecisionMismatch) {
+		response.Error(c, 503, 50001, "当前创建校验暂不可用，请稍后重试")
 		return
 	}
 

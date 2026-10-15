@@ -666,13 +666,17 @@ func (s *LocalFileStore) avatarFiles(userID string) ([]avatarFile, error) {
 			modTime: info.ModTime(),
 		})
 	}
+	sortAvatarFiles(files)
+	return files, nil
+}
+
+func sortAvatarFiles(files []avatarFile) {
 	sort.Slice(files, func(i, j int) bool {
 		if files[i].modTime.Equal(files[j].modTime) {
 			return files[i].name > files[j].name
 		}
 		return files[i].modTime.After(files[j].modTime)
 	})
-	return files, nil
 }
 
 func normalizeKeepLimit(keep, length int) int {

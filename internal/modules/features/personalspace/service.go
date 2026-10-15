@@ -14,6 +14,7 @@ import (
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/idgen"
 )
 
@@ -49,6 +50,9 @@ type Service struct {
 	quotaManager  corestorage.QuotaManager
 	enabled       func() bool
 	compatibility CompatibilityReporter
+	reliable      *reliability.Service
+	avatarStorage corestorage.Port
+	avatarAccount corestorage.InlineImageAccounting
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -835,6 +839,7 @@ func cloneManifest(manifest *StyleManifest) *StyleManifest {
 	clone := *manifest
 	clone.SourceStylePack = cloneStylePackRef(manifest.SourceStylePack)
 	clone.CompatibleCampusOS = append([]string(nil), manifest.CompatibleCampusOS...)
+	clone.Capabilities = append([]string(nil), manifest.Capabilities...)
 	clone.Components = append([]StyleComponent(nil), manifest.Components...)
 	for i := range clone.Components {
 		clone.Components[i].Props = copyInterfaceMap(manifest.Components[i].Props)

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,6 +45,8 @@ type ContentImageStore struct {
 	quota    Quota
 	maxBytes int64
 	mu       sync.Mutex
+	reliable *reliability.Service
+	account  InlineImageAccounting
 }
 
 func NewContentImageStore(storage Port, quota Quota, maxBytes int64) (*ContentImageStore, error) {

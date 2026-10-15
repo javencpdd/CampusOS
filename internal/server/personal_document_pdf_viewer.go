@@ -39,12 +39,16 @@ func (r personalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Cont
 	if r.service == nil || r.service() == nil {
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetUnavailable
 	}
-	document, object, err := r.service().ReadOnly().OpenOwnDocument(ctx, documentAdapterResolver(ctx, owner), documentID)
+	source, err := r.service().ReadOnly().OpenOwnAttachmentSource(ctx, documentAdapterResolver(ctx, owner), documentID)
 	if err != nil {
+		if errors.Is(err, personaldocuments.ErrDocumentAttachmentFormat) {
+			return richtext.PersonalDocumentAttachment{}, richtext.ErrAttachmentType
+		}
 		// Keep the source document owner-scoped and opaque. The caller must not
 		// learn whether an arbitrary document ID exists for another user.
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetNotFound
 	}
+	document, object := source.Document, source.Object
 	if document.Status != personaldocuments.StatusActive {
 		_ = object.Reader.Close()
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAssetNotFound
@@ -53,7 +57,7 @@ func (r personalDocumentPDFReader) OpenOwnDocumentForAttachment(ctx context.Cont
 		_ = object.Reader.Close()
 		return richtext.PersonalDocumentAttachment{}, richtext.ErrAttachmentType
 	}
-	return richtext.PersonalDocumentAttachment{ID: document.ID, Name: document.Name, Format: document.Format, Object: object}, nil
+	return richtext.PersonalDocumentAttachment{ID: document.ID, Version: document.Version, Name: document.Name, Format: document.Format, Object: object, CheckCurrent: source.CheckCurrent}, nil
 }
 
 func documentAdapterResolver(ctx context.Context, owner string) personaldocuments.DocumentPrincipalResolver {

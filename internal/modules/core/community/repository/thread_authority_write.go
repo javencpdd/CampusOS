@@ -66,6 +66,7 @@ func (r *MemoryThreadRepository) UpdateIfFactsVersion(ctx context.Context, threa
 		return err
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.FactsVersion = version
 	thread.ViewCount, thread.ReplyCount, thread.LikeCount = current.ViewCount, current.ReplyCount, current.LikeCount
 	r.threads[thread.ID] = cloneThread(thread)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/cache"
@@ -17,13 +18,15 @@ import (
 )
 
 type PostService struct {
-	repo          repository.PostRepository
-	threadRepo    repository.ThreadRepository
-	categoryRepo  repository.CategoryRepository
-	bus           eventbus.EventBus
-	cache         cache.Cache
-	reliable      *reliability.Service
-	notifications PostNotificationWriter
+	governanceAuthority identityport.BoardGovernanceAuthorityReader
+	threadCommandSource *ThreadService
+	repo                repository.PostRepository
+	threadRepo          repository.ThreadRepository
+	categoryRepo        repository.CategoryRepository
+	bus                 eventbus.EventBus
+	cache               cache.Cache
+	reliable            *reliability.Service
+	notifications       PostNotificationWriter
 }
 
 type PostNotificationWriter interface {

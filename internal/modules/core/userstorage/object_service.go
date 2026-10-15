@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/campusos/CampusOS/pkg/observability"
 )
@@ -35,7 +37,8 @@ func NewObjectService(storage Port, quota Quota, repository ObjectRepository, ma
 	}
 	return &ObjectService{storage: storage, quota: quota, repository: repository, maxBytes: maxBytes}, nil
 }
-func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (Object, error) {
+func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (result Object, returnErr error) {
+	ctx = context.WithValue(ctx, objectQuotaCommandKey{}, objectQuotaResolver(s.resolveCurrentObjectQuota))
 	if !SafeSegment(owner) || req.Reader == nil || req.SizeHint < 0 || req.SizeHint > s.maxBytes {
 		return Object{}, ErrUnsafePath
 	}
@@ -55,6 +58,7 @@ func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (
 		return Object{}, err
 	}
 	var path string
+	reservedID := item.ID
 	committed := false
 	renamed := false
 	defer func() {
@@ -63,9 +67,17 @@ func (s *ObjectService) Put(ctx context.Context, owner string, req PutRequest) (
 				// A database commit can fail after the provider rename. Keep the
 				// object pending/aborted state and attempt immediate local cleanup;
 				// if cleanup itself fails, reconcile will report the orphan.
-				_ = os.Remove(path)
+				if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+					returnErr = errors.Join(returnErr, ErrObjectCompensationPending, err)
+				}
 			}
-			_ = s.repository.Abort(context.Background(), item.ID, res)
+			// A failed outer SQL context cannot own compensation. Use a fresh,
+			// cancellation-independent and bounded provider transaction.
+			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.repository.Abort(cleanup, reservedID, res); err != nil {
+				returnErr = errors.Join(returnErr, ErrObjectCompensationPending, err)
+			}
 		}
 	}()
 	path, err = s.objectPath(owner, item.storageKey)
@@ -130,21 +142,37 @@ func (s *ObjectService) Stat(ctx context.Context, actor, id string) (Object, err
 	return item.Object, err
 }
 func (s *ObjectService) Delete(ctx context.Context, actor, id string, version int64) error {
+	// External bytes cannot be rolled back with a surrounding business tx.
+	if transaction.Active(ctx) {
+		return ErrObjectUnavailable
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	item, err := s.repository.PrepareDelete(ctx, actor, strings.TrimSpace(id), version)
 	if err != nil {
 		return err
 	}
+	if item.Status == ObjectStatusDeleted {
+		return nil
+	}
+	cleanup, stop := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stop()
 	path, pathErr := s.objectPath(actor, item.storageKey)
 	if pathErr != nil {
-		_ = s.repository.RestoreReady(context.Background(), item.ID)
+		if restoreErr := s.repository.RestoreReady(cleanup, item); restoreErr != nil {
+			return errors.Join(ErrObjectCompensationPending, pathErr, restoreErr)
+		}
 		return pathErr
 	}
 	if err = os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		_ = s.repository.RestoreReady(context.Background(), item.ID)
+		if restoreErr := s.repository.RestoreReady(cleanup, item); restoreErr != nil {
+			return errors.Join(ErrObjectCompensationPending, err, restoreErr)
+		}
 		return err
 	}
-	if err := s.repository.FinalizeDelete(ctx, item.ID); err != nil {
-		return err
+	if err := s.repository.FinalizeDelete(cleanup, item); err != nil {
+		return errors.Join(ErrObjectCompensationPending, err)
 	}
 	_ = s.RefreshMetrics(ctx)
 	return nil

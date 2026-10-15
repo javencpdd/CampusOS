@@ -10,6 +10,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
@@ -31,6 +32,7 @@ type Service struct {
 	personalDocumentReader           PersonalDocumentPDFReader
 	personalDocumentAttachmentReader PersonalDocumentAttachmentReader
 	reliable                         *reliability.Service
+	adminExecution                   identityport.AdminExecutionAuthorityReader
 	meter                            observability.Meter
 }
 
@@ -59,10 +61,12 @@ type PersonalDocumentAttachmentReader interface {
 }
 
 type PersonalDocumentAttachment struct {
-	ID     string
-	Name   string
-	Format string
-	Object corestorage.ObjectReader
+	ID           string
+	Version      int64
+	Name         string
+	Format       string
+	Object       corestorage.ObjectReader
+	CheckCurrent func(context.Context, bool) error
 }
 
 func NewService(store Store, community communityport.ContentGateway) *Service {
@@ -130,6 +134,10 @@ func (s *Service) SetAssetStore(store *LocalAssetStore) {
 // attachments.  It is intentionally separate from the legacy image store,
 // which remains compatible while image cutover is completed.
 func (s *Service) SetObjectPort(objects corestorage.ObjectPort) { s.objects = objects }
+
+func (s *Service) SetAdminExecutionAuthority(reader identityport.AdminExecutionAuthorityReader) {
+	s.adminExecution = reader
+}
 
 // SetMeter receives only the bounded platform meter. Asset names, owners,
 // storage keys and invocation IDs are never metrics labels.
@@ -226,6 +234,13 @@ func (s *Service) Status() StatusResult {
 }
 
 func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, req SaveArticleRequest) (*ArticleResult, error) {
+	create := func(ctx context.Context, authorID, name string, request domain.CreateThreadRequest, opts communityport.ThreadCreateOptions, detail communityport.StructuredThreadParticipant) (*domain.Thread, error) {
+		return s.community.CreateStructuredThread(ctx, authorID, name, request, opts, detail)
+	}
+	return s.createDraft(ctx, authorID, authorName, req, create, nil)
+}
+
+func (s *Service) createDraft(ctx context.Context, authorID, authorName string, req SaveArticleRequest, create structuredArticleCreator, checked *checkedArticleCreateParticipant) (*ArticleResult, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
@@ -236,7 +251,7 @@ func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, 
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	article := &Article{
 		ID:            fmt.Sprintf("%d", idgen.New()),
 		Title:         strings.TrimSpace(req.Title),
@@ -252,7 +267,13 @@ func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, 
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	_, err = s.community.CreateStructuredThread(ctx, authorID, authorName, domain.CreateThreadRequest{
+	base := articleCreateParticipant{store: s.store, article: article}
+	var participant communityport.StructuredThreadParticipant = base
+	if checked != nil {
+		checked.articleCreateParticipant = base
+		participant = checked
+	}
+	_, err = create(ctx, authorID, authorName, domain.CreateThreadRequest{
 		Title:      article.Title,
 		Content:    excerpt(sanitized.Text, 500),
 		CategoryID: strings.TrimSpace(req.CategoryID),
@@ -261,7 +282,7 @@ func (s *Service) CreateDraft(ctx context.Context, authorID, authorName string, 
 		Status:        domain.ThreadStatusDraft,
 		ContentFormat: ContentFormat,
 		ThreadType:    domain.ThreadTypeArticle,
-	}, articleCreateParticipant{store: s.store, article: article})
+	}, participant)
 	if err != nil {
 		return nil, err
 	}

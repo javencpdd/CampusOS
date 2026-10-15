@@ -231,6 +231,7 @@ func (m *Module) Start(context.Context) error {
 	posts := service.NewPostService(m.posts, bus)
 	posts.SetThreadRepository(m.threads)
 	posts.SetCategoryRepository(m.categories)
+	posts.SetThreadCommandSource(threads)
 	posts.SetNotificationWriter(notifications)
 	if reliabilityValue, found := m.app.Lookup("platform.reliability.service"); found {
 		reliable, compatible := reliabilityValue.(*reliability.Service)
@@ -258,6 +259,45 @@ func (m *Module) Start(context.Context) error {
 		}
 	}
 	threadHandler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
+	postHandler := handler.NewPostHandler(posts)
+	postHandler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
+	eventHandler := handler.NewEventHandler(memoryBus)
+	var eventAdminSessions identityport.AdminSessionAuthorityReader
+	var eventAdminExecution identityport.AdminExecutionAuthorityReader
+	if value, found := m.app.Lookup("identity.board-governance-authority"); found {
+		reader, ok := value.(identityport.BoardGovernanceAuthorityReader)
+		if !ok || reader == nil {
+			return fmt.Errorf("community governance authority port has incompatible type %T", value)
+		}
+		threads.SetGovernanceAuthority(reader)
+		posts.SetGovernanceAuthority(reader)
+	}
+	if value, found := m.app.Lookup("identity.admin-session-authority"); found {
+		reader, ok := value.(identityport.AdminSessionAuthorityReader)
+		if !ok || reader == nil {
+			return fmt.Errorf("community admin session authority port has incompatible type %T", value)
+		}
+		threadHandler.SetAdminSessionAuthority(reader)
+		postHandler.SetAdminSessionAuthority(reader)
+		eventAdminSessions = reader
+	}
+	if value, found := m.app.Lookup("identity.admin-execution-authority"); found {
+		reader, ok := value.(identityport.AdminExecutionAuthorityReader)
+		if !ok || reader == nil {
+			return fmt.Errorf("community admin execution authority port has incompatible type %T", value)
+		}
+		eventAdminExecution = reader
+		threads.SetAdminExecutionAuthority(reader)
+	}
+	if value, found := m.app.Lookup("identity.user-scoped-execution-authority"); found {
+		reader, ok := value.(identityport.UserScopedExecutionAuthorityReader)
+		if !ok || reader == nil {
+			return fmt.Errorf("community User scoped execution port has incompatible type %T", value)
+		}
+		threads.SetUserScopedExecutionAuthority(reader)
+	}
+	eventHandler.SetAdminAuthority(eventAdminSessions, eventAdminExecution)
+
 	m.threadService = threads
 	m.categoryService = categories
 	m.postService = posts
@@ -265,9 +305,9 @@ func (m *Module) Start(context.Context) error {
 	m.handlers = HTTPHandlers{
 		Thread:       threadHandler,
 		Category:     handler.NewCategoryHandler(categories),
-		Post:         handler.NewPostHandler(posts),
+		Post:         postHandler,
 		Notification: handler.NewNotificationHandler(notifications),
-		Event:        handler.NewEventHandler(memoryBus),
+		Event:        eventHandler,
 	}
 	return nil
 }

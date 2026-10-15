@@ -11,29 +11,32 @@ const (
 )
 
 type Space struct {
-	ID             string         `json:"id"`
-	UserID         string         `json:"user_id"`
-	Title          string         `json:"title"`
-	Bio            string         `json:"bio"`
-	Avatar         string         `json:"avatar,omitempty"`
-	CoverImage     string         `json:"cover_image,omitempty"`
-	Theme          string         `json:"theme"`
-	Layout         string         `json:"layout"`
-	StyleName      string         `json:"style_name,omitempty"`
-	StyleVersion   string         `json:"style_version,omitempty"`
-	StyleManifest  *StyleManifest `json:"style_manifest,omitempty"`
-	Visibility     Visibility     `json:"visibility"`
-	SyncEnabled    bool           `json:"sync_enabled"`
-	SyncCategories []string       `json:"sync_categories,omitempty"`
-	SyncTags       []string       `json:"sync_tags,omitempty"`
-	DisabledAt     *time.Time     `json:"disabled_at,omitempty"`
-	DisabledBy     string         `json:"disabled_by,omitempty"`
-	DisabledReason string         `json:"disabled_reason,omitempty"`
-	LastSyncAt     *time.Time     `json:"last_sync_at,omitempty"`
-	LastSyncError  string         `json:"last_sync_error,omitempty"`
-	IsDefault      bool           `json:"is_default"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	FactsVersion      int64          `json:"-"`
+	DisabledActorKind string         `json:"-"`
+	DisabledActorID   string         `json:"-"`
+	ID                string         `json:"id"`
+	UserID            string         `json:"user_id"`
+	Title             string         `json:"title"`
+	Bio               string         `json:"bio"`
+	Avatar            string         `json:"avatar,omitempty"`
+	CoverImage        string         `json:"cover_image,omitempty"`
+	Theme             string         `json:"theme"`
+	Layout            string         `json:"layout"`
+	StyleName         string         `json:"style_name,omitempty"`
+	StyleVersion      string         `json:"style_version,omitempty"`
+	StyleManifest     *StyleManifest `json:"style_manifest,omitempty"`
+	Visibility        Visibility     `json:"visibility"`
+	SyncEnabled       bool           `json:"sync_enabled"`
+	SyncCategories    []string       `json:"sync_categories,omitempty"`
+	SyncTags          []string       `json:"sync_tags,omitempty"`
+	DisabledAt        *time.Time     `json:"disabled_at,omitempty"`
+	DisabledBy        string         `json:"disabled_by,omitempty"`
+	DisabledReason    string         `json:"disabled_reason,omitempty"`
+	LastSyncAt        *time.Time     `json:"last_sync_at,omitempty"`
+	LastSyncError     string         `json:"last_sync_error,omitempty"`
+	IsDefault         bool           `json:"is_default"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
 type Owner struct {
@@ -82,6 +85,7 @@ type UpsertSpaceRequest struct {
 }
 
 type StyleSnapshot struct {
+	FactsVersion  int64          `json:"-"`
 	ID            string         `json:"id"`
 	UserID        string         `json:"user_id"`
 	SnapshotType  string         `json:"snapshot_type"`

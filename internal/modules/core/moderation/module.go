@@ -94,6 +94,14 @@ func (m *Module) Start(context.Context) error {
 	service.SetEnabledChecker(func() bool { return true })
 	m.service = service
 	m.handler = NewHandler(service)
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		reader, ok := value.(identityport.SessionVerifier)
+		if !ok || reader == nil {
+			return fmt.Errorf("moderation current user verifier incompatible type %T", value)
+		}
+		m.handler.SetUserSessionVerifier(reader)
+	}
+
 	// The session strength fact source is provided by Identity at Register time;
 	// when absent, delegation writes fail closed instead of assuming strength.
 	if strengthValue, exists := m.app.Lookup("identity.session-strength"); exists {

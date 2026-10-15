@@ -1,7 +1,14 @@
 import api from "../../shared/api/client";
 
 export const eventApi = {
-  list: (params?: { limit?: number }) => api.get("/events", { params }),
+  list: (params?: { limit?: number; type?: string }) => api.get("/events", { params }),
+};
+
+export type EventMetadata = {
+  id: string;
+  type: string;
+  source: string;
+  time: string;
 };
 
 export const platformLogApi = {

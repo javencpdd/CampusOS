@@ -12,76 +12,107 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
-	"userHandler.RequestRegistrationChallenge": {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt", AdditionalErrors: []string{"429", "503"}},
-	"userHandler.VerifyRegistrationChallenge":  {RequestSchema: "RegistrationChallengeVerifyRequest", ResponseSchema: "ChallengeTicket"},
-	"userHandler.Register":                     {RequestSchema: "RegisterRequest", ResponseSchema: "User", SuccessStatus: "201"},
-	"userHandler.Login":                        {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse", AdditionalErrors: []string{"401", "503"}},
-	"userHandler.AdminLogin":                   {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse", AdditionalErrors: []string{"401", "503"}},
-	"userHandler.Refresh":                      {RequestSchema: "RefreshRequest", ResponseSchema: "RefreshResponse", RequestOptional: true},
-	"userHandler.ListSessions":                 {ResponseSchema: "SessionListResponse"},
-	"userHandler.RequestPasswordReset":         {RequestSchema: "PasswordResetChallengeRequest", ResponseSchema: "PasswordResetChallengeResponse"},
-	"userHandler.VerifyPasswordReset":          {RequestSchema: "PasswordResetVerifyRequest", ResponseSchema: "ChallengeTicket"},
-	"userHandler.CompletePasswordReset":        {RequestSchema: "PasswordResetCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
-	"userHandler.RequestEmailBinding":          {RequestSchema: "EmailBindingChallengeRequest", ResponseSchema: "ChallengeReceipt"},
-	"userHandler.VerifyEmailBinding":           {RequestSchema: "EmailBindingVerifyRequest", ResponseSchema: "ChallengeTicket"},
-	"userHandler.CompleteEmailBinding":         {RequestSchema: "EmailBindingCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
-	"userHandler.CompleteAdminRecovery":        {RequestSchema: "RecoveryCaseCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
-	"userHandler.ListAdminRecoveryCases":       {ResponseSchema: "RecoveryCaseListResponse"},
-	"userHandler.CreateAdminRecoveryCase":      {RequestSchema: "AdminRecoveryCaseCreateRequest", ResponseSchema: "RecoveryCase", SuccessStatus: "201"},
-	"userHandler.ListAdminUserSessions":        {ResponseSchema: "SessionListResponse"},
-	"challengePolicyHandler.Get":               {ResponseSchema: "ChallengePolicy"},
-	"challengePolicyHandler.Update":            {RequestSchema: "ChallengePolicyUpdateRequest", ResponseSchema: "ChallengePolicy"},
-	"userHandler.UpdateUser":                   {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
-	"userHandler.ListUsers":                    {ResponseSchema: "UserListData", Paginated: true},
-	"userHandler.ListAdminUsers":               {ResponseSchema: "AdminUserListData", Paginated: true},
-	"userHandler.GetUser":                      {ResponseSchema: "PublicUser"},
-	"userHandler.GetMe":                        {ResponseSchema: "User"},
-	"threadHandler.CreateThread":               {RequestSchema: "CreateThreadRequest", ResponseSchema: "Thread", SuccessStatus: "201"},
-	"threadHandler.UpdateThread":               {RequestSchema: "UpdateThreadRequest", ResponseSchema: "Thread"},
-	"threadHandler.ListThreads":                {ResponseSchema: "ThreadListData", Paginated: true},
-	"threadHandler.AdminListThreads":           {ResponseSchema: "ThreadListData", Paginated: true},
-	"threadHandler.GetThread":                  {ResponseSchema: "Thread"},
-	"threadHandler.GetThreadForCurrentUser":    {ResponseSchema: "Thread"},
-	"threadHandler.PreviewContent":             {RequestSchema: "ContentPreviewRequest", ResponseSchema: "ContentPreviewResponse"},
-	"userStorageHandler.UploadContentImage":    {ResponseSchema: "ContentImage"},
-	"postHandler.CreatePost":                   {RequestSchema: "CreatePostRequest", ResponseSchema: "Post", SuccessStatus: "201"},
-	"postHandler.UpdatePost":                   {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
-	"postHandler.ListPosts":                    {ResponseSchema: "PostListData", Paginated: true},
-	"postHandler.ListPostsForCurrentUser":      {ResponseSchema: "PostListData", Paginated: true},
-	"notificationHandler.List":                 {ResponseSchema: "NotificationListData", Paginated: true},
-	"categoryHandler.Create":                   {RequestSchema: "CreateCategoryRequest", ResponseSchema: "Category", SuccessStatus: "201"},
-	"categoryHandler.Update":                   {RequestSchema: "UpdateCategoryRequest", ResponseSchema: "Category"},
-	"categoryHandler.Get":                      {ResponseSchema: "Category"},
-	"categoryHandler.ListThreadTypePolicies":   {ResponseSchema: "CategoryThreadTypePolicies"},
-	"categoryHandler.UpdateThreadTypePolicies": {RequestSchema: "UpdateCategoryThreadTypePolicyRequest", ResponseSchema: "CategoryThreadTypePolicyUpdate"},
-	"spaceHandler.UpdateMe":                    {RequestSchema: "UpsertSpaceRequest", ResponseSchema: "Space"},
-	"spaceHandler.StorageStatus":               {ResponseSchema: "SpaceStorageStatus"},
-	"spaceHandler.UploadAvatar":                {ResponseSchema: "AvatarUploadResult"},
-	"spaceHandler.ListAvatars":                 {ResponseSchema: "AvatarHistory"},
-	"spaceHandler.SelectAvatar":                {RequestSchema: "SelectAvatarRequest", ResponseSchema: "AvatarUploadResult"},
-	"spaceHandler.AdminStorageStatus":          {ResponseSchema: "SpaceStorageStatus"},
-	"spaceHandler.SetStorageQuota":             {RequestSchema: "SetStorageQuotaRequest", ResponseSchema: "SpaceStorageStatus"},
-	"spaceHandler.ListContentsByUserID":        {Paginated: true},
-	"spaceHandler.ListContentsByUsername":      {Paginated: true},
-	"scheduleHandler.ActivateTerm":             {RequestSchema: "ActivateTermRequest"},
-	"scheduleHandler.SaveMe":                   {RequestSchema: "ScheduleUpsertRequest"},
-	"richTextHandler.CreateDraft":              {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle", SuccessStatus: "201"},
-	"richTextHandler.UpdateDraft":              {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle"},
-	"richTextHandler.Preview":                  {RequestSchema: "RichtextSaveRequest"},
-	"roleHandler.AssignRole":                   {RequestSchema: "RoleAssignmentRequest"},
-	"roleHandler.RevokeRole":                   {RequestSchema: "RoleRevokeRequest"},
-	"moderationHandler.SetModerator":           {RequestSchema: "ModeratorAssignmentRequest"},
-	"pluginHandler.RollbackVersionSnapshot":    {RequestSchema: "PluginRollbackRequest"},
-	"pluginHandler.UpdatePluginConfig":         {RequestSchema: "GenericObject"},
-	"webhookHandler.CreateEndpoint":            {RequestSchema: "GenericObject"},
-	"mcpHandler.CallTool":                      {RequestSchema: "GenericObject"},
-	"mcpHandler.UpdateSettings":                {RequestSchema: "GenericObject"},
-	"messageHandler.ReceiveLocal":              {RequestSchema: "GenericObject"},
-	"messageHandler.CreateBinding":             {RequestSchema: "GenericObject"},
-	"spaceHandler.ApplySourceStylePack":        {RequestSchema: "StylePackSourceRequest"},
-	"homepageHandler.ApplySourceStylePack":     {RequestSchema: "StylePackSourceRequest"},
-	"spaceHandler.ExportStylePackage":          {RequestSchema: "StyleExportRequest", RequestOptional: true},
-	"spaceHandler.DisableSpace":                {RequestSchema: "DisableSpaceRequest", RequestOptional: true},
+	"userHandler.RequestRegistrationChallenge":         {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt", AdditionalErrors: []string{"429", "503"}},
+	"userHandler.VerifyRegistrationChallenge":          {RequestSchema: "RegistrationChallengeVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.Register":                             {RequestSchema: "RegisterRequest", ResponseSchema: "User", SuccessStatus: "201"},
+	"userHandler.Login":                                {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse", AdditionalErrors: []string{"401", "503"}},
+	"userHandler.AdminLogin":                           {RequestSchema: "LoginRequest", ResponseSchema: "LoginResponse", AdditionalErrors: []string{"401", "503"}},
+	"userHandler.Refresh":                              {RequestSchema: "RefreshRequest", ResponseSchema: "RefreshResponse", RequestOptional: true},
+	"userHandler.ListSessions":                         {ResponseSchema: "SessionListResponse"},
+	"userHandler.RequestPasswordReset":                 {RequestSchema: "PasswordResetChallengeRequest", ResponseSchema: "PasswordResetChallengeResponse"},
+	"userHandler.VerifyPasswordReset":                  {RequestSchema: "PasswordResetVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.CompletePasswordReset":                {RequestSchema: "PasswordResetCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.RequestEmailBinding":                  {RequestSchema: "EmailBindingChallengeRequest", ResponseSchema: "ChallengeReceipt"},
+	"userHandler.VerifyEmailBinding":                   {RequestSchema: "EmailBindingVerifyRequest", ResponseSchema: "ChallengeTicket"},
+	"userHandler.CompleteEmailBinding":                 {RequestSchema: "EmailBindingCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.CompleteAdminRecovery":                {RequestSchema: "RecoveryCaseCompleteRequest", ResponseSchema: "RecoveryCompletionResponse"},
+	"userHandler.ListAdminRecoveryCases":               {ResponseSchema: "RecoveryCaseListResponse"},
+	"userHandler.CreateAdminRecoveryCase":              {RequestSchema: "AdminRecoveryCaseCreateRequest", ResponseSchema: "RecoveryCase", SuccessStatus: "201"},
+	"userHandler.ListAdminUserSessions":                {ResponseSchema: "SessionListResponse"},
+	"challengePolicyHandler.Get":                       {ResponseSchema: "ChallengePolicy"},
+	"challengePolicyHandler.Update":                    {RequestSchema: "ChallengePolicyUpdateRequest", ResponseSchema: "ChallengePolicy"},
+	"userHandler.UpdateUser":                           {RequestSchema: "UpdateUserRequest", ResponseSchema: "User"},
+	"userHandler.ListUsers":                            {ResponseSchema: "UserListData", Paginated: true},
+	"userHandler.ListAdminUsers":                       {ResponseSchema: "AdminUserListData", Paginated: true},
+	"userHandler.GetUser":                              {ResponseSchema: "PublicUser"},
+	"userHandler.GetMe":                                {ResponseSchema: "User"},
+	"threadHandler.CreateThread":                       {RequestSchema: "CreateThreadRequest", ResponseSchema: "Thread", SuccessStatus: "201"},
+	"threadHandler.UpdateThread":                       {RequestSchema: "UpdateThreadRequest", ResponseSchema: "Thread"},
+	"threadHandler.ListThreads":                        {ResponseSchema: "ThreadListData", Paginated: true},
+	"threadHandler.AdminListThreads":                   {ResponseSchema: "ThreadListData", Paginated: true},
+	"threadHandler.GetThread":                          {ResponseSchema: "Thread"},
+	"threadHandler.GetThreadForCurrentUser":            {ResponseSchema: "Thread"},
+	"threadHandler.PreviewContent":                     {RequestSchema: "ContentPreviewRequest", ResponseSchema: "ContentPreviewResponse"},
+	"userStorageHandler.UploadContentImage":            {ContentType: "multipart/form-data", RequestSchema: "ContentImageUploadRequest", ResponseSchema: "ContentImage", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"richTextHandler.UploadAsset":                      {ContentType: "multipart/form-data", RequestSchema: "InlineRichTextUploadRequest", ResponseSchema: "InlineRichTextAsset", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"postHandler.CreatePost":                           {RequestSchema: "CreatePostRequest", ResponseSchema: "Post", SuccessStatus: "201"},
+	"postHandler.UpdatePost":                           {RequestSchema: "UpdatePostRequest", ResponseSchema: "Post"},
+	"postHandler.ListPosts":                            {ResponseSchema: "PostListData", Paginated: true},
+	"postHandler.ListPostsForCurrentUser":              {ResponseSchema: "PostListData", Paginated: true},
+	"notificationHandler.List":                         {ResponseSchema: "NotificationListData", Paginated: true},
+	"categoryHandler.Create":                           {RequestSchema: "CreateCategoryRequest", ResponseSchema: "Category", SuccessStatus: "201"},
+	"categoryHandler.Update":                           {RequestSchema: "UpdateCategoryRequest", ResponseSchema: "Category"},
+	"categoryHandler.Get":                              {ResponseSchema: "Category"},
+	"categoryHandler.ListThreadTypePolicies":           {ResponseSchema: "CategoryThreadTypePolicies"},
+	"categoryHandler.UpdateThreadTypePolicies":         {RequestSchema: "UpdateCategoryThreadTypePolicyRequest", ResponseSchema: "CategoryThreadTypePolicyUpdate"},
+	"spaceHandler.UpdateMe":                            {RequestSchema: "UpsertSpaceRequest", ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.GetMe":                               {ResponseSchema: "PublicSpace", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.ListSourceStylePacks":                {ResponseSchema: "SpaceSourceStylePackList", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.SelectAvatar":                        {RequestSchema: "AvatarSelectionRequest", ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"spaceHandler.StorageStatus":                       {ResponseSchema: "SpaceStorageStatus"},
+	"spaceHandler.UploadAvatar":                        {ResponseSchema: "AvatarMutationAck", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"spaceHandler.CleanupAvatarHistory":                {ResponseSchema: "AvatarCleanupAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.ApplyStylePackage":                   {RequestSchema: "PersonalSpaceStylePackage", ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.ApplyCustomHTML":                     {RequestSchema: "PersonalSpaceStyleHTMLRequest", ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"spaceHandler.ApplyStylePackZip":                   {ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"spaceHandler.RollbackStyle":                       {NoBody: true, ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"spaceHandler.RestoreDefaultStyle":                 {NoBody: true, ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"spaceHandler.ListAvatars":                         {ResponseSchema: "AvatarHistory"},
+	"spaceHandler.AdminStorageStatus":                  {ResponseSchema: "SpaceStorageStatus"},
+	"spaceHandler.SetStorageQuota":                     {RequestSchema: "SetStorageQuotaRequest", ResponseSchema: "SpaceStorageStatus"},
+	"spaceHandler.ListContentsByUserID":                {Paginated: true},
+	"spaceHandler.ListContentsByUsername":              {Paginated: true},
+	"scheduleHandler.ActivateTerm":                     {RequestSchema: "ActivateTermRequest"},
+	"scheduleHandler.SaveMe":                           {RequestSchema: "ScheduleUpsertRequest"},
+	"richTextHandler.CreateDraft":                      {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle", SuccessStatus: "201"},
+	"richTextHandler.UpdateDraft":                      {RequestSchema: "RichtextSaveRequest", ResponseSchema: "RichtextArticle"},
+	"richTextHandler.AdminOffline":                     {RequestSchema: "RichtextGovernanceReason", RequestOptional: true, ResponseSchema: "RichtextGovernanceAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.AdminRestore":                     {RequestSchema: "RichtextGovernanceReason", RequestOptional: true, ResponseSchema: "RichtextGovernanceAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.AdminDelete":                      {RequestSchema: "RichtextGovernanceReason", RequestOptional: true, SuccessStatus: "204", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.BindAttachment":                   {RequestSchema: "AttachmentBindRequest", ResponseSchema: "AttachmentMutationAck", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.UploadAttachment":                 {ContentType: "multipart/form-data", RequestSchema: "AttachmentUploadRequest", ResponseSchema: "AttachmentMutationAck", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "404", "409", "413", "503"}},
+	"richTextHandler.AttachPersonalDocument":           {RequestSchema: "AttachmentDocumentCopyRequest", ResponseSchema: "AttachmentMutationAck", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "404", "409", "413", "503"}},
+	"richTextHandler.TrashUserAsset":                   {ResponseSchema: "AssetMutationAck", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.RestoreUserAsset":                 {ResponseSchema: "AssetMutationAck", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.AdminQuarantineUserAsset":         {RequestSchema: "AssetAdminLifecycleRequest", ResponseSchema: "AssetAdminMutationAck", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.AdminRestoreQuarantinedUserAsset": {RequestSchema: "AssetAdminLifecycleRequest", ResponseSchema: "AssetAdminMutationAck", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.AssetGovernanceSummary":           {ResponseSchema: "AssetGovernanceSummary", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.AdminPreviewUserAssetPurge":       {ResponseSchema: "AssetPurgePreview", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.AdminPurgeUserAsset":              {RequestSchema: "AssetPurgeRequest", ResponseSchema: "AssetPurgeAck", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"richTextHandler.RenameAttachment":                 {RequestSchema: "AttachmentRenameRequest", ResponseSchema: "AttachmentMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.ReorderAttachments":               {RequestSchema: "AttachmentReorderRequest", ResponseSchema: "AttachmentMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.RemoveAttachment":                 {NoBody: true, SuccessStatus: "204", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"richTextHandler.Preview":                          {RequestSchema: "RichtextSaveRequest"},
+	"roleHandler.AssignRole":                           {RequestSchema: "RoleAssignmentRequest"},
+	"roleHandler.RevokeRole":                           {RequestSchema: "RoleRevokeRequest"},
+	"moderationHandler.SetModerator":                   {RequestSchema: "ModeratorAssignmentRequest"},
+	"moderationHandler.MyAccess":                       {ResponseSchema: "UserModerationAccess", AdditionalErrors: []string{"401", "409", "503"}},
+	"moderationHandler.PreviewBatch":                   {RequestSchema: "ModerationPreviewBatchRequest", ResponseSchema: "UserModerationPreview", AdditionalErrors: []string{"401", "409", "503"}},
+	"moderationHandler.Pin":                            {ResponseSchema: "ThreadFlagAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"moderationHandler.Unpin":                          {ResponseSchema: "ThreadFlagAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"moderationHandler.Lock":                           {ResponseSchema: "ThreadFlagAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"moderationHandler.Unlock":                         {ResponseSchema: "ThreadFlagAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"pluginHandler.RollbackVersionSnapshot":            {RequestSchema: "PluginRollbackRequest"},
+	"pluginHandler.UpdatePluginConfig":                 {RequestSchema: "GenericObject"},
+	"webhookHandler.CreateEndpoint":                    {RequestSchema: "GenericObject"},
+	"mcpHandler.CallTool":                              {RequestSchema: "GenericObject"},
+	"mcpHandler.UpdateSettings":                        {RequestSchema: "GenericObject"},
+	"messageHandler.ReceiveLocal":                      {RequestSchema: "GenericObject"},
+	"messageHandler.CreateBinding":                     {RequestSchema: "GenericObject"},
+	"spaceHandler.ApplySourceStylePack":                {RequestSchema: "StylePackSourceRequest", ResponseSchema: "SpaceMutationAck", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"homepageHandler.ApplySourceStylePack":             {RequestSchema: "StylePackSourceRequest"},
+	"spaceHandler.ExportStylePackage":                  {RequestSchema: "StyleExportRequest", RequestOptional: true},
+	"spaceHandler.DisableSpace":                        {RequestSchema: "DisableSpaceRequest", RequestOptional: true},
 }
 
 var multipartHandlers = map[string]bool{
@@ -112,8 +143,6 @@ var noBodyHandlers = map[string]bool{
 	"threadHandler.UnpinThread":           true,
 	"threadHandler.LockThread":            true,
 	"threadHandler.UnlockThread":          true,
-	"richTextHandler.AdminOffline":        true,
-	"richTextHandler.AdminRestore":        true,
 	"pluginHandler.EnablePlugin":          true,
 	"pluginHandler.DisablePlugin":         true,
 	"pluginHandler.ReloadUserPlugin":      true,
@@ -147,14 +176,18 @@ func profileFor(route RouteContract) operationProfile {
 	profile := operationProfiles[route.Handler]
 	if multipartHandlers[route.Handler] {
 		profile.ContentType = "multipart/form-data"
-		profile.RequestSchema = "MultipartRequest"
+		if profile.RequestSchema == "" {
+			profile.RequestSchema = "MultipartRequest"
+		}
 	}
 	if noBodyHandlers[route.Handler] {
 		profile.NoBody = true
 	}
 	if noContentHandlers[route.Handler] {
 		profile.SuccessStatus = "204"
-		profile.NoBody = true
+		if profile.RequestSchema == "" {
+			profile.NoBody = true
+		}
 	}
 	if profile.SuccessStatus == "" {
 		profile.SuccessStatus = "200"
@@ -464,6 +497,173 @@ func openAPIComponents() string {
         id: { type: integer, format: int64 }
         name: { type: string }
         description: { type: string }
+    ModerationPreviewBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        post_ids:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 128 }
+    UserModerationPreview:
+      type: object
+      additionalProperties: false
+      required: [thread_id, pin, lock, posts]
+      properties:
+        thread_id: { type: string }
+        pin: { type: boolean }
+        lock: { type: boolean }
+        posts:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, delete]
+            properties:
+              id: { type: string }
+              delete: { type: boolean }
+    UserModerationAccess:
+      type: object
+      additionalProperties: false
+      required: [thread_id, can_moderate, actions]
+      properties:
+        thread_id: { type: string }
+        can_moderate: { type: boolean }
+        actions:
+          type: object
+          additionalProperties: false
+          required: [pin, lock, delete_post]
+          properties:
+            pin: { type: boolean }
+            lock: { type: boolean }
+            delete_post: { type: boolean, enum: [false] }
+    AttachmentMutationAck:
+      type: object
+      additionalProperties: false
+      required: [thread_id]
+      properties:
+        thread_id: { type: string }
+        attachment_id: { type: string }
+    AssetMutationAck:
+      type: object
+      additionalProperties: false
+      required: [asset_id, status]
+      properties:
+        asset_id: { type: string }
+        status: { type: string, enum: [active, trashed] }
+    AssetGovernanceSummary:
+      type: object
+      additionalProperties: false
+      required: [statuses, actions, expired_invocations, generated_at]
+      properties:
+        statuses:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [status, count, size_bytes]
+            properties:
+              status: { type: string, enum: [active, trashed, quarantined, purging, deleted] }
+              count: { type: integer, minimum: 0 }
+              size_bytes: { type: integer, minimum: 0 }
+        actions:
+          type: array
+          maxItems: 6
+          items:
+            type: object
+            additionalProperties: false
+            required: [action, count]
+            properties:
+              action: { type: string, enum: [trashed, restored, quarantined, purge_started, purge_failed, purged] }
+              count: { type: integer, minimum: 0 }
+        expired_invocations: { type: integer, minimum: 0 }
+        generated_at: { type: string, format: date-time }
+    AssetPurgeRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, confirm_asset_id]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        confirm_asset_id: { type: string, minLength: 1 }
+    AssetPurgeAck:
+      type: object
+      additionalProperties: false
+      required: [asset_id, status]
+      properties:
+        asset_id: { type: string }
+        status: { type: string, enum: [deleted] }
+    AssetPurgePreview:
+      type: object
+      additionalProperties: false
+      required: [asset_id, status, size_bytes, reference_count, eligible, reason]
+      properties:
+        asset_id: { type: string }
+        status: { type: string, enum: [active, trashed, quarantined, purging, deleted] }
+        size_bytes: { type: integer, minimum: 0 }
+        reference_count: { type: integer, minimum: 0 }
+        eligible: { type: boolean }
+        reason: { type: string }
+    AssetAdminMutationAck:
+      type: object
+      additionalProperties: false
+      required: [asset_id, status]
+      properties:
+        asset_id: { type: string }
+        status: { type: string, enum: [active, quarantined] }
+    AssetAdminLifecycleRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AttachmentBindRequest:
+      type: object
+      additionalProperties: false
+      required: [asset_id]
+      properties:
+        asset_id: { type: string, minLength: 1 }
+        display_name: { type: string, maxLength: 255 }
+    AttachmentUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file: { type: string, format: binary, maxLength: 20971520 }
+    AttachmentDocumentCopyRequest:
+      type: object
+      additionalProperties: false
+      required: [document_id]
+      properties:
+        document_id: { type: string, minLength: 1 }
+        display_name: { type: string, maxLength: 255 }
+    AttachmentRenameRequest:
+      type: object
+      additionalProperties: false
+      required: [display_name]
+      properties:
+        display_name: { type: string, minLength: 1, maxLength: 255 }
+    AttachmentReorderRequest:
+      type: object
+      additionalProperties: false
+      required: [attachment_ids]
+      properties:
+        attachment_ids:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+    ThreadFlagAck:
+      type: object
+      additionalProperties: false
+      required: [id, is_pinned, is_locked]
+      properties:
+        id: { type: string }
+        is_pinned: { type: boolean }
+        is_locked: { type: boolean }
     Thread:
       type: object
       required: [id, title, content, author_id, category_id, status]
@@ -612,6 +812,19 @@ func openAPIComponents() string {
       properties:
         category: { $ref: '#/components/schemas/Category' }
         items: { type: array, items: { $ref: '#/components/schemas/CategoryThreadTypePolicy' } }
+    AvatarSelectionRequest:
+      type: object
+      required: [file_name]
+      properties:
+        file_name: { type: string, minLength: 1, maxLength: 255 }
+      additionalProperties: false
+    SpaceMutationAck:
+      type: object
+      required: [space_id, owner_id]
+      properties:
+        space_id: { type: string }
+        owner_id: { type: string }
+      additionalProperties: false
     UpsertSpaceRequest:
       type: object
       properties:
@@ -625,6 +838,13 @@ func openAPIComponents() string {
         sync_enabled: { type: boolean }
         sync_categories: { type: array, items: { type: string } }
         sync_tags: { type: array, items: { type: string } }
+      additionalProperties: false
+    PublicSpace:
+      type: object
+      required: [owner, space]
+      properties:
+        owner: { type: object, additionalProperties: true }
+        space: { $ref: '#/components/schemas/Space' }
       additionalProperties: false
     Space: { type: object, additionalProperties: true }
     SpaceStorageStatus:
@@ -646,6 +866,128 @@ func openAPIComponents() string {
       properties:
         quota_bytes: { type: integer, format: int64, minimum: 1048576, maximum: 107374182400 }
       additionalProperties: false
+    SpaceSourceStylePackList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SpaceSourceStylePack' }
+    SpaceSourceStylePack:
+      type: object
+      additionalProperties: false
+      required: [name, validation]
+      properties:
+        name: { type: string }
+        target: { type: string }
+        version: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        checksum: { type: string }
+        previews:
+          type: object
+          additionalProperties: false
+          properties:
+            desktop: { type: string }
+            mobile: { type: string }
+        manifest:
+          type: object
+          description: Package manifest; paths are package-relative declarations.
+          additionalProperties: true
+        validation:
+          type: object
+          additionalProperties: false
+          required: [valid]
+          properties:
+            valid: { type: boolean }
+            delivery_status: { type: string }
+            errors:
+              type: array
+              items: { type: string }
+            warnings:
+              type: array
+              items: { type: string }
+            issues:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+                  file: { type: string }
+                  viewport: { type: string }
+    PersonalSpaceStyleHTMLRequest:
+      type: object
+      additionalProperties: false
+      required: [html]
+      properties:
+        html: { type: string, maxLength: 20000 }
+    PersonalSpaceStylePackage:
+      type: object
+      additionalProperties: false
+      required: [manifest]
+      properties:
+        manifest:
+          type: object
+          additionalProperties: false
+          properties:
+            schema_version: { type: string }
+            name: { type: string }
+            version: { type: string }
+            author: { type: string }
+            description: { type: string }
+            preview_image: { type: string }
+            compatible_campusos: { type: array, items: { type: string } }
+            layout: { type: string }
+            components:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  slot: { type: string }
+                  type: { type: string }
+                  props: { type: object, additionalProperties: true }
+            tokens: { type: object, additionalProperties: { type: string } }
+            assets:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  name: { type: string }
+                  path: { type: string }
+                  type: { type: string }
+            custom_html_enabled: { type: boolean }
+            custom_html: { type: string }
+            custom_css: { type: string }
+            custom_effect_js: { type: string }
+            source_style_pack:
+              type: object
+              additionalProperties: false
+              properties:
+                name: { type: string }
+                version: { type: string }
+                target: { type: string }
+            capabilities: { type: array, items: { type: string } }
+    AvatarCleanupAck:
+      type: object
+      additionalProperties: false
+      required: [owner_id, cleanup_pending]
+      properties:
+        owner_id: { type: string }
+        cleanup_pending: { type: boolean }
+    AvatarMutationAck:
+      type: object
+      additionalProperties: false
+      required: [space_id, owner_id]
+      properties:
+        space_id: { type: string }
+        owner_id: { type: string }
+        cleanup_pending: { type: boolean }
     SelectAvatarRequest:
       type: object
       required: [file_name]
@@ -709,6 +1051,19 @@ func openAPIComponents() string {
         tags: { type: array, items: { type: string } }
       additionalProperties: false
     RichtextArticle: { type: object, additionalProperties: true }
+    RichtextGovernanceReason:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1 }
+      additionalProperties: false
+    RichtextGovernanceAck:
+      type: object
+      required: [thread_id, status]
+      properties:
+        thread_id: { type: string, minLength: 1 }
+        status: { type: string, enum: [draft, published, offline, trashed] }
+      additionalProperties: false
     ContentPreviewRequest:
       type: object
       required: [content]
@@ -722,6 +1077,37 @@ func openAPIComponents() string {
         sanitized_html: { type: string }
         text: { type: string }
         warnings: { type: array, items: { type: string } }
+    ContentImageUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+      additionalProperties: false
+    InlineRichTextUploadRequest:
+      type: object
+      required: [file]
+      description: Article bindings are resolved from the actual author-editable article; article_content_id requires thread_id.
+      properties:
+        file: { type: string, format: binary }
+        thread_id: { type: string }
+        article_content_id: { type: string }
+      additionalProperties: false
+    InlineRichTextAsset:
+      type: object
+      required: [id, uploader_id, file_url, file_name, file_size, mime_type, created_at]
+      properties:
+        id: { type: string }
+        uploader_id: { type: string }
+        thread_id: { type: string }
+        article_content_id: { type: string }
+        file_url: { type: string }
+        file_name: { type: string }
+        file_size: { type: integer, minimum: 1 }
+        mime_type: { type: string, enum: [image/png, image/jpeg, image/gif, image/webp] }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+        created_at: { type: string, format: date-time }
+      additionalProperties: false
     ContentImage:
       type: object
       required: [file_url, file_name, file_size, mime_type]
@@ -806,6 +1192,21 @@ func openAPIComponents() string {
         pagination: { $ref: '#/components/schemas/Pagination' }
         unread_count: { type: integer, format: int64, minimum: 0 }
   responses:
+    NotFound:
+      description: Resource unavailable to this caller
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Current facts, quota or resource state changed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    PayloadTooLarge:
+      description: File or request exceeds the bounded limit
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     Unauthorized:
       description: Missing or invalid authentication
       content:

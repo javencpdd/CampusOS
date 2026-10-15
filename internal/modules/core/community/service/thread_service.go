@@ -29,18 +29,21 @@ var (
 
 // ThreadService 帖子服务
 type ThreadService struct {
-	repo          repository.ThreadRepository
-	categoryRepo  repository.CategoryRepository
-	typePolicies  repository.ThreadTypePolicyRepository
-	governance    repository.ContentGovernanceRepository
-	authorization ContentAuthorization
-	bus           eventbus.EventBus
-	cache         cache.Cache
-	reliable      *reliability.Service
-	typeEnabled   func(domain.ThreadType) bool
-	notifications ThreadNotificationWriter
-	publicPolicy  identityport.ThreadPublicReadPolicy
-	ownerPolicy   identityport.ThreadOwnerReadPolicy
+	repo                repository.ThreadRepository
+	categoryRepo        repository.CategoryRepository
+	typePolicies        repository.ThreadTypePolicyRepository
+	governance          repository.ContentGovernanceRepository
+	authorization       ContentAuthorization
+	governanceAuthority identityport.BoardGovernanceAuthorityReader
+	adminExecution      identityport.AdminExecutionAuthorityReader
+	userExecution       identityport.UserScopedExecutionAuthorityReader
+	bus                 eventbus.EventBus
+	cache               cache.Cache
+	reliable            *reliability.Service
+	typeEnabled         func(domain.ThreadType) bool
+	notifications       ThreadNotificationWriter
+	publicPolicy        identityport.ThreadPublicReadPolicy
+	ownerPolicy         identityport.ThreadOwnerReadPolicy
 }
 
 // ContentAuthorization is the narrow server-side policy port used for
@@ -760,7 +763,7 @@ func (s *ThreadService) TakeDown(ctx context.Context, id, actorID, reason string
 	now := time.Now().UTC()
 	thread.ModerationStatus = domain.ModerationStatusTakenDown
 	thread.ModerationReason = strings.TrimSpace(reason)
-	thread.ModerationBy = actorID
+	thread.SetModerationActor("user", actorID)
 	thread.ModerationAt = &now
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
@@ -871,7 +874,7 @@ func (s *ThreadService) DirectRestore(ctx context.Context, id, actorID, reason s
 	now := time.Now().UTC()
 	thread.ModerationStatus = domain.ModerationStatusClear
 	thread.ModerationReason = strings.TrimSpace(reason)
-	thread.ModerationBy = actorID
+	thread.SetModerationActor("user", actorID)
 	thread.ModerationAt = &now
 	thread.CurrentRevision++
 	thread.UpdatedAt = now
@@ -1065,7 +1068,7 @@ func (s *ThreadService) resolveModeration(ctx context.Context, id, actorID, reas
 	now := time.Now().UTC()
 	thread.ModerationStatus = target
 	thread.ModerationReason = strings.TrimSpace(reason)
-	thread.ModerationBy = actorID
+	thread.SetModerationActor("user", actorID)
 	thread.ModerationAt = &now
 	thread.CurrentRevision++
 	thread.UpdatedAt = now

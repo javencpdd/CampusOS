@@ -10,7 +10,9 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000016（v1.1 基线 + v1.2 授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA 恢复/准入解耦/管理域授权/FK 索引补齐/帖子事实版本）</el-tag
+        >当前迁移 000001 - 000023（v1.1 基线 + v1.2
+        授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
+        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本）</el-tag
       >
     </section>
 
@@ -435,16 +437,31 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "Admin 身份域的独立账号主体：不依赖 users/accounts 外键，同数字 ID 或邮箱不跨域合并；状态机 active/suspended/revoked 带 version CAS 与撤销终态。",
-    fields: ["id", "username", "email", "status", "status_reason", "version", "revoked_at"],
+    fields: [
+      "id",
+      "username",
+      "email",
+      "status",
+      "status_reason",
+      "version",
+      "revoked_at",
+    ],
     migration: "000009",
-    relationshipNote: "无外键；子表经 account_id 外键级联，首个安全管理员只能经受控 bootstrap 开设。",
+    relationshipNote:
+      "无外键；子表经 account_id 外键级联，首个安全管理员只能经受控 bootstrap 开设。",
   },
   {
     name: "admin_credentials",
     title: "独立管理员凭据",
     domain: "identity",
-    purpose: "每个管理员账号一份当前密码凭据散列，轮换以 credential_version 做 CAS；不存明文。",
-    fields: ["account_id", "credential_hash", "credential_version", "password_changed_at"],
+    purpose:
+      "每个管理员账号一份当前密码凭据散列，轮换以 credential_version 做 CAS；不存明文。",
+    fields: [
+      "account_id",
+      "credential_hash",
+      "credential_version",
+      "password_changed_at",
+    ],
     migration: "000009",
     relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
   },
@@ -452,7 +469,8 @@ const databaseTables: DbTable[] = [
     name: "admin_roles",
     title: "管理域角色目录",
     domain: "identity",
-    purpose: "管理域独立角色参考数据；security_admin 标记受最后安全管理员保护的角色。",
+    purpose:
+      "管理域独立角色参考数据；security_admin 标记受最后安全管理员保护的角色。",
     fields: ["id", "name", "is_system"],
     migration: "000009",
     relationshipNote: "与用户域 roles 表无关联；角色 ID 为稳定代码。",
@@ -461,8 +479,17 @@ const databaseTables: DbTable[] = [
     name: "admin_mfa_totp",
     title: "管理员 TOTP 密钥封装",
     domain: "identity",
-    purpose: "Admin 域 TOTP 密钥信封，只存 nonce 与密文及密钥版本引用；登记、确认、停用与步进防重放状态独立管理。",
-    fields: ["account_id", "status", "key_id", "nonce", "ciphertext", "confirmed_at", "disabled_at"],
+    purpose:
+      "Admin 域 TOTP 密钥信封，只存 nonce 与密文及密钥版本引用；登记、确认、停用与步进防重放状态独立管理。",
+    fields: [
+      "account_id",
+      "status",
+      "key_id",
+      "nonce",
+      "ciphertext",
+      "confirmed_at",
+      "disabled_at",
+    ],
     migration: "000011",
     relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
   },
@@ -470,17 +497,36 @@ const databaseTables: DbTable[] = [
     name: "admin_mfa_tickets",
     title: "管理员 MFA 票据",
     domain: "identity",
-    purpose: "Admin 登录与 step-up 的挑战票据：摘要唯一、尝试次数有界、单次消费。",
-    fields: ["id", "account_id", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
+    purpose:
+      "Admin 登录与 step-up 的挑战票据：摘要唯一、尝试次数有界、单次消费。",
+    fields: [
+      "id",
+      "account_id",
+      "purpose",
+      "ticket_digest",
+      "expires_at",
+      "consumed_at",
+      "attempts",
+    ],
     migration: "000011",
-    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除；与用户域 MFA 票据表无关联。",
+    relationshipNote:
+      "account_id 外键指向 admin_accounts 并级联删除；与用户域 MFA 票据表无关联。",
   },
   {
     name: "admin_recovery_tickets",
     title: "管理员恢复票据",
     domain: "identity",
-    purpose: "Admin 密码重置/TOTP 恢复/账号恢复的单次票据：摘要唯一、尝试有界、域内消费。",
-    fields: ["id", "account_id", "purpose", "ticket_digest", "expires_at", "consumed_at", "attempts"],
+    purpose:
+      "Admin 密码重置/TOTP 恢复/账号恢复的单次票据：摘要唯一、尝试有界、域内消费。",
+    fields: [
+      "id",
+      "account_id",
+      "purpose",
+      "ticket_digest",
+      "expires_at",
+      "consumed_at",
+      "attempts",
+    ],
     migration: "000011",
     relationshipNote: "account_id 外键指向 admin_accounts 并级联删除。",
   },
@@ -490,27 +536,55 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "Admin 域自己的会话与 refresh 家族事实：摘要存储、家族轮换、重放检测整族撤销、认证强度与 MFA 时间；不混用用户会话表。",
-    fields: ["id", "account_id", "refresh_token_digest", "token_family_id", "authentication_strength", "expires_at", "revoked_at", "revoke_reason"],
+    fields: [
+      "id",
+      "account_id",
+      "refresh_token_digest",
+      "token_family_id",
+      "authentication_strength",
+      "expires_at",
+      "revoked_at",
+      "revoke_reason",
+    ],
     migration: "000010",
-    relationshipNote: "account_id 外键指向 admin_accounts 并级联删除；refresh 摘要唯一索引。",
+    relationshipNote:
+      "account_id 外键指向 admin_accounts 并级联删除；refresh 摘要唯一索引。",
   },
   {
     name: "admin_role_permissions",
     title: "管理域角色权限绑定",
     domain: "identity",
-    purpose: "管理域角色到共享权限目录的绑定，带管理域主体约束；security_admin 随迁移获得全量非弃用目录。",
-    fields: ["role_id", "permission_code"],
-    migration: "000013",
-    relationshipNote: "role_id 外键指向 admin_roles；permission_code 引用共享目录但不建外键。",
+    purpose:
+      "管理域角色到共享权限目录的绑定，带管理域主体约束；security_admin 随迁移获得全量非弃用目录。",
+    fields: [
+      "role_id",
+      "permission_code",
+      "created_by",
+      "created_at",
+      "facts_version",
+    ],
+    migration: "000013 / 000017",
+    relationshipNote:
+      "role_id 外键指向 admin_roles；permission_code 引用共享目录但不建外键。facts_version 由非循环序列/触发器维护，删除再加入、元数据往返及回滚分配不复用已观察版本。",
   },
   {
     name: "admin_role_bindings",
     title: "管理员角色绑定",
     domain: "identity",
-    purpose: "连接管理员账号与管理域角色；同账号同角色至多一条 active 绑定，撤销为终态。",
-    fields: ["id", "account_id", "role_id", "granted_by", "status", "version", "revoked_at"],
+    purpose:
+      "连接管理员账号与管理域角色；同账号同角色至多一条 active 绑定，撤销为终态。",
+    fields: [
+      "id",
+      "account_id",
+      "role_id",
+      "granted_by",
+      "status",
+      "version",
+      "revoked_at",
+    ],
     migration: "000009",
-    relationshipNote: "account_id 与 role_id 均为外键；活跃绑定唯一部分索引保证不重复授予。",
+    relationshipNote:
+      "account_id 与 role_id 均为外键；活跃绑定唯一部分索引保证不重复授予。",
   },
   {
     name: "identity_legacy_email_placeholders",
@@ -717,8 +791,8 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "定义 admin、moderator、member、guest 等系统角色；member 是有效用户的隐式基础角色。",
-    fields: ["id", "name", "is_system"],
-    migration: "000001",
+    fields: ["facts_version", "id", "name", "is_system"],
+    migration: "000001 / 000021",
     relationshipNote:
       "user_roles 保存用户额外角色；role_permissions 绑定唯一权威 Permission Code 目录。",
   },
@@ -728,8 +802,8 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "用户与额外角色的关联；管理员使用 global 作用域，版主使用一个或多个 category 作用域。",
-    fields: ["user_id", "role_id", "scope_type", "scope_id"],
-    migration: "000001",
+    fields: ["facts_version", "user_id", "role_id", "scope_type", "scope_id"],
+    migration: "000001 / 000021",
     relationshipNote:
       "user_id 和 role_id 由外键保护；版主 scope_id 逻辑指向 categories.id，跨版块请求由后端拒绝。",
   },
@@ -739,8 +813,8 @@ const databaseTables: DbTable[] = [
     domain: "identity",
     purpose:
       "定义稳定 Permission Code、风险等级、允许作用域和审计等级；不以 URL 或数字 ID 表达业务权限。",
-    fields: ["id", "code", "domain", "resource", "action", "risk_level"],
-    migration: "000001",
+    fields: ["facts_version", "id", "code", "domain", "resource", "action", "risk_level"],
+    migration: "000001 / 000021",
     relationshipNote:
       "由 role_permissions 和 route_permission_bindings 关联；旧 resource/action permissions 表已在 v1 基线中删除。",
   },
@@ -749,8 +823,8 @@ const databaseTables: DbTable[] = [
     title: "角色权限绑定",
     domain: "identity",
     purpose: "将角色与 v0.10 权限目录多对多关联，支持软删除的历史保留。",
-    fields: ["id", "role_id", "permission_id", "created_by", "deleted_at"],
-    migration: "000001",
+    fields: ["facts_version", "id", "role_id", "permission_id", "created_by", "deleted_at"],
+    migration: "000001 / 000021",
     relationshipNote:
       "role_id 和 permission_id 都有外键；系统角色矩阵由服务端保护。",
   },
@@ -938,10 +1012,12 @@ const databaseTables: DbTable[] = [
       "moderation_status",
       "deletion_status",
       "facts_version",
+      "moderation_actor_kind",
+      "moderation_actor_id",
     ],
-    migration: "000001 / 000016",
+    migration: "000001 / 000016 / 000018",
     relationshipNote:
-      "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。facts_version 由数据库序列与触发器维护，覆盖 owner、版块、可见性、正文/修订及治理事实变更；浏览/回复等计数不推进该版本，公开详情返回前按版本复核当前快照。",
+      "作者和版块由外键保护，并关联回复、内容修订、审核记录、个人空间兼容投影和富文本正文。facts_version 由数据库序列与触发器维护，覆盖 owner、版块、可见性、正文/修订及治理事实变更；浏览/回复等计数不推进该版本，公开详情返回前按版本复核当前快照。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "mutual_aid_details",
@@ -996,18 +1072,33 @@ const databaseTables: DbTable[] = [
       "content_format",
       "action",
       "created_by",
+      "created_actor_kind",
+      "created_actor_id",
     ],
-    migration: "000001",
-    relationshipNote: "thread_id 与 threads 关联；同一主题的 version 唯一。",
+    migration: "000001 / 000018",
+    relationshipNote:
+      "thread_id 与 threads 关联；同一主题的 version 唯一。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "content_moderation_cases",
     title: "内容审核案例",
     domain: "community",
     purpose: "保存下架、整改和审核流程的案例状态、原因与处理人。",
-    fields: ["id", "thread_id", "status", "reason", "opened_by", "resolved_by"],
-    migration: "000001",
-    relationshipNote: "thread_id 指向内容事实；开放案例与审核动作按时间关联。",
+    fields: [
+      "id",
+      "thread_id",
+      "status",
+      "reason",
+      "opened_by",
+      "resolved_by",
+      "opened_actor_kind",
+      "opened_actor_id",
+      "resolved_actor_kind",
+      "resolved_actor_id",
+    ],
+    migration: "000001 / 000018",
+    relationshipNote:
+      "thread_id 指向内容事实；开放案例与审核动作按时间关联。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "content_moderation_actions",
@@ -1022,9 +1113,12 @@ const databaseTables: DbTable[] = [
       "actor_id",
       "before_state",
       "after_state",
+      "actor_kind",
+      "actor_ref_id",
     ],
-    migration: "000001",
-    relationshipNote: "case_id 可为空；thread_id 是治理资源的稳定归属。",
+    migration: "000001 / 000018",
+    relationshipNote:
+      "case_id 可为空；thread_id 是治理资源的稳定归属。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "posts",
@@ -1038,10 +1132,13 @@ const databaseTables: DbTable[] = [
       "parent_id",
       "parent_floor_number",
       "floor_number",
+      "facts_version",
+      "deleted_actor_kind",
+      "deleted_actor_id",
     ],
-    migration: "000001",
+    migration: "000001 / 000019",
     relationshipNote:
-      "thread_id、author_id 和 parent_id 由外键保护；parent_floor_number 是创建时快照，父回复删除后引用楼层仍稳定。",
+      "thread_id、author_id 和 parent_id 由外键保护；parent_floor_number 是创建时快照，父回复删除后引用楼层仍稳定。 facts_version由非循环序列/触发器维护完整回复授权及内容事实，计数不推进；明确删除actor域/opaque ID为逻辑关系，旧历史未验证主体记legacy_unknown，存在typed删除历史拒绝有损回滚。",
   },
   {
     name: "tags",
@@ -1132,7 +1229,8 @@ const databaseTables: DbTable[] = [
     name: "plugin_versions",
     title: "不可变插件版本",
     domain: "plugin",
-    purpose: "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 固定版本身份，000006 以首次激活时间封存发布状态并在退役时撤销短期委托。",
+    purpose:
+      "按插件保存包摘要、Manifest、API 版本、权限指纹和生命周期；000005 固定版本身份，000006 以首次激活时间封存发布状态并在退役时撤销短期委托。",
     fields: [
       "plugin_id",
       "version",
@@ -1151,7 +1249,8 @@ const databaseTables: DbTable[] = [
     name: "plugin_capability_declarations",
     title: "插件能力声明",
     domain: "plugin",
-    purpose: "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止原地改写，000006 阻止已发布版本的声明集合增删。",
+    purpose:
+      "逐版本声明能力用途、风险、是否必需、资源范围和数据分级；000005 阻止原地改写，000006 阻止已发布版本的声明集合增删。",
     fields: [
       "plugin_version_id",
       "capability_code",
@@ -1199,7 +1298,8 @@ const databaseTables: DbTable[] = [
     name: "plugin_delegations",
     title: "短期委托凭证",
     domain: "plugin",
-    purpose: "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态；000006 在版本退役时永久撤销该版本未失效委托。",
+    purpose:
+      "只保存委托 Token 摘要、能力范围、资源范围、有效期和撤销状态；000006 在版本退役时永久撤销该版本未失效委托。",
     fields: [
       "plugin_version_id",
       "subject_user_id",
@@ -1440,9 +1540,18 @@ const databaseTables: DbTable[] = [
     title: "个人主页",
     domain: "space",
     purpose: "保存用户公开主页、同步设置、样式和禁用状态。",
-    fields: ["user_id", "visibility", "style_name", "sync_enabled"],
-    migration: "000001",
-    relationshipNote: "一个用户最多一份个人主页配置；user_id 由外键保护。",
+    fields: [
+      "user_id",
+      "facts_version",
+      "visibility",
+      "style_name",
+      "sync_enabled",
+      "disabled_actor_kind",
+      "disabled_actor_id",
+    ],
+    migration: "000001 / 000018 / 000023",
+    relationshipNote:
+      "一个用户最多一份个人主页配置；user_id 由外键保护。完整主页/样式/启停元数据推进非复用事实版本；仅同步时间/错误与updated_at不推进。actual row/owner admission锁供命令使用；回滚保留原记录和分配高水位。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "user_storage_quotas",
@@ -1450,10 +1559,17 @@ const databaseTables: DbTable[] = [
     domain: "space",
     purpose:
       "只保存管理员对单个用户授予的 User Storage 配额覆盖；没有记录时使用系统默认 50 MB。",
-    fields: ["user_id", "quota_bytes", "updated_by", "updated_at"],
-    migration: "000001",
+    fields: [
+      "user_id",
+      "quota_bytes",
+      "updated_by",
+      "updated_at",
+      "updated_actor_kind",
+      "updated_actor_id",
+    ],
+    migration: "000001 / 000018",
     relationshipNote:
-      "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。",
+      "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "academic_terms",
@@ -1629,18 +1745,27 @@ const databaseTables: DbTable[] = [
     title: "风格快照",
     domain: "space",
     purpose: "在应用风格前保存可回滚的个人主页样式状态。",
-    fields: ["user_id", "snapshot_type", "style_name", "style_manifest"],
-    migration: "000001",
-    relationshipNote: "按 user_id 保存历史快照。",
+    fields: ["user_id", "facts_version", "snapshot_type", "style_name", "style_manifest"],
+    migration: "000001 / 000023",
+    relationshipNote: "按 user_id 保存历史快照，当前为逻辑关系；完整元数据含排序日期的变化和删除重插推进非复用事实版本。事务命令通过实际行锁及 owner admission 保护完整/空库存；down 保留原快照及分配高水位。",
   },
   {
     name: "richtext_article_contents",
     title: "富文本正文",
     domain: "space",
-    purpose: "保存受控富文本文章 HTML/JSON、封面和发布状态。",
-    fields: ["thread_id", "created_by", "status", "content_html"],
-    migration: "000001",
-    relationshipNote: "thread_id、created_by 和 updated_by 由外键保护。",
+    purpose: "保存受控图文、JSON/封面/状态及非复用事实版本；原主体域历史保留，事务锁/CAS供治理及完整快照复核。",
+    fields: [
+      "thread_id",
+      "facts_version",
+      "created_by",
+      "status",
+      "content_html",
+      "updated_actor_kind",
+      "updated_actor_id",
+    ],
+    migration: "000001 / 000018 / 000020",
+    relationshipNote:
+      "thread_id、created_by 和 updated_by 由外键保护。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "richtext_article_assets",
@@ -1658,6 +1783,7 @@ const databaseTables: DbTable[] = [
     purpose:
       "为图文文章附件提供 owner、状态、大小和 Storage Object 的稳定业务身份；不保存宿主路径。",
     fields: [
+      "facts_version",
       "id",
       "owner_user_id",
       "kind",
@@ -1666,9 +1792,9 @@ const databaseTables: DbTable[] = [
       "size_bytes",
       "status",
     ],
-    migration: "000001",
+    migration: "000001 / 000022",
     relationshipNote:
-      "一个 Asset 只引用一个 Storage Object；回收、隔离和删除状态由业务层立即参与访问判断。",
+      "一个 Asset 只引用一个 Storage Object；回收、隔离和删除状态由业务层立即参与访问判断。 完整事实版本覆盖owner/metadata/对象引用/状态/原生命周期version和日期；非循环共享序列保护ABA与重插，down保留原数据及高水位。",
   },
   {
     name: "asset_lifecycle_audits",
@@ -1684,10 +1810,12 @@ const databaseTables: DbTable[] = [
       "action",
       "reason",
       "created_at",
+      "actor_kind",
+      "actor_ref_id",
     ],
-    migration: "000001",
+    migration: "000001 / 000018",
     relationshipNote:
-      "资产或操作者被删除时保留审计记录并将关联置空；仅管理端聚合查看，不作为文件浏览入口。",
+      "资产或操作者被删除时保留审计记录并将关联置空；仅管理端聚合查看，不作为文件浏览入口。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "richtext_article_attachments",
@@ -1696,15 +1824,16 @@ const databaseTables: DbTable[] = [
     purpose:
       "把文章与附件资产显式绑定，并保存显示名称和稳定排序；附件不会写入 HTML 正文。",
     fields: [
+      "facts_version",
       "id",
       "article_content_id",
       "asset_id",
       "display_name",
       "display_order",
     ],
-    migration: "000001",
+    migration: "000001 / 000022",
     relationshipNote:
-      "(article_content_id, asset_id) 与排序均唯一；删除文章只级联删除绑定，不静默删除用户资产。",
+      "(article_content_id, asset_id) 与排序均唯一；删除文章只级联删除绑定，不静默删除用户资产。 完整事实版本覆盖实际文章/资产关系、名称、排序和日期；actual binding/asset行锁与空库存admission lock为命令数据前置，原外键、记录和序列高水位保留。",
   },
   {
     name: "plugin_ui_invocations",
@@ -2994,7 +3123,10 @@ const migrations = [
     scope: "Plugin Platform 版本仓储",
     summary:
       "阻止既有插件版本的包摘要、Manifest、API 版本和权限指纹等身份字段原地改写，并阻止既有能力声明原地改写；仍允许版本生命周期切换和旧插件卸载时的级联删除。",
-    tables: ["plugin_versions（身份更新触发器）", "plugin_capability_declarations（声明更新触发器）"],
+    tables: [
+      "plugin_versions（身份更新触发器）",
+      "plugin_capability_declarations（声明更新触发器）",
+    ],
   },
   {
     version: "000006",
@@ -3025,7 +3157,9 @@ const migrations = [
     scope: "Identity 执行权/委托权分离",
     summary:
       "新增 identity_delegations，以 management/bound/grant 三类有限期委托分离执行权与委托权；种子从现有准入、叶子版块与版主范围转换，并把两个治理动作移出 moderator 角色目录；存在种子后写入的数据时拒绝回滚。",
-    tables: ["identity_delegations（kind/subject/action/board 形状 CHECK、半开窗口、revoked 终态、version CAS）"],
+    tables: [
+      "identity_delegations（kind/subject/action/board 形状 CHECK、半开窗口、revoked 终态、version CAS）",
+    ],
   },
   {
     version: "000009",
@@ -3034,7 +3168,12 @@ const migrations = [
     scope: "Identity Admin 独立身份域",
     summary:
       "新增 admin_accounts/admin_credentials/admin_roles/admin_role_bindings 四张管理域独立存储，不外键依赖 users/accounts；只播种 security_admin 参考角色，不播种任何账号/凭据；存在账号时拒绝回滚。",
-    tables: ["admin_accounts（状态机+version CAS）", "admin_credentials（单凭据+轮换 CAS）", "admin_roles（参考数据）", "admin_role_bindings（活跃唯一部分索引）"],
+    tables: [
+      "admin_accounts（状态机+version CAS）",
+      "admin_credentials（单凭据+轮换 CAS）",
+      "admin_roles（参考数据）",
+      "admin_role_bindings（活跃唯一部分索引）",
+    ],
   },
   {
     version: "000010",
@@ -3052,7 +3191,11 @@ const migrations = [
     scope: "Identity Admin 安全域",
     summary:
       "新增 admin_mfa_totp、admin_mfa_tickets、admin_recovery_tickets 三张管理域独立存储，与用户域 MFA/恢复表完全分离；存在数据时拒绝回滚。",
-    tables: ["admin_mfa_totp（信封+确认/停用状态机）", "admin_mfa_tickets（挑战票据）", "admin_recovery_tickets（恢复票据）"],
+    tables: [
+      "admin_mfa_totp（信封+确认/停用状态机）",
+      "admin_mfa_tickets（挑战票据）",
+      "admin_recovery_tickets（恢复票据）",
+    ],
   },
   {
     version: "000012",
@@ -3068,7 +3211,8 @@ const migrations = [
     file: "000013_v1_2_admin_role_permissions.up.sql",
     title: "v1.2 管理域角色权限绑定",
     scope: "Identity Admin 角色目录",
-    summary: "新增 admin_role_permissions，security_admin 绑定全量非弃用权限目录；独立管理域路由按此表授权。",
+    summary:
+      "新增 admin_role_permissions，security_admin 绑定全量非弃用权限目录；独立管理域路由按此表授权。",
     tables: ["admin_role_permissions（角色到目录绑定）"],
   },
   {
@@ -3076,7 +3220,8 @@ const migrations = [
     file: "000014_v1_2_admin_permission_codes.up.sql",
     title: "v1.2 管理域权限码",
     scope: "Identity 目录",
-    summary: "新增 identity.admin_account.create/revoke、identity.admin_session.revoke、identity.admin_mfa.manage 四个管理域权限码并绑定 security_admin。",
+    summary:
+      "新增 identity.admin_account.create/revoke、identity.admin_session.revoke、identity.admin_mfa.manage 四个管理域权限码并绑定 security_admin。",
     tables: ["permission_definitions（追加 4 条管理域码）"],
   },
   {
@@ -3096,6 +3241,76 @@ const migrations = [
     summary:
       "新增 threads.facts_version，序列分配与触发器覆盖授权和内容事实变更；仅计数变化不推进版本。公开详情在返回正文前按版本复核当前可见快照，列表/批量策略仍待接入；回滚保留正文和修订，分配序列保留以避免重用已观察版本。",
     tables: ["threads（facts_version、序列与事实更新触发器）"],
+  },
+  {
+    version: "000017",
+    file: "000017_v1_2_admin_permission_facts_version.up.sql",
+    title: "v1.2 管理域执行权限事实版本",
+    scope: "Identity Admin 当前治理授予见证",
+    summary:
+      "新增管理域角色权限 facts_version，以序列/触发器保护删除再加入和元数据 ABA；实际角色、绑定和权限行可在命令事务中锁定。回滚保留角色权限数据和分配高水位；治理业务接入另行验收。",
+    tables: ["admin_role_permissions（facts_version、序列和事实守卫）"],
+  },
+
+  {
+    version: "000018",
+    file: "000018_v1_2_business_actor_domains.up.sql",
+    title: "v1.2 业务治理主体域存储",
+    scope: "Community/RichText/资产/个人空间与配额的 actor 事实",
+    summary:
+      "八张现有表增加九组主体域及 opaque ID，保留旧 User 数值字段与外键。旧文本/NULL 保守记为 legacy_unknown，旧资产 admin 标签不改变 User FK 的历史来源；FK SET NULL 保留已知历史主体。帖子 actor 变化推进非复用事实版本，计数不推进；降级会丢失主体域或历史 ID 时拒绝。实际治理授权与入口另行验收。",
+    tables: [
+      "threads",
+      "content_revisions",
+      "content_moderation_cases",
+      "content_moderation_actions",
+      "richtext_article_contents",
+      "asset_lifecycle_audits",
+      "user_spaces",
+      "user_storage_quotas",
+    ],
+  },
+
+  {
+    version: "000019",
+    file: "000019_v1_2_post_authority_facts.up.sql",
+    title: "v1.2 回复授权事实版本与删除主体",
+    scope: "Community 回复事务锁/CAS数据前置",
+    summary:
+      "posts非复用事实版本覆盖owner/父帖/父回复/正文/状态/排序/metadata及删除actor；计数和普通updated_at不推进。历史缺少删除主体证据保留legacy_unknown，typed主体只与已删除状态并存。down保留原行与序列高水位，存在typed删除历史拒绝。实际作者/治理写入与分页授权另行验收。",
+    tables: ["posts（facts_version、删除actor域/ID、序列与守卫）"],
+  },
+  {
+    version: "000020",
+    file: "000020_v1_2_article_authority_facts.up.sql",
+    title: "v1.2 图文完整事实版本",
+    scope: "RichText 事务事实锁/CAS数据前置",
+    summary: "图文非复用版本覆盖正文/JSON/metadata/状态/creator/typed updater与删除时间；普通updated_at不推进。up/down/up保留原行和已有actor历史，分配高水位不复用；业务治理及HTTP另行验收。",
+    tables: ["richtext_article_contents（facts_version、序列及守卫）"],
+  },
+  {
+    version: "000021",
+    file: "000021_v1_2_user_scoped_execution_facts.up.sql",
+    title: "v1.2 用户目录执行事实版本",
+    scope: "User 角色/作用域/权限事务事实锁数据前置",
+    summary: "四张现有用户授权表共享非循环bigint分配，角色/作用域/权限绑定/定义的完整字段变化与删除重插推进版本；仅updated_at与调用者版本忽略。down保留全部原记录和序列高水位；不扩展管理域或冻结版块委派动作，业务命令与当前User证明另行验收。",
+    tables: ["roles / user_roles / role_permissions / permission_definitions（facts_version、共享序列及守卫）"],
+  },
+  {
+    version: "000022",
+    file: "000022_v1_2_richtext_asset_binding_facts.up.sql",
+    title: "v1.2 资产及附件绑定完整事实版本",
+    scope: "RichText 命令实际事实锁数据前置",
+    summary: "两张既有表的完整事实版本由共享非循环bigint序列和触发器维护；仅updated_at/调用者版本忽略，实际metadata、生命周期version、关系及排序ABA/删除重插可见。down保留原行、引用和分配高水位；认证、授权及实际文件命令另行验收。",
+    tables: ["user_assets / richtext_article_attachments（facts_version、共享序列及守卫）"],
+  },
+  {
+    version: "000023",
+    file: "000023_v1_2_personal_space_facts.up.sql",
+    title: "v1.2 个人空间与样式快照完整事实版本",
+    scope: "空间作者及治理命令的事实存储前置",
+    summary: "两张既有表共享非循环bigint分配；主页/样式/启停metadata及快照排序日期ABA/重插可见。空间仅同步时间/错误/updated_at忽略，完整私有行与actual锁及空库存admission由仓储提供。down保留原数据、主体域和高水位；业务命令另行验收。",
+    tables: ["user_spaces / user_space_style_snapshots（facts_version、共享序列及守卫）"],
   },
 ];
 const tableByName = (name: string) =>

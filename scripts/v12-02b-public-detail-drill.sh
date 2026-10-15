@@ -79,6 +79,11 @@ drill_migration_dir=migrations
 run_check migrations-up run_migrate up
 before="$(psql_scalar 'SELECT facts_version FROM threads WHERE id=97320;')"
 [[ "$before" =~ ^[1-9][0-9]*$ ]] || { echo "backfill version missing" >&2; exit 1; }
+while :; do
+  latest_applied="$(psql_scalar 'SELECT max(version) FROM schema_migrations;')"
+  [[ "$latest_applied" > "000016" ]] || break
+  run_check "migrations-down-before-thread-$latest_applied" run_migrate down
+done
 run_check migrations-down run_migrate down
 [[ "$(psql_scalar 'SELECT content FROM threads WHERE id=97320;')" == 'preserved body' ]] || { echo "down lost content" >&2; exit 1; }
 [[ "$(psql_scalar "SELECT to_regclass('public.thread_facts_version_seq') IS NOT NULL;")" == t ]] || { echo "down lost high-water sequence" >&2; exit 1; }
@@ -86,7 +91,8 @@ run_check migrations-reup run_migrate up
 after="$(psql_scalar 'SELECT facts_version FROM threads WHERE id=97320;')"
 (( after > before )) || { echo "down/up reused facts version" >&2; exit 1; }
 run_check migrations-check run_migrate check
-[[ "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" == 16 ]] || { echo "expected 16 migrations" >&2; exit 1; }
+expected_migrations="$(python3 -c 'from pathlib import Path; print(len(list(Path("migrations").glob("*.up.sql"))))')"
+[[ "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" == "$expected_migrations" ]] || { echo "expected all current migrations" >&2; exit 1; }
 run_check detail-tests env CAMPUSOS_COMMUNITY_TEST_DATABASE_URL="$database_url" \
   go test -race -count=1 -v -run '^Test(PublicThreadDetail|MemoryPublicThread|MemoryThreadFactsVersion)' \
   ./internal/modules/core/community/repository ./internal/modules/core/community/service ./internal/modules/core/community/handler

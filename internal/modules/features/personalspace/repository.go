@@ -33,10 +33,11 @@ type OperationalRepository interface {
 }
 
 type MemoryRepository struct {
-	mu        sync.RWMutex
-	spaces    map[string]*Space
-	contents  map[string]*SpaceContent
-	snapshots map[string][]*StyleSnapshot
+	mu           sync.RWMutex
+	spaces       map[string]*Space
+	contents     map[string]*SpaceContent
+	snapshots    map[string][]*StyleSnapshot
+	factsCounter int64
 }
 
 func NewMemoryRepository() *MemoryRepository {
@@ -58,11 +59,28 @@ func (r *MemoryRepository) GetByUserID(_ context.Context, userID string) (*Space
 	return cloneSpace(space), nil
 }
 
-func (r *MemoryRepository) Upsert(_ context.Context, space *Space) error {
+func (r *MemoryRepository) Upsert(ctx context.Context, space *Space) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.spaces[space.UserID] = cloneSpace(space)
+	candidate := cloneSpace(space)
+	normalizeSpaceActor(candidate)
+	old := r.spaces[space.UserID]
+	if sameSpaceMetadata(old, candidate) {
+		candidate.FactsVersion = old.FactsVersion
+	} else {
+		var err error
+		candidate.FactsVersion, err = r.nextFactsVersion()
+		if err != nil {
+			return err
+		}
+	}
+	r.spaces[space.UserID] = candidate
+	space.FactsVersion = candidate.FactsVersion
+	space.DisabledActorKind, space.DisabledActorID = candidate.DisabledActorKind, candidate.DisabledActorID
 	return nil
 }
 
@@ -87,11 +105,21 @@ func (r *MemoryRepository) DeleteContent(_ context.Context, threadID string) err
 	return nil
 }
 
-func (r *MemoryRepository) SaveStyleSnapshot(_ context.Context, snapshot *StyleSnapshot) error {
+func (r *MemoryRepository) SaveStyleSnapshot(ctx context.Context, snapshot *StyleSnapshot) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.snapshots[snapshot.UserID] = append(r.snapshots[snapshot.UserID], cloneSnapshot(snapshot))
+	version, err := r.nextFactsVersion()
+	if err != nil {
+		return err
+	}
+	copy := cloneSnapshot(snapshot)
+	copy.FactsVersion = version
+	snapshot.FactsVersion = version
+	r.snapshots[snapshot.UserID] = append(r.snapshots[snapshot.UserID], copy)
 	return nil
 }
 
@@ -132,22 +160,37 @@ func (r *MemoryRepository) CountContentsByUserID(_ context.Context, userID strin
 	return total, nil
 }
 
-func (r *MemoryRepository) SetDisabled(_ context.Context, userID string, disabledAt *time.Time, disabledBy, reason string) error {
+func (r *MemoryRepository) SetDisabled(ctx context.Context, userID string, disabledAt *time.Time, disabledBy, reason string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	space, ok := r.spaces[userID]
+	old, ok := r.spaces[userID]
 	if !ok {
 		return ErrSpaceNotFound
 	}
-	space.DisabledAt = disabledAt
-	space.DisabledBy = disabledBy
-	space.DisabledReason = reason
-	if disabledAt == nil {
-		space.DisabledBy = ""
-		space.DisabledReason = ""
+	candidate := cloneSpace(old)
+	candidate.DisabledAt = nil
+	if disabledAt != nil {
+		at := *disabledAt
+		candidate.DisabledAt = &at
+	} else {
+		disabledBy, reason = "", ""
 	}
-	space.UpdatedAt = time.Now().UTC()
+	if old.DisabledBy != disabledBy {
+		candidate.DisabledActorKind, candidate.DisabledActorID = "legacy_unknown", disabledBy
+	}
+	candidate.DisabledBy, candidate.DisabledReason = disabledBy, reason
+	candidate.UpdatedAt = time.Now().UTC()
+	if !sameSpaceMetadata(old, candidate) {
+		version, err := r.nextFactsVersion()
+		if err != nil {
+			return err
+		}
+		candidate.FactsVersion = version
+	}
+	r.spaces[userID] = candidate
 	return nil
 }
 
@@ -231,6 +274,7 @@ func cloneSpace(space *Space) *Space {
 		manifest := *space.StyleManifest
 		manifest.SourceStylePack = cloneStylePackRef(space.StyleManifest.SourceStylePack)
 		manifest.CompatibleCampusOS = append([]string(nil), space.StyleManifest.CompatibleCampusOS...)
+		manifest.Capabilities = append([]string(nil), space.StyleManifest.Capabilities...)
 		manifest.Components = append([]StyleComponent(nil), space.StyleManifest.Components...)
 		for i := range manifest.Components {
 			manifest.Components[i].Props = copyInterfaceMap(space.StyleManifest.Components[i].Props)
@@ -251,6 +295,7 @@ func cloneSnapshot(snapshot *StyleSnapshot) *StyleSnapshot {
 		manifest := *snapshot.StyleManifest
 		manifest.SourceStylePack = cloneStylePackRef(snapshot.StyleManifest.SourceStylePack)
 		manifest.CompatibleCampusOS = append([]string(nil), snapshot.StyleManifest.CompatibleCampusOS...)
+		manifest.Capabilities = append([]string(nil), snapshot.StyleManifest.Capabilities...)
 		manifest.Components = append([]StyleComponent(nil), snapshot.StyleManifest.Components...)
 		for i := range manifest.Components {
 			manifest.Components[i].Props = copyInterfaceMap(snapshot.StyleManifest.Components[i].Props)
@@ -277,7 +322,26 @@ func copyInterfaceMap(values map[string]interface{}) map[string]interface{} {
 	}
 	clone := make(map[string]interface{}, len(values))
 	for key, value := range values {
-		clone[key] = value
+		clone[key] = copyStyleValue(value)
 	}
 	return clone
+}
+
+func copyStyleValue(value any) any {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		return copyInterfaceMap(v)
+	case []interface{}:
+		items := make([]interface{}, len(v))
+		for i, item := range v {
+			items[i] = copyStyleValue(item)
+		}
+		return items
+	case []string:
+		return append([]string(nil), v...)
+	case map[string]string:
+		return copyStringMap(v)
+	default:
+		return value
+	}
 }

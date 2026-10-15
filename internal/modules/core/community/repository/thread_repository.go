@@ -110,6 +110,7 @@ func (r *MemoryThreadRepository) Create(_ context.Context, thread *domain.Thread
 		return err
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
@@ -119,7 +120,7 @@ func (r *MemoryThreadRepository) GetByID(_ context.Context, id string) (*domain.
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	thread, ok := r.threads[id]
-	if !ok {
+	if !ok || thread.DeletedAt != nil {
 		return nil, ErrThreadNotFound
 	}
 	return cloneThread(thread), nil
@@ -129,7 +130,7 @@ func (r *MemoryThreadRepository) RecheckPublicThread(_ context.Context, id strin
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	thread, ok := r.threads[id]
-	if !ok || expectedVersion < 1 || thread.FactsVersion != expectedVersion ||
+	if !ok || thread.DeletedAt != nil || expectedVersion < 1 || thread.FactsVersion != expectedVersion ||
 		thread.PublicationStatus != domain.PublicationStatusPublished ||
 		thread.ModerationStatus != domain.ModerationStatusClear ||
 		thread.DeletionStatus != domain.DeletionStatusActive {
@@ -148,7 +149,7 @@ func (r *MemoryThreadRepository) RecheckOwnerThread(_ context.Context, id, owner
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	thread, ok := r.threads[id]
-	if !ok || thread == nil || thread.ID != id || thread.AuthorID != ownerID || thread.FactsVersion != expectedVersion ||
+	if !ok || thread == nil || thread.DeletedAt != nil || thread.ID != id || thread.AuthorID != ownerID || thread.FactsVersion != expectedVersion ||
 		!ownerThreadSnapshotStateValid(thread) {
 		return nil, ErrThreadNotFound
 	}
@@ -216,6 +217,7 @@ func (r *MemoryThreadRepository) Update(_ context.Context, thread *domain.Thread
 		return err
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
@@ -236,6 +238,7 @@ func (r *MemoryThreadRepository) UpdateIfRevision(_ context.Context, thread *dom
 		return err
 	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
@@ -253,6 +256,7 @@ func (r *MemoryThreadRepository) Delete(_ context.Context, id string) error {
 	}
 	thread := r.threads[id]
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.DeletionStatus = domain.DeletionStatusTrashed
 	thread.SyncLegacyStatus()
 	thread.UpdatedAt = time.Now().UTC()
@@ -296,6 +300,9 @@ func (r *MemoryThreadRepository) listThreadSnapshotLocked(filter domain.ThreadLi
 	// 过滤
 	var filtered []*domain.Thread
 	for _, t := range r.threads {
+		if t == nil || t.DeletedAt != nil {
+			continue
+		}
 		if ownerOnly && (t == nil || t.DeletionStatus != domain.DeletionStatusActive || !ownerThreadSnapshotStateValid(t)) {
 			continue
 		}
@@ -419,6 +426,10 @@ func cloneThread(thread *domain.Thread) *domain.Thread {
 	if thread.ModerationAt != nil {
 		value := *thread.ModerationAt
 		clone.ModerationAt = &value
+	}
+	if thread.DeletedAt != nil {
+		value := thread.DeletedAt.UTC()
+		clone.DeletedAt = &value
 	}
 	return &clone
 }
