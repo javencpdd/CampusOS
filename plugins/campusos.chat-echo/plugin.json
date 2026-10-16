@@ -1,0 +1,76 @@
+{
+  "api_version": "campusos.plugin/v5",
+  "publisher": "campusos",
+  "key": "chat-echo",
+  "version": "1.0.0",
+  "host_contracts": [
+    "campusos.host/v1"
+  ],
+  "runtime": "wasm",
+  "backend": {
+    "artifact": {
+      "kind": "wasm",
+      "path": "dist/provider.wasm",
+      "digest": "sha256:906ead9b5107f546a527027d8e1c3ba2c786cd77582aeb48733d24e42506b8c9"
+    },
+    "transport": "host-call"
+  },
+  "consumes": [],
+  "provides": [
+    {
+      "id": "chat-main",
+      "point": "ai.chat",
+      "contract_version": "v1",
+      "input_schema": "campusos.ai.chat.request/v1",
+      "output_schema": "campusos.ai.chat.response/v1",
+      "capabilities": [
+        "text"
+      ],
+      "data_mode": "no_host_private_data"
+    }
+  ],
+  "host_resources": {
+    "network_targets": [],
+    "storage_bytes": 1024,
+    "cpu_millis": 100,
+    "memory_mb": 64,
+    "max_concurrency": 1,
+    "timeout_ms": 3000
+  },
+  "configuration": {
+    "contract": "campusos.plugin-config/v1",
+    "version": "v1",
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locale": {
+          "type": "string",
+          "title": "Language",
+          "enum": [
+            "zh-CN",
+            "en-US"
+          ]
+        }
+      },
+      "required": [
+        "locale"
+      ]
+    },
+    "defaults": {
+      "locale": "zh-CN"
+    },
+    "selectors": [],
+    "secret_names": []
+  },
+  "data": {
+    "config_scope": "system",
+    "private_kv_bytes": 0,
+    "private_object_bytes": 0,
+    "upgrade": {
+      "schema_version": 1,
+      "mode": "preserve",
+      "rollback": "snapshot"
+    }
+  }
+}

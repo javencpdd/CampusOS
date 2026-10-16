@@ -1,5 +1,7 @@
 # CampusOS Host API 权限目录（v1 / v2）
 
+> 状态：旧协议历史元数据，生产包入口已切换v5。v5使用[当前Host目录](plugin-v5-host-catalog-current.json)和[当前扩展DTO目录](plugin-v5-extension-catalog-current.json)，不继承下列旧权限。
+
 > 由 `go run ./cmd/campusos-contracts --write` 从代码生成。Manifest 默认无权限；调用 Host API 时同时校验插件身份和声明权限。`Record*` 方法只接受 `campusos.plugin/v2`、`host_api_version: v2` 的系统归属集合。
 
 ## Host API 方法

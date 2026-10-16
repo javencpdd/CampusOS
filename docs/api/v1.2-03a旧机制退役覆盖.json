@@ -1,0 +1,27 @@
+{
+  "contract": "campusos.v12-03a-cutover/v1",
+  "base": "v1.2旧机制删除与替换清单.json",
+  "stage": "V12-03a",
+  "overrides": [
+    {
+      "id": "plugin.legacy_manifest",
+      "replacement_stage": "V12-03a",
+      "runtime_status": "retired",
+      "retired_evidence": "v12-03a-exit-linux.json",
+      "retirement_boundary": "旧类型/历史校验保留供03b移除Manager与历史测试；生产启动、主CLI、包导入/预检/回退与自动发现均不再进入旧协议，不做v5到旧Manifest转换。"
+    },
+    {
+      "id": "plugin.v4_ui_self_only",
+      "replacement_stage": "V12-03a",
+      "runtime_status": "retired",
+      "retired_evidence": "v12-03a-exit-linux.json",
+      "retirement_boundary": "旧类型/历史校验保留供03b移除Manager与历史测试；生产启动、主CLI、包导入/预检/回退与自动发现均不再进入旧协议，不做v5到旧Manifest转换。"
+    },
+    {
+      "id": "plugin.v4_adapter",
+      "replacement_stage": "V12-03a",
+      "runtime_status": "replaced",
+      "replaced_evidence": "v12-03a-exit-linux.json"
+    }
+  ]
+}

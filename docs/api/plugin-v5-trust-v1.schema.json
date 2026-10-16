@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://campusos.local/schemas/plugin-v5-trust-v1.schema.json",
+  "title": "Operator-owned v5 publisher trust store",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "keys"],
+  "properties": {
+    "contract": {"const": "campusos.plugin-trust/v1"},
+    "keys": {
+      "type": "array", "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["publisher", "key_id", "public_key", "status"],
+        "properties": {
+          "publisher": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"},
+          "key_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_.-]+$"},
+          "public_key": {"type": "string", "minLength": 44, "maxLength": 44, "pattern": "^[a-zA-Z0-9+/]+={0,2}$"},
+          "status": {"enum": ["active", "revoked"]}
+        }
+      }
+    }
+  }
+}

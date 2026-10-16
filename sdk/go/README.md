@@ -1,3 +1,5 @@
+> v5更新：2026-10-16（Asia/Shanghai）。`V5Manifest`、类型化consumes/provides和`V5ChatRequest/Response`已供宿主与Go/WASI示例共用。它们是独立wire DTO，不继承下文旧Host API Token或RPC权限。包签名与验证使用当前v5 CLI；安装、Dispatcher及Runtime仍按后续阶段交付。
+
 # CampusOS Go SDK
 
 `sdk/go` 是 v0.6 的 Go SDK 基线，面向 Host API v1，固定插件常用的数据结构、context/timeout 语义、类型化权限错误和本地测试工具。

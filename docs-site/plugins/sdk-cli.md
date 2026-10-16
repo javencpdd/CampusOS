@@ -1,5 +1,7 @@
 # v4 校验、打包与本地验证
 
+> V12-03a状态更新（2026-10-16，Asia/Shanghai）：本页保留v4/旧协议的历史说明，旧命令和自动发现入口已关闭。当前包使用[v5 Manifest与包检查](/plugins/manifest)；持久安装、Dispatcher、动态UI和Runtime按03b及后续阶段接入。
+
 > 更新时间：2026-09-23
 
 v4 没有“在 `data/plugins` 里创建一个可执行目录后由核心自动加载”的开发模式。新插件从根目录 `plugins/<key>/` 开始，以现有 `campusos.pdf-viewer` 为参考实现。

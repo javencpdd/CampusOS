@@ -43,12 +43,14 @@ func main() {
 		fatal(err)
 	}
 	permissionJSON, err := json.MarshalIndent(map[string]interface{}{
-		"manifest_api_version":  plugin.CurrentManifestAPIVersion,
-		"host_api_version":      plugin.CurrentHostAPIVersion,
-		"manifest_api_versions": []string{plugin.ManifestAPIVersionV1, plugin.ManifestAPIVersionV2},
-		"host_api_versions":     []string{plugin.HostAPIVersionV1, plugin.HostAPIVersionV2},
-		"permissions":           plugin.PermissionCatalog(),
-		"host_api_methods":      hostapi.PermissionCatalog(),
+		"status":                   "retired_legacy_host_api_metadata",
+		"runtime_host_api_enabled": false,
+		"manifest_api_version":     plugin.ManifestAPIVersionV1,
+		"host_api_version":         plugin.CurrentHostAPIVersion,
+		"manifest_api_versions":    []string{plugin.ManifestAPIVersionV1, plugin.ManifestAPIVersionV2},
+		"host_api_versions":        []string{plugin.HostAPIVersionV1, plugin.HostAPIVersionV2},
+		"permissions":              plugin.PermissionCatalog(),
+		"host_api_methods":         hostapi.PermissionCatalog(),
 	}, "", "  ")
 	if err != nil {
 		fatal(err)
@@ -78,7 +80,10 @@ func main() {
 		fatal(err)
 	}
 	metricsJSON = append(metricsJSON, '\n')
+	v5Host, v5Extensions := plugin.CurrentPluginV5Catalogs()
 	artifacts := []artifact{
+		{filepath.Join(root, "docs/api/plugin-v5-host-catalog-current.json"), append(v5Host, '\n')},
+		{filepath.Join(root, "docs/api/plugin-v5-extension-catalog-current.json"), append(v5Extensions, '\n')},
 		{filepath.Join(root, "docs/api/http-routes-v0.6.json"), routesJSON},
 		{filepath.Join(root, "docs/api/HTTP路由与授权矩阵-v0.6.md"), projectaudit.RoutesMarkdown(routes)},
 		{filepath.Join(root, "docs/api/openapi-v0.6-current.yaml"), projectaudit.OpenAPI(routes)},
@@ -145,6 +150,7 @@ func errorCatalogMarkdown(items []apperror.Descriptor) []byte {
 func permissionMarkdown() []byte {
 	var out strings.Builder
 	out.WriteString("# CampusOS Host API 权限目录（v1 / v2）\n\n")
+	out.WriteString("> 状态：旧协议历史元数据，生产包入口已切换v5。v5使用[当前Host目录](plugin-v5-host-catalog-current.json)和[当前扩展DTO目录](plugin-v5-extension-catalog-current.json)，不继承下列旧权限。\n\n")
 	out.WriteString("> 由 `go run ./cmd/campusos-contracts --write` 从代码生成。Manifest 默认无权限；调用 Host API 时同时校验插件身份和声明权限。`Record*` 方法只接受 `campusos.plugin/v2`、`host_api_version: v2` 的系统归属集合。\n\n")
 	out.WriteString("## Host API 方法\n\n| 方法 | Manifest 权限 |\n| --- | --- |\n")
 	for _, item := range hostapi.PermissionCatalog() {

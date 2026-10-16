@@ -17,7 +17,7 @@ const (
 	ManifestAPIVersionV1      = "campusos.plugin/v1"
 	ManifestAPIVersionV2      = "campusos.plugin/v2"
 	ManifestAPIVersionV3      = "campusos.plugin/v3"
-	CurrentManifestAPIVersion = ManifestAPIVersionV1 // default for legacy packages
+	CurrentManifestAPIVersion = "campusos.plugin/v5" // only current external package wire
 	HostAPIVersionV1          = "v1"
 	HostAPIVersionV2          = "v2"
 	HostAPIVersionV3          = "v3"
@@ -245,7 +245,9 @@ func ParseManifest(data []byte) (*Manifest, error) {
 // Validate 验证 Manifest 合法性
 func (m *Manifest) Validate() error {
 	if m.APIVersion == "" {
-		m.APIVersion = CurrentManifestAPIVersion
+		// Retired Manager DTO default, used for historical records/tests only.
+		// Production package entry points decode PluginV5Manifest directly.
+		m.APIVersion = ManifestAPIVersionV1
 	}
 	if m.APIVersion != ManifestAPIVersionV1 && m.APIVersion != ManifestAPIVersionV2 && m.APIVersion != ManifestAPIVersionV3 {
 		return fmt.Errorf("manifest: unsupported api_version %q (supported: %s, %s, %s)", m.APIVersion, ManifestAPIVersionV1, ManifestAPIVersionV2, ManifestAPIVersionV3)

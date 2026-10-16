@@ -7,6 +7,8 @@ import (
 	"flag"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/campusos/CampusOS/internal/plugin"
 )
@@ -33,11 +35,48 @@ func run(args []string, out io.Writer) int {
 	}
 	flags := flag.NewFlagSet("campusos-plugin-v5-check", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
+	root := flags.String("root", "", "v5 source declarations root; no package bytes or signatures checked")
 	manifest := flags.String("manifest", "", "complete v5 JSON manifest")
 	host := flags.String("host-catalog", "", "explicit host capability snapshot JSON")
 	ext := flags.String("extension-catalog", "", "explicit host extension snapshot JSON")
 	release := flags.String("release", "", "release envelope JSON; signature is not verified")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || *manifest == "" || *host == "" || *ext == "" || *release == "" {
+	if flags.Parse(args) != nil || flags.NArg() != 0 {
+		return finish("plugin.manifest_invalid", 2)
+	}
+	if *root != "" {
+		if *manifest != "" || *host != "" || *ext != "" || *release != "" {
+			return finish("plugin.manifest_invalid", 2)
+		}
+		entries, err := os.ReadDir(*root)
+		if err != nil || len(entries) > 256 {
+			return finish("plugin.manifest_invalid", 2)
+		}
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), ".") {
+				continue
+			}
+			if entry.Type()&os.ModeSymlink != 0 {
+				return finish("plugin.package_invalid", 1)
+			}
+			if !entry.IsDir() {
+				continue
+			}
+			directory := filepath.Join(*root, entry.Name())
+			if _, err := os.Lstat(filepath.Join(directory, "plugin.yaml")); !os.IsNotExist(err) {
+				return finish("plugin.legacy_protocol_removed", 1)
+			}
+			raw, ok := readInput(filepath.Join(directory, plugin.PluginV5ManifestFile))
+			if !ok {
+				return finish("plugin.manifest_invalid", 1)
+			}
+			if _, err := plugin.ValidatePluginV5SourceDeclaration(raw); err != nil {
+				return finish(err.Error(), 1)
+			}
+		}
+		r.Scope = "source_declarations_and_current_host_metadata"
+		return finish("", 0)
+	}
+	if *manifest == "" || *host == "" || *ext == "" || *release == "" {
 		return finish("plugin.manifest_invalid", 2)
 	}
 	var inputs [][]byte

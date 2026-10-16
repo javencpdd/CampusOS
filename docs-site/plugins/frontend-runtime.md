@@ -1,5 +1,7 @@
 # 隔离 UI、Bridge 与 Gateway
 
+> V12-03a状态更新（2026-10-16，Asia/Shanghai）：本页保留v4/旧协议的历史说明，旧命令和自动发现入口已关闭。当前包使用[v5 Manifest与包检查](/plugins/manifest)；持久安装、Dispatcher、动态UI和Runtime按03b及后续阶段接入。
+
 > 更新时间：2026-09-23（Asia/Shanghai）
 > 合同：`campusos.ui/v3`、`campusos.bridge/v1`
 

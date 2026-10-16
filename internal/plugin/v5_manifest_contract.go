@@ -3,6 +3,7 @@ package plugin
 import (
 	"encoding/json"
 	"errors"
+	campusossdk "github.com/campusos/CampusOS/sdk/go"
 	"strings"
 )
 
@@ -17,82 +18,17 @@ var (
 	ErrPluginV5ManifestRelease    = errors.New("plugin.manifest_release_mismatch")
 )
 
-type PluginV5UIArtifact struct {
-	Audience   string `json:"audience"`
-	Entrypoint string `json:"entrypoint"`
-	Digest     string `json:"digest"`
-}
-type PluginV5BackendArtifact struct {
-	Kind   string `json:"kind"`
-	Path   string `json:"path,omitempty"`
-	Digest string `json:"digest,omitempty"`
-	Image  string `json:"image,omitempty"`
-}
-type PluginV5Backend struct {
-	Artifact  PluginV5BackendArtifact `json:"artifact"`
-	Transport string                  `json:"transport"`
-}
-type PluginV5ConsumeScope struct {
-	Kind          string   `json:"kind"`
-	CollectionIDs []string `json:"collection_ids,omitempty"`
-	Keys          []string `json:"keys,omitempty"`
-}
-type PluginV5Consume struct {
-	Capability string               `json:"capability"`
-	Scope      PluginV5ConsumeScope `json:"scope"`
-	Purpose    string               `json:"purpose"`
-	Required   bool                 `json:"required"`
-}
-type PluginV5SchemaFile struct {
-	Path   string `json:"path"`
-	Digest string `json:"digest"`
-}
-type PluginV5Provide struct {
-	ID              string              `json:"id"`
-	Point           string              `json:"point"`
-	ContractVersion string              `json:"contract_version"`
-	InputSchema     string              `json:"input_schema"`
-	OutputSchema    string              `json:"output_schema"`
-	Capabilities    []string            `json:"capabilities"`
-	DataMode        string              `json:"data_mode"`
-	ConfigSchema    *PluginV5SchemaFile `json:"config_schema,omitempty"`
-}
-type PluginV5ManifestResources struct {
-	NetworkTargets []string `json:"network_targets"`
-	StorageBytes   int64    `json:"storage_bytes"`
-	CPUMillis      int64    `json:"cpu_millis"`
-	MemoryMB       int64    `json:"memory_mb"`
-	MaxConcurrency int64    `json:"max_concurrency"`
-	TimeoutMS      int64    `json:"timeout_ms"`
-}
-type PluginV5PrivateData struct {
-	ConfigScope        string `json:"config_scope"`
-	PrivateKVBytes     int64  `json:"private_kv_bytes"`
-	PrivateObjectBytes int64  `json:"private_object_bytes"`
-	Upgrade            struct {
-		SchemaVersion int64  `json:"schema_version"`
-		Mode          string `json:"mode"`
-		Rollback      string `json:"rollback"`
-	} `json:"upgrade"`
-}
-
-// PluginV5Manifest is a declaration, never an installation or execution grant.
-// ParsePluginV5Manifest is the sole untrusted-wire decoder for this DTO.
-type PluginV5Manifest struct {
-	APIVersion    string                     `json:"api_version"`
-	Publisher     string                     `json:"publisher"`
-	Key           string                     `json:"key"`
-	Version       string                     `json:"version"`
-	HostContracts []string                   `json:"host_contracts"`
-	Runtime       string                     `json:"runtime"`
-	UI            []PluginV5UIArtifact       `json:"ui,omitempty"`
-	Backend       *PluginV5Backend           `json:"backend,omitempty"`
-	Provides      []PluginV5Provide          `json:"provides"`
-	Consumes      []PluginV5Consume          `json:"consumes"`
-	HostResources *PluginV5ManifestResources `json:"host_resources,omitempty"`
-	Configuration json.RawMessage            `json:"configuration"`
-	Data          PluginV5PrivateData        `json:"data"`
-}
+// Shared Go SDK DTOs keep the host and author wire fields identical.
+type PluginV5UIArtifact = campusossdk.V5UIArtifact
+type PluginV5BackendArtifact = campusossdk.V5BackendArtifact
+type PluginV5Backend = campusossdk.V5Backend
+type PluginV5ConsumeScope = campusossdk.V5ConsumeScope
+type PluginV5Consume = campusossdk.V5Consume
+type PluginV5SchemaFile = campusossdk.V5SchemaFile
+type PluginV5Provide = campusossdk.V5Provide
+type PluginV5ManifestResources = campusossdk.V5ManifestResources
+type PluginV5PrivateData = campusossdk.V5PrivateData
+type PluginV5Manifest = campusossdk.V5Manifest
 
 func v5Scope(v any) bool {
 	m, ok := v.(map[string]any)

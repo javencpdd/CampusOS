@@ -1,5 +1,7 @@
 # 以 PDF Viewer 学习第一个 v4 外部插件
 
+> V12-03a状态更新（2026-10-16，Asia/Shanghai）：本页保留v4/旧协议的历史说明，旧命令和自动发现入口已关闭。当前包使用[v5 Manifest与包检查](/plugins/manifest)；持久安装、Dispatcher、动态UI和Runtime按03b及后续阶段接入。
+
 > 更新时间：2026-09-23（Asia/Shanghai）  
 > 样例源码：[`plugins/campusos.pdf-viewer/`](https://github.com/javencpdd/CampusOS/tree/main/plugins/campusos.pdf-viewer)
 > 前提：已按 [Docker 跨平台开发](/deployment/docker-development) 启动 CampusOS。

@@ -1,6 +1,6 @@
 # 系统架构
 
-> 更新时间：2026-10-16 18:50（Asia/Shanghai）
+> 更新时间：2026-10-16 20:34（Asia/Shanghai）
 
 浏览器不直接访问 PostgreSQL、Redis、NATS、个人空间文件或插件发布目录。Web/Admin 请求先经 API 的认证、稳定权限、对象归属与业务状态校验，再进入领域服务和存储层。
 
@@ -19,7 +19,7 @@
 | `internal/modules/core/contenteditor` | 文本/CampusDoc 校验和安全渲染。 |
 | `internal/modules/core/academicterm` | 学期开放、默认学期和版本控制。 |
 | `internal/modules/features/richtext` / `personaldocuments` | 图文发布、文章附件、个人文档和文件入口。 |
-| `internal/plugin` | v4 发布发现、管理状态、三层授权、用户配置和 Bridge。 |
+| `internal/plugin` | 当前v5 Manifest/包字节/签名与独立包索引；旧管理/配置数据保留，持久安装由03b接入，v4自动发现已退役。 |
 | `web/` / `admin/` | 用户与管理端 Vue 应用；核心页面不内嵌插件实现。 |
 | `plugins/` | 外部插件独立源码与发布包边界。 |
 
@@ -42,5 +42,5 @@ V12-02b 限定资源范围三态完成：144条当前资源/身份入口、八�
 
 当前25条迁移、102业务表与2执行器表。所有原始切片记录保留在仓库 `docs/进度/v1.2-dev/`；阶段出口为 `v1.2.110-dev.md`，当前责任清单及带摘要机器报告与其关联。02c已通过完整阶段三态验收，v5/Dispatcher与Knowledge来源ACL分别属于03c/09a等后续责任；不是v1.2整版发布完成声明。
 
-V12-02c完整阶段三态通过：Identity独立PG/Memory摘要凭据、Admin当前权限/MFA/CSRF管理、一次性签发/原子轮换/两级撤销、独立Integration认证和精确通道/端点/资源白名单均已接入。显式v2复用首片v1并增加Community公开帖子，实际调用原模块公开读Port；机器与来源事实行锁保持到必需typed审计/Outbox提交，再返回投影。私有、待审、下架与删除不借白名单放行。12条真实路由、Admin一次性秘密界面、Schema/SDK、HTTP/PG/并发/故障路径完成；30项原生顶层、384份Go/oracle决策、18项实际后端Chrome断言及11项共同门禁通过。000025新增两张独立表，当前25/next26、102业务表+2执行器表；100张旧表原始行、主体和分配高水位保留，非空身份/权限引用拒绝回滚。03a已启动完整Manifest解码/离线CLI切片，整阶段未完成；知识集合09a、完整公共知识MCP11和v5Dispatcher03c仍保留原责任。 仓库进度为 `docs/进度/v1.2-dev/v1.2.112-dev.md`，对应责任清单与完整退出报告。
-V12-03a首片已提供完整v5 JSON Manifest的严格Go解码、类型化consumes/provides及显式目录快照校验，另有独立离线CLI。Linux原生race与23个实际CLI进程通过；目录是调用者显式提供的离线快照，不能作为生产能力发布或安装授权。真实包字节/验签、生产目录和旧v4示例切换仍待后续03a切片，安装状态由03b负责。证据见仓库`docs/进度/v1.2-dev/v1.2.113-dev.md`。
+V12-02c完整阶段三态通过：Identity独立PG/Memory摘要凭据、Admin当前权限/MFA/CSRF管理、一次性签发/原子轮换/两级撤销、独立Integration认证和精确通道/端点/资源白名单均已接入。显式v2复用首片v1并增加Community公开帖子，实际调用原模块公开读Port；机器与来源事实行锁保持到必需typed审计/Outbox提交，再返回投影。私有、待审、下架与删除不借白名单放行。12条真实路由、Admin一次性秘密界面、Schema/SDK、HTTP/PG/并发/故障路径完成；30项原生顶层、384份Go/oracle决策、18项实际后端Chrome断言及11项共同门禁通过。000025新增两张独立表，当前25/next26、102业务表+2执行器表；100张旧表原始行、主体和分配高水位保留，非空身份/权限引用拒绝回滚。03a现已完成完整阶段验收，详见下文；知识集合09a、完整公共知识MCP11和v5Dispatcher03c仍保留原责任。 仓库进度为 `docs/进度/v1.2-dev/v1.2.112-dev.md`，对应责任清单与完整退出报告。
+V12-03a完整阶段三态通过：完整v5 Manifest/共享SDK、当前宿主目录、真实包字节快照与确定性归档、Ed25519当前信任/撤销和不可变发布身份、主CLI及两个重建示例均已验收。旧v4/源码自动发现、适配及旧包入口已退役；冻结G1清单叠加03a覆盖，历史证据不回写。11项原生顶层99个PASS事件、64声明并发/16发布竞争，23份Go/oracle决策、43个实际CLI进程、实际cmd/server＋隔离PG16迁移1–25的5项检查及13项共同门禁通过。Host能力目录当前为空，扩展DTO不等于可调用Provider；内存发布索引不等于持久安装/恢复，03b负责持久目录/安装/Operation，03c/04/05/06负责Dispatcher/UI/Runtime。当前25/next26，未新增迁移。仓库证据为`docs/进度/v1.2-dev/v1.2.114-dev.md`与`docs/项目计划书v1/项目计划v1.2/evidence/v12-03a-exit-linux.json`；当前操作见[v5包说明](/plugins/manifest)。

@@ -182,3 +182,4 @@ export { INTEGRATION_ACCESS_VERSION } from "./integration-access.js";
 export type { IntegrationAccessTargetV1, IntegrationAccessEndpointV1, IntegrationAccessRuleV1, IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1, IntegrationAccessErrorCodeV1, } from "./integration-access.js";
 export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
 export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread } from "./integration-runtime.js";
+export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5PackageCheckResult, PluginV5PackageErrorCode } from "./plugin-v5-package.js";

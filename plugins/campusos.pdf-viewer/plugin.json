@@ -1,0 +1,47 @@
+{
+  "api_version": "campusos.plugin/v5",
+  "publisher": "campusos",
+  "key": "pdf-viewer",
+  "version": "3.0.0-dev.1",
+  "host_contracts": [
+    "campusos.host/v1"
+  ],
+  "runtime": "none",
+  "consumes": [],
+  "provides": [],
+  "configuration": {
+    "contract": "campusos.plugin-config/v1",
+    "version": "v1",
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    },
+    "defaults": {},
+    "selectors": [],
+    "secret_names": []
+  },
+  "data": {
+    "config_scope": "both",
+    "private_kv_bytes": 0,
+    "private_object_bytes": 0,
+    "upgrade": {
+      "schema_version": 1,
+      "mode": "preserve",
+      "rollback": "snapshot"
+    }
+  },
+  "ui": [
+    {
+      "audience": "user",
+      "entrypoint": "dist/user/index.html",
+      "digest": "sha256:ccc75ba225628073d8b7bdb2646573687d10b9f42651ce577c811cdc36826a9d"
+    },
+    {
+      "audience": "admin",
+      "entrypoint": "dist/admin/index.html",
+      "digest": "sha256:f18011b99f748562648917f0c5b736280f38bc11a129bfd18624fda4f860f4ad"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ lint:
 contracts:
 	go run ./cmd/campusos-contracts --write
 
-contracts-check: plugin-v4-check v12-principal-contract-check v12-thread-policy-contract-check v12-thread-owner-read-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check v12-plugin-v5-consumes-contract-check v12-plugin-v5-provides-contract-check v12-plugin-v5-resource-install-contract-check v12-plugin-v5-config-contract-check v12-resource-policy-contract-check v12-identity-domains-contract-check v12-plugin-v5-manifest-contract-check v12-plugin-v5-dispatch-contract-check v12-plugin-v5-events-contract-check v12-scope-delegation-contract-check v12-integration-access-contract-check v12-g1-replacement-map-check v12-g1-exit-check
+contracts-check: plugin-v5-check v12-principal-contract-check v12-thread-policy-contract-check v12-thread-owner-read-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check v12-plugin-v5-consumes-contract-check v12-plugin-v5-provides-contract-check v12-plugin-v5-resource-install-contract-check v12-plugin-v5-config-contract-check v12-resource-policy-contract-check v12-identity-domains-contract-check v12-plugin-v5-manifest-contract-check v12-plugin-v5-dispatch-contract-check v12-plugin-v5-events-contract-check v12-scope-delegation-contract-check v12-integration-access-contract-check v12-g1-replacement-map-check v12-g1-exit-check
 	node scripts/check-v12-integration-runtime-contract.mjs
 	go run ./cmd/campusos-contracts --check
 	go run ./cmd/campusos-capability-contract
@@ -102,15 +102,15 @@ v12-scope-delegation-contract-check:
 
 .PHONY: v12-g1-replacement-map-check
 v12-g1-replacement-map-check:
-	node scripts/check-v12-g1-replacement-map.mjs
+	node scripts/check-v12-03a-replacement-cutover.mjs
 
 .PHONY: v12-g1-exit-check
 v12-g1-exit-check:
 	node scripts/check-v12-g1-exit.mjs
 
-.PHONY: plugin-v4-check
-plugin-v4-check:
-	go run ./cmd/campusos-plugin-v4-check -root plugins
+.PHONY: plugin-v5-check
+plugin-v5-check:
+	go run ./cmd/campusos-plugin-v5-check -root plugins
 
 .PHONY: capability-contract-write
 capability-contract-write:

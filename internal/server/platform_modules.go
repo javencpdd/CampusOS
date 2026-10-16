@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
@@ -218,7 +219,22 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	if err := app.Provide(portPluginManager, m.manager); err != nil {
 		return err
 	}
-	return app.Provide("plugin.catalog", pluginport.NewCatalogAdapter(m.manager.Catalog()))
+	if err := app.Provide("plugin.catalog", pluginport.NewCatalogAdapter(m.manager.Catalog())); err != nil {
+		return err
+	}
+	trust := []byte(`{"contract":"campusos.plugin-trust/v1","keys":[]}`)
+	if name := os.Getenv("CAMPUSOS_PLUGIN_V5_TRUST_STORE"); name != "" {
+		var err error
+		trust, err = plugin.ReadPluginV5DocumentFile(name)
+		if err != nil || len(trust) > plugin.PluginV5ManifestMaxBytes {
+			return plugin.ErrPluginV5PackageSignature
+		}
+	}
+	catalog, err := plugin.NewPluginV5PackageCatalog(trust)
+	if err != nil {
+		return err
+	}
+	return app.Provide("plugin.v5.package-catalog", catalog)
 }
 
 type reliabilityPluginOperationTracker struct {
@@ -247,17 +263,9 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return fmt.Errorf("plugin platform dependencies are not registered")
 	}
 	m.owner.registerDefaultSubscriptions(m.events.EventBus())
-	if plugin.V4DevelopmentSourceEnabled() {
-		if err := m.manager.InstallV4DevelopmentSources(plugin.V4PluginsDirFromEnv()); err != nil {
-			return fmt.Errorf("install v4 development plugin release: %w", err)
-		}
-	}
-	if err := m.manager.LoadV4Releases(plugin.V4PluginsDirFromEnv(), plugin.V4UIOriginFromEnv()); err != nil {
-		return fmt.Errorf("load v4 plugin releases: %w", err)
-	}
-	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
-		log.Printf("⚠️  加载插件失败: %v", err)
-	}
+	// V12-03a: package verification has one v5 catalog, independent of the
+	// legacy Manager. No source, v4 release or unsigned development fallback
+	// is installed/executed here. Durable installation belongs to 03b.
 	m.authorization = plugin.NewAuthorizationService(m.authorizationStore, m.repository, func(name string) bool {
 		installed, found := m.manager.GetPlugin(name)
 		return found && installed != nil && installed.Status == plugin.StatusRunning
