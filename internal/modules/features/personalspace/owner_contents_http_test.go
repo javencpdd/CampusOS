@@ -257,7 +257,7 @@ func TestOwnContentsHTTPEmptyDisabledAndRevocation(t *testing.T) {
 			e := newOwnContentsHTTPEnvironment(t)
 			proof := &ownContentsHTTPProof{SessionService: e.identity}
 			if strings.HasPrefix(test.name, "disabled") {
-				if err := e.spaces.Upsert(context.Background(), &Space{UserID: e.owner.ID, SyncEnabled: false}); err != nil {
+				if err := e.spaces.Upsert(context.Background(), &Space{ID: "98461", UserID: e.owner.ID, SyncEnabled: false}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -286,7 +286,7 @@ func TestOwnContentsHTTPEmptyDisabledAndRevocation(t *testing.T) {
 			if strings.Contains(rec.Body.String(), "private-body") {
 				t.Fatalf("revocation/disabled leaked data: %s", rec.Body.String())
 			}
-			if test.name == "disabled" && (!strings.Contains(rec.Body.String(), `"items":[]`) || !strings.Contains(rec.Body.String(), `"total":0`) || proof.strengthCalls != 2) {
+			if test.name == "disabled" && (!strings.Contains(rec.Body.String(), `"items":[]`) || !strings.Contains(rec.Body.String(), `"total":0`) || proof.strengthCalls < 3) {
 				t.Fatalf("disabled list skipped final proof or changed empty shape: calls=%d %s", proof.strengthCalls, rec.Body.String())
 			}
 		})

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="5024" height="3560" viewBox="0 0 5024 3560">
-<metadata>campusos_schema_sha256=369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68;tables=100;foreign_keys=116</metadata>
+<metadata>campusos_schema_sha256=cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608;tables=100;foreign_keys=116</metadata>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#667085"/></marker></defs>
 <rect width="100%" height="100%" fill="#f8fafc"/>
 <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
@@ -695,14 +695,14 @@
 <rect x="2536" y="419" width="570" height="127" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="2536" y="419" width="570" height="40" rx="8" fill="#DFF5F2"/>
 <text x="2549" y="446" font-size="16" font-weight="700" fill="#101828">user_storage_quotas</text>
-<text x="3094" y="445" text-anchor="end" font-size="12" fill="#475467">7 字段 / 2 外键</text>
+<text x="3094" y="445" text-anchor="end" font-size="12" fill="#475467">8 字段 / 2 外键</text>
 <text x="2549" y="482" font-size="12" font-weight="700" fill="#175cd3">PK/FK/NN</text>
 <text x="2629" y="482" font-size="13" fill="#344054">user_id</text>
 <text x="3094" y="482" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="2549" y="507" font-size="12" font-weight="700" fill="#175cd3">FK</text>
 <text x="2629" y="507" font-size="13" fill="#344054">updated_by</text>
 <text x="3094" y="507" text-anchor="end" font-size="12" fill="#667085">bigint</text>
-<text x="2629" y="532" font-size="12" fill="#98a2b3">… 其余 5 个字段详见中文说明</text>
+<text x="2629" y="532" font-size="12" fill="#98a2b3">… 其余 6 个字段详见中文说明</text>
 <rect x="2536" y="562" width="570" height="152" rx="8" fill="white" stroke="#98a2b3" stroke-width="1.2"/>
 <rect x="2536" y="562" width="570" height="40" rx="8" fill="#DFF5F2"/>
 <text x="2549" y="589" font-size="16" font-weight="700" fill="#101828">user_storage_reservations</text>
@@ -1316,6 +1316,6 @@
 <text x="4483" y="3385" font-size="13" fill="#344054">storage_object_id</text>
 <text x="4948" y="3385" text-anchor="end" font-size="12" fill="#667085">bigint</text>
 <text x="4483" y="3410" font-size="12" fill="#98a2b3">… 其余 11 个字段详见中文说明</text>
-<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：369ecfd2d0b66896</text>
+<text x="64" y="97" font-size="14" fill="#475467">灰色实线：物理外键　紫色虚线：推断的逻辑多对多　箭头指向引用方（子表）　指纹：cbf1e43624969d42</text>
 </g>
 </svg>

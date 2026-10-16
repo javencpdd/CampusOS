@@ -96,6 +96,9 @@ func (s *Service) loadOwnSpaceSourceCatalog(ctx context.Context, p identityport.
 }
 
 func (s *Service) ListOwnSpaceSourceStylePacks(ctx context.Context, resolve identityport.SessionPrincipalResolver) (*SpaceSourceStylePackList, error) {
+	if s == nil {
+		return nil, ErrSpaceFactsUnavailable
+	}
 	return identityport.ReadBoundProjection(ctx, resolve, false, s.loadOwnSpaceSourceCatalog,
 		func(ctx context.Context, p identityport.PrincipalContext, f *spaceSourceCatalogFacts) (*SpaceSourceStylePackList, error) {
 			result := &SpaceSourceStylePackList{Items: make([]SpaceSourceStylePack, 0, len(f.Items))}

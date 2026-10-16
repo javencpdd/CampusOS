@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -116,6 +117,14 @@ func TestSpaceStyleOwnerAppearanceActualModuleForwardingAndMissingProofClosed(t 
 			g.POST("/html", h.ApplyCustomHTML)
 			g.POST("/zip", h.ApplyStylePackZip)
 			g.POST("/source", h.ApplySourceStylePack)
+			g.POST("/read/validate", h.ValidateStylePackage)
+			g.POST("/read/preview", h.PreviewStylePackage)
+			g.POST("/read/export", h.ExportStylePackage)
+			g.POST("/read/html_validate", h.ValidateCustomHTML)
+			g.GET("/read/html_example", h.CustomHTMLExample)
+			g.POST("/read/zip_validate", h.ValidateStylePackZip)
+			g.GET("/read/pack_example", h.StylePackExample)
+			g.GET("/read/pack_zip", h.StylePackExampleZip)
 			g.GET("/catalog", h.ListSourceStylePacks)
 			catalogRequest := httptest.NewRequest("GET", "/style/catalog", nil)
 			catalogRequest.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
@@ -146,6 +155,55 @@ func TestSpaceStyleOwnerAppearanceActualModuleForwardingAndMissingProofClosed(t 
 			raw, err := json.Marshal(pkg)
 			if err != nil {
 				t.Fatal(err)
+			}
+			beforeReads := repo.Snapshot()
+			for _, op := range []string{"validate", "preview", "export", "html_validate", "html_example", "zip_validate", "pack_example", "pack_zip"} {
+				method, contentType, body := "POST", "application/json", []byte(`{}`)
+				if op == "validate" || op == "preview" {
+					body = raw
+				}
+				if op == "html_validate" {
+					body = []byte(`{"html":"<section>Current production HTML</section>"}`)
+				}
+				if op == "html_example" || op == "pack_example" || op == "pack_zip" {
+					method, body = "GET", nil
+				}
+				if op == "zip_validate" {
+					var buffer bytes.Buffer
+					w := multipart.NewWriter(&buffer)
+					file, err := w.CreateFormFile("file", "style.zip")
+					if err != nil {
+						t.Fatal(err)
+					}
+					if _, err := file.Write(zipBuffer.Bytes()); err != nil {
+						t.Fatal(err)
+					}
+					if err := w.Close(); err != nil {
+						t.Fatal(err)
+					}
+					body, contentType = buffer.Bytes(), w.FormDataContentType()
+				}
+				req := httptest.NewRequest(method, "/style/read/"+op, bytes.NewReader(body))
+				req.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
+				req.Header.Set("Content-Type", contentType)
+				rec := httptest.NewRecorder()
+				r.ServeHTTP(rec, req)
+				want := 200
+				if mode == "missing_proof" {
+					want = 401
+				}
+				if mode == "legacy_target" {
+					want = 503
+				}
+				if rec.Code != want || strings.Contains(rec.Body.String(), root) || strings.Contains(rec.Body.String(), user.Email) {
+					t.Fatal("actual production read lost current proof or safe result", mode, op, want, rec.Code, rec.Body.String())
+				}
+				if want == 200 && rec.Header().Get("Cache-Control") != "private, no-store" {
+					t.Fatal("production read cache contract", op, rec.Header())
+				}
+			}
+			if !reflect.DeepEqual(beforeReads, repo.Snapshot()) {
+				t.Fatal("actual production reads wrote Space/history")
 			}
 			for _, op := range []string{"apply", "default", "rollback", "html", "zip", "source"} {
 				body := []byte(nil)

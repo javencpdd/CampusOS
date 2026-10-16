@@ -40,9 +40,11 @@ func (r *MemoryQuotaRepository) GetOwnerQuota(ctx context.Context, owner string)
 }
 
 func (r *PgQuotaRepository) GetOwnerQuota(ctx context.Context, owner string) (QuotaRecord, bool, error) {
+	if err := r.CheckQuotaFacts(ctx); err != nil {
+		return QuotaRecord{}, false, err
+	}
 	var record QuotaRecord
-	err := transaction.ExecutorFor(ctx, r.pool).QueryRow(ctx, `SELECT user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at FROM user_storage_quotas WHERE user_id=$1`, owner).
-		Scan(&record.UserID, &record.QuotaBytes, &record.UpdatedBy, &record.CreatedAt, &record.UpdatedAt)
+	err := transaction.ExecutorFor(ctx, r.pool).QueryRow(ctx, `SELECT `+quotaRecordColumns+` FROM user_storage_quotas WHERE user_id=$1`, owner).Scan(quotaRecordTargets(&record)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return QuotaRecord{}, false, nil
 	}
@@ -76,8 +78,11 @@ func (r *PgQuotaRepository) GetOwnerQuotaForObjectCommand(ctx context.Context, o
 	if !ok {
 		return QuotaRecord{}, false, func() {}, ErrObjectUnavailable
 	}
+	if err := r.CheckQuotaFacts(ctx); err != nil {
+		return QuotaRecord{}, false, func() {}, err
+	}
 	var record QuotaRecord
-	err := tx.QueryRow(ctx, "SELECT user_id::text,quota_bytes,COALESCE(updated_by::text,''),created_at,updated_at FROM user_storage_quotas WHERE user_id=$1 FOR SHARE", owner).Scan(&record.UserID, &record.QuotaBytes, &record.UpdatedBy, &record.CreatedAt, &record.UpdatedAt)
+	err := tx.QueryRow(ctx, "SELECT "+quotaRecordColumns+" FROM user_storage_quotas WHERE user_id=$1 FOR SHARE", owner).Scan(quotaRecordTargets(&record)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return QuotaRecord{}, false, func() {}, nil
 	}

@@ -46,8 +46,11 @@ func (e *adminMFAEnv) bootstrapRoot(t *testing.T, ctx context.Context) (*reposit
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Simulate entry-level MFA proof for administrative MFA commands.
-	return account, AdminActor{ID: account.ID, MFAAuthenticated: true, CredentialID: "session-1"}
+	now := time.Now().UTC()
+	if err := e.sessions.CreateSession(ctx, repository.AdminSession{ID: "session-1", AccountID: account.ID, RefreshTokenDigest: strings.Repeat("a", 64), TokenFamilyID: "session-1", AuthenticationStrength: "password", CreatedAt: now, UpdatedAt: now, LastActiveAt: now, ExpiresAt: now.Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
+	return account, AdminActor{ID: account.ID, CredentialID: "session-1"}
 }
 
 func adminTOTPCodeForTest(t *testing.T, secret []byte, step int64) string {
@@ -90,6 +93,7 @@ func TestAdminMFAEnrollmentConfirmAndStepUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	sessionID := sessionIDFromToken(t, loginTokens.AccessToken)
+	actor.CredentialID = sessionID
 	if err = env.service.VerifyStepUp(ctx, actor, sessionID, adminTOTPCodeForTest(t, secret, step)); !errors.Is(err, ErrAdminMFACodeInvalid) && !errors.Is(err, ErrAdminMFAReplay) {
 		t.Fatalf("replay step-up accepted: %v", err)
 	}
@@ -114,7 +118,7 @@ func TestAdminMFAGuards(t *testing.T) {
 	_ = account
 	// First enrollment is account-local self-service: the actor's own session
 	// suffices, while enrolling another account requires an MFA admin actor.
-	if _, err := env.service.StartEnrollment(ctx, AdminActor{ID: actor.ID}, "campusos-admin"); err != nil {
+	if _, err := env.service.StartEnrollment(ctx, AdminActor{ID: actor.ID, CredentialID: actor.CredentialID}, "campusos-admin"); err != nil {
 		t.Fatalf("self first enrollment: %v", err)
 	}
 	if _, err := env.service.StartEnrollment(ctx, AdminActor{ID: "someone-else"}, "campusos-admin"); !errors.Is(err, ErrAdminMFAActor) {
@@ -129,8 +133,8 @@ func TestAdminMFAGuards(t *testing.T) {
 	if err := env.service.ConfirmEnrollment(ctx, actor, "000000"); !errors.Is(err, ErrAdminMFACodeInvalid) {
 		t.Fatalf("bad code accepted: %v", err)
 	}
-	if err := env.service.VerifyStepUp(ctx, actor, "missing-session", "123456"); !errors.Is(err, ErrAdminMFANotEnabled) {
-		t.Fatalf("step-up without active factor: %v", err)
+	if err := env.service.VerifyStepUp(ctx, actor, "missing-session", "123456"); !errors.Is(err, ErrAdminMFAActor) {
+		t.Fatalf("step-up for a different session: %v", err)
 	}
 }
 
@@ -175,13 +179,17 @@ func newAdminMFAPostgreSQLEnv(t *testing.T) (*AdminMFAService, *pgxpool.Pool, co
 	}
 	service := NewAdminMFAService(admins, security, sessions, protector)
 	service.SetReliability(reliability.NewService(transaction.NewPostgreSQL(pool), reliability.NewPostgreSQLStore(pool)))
+	now := time.Now().UTC()
+	if err := sessions.CreateSession(ctx, repository.AdminSession{ID: "svc-test-session", AccountID: account.ID, RefreshTokenDigest: strings.Repeat("b", 64), TokenFamilyID: "svc-test-session", AuthenticationStrength: "password", CreatedAt: now, UpdatedAt: now, LastActiveAt: now, ExpiresAt: now.Add(time.Hour)}); err != nil {
+		t.Fatal(err)
+	}
 	service.bootstrapAccountID = account.ID
 	return service, pool, ctx
 }
 
 func TestPostgreSQLAdminMFAStepUp(t *testing.T) {
 	service, pool, ctx := newAdminMFAPostgreSQLEnv(t)
-	actor := AdminActor{ID: service.bootstrapAccountID, MFAAuthenticated: true, CredentialID: "svc-test-session"}
+	actor := AdminActor{ID: service.bootstrapAccountID, CredentialID: "svc-test-session"}
 	if _, err := service.StartEnrollment(ctx, actor, "campusos-admin"); err != nil {
 		t.Fatal(err)
 	}
@@ -206,6 +214,7 @@ func TestPostgreSQLAdminMFAStepUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	sessionID := sessionIDFromToken(t, loginTokens.AccessToken)
+	actor.CredentialID = sessionID
 	if err = service.VerifyStepUp(ctx, actor, sessionID, totpCode(secret, step+1)); err != nil {
 		t.Fatal(err)
 	}

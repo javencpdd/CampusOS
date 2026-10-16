@@ -822,185 +822,306 @@ paths:
       x-campusos-ownership: none
       x-campusos-module-owner: core.identity
       x-campusos-scope: public
-      x-campusos-operation: http.post.api.v1.admin.identity.login
+      x-campusos-operation: http.identity.admin_session.login
+      x-campusos-auth: none
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/AdminDomainLoginRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-  /api/v1/admin/identity/logout:
-    post:
-      operationId: d_Identity_AdminDomain_Logout
-      summary: POST /api/v1/admin/identity/logout
-      tags: [admin]
-      x-campusos-stability: experimental
-      x-campusos-ownership: none
-      x-campusos-module-owner: core.identity
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.admin.identity.logout
-      x-campusos-auth: jwt+admin-account+permission
-      x-campusos-permission: identity.admin_session.revoke
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminDomainTokenResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/logout:
+    post:
+      operationId: d_Identity_AdminDomain_Logout
+      summary: POST /api/v1/admin/identity/logout
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: resource-policy
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.logout
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyObject'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminOwnLogoutReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/me:
+    get:
+      operationId: d_Identity_AdminDomain_Me
+      summary: GET /api/v1/admin/identity/me
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: resource-policy
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.read
+      x-campusos-auth: jwt+current-admin-session
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminCurrentSelf'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
         '403':
           $ref: '#/components/responses/Forbidden'
   /api/v1/admin/identity/mfa/confirm:
     post:
       operationId: d_Identity_AdminDomain_ConfirmTOTP
       summary: POST /api/v1/admin/identity/mfa/confirm
-      tags: [admin]
+      tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.identity
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.admin.identity.mfa.confirm
-      x-campusos-auth: jwt+admin-account+permission
-      x-campusos-permission: identity.admin_mfa.manage
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.mfa.confirm
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/AdminTOTPCodeRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminTOTPConfirmation'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/identity/mfa/enroll:
     post:
       operationId: d_Identity_AdminDomain_EnrollTOTP
       summary: POST /api/v1/admin/identity/mfa/enroll
-      tags: [admin]
+      tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.identity
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.admin.identity.mfa.enroll
-      x-campusos-auth: jwt+admin-account+permission
-      x-campusos-permission: identity.admin_mfa.manage
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.mfa.enroll
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/AdminTOTPEnrollRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminTOTPEnrollment'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/identity/mfa/step-up:
     post:
       operationId: d_Identity_AdminDomain_StepUp
       summary: POST /api/v1/admin/identity/mfa/step-up
-      tags: [admin]
+      tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.identity
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.admin.identity.mfa.step_up
-      x-campusos-auth: jwt+admin-account+permission
-      x-campusos-permission: identity.admin_mfa.manage
+      x-campusos-scope: current-admin-self
+      x-campusos-operation: http.identity.admin_self.mfa.step_up
+      x-campusos-auth: jwt+current-admin-session+browser-csrf
       security:
         - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/AdminTOTPCodeRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminStepUpReceipt'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/identity/refresh:
     post:
       operationId: d_Identity_AdminDomain_Refresh
       summary: POST /api/v1/admin/identity/refresh
       tags: [public]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: current-admin-session
       x-campusos-module-owner: core.identity
-      x-campusos-scope: public
-      x-campusos-operation: http.post.api.v1.admin.identity.refresh
+      x-campusos-scope: admin-refresh-family
+      x-campusos-operation: http.identity.admin_session.refresh
+      x-campusos-auth: admin-refresh-cookie+csrf
+      security:
+        - adminRefreshCookie: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/AdminDomainRefreshRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminDomainTokenResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/posts/{post_id}:
     delete:
       operationId: postHandler_AdminGovernanceDelete
@@ -1040,11 +1161,11 @@ paths:
       summary: GET /api/v1/admin/threads
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.admin.threads
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: current-admin+actual-board+metadata-only-before-count-page
+      x-campusos-operation: http.community.thread.admin_list
+      x-campusos-auth: jwt+admin-account+permission+current-session
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
@@ -1066,40 +1187,105 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/ThreadListData'
+                        $ref: '#/components/schemas/AdminThreadMetadataListData'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /api/v1/admin/threads/trash:
-    get:
-      operationId: threadHandler_AdminListTrash
-      summary: GET /api/v1/admin/threads/trash
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/threads/permissions-preview:
+    post:
+      operationId: threadHandler_AdminPermissionsPreview
+      summary: POST /api/v1/admin/threads/permissions-preview
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.admin.threads.trash
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: current-admin+same-command-policies+bounded-actual-threads
+      x-campusos-operation: http.community.thread.admin_permissions_preview
+      x-campusos-auth: jwt+admin-account+permission+current-session
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminThreadPermissionsPreviewRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminThreadPermissionsPreviewData'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/threads/trash:
+    get:
+      operationId: threadHandler_AdminListTrash
+      summary: GET /api/v1/admin/threads/trash
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: resource-policy
+      x-campusos-module-owner: core.community
+      x-campusos-scope: current-admin+actual-board+metadata-only-before-count-page
+      x-campusos-operation: http.community.thread.admin_trash_list
+      x-campusos-auth: jwt+admin-account+permission+current-session
+      x-campusos-permission: community.thread.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminThreadMetadataListData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/threads/{id}:
     delete:
       operationId: threadHandler_AdminDeleteThread
@@ -1175,11 +1361,11 @@ paths:
       summary: GET /api/v1/admin/threads/:id/moderation-actions
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: core.community
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.admin.threads.id.moderation_actions
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: current-admin+actual-board+metadata-only-before-count-page
+      x-campusos-operation: http.community.thread.admin_history
+      x-campusos-auth: jwt+admin-account+permission+current-session
       x-campusos-permission: community.thread.read
       security:
         - bearerAuth: []
@@ -1189,19 +1375,36 @@ paths:
           required: true
           schema:
             type: string
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminModerationMetadataListData'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/threads/{id}/purge:
     delete:
       operationId: threadHandler_AdminPurge
@@ -9754,10 +9957,12 @@ paths:
       summary: GET /api/v1/space/:user_id
       tags: [public]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: public
-      x-campusos-operation: http.get.api.v1.space.user_id
+      x-campusos-scope: actual-public-space+current-user
+      x-campusos-operation: http.personal_space.public_profile.by_id
+      security:
+        - bearerAuth: []
       parameters:
         - name: user_id
           in: path
@@ -9770,19 +9975,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpacePublicProfile'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/space/{user_id}/contents:
     get:
       operationId: spaceHandler_ListContentsByUserID
       summary: GET /api/v1/space/:user_id/contents
       tags: [public]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: public
-      x-campusos-operation: http.get.api.v1.space.user_id.contents
+      x-campusos-scope: actual-public-space+current-user
+      x-campusos-operation: http.personal_space.public_contents.by_id
+      security:
+        - bearerAuth: []
       parameters:
         - name: user_id
           in: path
@@ -9801,20 +10023,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpacePublicContentListData'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/spaces/admin/summary:
     get:
       operationId: spaceHandler_AdminSummary
       summary: GET /api/v1/spaces/admin/summary
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.spaces.admin.summary
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: current-space-aggregate+current-admin-execution
+      x-campusos-operation: http.personal_space.admin.summary
+      x-campusos-auth: jwt+admin-account+permission+current-session
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -9824,24 +10061,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceAdminSummary'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/admin/users/{user_id}/storage:
     get:
       operationId: spaceHandler_AdminStorageStatus
       summary: GET /api/v1/spaces/admin/users/:user_id/storage
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.spaces.admin.users.user_id.storage
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: actual-target-user+space+current-quota+current-admin-execution
+      x-campusos-operation: http.personal_space.admin.storage
+      x-campusos-auth: jwt+admin-account+permission+current-session
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -9869,16 +10115,22 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     put:
       operationId: spaceHandler_SetStorageQuota
       summary: PUT /api/v1/spaces/admin/users/:user_id/storage
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: global
-      x-campusos-operation: http.put.api.v1.spaces.admin.users.user_id.storage
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: actual-target-user+current-quota+current-admin-execution
+      x-campusos-operation: http.personal_space.admin.quota
+      x-campusos-auth: jwt+admin-account+permission+current-mfa
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -9906,13 +10158,19 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/SpaceStorageStatus'
+                        $ref: '#/components/schemas/SpaceQuotaMutationAck'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/files/{user_id}/avatars/{filename}:
     get:
       operationId: spaceHandler_ServeAvatarFile
@@ -10179,25 +10437,41 @@ paths:
       summary: GET /api/v1/spaces/me/contents
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.contents
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_contents.read
       security:
         - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceOwnerContentListData'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/storage:
     get:
       operationId: spaceHandler_GetStorageStatus
@@ -10304,10 +10578,10 @@ paths:
       summary: POST /api/v1/spaces/me/styles/export
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.post.api.v1.spaces.me.styles.export
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.export
       security:
         - bearerAuth: []
       requestBody:
@@ -10323,23 +10597,34 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleExport'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/html-example:
     get:
       operationId: spaceHandler_CustomHTMLExample
       summary: GET /api/v1/spaces/me/styles/html-example
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.styles.html_example
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.html_example
       security:
         - bearerAuth: []
       responses:
@@ -10348,13 +10633,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleHTMLExample'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/html/apply:
     post:
       operationId: spaceHandler_ApplyCustomHTML
@@ -10404,10 +10698,10 @@ paths:
       summary: POST /api/v1/spaces/me/styles/html/validate
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.post.api.v1.spaces.me.styles.html.validate
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.html_validate
       security:
         - bearerAuth: []
       requestBody:
@@ -10415,21 +10709,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/PersonalSpaceStyleHTMLRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleReadValidation'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/packs/apply:
     post:
       operationId: spaceHandler_ApplyStylePackZip
@@ -10520,10 +10825,10 @@ paths:
       summary: GET /api/v1/spaces/me/styles/packs/example
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.example
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.pack_example
       security:
         - bearerAuth: []
       responses:
@@ -10532,48 +10837,60 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStylePackExample'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/packs/example.zip:
     get:
       operationId: spaceHandler_StylePackExampleZip
       summary: GET /api/v1/spaces/me/styles/packs/example.zip
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.example.zip
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.pack_zip
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Success
           content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
+            application/zip:
+              schema: { type: string, format: binary }
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/packs/sources:
     get:
       operationId: spaceHandler_ListSourceStylePacks
       summary: GET /api/v1/spaces/me/styles/packs/sources
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.styles.packs.sources
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style.catalog
       security:
         - bearerAuth: []
       responses:
@@ -10582,23 +10899,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceSourceStylePackList'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/packs/validate:
     post:
       operationId: spaceHandler_ValidateStylePackZip
       summary: POST /api/v1/spaces/me/styles/packs/validate
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.post.api.v1.spaces.me.styles.packs.validate
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.zip_validate
       security:
         - bearerAuth: []
       requestBody:
@@ -10606,31 +10932,42 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/MultipartRequest'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/SpaceStyleReadZipRequest'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleZipValidation'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/preview:
     post:
       operationId: spaceHandler_PreviewStylePackage
       summary: POST /api/v1/spaces/me/styles/preview
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.post.api.v1.spaces.me.styles.preview
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.preview
       security:
         - bearerAuth: []
       requestBody:
@@ -10638,21 +10975,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/PersonalSpaceStylePackage'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleReadPreview'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/styles/rollback:
     post:
       operationId: spaceHandler_RollbackStyle
@@ -10695,10 +11043,10 @@ paths:
       summary: POST /api/v1/spaces/me/styles/validate
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.post.api.v1.spaces.me.styles.validate
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_style_read.validate
       security:
         - bearerAuth: []
       requestBody:
@@ -10706,31 +11054,42 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
+              $ref: '#/components/schemas/PersonalSpaceStylePackage'
+      x-campusos-schema-level: field-contract
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceStyleReadValidation'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/me/sync-status:
     get:
       operationId: spaceHandler_GetSyncStatus
       summary: GET /api/v1/spaces/me/sync-status
       tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: handler-enforced
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: self-or-resource-owner
-      x-campusos-operation: http.get.api.v1.spaces.me.sync_status
+      x-campusos-scope: actual-owned-space+current-user
+      x-campusos-operation: http.personal_space.owner_sync_status.read
       security:
         - bearerAuth: []
       responses:
@@ -10739,24 +11098,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceCurrentSyncStatus'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/{user_id}/disable:
     post:
       operationId: spaceHandler_DisableSpace
       summary: POST /api/v1/spaces/:user_id/disable
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.spaces.user_id.disable
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: actual-target-user+space+current-admin-execution
+      x-campusos-operation: http.personal_space.admin.disable
+      x-campusos-auth: jwt+admin-account+permission+current-mfa
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -10779,24 +11147,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceAdminMutationAck'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/spaces/{user_id}/enable:
     post:
       operationId: spaceHandler_EnableSpace
       summary: POST /api/v1/spaces/:user_id/enable
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: global
-      x-campusos-operation: http.post.api.v1.spaces.user_id.enable
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: actual-target-user+space+current-admin-execution
+      x-campusos-operation: http.personal_space.admin.enable
+      x-campusos-auth: jwt+admin-account+permission+current-mfa
       x-campusos-permission: personal_space.space.manage
       security:
         - bearerAuth: []
@@ -10812,13 +11191,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpaceAdminMutationAck'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/threads:
     get:
       operationId: threadHandler_ListThreads
@@ -11471,10 +11861,12 @@ paths:
       summary: GET /api/v1/u/:username
       tags: [public]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: public
-      x-campusos-operation: http.get.api.v1.u.username
+      x-campusos-scope: actual-public-space+current-user
+      x-campusos-operation: http.personal_space.public_profile.by_username
+      security:
+        - bearerAuth: []
       parameters:
         - name: username
           in: path
@@ -11487,19 +11879,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpacePublicProfile'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/u/{username}/contents:
     get:
       operationId: spaceHandler_ListContentsByUsername
       summary: GET /api/v1/u/:username/contents
       tags: [public]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: resource-policy
       x-campusos-module-owner: feature.personal-space
-      x-campusos-scope: public
-      x-campusos-operation: http.get.api.v1.u.username.contents
+      x-campusos-scope: actual-public-space+current-user
+      x-campusos-operation: http.personal_space.public_contents.by_username
+      security:
+        - bearerAuth: []
       parameters:
         - name: username
           in: path
@@ -11518,9 +11927,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Envelope'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SpacePublicContentListData'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/ui/events:
     get:
       operationId: runtimeHTTPHandler_Events
@@ -12142,7 +12566,99 @@ components:
       type: apiKey
       in: cookie
       name: campusos_refresh
+    adminRefreshCookie:
+      type: apiKey
+      in: cookie
+      name: campusos_admin_refresh
   schemas:
+    EmptyObject:
+      type: object
+      additionalProperties: false
+    AdminDomainLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: {type: string, description: Independent Admin username or contact email}
+        password: {type: string, format: password}
+    AdminDomainRefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token: {type: string, description: Explicit non-browser CLI compatibility only; browser uses HttpOnly Admin cookie and Admin CSRF header}
+    AdminDomainTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_at]
+      properties:
+        access_token: {type: string}
+        token_type: {type: string, enum: [Bearer]}
+        expires_at: {type: string, format: date-time}
+        refresh_token: {type: string, description: Omitted for browser and default configuration; explicit CLI compatibility only}
+    AdminCurrentSelf:
+      type: object
+      additionalProperties: false
+      required: [domain, account, roles, permission_codes, authentication_strength, mfa_enrolled, session_expires_at]
+      properties:
+        domain: {type: string, enum: [admin]}
+        account: {$ref: '#/components/schemas/AdminSelfAccount'}
+        roles: {type: array, items: {$ref: '#/components/schemas/AdminSelfRole'}}
+        permission_codes: {type: array, items: {type: string}}
+        authentication_strength: {type: string, enum: [password, mfa]}
+        mfa_enrolled: {type: boolean}
+        session_expires_at: {type: string, format: date-time}
+        mfa_expires_at: {type: string, format: date-time}
+    AdminSelfAccount:
+      type: object
+      additionalProperties: false
+      required: [id, username, display_name, status]
+      properties:
+        id: {type: string}
+        username: {type: string}
+        display_name: {type: string}
+        status: {type: string, enum: [active]}
+    AdminSelfRole:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+    AdminTOTPEnrollRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        issuer: {type: string, maxLength: 64}
+    AdminTOTPCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: {type: string, pattern: '^[0-9]{6}$'}
+    AdminTOTPEnrollment:
+      type: object
+      additionalProperties: false
+      required: [otpauth_url]
+      properties:
+        otpauth_url: {type: string, description: Shown once for current Admin enrollment; never persist in browser storage}
+    AdminTOTPConfirmation:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [active]}
+    AdminStepUpReceipt:
+      type: object
+      additionalProperties: false
+      required: [authentication_strength]
+      properties:
+        authentication_strength: {type: string, enum: [mfa]}
+    AdminOwnLogoutReceipt:
+      type: object
+      additionalProperties: false
+      required: [revoked]
+      properties:
+        revoked: {type: boolean, enum: [true]}
     Envelope:
       type: object
       required: [code, msg]
@@ -12755,6 +13271,14 @@ components:
         space_id: { type: string }
         owner_id: { type: string }
       additionalProperties: false
+    SpaceAdminMutationAck:
+      type: object
+      required: [owner_id, disabled]
+      properties:
+        owner_id: { type: string }
+        space_id: { type: string }
+        disabled: { type: boolean }
+      additionalProperties: false
     UpsertSpaceRequest:
       type: object
       properties:
@@ -12777,25 +13301,314 @@ components:
         space: { $ref: '#/components/schemas/Space' }
       additionalProperties: false
     Space: { type: object, additionalProperties: true }
+    SpacePublicProfile:
+      type: object
+      additionalProperties: false
+      required: [owner, space]
+      properties:
+        owner: { $ref: '#/components/schemas/SpacePublicOwner' }
+        space: { $ref: '#/components/schemas/SpacePublicAppearance' }
+    SpacePublicOwner:
+      type: object
+      additionalProperties: false
+      required: [id, username, nickname]
+      properties:
+        id: {type: string}
+        username: {type: string}
+        nickname: {type: string}
+        avatar: {type: string}
+        bio: {type: string}
+    SpacePublicAppearance:
+      type: object
+      additionalProperties: false
+      required: [id, user_id, title, bio, theme, layout, visibility, sync_enabled, is_default, created_at, updated_at]
+      properties:
+        id: {type: string}
+        user_id: {type: string}
+        title: {type: string}
+        bio: {type: string}
+        avatar: {type: string}
+        cover_image: {type: string}
+        theme: {type: string}
+        layout: {type: string}
+        style_name: {type: string}
+        style_version: {type: string}
+        style_manifest: {$ref: '#/components/schemas/PersonalSpaceStyleManifest'}
+        visibility: {type: string, enum: [public]}
+        sync_enabled: {type: boolean}
+        is_default: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    SpaceCurrentSyncStatus:
+      type: object
+      additionalProperties: false
+      required: [user_id, sync_enabled, content_total, disabled]
+      properties:
+        user_id: {type: string}
+        sync_enabled: {type: boolean}
+        content_total: {type: integer, format: int64, minimum: 0}
+        disabled: {type: boolean}
+        last_sync_at: {type: string, format: date-time}
+        last_sync_error: {type: string, description: 'Fixed safe user guidance; never raw host errors'}
+    SpacePublicContent:
+      type: object
+      additionalProperties: false
+      required: [id, user_id, thread_id, title, excerpt, author_name, category_id, status, thread_created_at, thread_updated_at, synced_at]
+      properties:
+        id: {type: string}
+        user_id: {type: string}
+        thread_id: {type: string}
+        title: {type: string}
+        excerpt: {type: string}
+        author_name: {type: string}
+        category_id: {type: string}
+        tags: {type: array, items: {type: string}}
+        status: {type: string}
+        publication_status: {type: string, enum: [published]}
+        moderation_status: {type: string, enum: [clear]}
+        deletion_status: {type: string, enum: [active]}
+        thread_created_at: {type: string, format: date-time}
+        thread_updated_at: {type: string, format: date-time}
+        synced_at: {type: string, format: date-time}
+    SpacePublicContentListData:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SpacePublicContent'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+    SpaceOwnerContent:
+      type: object
+      additionalProperties: false
+      required: [id, user_id, thread_id, title, excerpt, author_name, category_id, status, thread_created_at, thread_updated_at, synced_at]
+      properties:
+        id: {type: string}
+        user_id: {type: string}
+        thread_id: {type: string}
+        title: {type: string}
+        excerpt: {type: string}
+        author_name: {type: string}
+        category_id: {type: string}
+        tags: {type: array, items: {type: string}}
+        status: {type: string}
+        publication_status: {type: string, enum: [draft, published, private]}
+        moderation_status: {type: string, enum: [clear, pending, rejected, taken_down]}
+        deletion_status: {type: string, enum: [active]}
+        thread_created_at: {type: string, format: date-time}
+        thread_updated_at: {type: string, format: date-time}
+        synced_at: {type: string, format: date-time}
+        moderation_reason: {type: string}
+    SpaceOwnerContentListData:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/SpaceOwnerContent'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
     SpaceStorageStatus:
       type: object
-      required: [user_id, quota_bytes, default_quota_bytes, used_bytes, available_bytes, avatar_keep_limit, custom_quota]
+      required: [user_id, quota_bytes, default_quota_bytes, used_bytes, available_bytes, avatar_keep_limit, max_avatar_bytes, custom_quota]
       properties:
         user_id: { type: string, pattern: '^[0-9]+$' }
         quota_bytes: { type: integer, format: int64, minimum: 1 }
         default_quota_bytes: { type: integer, format: int64, minimum: 1 }
         used_bytes: { type: integer, format: int64, minimum: 0 }
         available_bytes: { type: integer, format: int64, minimum: 0 }
+        max_avatar_bytes: { type: integer, format: int64, minimum: 1 }
         avatar_keep_limit: { type: integer, minimum: 1 }
         custom_quota: { type: boolean }
         quota_updated_by: { type: string }
         quota_updated_at: { type: string, format: date-time, nullable: true }
+      additionalProperties: false
     SetStorageQuotaRequest:
       type: object
       required: [quota_bytes]
       properties:
         quota_bytes: { type: integer, format: int64, minimum: 1048576, maximum: 107374182400 }
       additionalProperties: false
+    SpaceQuotaMutationAck:
+      type: object
+      required: [owner_id, quota_bytes]
+      properties:
+        owner_id: { type: string }
+        quota_bytes: { type: integer, format: int64, minimum: 1048576, maximum: 107374182400 }
+      additionalProperties: false
+    SpaceAdminSummary:
+      type: object
+      required: [total_spaces, public_spaces, disabled_spaces, styled_spaces, sync_enabled_spaces, sync_error_spaces]
+      properties:
+        total_spaces: { type: integer, format: int64, minimum: 0 }
+        public_spaces: { type: integer, format: int64, minimum: 0 }
+        disabled_spaces: { type: integer, format: int64, minimum: 0 }
+        styled_spaces: { type: integer, format: int64, minimum: 0 }
+        sync_enabled_spaces: { type: integer, format: int64, minimum: 0 }
+        sync_error_spaces: { type: integer, format: int64, minimum: 0 }
+        last_sync_at: { type: string, format: date-time }
+      additionalProperties: false
+    SpaceStyleReadValidation:
+      type: object
+      additionalProperties: false
+      required: [valid]
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    SpaceStyleReadPreview:
+      type: object
+      additionalProperties: false
+      required: [validation]
+      properties:
+        validation: { $ref: '#/components/schemas/SpaceStyleReadValidation' }
+        manifest: { $ref: '#/components/schemas/PersonalSpaceStyleManifest' }
+        layout: { type: string }
+        components:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              slot: { type: string }
+              type: { type: string }
+              props: { type: object, additionalProperties: true }
+        tokens: { type: object, additionalProperties: { type: string } }
+        assets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              name: { type: string }
+              path: { type: string }
+              type: { type: string }
+    SpaceStyleExport:
+      type: object
+      additionalProperties: false
+      required: [package, filename, validation]
+      properties:
+        package: { $ref: '#/components/schemas/PersonalSpaceStylePackage' }
+        filename: { type: string }
+        validation: { $ref: '#/components/schemas/SpaceStyleReadValidation' }
+    SpaceStyleHTMLExample:
+      type: object
+      additionalProperties: false
+      required: [html, package, validation]
+      properties:
+        html: { type: string }
+        package: { $ref: '#/components/schemas/PersonalSpaceStylePackage' }
+        validation: { $ref: '#/components/schemas/SpaceStyleReadValidation' }
+    SpaceStyleReadZipRequest:
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file: { type: string, format: binary, maxLength: 16777216 }
+    SpaceStyleZipValidation:
+      type: object
+      additionalProperties: false
+      required: [validation]
+      properties:
+        package: { $ref: '#/components/schemas/SpaceStylePackPackage' }
+        validation:
+          type: object
+          additionalProperties: false
+          required: [valid]
+          properties:
+            valid: { type: boolean }
+            delivery_status: { type: string }
+            errors: { type: array, items: { type: string } }
+            warnings: { type: array, items: { type: string } }
+            issues:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+                  file: { type: string }
+                  viewport: { type: string }
+    SpaceStylePackPackage:
+      type: object
+      additionalProperties: false
+      required: [manifest, html]
+      properties:
+        manifest: { type: object, additionalProperties: true }
+        html: { type: string }
+        css: { type: string }
+        effect_js: { type: string }
+        config_schema: { type: object, additionalProperties: true }
+        files:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [path, size, type]
+            properties:
+              path: { type: string }
+              size: { type: integer, minimum: 0 }
+              type: { type: string }
+    SpaceStylePackExample:
+      type: object
+      additionalProperties: false
+      required: [filename, files, package]
+      properties:
+        filename: { type: string }
+        files: { type: object, additionalProperties: { type: string } }
+        package: { $ref: '#/components/schemas/SpaceStylePackPackage' }
+    SpaceSourceStylePackList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SpaceSourceStylePack' }
+    SpaceSourceStylePack:
+      type: object
+      additionalProperties: false
+      required: [name, validation]
+      properties:
+        name: { type: string }
+        target: { type: string }
+        version: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        checksum: { type: string }
+        previews:
+          type: object
+          additionalProperties: false
+          properties:
+            desktop: { type: string }
+            mobile: { type: string }
+        manifest:
+          type: object
+          description: Package manifest; paths are package-relative declarations.
+          additionalProperties: true
+        validation:
+          type: object
+          additionalProperties: false
+          required: [valid]
+          properties:
+            valid: { type: boolean }
+            delivery_status: { type: string }
+            errors:
+              type: array
+              items: { type: string }
+            warnings:
+              type: array
+              items: { type: string }
+            issues:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [code, message]
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+                  file: { type: string }
+                  viewport: { type: string }
     PersonalSpaceStyleHTMLRequest:
       type: object
       additionalProperties: false
@@ -12807,49 +13620,50 @@ components:
       additionalProperties: false
       required: [manifest]
       properties:
-        manifest:
+        manifest: { $ref: '#/components/schemas/PersonalSpaceStyleManifest' }
+    PersonalSpaceStyleManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version: { type: string }
+        name: { type: string }
+        version: { type: string }
+        author: { type: string }
+        description: { type: string }
+        preview_image: { type: string }
+        compatible_campusos: { type: array, items: { type: string } }
+        layout: { type: string }
+        components:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              slot: { type: string }
+              type: { type: string }
+              props: { type: object, additionalProperties: true }
+        tokens: { type: object, additionalProperties: { type: string } }
+        assets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              name: { type: string }
+              path: { type: string }
+              type: { type: string }
+        custom_html_enabled: { type: boolean }
+        custom_html: { type: string }
+        custom_css: { type: string }
+        custom_effect_js: { type: string }
+        source_style_pack:
           type: object
           additionalProperties: false
           properties:
-            schema_version: { type: string }
             name: { type: string }
             version: { type: string }
-            author: { type: string }
-            description: { type: string }
-            preview_image: { type: string }
-            compatible_campusos: { type: array, items: { type: string } }
-            layout: { type: string }
-            components:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                properties:
-                  slot: { type: string }
-                  type: { type: string }
-                  props: { type: object, additionalProperties: true }
-            tokens: { type: object, additionalProperties: { type: string } }
-            assets:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                properties:
-                  name: { type: string }
-                  path: { type: string }
-                  type: { type: string }
-            custom_html_enabled: { type: boolean }
-            custom_html: { type: string }
-            custom_css: { type: string }
-            custom_effect_js: { type: string }
-            source_style_pack:
-              type: object
-              additionalProperties: false
-              properties:
-                name: { type: string }
-                version: { type: string }
-                target: { type: string }
-            capabilities: { type: array, items: { type: string } }
+            target: { type: string }
+        capabilities: { type: array, items: { type: string } }
     AvatarCleanupAck:
       type: object
       additionalProperties: false
@@ -13035,7 +13849,7 @@ components:
     DisableSpaceRequest:
       type: object
       properties:
-        reason: { type: string }
+        reason: { type: string, maxLength: 500 }
       additionalProperties: false
     UserListData:
       type: object
@@ -13049,6 +13863,83 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/AdminUser' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
+    AdminThreadPermissionsPreviewRequest:
+      type: object
+      additionalProperties: false
+      required: [thread_ids]
+      properties:
+        thread_ids: {type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 128}}
+    AdminThreadPermissionFlags:
+      type: object
+      additionalProperties: false
+      required: [pin, unpin, lock, unlock, approve, reject, take_down, direct_restore, trash, restore_trash, purge]
+      properties:
+        pin: {type: boolean}
+        unpin: {type: boolean}
+        lock: {type: boolean}
+        unlock: {type: boolean}
+        approve: {type: boolean}
+        reject: {type: boolean}
+        take_down: {type: boolean}
+        direct_restore: {type: boolean}
+        trash: {type: boolean}
+        restore_trash: {type: boolean}
+        purge: {type: boolean}
+    AdminThreadPermissionsPreviewItem:
+      type: object
+      additionalProperties: false
+      required: [id, permissions]
+      properties:
+        id: {type: string}
+        permissions: {$ref: '#/components/schemas/AdminThreadPermissionFlags'}
+    AdminThreadPermissionsPreviewData:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {type: array, maxItems: 20, items: {$ref: '#/components/schemas/AdminThreadPermissionsPreviewItem'}}
+    AdminThreadMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, author_id, category_id, thread_type, content_format, publication_status, moderation_status, deletion_status, is_pinned, is_locked, created_at, updated_at]
+      properties:
+        id: {type: string}
+        author_id: {type: string}
+        category_id: {type: string}
+        thread_type: {type: string}
+        content_format: {type: string}
+        publication_status: {type: string, enum: [draft, published, private]}
+        moderation_status: {type: string, enum: [clear, pending, rejected, taken_down]}
+        deletion_status: {type: string, enum: [active, trashed, purged]}
+        is_pinned: {type: boolean}
+        is_locked: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    AdminModerationMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, thread_id, action, actor_kind, actor_ref_id, created_at]
+      properties:
+        id: {type: string}
+        thread_id: {type: string}
+        action: {type: string}
+        actor_kind: {type: string, enum: [user, admin, legacy_unknown]}
+        actor_ref_id: {type: string}
+        created_at: {type: string, format: date-time}
+    AdminThreadMetadataListData:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AdminThreadMetadata'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+    AdminModerationMetadataListData:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/AdminModerationMetadata'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
     ThreadListData:
       type: object
       required: [items, pagination]

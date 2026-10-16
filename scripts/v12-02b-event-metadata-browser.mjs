@@ -25,6 +25,7 @@ let browser
 try {
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] })
   const context = await browser.newContext({ viewport: { width: 1366, height: 900 } })
+  await context.addCookies([{ name: 'campusos_admin_csrf', value: 'ui-only-nonce', url: origin }])
   const page = await context.newPage()
   const errors = []
   const requests = []
@@ -37,9 +38,8 @@ try {
     let data = {}
     let status = 200
     switch (url.pathname) {
-      case '/api/v1/auth/refresh': data = { access_token: 'ui-only-mock-token' }; break
-      case '/api/v1/auth/me': data = { id: 'adm.ui', username: 'UI acceptance' }; break
-      case '/api/v1/users/adm.ui/roles': data = [{ id: 1, name: 'admin' }]; break
+      case '/api/v1/admin/identity/refresh': data = { access_token: 'ui-only-mock-token' }; break
+      case '/api/v1/admin/identity/me': data = { domain: 'admin', account: { id: 'adm.ui', username: 'ui-acceptance', display_name: 'UI acceptance', status: 'active' }, roles: [{ id: 'ui_custom_reader', name: '盘点人员' }], permission_codes: ['platform.reliability.read'], authentication_strength: 'password', mfa_enrolled: false, session_expires_at: new Date(Date.now() + 3600000).toISOString() }; break
       case '/api/v1/events': {
         requests.push(url.searchParams)
         status = denied ? 403 : 200

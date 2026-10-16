@@ -6,7 +6,7 @@ import (
 )
 
 func TestSpaceOwnerPolicyActualDomainStateAndBoundDecision(t *testing.T) {
-	for _, op := range []string{"profile", "read_profile", "avatar_select", "avatar_upload", "avatar_retention", "style_apply", "style_default", "style_rollback", "style_html", "style_zip", "style_source", "style_catalog"} {
+	for _, op := range []string{"profile", "read_profile", "avatar_select", "avatar_upload", "avatar_retention", "style_apply", "style_default", "style_rollback", "style_html", "style_zip", "style_source", "style_catalog", "style_read"} {
 		for _, kind := range []string{"user", "admin"} {
 			for _, owner := range []string{"1001", "1002"} {
 				for _, exists := range []bool{false, true} {
@@ -16,7 +16,7 @@ func TestSpaceOwnerPolicyActualDomainStateAndBoundDecision(t *testing.T) {
 							r.FactsVersion = 17
 						}
 						d, err := (PersonalSpaceOwnerPolicy{}).DecidePersonalSpaceOwner(r)
-						if err != nil || (d.Effect == "allow") != (kind == "user" && owner == "1001" && (op == "read_profile" || op == "style_catalog" || !disabled)) {
+						if err != nil || (d.Effect == "allow") != (kind == "user" && owner == "1001" && (op == "read_profile" || op == "style_catalog" || op == "style_read" || !disabled)) {
 							t.Fatal(r, d, err)
 						}
 						if d.Effect == "allow" {

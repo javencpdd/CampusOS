@@ -130,6 +130,21 @@ func (m *Module) Start(ctx context.Context) error {
 		}
 	}
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
+	var adminAuthority identityport.AdminSessionAuthorityReader
+	if value, found := m.app.Lookup("identity.admin-session-authority"); found {
+		var compatible bool
+		adminAuthority, compatible = value.(identityport.AdminSessionAuthorityReader)
+		if !compatible || corestorage.NilImageAdapter(adminAuthority) {
+			return fmt.Errorf("personal space admin session authority has incompatible type %T", value)
+		}
+	}
+	if value, found := m.app.Lookup("identity.admin-execution-authority"); found {
+		reader, compatible := value.(identityport.AdminExecutionAuthorityReader)
+		if !compatible || corestorage.NilImageAdapter(reader) {
+			return fmt.Errorf("personal space admin execution authority has incompatible type %T", value)
+		}
+		svc.SetAdminExecutionAuthority(reader)
+	}
 	svc.SetContentQuery(m.contentQuery)
 	svc.SetQuotaManager(m.quotaManager)
 	svc.SetPluginEnabledChecker(m.enabled)
@@ -185,6 +200,7 @@ func (m *Module) Start(ctx context.Context) error {
 	m.service = svc
 	m.handler = NewHandlerWithStyleApplication(svc, m.styles)
 	m.handler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
+	m.handler.SetAdminSessionAuthority(adminAuthority)
 	return m.app.Provide("feature.personal-space.service", svc)
 }
 
@@ -206,6 +222,18 @@ func (m *Module) enabled() bool {
 
 type identityUserReader struct{ reader identityport.UserReader }
 
+func (r identityUserReader) GetByIDForUpdate(ctx context.Context, id string) (*identitydomain.User, error) {
+	reader, ok := r.reader.(identityport.UserCommandReader)
+	if !ok || corestorage.NilImageAdapter(reader) {
+		return nil, ErrSpaceFactsUnavailable
+	}
+	value, err := reader.GetUserForUpdate(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return identityUser(value), nil
+}
+
 func (r identityUserReader) GetByID(ctx context.Context, id string) (*identitydomain.User, error) {
 	value, err := r.reader.GetUser(ctx, id)
 	if err != nil {
@@ -223,7 +251,7 @@ func (r identityUserReader) GetByUsername(ctx context.Context, username string) 
 }
 
 func identityUser(value identityport.User) *identitydomain.User {
-	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Avatar: value.Avatar, Bio: value.Bio, Status: identitydomain.UserStatus(value.Status)}
+	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Email: value.Email, Avatar: value.Avatar, Bio: value.Bio, Status: identitydomain.UserStatus(value.Status)}
 }
 
 type communityThreadGateway struct{ gateway communityport.ContentGateway }

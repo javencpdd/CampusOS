@@ -111,6 +111,7 @@ func (m *Module) Start(ctx context.Context) error {
 				return fmt.Errorf("storage image reliability has incompatible type %T", v)
 			}
 			m.contentImages.SetUploadCommand(reliable, m.objects)
+			m.adapter.SetQuotaReliability(reliable)
 		}
 		if v, ok := m.app.Lookup("community.content-query"); ok {
 			query, ok = v.(communityport.AuthenticatedThreadQuery)

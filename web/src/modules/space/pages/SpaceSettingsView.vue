@@ -938,6 +938,7 @@ const selectExample = (item: StylePackage) => {
 }
 
 const validateStyle = async () => {
+  validation.value = null
   const pkg = parseStylePackage()
   if (!pkg) return
   validating.value = true
@@ -956,6 +957,8 @@ const validateStyle = async () => {
 }
 
 const previewStyle = async () => {
+  preview.value = null
+  validation.value = null
   const pkg = parseStylePackage()
   if (!pkg) return
   previewing.value = true
@@ -997,6 +1000,9 @@ const applyStyle = async () => {
 }
 
 const generateHTMLExample = async () => {
+  preview.value = null
+  validation.value = null
+  htmlValidation.value = null
   htmlGenerating.value = true
   try {
     const payload = unwrap<StyleHTMLExampleResult>(await spaceApi.customHtmlExample())
@@ -1018,6 +1024,7 @@ const generateHTMLExample = async () => {
 }
 
 const validateHTML = async () => {
+  htmlValidation.value = null
   htmlValidating.value = true
   try {
     htmlValidation.value = unwrap<StyleValidationResult>(await spaceApi.validateCustomHtml(htmlText.value))
@@ -1088,6 +1095,7 @@ const downloadStylePackExample = async () => {
 
 const validateStylePack = async () => {
   if (!stylePackFile.value) return
+  stylePackValidation.value = null
   stylePackValidating.value = true
   try {
     const payload = unwrap<StylePackResult>(await spaceApi.validateStylePack(stylePackFile.value))

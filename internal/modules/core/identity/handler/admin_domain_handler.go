@@ -18,13 +18,19 @@ import (
 // step-up. All authenticated routes sit behind the admin-domain middleware;
 // user tokens never reach these handlers.
 type AdminDomainHandler struct {
-	lifecycle *service.AdminDomainService
-	sessions  *service.AdminSessionService
-	mfa       *service.AdminMFAService
+	lifecycle   *service.AdminDomainService
+	sessions    *service.AdminSessionService
+	mfa         *service.AdminMFAService
+	currentSelf *service.AdminSelfService
+	sessionHTTP SessionHTTPConfig
 }
 
-func NewAdminDomainHandler(lifecycle *service.AdminDomainService, sessions *service.AdminSessionService, mfa *service.AdminMFAService) *AdminDomainHandler {
-	return &AdminDomainHandler{lifecycle: lifecycle, sessions: sessions, mfa: mfa}
+func NewAdminDomainHandler(lifecycle *service.AdminDomainService, sessions *service.AdminSessionService, mfa *service.AdminMFAService, currentSelf ...*service.AdminSelfService) *AdminDomainHandler {
+	h := &AdminDomainHandler{lifecycle: lifecycle, sessions: sessions, mfa: mfa}
+	if len(currentSelf) > 0 {
+		h.currentSelf = currentSelf[0]
+	}
+	return h
 }
 
 type adminLoginRequest struct {
@@ -34,15 +40,9 @@ type adminLoginRequest struct {
 
 type adminTokenResponse struct {
 	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
 	TokenType    string    `json:"token_type"`
 	ExpiresAt    time.Time `json:"expires_at"`
-}
-
-func writeAdminTokens(c *gin.Context, tokens *service.AdminSessionTokens) {
-	response.Success(c, adminTokenResponse{
-		AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken, TokenType: "Bearer", ExpiresAt: tokens.ExpiresAt,
-	})
 }
 
 func adminSessionMetadata(c *gin.Context) service.AdminSessionMetadata {
@@ -55,6 +55,8 @@ func adminSessionMetadata(c *gin.Context) service.AdminSessionMetadata {
 
 // POST /api/v1/admin/identity/login
 func (h *AdminDomainHandler) Login(c *gin.Context) {
+	c.Header("Cache-Control", "private, no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
 	var req adminLoginRequest
 	if err := request.BindJSONStrict(c, &req); err != nil || strings.TrimSpace(req.Username) == "" || req.Password == "" {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
@@ -68,40 +70,83 @@ func (h *AdminDomainHandler) Login(c *gin.Context) {
 	if err != nil {
 		// One denial shape for unknown accounts, wrong passwords, and
 		// deactivated administrators.
-		response.ErrorDescriptor(c, apperror.IdentityCredentialsInvalid, nil)
+		if errors.Is(err, service.ErrAdminLoginDenied) {
+			response.ErrorDescriptor(c, apperror.IdentityCredentialsInvalid, nil)
+		} else {
+			response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		}
 		return
 	}
-	writeAdminTokens(c, tokens)
+	h.writeBrowserTokens(c, tokens)
 }
 
 // POST /api/v1/admin/identity/refresh
 func (h *AdminDomainHandler) Refresh(c *gin.Context) {
+	c.Header("Cache-Control", "private, no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
 	}
-	if err := request.BindJSONStrict(c, &req); err != nil || req.RefreshToken == "" {
+	if err := request.BindJSONStrictOptional(c, &req); err != nil {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	tokens, err := h.sessions.Refresh(c.Request.Context(), req.RefreshToken, adminSessionMetadata(c))
-	if errors.Is(err, service.ErrAdminRefreshReuse) {
+	browser := h.browserSession(c)
+	var raw string
+	if browser {
+		if !h.requireBrowserCSRF(c) {
+			return
+		}
+		if req.RefreshToken != "" {
+			response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
+			return
+		}
+		raw, _ = c.Cookie(adminRefreshCookieName)
+	} else if h.sessionHTTP.RefreshBodyCompat {
+		raw = req.RefreshToken
+	}
+	if raw == "" {
 		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
 		return
 	}
+	if h.sessions == nil {
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		return
+	}
+	tokens, err := h.sessions.Refresh(c.Request.Context(), raw, adminSessionMetadata(c))
 	if err != nil {
-		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+		if errors.Is(err, service.ErrAdminRefreshInvalid) || errors.Is(err, service.ErrAdminRefreshReuse) {
+			h.clearBrowserCookies(c)
+			response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+		} else {
+			response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		}
 		return
 	}
-	writeAdminTokens(c, tokens)
+	h.writeBrowserTokens(c, tokens)
 }
 
-// POST /api/v1/admin/identity/logout (authenticated)
+// POST /api/v1/admin/identity/logout (current authenticated Admin only)
 func (h *AdminDomainHandler) Logout(c *gin.Context) {
-	sessionID := c.GetString("session_id")
-	if err := h.sessions.RevokeSession(c.Request.Context(), sessionID, "logout"); err != nil {
-		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	c.Header("Cache-Control", "private, no-store")
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+	var req struct{}
+	if request.BindJSONStrictOptional(c, &req) != nil {
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
+	if !h.requireBrowserCSRF(c) {
+		return
+	}
+	if h.sessions == nil {
+		response.WriteError(c, unavailableError(apperror.IdentitySessionUnavailable))
+		return
+	}
+	if err := h.sessions.RevokeCurrentSession(c.Request.Context(), h.currentAdminResolver(c)); err != nil {
+		writeAdminSelfError(c, err)
+		return
+	}
+	h.clearBrowserCookies(c)
 	response.Success(c, gin.H{"revoked": true})
 }
 
@@ -186,6 +231,11 @@ func (h *AdminDomainHandler) RestoreAccount(c *gin.Context) { h.transition("rest
 
 // POST /api/v1/admin/identity/mfa/enroll (authenticated, MFA actor)
 func (h *AdminDomainHandler) EnrollTOTP(c *gin.Context) {
+	actor, ok := h.currentMFAActor(c)
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
 	var req struct {
 		Issuer string `json:"issuer"`
 	}
@@ -197,9 +247,9 @@ func (h *AdminDomainHandler) EnrollTOTP(c *gin.Context) {
 	if issuer == "" {
 		issuer = "campusos-admin"
 	}
-	otpauth, err := h.mfa.StartEnrollment(c.Request.Context(), adminActorFrom(c), issuer)
+	otpauth, err := h.mfa.StartEnrollment(c.Request.Context(), actor, issuer)
 	if err != nil {
-		writeAdminDomainError(c, err)
+		writeAdminSelfError(c, err)
 		return
 	}
 	response.Success(c, gin.H{"otpauth_url": otpauth})
@@ -207,6 +257,11 @@ func (h *AdminDomainHandler) EnrollTOTP(c *gin.Context) {
 
 // POST /api/v1/admin/identity/mfa/confirm
 func (h *AdminDomainHandler) ConfirmTOTP(c *gin.Context) {
+	actor, ok := h.currentMFAActor(c)
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
 	var req struct {
 		Code string `json:"code"`
 	}
@@ -214,8 +269,8 @@ func (h *AdminDomainHandler) ConfirmTOTP(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	if err := h.mfa.ConfirmEnrollment(c.Request.Context(), adminActorFrom(c), req.Code); err != nil {
-		writeAdminDomainError(c, err)
+	if err := h.mfa.ConfirmEnrollment(c.Request.Context(), actor, req.Code); err != nil {
+		writeAdminSelfError(c, err)
 		return
 	}
 	response.Success(c, gin.H{"status": "active"})
@@ -223,6 +278,11 @@ func (h *AdminDomainHandler) ConfirmTOTP(c *gin.Context) {
 
 // POST /api/v1/admin/identity/mfa/step-up
 func (h *AdminDomainHandler) StepUp(c *gin.Context) {
+	actor, ok := h.currentMFAActor(c)
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
 	var req struct {
 		Code string `json:"code"`
 	}
@@ -230,8 +290,8 @@ func (h *AdminDomainHandler) StepUp(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 		return
 	}
-	if err := h.mfa.VerifyStepUp(c.Request.Context(), adminActorFrom(c), c.GetString("session_id"), req.Code); err != nil {
-		writeAdminDomainError(c, err)
+	if err := h.mfa.VerifyStepUp(c.Request.Context(), actor, actor.CredentialID, req.Code); err != nil {
+		writeAdminSelfError(c, err)
 		return
 	}
 	response.Success(c, gin.H{"authentication_strength": "mfa"})

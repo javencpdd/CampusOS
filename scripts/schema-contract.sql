@@ -48,7 +48,7 @@ BEGIN
         'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision', 'threads.facts_version',
         'admin_role_permissions.facts_version',
         'richtext_article_contents.facts_version', 'user_assets.facts_version', 'richtext_article_attachments.facts_version',
-		'user_spaces.facts_version','user_space_style_snapshots.facts_version',
+		'user_spaces.facts_version','user_space_style_snapshots.facts_version','user_storage_quotas.facts_version',
         'roles.facts_version', 'user_roles.facts_version', 'role_permissions.facts_version', 'permission_definitions.facts_version',
         'posts.facts_version','posts.deleted_actor_kind','posts.deleted_actor_id',
         'threads.moderation_actor_kind','threads.moderation_actor_id',
@@ -342,6 +342,7 @@ BEGIN
        (SELECT count(*) FROM (VALUES ('public.user_assets','trg_user_assets_richtext_facts_version'),('public.richtext_article_attachments','trg_article_attachments_richtext_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_richtext_asset_binding_facts_version()'))<>2 THEN RAISE EXCEPTION 'missing managed RichText asset/binding facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.personal_space_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
        (SELECT count(*) FROM (VALUES ('public.user_spaces','trg_user_spaces_facts_version'),('public.user_space_style_snapshots','trg_space_style_snapshots_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_personal_space_facts_version()'))<>2 THEN RAISE EXCEPTION 'missing managed Personal Space facts guard'; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.storage_quota_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.user_storage_quotas'::regclass AND tgname='trg_user_storage_quotas_facts_version' AND NOT tgisinternal AND tgenabled IN('O','A') AND tgtype=23 AND tgfoid=to_regprocedure('public.advance_storage_quota_facts_version()')) THEN RAISE EXCEPTION 'missing managed storage quota facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.article_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.richtext_article_contents'::regclass AND tgname='trg_article_facts_version' AND NOT tgisinternal AND tgenabled IN('O','A') AND tgtype=23 AND tgfoid=to_regprocedure('public.advance_article_facts_version()')) THEN RAISE EXCEPTION 'missing managed Article facts guard'; END IF;
 
     FOR actor_guard IN SELECT * FROM (VALUES

@@ -224,6 +224,15 @@ const storageStatus = ref<any>(null)
 const storageQuotaMB = ref(50)
 const storageLoading = ref(false)
 const storageSaving = ref(false)
+let storageRequestVersion = 0
+
+const currentStorageResult = (result: any, userId: string) => {
+  const value = result?.data
+  if (result?.code !== 0 || String(value?.user_id) !== userId || !Number.isSafeInteger(value?.quota_bytes) || value.quota_bytes < 1 || !Number.isFinite(value?.used_bytes) || value.used_bytes < 0 || !Number.isFinite(value?.available_bytes) || value.available_bytes < 0) {
+    throw new Error('空间状态已变化，请关闭后重新加载配额。')
+  }
+  return value
+}
 
 const roleNameMap: Record<string, string> = {
   admin: '管理员',
@@ -312,35 +321,56 @@ const openRoleDialog = async (user: any) => {
 }
 
 const openStorageDialog = async (user: any) => {
+  const requestVersion = ++storageRequestVersion
+  const userId = String(user.id)
+  const current = () => requestVersion === storageRequestVersion && storageDialogVisible.value && String(storageSelectedUser.value?.id) === userId
   storageSelectedUser.value = user
   storageStatus.value = null
   storageQuotaMB.value = 50
   storageDialogVisible.value = true
   storageLoading.value = true
+  storageSaving.value = false
   try {
-    const result = (await spaceAdminApi.storage(user.id)) as any
-    storageStatus.value = result?.data
-    storageQuotaMB.value = Math.max(1, Math.round(Number(result?.data?.quota_bytes || 50 * 1024 * 1024) / 1024 / 1024))
+    const result = (await spaceAdminApi.storage(userId)) as any
+    if (!current()) return
+    storageStatus.value = currentStorageResult(result, userId)
+    storageQuotaMB.value = Math.max(1, Math.round(storageStatus.value.quota_bytes / 1048576))
   } catch (error: any) {
-    ElMessage.error(apiMessage(error, '加载个人空间配额失败'))
+    if (current()) {
+      storageStatus.value = null
+      ElMessage.error(apiMessage(error, '加载个人空间配额失败'))
+    }
   } finally {
-    storageLoading.value = false
+    if (current()) storageLoading.value = false
   }
 }
 
 const saveStorageQuota = async () => {
   if (!storageSelectedUser.value || !Number.isFinite(storageQuotaMB.value)) return
+  const requestVersion = ++storageRequestVersion
+  const userId = String(storageSelectedUser.value.id)
+  const current = () => requestVersion === storageRequestVersion && storageDialogVisible.value && String(storageSelectedUser.value?.id) === userId
   storageSaving.value = true
+  storageStatus.value = null
   try {
     const quotaBytes = Math.round(storageQuotaMB.value * 1024 * 1024)
-    const result = (await spaceAdminApi.setStorageQuota(storageSelectedUser.value.id, quotaBytes)) as any
-    storageStatus.value = result?.data
-    storageQuotaMB.value = Math.max(1, Math.round(Number(result?.data?.quota_bytes || quotaBytes) / 1024 / 1024))
+    const result = (await spaceAdminApi.setStorageQuota(userId, quotaBytes)) as any
+    if (!current()) return
+    if (result?.code !== 0 || String(result?.data?.owner_id) !== userId || result?.data?.quota_bytes !== quotaBytes) {
+      throw new Error('配额变更回执无效，请重新加载空间状态。')
+    }
+    const latest = (await spaceAdminApi.storage(userId)) as any
+    if (!current()) return
+    storageStatus.value = currentStorageResult(latest, userId)
+    storageQuotaMB.value = Math.max(1, Math.round(storageStatus.value.quota_bytes / 1048576))
     ElMessage.success('个人空间配额已更新')
   } catch (error: any) {
-    ElMessage.error(apiMessage(error, '更新个人空间配额失败'))
+    if (current()) {
+      storageStatus.value = null
+      ElMessage.error(apiMessage(error, '更新个人空间配额失败'))
+    }
   } finally {
-    storageSaving.value = false
+    if (current()) storageSaving.value = false
   }
 }
 

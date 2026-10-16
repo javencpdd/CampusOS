@@ -374,12 +374,14 @@ func (m *Module) Start(context.Context) error {
 	userHandler.SetRecoveryService(recovery)
 	userHandler.SetAdminAccessService(m.adminAccessService)
 	userHandler.SetMFAService(mfa)
+	adminHandler := handler.NewAdminDomainHandler(m.adminDomainService, m.adminSessionService, m.adminMFAService, service.NewAdminSelfService(m.adminSessionService, m.adminDomains, m.adminSecurity))
+	adminHandler.SetSessionHTTPConfig(handler.SessionHTTPConfig{RefreshBodyCompat: m.config.RefreshBodyCompat, CookieSecure: m.config.CookieSecure})
 	m.handlers = HTTPHandlers{
 		User:            userHandler,
 		Role:            handler.NewRoleHandler(permissions),
 		ChallengePolicy: handler.NewChallengePolicyHandler(challengePolicies),
 		AdminAdmission:  handler.NewAdminAdmissionHandler(adminAdmissions),
-		AdminDomain:     handler.NewAdminDomainHandler(m.adminDomainService, m.adminSessionService, m.adminMFAService),
+		AdminDomain:     adminHandler,
 	}
 	if err := m.app.Provide(portAccountReader, identityport.AccountReader(identityportadapt.NewServiceAccountReader(users))); err != nil {
 		return err

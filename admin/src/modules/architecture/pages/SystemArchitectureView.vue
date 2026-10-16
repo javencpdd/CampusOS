@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000023（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000024（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本）</el-tag
       >
@@ -1566,10 +1566,11 @@ const databaseTables: DbTable[] = [
       "updated_at",
       "updated_actor_kind",
       "updated_actor_id",
+      "facts_version",
     ],
-    migration: "000001 / 000018",
+    migration: "000001 / 000018 / 000024",
     relationshipNote:
-      "user_id 是主键并外键指向 users；updated_by 可空外键记录最近授权管理员。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
+      "user_id 是主键并外键指向 users；updated_by 仅保留旧 User 外键，独立 Admin 写入 typed actor，旧列保持 NULL。完整行变化/ABA/删除重插推进非复用事实版本；quota owner admission 和实际行锁保证配额命令与字节预留串行，down保留全部配额、主体域和分配高水位。 主体域与 opaque actor ID 为逻辑关联，保留旧用户字段/外键与原历史；同数值 User/Admin ID 不合并，Admin 不写旧用户 BIGINT。NULL及旧文本无法证明域时保留 legacy_unknown；回滚遇到不可无损表达的主体证据拒绝。",
   },
   {
     name: "academic_terms",
@@ -3311,6 +3312,14 @@ const migrations = [
     scope: "空间作者及治理命令的事实存储前置",
     summary: "两张既有表共享非循环bigint分配；主页/样式/启停metadata及快照排序日期ABA/重插可见。空间仅同步时间/错误/updated_at忽略，完整私有行与actual锁及空库存admission由仓储提供。down保留原数据、主体域和高水位；业务命令另行验收。",
     tables: ["user_spaces / user_space_style_snapshots（facts_version、共享序列及守卫）"],
+  },
+  {
+    version: "000024",
+    file: "000024_v1_2_storage_quota_facts.up.sql",
+    title: "v1.2 用户配额完整事实版本",
+    scope: "Core User Storage 配额命令事实边界",
+    summary: "既有配额表的全部字段（含时间和actor18归属）由非循环bigint序列与触发器维护事实版本；额外写入/ABA/删除重插可见。down保留原配额、User外键、独立Admin主体域及高水位；不新增业务表、不删除文件或变更使用量。",
+    tables: ["user_storage_quotas（facts_version、非复用序列与守卫）"],
   },
 ];
 const tableByName = (name: string) =>

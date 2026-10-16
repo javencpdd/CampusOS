@@ -12,17 +12,23 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/identity/service"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type adminDomainHTTPFixture struct {
-	router    *gin.Engine
-	lifecycle *service.AdminDomainService
-	userJWT   *auth.JWTManager
-	adminJWT  *auth.JWTManager
-	sessions  *service.AdminSessionService
+	router      *gin.Engine
+	lifecycle   *service.AdminDomainService
+	userJWT     *auth.JWTManager
+	adminJWT    *auth.JWTManager
+	sessions    *service.AdminSessionService
+	admins      *repository.MemoryAdminDomainRepository
+	security    *repository.MemoryAdminSecurityRepository
+	sessionRepo *repository.MemoryAdminSessionRepository
+	handler     *handler.AdminDomainHandler
 }
 
 func newAdminDomainHTTPFixture(t *testing.T) *adminDomainHTTPFixture {
@@ -44,7 +50,12 @@ func newAdminDomainHTTPFixture(t *testing.T) *adminDomainHTTPFixture {
 		t.Fatal(err)
 	}
 	mfa := service.NewAdminMFAService(admins, security, sessions, protector)
-	h := handler.NewAdminDomainHandler(lifecycle, domainSessions, mfa)
+	events := reliability.NewMemoryStore()
+	reliable := reliability.NewService(transaction.NewMemory(events), events)
+	domainSessions.SetReliability(reliable)
+	mfa.SetReliability(reliable)
+	h := handler.NewAdminDomainHandler(lifecycle, domainSessions, mfa, service.NewAdminSelfService(domainSessions, admins, security))
+	h.SetSessionHTTPConfig(handler.SessionHTTPConfig{RefreshBodyCompat: true})
 
 	router := gin.New()
 	public := router.Group("/api/v1")
@@ -53,10 +64,14 @@ func newAdminDomainHTTPFixture(t *testing.T) *adminDomainHTTPFixture {
 	public.POST("/admin/identity/bootstrap", h.Bootstrap)
 	secured := router.Group("/api/v1")
 	secured.Use(middleware.RequireAdminDomainAccess(managers.Admin, portadapt.NewAdminDomainSessionVerifier(domainSessions), nil))
+	secured.GET("/admin/identity/me", h.Me)
+	secured.POST("/admin/identity/mfa/enroll", h.EnrollTOTP)
+	secured.POST("/admin/identity/mfa/confirm", h.ConfirmTOTP)
+	secured.POST("/admin/identity/mfa/step-up", h.StepUp)
 	secured.POST("/admin/identity/logout", h.Logout)
 	secured.POST("/admin/identity/accounts", h.CreateAccount)
 	return &adminDomainHTTPFixture{
-		router: router, lifecycle: lifecycle, userJWT: managers.User, adminJWT: managers.Admin, sessions: domainSessions,
+		router: router, lifecycle: lifecycle, userJWT: managers.User, adminJWT: managers.Admin, sessions: domainSessions, admins: admins, security: security, sessionRepo: sessions, handler: h,
 	}
 }
 

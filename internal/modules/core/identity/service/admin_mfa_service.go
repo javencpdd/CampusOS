@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"errors"
-	"fmt"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -51,6 +53,9 @@ func (s *AdminMFAService) SetReliability(reliable *reliability.Service) {
 		return
 	}
 	if snapshotter, ok := s.security.(transaction.Snapshotter); ok {
+		reliable.RegisterMemorySnapshotters(snapshotter)
+	}
+	if snapshotter, ok := s.sessions.(transaction.Snapshotter); ok {
 		reliable.RegisterMemorySnapshotters(snapshotter)
 	}
 }
@@ -99,11 +104,18 @@ func (s *AdminMFAService) requireActor(ctx context.Context, actor AdminActor) er
 // StartEnrollment seals a fresh TOTP secret for the actor and stores it as
 // pending. The returned otpauth URL is shown exactly once.
 func (s *AdminMFAService) StartEnrollment(ctx context.Context, actor AdminActor, issuer string) (string, error) {
-	if s.security == nil || s.protector == nil {
+	if s == nil || s.protector == nil {
 		return "", ErrAdminMFAAvailable
 	}
-	if err := s.requireSelf(ctx, actor, actor.ID); err != nil {
+	if issuer == "" || utf8.RuneCountInString(issuer) > 64 {
+		return "", ErrAdminMFACodeInvalid
+	}
+	initial, err := s.loadSelfFacts(ctx, actor)
+	if err != nil {
 		return "", err
+	}
+	if initial.Method != nil && initial.Method.Status == "active" && initial.Authority.AuthenticationStrength != "mfa" {
+		return "", ErrAdminMFAActor
 	}
 	secret := make([]byte, 20)
 	if _, err := rand.Read(secret); err != nil {
@@ -113,19 +125,30 @@ func (s *AdminMFAService) StartEnrollment(ctx context.Context, actor AdminActor,
 	if err != nil {
 		return "", err
 	}
-	account, err := s.admins.GetAccountByID(ctx, actor.ID)
+	now := s.now().UTC().Truncate(time.Microsecond)
+	expected := cloneAdminMFASelfFacts(initial)
+	version := int64(1)
+	if initial.Method != nil {
+		version = initial.Method.Version + 1
+	}
+	expected.Method = &repository.AdminTOTPMethod{AccountID: actor.ID, Status: "pending", KeyID: keyID, Nonce: nonce, Ciphertext: ciphertext, EnrollmentExpiresAt: now.Add(15 * time.Minute), Version: version}
+	err = s.selfMutation(ctx, actor, "identity.admin_mfa.enroll", actor.ID, initial, expected, func(tx context.Context) error {
+		receipt, err := s.security.UpsertTOTP(tx, *expected.Method)
+		if err != nil {
+			return err
+		}
+		if receipt.Version != version {
+			return identityport.ErrPolicyFactsChanged
+		}
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
-	if _, err := s.security.UpsertTOTP(ctx, repository.AdminTOTPMethod{
-		AccountID: actor.ID, Status: "pending", KeyID: keyID, Nonce: nonce, Ciphertext: ciphertext,
-		EnrollmentExpiresAt: s.now().Add(15 * time.Minute),
-	}); err != nil {
-		return "", err
-	}
 	secretText := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(secret)
-	return fmt.Sprintf("otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%d&period=%d",
-		issuer, account.Username, secretText, issuer, adminTOTPDigits, adminTOTPPeriod), nil
+	params := url.Values{"secret": {secretText}, "issuer": {issuer}, "digits": {"6"}, "period": {"30"}}
+	uri := url.URL{Scheme: "otpauth", Host: "totp", Path: "/" + issuer + ":" + initial.Account.Username, RawQuery: params.Encode()}
+	return uri.String(), nil
 }
 
 // verifyTOTP decrypts the envelope and accepts a code in the ±1 step window
@@ -150,73 +173,108 @@ func (s *AdminMFAService) verifyTOTP(method repository.AdminTOTPMethod, code str
 
 // ConfirmEnrollment activates a pending enrollment with its first code.
 func (s *AdminMFAService) ConfirmEnrollment(ctx context.Context, actor AdminActor, code string) error {
-	if s.security == nil || s.protector == nil {
+	if s == nil || s.protector == nil {
 		return ErrAdminMFAAvailable
 	}
 	if !validAdminTOTPCode(code) {
 		return ErrAdminMFACodeInvalid
 	}
-	if err := s.requireSelf(ctx, actor, actor.ID); err != nil {
-		return err
-	}
-	method, err := s.security.GetTOTP(ctx, actor.ID)
-	if err != nil {
-		return ErrAdminMFANotEnabled
-	}
-	if method.Status != "pending" || !s.now().Before(method.EnrollmentExpiresAt) {
-		return ErrAdminMFANotEnabled
-	}
-	step, err := s.verifyTOTP(method, code)
+	initial, err := s.loadSelfFacts(ctx, actor)
 	if err != nil {
 		return err
 	}
-	// Activate and record the step in one CAS so the confirming code cannot
-	// be replayed for an immediate step-up.
-	confirmed, ok, err := s.security.ConfirmTOTPCAS(ctx, actor.ID, method.Version, s.now())
+	if initial.Method == nil || initial.Method.Status != "pending" || !s.now().Before(initial.Method.EnrollmentExpiresAt) {
+		return ErrAdminMFANotEnabled
+	}
+	step, err := s.verifyTOTP(*initial.Method, code)
 	if err != nil {
 		return err
 	}
-	if !ok || confirmed.Status != "active" {
-		return ErrAdminMFANotEnabled
-	}
-	_, _, err = s.security.RecordAdminTOTPStepCAS(ctx, actor.ID, confirmed.Version, step, s.now())
-	return err
-}
-
-// VerifyStepUp accepts a current TOTP code for the actor and upgrades the
-// given session to MFA strength inside one command transaction.
-func (s *AdminMFAService) VerifyStepUp(ctx context.Context, actor AdminActor, sessionID, code string) error {
-	if s.security == nil || s.protector == nil || s.sessions == nil {
-		return ErrAdminMFAAvailable
-	}
-	if !validAdminTOTPCode(code) {
-		return ErrAdminMFACodeInvalid
-	}
-	if err := s.requireActor(ctx, actor); err != nil {
-		return err
-	}
-	method, err := s.security.GetTOTP(ctx, actor.ID)
-	if err != nil || method.Status != "active" {
-		return ErrAdminMFANotEnabled
-	}
-	step, err := s.verifyTOTP(method, code)
-	if err != nil {
-		return err
-	}
-	return s.execute(ctx, "identity.admin_mfa.step_up", sessionID, func(commandCtx context.Context) error {
-		session, err := s.sessions.GetSessionByID(commandCtx, sessionID)
-		if err != nil || session.RevokedAt != nil || session.AccountID != actor.ID {
-			return ErrAdminSessionInvalid
+	now := s.now().UTC().Truncate(time.Microsecond)
+	expected := cloneAdminMFASelfFacts(initial)
+	expected.Method.Status = "active"
+	expected.Method.ConfirmedAt = &now
+	expected.Method.LastAcceptedStep = step
+	expected.Method.Version += 2
+	return s.selfMutation(ctx, actor, "identity.admin_mfa.confirm", actor.ID, initial, expected, func(tx context.Context) error {
+		receipt, ok, err := s.security.ConfirmTOTPCAS(tx, actor.ID, initial.Method.Version, now)
+		if err != nil {
+			return err
 		}
-		_, ok, err := s.security.RecordAdminTOTPStepCAS(commandCtx, actor.ID, method.Version, step, s.now())
+		if !ok || receipt.Version != initial.Method.Version+1 {
+			return identityport.ErrPolicyFactsChanged
+		}
+		receipt, ok, err = s.security.RecordAdminTOTPStepCAS(tx, actor.ID, receipt.Version, step, now)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return ErrAdminMFAReplay
 		}
-		_, _, err = s.sessions.UpgradeSessionStrengthCAS(commandCtx, sessionID, session.Version, "mfa", s.now(), s.now())
+		if receipt.Version != expected.Method.Version {
+			return identityport.ErrPolicyFactsChanged
+		}
+		return nil
+	})
+}
+
+// VerifyStepUp accepts a current TOTP code for the actor and upgrades the
+// given session to MFA strength inside one command transaction.
+func (s *AdminMFAService) VerifyStepUp(ctx context.Context, actor AdminActor, sessionID, code string) error {
+	if s == nil || s.protector == nil {
+		return ErrAdminMFAAvailable
+	}
+	if !validAdminTOTPCode(code) {
+		return ErrAdminMFACodeInvalid
+	}
+	initial, err := s.loadSelfFacts(ctx, actor)
+	if err != nil {
 		return err
+	}
+	if actor.CredentialID != sessionID {
+		return ErrAdminMFAActor
+	}
+	if initial.Method == nil || initial.Method.Status != "active" {
+		return ErrAdminMFANotEnabled
+	}
+	step, err := s.verifyTOTP(*initial.Method, code)
+	if err != nil {
+		return err
+	}
+	if step <= initial.Method.LastAcceptedStep {
+		return ErrAdminMFAReplay
+	}
+	now := s.now().UTC().Truncate(time.Microsecond)
+	expected := cloneAdminMFASelfFacts(initial)
+	expected.Method.LastAcceptedStep = step
+	expected.Method.Version++
+	expected.Session.AuthenticationStrength = "mfa"
+	expected.Session.MFAAuthenticatedAt = &now
+	expected.Session.LastActiveAt = now
+	expected.Session.UpdatedAt = now
+	expected.Session.Version++
+	expected.Authority.AuthenticationStrength = "mfa"
+	expected.Authority.MFAAuthenticatedAt = &now
+	expected.Authority.SessionVersion++
+	return s.selfMutation(ctx, actor, "identity.admin_mfa.step_up", sessionID, initial, expected, func(tx context.Context) error {
+		receipt, ok, err := s.security.RecordAdminTOTPStepCAS(tx, actor.ID, initial.Method.Version, step, now)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrAdminMFAReplay
+		}
+		if receipt.Version != expected.Method.Version {
+			return identityport.ErrPolicyFactsChanged
+		}
+		session, ok, err := s.sessions.UpgradeSessionStrengthCAS(tx, sessionID, initial.Session.Version, "mfa", now, now)
+		if err != nil {
+			return err
+		}
+		if !ok || session.Version != expected.Session.Version {
+			return identityport.ErrPolicyFactsChanged
+		}
+		return nil
 	})
 }
 
@@ -236,7 +294,7 @@ func (s *AdminMFAService) DisableTOTP(ctx context.Context, actor AdminActor) err
 	return err
 }
 
-func (s *AdminMFAService) execute(ctx context.Context, code, resourceID string, action func(context.Context) error) error {
+func (s *AdminMFAService) execute(ctx context.Context, code, resourceID, actorID string, action func(context.Context) error) error {
 	if s.reliable == nil || transaction.Active(ctx) {
 		return action(ctx)
 	}
@@ -247,7 +305,7 @@ func (s *AdminMFAService) execute(ctx context.Context, code, resourceID string, 
 		return err
 	}
 	return s.reliable.Execute(ctx, reliability.Command{
-		Code: code, ActorType: "admin", ResourceType: "admin_mfa", ResourceID: resourceID,
+		Code: code, ActorType: "admin", ActorID: actorID, ResourceType: "admin_mfa", ResourceID: resourceID,
 		OperationCode: code, Event: &event,
 	}, action)
 }

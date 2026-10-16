@@ -1,0 +1,226 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "request_id",
+    "principal",
+    "target",
+    "facts",
+    "now_ms"
+  ],
+  "properties": {
+    "contract": {
+      "const": "campusos.integration-access/v1"
+    },
+    "request_id": {
+      "$ref": "#/definitions/id"
+    },
+    "principal": {
+      "$ref": "urn:campusos:principal:v1"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "endpoint",
+        "action",
+        "resource"
+      ],
+      "properties": {
+        "channel": {
+          "$ref": "#/definitions/id"
+        },
+        "endpoint": {
+          "$ref": "#/definitions/id"
+        },
+        "action": {
+          "$ref": "#/definitions/id"
+        },
+        "resource": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "$ref": "#/definitions/id"
+            },
+            "id": {
+              "$ref": "#/definitions/id"
+            }
+          }
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "integration_id",
+        "credential_id",
+        "principal_status",
+        "credential_status",
+        "credential_audience",
+        "not_before_ms",
+        "expires_at_ms",
+        "facts_version",
+        "endpoint",
+        "rules"
+      ],
+      "properties": {
+        "integration_id": {
+          "$ref": "#/definitions/id"
+        },
+        "credential_id": {
+          "$ref": "#/definitions/id"
+        },
+        "principal_status": {
+          "enum": [
+            "active",
+            "suspended",
+            "revoked"
+          ]
+        },
+        "credential_status": {
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        },
+        "credential_audience": {
+          "$ref": "#/definitions/id"
+        },
+        "not_before_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "facts_version": {
+          "$ref": "#/definitions/id"
+        },
+        "endpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "channel",
+            "id",
+            "action",
+            "resource_kind",
+            "enabled",
+            "integration_allowed"
+          ],
+          "properties": {
+            "channel": {
+              "$ref": "#/definitions/id"
+            },
+            "id": {
+              "$ref": "#/definitions/id"
+            },
+            "action": {
+              "$ref": "#/definitions/id"
+            },
+            "resource_kind": {
+              "$ref": "#/definitions/id"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "integration_allowed": {
+              "type": "boolean"
+            }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "channel",
+              "endpoint",
+              "action",
+              "resource_kind",
+              "resource_ids",
+              "status",
+              "not_before_ms",
+              "expires_at_ms"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/id"
+              },
+              "channel": {
+                "$ref": "#/definitions/id"
+              },
+              "endpoint": {
+                "$ref": "#/definitions/id"
+              },
+              "action": {
+                "$ref": "#/definitions/id"
+              },
+              "resource_kind": {
+                "$ref": "#/definitions/id"
+              },
+              "resource_ids": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/definitions/id"
+                }
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "suspended",
+                  "revoked"
+                ]
+              },
+              "not_before_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "expires_at_ms": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        }
+      }
+    },
+    "now_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:campusos:integration-access:v1",
+  "title": "Host-only Integration whitelist facts; not a credential or resource ACL",
+  "definitions": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "not": {
+        "pattern": "[^A-Za-z0-9._:-]"
+      }
+    }
+  }
+}

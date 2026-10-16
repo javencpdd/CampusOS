@@ -1,6 +1,6 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68;tables=100;foreign_keys=116 -->
+<!-- campusos-er:schema_sha256=cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608;tables=100;foreign_keys=116 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
@@ -11,7 +11,7 @@
 - 一对一/可选一对一关系：**14**
 - 一对多关系：**102**
 - 推断的逻辑多对多关系：**6**
-- Schema 指纹：`369ecfd2d0b66896eaa901fec54e67d90e09b6c48917c27a69685d5922606f68`
+- Schema 指纹：`cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608`
 
 ## 1. 生成范围与判定规则
 
@@ -40,6 +40,7 @@
 - `000021_v1_2_user_scoped_execution_facts.up.sql`
 - `000022_v1_2_richtext_asset_binding_facts.up.sql`
 - `000023_v1_2_personal_space_facts.up.sql`
+- `000024_v1_2_storage_quota_facts.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -94,7 +95,7 @@
 | 个人空间与文档 | `user_spaces` | 26 | `id` | 1 | 0 |
 | 统一存储 | `storage_objects` | 15 | `id` | 1 | 5 |
 | 统一存储 | `user_storage_accounts` | 6 | `user_id` | 1 | 0 |
-| 统一存储 | `user_storage_quotas` | 7 | `user_id` | 2 | 0 |
+| 统一存储 | `user_storage_quotas` | 8 | `user_id` | 2 | 0 |
 | 统一存储 | `user_storage_reservations` | 8 | `id` | 2 | 0 |
 | 插件生态与授权 | `plugin_admin_grants` | 12 | `id` | 2 | 1 |
 | 插件生态与授权 | `plugin_authorization_decisions` | 16 | `id` | 5 | 0 |
@@ -1372,6 +1373,7 @@
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
 | `updated_actor_id` | `varchar(128)` | NN | 否 | `''` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
 
 外键明细：
 

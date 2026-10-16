@@ -36,6 +36,11 @@ func TestSpaceStyleCatalogHTTPActualSessionNoBodySafeProjectionAndRevocation(t *
 			h = NewHandlerWithStyleApplication(s, &legacySpaceStyleCatalog{})
 			h.SetOwnerSessionProof(e.identity, e.identity)
 		}
+		if mode == "typed_nil_target" {
+			var target *Service
+			h = NewHandlerWithStyleApplication(s, target)
+			h.SetOwnerSessionProof(e.identity, e.identity)
+		}
 		r := gin.New()
 		g := r.Group("/catalog", middleware.JWTAuth(e.jwts.User, e.identity))
 		g.GET("", h.ListSourceStylePacks)
@@ -50,7 +55,7 @@ func TestSpaceStyleCatalogHTTPActualSessionNoBodySafeProjectionAndRevocation(t *
 	for _, row := range []struct {
 		token, body, mode string
 		want              int
-	}{{e.tokens.AccessToken, "", "current", 200}, {e.tokens.AccessToken, "{}", "current", 400}, {admin, "", "current", 401}, {e.tokens.AccessToken, "", "missing_proof", 401}, {e.tokens.AccessToken, "", "legacy_target", 503}} {
+	}{{e.tokens.AccessToken, "", "current", 200}, {e.tokens.AccessToken, "{}", "current", 400}, {admin, "", "current", 401}, {e.tokens.AccessToken, "", "missing_proof", 401}, {e.tokens.AccessToken, "", "legacy_target", 503}, {e.tokens.AccessToken, "", "typed_nil_target", 503}} {
 		rec := serve(row.token, row.body, row.mode)
 		if rec.Code != row.want || strings.Contains(rec.Body.String(), root) {
 			t.Fatal(row.mode, row.want, rec.Code, rec.Body.String())

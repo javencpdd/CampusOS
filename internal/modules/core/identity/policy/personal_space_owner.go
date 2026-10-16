@@ -16,7 +16,7 @@ func (PersonalSpaceOwnerPolicy) DecidePersonalSpaceOwner(r port.PersonalSpaceOwn
 		d.Reason = "policy.principal_wrong_domain"
 		return d, nil
 	}
-	readOnly := r.Operation == "read_profile" || r.Operation == "style_catalog"
+	readOnly := r.Operation == "read_profile" || r.Operation == "style_catalog" || r.Operation == "style_read" || r.Operation == "read_contents" || r.Operation == "read_sync_status"
 	if r.Principal.Actor.ID == r.OwnerID && (readOnly || !r.Disabled) {
 		d.Effect, d.Reason = "allow", "ALLOW"
 		d.Obligations = []string{"recheck_facts"}

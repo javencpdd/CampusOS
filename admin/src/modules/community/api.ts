@@ -46,7 +46,34 @@ export interface CategoryThreadTypePolicyUpdate {
   items: CategoryThreadTypePolicy[]
 }
 
+export interface AdminThreadMetadata {
+  id: string
+  author_id: string
+  category_id: string
+  thread_type: ThreadType
+  content_format: string
+  publication_status: 'draft' | 'published' | 'private'
+  moderation_status: 'clear' | 'pending' | 'rejected' | 'taken_down'
+  deletion_status: 'active' | 'trashed' | 'purged'
+  is_pinned: boolean
+  is_locked: boolean
+  created_at: string
+  updated_at: string
+}
+export interface AdminModerationMetadata {
+  id: string
+  thread_id: string
+  action: string
+  actor_kind: 'admin' | 'user' | 'legacy_unknown'
+  actor_ref_id: string
+  created_at: string
+}
+
+export type AdminThreadAction = 'pin' | 'unpin' | 'lock' | 'unlock' | 'approve' | 'reject' | 'take_down' | 'direct_restore' | 'trash' | 'restore_trash' | 'purge'
+export type AdminThreadPermissionFlags = Record<AdminThreadAction, boolean>
+
 export const threadApi = {
+  permissionsPreview: (threadIDs: string[]) => api.post('/admin/threads/permissions-preview', { thread_ids: threadIDs }),
   list: (params?: {
     page?: number
     page_size?: number
@@ -71,7 +98,7 @@ export const threadApi = {
   directRestore: (id: string, reason: string) => api.post(`/admin/threads/${id}/direct-restore`, { reason }),
   restoreTrash: (id: string, reason: string) => api.post(`/admin/threads/${id}/trash/restore`, { reason }),
   purge: (id: string, reason: string) => api.delete(`/admin/threads/${id}/purge`, { data: { reason } }),
-  moderationActions: (id: string) => api.get(`/admin/threads/${id}/moderation-actions`),
+  moderationActions: (id: string, params: { page: number; page_size: number } = { page: 1, page_size: 20 }) => api.get(`/admin/threads/${id}/moderation-actions`, { params }),
   pin: (id: string) => api.post(`/threads/${id}/pin`),
   unpin: (id: string) => api.post(`/threads/${id}/unpin`),
   lock: (id: string) => api.post(`/threads/${id}/lock`),

@@ -27,6 +27,13 @@ vi.mock('@/modules/space/api', () => ({
     applyCustomHtml: vi.fn(),
     applyStylePack: vi.fn(),
     applySourceStylePack: vi.fn(),
+    validateStyle: vi.fn(),
+    previewStyle: vi.fn(),
+    exportStyle: vi.fn(),
+    validateCustomHtml: vi.fn(),
+    customHtmlExample: vi.fn(),
+    validateStylePack: vi.fn(),
+    stylePackExampleZip: vi.fn(),
     storage: vi.fn().mockResolvedValue({
       data: {
         user_id: '1001',
@@ -88,7 +95,138 @@ const payload = (title: string, avatar = '') => ({
     },
   },
 })
-afterEach(() => vi.clearAllMocks())
+let styleDownloadClick: { mockRestore: () => void } | undefined
+afterEach(() => {
+  styleDownloadClick?.mockRestore()
+  styleDownloadClick = undefined
+  vi.clearAllMocks()
+  vi.unstubAllGlobals()
+})
+describe('checked style reads', () => {
+  const pkg = {
+    manifest: {
+      schema_version: 'space-style.v1',
+      name: 'checked-preview',
+      version: '1.0.0',
+      layout: 'blog',
+      components: [],
+    },
+  }
+  const cases = [
+    ['校验', 'validateStyle', { data: { valid: true } }],
+    [
+      '预览',
+      'previewStyle',
+      { data: { validation: { valid: true }, manifest: pkg.manifest, layout: 'blog', components: [], tokens: {} } },
+    ],
+    [
+      '导出风格',
+      'exportStyle',
+      { data: { package: pkg, filename: 'checked-style.json', validation: { valid: true } } },
+    ],
+    ['检测 HTML', 'validateCustomHtml', { data: { valid: true } }],
+    [
+      '生成示例',
+      'customHtmlExample',
+      { data: { html: '<section>Current example</section>', package: pkg, validation: { valid: true } } },
+    ],
+    [
+      '筛查',
+      'validateStylePack',
+      {
+        data: {
+          validation: { valid: true },
+          package: { manifest: { name: 'checked-pack', version: '1.0.0', target: 'personal-space' } },
+        },
+      },
+    ],
+    ['当前风格示例', 'stylePackExampleZip', new Blob(['checked archive'], { type: 'application/zip' })],
+  ] as const
+  for (const [label, method, result] of cases) {
+    for (const accepted of [true, false]) {
+      it(`${method} accepted=${accepted} consumes checked results and preserves the draft on denial`, async () => {
+        vi.mocked(spaceApi.me).mockResolvedValue(payload('Current style reads') as never)
+        vi.mocked(spaceApi.sourceStylePacks).mockResolvedValue({ data: { items: [] } } as never)
+        if (accepted) vi.mocked(spaceApi[method]).mockResolvedValue(result as never)
+        else vi.mocked(spaceApi[method]).mockRejectedValue({ msg: '当前会话或空间已变化' })
+        const NativeURL = URL
+        const create = vi.fn(() => 'blob:checked-style')
+        const revoke = vi.fn()
+        vi.stubGlobal(
+          'URL',
+          class extends NativeURL {
+            static createObjectURL = create
+            static revokeObjectURL = revoke
+          },
+        )
+        const downloads: string[] = []
+        styleDownloadClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+          this: HTMLAnchorElement,
+        ) {
+          downloads.push(this.download)
+        })
+        const wrapper = mount(SpaceSettingsView, { global: { stubs, directives: { loading: {} } } })
+        await flushPromises()
+        await wrapper.find('input[placeholder="<section>...</section>"]').setValue('<section>Own draft</section>')
+        if (method === 'validateStylePack') {
+          const input = wrapper.find('input[accept=".zip,application/zip"]')
+          Object.defineProperty(input.element, 'files', {
+            value: [new File(['zip'], 'owned.zip', { type: 'application/zip' })],
+            configurable: true,
+          })
+          await input.trigger('change')
+        }
+        await wrapper
+          .findAll('button')
+          .find((button) => button.text() === label)!
+          .trigger('click')
+        await flushPromises()
+        expect(spaceApi[method]).toHaveBeenCalledOnce()
+        expect(spaceApi.me).toHaveBeenCalledOnce()
+        if (accepted) {
+          expect(ElMessage.error).not.toHaveBeenCalled()
+          if (method === 'previewStyle') expect(wrapper.find('.preview-header strong').text()).toBe('checked-preview')
+          if (method === 'customHtmlExample')
+            expect(
+              (wrapper.find('input[placeholder="<section>...</section>"]').element as HTMLInputElement).value,
+            ).toBe('<section>Current example</section>')
+          if (method === 'exportStyle' || method === 'stylePackExampleZip') {
+            expect(create).toHaveBeenCalledOnce()
+            expect(revoke).toHaveBeenCalledOnce()
+            expect(downloads).toHaveLength(1)
+          }
+        } else {
+          expect(ElMessage.error).toHaveBeenCalledWith('当前会话或空间已变化')
+          expect((wrapper.find('input[placeholder="<section>...</section>"]').element as HTMLInputElement).value).toBe(
+            '<section>Own draft</section>',
+          )
+          expect(downloads).toHaveLength(0)
+        }
+        wrapper.unmount()
+      })
+    }
+  }
+  it('forgets a previously accepted preview when the current request is rejected', async () => {
+    vi.mocked(spaceApi.me).mockResolvedValue(payload('Current style reads') as never)
+    vi.mocked(spaceApi.previewStyle)
+      .mockReset()
+      .mockResolvedValueOnce({
+        data: { validation: { valid: true }, manifest: pkg.manifest, components: [], tokens: {} },
+      } as never)
+      .mockRejectedValueOnce({ msg: '当前证明已失效' })
+    const wrapper = mount(SpaceSettingsView, { global: { stubs, directives: { loading: {} } } })
+    await flushPromises()
+    const button = wrapper.findAll('button').find((button) => button.text() === '预览')!
+    await button.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.preview-header strong').text()).toBe('checked-preview')
+    await button.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.preview-header strong').text()).not.toBe('checked-preview')
+    expect(ElMessage.error).toHaveBeenCalledWith('当前证明已失效')
+    wrapper.unmount()
+  })
+})
 describe('checked source style catalog', () => {
   const catalog = {
     data: {
@@ -113,7 +251,7 @@ describe('checked source style catalog', () => {
     expect(wrapper.find('[data-source-style-pack-name="safe-source"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-source-style-pack-name="legacy-source"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('.source-pack-preview').attributes('src')).toBe(
-      '/api/v1/spaces/style-packs/safe-source/assets/preview-desktop.png',
+      '/api/v1/appearance/space-style-packs/safe-source/assets/preview-desktop.png',
     )
     expect(ElMessage.error).not.toHaveBeenCalled()
     wrapper.unmount()

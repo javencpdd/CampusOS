@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -171,32 +172,50 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 	writeThreadListResponse(c, filter, pageSize, threads, total)
 }
 
-// AdminListThreads 获取管理端帖子列表，包含草稿、私密和归档状态。
-// GET /api/v1/admin/threads
-func (h *ThreadHandler) AdminListThreads(c *gin.Context) {
-	filter, pageSize, ok := h.threadListFilter(c)
-	if !ok {
-		return
+// AdminListThreads returns checked metadata, including private publication states.
+func (h *ThreadHandler) AdminListThreads(c *gin.Context) { h.adminThreadMetadataList(c, false) }
+func (h *ThreadHandler) AdminListTrash(c *gin.Context)   { h.adminThreadMetadataList(c, true) }
+func adminMetadataNoBody(c *gin.Context) bool {
+	c.Header("Cache-Control", "private, no-store")
+	if c.Request.Body != nil {
+		raw, err := io.ReadAll(io.LimitReader(c.Request.Body, 1))
+		if err != nil || len(raw) > 0 {
+			response.Error(c, 400, 10001, "管理元数据读取不接受请求正文。")
+			return false
+		}
 	}
-	if filter.Status == "" {
-		filter.Status = "all"
-	}
-	filter.IncludeTrashed = c.Query("include_trashed") == "1" || strings.EqualFold(c.Query("include_trashed"), "true")
-	h.respondThreadList(c, filter, pageSize)
+	return true
 }
-
-// AdminListTrash lists recoverable content only. It is intentionally separate
-// from normal admin listing so a destructive action is never hidden in a
-// generic status filter.
-func (h *ThreadHandler) AdminListTrash(c *gin.Context) {
+func writeAdminMetadataError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrAdminThreadMetadataInvalid):
+		response.Error(c, 400, 10001, "筛选无效；搜索仅支持帖子数字ID。")
+	case errors.Is(err, service.ErrThreadGovernanceDenied):
+		response.Error(c, 403, 20004, "当前管理员无权读取内容管理元数据。")
+	default:
+		writeThreadGovernanceError(c, err)
+	}
+}
+func (h *ThreadHandler) adminThreadMetadataList(c *gin.Context, trash bool) {
+	if !adminMetadataNoBody(c) {
+		return
+	}
 	filter, pageSize, ok := h.threadListFilter(c)
 	if !ok {
 		return
 	}
-	filter.Status = "all"
-	filter.DeletionStatus = string(domain.DeletionStatusTrashed)
-	filter.IncludeTrashed = true
-	h.respondThreadList(c, filter, pageSize)
+	rows, total, err := h.svc.ListAdminThreadMetadata(c.Request.Context(), func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	}, filter, trash)
+	if err != nil {
+		writeAdminMetadataError(c, err)
+		return
+	}
+	pages := total / int64(pageSize)
+	if total%int64(pageSize) > 0 {
+		pages++
+	}
+	response.List(c, rows, &response.Pagination{Page: filter.Page, PageSize: pageSize, Total: total, TotalPages: int(pages)})
 }
 
 func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilter, int, bool) {
@@ -220,15 +239,6 @@ func (h *ThreadHandler) threadListFilter(c *gin.Context) (domain.ThreadListFilte
 		PageSize:          pageSize,
 	}
 	return filter, pageSize, true
-}
-
-func (h *ThreadHandler) respondThreadList(c *gin.Context, filter domain.ThreadListFilter, pageSize int) {
-	threads, total, err := h.svc.ListThreads(c.Request.Context(), filter)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 10006, err.Error())
-		return
-	}
-	writeThreadListResponse(c, filter, pageSize, threads, total)
 }
 
 func writeThreadListResponse(c *gin.Context, filter domain.ThreadListFilter, pageSize int, threads []*domain.Thread, total int64) {
@@ -488,12 +498,25 @@ func (h *ThreadHandler) AdminPurge(c *gin.Context) {
 }
 
 func (h *ThreadHandler) AdminModerationActions(c *gin.Context) {
-	items, err := h.svc.ListModerationActions(c.Request.Context(), c.Param("id"))
-	if err != nil {
-		writeThreadError(c, err)
+	if !adminMetadataNoBody(c) {
 		return
 	}
-	response.Success(c, items)
+	page, size, ok := response.ParsePagination(c, 20, 100)
+	if !ok {
+		return
+	}
+	rows, total, err := h.svc.AdminModerationMetadata(c.Request.Context(), c.Param("id"), func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return h.resolveAdminPrincipal(ctx, c)
+	}, page, size)
+	if err != nil {
+		writeAdminMetadataError(c, err)
+		return
+	}
+	pages := total / int64(size)
+	if total%int64(size) > 0 {
+		pages++
+	}
+	response.List(c, rows, &response.Pagination{Page: page, PageSize: size, Total: total, TotalPages: int(pages)})
 }
 
 type moderationReasonRequest struct {

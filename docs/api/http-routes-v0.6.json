@@ -314,14 +314,14 @@
       "module_owner": "core.identity",
       "audience": "public",
       "auth": "none",
-      "operation_code": "http.post.api.v1.admin.identity.login",
+      "operation_code": "http.identity.admin_session.login",
       "legacy_aliases": [
         "http.post.api.v1.admin.identity.login",
         "httpapi.post.api.v1.admin.identity.login"
       ],
       "ownership": "none",
       "scope": "public",
-      "audit": "request-log",
+      "audit": "required-command+outbox",
       "stability": "experimental"
     },
     {
@@ -330,15 +330,15 @@
       "handler": "d.Identity.AdminDomain.Refresh",
       "module_owner": "core.identity",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.post.api.v1.admin.identity.refresh",
+      "auth": "admin-refresh-cookie+csrf",
+      "operation_code": "http.identity.admin_session.refresh",
       "legacy_aliases": [
         "http.post.api.v1.admin.identity.refresh",
         "httpapi.post.api.v1.admin.identity.refresh"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log",
+      "ownership": "current-admin-session",
+      "scope": "admin-refresh-family",
+      "audit": "required-command+outbox",
       "stability": "experimental"
     },
     {
@@ -653,15 +653,15 @@
       "handler": "spaceHandler.ListContentsByUserID",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.space.user_id.contents",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_contents.by_id",
       "legacy_aliases": [
         "http.get.api.v1.space.user_id.contents",
         "httpapi.get.api.v1.space.user_id.contents"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -670,15 +670,15 @@
       "handler": "spaceHandler.GetByUserID",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.space.user_id",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_profile.by_id",
       "legacy_aliases": [
         "http.get.api.v1.space.user_id",
         "httpapi.get.api.v1.space.user_id"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -704,15 +704,15 @@
       "handler": "spaceHandler.ListContentsByUsername",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.u.username.contents",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_contents.by_username",
       "legacy_aliases": [
         "http.get.api.v1.u.username.contents",
         "httpapi.get.api.v1.u.username.contents"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -721,15 +721,15 @@
       "handler": "spaceHandler.GetByUsername",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.u.username",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_profile.by_username",
       "legacy_aliases": [
         "http.get.api.v1.u.username",
         "httpapi.get.api.v1.u.username"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1112,15 +1112,15 @@
       "handler": "spaceHandler.ListOwnContents",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.contents",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_contents.read",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.contents",
         "httpapi.get.api.v1.spaces.me.contents"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1231,15 +1231,15 @@
       "handler": "spaceHandler.ValidateStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.validate",
         "httpapi.post.api.v1.spaces.me.styles.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1248,15 +1248,15 @@
       "handler": "spaceHandler.PreviewStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.preview",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.preview",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.preview",
         "httpapi.post.api.v1.spaces.me.styles.preview"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1265,15 +1265,15 @@
       "handler": "spaceHandler.ExportStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.export",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.export",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.export",
         "httpapi.post.api.v1.spaces.me.styles.export"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1299,15 +1299,15 @@
       "handler": "spaceHandler.ValidateCustomHTML",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.html.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.html_validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.html.validate",
         "httpapi.post.api.v1.spaces.me.styles.html.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1316,15 +1316,15 @@
       "handler": "spaceHandler.CustomHTMLExample",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.html_example",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.html_example",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.html_example",
         "httpapi.get.api.v1.spaces.me.styles.html_example"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1350,15 +1350,15 @@
       "handler": "spaceHandler.ValidateStylePackZip",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.packs.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.zip_validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.packs.validate",
         "httpapi.post.api.v1.spaces.me.styles.packs.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1367,15 +1367,15 @@
       "handler": "spaceHandler.StylePackExample",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.pack_example",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.example",
         "httpapi.get.api.v1.spaces.me.styles.packs.example"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1384,15 +1384,15 @@
       "handler": "spaceHandler.StylePackExampleZip",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example.zip",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.pack_zip",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.example.zip",
         "httpapi.get.api.v1.spaces.me.styles.packs.example.zip"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1401,15 +1401,15 @@
       "handler": "spaceHandler.ListSourceStylePacks",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.sources",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.catalog",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.sources",
         "httpapi.get.api.v1.spaces.me.styles.packs.sources"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -1486,15 +1486,15 @@
       "handler": "spaceHandler.GetSyncStatus",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.sync_status",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_sync_status.read",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.sync_status",
         "httpapi.get.api.v1.spaces.me.sync_status"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -3402,22 +3402,88 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/me",
+      "handler": "d.Identity.AdminDomain.Me",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session",
+      "operation_code": "http.identity.admin_self.read",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.identity.me",
+        "httpapi.get.api.v1.admin.identity.me"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/admin/identity/logout",
       "handler": "d.Identity.AdminDomain.Logout",
       "module_owner": "core.identity",
-      "audience": "admin",
-      "auth": "jwt+admin-account+permission",
-      "permission": "admin_session:revoke",
-      "permission_code": "identity.admin_session.revoke",
-      "operation_code": "http.post.api.v1.admin.identity.logout",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.logout",
       "legacy_aliases": [
         "http.post.api.v1.admin.identity.logout",
         "httpapi.post.api.v1.admin.identity.logout"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/enroll",
+      "handler": "d.Identity.AdminDomain.EnrollTOTP",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.enroll",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.enroll",
+        "httpapi.post.api.v1.admin.identity.mfa.enroll"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/confirm",
+      "handler": "d.Identity.AdminDomain.ConfirmTOTP",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.confirm",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.confirm",
+        "httpapi.post.api.v1.admin.identity.mfa.confirm"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/step-up",
+      "handler": "d.Identity.AdminDomain.StepUp",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.step_up",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.step_up",
+        "httpapi.post.api.v1.admin.identity.mfa.step_up"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
       "stability": "experimental"
     },
     {
@@ -3497,63 +3563,6 @@
       "stability": "experimental"
     },
     {
-      "method": "POST",
-      "path": "/api/v1/admin/identity/mfa/enroll",
-      "handler": "d.Identity.AdminDomain.EnrollTOTP",
-      "module_owner": "core.identity",
-      "audience": "admin",
-      "auth": "jwt+admin-account+permission",
-      "permission": "admin_mfa:manage",
-      "permission_code": "identity.admin_mfa.manage",
-      "operation_code": "http.post.api.v1.admin.identity.mfa.enroll",
-      "legacy_aliases": [
-        "http.post.api.v1.admin.identity.mfa.enroll",
-        "httpapi.post.api.v1.admin.identity.mfa.enroll"
-      ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
-      "stability": "experimental"
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/identity/mfa/confirm",
-      "handler": "d.Identity.AdminDomain.ConfirmTOTP",
-      "module_owner": "core.identity",
-      "audience": "admin",
-      "auth": "jwt+admin-account+permission",
-      "permission": "admin_mfa:manage",
-      "permission_code": "identity.admin_mfa.manage",
-      "operation_code": "http.post.api.v1.admin.identity.mfa.confirm",
-      "legacy_aliases": [
-        "http.post.api.v1.admin.identity.mfa.confirm",
-        "httpapi.post.api.v1.admin.identity.mfa.confirm"
-      ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
-      "stability": "experimental"
-    },
-    {
-      "method": "POST",
-      "path": "/api/v1/admin/identity/mfa/step-up",
-      "handler": "d.Identity.AdminDomain.StepUp",
-      "module_owner": "core.identity",
-      "audience": "admin",
-      "auth": "jwt+admin-account+permission",
-      "permission": "admin_mfa:manage",
-      "permission_code": "identity.admin_mfa.manage",
-      "operation_code": "http.post.api.v1.admin.identity.mfa.step_up",
-      "legacy_aliases": [
-        "http.post.api.v1.admin.identity.mfa.step_up",
-        "httpapi.post.api.v1.admin.identity.mfa.step_up"
-      ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
-      "stability": "experimental"
-    },
-    {
       "method": "GET",
       "path": "/api/v1/admin/users",
       "handler": "userHandler.ListAdminUsers",
@@ -3611,21 +3620,40 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/permissions-preview",
+      "handler": "threadHandler.AdminPermissionsPreview",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission+current-session",
+      "permission": "thread:read",
+      "permission_code": "community.thread.read",
+      "operation_code": "http.community.thread.admin_permissions_preview",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.permissions_preview",
+        "httpapi.post.api.v1.admin.threads.permissions_preview"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin+same-command-policies+bounded-actual-threads",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "GET",
       "path": "/api/v1/admin/threads",
       "handler": "threadHandler.AdminListThreads",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads",
+      "operation_code": "http.community.thread.admin_list",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads",
         "httpapi.get.api.v1.admin.threads"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -3654,16 +3682,16 @@
       "handler": "threadHandler.AdminListTrash",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads.trash",
+      "operation_code": "http.community.thread.admin_trash_list",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads.trash",
         "httpapi.get.api.v1.admin.threads.trash"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -3673,16 +3701,16 @@
       "handler": "threadHandler.AdminModerationActions",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads.id.moderation_actions",
+      "operation_code": "http.community.thread.admin_history",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads.id.moderation_actions",
         "httpapi.get.api.v1.admin.threads.id.moderation_actions"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -4949,17 +4977,17 @@
       "handler": "spaceHandler.AdminSummary",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.get.api.v1.spaces.admin.summary",
+      "operation_code": "http.personal_space.admin.summary",
       "legacy_aliases": [
         "http.get.api.v1.spaces.admin.summary",
         "httpapi.get.api.v1.spaces.admin.summary"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "current-space-aggregate+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -5196,17 +5224,17 @@
       "handler": "spaceHandler.AdminStorageStatus",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.get.api.v1.spaces.admin.users.user_id.storage",
+      "operation_code": "http.personal_space.admin.storage",
       "legacy_aliases": [
         "http.get.api.v1.spaces.admin.users.user_id.storage",
         "httpapi.get.api.v1.spaces.admin.users.user_id.storage"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-quota+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -5215,17 +5243,17 @@
       "handler": "spaceHandler.SetStorageQuota",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.put.api.v1.spaces.admin.users.user_id.storage",
+      "operation_code": "http.personal_space.admin.quota",
       "legacy_aliases": [
         "http.put.api.v1.spaces.admin.users.user_id.storage",
         "httpapi.put.api.v1.spaces.admin.users.user_id.storage"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+current-quota+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -5234,17 +5262,17 @@
       "handler": "spaceHandler.DisableSpace",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.post.api.v1.spaces.user_id.disable",
+      "operation_code": "http.personal_space.admin.disable",
       "legacy_aliases": [
         "http.post.api.v1.spaces.user_id.disable",
         "httpapi.post.api.v1.spaces.user_id.disable"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -5253,17 +5281,17 @@
       "handler": "spaceHandler.EnableSpace",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.post.api.v1.spaces.user_id.enable",
+      "operation_code": "http.personal_space.admin.enable",
       "legacy_aliases": [
         "http.post.api.v1.spaces.user_id.enable",
         "httpapi.post.api.v1.spaces.user_id.enable"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {

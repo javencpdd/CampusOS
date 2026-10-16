@@ -891,6 +891,7 @@ func (r *MemoryAdminSessionRepository) RevokeSessionCAS(_ context.Context, id st
 	}
 	session.RevokedAt = &at
 	session.RevokeReason = reason
+	session.UpdatedAt = at
 	session.Version++
 	r.sessions[id] = session
 	return session, true, nil
@@ -904,6 +905,7 @@ func (r *MemoryAdminSessionRepository) RevokeSessionFamily(_ context.Context, fa
 			stamp := at
 			session.RevokedAt = &stamp
 			session.RevokeReason = reason
+			session.UpdatedAt = at
 			session.Version++
 			r.sessions[id] = session
 		}
@@ -919,6 +921,7 @@ func (r *MemoryAdminSessionRepository) RevokeSessionsForAccount(_ context.Contex
 			stamp := at
 			session.RevokedAt = &stamp
 			session.RevokeReason = reason
+			session.UpdatedAt = at
 			session.Version++
 			r.sessions[id] = session
 		}
@@ -1489,6 +1492,7 @@ func (r *MemoryAdminSessionRepository) UpgradeSessionStrengthCAS(_ context.Conte
 	session.AuthenticationStrength = strength
 	session.MFAAuthenticatedAt = &mfaAt
 	session.LastActiveAt = at
+	session.UpdatedAt = at
 	session.Version++
 	r.sessions[id] = session
 	return session, true, nil

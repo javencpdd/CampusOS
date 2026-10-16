@@ -32,6 +32,7 @@ type spaceOwnerFacts struct {
 
 func (s *Service) SetReliability(reliable *reliability.Service) {
 	s.reliable = reliable
+	s.bindQuotaReliability()
 	if reliable != nil {
 		if snapshot, ok := s.repo.(transaction.Snapshotter); ok {
 			reliable.RegisterMemorySnapshotters(snapshot)
@@ -56,6 +57,9 @@ func canonicalOwnerSpace(s *Space) *Space {
 	return s
 }
 func (s *Service) loadSpaceOwnerFacts(ctx context.Context, owner string, lock bool) (*spaceOwnerFacts, error) {
+	return s.loadSpaceFacts(ctx, owner, lock, true)
+}
+func (s *Service) loadSpaceFacts(ctx context.Context, owner string, lock, requireActive bool) (*spaceOwnerFacts, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
@@ -64,7 +68,7 @@ func (s *Service) loadSpaceOwnerFacts(ctx context.Context, owner string, lock bo
 		return nil, ErrSpaceFactsUnavailable
 	}
 	user, err := s.users.GetByID(ctx, owner)
-	if err != nil || user == nil || user.ID != owner || user.Status != identitydomain.UserStatusActive {
+	if err != nil || user == nil || user.ID != owner || requireActive && user.Status != identitydomain.UserStatusActive {
 		return nil, errors.Join(ErrSpaceOwnerDenied, err)
 	}
 	raw, err := reader.LoadSpaceAuthority(ctx, owner, lock)
@@ -127,21 +131,13 @@ func spaceOwnerPrincipal(ctx context.Context, resolve identityport.SessionPrinci
 	return p, nil
 }
 func (s *Service) GetOwnSpaceForPrincipal(ctx context.Context, resolve identityport.SessionPrincipalResolver) (*PublicSpace, error) {
-	return identityport.ReadBoundProjection(ctx, resolve, false, func(ctx context.Context, p identityport.PrincipalContext) (*spaceOwnerFacts, error) {
-		f, err := s.loadSpaceOwnerFacts(ctx, p.Actor.ID, false)
-		if err != nil {
-			return nil, err
-		}
-		r := spaceOwnerRequest(f, p, "read_profile", "space-owner-read")
-		d, err := (identitypolicy.PersonalSpaceOwnerPolicy{}).DecidePersonalSpaceOwner(r)
-		if err != nil || d.Effect != "allow" {
-			return nil, errors.Join(ErrSpaceOwnerDenied, err)
-		}
-		return f, nil
-	}, func(ctx context.Context, p identityport.PrincipalContext, f *spaceOwnerFacts) (*PublicSpace, error) {
-		return buildPublicSpace(&identitydomain.User{ID: f.Owner.ID, Username: f.Owner.Username, Nickname: f.Owner.Nickname, Avatar: f.Owner.Avatar, Bio: f.Owner.Bio}, f.Space), nil
+	return identityport.ReadBoundProjection(ctx, resolve, false, func(ctx context.Context, p identityport.PrincipalContext) (*spaceAdminFacts, error) {
+		return s.loadCurrentReadSpace(ctx, "", false, false, "read_profile", p)
+	}, func(_ context.Context, _ identityport.PrincipalContext, f *spaceAdminFacts) (*PublicSpace, error) {
+		return buildPublicSpace(identityUser(f.User), f.Space.Space), nil
 	}, nil)
 }
+
 func normalizeSpaceProfileRequest(req UpsertSpaceRequest) (UpsertSpaceRequest, error) {
 	for _, field := range []struct {
 		value **string

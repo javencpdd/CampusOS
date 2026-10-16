@@ -12,6 +12,7 @@ import (
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/stylepack"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -41,18 +42,19 @@ type CompatibilityReporter interface {
 }
 
 type Service struct {
-	repo          Repository
-	contentRepo   ContentRepository
-	threadRepo    ThreadRepository
-	contentQuery  communityport.ContentQuery
-	users         UserLookup
-	fileStore     *LocalFileStore
-	quotaManager  corestorage.QuotaManager
-	enabled       func() bool
-	compatibility CompatibilityReporter
-	reliable      *reliability.Service
-	avatarStorage corestorage.Port
-	avatarAccount corestorage.InlineImageAccounting
+	repo           Repository
+	contentRepo    ContentRepository
+	threadRepo     ThreadRepository
+	contentQuery   communityport.ContentQuery
+	users          UserLookup
+	fileStore      *LocalFileStore
+	quotaManager   corestorage.QuotaManager
+	enabled        func() bool
+	compatibility  CompatibilityReporter
+	reliable       *reliability.Service
+	avatarStorage  corestorage.Port
+	avatarAccount  corestorage.InlineImageAccounting
+	adminExecution identityport.AdminExecutionAuthorityReader
 }
 
 func NewService(repo Repository, users UserLookup, contentRepos ...ContentRepository) *Service {
@@ -82,6 +84,16 @@ func (s *Service) SetFileStore(store *LocalFileStore) {
 
 func (s *Service) SetQuotaManager(manager corestorage.QuotaManager) {
 	s.quotaManager = manager
+	s.bindQuotaReliability()
+}
+
+func (s *Service) bindQuotaReliability() {
+	if s.reliable == nil {
+		return
+	}
+	if adapter, ok := s.quotaManager.(interface{ SetQuotaReliability(*reliability.Service) }); ok && !corestorage.NilImageAdapter(adapter) {
+		adapter.SetQuotaReliability(s.reliable)
+	}
 }
 
 func (s *Service) SetPluginEnabledChecker(checker func() bool) {
@@ -952,6 +964,9 @@ func buildPublicSpace(user *identitydomain.User, space *Space) *PublicSpace {
 		avatar = space.Avatar
 	}
 	spacePayload := cloneSpace(space)
+	if spacePayload != nil {
+		spacePayload.LastSyncError = safeSpaceSyncError(spacePayload.LastSyncError)
+	}
 	sanitizeCustomHTMLForResponse(spacePayload)
 	return &PublicSpace{
 		Owner: Owner{

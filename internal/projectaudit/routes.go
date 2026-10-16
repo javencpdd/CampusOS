@@ -427,22 +427,25 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") {
+			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.OperationCode, "http.identity.admin_") {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
 			if route.Auth != "none" {
-				if route.Auth == "refresh-cookie+csrf" {
+				if route.Auth == "admin-refresh-cookie+csrf" {
+					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
+				} else if route.Auth == "refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - refreshCookie: []\n")
 				} else {
 					out.WriteString("      security:\n        - bearerAuth: []\n")
 				}
 			}
 			parameters := openAPIPathParameters(path)
-			requiresCSRF := strings.Contains(route.Auth, "csrf")
-			if len(parameters) > 0 || profile.Paginated || requiresCSRF {
+			requiresAdminCSRF := strings.HasPrefix(route.OperationCode, "http.identity.admin_") && strings.Contains(route.Auth, "csrf")
+			requiresCSRF := strings.Contains(route.Auth, "csrf") && !requiresAdminCSRF
+			if len(parameters) > 0 || profile.Paginated || requiresCSRF || requiresAdminCSRF {
 				out.WriteString("      parameters:\n")
 				for _, parameter := range parameters {
 					fmt.Fprintf(&out, "        - name: %s\n          in: path\n          required: true\n          schema:\n            type: string\n", parameter)
@@ -450,6 +453,9 @@ func OpenAPI(routes []RouteContract) []byte {
 				if profile.Paginated {
 					out.WriteString("        - name: page\n          in: query\n          schema: { type: integer, minimum: 1, default: 1 }\n")
 					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
+				}
+				if requiresAdminCSRF {
+					out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
 				}
 				if requiresCSRF {
 					out.WriteString("        - name: X-CSRF-Token\n          in: header\n          required: true\n          schema: { type: string }\n")
@@ -468,6 +474,8 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "        '%s':\n", profile.SuccessStatus)
 			if profile.SuccessStatus == "204" {
 				out.WriteString("          description: No Content\n")
+			} else if profile.ResponseContentType != "" {
+				fmt.Fprintf(&out, "          description: Success\n          content:\n            %s:\n              schema: { type: string, format: binary }\n", profile.ResponseContentType)
 			} else {
 				out.WriteString("          description: Success\n          content:\n            application/json:\n              schema:\n")
 				if profile.ResponseSchema == "" {
@@ -554,6 +562,63 @@ func FindRepositoryRoot(start string) (string, error) {
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
 	switch route.OperationCode {
+	case "http.identity.admin_session.login":
+		route.Audit = "required-command+outbox"
+		return
+	case "http.identity.admin_session.refresh":
+		route.Auth = "admin-refresh-cookie+csrf"
+		route.Ownership = "current-admin-session"
+		route.Scope = "admin-refresh-family"
+		route.Audit = "required-command+outbox"
+		return
+	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
+		route.Auth = "jwt+current-admin-session+browser-csrf"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin-self"
+		route.Audit = "required-command+outbox"
+		if route.OperationCode == "http.identity.admin_self.read" {
+			route.Auth = "jwt+current-admin-session"
+			route.Audit = "none"
+		}
+		return
+	}
+
+	if strings.HasPrefix(route.OperationCode, "http.personal_space.owner_style_read.") {
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-space+current-user"
+		route.Audit = "none"
+		return
+	}
+	switch route.OperationCode {
+	case "http.personal_space.public_profile.by_id", "http.personal_space.public_profile.by_username", "http.personal_space.public_contents.by_id", "http.personal_space.public_contents.by_username":
+		route.Auth = "public"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-public-space+current-user"
+		route.Audit = "none"
+	case "http.personal_space.owner_contents.read", "http.personal_space.owner_sync_status.read":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-space+current-user"
+		route.Audit = "none"
+	case "http.personal_space.admin.summary", "http.personal_space.admin.storage":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-space-aggregate+current-admin-execution"
+		if route.OperationCode == "http.personal_space.admin.storage" {
+			route.Scope = "actual-target-user+space+current-quota+current-admin-execution"
+		}
+		route.Audit = "none"
+	case "http.personal_space.admin.quota":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-target-user+current-quota+current-admin-execution"
+		route.Audit = "required-command-audit"
+	case "http.personal_space.admin.disable", "http.personal_space.admin.enable":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-target-user+space+current-admin-execution"
+		route.Audit = "required-command-audit"
 	case "http.personal_space.owner_profile.read", "http.personal_space.owner_profile.update", "http.personal_space.owner_avatar.select", "http.personal_space.owner_avatar.upload", "http.personal_space.owner_avatar.cleanup", "http.personal_space.owner_style.apply", "http.personal_space.owner_style.rollback", "http.personal_space.owner_style.default", "http.personal_space.owner_style.html", "http.personal_space.owner_style.zip", "http.personal_space.owner_style.source", "http.personal_space.owner_style.catalog":
 		route.Auth = "jwt+current-session"
 		route.Ownership = "resource-policy"
@@ -627,6 +692,14 @@ func applyResourceGovernanceContract(route *RouteContract) {
 		route.Auth = "jwt+current-session"
 		route.Ownership = "resource-policy"
 		route.Scope = "current-user-named-policy+actual-thread-and-posts"
+	case "http.community.thread.admin_permissions_preview":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin+same-command-policies+bounded-actual-threads"
+	case "http.community.thread.admin_list", "http.community.thread.admin_trash_list", "http.community.thread.admin_history":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin+actual-board+metadata-only-before-count-page"
 	case "http.community.thread.take_down", "http.community.post.admin_delete", "http.post.api.v1.threads.id.pin", "http.post.api.v1.threads.id.unpin", "http.post.api.v1.threads.id.lock", "http.post.api.v1.threads.id.unlock", "http.community.thread.review_approve", "http.community.thread.review_reject", "http.community.thread.trash", "http.community.thread.direct_restore", "http.community.thread.restore_trash", "http.community.thread.purge":
 		route.Auth = "jwt+admin-account+permission+current-mfa"
 		route.Ownership = "resource-policy"

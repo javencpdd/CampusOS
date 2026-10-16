@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import type { NavigationGuard } from "vue-router";
 import { appearanceRoutes } from "../modules/appearance/routes";
 import { academicTermRoutes } from "../modules/academicterm/routes";
 import { communityRoutes } from "../modules/community/routes";
@@ -8,12 +7,7 @@ import { identityRoutes } from "../modules/identity/routes";
 import { integrationRoutes } from "../modules/integrations/routes";
 import { operationRoutes } from "../modules/operations/routes";
 import { pluginRoutes } from "../modules/plugins/routes";
-import {
-  clearAdminSession,
-  ensureAdminAccessToken,
-  getAdminAccessToken,
-  getAdminRoleNames,
-} from "../modules/identity/session";
+import { adminAuthGuard } from "../modules/identity/navigation";
 import { legacyAdminRedirects } from "./legacyRedirects";
 const router = createRouter({
   history: createWebHistory(),
@@ -52,21 +46,7 @@ const router = createRouter({
   ],
 });
 
-export const adminAuthGuard: NavigationGuard = async (to) => {
-  if (to.meta.requiresAuth && !(await ensureAdminAccessToken())) {
-    return { path: "/login", query: { redirect: to.fullPath } };
-  }
-  if (to.path === "/login" && getAdminAccessToken()) return { path: "/" };
-  if (to.meta.adminOnly) {
-    const roles = getAdminRoleNames();
-    if (!roles.some((role) => role === "admin" || role === "super_admin")) {
-      clearAdminSession();
-      return { path: "/login", query: { redirect: to.fullPath } };
-    }
-  }
-  return true;
-};
-
 router.beforeEach(adminAuthGuard);
 
+export { adminAuthGuard };
 export default router;

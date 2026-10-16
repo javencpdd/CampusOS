@@ -5,13 +5,23 @@ export const integrationApi = {
   metrics: () => api.get('/metrics/summary'),
 }
 
+export interface SpaceAdminMutationAck {
+  owner_id: string
+  space_id?: string
+  disabled: boolean
+}
+export interface SpaceQuotaMutationAck {
+  owner_id: string
+  quota_bytes: number
+}
+
 export const spaceAdminApi = {
   summary: () => api.get('/spaces/admin/summary'),
   storage: (userId: string) => api.get(`/spaces/admin/users/${encodeURIComponent(userId)}/storage`),
   setStorageQuota: (userId: string, quotaBytes: number) =>
-    api.put(`/spaces/admin/users/${encodeURIComponent(userId)}/storage`, { quota_bytes: quotaBytes }),
-  disable: (userId: string, reason?: string) => api.post(`/spaces/${userId}/disable`, { reason }),
-  enable: (userId: string) => api.post(`/spaces/${userId}/enable`),
+    api.put<SpaceQuotaMutationAck>(`/spaces/admin/users/${encodeURIComponent(userId)}/storage`, { quota_bytes: quotaBytes }),
+  disable: (userId: string, reason?: string) => api.post<SpaceAdminMutationAck>(`/spaces/${encodeURIComponent(userId)}/disable`, { reason }),
+  enable: (userId: string) => api.post<SpaceAdminMutationAck>(`/spaces/${encodeURIComponent(userId)}/enable`),
 }
 
 export const webhookApi = {

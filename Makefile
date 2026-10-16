@@ -31,13 +31,17 @@ lint:
 contracts:
 	go run ./cmd/campusos-contracts --write
 
-contracts-check: plugin-v4-check v12-principal-contract-check v12-thread-policy-contract-check v12-thread-owner-read-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check v12-plugin-v5-consumes-contract-check v12-plugin-v5-provides-contract-check v12-plugin-v5-resource-install-contract-check v12-plugin-v5-config-contract-check v12-resource-policy-contract-check v12-identity-domains-contract-check v12-plugin-v5-manifest-contract-check v12-plugin-v5-dispatch-contract-check v12-plugin-v5-events-contract-check v12-scope-delegation-contract-check v12-g1-replacement-map-check v12-g1-exit-check
+contracts-check: plugin-v4-check v12-principal-contract-check v12-thread-policy-contract-check v12-thread-owner-read-contract-check v12-board-delegation-contract-check v12-plugin-v5-shape-contract-check v12-plugin-v5-consumes-contract-check v12-plugin-v5-provides-contract-check v12-plugin-v5-resource-install-contract-check v12-plugin-v5-config-contract-check v12-resource-policy-contract-check v12-identity-domains-contract-check v12-plugin-v5-manifest-contract-check v12-plugin-v5-dispatch-contract-check v12-plugin-v5-events-contract-check v12-scope-delegation-contract-check v12-integration-access-contract-check v12-g1-replacement-map-check v12-g1-exit-check
 	go run ./cmd/campusos-contracts --check
 	go run ./cmd/campusos-capability-contract
 
 .PHONY: v12-principal-contract-check
 v12-principal-contract-check:
 	node scripts/check-v12-principal-contract.mjs
+
+.PHONY: v12-integration-access-contract-check
+v12-integration-access-contract-check:
+	node scripts/check-v12-integration-access-contract.mjs
 
 .PHONY: v12-thread-policy-contract-check
 v12-thread-policy-contract-check:

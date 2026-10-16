@@ -26,7 +26,7 @@ func (ownContentsModuleUserReader) GetUser(_ context.Context, id string) (identi
 	if id != "98401" {
 		return identityport.User{}, identityport.ErrUserNotFound
 	}
-	return identityport.User{ID: id, Username: "owner", Nickname: "Owner"}, nil
+	return identityport.User{ID: id, Username: "owner", Nickname: "Owner", Status: "active"}, nil
 }
 func (r ownContentsModuleUserReader) GetUserByUsername(ctx context.Context, username string) (identityport.User, error) {
 	if username != "owner" {
@@ -76,7 +76,7 @@ func TestOwnContentsModuleSessionProofWiring(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			query := &authenticatedSpaceQuery{capturingContentQuery: capturingContentQuery{authorThreads: []*communitydomain.Thread{{ID: "98411", AuthorID: "98401", Content: "module-owner-private-body"}}}}
+			query := &authenticatedSpaceQuery{capturingContentQuery: capturingContentQuery{authorThreads: []*communitydomain.Thread{{ID: "98411", AuthorID: "98401", Content: "module-owner-private-body", FactsVersion: 1, PublicationStatus: communitydomain.PublicationStatusPrivate, ModerationStatus: communitydomain.ModerationStatusClear, DeletionStatus: communitydomain.DeletionStatusActive}}}}
 			for name, value := range map[string]any{
 				portRepository: NewMemoryRepository(), "identity.user-reader": ownContentsModuleUserReader{},
 				"community.content-query": query, "storage.user": storage, "storage.quota-manager": storage,
@@ -123,6 +123,31 @@ func TestOwnContentsModuleSessionProofWiring(t *testing.T) {
 			}
 			if test.status == 200 && !strings.Contains(rec.Body.String(), "module-owner-private-body") {
 				t.Fatalf("bound proof lost owner list: %s", rec.Body.String())
+			}
+			if test.name == "bound" {
+				for _, read := range []struct {
+					pattern, url string
+					handler      gin.HandlerFunc
+				}{
+					{"/space/:user_id", "/space/98401", module.Handler().GetByUserID},
+					{"/u/:username", "/u/owner", module.Handler().GetByUsername},
+					{"/space/:user_id/contents", "/space/98401/contents", module.Handler().ListContentsByUserID},
+					{"/u/:username/contents", "/u/owner/contents", module.Handler().ListContentsByUsername},
+					{"/spaces/me/sync-status", "/spaces/me/sync-status", module.Handler().GetSyncStatus},
+				} {
+					router := gin.New()
+					if strings.HasPrefix(read.url, "/spaces/me/") {
+						router.Use(middleware.JWTAuth(jwt, proof))
+					}
+					router.GET(read.pattern, read.handler)
+					request := httptest.NewRequest(http.MethodGet, read.url, nil)
+					request.Header.Set("Authorization", "Bearer "+token)
+					response := httptest.NewRecorder()
+					router.ServeHTTP(response, request)
+					if response.Code != 200 || response.Header().Get("Cache-Control") != "private, no-store" || strings.Contains(response.Body.String(), "module-owner-private-body") {
+						t.Fatal("actual module current read wiring", read.url, response.Code, response.Body.String())
+					}
+				}
 			}
 		})
 	}

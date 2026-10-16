@@ -3,6 +3,7 @@ package appearance
 import (
 	"context"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	space "github.com/campusos/CampusOS/internal/modules/features/personalspace"
 )
 
@@ -12,7 +13,7 @@ func (a *Application) ListOwnSpaceSourceStylePacks(ctx context.Context, resolve 
 		return nil, space.ErrSpaceFactsUnavailable
 	}
 	catalog, ok := target.(space.AuthenticatedSpaceStyleCatalog)
-	if !ok {
+	if !ok || corestorage.NilImageAdapter(catalog) {
 		return nil, space.ErrSpaceFactsUnavailable
 	}
 	return catalog.ListOwnSpaceSourceStylePacks(ctx, resolve)

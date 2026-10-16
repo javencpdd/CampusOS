@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">Content governance</p>
         <h2>帖子治理</h2>
-        <p>下架、回收站和永久清除是不同操作。下架保留作者内容并允许整改重提，回收站可恢复，永久清除不可恢复。</p>
+        <p>列表和记录仅显示管理元数据。下架、回收站和永久清除是不同操作。下架保留作者内容并允许整改重提，回收站可恢复，永久清除不可恢复。</p>
       </div>
       <el-button :icon="Refresh" circle title="刷新" aria-label="刷新帖子列表" @click="load" />
     </header>
@@ -30,7 +30,7 @@
         <el-select v-model="filterCategory" placeholder="筛选版块" clearable @change="load">
           <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
         </el-select>
-        <el-input v-model="searchKeyword" clearable placeholder="搜索标题或内容" @clear="load" @keyup.enter="load">
+        <el-input v-model="searchKeyword" clearable placeholder="搜索帖子数字 ID" @clear="load" @keyup.enter="load">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
       </div>
@@ -59,7 +59,7 @@
         <el-table ref="tableRef" :data="threads" row-key="id" v-loading="loading" stripe border class="thread-table" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="48" fixed="left" />
           <el-table-column prop="id" label="ID" width="150" show-overflow-tooltip />
-          <el-table-column prop="title" label="内容" min-width="260" show-overflow-tooltip>
+          <el-table-column prop="thread_type" label="内容类型" min-width="260" show-overflow-tooltip>
             <template #default="{ row }">
               <div class="thread-title">
                 <div class="thread-badges">
@@ -69,11 +69,11 @@
                     {{ row.content_format === 'richtext_article' ? '图文' : '普通' }}
                   </el-tag>
                 </div>
-                <span>{{ row.title }}</span>
+                <span>帖子 {{ row.id }}</span>
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="author_name" label="作者" width="110" show-overflow-tooltip />
+          <el-table-column prop="author_id" label="作者 ID" width="110" show-overflow-tooltip />
           <el-table-column label="发布" width="100" align="center">
             <template #default="{ row }"><el-tag size="small" effect="plain" :type="publicationType(row.publication_status)">{{ publicationLabel(row.publication_status) }}</el-tag></template>
           </el-table-column>
@@ -83,28 +83,27 @@
           <el-table-column label="删除" width="100" align="center">
             <template #default="{ row }"><el-tag size="small" :type="deletionType(row.deletion_status)">{{ deletionLabel(row.deletion_status) }}</el-tag></template>
           </el-table-column>
-          <el-table-column prop="view_count" label="浏览" width="76" align="center" />
           <el-table-column label="操作" min-width="330" fixed="right">
             <template #default="{ row }">
               <div class="row-actions">
                 <template v-if="listMode === 'active'">
-                  <el-button v-if="row.moderation_status === 'pending'" type="success" size="small" plain @click="openReasonDialog(row, 'approve')">通过</el-button>
-                  <el-button v-if="row.moderation_status === 'pending'" type="danger" size="small" plain @click="openReasonDialog(row, 'reject')">拒绝</el-button>
-                  <el-button v-if="row.moderation_status === 'clear' && row.publication_status === 'published'" type="warning" size="small" plain @click="openReasonDialog(row, 'take_down')">下架</el-button>
-                  <el-button v-if="['taken_down', 'rejected'].includes(row.moderation_status)" type="success" size="small" plain @click="openReasonDialog(row, 'direct_restore')">直接恢复</el-button>
+                  <el-button v-if="hasPermission(row, 'approve')" type="success" size="small" plain @click="openReasonDialog(row, 'approve')">通过</el-button>
+                  <el-button v-if="hasPermission(row, 'reject')" type="danger" size="small" plain @click="openReasonDialog(row, 'reject')">拒绝</el-button>
+                  <el-button v-if="hasPermission(row, 'take_down')" type="warning" size="small" plain @click="openReasonDialog(row, 'take_down')">下架</el-button>
+                  <el-button v-if="hasPermission(row, 'direct_restore')" type="success" size="small" plain @click="openReasonDialog(row, 'direct_restore')">直接恢复</el-button>
                   <el-tooltip :content="row.is_pinned ? '取消置顶' : '置顶'" placement="top">
-                    <el-button :type="row.is_pinned ? 'warning' : 'default'" size="small" plain :icon="row.is_pinned ? Bottom : Top" @click="togglePin(row)" />
+                    <el-button :disabled="!hasPermission(row, row.is_pinned ? 'unpin' : 'pin')" :type="row.is_pinned ? 'warning' : 'default'" size="small" plain :icon="row.is_pinned ? Bottom : Top" @click="togglePin(row)" />
                   </el-tooltip>
                   <el-tooltip :content="row.is_locked ? '取消锁定' : '锁定'" placement="top">
-                    <el-button :type="row.is_locked ? 'info' : 'default'" size="small" plain :icon="row.is_locked ? Unlock : Lock" @click="toggleLock(row)" />
+                    <el-button :disabled="!hasPermission(row, row.is_locked ? 'unlock' : 'lock')" :type="row.is_locked ? 'info' : 'default'" size="small" plain :icon="row.is_locked ? Unlock : Lock" @click="toggleLock(row)" />
                   </el-tooltip>
-                  <el-popconfirm title="将内容移入回收站？作者仍可恢复，公开页面会立即隐藏。" confirm-button-text="移入回收站" cancel-button-text="取消" confirm-button-type="warning" @confirm="moveToTrash(row)">
+                  <el-popconfirm v-if="hasPermission(row, 'trash')" title="将内容移入回收站？作者仍可恢复，公开页面会立即隐藏。" confirm-button-text="移入回收站" cancel-button-text="取消" confirm-button-type="warning" @confirm="moveToTrash(row)">
                     <template #reference><el-button type="warning" size="small" plain :icon="Delete" title="移入回收站" /></template>
                   </el-popconfirm>
                 </template>
                 <template v-else>
-                  <el-button type="success" size="small" plain @click="openReasonDialog(row, 'restore_trash')">恢复内容</el-button>
-                  <el-button type="danger" size="small" plain @click="openReasonDialog(row, 'purge')">永久清除</el-button>
+                  <el-button v-if="hasPermission(row, 'restore_trash')" type="success" size="small" plain @click="openReasonDialog(row, 'restore_trash')">恢复内容</el-button>
+                  <el-button v-if="hasPermission(row, 'purge')" type="danger" size="small" plain @click="openReasonDialog(row, 'purge')">永久清除</el-button>
                 </template>
                 <el-button text size="small" :icon="List" @click="showActions(row)">记录</el-button>
               </div>
@@ -131,11 +130,10 @@
       <el-table :data="moderationActions" v-loading="actionsLoading" size="small" border>
         <el-table-column prop="created_at" label="时间" width="170"><template #default="{ row }">{{ formatTime(row.created_at) }}</template></el-table-column>
         <el-table-column prop="action" label="操作" width="150" />
-        <el-table-column prop="actor_id" label="操作者" width="120" />
-        <el-table-column prop="reason" label="原因" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="before_state" label="变更前" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="after_state" label="变更后" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="actor_kind" label="主体域" width="120" />
+        <el-table-column prop="actor_ref_id" label="操作者 ID" min-width="180" show-overflow-tooltip />
       </el-table>
+      <el-pagination v-if="actionsTotal > 20" v-model:current-page="actionsPage" :page-size="20" :total="actionsTotal" layout="prev, pager, next" @current-change="loadActions" />
       <el-empty v-if="!actionsLoading && moderationActions.length === 0" description="暂无治理记录" :image-size="58" />
     </el-dialog>
   </div>
@@ -145,7 +143,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bottom, Delete, List, Lock, Refresh, Search, Top, Unlock } from '@element-plus/icons-vue'
-import { categoryApi, threadApi } from '@/modules/community/api'
+import { categoryApi, threadApi, type AdminThreadPermissionFlags } from '@/modules/community/api'
 
 type GovernanceAction = 'approve' | 'reject' | 'take_down' | 'direct_restore' | 'restore_trash' | 'purge'
 type BatchAction = GovernanceAction | 'pin' | 'unpin' | 'lock' | 'unlock' | 'trash'
@@ -170,10 +168,19 @@ const selectedThread = ref<any>(null)
 const actionsDialogVisible = ref(false)
 const actionsLoading = ref(false)
 const moderationActions = ref<any[]>([])
+const actionsPage = ref(1)
+const actionsTotal = ref(0)
+const actionsTargetID = ref('')
+let listRequest = 0
+let historyRequest = 0
 const tableRef = ref<any>(null)
 const selectedRows = ref<any[]>([])
 const batchAction = ref<BatchAction | ''>('')
 const batchMode = ref(false)
+const permissionMap = ref<Record<string, AdminThreadPermissionFlags>>({})
+const permissionActions: BatchAction[] = ['pin', 'unpin', 'lock', 'unlock', 'approve', 'reject', 'take_down', 'direct_restore', 'trash', 'restore_trash', 'purge']
+const hasPermission = (row: any, action: BatchAction) => permissionMap.value[row.id]?.[action] === true
+
 
 const publicationLabel = (status?: string) => ({ published: '公开', draft: '草稿', private: '私密' }[status || ''] || '-')
 const publicationType = (status?: string) => ({ published: 'success', draft: 'info', private: 'warning' }[status || ''] || 'info')
@@ -189,7 +196,8 @@ const actionMeta: Record<GovernanceAction, { title: string; copy: string }> = {
   restore_trash: { title: '恢复回收站内容', copy: '填写恢复原因。恢复会保留内容原有的发布与治理状态。' },
   purge: { title: '永久清除内容', copy: '此操作不可恢复。请确认已满足保留要求并填写永久清除原因。' },
 }
-const batchActionOptions = computed<Array<{ label: string; value: BatchAction }>>(() => listMode.value === 'trash'
+const batchActionOptions = computed<Array<{ label: string; value: BatchAction }>>(() => {
+ const options: Array<{ label: string; value: BatchAction }> = listMode.value === 'trash'
   ? [
       { label: '恢复回收站内容', value: 'restore_trash' },
       { label: '永久清除', value: 'purge' },
@@ -204,7 +212,9 @@ const batchActionOptions = computed<Array<{ label: string; value: BatchAction }>
       { label: '下架', value: 'take_down' },
       { label: '直接恢复', value: 'direct_restore' },
       { label: '移入回收站', value: 'trash' },
-    ])
+    ]
+ return options.filter(option => selectedRows.value.length > 0 && selectedRows.value.every(row => hasPermission(row, option.value)))
+})
 const reasonDialogTitle = () => {
   if (!pendingAction.value) return '治理操作'
   const title = actionMeta[pendingAction.value].title
@@ -235,6 +245,8 @@ const changeListMode = () => {
   void load()
 }
 const load = async () => {
+  const request = ++listRequest
+  permissionMap.value = {}
   clearSelection()
   loading.value = true
   try {
@@ -250,13 +262,32 @@ const load = async () => {
       if (filterPublication.value) params.publication_status = filterPublication.value
       response = await threadApi.list(params)
     }
+    if (request !== listRequest) return
     const data = dataOf(response)
     threads.value = data?.items || []
     total.value = data?.pagination?.total || 0
+    const rows = threads.value
+    if (rows.length > 0) {
+      const preview = dataOf(await threadApi.permissionsPreview(rows.map(row => row.id)))
+      if (request !== listRequest) return
+      const expected = new Set(rows.map(row => row.id))
+      const permissions: Record<string, AdminThreadPermissionFlags> = {}
+      if (!Array.isArray(preview?.items) || preview.items.length !== rows.length) throw new Error('当前操作权限检查失败，请刷新')
+      for (const item of preview.items) {
+        if (!expected.delete(item.id) || !item.permissions || Object.keys(item.permissions).length !== permissionActions.length || permissionActions.some(action => typeof item.permissions[action] !== 'boolean')) throw new Error('当前操作权限检查失败，请刷新')
+        permissions[item.id] = Object.fromEntries(permissionActions.map(action => [action, item.permissions[action]])) as AdminThreadPermissionFlags
+      }
+      if (expected.size) throw new Error('当前操作权限检查失败，请刷新')
+      permissionMap.value = permissions
+    }
   } catch (error: any) {
+    if (request !== listRequest) return
+    threads.value = []
+    total.value = 0
+    permissionMap.value = {}
     ElMessage.error(messageOf(error, '加载帖子列表失败'))
   } finally {
-    loading.value = false
+    if (request === listRequest) loading.value = false
   }
 }
 
@@ -307,6 +338,7 @@ const executeBatchItem = async (row: any, action: BatchAction, value = '') => {
 const runBatchAction = async (action: BatchAction, value = '') => {
   const rows = [...selectedRows.value]
   if (!rows.length) return
+  if (rows.length > 20 || rows.some(row => !hasPermission(row, action))) { ElMessage.warning('当前选择中存在无权执行的内容，请刷新权限后重试'); return }
   operating.value = true
   let completed = 0
   const failed: Array<{ row: any; message: string }> = []
@@ -323,7 +355,7 @@ const runBatchAction = async (action: BatchAction, value = '') => {
       ElMessage.success(`批量操作完成，共处理 ${completed} 项`)
     } else {
       const first = failed[0]
-      ElMessage.warning(`批量操作完成 ${completed} 项，失败 ${failed.length} 项。首个失败：${first.row.title || first.row.id} - ${first.message}`)
+      ElMessage.warning(`批量操作完成 ${completed} 项，失败 ${failed.length} 项。首个失败：${first.row.id} - ${first.message}`)
     }
     reasonDialogVisible.value = false
     batchAction.value = ''
@@ -382,13 +414,32 @@ const confirmReasonAction = async () => {
     ElMessage.error(messageOf(error, `${actionMeta[action].title}失败`))
   } finally { operating.value = false }
 }
-const showActions = async (row: any) => {
-  actionsDialogVisible.value = true
+const loadActions = async () => {
+  const request = ++historyRequest
+  const target = actionsTargetID.value
   actionsLoading.value = true
   moderationActions.value = []
-  try { moderationActions.value = itemsOf(await threadApi.moderationActions(row.id)) }
-  catch (error: any) { ElMessage.error(messageOf(error, '加载治理记录失败')) }
-  finally { actionsLoading.value = false }
+  actionsTotal.value = 0
+  try {
+    const response = await threadApi.moderationActions(target, { page: actionsPage.value, page_size: 20 })
+    if (request !== historyRequest || target !== actionsTargetID.value || !actionsDialogVisible.value) return
+    const data = dataOf(response)
+    const rows = itemsOf(response)
+    if (!Array.isArray(rows) || rows.some((row: any) => row.thread_id !== target)) throw new Error('治理记录与当前帖子不符，请重试')
+    moderationActions.value = rows
+    actionsTotal.value = data?.pagination?.total || 0
+  } catch (error: any) {
+    if (request !== historyRequest || target !== actionsTargetID.value) return
+    moderationActions.value = []
+    actionsTotal.value = 0
+    ElMessage.error(messageOf(error, '加载治理记录失败'))
+  } finally { if (request === historyRequest) actionsLoading.value = false }
+}
+const showActions = async (row: any) => {
+  actionsTargetID.value = row.id
+  actionsPage.value = 1
+  actionsDialogVisible.value = true
+  await loadActions()
 }
 
 onMounted(() => { void load(); void loadCategories() })

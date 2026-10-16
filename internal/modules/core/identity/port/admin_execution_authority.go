@@ -14,7 +14,14 @@ type AdminExecutionQuery struct {
 
 func (q AdminExecutionQuery) Validate() error {
 	switch q.PermissionCode {
-	case "community.thread.read", "community.thread.pin", "community.thread.lock", "community.thread.review", "community.thread.trash", "community.thread.direct_restore", "community.thread.restore", "community.thread.purge":
+	case "community.thread.read":
+		if q.Scope.Kind == "community.thread_inventory" && q.Scope.ID == "all" {
+			return nil
+		}
+		if q.Scope.Kind != "community.board" || !validOpaqueID(q.Scope.ID) {
+			return ErrResourcePolicyInvalid
+		}
+	case "community.thread.pin", "community.thread.lock", "community.thread.review", "community.thread.trash", "community.thread.direct_restore", "community.thread.restore", "community.thread.purge":
 		if q.Scope.Kind != "community.board" || !validOpaqueID(q.Scope.ID) {
 			return ErrResourcePolicyInvalid
 		}
@@ -30,12 +37,28 @@ func (q AdminExecutionQuery) Validate() error {
 		if q.Scope.Kind != "richtext.asset_governance" || q.Scope.ID != "summary" {
 			return ErrResourcePolicyInvalid
 		}
+	case "personal_space.space.manage":
+		switch q.Scope.Kind {
+		case "personal_space.space", "personal_space.storage_quota", "personal_space.storage_status":
+			if !validOpaqueID(q.Scope.ID) {
+				return ErrResourcePolicyInvalid
+			}
+		case "personal_space.space_summary":
+			if q.Scope.ID != "summary" {
+				return ErrResourcePolicyInvalid
+			}
+		default:
+			return ErrResourcePolicyInvalid
+		}
 	default:
 		return ErrResourcePolicyUnknownAction
 	}
 	return nil
 }
 func (q AdminExecutionQuery) RequiresCurrentMFA() bool {
+	if q.PermissionCode == "personal_space.space.manage" && (q.Scope.Kind == "personal_space.storage_status" || q.Scope.Kind == "personal_space.space_summary") {
+		return false
+	}
 	return q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
 }
 

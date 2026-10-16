@@ -1,0 +1,57 @@
+{
+  "contract": "campusos.integration-access/v1",
+  "status": "host-policy-only; no production HTTP mapping",
+  "allow_reason": "integration.allowed",
+  "errors": [
+    {
+      "code": "integration.input_invalid",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.decision_mismatch",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.facts_changed",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.actor_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.principal_inactive",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.credential_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.channel_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.scope_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.endpoint_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    },
+    {
+      "code": "integration.whitelist_denied",
+      "retryable": false,
+      "message": "Integration request rejected"
+    }
+  ]
+}

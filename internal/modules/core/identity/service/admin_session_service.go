@@ -34,9 +34,10 @@ type AdminSessionMetadata struct {
 // AdminSessionTokens is the login/refresh result: a domain-scoped access JWT
 // plus the opaque refresh credential bound to the session store digest.
 type AdminSessionTokens struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresAt    time.Time
+	AccessToken      string
+	RefreshToken     string
+	ExpiresAt        time.Time
+	RefreshExpiresAt time.Time
 }
 
 // AdminSessionService runs admin-domain login, refresh rotation and revocation
@@ -125,7 +126,7 @@ func (s *AdminSessionService) issueSession(ctx context.Context, accountID, famil
 	if err != nil {
 		return nil, err
 	}
-	return &AdminSessionTokens{AccessToken: access, RefreshToken: rawRefresh, ExpiresAt: now.Add(s.jwt.AccessTTL())}, nil
+	return &AdminSessionTokens{AccessToken: access, RefreshToken: rawRefresh, ExpiresAt: now.Add(s.jwt.AccessTTL()), RefreshExpiresAt: expiresAt}, nil
 }
 
 // Login verifies the admin credential against the independent admin store and
@@ -155,8 +156,20 @@ func (s *AdminSessionService) Login(ctx context.Context, username, password stri
 	err = s.execute(ctx, "identity.admin_session.login", account.ID, func(commandCtx context.Context) error {
 		// Re-read inside the command transaction: suspended or revoked
 		// accounts fail closed before a session commits.
-		current, lookupErr := s.admins.GetAccountByID(commandCtx, account.ID)
-		if lookupErr != nil || current.Status != "active" {
+		get := s.admins.GetAccountByID
+		if transaction.Active(commandCtx) {
+			locker, ok := s.admins.(repository.AdminAccountAuthorityLocker)
+			if !ok {
+				return ErrAdminSessionUnavailable
+			}
+			get = locker.GetAccountByIDForUpdate
+		}
+		current, lookupErr := get(commandCtx, account.ID)
+		if lookupErr != nil || current.ID != account.ID || current.Status != "active" || current.RevokedAt != nil || current.Version < 1 {
+			return ErrAdminLoginDenied
+		}
+		currentCredential, lookupErr := s.admins.GetCredential(commandCtx, account.ID)
+		if lookupErr != nil || currentCredential.AccountID != account.ID || currentCredential.CredentialVersion < 1 || currentCredential.CredentialVersion != credential.CredentialVersion || currentCredential.CredentialHash != credential.CredentialHash || !currentCredential.PasswordChangedAt.Equal(credential.PasswordChangedAt) {
 			return ErrAdminLoginDenied
 		}
 		issued, err := s.issueSession(commandCtx, account.ID, "", "", "password", metadata)
@@ -187,10 +200,26 @@ func (s *AdminSessionService) Refresh(ctx context.Context, rawRefresh string, me
 	if err != nil {
 		return nil, err
 	}
+	hint, err := s.sessions.GetSessionByRefreshDigestForUpdate(ctx, adminRefreshDigest(rawRefresh))
+	if err != nil || hint.ID == "" || hint.AccountID == "" {
+		return nil, ErrAdminRefreshInvalid
+	}
 	var issued *AdminSessionTokens
-	err = s.execute(ctx, "identity.admin_session.refresh", rawRefresh, func(commandCtx context.Context) error {
+	var resultErr error
+	err = s.execute(ctx, "identity.admin_session.refresh", adminRefreshDigest(rawRefresh), func(commandCtx context.Context) error {
+		// All account-local commands lock account then session, matching lifecycle
+		// and MFA commands. The digest hint is data only and re-bound under the lock.
+		getAccount := s.admins.GetAccountByID
+		if transaction.Active(commandCtx) {
+			locker, ok := s.admins.(repository.AdminAccountAuthorityLocker)
+			if !ok {
+				return ErrAdminSessionUnavailable
+			}
+			getAccount = locker.GetAccountByIDForUpdate
+		}
+		account, accountErr := getAccount(commandCtx, hint.AccountID)
 		current, err := s.sessions.GetSessionByRefreshDigestForUpdate(commandCtx, adminRefreshDigest(rawRefresh))
-		if err != nil {
+		if err != nil || current.ID != hint.ID || current.AccountID != hint.AccountID {
 			return ErrAdminRefreshInvalid
 		}
 		if current.RevokedAt != nil {
@@ -198,22 +227,28 @@ func (s *AdminSessionService) Refresh(ctx context.Context, rawRefresh string, me
 				if err := s.sessions.RevokeSessionFamily(commandCtx, current.TokenFamilyID, "refresh_reuse_detected", now); err != nil {
 					return err
 				}
-				return ErrAdminRefreshReuse
+				resultErr = ErrAdminRefreshReuse
+				return nil
 			}
 			return ErrAdminRefreshInvalid
 		}
 		if !now.Before(current.ExpiresAt) {
-			if _, _, err := s.sessions.RevokeSessionCAS(commandCtx, current.ID, current.Version, "expired", now); err != nil {
+			if _, ok, err := s.sessions.RevokeSessionCAS(commandCtx, current.ID, current.Version, "expired", now); err != nil {
 				return err
+			} else if !ok {
+				return ErrAdminRefreshInvalid
 			}
-			return ErrAdminRefreshInvalid
+			resultErr = ErrAdminRefreshInvalid
+			return nil
 		}
-		account, err := s.admins.GetAccountByID(commandCtx, current.AccountID)
-		if err != nil || account.Status != "active" {
-			if _, _, err := s.sessions.RevokeSessionCAS(commandCtx, current.ID, current.Version, "account_not_active", now); err != nil {
+		if accountErr != nil || account.ID != current.AccountID || account.Status != "active" || account.RevokedAt != nil || account.Version < 1 {
+			if _, ok, err := s.sessions.RevokeSessionCAS(commandCtx, current.ID, current.Version, "account_not_active", now); err != nil {
 				return err
+			} else if !ok {
+				return ErrAdminRefreshInvalid
 			}
-			return ErrAdminRefreshInvalid
+			resultErr = ErrAdminRefreshInvalid
+			return nil
 		}
 		raw := newRawRefresh
 		tokens, err := s.rotateLocked(commandCtx, current, raw, metadata)
@@ -226,13 +261,18 @@ func (s *AdminSessionService) Refresh(ctx context.Context, rawRefresh string, me
 	if err != nil {
 		return nil, err
 	}
+	if resultErr != nil {
+		return nil, resultErr
+	}
 	return issued, nil
 }
 
 func (s *AdminSessionService) rotateLocked(ctx context.Context, current repository.AdminSession, raw string, metadata AdminSessionMetadata) (*AdminSessionTokens, error) {
 	now := s.now()
-	if _, _, err := s.sessions.RevokeSessionCAS(ctx, current.ID, current.Version, "rotated", now); err != nil {
+	if _, ok, err := s.sessions.RevokeSessionCAS(ctx, current.ID, current.Version, "rotated", now); err != nil {
 		return nil, err
+	} else if !ok {
+		return nil, ErrAdminRefreshInvalid
 	}
 	strength := current.AuthenticationStrength
 	mfaAt := current.MFAAuthenticatedAt
@@ -270,7 +310,7 @@ func (s *AdminSessionService) rotateLocked(ctx context.Context, current reposito
 	if err != nil {
 		return nil, err
 	}
-	return &AdminSessionTokens{AccessToken: access, RefreshToken: rawRefresh, ExpiresAt: now.Add(s.jwt.AccessTTL())}, nil
+	return &AdminSessionTokens{AccessToken: access, RefreshToken: rawRefresh, ExpiresAt: now.Add(s.jwt.AccessTTL()), RefreshExpiresAt: expiresAt}, nil
 }
 
 // VerifyAccess resolves one admin access session to its current facts. The

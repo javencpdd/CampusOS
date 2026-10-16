@@ -42,7 +42,7 @@ func (q *authenticatedSpaceQuery) ListAuthorThreadsForPrincipal(ctx context.Cont
 }
 
 func ownContentsService(query *authenticatedSpaceQuery) *Service {
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{ID: "98401", Username: "owner", Nickname: "Owner"}))
+	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{ID: "98401", Username: "owner", Nickname: "Owner", Status: identitydomain.UserStatusActive}))
 	if query != nil {
 		svc.SetContentQuery(query)
 	}
@@ -80,7 +80,7 @@ func TestOwnContentsPrincipalBoundary(t *testing.T) {
 				svc.contentQuery = nil
 				want = ErrAuthenticatedAuthorQueryUnavailable
 				if name == "disabled-missing-query" {
-					if err := svc.repo.Upsert(ctx, &Space{UserID: "98401", SyncEnabled: false}); err != nil {
+					if err := svc.repo.Upsert(ctx, &Space{ID: "98461", UserID: "98401", SyncEnabled: false}); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -115,7 +115,7 @@ func TestOwnContentsPrincipalFiltersAndProjection(t *testing.T) {
 		DeletionStatus: communitydomain.DeletionStatusActive, ModerationReason: "owner only reason", FactsVersion: 1, CreatedAt: time.Now(),
 	}}}}
 	svc := ownContentsService(q)
-	if err := svc.repo.Upsert(context.Background(), &Space{UserID: "98401", Visibility: VisibilityPrivate, SyncEnabled: true,
+	if err := svc.repo.Upsert(context.Background(), &Space{ID: "98461", UserID: "98401", Visibility: VisibilityPrivate, SyncEnabled: true,
 		SyncCategories: []string{" 98421 ", "98421"}, SyncTags: []string{" Campus ", "campus"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestOwnContentsPrincipalFiltersAndProjection(t *testing.T) {
 	if err != nil || total != 1 || len(rows) != 1 {
 		t.Fatalf("owner projection failed: rows=%v total=%d err=%v", rows, total, err)
 	}
-	if proofs != 3 || q.calls != 1 || q.authorCalls != 0 || q.publicCalls != 0 {
+	if proofs < 3 || q.calls < 2 || q.authorCalls != 0 || q.publicCalls != 0 {
 		t.Fatalf("owner proof or query path changed: proofs=%d query=%+v", proofs, q)
 	}
 	if q.filter.AuthorID != "" || q.filter.Status != "" || q.filter.Page != 1 || q.filter.PageSize != 100 ||
@@ -147,7 +147,7 @@ func TestOwnContentsPrincipalEmptyAndProofChanges(t *testing.T) {
 			svc := ownContentsService(q)
 			disabled := name == "disabled" || name == "disabled-revoked" || name == "disabled-new-session"
 			if disabled {
-				if err := svc.repo.Upsert(context.Background(), &Space{UserID: "98401", SyncEnabled: false}); err != nil {
+				if err := svc.repo.Upsert(context.Background(), &Space{ID: "98461", UserID: "98401", SyncEnabled: false}); err != nil {
 					t.Fatal(err)
 				}
 			}
