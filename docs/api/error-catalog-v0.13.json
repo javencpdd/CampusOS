@@ -115,6 +115,14 @@
     },
     {
       "owner": "identity",
+      "machine_code": "identity.integration.unavailable",
+      "legacy_code": 50301,
+      "http_status": 503,
+      "message": "machine integration is temporarily unavailable",
+      "retryable": true
+    },
+    {
+      "owner": "identity",
       "machine_code": "identity.mfa.enrollment_required",
       "legacy_code": 10014,
       "http_status": 403,

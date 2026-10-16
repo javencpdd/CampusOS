@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	routePattern                 = regexp.MustCompile(`^\s*(public|authenticated|admin)(.*?)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]*)",(.*)$`)
+	routePattern                 = regexp.MustCompile(`^\s*(public|authenticated|admin|integration)(.*?)\.(GET|POST|PUT|PATCH|DELETE)\("([^"]*)",(.*)$`)
 	packageHandlerPattern        = regexp.MustCompile(`^\s*([A-Za-z_][A-Za-z_0-9]*)\s*\)`)
 	legacyRoutePermissionPattern = regexp.MustCompile(`\.Permission\("([^"]+)",\s*"([^"]+)"\)`)
 	permissionCodePattern        = regexp.MustCompile(`\.PermissionCode\("([^"]+)"\)`)
@@ -250,7 +250,9 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.message"
 	case strings.HasPrefix(path, APIPrefix+"/platform/logs"):
 		return "feature.platform-log"
-	case strings.HasPrefix(path, APIPrefix+"/integrations"), strings.HasPrefix(path, APIPrefix+"/metrics"):
+	case strings.HasPrefix(path, APIPrefix+"/integration/identity"):
+		return "core.identity"
+	case strings.HasPrefix(path, APIPrefix+"/integration/"), strings.HasPrefix(path, APIPrefix+"/integrations"), strings.HasPrefix(path, APIPrefix+"/metrics"):
 		return "feature.integration-overview"
 	default:
 		return "unowned:" + handler
@@ -323,6 +325,11 @@ func applyAuthorization(route *RouteContract, group, method string) {
 		route.Ownership = "none"
 		route.Scope = "global"
 		route.Audit = "request-log"
+	case "integration":
+		route.Auth = "integration-digest+current-facts+whitelist+source-acl"
+		route.Ownership = "source-module-public-policy"
+		route.Scope = "exact-channel-endpoint-resource"
+		route.Audit = "required-command+outbox"
 	}
 	if method == "GET" && route.Audit == "request-log" {
 		route.Audit = "request-log-read"
@@ -427,7 +434,7 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.OperationCode, "http.identity.admin_") {
+			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
@@ -436,6 +443,8 @@ func OpenAPI(routes []RouteContract) []byte {
 			if route.Auth != "none" {
 				if route.Auth == "admin-refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
+				} else if route.Audience == "integration" {
+					out.WriteString("      security:\n        - integrationCredential: []\n")
 				} else if route.Auth == "refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - refreshCookie: []\n")
 				} else {
@@ -443,7 +452,7 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 			}
 			parameters := openAPIPathParameters(path)
-			requiresAdminCSRF := strings.HasPrefix(route.OperationCode, "http.identity.admin_") && strings.Contains(route.Auth, "csrf")
+			requiresAdminCSRF := (strings.HasPrefix(route.OperationCode, "http.identity.admin_") || strings.Contains(route.Auth, "current-admin-session")) && strings.Contains(route.Auth, "csrf")
 			requiresCSRF := strings.Contains(route.Auth, "csrf") && !requiresAdminCSRF
 			if len(parameters) > 0 || profile.Paginated || requiresCSRF || requiresAdminCSRF {
 				out.WriteString("      parameters:\n")
@@ -561,6 +570,23 @@ func FindRepositoryRoot(start string) (string, error) {
 // Explicit governance metadata follows operation extraction and scope parsing;
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
+	if strings.HasPrefix(route.OperationCode, "http.identity.integration.") {
+		route.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
+		route.Scope = "identity.integration_inventory/all"
+		route.Ownership = "identity-managed"
+		route.Audit = "required-command+outbox"
+		if route.Method == "GET" {
+			route.Auth = "jwt+current-admin-session+permission"
+			route.Audit = "none"
+		}
+	}
+	if route.OperationCode == "http.identity.integration_self.read" {
+		route.Auth = "integration-digest+current-facts"
+		route.Scope = "current-integration-self"
+		route.Ownership = "current-integration-self"
+		route.Audit = "none"
+	}
+
 	switch route.OperationCode {
 	case "http.identity.admin_session.login":
 		route.Audit = "required-command+outbox"

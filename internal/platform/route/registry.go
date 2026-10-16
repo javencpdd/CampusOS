@@ -21,6 +21,7 @@ const (
 	AudiencePublic        Audience = "public"
 	AudienceAuthenticated Audience = "authenticated"
 	AudienceAdmin         Audience = "admin"
+	AudienceIntegration   Audience = "integration"
 )
 
 type Descriptor struct {
@@ -52,7 +53,7 @@ func (d Descriptor) Validate() error {
 		return fmt.Errorf("route %q path must start with /", d.ID)
 	}
 	switch d.Audience {
-	case AudiencePublic, AudienceAuthenticated, AudienceAdmin:
+	case AudiencePublic, AudienceAuthenticated, AudienceAdmin, AudienceIntegration:
 	default:
 		return fmt.Errorf("route %q has unsupported audience %q", d.ID, d.Audience)
 	}

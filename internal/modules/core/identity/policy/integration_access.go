@@ -15,7 +15,15 @@ type IntegrationAccessPolicy struct{}
 var _ port.IntegrationAccessPolicy = IntegrationAccessPolicy{}
 
 func (IntegrationAccessPolicy) DecideIntegrationAccess(r port.IntegrationAccessInput) (port.IntegrationAccessDecision, error) {
-	if err := r.Validate(); err != nil {
+	return decideIntegrationAccess(r, false)
+}
+
+func decideIntegrationAccess(r port.IntegrationAccessInput, runtime bool) (port.IntegrationAccessDecision, error) {
+	validate := r.Validate
+	if runtime {
+		validate = func() error { return runtimeShape(r) }
+	}
+	if err := validate(); err != nil {
 		return port.IntegrationAccessDecision{}, err
 	}
 	d := port.IntegrationAccessDecision{Request: r.Clone(), Effect: "deny"}
@@ -29,7 +37,7 @@ func (IntegrationAccessPolicy) DecideIntegrationAccess(r port.IntegrationAccessI
 		d.Reason = "integration.credential_denied"
 	case target.Channel != "integration_http" && target.Channel != "integration_mcp":
 		d.Reason = "integration.channel_denied"
-	case target.Action != "knowledge.source.read" || target.Resource.Kind != "public_collection":
+	case !(target.Action == "knowledge.source.read" && target.Resource.Kind == "public_collection" || runtime && target.Action == "community.thread.read" && target.Resource.Kind == "community.thread"):
 		d.Reason = "integration.scope_denied"
 	case !f.Endpoint.Enabled || !f.Endpoint.IntegrationAllowed || f.Endpoint.Channel != target.Channel ||
 		f.Endpoint.ID != target.Endpoint || f.Endpoint.Action != target.Action || f.Endpoint.ResourceKind != target.Resource.Kind:

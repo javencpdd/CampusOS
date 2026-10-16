@@ -444,3 +444,5 @@ export type {
   IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1,
   IntegrationAccessErrorCodeV1,
 } from "./integration-access.js";
+export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
+export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread } from "./integration-runtime.js";

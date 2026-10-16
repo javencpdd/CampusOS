@@ -3,6 +3,57 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/v1/integration/identity/me",
+      "handler": "d.Identity.Integration.Me",
+      "module_owner": "core.identity",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts",
+      "operation_code": "http.identity.integration_self.read",
+      "legacy_aliases": [
+        "http.get.api.v1.integration.identity.me",
+        "httpapi.get.api.v1.integration.identity.me"
+      ],
+      "ownership": "current-integration-self",
+      "scope": "current-integration-self",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/integration/threads/:id",
+      "handler": "integrationHandler.IntegrationThread",
+      "module_owner": "feature.integration-overview",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.public_thread.read",
+      "legacy_aliases": [
+        "http.get.api.v1.integration.threads.id",
+        "httpapi.get.api.v1.integration.threads.id"
+      ],
+      "ownership": "source-module-public-policy",
+      "scope": "exact-channel-endpoint-resource",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integration/mcp/tools/:name/call",
+      "handler": "integrationHandler.IntegrationMCP",
+      "module_owner": "feature.integration-overview",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.public_thread.mcp_read",
+      "legacy_aliases": [
+        "http.post.api.v1.integration.mcp.tools.name.call",
+        "httpapi.post.api.v1.integration.mcp.tools.name.call"
+      ],
+      "ownership": "source-module-public-policy",
+      "scope": "exact-channel-endpoint-resource",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1",
       "handler": "httpapi.APIIndex",
       "module_owner": "core.platform-api",
@@ -3483,6 +3534,177 @@
       ],
       "ownership": "resource-policy",
       "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integrations",
+      "handler": "d.Identity.Integration.List",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "integration:read",
+      "permission_code": "identity.integration.read",
+      "operation_code": "http.identity.integration.list",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.identity.integrations",
+        "httpapi.get.api.v1.admin.identity.integrations"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials",
+      "handler": "d.Identity.Integration.List",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "integration:read",
+      "permission_code": "identity.integration.read",
+      "operation_code": "http.identity.integration.credentials",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.identity.integrations.id.credentials",
+        "httpapi.get.api.v1.admin.identity.integrations.id.credentials"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integration-endpoints",
+      "handler": "d.Identity.Integration.Endpoints",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "integration:read",
+      "permission_code": "identity.integration.read",
+      "operation_code": "http.identity.integration.endpoints",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.identity.integration_endpoints",
+        "httpapi.get.api.v1.admin.identity.integration_endpoints"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations",
+      "handler": "d.Identity.Integration.Create",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.create",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.integrations",
+        "httpapi.post.api.v1.admin.identity.integrations"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/identity/integrations/:id",
+      "handler": "d.Identity.Integration.Update",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.update",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.identity.integrations.id",
+        "httpapi.put.api.v1.admin.identity.integrations.id"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials",
+      "handler": "d.Identity.Integration.Issue",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.issue",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.integrations.id.credentials",
+        "httpapi.post.api.v1.admin.identity.integrations.id.credentials"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id/rotate",
+      "handler": "d.Identity.Integration.Rotate",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.rotate",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.integrations.id.credentials.credential_id.rotate",
+        "httpapi.post.api.v1.admin.identity.integrations.id.credentials.credential_id.rotate"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id",
+      "handler": "d.Identity.Integration.Scope",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.scope",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.identity.integrations.id.credentials.credential_id",
+        "httpapi.put.api.v1.admin.identity.integrations.id.credentials.credential_id"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id/revoke",
+      "handler": "d.Identity.Integration.Revoke",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "integration:manage",
+      "permission_code": "identity.integration.manage",
+      "operation_code": "http.identity.integration.revoke",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.integrations.id.credentials.credential_id.revoke",
+        "httpapi.post.api.v1.admin.identity.integrations.id.credentials.credential_id.revoke"
+      ],
+      "ownership": "identity-managed",
+      "scope": "identity.integration_inventory/all",
       "audit": "required-command+outbox",
       "stability": "experimental"
     },

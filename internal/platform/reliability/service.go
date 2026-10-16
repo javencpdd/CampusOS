@@ -48,6 +48,16 @@ func (s *Service) SetMeter(meter observability.Meter) {
 
 func (s *Service) Store() Store { return s.store }
 
+// CheckedRead serializes a host read with reliable commands using the same
+// transaction manager. It adds no audit itself: callers must return detached
+// data only after their current-fact checks. No callback is exposed remotely.
+func (s *Service) CheckedRead(ctx context.Context, read func(context.Context) error) error {
+	if s == nil || s.transactions == nil || read == nil {
+		return errors.New("checked read is unavailable")
+	}
+	return s.transactions.Within(ctx, read)
+}
+
 // RegisterMemorySnapshotters is intentionally a no-op for PostgreSQL. Core
 // modules call it while composing the memory profile so failed reliable
 // commands roll back their in-memory business repositories together with the

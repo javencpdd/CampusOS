@@ -71,6 +71,12 @@ func Logger() gin.HandlerFunc {
 		c.Next()
 
 		latency := time.Since(start)
+		if strings.HasPrefix(path, "/api/v1/integration/") {
+			path = c.FullPath()
+			if path == "" {
+				path = "/api/v1/integration/*"
+			}
+		}
 		status := c.Writer.Status()
 		traceID, _ := c.Get("trace_id")
 

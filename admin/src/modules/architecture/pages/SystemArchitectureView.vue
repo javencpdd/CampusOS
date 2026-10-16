@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000024（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000025（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本）</el-tag
       >
@@ -331,6 +331,8 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+  { name: "integration_principals", title: "独立机器集成身份", domain: "identity", purpose: "保存机器名称、当前启停/永久撤销及非复用事实版本，独立于 User/Admin/插件身份。", fields: ["id","name","status","facts_version","created_by_admin_id","created_at","updated_at"], migration: "000025", relationshipNote: "integration_credentials.principal_id 外键引用本表；created_by_admin_id 为独立 Admin 域逻辑审计关联，不关联用户 ID。" },
+  { name: "integration_credentials", title: "机器集成凭据摘要与白名单", domain: "identity", purpose: "仅存256位随机token的单向摘要、可辨识前缀、用途、有效期、精确通道/端点/资源规则及撤销事实；不保存原始凭据。", fields: ["id","principal_id","prefix","digest","purpose","status","rules","not_before_ms","expires_at_ms","facts_version","created_by_admin_id"], migration: "000025", relationshipNote: "principal_id 显式外键且禁止级联删除；created_by_admin_id 为 Admin 逻辑审计关联；生命周期命令关联平台必需审计/Outbox。" },
   {
     name: "schema_migrations",
     title: "迁移执行记录",
@@ -1921,6 +1923,8 @@ const databaseTables: DbTable[] = [
 ];
 
 const relations: Relation[] = [
+  { id: "integration-principal-credentials", source: "integration_principals", target: "integration_credentials", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> principal_id (FK, RESTRICT)", domains: ["identity"] },
+  { id: "admin-integration-principals", source: "admin_accounts", target: "integration_principals", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> created_by_admin_id（逻辑审计关联，非FK）", domains: ["identity"] },
   {
     id: "users-admin-accounts",
     source: "users",
@@ -3074,6 +3078,7 @@ const storageRows = [
 ];
 
 const migrations = [
+  { version: "000025", file: "000025_integration_identity.up.sql", title: "v1.2 独立机器集成与摘要凭据", scope: "Identity Integration Principal 与当前凭据生命周期", summary: "两个独立表、摘要/精确白名单/终态守卫及非复用序列；Admin管理权限独立播种。存在机器数据时拒绝down；空域down/up保留序列高水位，既有24版数据/typed主体均保留。", tables: ["integration_principals", "integration_credentials", "permission_definitions / admin_role_permissions（两个管理码）"] },
   {
     version: "000001",
     file: "000001_v1_1_schema_baseline.up.sql",

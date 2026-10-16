@@ -47,6 +47,7 @@ var (
 	IdentityMFAPolicyInvalid                 = descriptor("identity", "identity.mfa.policy_invalid", 10017, 400, "multi-factor authentication policy is invalid", false)
 	IdentityMFAPolicySafety                  = descriptor("identity", "identity.mfa.policy_safety", 10018, 409, "multi-factor authentication policy safety requirements are not met", false)
 	IdentityMFAStepUpRequired                = descriptor("identity", "identity.mfa.step_up_required", 10019, 403, "recent multi-factor authentication is required", false)
+	IdentityIntegrationUnavailable           = descriptor("identity", "identity.integration.unavailable", 50301, 503, "machine integration is temporarily unavailable", true)
 
 	AcademicTermInvalid             = descriptor("academic-term", "academic_term.invalid", 74001, 400, "学期请求无效", false)
 	AcademicTermNotAvailable        = descriptor("academic-term", "academic_term.not_available", 74002, 404, "学期不存在或当前不可用", false)
@@ -108,6 +109,7 @@ var catalog = []Descriptor{
 	IdentityMFAInvalid, IdentityMFATicketInvalid, IdentityMFAFactorInvalid, IdentityMFAEnrollmentRequired,
 	IdentityMFAUnavailable, IdentityMFAReplay, IdentityMFANotEnabled, IdentityMFAPolicyInvalid, IdentityMFAPolicySafety,
 	IdentityMFAStepUpRequired,
+	IdentityIntegrationUnavailable,
 	AcademicTermInvalid, AcademicTermNotAvailable, AcademicTermAlreadyExists, AcademicTermClosed,
 	AcademicTermDefaultUnavailable, AcademicTermVersionConflict, AcademicTermHasSchedules,
 	ScheduleObjectUnavailable, PersonalScheduleDisabled,

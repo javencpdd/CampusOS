@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608;tables=100;foreign_keys=116 -->
+<!-- campusos-er:schema_sha256=3f1c2cb7b2726c79871a401a2320ffe132d660edf8ba04051512fe38b93692d5;tables=102;foreign_keys=117 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**100**
-- 物理外键：**116**
+- 实体表：**102**
+- 物理外键：**117**
 - 一对一/可选一对一关系：**14**
-- 一对多关系：**102**
+- 一对多关系：**103**
 - 推断的逻辑多对多关系：**6**
-- Schema 指纹：`cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608`
+- Schema 指纹：`3f1c2cb7b2726c79871a401a2320ffe132d660edf8ba04051512fe38b93692d5`
 
 ## 1. 生成范围与判定规则
 
@@ -41,6 +41,7 @@
 - `000022_v1_2_richtext_asset_binding_facts.up.sql`
 - `000023_v1_2_personal_space_facts.up.sql`
 - `000024_v1_2_storage_quota_facts.up.sql`
+- `000025_integration_identity.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -141,6 +142,8 @@
 | 其他平台数据 | `content_moderation_actions` | 11 | `id` | 0 | 0 |
 | 其他平台数据 | `content_moderation_cases` | 12 | `id` | 0 | 0 |
 | 其他平台数据 | `content_revisions` | 13 | `id` | 0 | 0 |
+| 其他平台数据 | `integration_credentials` | 13 | `id` | 1 | 0 |
+| 其他平台数据 | `integration_principals` | 7 | `id` | 0 | 1 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
 | 其他平台数据 | `platform_compatibility_usage` | 6 | `usage_key` | 0 | 0 |
 | 其他平台数据 | `platform_operation_runs` | 11 | `id` | 0 | 0 |
@@ -202,6 +205,7 @@
 | `users` | `identity_mfa_recovery_codes` | `fk_identity_mfa_recovery_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_mfa_tickets` | `fk_identity_mfa_ticket_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_mfa_totp_methods` | `fk_identity_mfa_totp_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `integration_principals` | `integration_credentials` | `integration_credentials_principal_id_fkey` | `principal_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `likes` | `fk_likes_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `mutual_aid_details` | `fk_mutual_aid_details_created_by` | `created_by` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `notifications` | `fk_notifications_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -2392,6 +2396,48 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `created_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
 | `created_actor_id` | `varchar(128)` | NN | 否 | `''` |
+
+#### `integration_credentials`
+
+- 主键：`id`
+- 唯一列集：(prefix)；(digest)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `varchar(128)` | PK | 是 | `—` |
+| `principal_id` | `varchar(128)` | FK/NN | 否 | `—` |
+| `prefix` | `varchar(22)` | UQ/NN | 否 | `—` |
+| `digest` | `bytea` | UQ/NN | 否 | `—` |
+| `purpose` | `varchar(32)` | NN | 否 | `—` |
+| `status` | `varchar(16)` | NN | 否 | `—` |
+| `rules` | `jsonb` | NN | 否 | `—` |
+| `not_before_ms` | `bigint` | NN | 否 | `—` |
+| `expires_at_ms` | `bigint` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
+| `created_by_admin_id` | `varchar(128)` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+外键明细：
+
+- `integration_credentials_principal_id_fkey`：`integration_credentials(principal_id)` → `integration_principals(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `integration_principals`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `varchar(128)` | PK | 是 | `—` |
+| `name` | `varchar(120)` | NN | 否 | `—` |
+| `status` | `varchar(16)` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
+| `created_by_admin_id` | `varchar(128)` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
 
 #### `platform_command_audits`
 

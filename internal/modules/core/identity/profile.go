@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
@@ -21,6 +22,7 @@ const (
 	portAdminSessionRepository    = "identity.adapter.admin-session-repository"
 	portAdminSecurityRepository   = "identity.adapter.admin-security-repository"
 	portAdminDomainRepository     = "identity.adapter.admin-domain-repository"
+	portIntegrationRepository     = "identity.adapter.integration-repository"
 )
 
 // BindPostgreSQLAdapters binds only Identity's repository adapters. It is
@@ -43,6 +45,7 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 		repository.NewPgAdminSessionRepository(pool),
 		repository.NewPgAdminSecurityRepository(pool),
 		repository.NewPgAdminDomainRepository(pool),
+		repository.NewPgIntegrationRepository(pool),
 	)
 }
 
@@ -50,6 +53,10 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 // existing local-development fallback.
 func BindMemoryAdapters(app *platformmodule.AppContext) error {
 	adminAccounts := repository.NewMemoryAdminAccountRepository()
+	adminDomains := repository.NewMemoryAdminDomainRepository()
+	if err := adminDomains.ReplaceAdminRolePermissionFacts(context.Background(), "security_admin", []string{"identity.integration.read", "identity.integration.manage"}, "system:memory-profile"); err != nil {
+		return err
+	}
 	return bindAdapters(
 		app,
 		repository.NewMemoryUserRepository(),
@@ -63,7 +70,8 @@ func BindMemoryAdapters(app *platformmodule.AppContext) error {
 		repository.NewMemoryDelegationRepository(),
 		repository.NewMemoryAdminSessionRepository(),
 		repository.NewMemoryAdminSecurityRepository(),
-		repository.NewMemoryAdminDomainRepository(),
+		adminDomains,
+		repository.NewMemoryIntegrationRepository(),
 	)
 }
 
@@ -81,7 +89,11 @@ func bindAdapters(
 	adminSessions repository.AdminSessionRepository,
 	adminSecurity repository.AdminSecurityRepository,
 	adminDomains repository.AdminDomainRepository,
+	integrations repository.IntegrationRepository,
 ) error {
+	if err := app.Provide(portIntegrationRepository, integrations); err != nil {
+		return err
+	}
 	if err := app.Provide(portUserRepository, users); err != nil {
 		return err
 	}

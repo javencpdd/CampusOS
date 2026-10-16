@@ -1,10 +1,10 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-10-16 14:02 (Asia/Shanghai); V12-02c first whitelist-policy slice accepted
+> Snapshot date: 2026-10-16 18:50 (Asia/Shanghai); V12-03a first declaration/CLI slice
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.14.0`
-> Latest implementation stage: `v1.2-dev` (V12-02a/02d/02b completed in their bounded scope; V12-02c first host whitelist-policy slice passed implementation/automation/Linux target; whole stage partial)
-> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000024`; next append-only version is `000025`
+> Latest implementation stage: `v1.2-dev` (V12-02a/02d/02b/02c completed in their planned scope; stage03a first slice accepted; whole stage incomplete)
+> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000025`; next append-only version is `000026`
 
 Current stage authority is `docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md`.
 The accepted predecessor V12-02b exit is `docs/进度/v1.2-dev/v1.2.110-dev.md`, with the exact
@@ -16,14 +16,9 @@ cmd/server + current Admin/Web browser checks. Builds are separate from browser 
 User/Admin identity, private original resource reads and metadata/permission previews remain distinct.
 Current Admin SPA uses its own HttpOnly refresh/CSRF, current profile and self MFA/logout. Resource
 commands still reload actual facts and check their own Policy, current authority and required audit.
-The static Admin architecture view covers 24 migrations, 100 business tables and two executor tables.
+The static Admin architecture view covers 25 migrations, 102 business tables and two executor tables.
 Runtime development branding remains `v1.1.0-dev`; bounded v1.2 phase work is not a v1.2 release.
-Integration 02c has started a bounded host-only whitelist Policy/strict codec, Schema/SDK and independent
-oracle slice: 10 native Linux race tests, 192 actual Go/oracle outputs (144 combinations), 64 concurrent
-callers and full Go/SDK/contracts/architecture/documentation gates passed; see `v1.2.111-dev.md`.
-Digest credentials, actual endpoint authentication, persistent rotation/revocation and original-resource ACL
-composition still need implementation. v5 Dispatcher/runtime 03c, Knowledge source ACL 09a and target
-Windows/release work are not completed by this slice. Earlier per-slice progress is historical evidence, not remaining work.
+Integration02c is complete: independent digest credentials in PG/Memory, current Admin permission/MFA/CSRF management, one-time issue, atomic rotate/revoke and exact channel/endpoint/resource whitelists. Explicit runtimev2 adds the existing Community public-thread Port while retaining frozenv1. Actual source ACLs and machine/source row locks compose until required typed audit/outbox commit; no User/Admin/Host identity fallback or plaintext persistence. Twelve routes and Admin lifecycle UI are delivered. Native30 tops without FAIL/SKIP/race,384 Go/oracle decisions,PG rollback/ABA/lock/rotation and18 real cmd/server+Admin+Chrome checks,54 Admin components and common gates passed; see v1.2.112-dev.md and v12-02c-exit-linux.json. Migration25 preserves all100 prior business tables, typed attribution and allocation highwater; nonempty identities or live permission references reject down. Knowledge producers09a/full public Knowledge MCP11,v5Dispatcher03c and Windows/whole-version release retain their own stages. Current earliest incomplete stage03a has G1/01a dependencies satisfied. Its first strict full-Manifest JSON decode and offline CLI slice passed native race/23 actual CLI checks; production catalogs, package bytes/signatures/digest conflicts, primary CLI integration and v4 example replacement remain incomplete. See v1.2.113-dev.md and v12-03a-manifest-linux.json; no03b work started. Earlier progress files retain historical evidence.
 
 Historical v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
 `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`. The v1.0 formal plan is
@@ -74,7 +69,7 @@ The four extension categories are not interchangeable:
 | Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
 | Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
 | Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
-| Database | 100 application tables plus two checksum/lock metadata tables across migrations `000001`–`000024`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
+| Database | 102 application tables plus two checksum/lock metadata tables across migrations `000001`–`000025`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
 
 ## 3. Important Boundaries
 

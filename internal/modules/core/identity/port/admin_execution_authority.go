@@ -14,6 +14,10 @@ type AdminExecutionQuery struct {
 
 func (q AdminExecutionQuery) Validate() error {
 	switch q.PermissionCode {
+	case "identity.integration.read", "identity.integration.manage":
+		if q.Scope.Kind != "identity.integration_inventory" || q.Scope.ID != "all" {
+			return ErrResourcePolicyInvalid
+		}
 	case "community.thread.read":
 		if q.Scope.Kind == "community.thread_inventory" && q.Scope.ID == "all" {
 			return nil
@@ -59,7 +63,7 @@ func (q AdminExecutionQuery) RequiresCurrentMFA() bool {
 	if q.PermissionCode == "personal_space.space.manage" && (q.Scope.Kind == "personal_space.storage_status" || q.Scope.Kind == "personal_space.space_summary") {
 		return false
 	}
-	return q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
+	return q.PermissionCode != "identity.integration.read" && q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
 }
 
 type AdminExecutionAuthority struct {

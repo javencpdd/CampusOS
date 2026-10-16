@@ -64,6 +64,11 @@ func (r *PgThreadRepository) RecheckPublicThread(ctx context.Context, id string,
 	where := `id = $1 AND facts_version = $2 AND publication_status = 'published'
 		AND moderation_status = 'clear' AND deletion_status = 'active'`
 	query := selectThreadSQL(where)
+	if transaction.Active(ctx) && !incrementView {
+		// A composed Integration read keeps the same checked public row until
+		// its machine audit/commit. Concurrent take-down waits for this read.
+		query += ` FOR SHARE`
+	}
 	if incrementView {
 		// The UPDATE locks the current row and PostgreSQL re-evaluates the
 		// predicate after a concurrent writer commits before returning it.

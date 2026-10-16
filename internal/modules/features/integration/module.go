@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
@@ -39,6 +41,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string                { return ModuleID }
 func (m *Module) Dependencies() []string {
 	return []string{
+		"core.identity", "core.community",
 		"core.plugin-platform",
 		"feature.personal-space",
 		ai.ModuleID,
@@ -107,6 +110,14 @@ func (m *Module) Start(context.Context) error {
 			SummaryPortFunc(func(context.Context) Card { return legacySummarySource.metricsCard() }),
 		),
 	)
+	m.handler.machine, err = lookup[identityport.IntegrationReadGateway](m.app, "identity.integration-read-gateway")
+	if err != nil {
+		return err
+	}
+	m.handler.publicContent, err = lookup[communityport.ContentQuery](m.app, "community.content-query")
+	if err != nil {
+		return err
+	}
 	return m.app.Provide("integration.overview.handler", m.handler)
 }
 func (m *Module) Stop(context.Context) error { return nil }

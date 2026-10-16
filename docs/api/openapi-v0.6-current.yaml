@@ -813,6 +813,470 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/admin/identity/integration-endpoints:
+    get:
+      operationId: d_Identity_Integration_Endpoints
+      summary: GET /api/v1/admin/identity/integration-endpoints
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.endpoints
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationEndpointInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations:
+    get:
+      operationId: d_Identity_Integration_List
+      summary: GET /api/v1/admin/identity/integrations
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.list
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: d_Identity_Integration_Create
+      summary: POST /api/v1/admin/identity/integrations
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPrincipal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}:
+    put:
+      operationId: d_Identity_Integration_Update
+      summary: PUT /api/v1/admin/identity/integrations/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationUpdateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPrincipal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials:
+    get:
+      operationId: d_Identity_Integration_List
+      summary: GET /api/v1/admin/identity/integrations/:id/credentials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.credentials
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: d_Identity_Integration_Issue
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.issue
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationIssueRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationIssueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}:
+    put:
+      operationId: d_Identity_Integration_Scope
+      summary: PUT /api/v1/admin/identity/integrations/:id/credentials/:credential_id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.scope
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationScopeRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCredential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}/revoke:
+    post:
+      operationId: d_Identity_Integration_Revoke
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials/:credential_id/revoke
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.revoke
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationVersionRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCredential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}/rotate:
+    post:
+      operationId: d_Identity_Integration_Rotate
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials/:credential_id/rotate
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.rotate
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationRotateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationIssueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/identity/login:
     post:
       operationId: d_Identity_AdminDomain_Login
@@ -4977,6 +5441,136 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/integration/identity/me:
+    get:
+      operationId: d_Identity_Integration_Me
+      summary: GET /api/v1/integration/identity/me
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-integration-self
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-integration-self
+      x-campusos-operation: http.identity.integration_self.read
+      x-campusos-auth: integration-digest+current-facts
+      security:
+        - integrationCredential: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCurrentSelf'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/mcp/tools/{name}/call:
+    post:
+      operationId: integrationHandler_IntegrationMCP
+      summary: POST /api/v1/integration/mcp/tools/:name/call
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: source-module-public-policy
+      x-campusos-module-owner: feature.integration-overview
+      x-campusos-scope: exact-channel-endpoint-resource
+      x-campusos-operation: http.integration.public_thread.mcp_read
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationPublicThreadRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPublicThread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/threads/{id}:
+    get:
+      operationId: integrationHandler_IntegrationThread
+      summary: GET /api/v1/integration/threads/:id
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: source-module-public-policy
+      x-campusos-module-owner: feature.integration-overview
+      x-campusos-scope: exact-channel-endpoint-resource
+      x-campusos-operation: http.integration.public_thread.read
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPublicThread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/integrations/overview:
     get:
       operationId: integrationHandler_Overview
@@ -12570,7 +13164,169 @@ components:
       type: apiKey
       in: cookie
       name: campusos_admin_refresh
+    integrationCredential:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
+    IntegrationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+    IntegrationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, status, version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        status: {type: string, enum: [active, suspended, revoked]}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+    IntegrationVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+    IntegrationRule:
+      type: object
+      additionalProperties: false
+      required: [id, channel, endpoint, action, resource_kind, resource_ids, status, not_before_ms, expires_at_ms]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 128}
+        channel: {type: string, enum: [integration_http, integration_mcp]}
+        endpoint: {type: string, enum: [public_thread.read, public_thread_read]}
+        action: {type: string, enum: [community.thread.read]}
+        resource_kind: {type: string, enum: [community.thread]}
+        resource_ids: {type: array, minItems: 1, maxItems: 32, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$'}}
+        status: {type: string, enum: [active, suspended, revoked]}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991}
+    IntegrationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [principal_version, not_before_ms, expires_at_ms, rules]
+      properties:
+        principal_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991, description: 'Must be future and no more than 90 days from issuance.'}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationRotateRequest:
+      type: object
+      additionalProperties: false
+      required: [principal_version, version, not_before_ms, expires_at_ms, rules]
+      properties:
+        principal_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [version, rules]
+      properties:
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationPrincipal:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, version, created_by_admin_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [active, suspended, revoked]}
+        version: {type: string}
+        created_by_admin_id: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    IntegrationCredential:
+      type: object
+      additionalProperties: false
+      required: [id, principal_id, prefix, purpose, status, rules, not_before_ms, expires_at_ms, version, created_by_admin_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        principal_id: {type: string}
+        prefix: {type: string, pattern: '^cint1_[a-f0-9]{16}$'}
+        purpose: {type: string, enum: [integration_api]}
+        status: {type: string, enum: [active, revoked]}
+        rules: {type: array, items: {$ref: '#/components/schemas/IntegrationRule'}}
+        not_before_ms: {type: integer}
+        expires_at_ms: {type: integer}
+        version: {type: string}
+        created_by_admin_id: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    IntegrationInventory:
+      type: object
+      additionalProperties: false
+      required: [principals, credentials, next_cursor]
+      properties:
+        principals: {type: array, items: {$ref: '#/components/schemas/IntegrationPrincipal'}}
+        credentials: {type: array, items: {$ref: '#/components/schemas/IntegrationCredential'}}
+        next_cursor: {type: string}
+    IntegrationIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [credential, token]
+      properties:
+        credential: {$ref: '#/components/schemas/IntegrationCredential'}
+        token: {type: string, readOnly: true, description: 'One-time response only. Never returned by inventory/self APIs or persisted server-side.'}
+    IntegrationEndpointInventory:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [channel, id, action, resource_kind, enabled, integration_allowed]
+        properties:
+          channel: {type: string}
+          id: {type: string}
+          action: {type: string}
+          resource_kind: {type: string}
+          enabled: {type: boolean}
+          integration_allowed: {type: boolean}
+    IntegrationCurrentSelf:
+      type: object
+      additionalProperties: false
+      required: [principal, name, prefix, expires_at_ms]
+      properties:
+        principal:
+          type: object
+          additionalProperties: false
+          required: [contract, actor, audience, authentication_strength, credential_id]
+          properties:
+            contract: {type: string, enum: [campusos.principal/v1]}
+            actor:
+              type: object
+              additionalProperties: false
+              required: [kind, id]
+              properties:
+                kind: {type: string, enum: [integration]}
+                id: {type: string}
+            audience: {type: string, enum: [integration_api]}
+            authentication_strength: {type: string, enum: [credential]}
+            credential_id: {type: string}
+        name: {type: string}
+        prefix: {type: string}
+        expires_at_ms: {type: integer}
+    IntegrationPublicThreadRequest:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$', maxLength: 128}
+    IntegrationPublicThread:
+      type: object
+      additionalProperties: false
+      required: [id, title, content, content_format, updated_at]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        content: {type: string}
+        content_format: {type: string}
+        updated_at: {type: string, format: date-time}
     EmptyObject:
       type: object
       additionalProperties: false

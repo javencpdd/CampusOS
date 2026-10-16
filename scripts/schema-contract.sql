@@ -5,7 +5,7 @@ DECLARE
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
-        'schema_migrations', 'schema_migration_locks',
+        'schema_migrations', 'schema_migration_locks', 'integration_principals', 'integration_credentials',
         'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles',
         'identity_legacy_email_placeholders', 'identity_reserved_identifiers',
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
@@ -46,7 +46,7 @@ BEGIN
         'categories.node_kind', 'categories.lifecycle_status', 'categories.version', 'categories.color',
         'threads.author_id', 'threads.category_id', 'threads.status', 'threads.thread_type',
         'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision', 'threads.facts_version',
-        'admin_role_permissions.facts_version',
+        'admin_role_permissions.facts_version', 'integration_principals.facts_version', 'integration_principals.created_by_admin_id', 'integration_credentials.digest', 'integration_credentials.prefix', 'integration_credentials.purpose', 'integration_credentials.rules', 'integration_credentials.facts_version',
         'richtext_article_contents.facts_version', 'user_assets.facts_version', 'richtext_article_attachments.facts_version',
 		'user_spaces.facts_version','user_space_style_snapshots.facts_version','user_storage_quotas.facts_version',
         'roles.facts_version', 'user_roles.facts_version', 'role_permissions.facts_version', 'permission_definitions.facts_version',
@@ -336,6 +336,8 @@ BEGIN
         RAISE EXCEPTION 'post authority facts or deletion actor guards missing or disabled';
     END IF;
 
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.integration_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
+       (SELECT count(*) FROM (VALUES ('public.integration_principals','trg_integration_principal_facts'),('public.integration_credentials','trg_integration_credential_facts')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_integration_facts()'))<>2 THEN RAISE EXCEPTION 'missing managed Integration facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.user_scope_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
        (SELECT count(*) FROM (VALUES ('public.roles','trg_roles_user_scope_facts_version'),('public.user_roles','trg_user_roles_user_scope_facts_version'),('public.role_permissions','trg_role_permissions_user_scope_facts_version'),('public.permission_definitions','trg_permission_definitions_user_scope_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_user_scope_facts_version()'))<>4 THEN RAISE EXCEPTION 'missing managed User scoped execution facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.richtext_asset_binding_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR

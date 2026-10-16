@@ -80,7 +80,9 @@ type Dependencies struct {
 
 // Build preserves the existing /api/v1 route and authorization contract.
 func Build(d Dependencies) *Router {
-	r := gin.Default()
+	// Structured recovery/request logging below owns this boundary. Gin's
+	// duplicate default logger would also record raw credential query strings.
+	r := gin.New()
 	routeRegistry := platformroute.NewRegistry()
 	userHandler := d.Identity.User
 	roleHandler := d.Identity.Role
@@ -130,6 +132,10 @@ func Build(d Dependencies) *Router {
 	r.NoRoute(APINoRoute)
 
 	v1 := r.Group("/api/v1")
+	integration := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceIntegration, d.Permissions)
+	integration.Operation("http.identity.integration_self.read").GET("/integration/identity/me", d.Identity.Integration.Me)
+	integration.Operation("http.integration.public_thread.read").GET("/integration/threads/:id", d.Integration.IntegrationThread)
+	integration.Operation("http.integration.public_thread.mcp_read").POST("/integration/mcp/tools/:name/call", d.Integration.IntegrationMCP)
 	public := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudiencePublic, d.Permissions)
 	{
 		public.GET("", APIIndex)
@@ -352,6 +358,15 @@ func Build(d Dependencies) *Router {
 	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions, d.AdminAccess)
 	admin.SetAdminDomain(d.AdminJWT, d.AdminSessions, d.AdminCodes)
 	admin.Use(middleware.RequireAdminDomainAccess(d.AdminJWT, d.AdminSessions, nil))
+	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.list").GET("/admin/identity/integrations", d.Identity.Integration.List)
+	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.credentials").GET("/admin/identity/integrations/:id/credentials", d.Identity.Integration.List)
+	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.endpoints").GET("/admin/identity/integration-endpoints", d.Identity.Integration.Endpoints)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.create").POST("/admin/identity/integrations", d.Identity.Integration.Create)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.update").PUT("/admin/identity/integrations/:id", d.Identity.Integration.Update)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.issue").POST("/admin/identity/integrations/:id/credentials", d.Identity.Integration.Issue)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.rotate").POST("/admin/identity/integrations/:id/credentials/:credential_id/rotate", d.Identity.Integration.Rotate)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.scope").PUT("/admin/identity/integrations/:id/credentials/:credential_id", d.Identity.Integration.Scope)
+	admin.PermissionCode("identity.integration.manage").Operation("http.identity.integration.revoke").POST("/admin/identity/integrations/:id/credentials/:credential_id/revoke", d.Identity.Integration.Revoke)
 	{
 		admin.Permission("admin_account", "create").POST("/admin/identity/accounts", d.Identity.AdminDomain.CreateAccount)
 		admin.Permission("admin_account", "suspend").POST("/admin/identity/accounts/:id/suspend", d.Identity.AdminDomain.SuspendAccount)

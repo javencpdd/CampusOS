@@ -13,13 +13,24 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
-	"d.Identity.AdminDomain.Login":       {RequestSchema: "AdminDomainLoginRequest", ResponseSchema: "AdminDomainTokenResponse", AdditionalErrors: []string{"401", "503"}},
-	"d.Identity.AdminDomain.Refresh":     {RequestSchema: "AdminDomainRefreshRequest", ResponseSchema: "AdminDomainTokenResponse", RequestOptional: true, AdditionalErrors: []string{"401", "403", "503"}},
-	"d.Identity.AdminDomain.Me":          {ResponseSchema: "AdminCurrentSelf", NoBody: true, AdditionalErrors: []string{"401", "409", "503"}},
-	"d.Identity.AdminDomain.Logout":      {RequestSchema: "EmptyObject", ResponseSchema: "AdminOwnLogoutReceipt", RequestOptional: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
-	"d.Identity.AdminDomain.EnrollTOTP":  {RequestSchema: "AdminTOTPEnrollRequest", ResponseSchema: "AdminTOTPEnrollment", AdditionalErrors: []string{"401", "403", "409", "503"}},
-	"d.Identity.AdminDomain.ConfirmTOTP": {RequestSchema: "AdminTOTPCodeRequest", ResponseSchema: "AdminTOTPConfirmation", AdditionalErrors: []string{"401", "403", "409", "503"}},
-	"d.Identity.AdminDomain.StepUp":      {RequestSchema: "AdminTOTPCodeRequest", ResponseSchema: "AdminStepUpReceipt", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"d.Identity.Integration.List":          {ResponseSchema: "IntegrationInventory", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Endpoints":     {ResponseSchema: "IntegrationEndpointInventory", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Me":            {ResponseSchema: "IntegrationCurrentSelf", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Create":        {RequestSchema: "IntegrationCreateRequest", ResponseSchema: "IntegrationPrincipal", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Update":        {RequestSchema: "IntegrationUpdateRequest", ResponseSchema: "IntegrationPrincipal", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Issue":         {RequestSchema: "IntegrationIssueRequest", ResponseSchema: "IntegrationIssueResponse", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Rotate":        {RequestSchema: "IntegrationRotateRequest", ResponseSchema: "IntegrationIssueResponse", SuccessStatus: "201", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Scope":         {RequestSchema: "IntegrationScopeRequest", ResponseSchema: "IntegrationCredential", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.Integration.Revoke":        {RequestSchema: "IntegrationVersionRequest", ResponseSchema: "IntegrationCredential", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"integrationHandler.IntegrationThread": {ResponseSchema: "IntegrationPublicThread", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"integrationHandler.IntegrationMCP":    {RequestSchema: "IntegrationPublicThreadRequest", ResponseSchema: "IntegrationPublicThread", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"d.Identity.AdminDomain.Login":         {RequestSchema: "AdminDomainLoginRequest", ResponseSchema: "AdminDomainTokenResponse", AdditionalErrors: []string{"401", "503"}},
+	"d.Identity.AdminDomain.Refresh":       {RequestSchema: "AdminDomainRefreshRequest", ResponseSchema: "AdminDomainTokenResponse", RequestOptional: true, AdditionalErrors: []string{"401", "403", "503"}},
+	"d.Identity.AdminDomain.Me":            {ResponseSchema: "AdminCurrentSelf", NoBody: true, AdditionalErrors: []string{"401", "409", "503"}},
+	"d.Identity.AdminDomain.Logout":        {RequestSchema: "EmptyObject", ResponseSchema: "AdminOwnLogoutReceipt", RequestOptional: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"d.Identity.AdminDomain.EnrollTOTP":    {RequestSchema: "AdminTOTPEnrollRequest", ResponseSchema: "AdminTOTPEnrollment", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"d.Identity.AdminDomain.ConfirmTOTP":   {RequestSchema: "AdminTOTPCodeRequest", ResponseSchema: "AdminTOTPConfirmation", AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"d.Identity.AdminDomain.StepUp":        {RequestSchema: "AdminTOTPCodeRequest", ResponseSchema: "AdminStepUpReceipt", AdditionalErrors: []string{"401", "403", "409", "503"}},
 
 	"userHandler.RequestRegistrationChallenge":         {RequestSchema: "RegistrationChallengeRequest", ResponseSchema: "ChallengeReceipt", AdditionalErrors: []string{"429", "503"}},
 	"userHandler.VerifyRegistrationChallenge":          {RequestSchema: "RegistrationChallengeVerifyRequest", ResponseSchema: "ChallengeTicket"},
@@ -241,8 +252,13 @@ func openAPIComponents() string {
       type: apiKey
       in: cookie
       name: campusos_admin_refresh
+    integrationCredential:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-    EmptyObject:
+` + integrationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

@@ -180,3 +180,5 @@ export type { PluginV5SafeEvent, PluginV5EventDelivery, PluginV5EventDecisionInp
 export type { ScopeDelegationScope, ScopeDelegationAction, ScopeDelegationAtom, ScopeDelegationDecisionInput, ScopeDelegationErrorCode } from "./scope-delegation.js";
 export { INTEGRATION_ACCESS_VERSION } from "./integration-access.js";
 export type { IntegrationAccessTargetV1, IntegrationAccessEndpointV1, IntegrationAccessRuleV1, IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1, IntegrationAccessErrorCodeV1, } from "./integration-access.js";
+export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
+export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread } from "./integration-runtime.js";

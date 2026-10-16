@@ -203,6 +203,9 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	case platformroute.AudienceAuthenticated:
 		descriptor.Auth = "jwt"
 		descriptor.Audit = "request-log"
+	case platformroute.AudienceIntegration:
+		descriptor.Auth = "integration-digest+current-facts+whitelist+source-acl"
+		descriptor.Audit = "required-command+outbox"
 	case platformroute.AudienceAdmin:
 		if g.scopeType == "" {
 			descriptor.Auth = "jwt+admin-account+permission"
@@ -229,6 +232,18 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	}
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(operation, "http.identity.integration.") {
+		descriptor.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
+		descriptor.Audit = "required-command+outbox"
+		if method == "GET" {
+			descriptor.Auth = "jwt+current-admin-session+permission"
+			descriptor.Audit = "none"
+		}
+	}
+	if operation == "http.identity.integration_self.read" {
+		descriptor.Auth = "integration-digest+current-facts"
+		descriptor.Audit = "none"
 	}
 	switch operation {
 	case "http.identity.admin_session.login":

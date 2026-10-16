@@ -1,0 +1,213 @@
+{
+  "schema": "campusos.v12-02c-responsibilities/v1",
+  "stage": "V12-02c",
+  "scope": "Identity Integration Principal, digest credentials, current Admin management, HTTP/MCP exact whitelist and real Community public source intersection",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/integration/identity/me",
+      "operation": "http.identity.integration_self.read",
+      "owner": "core.identity",
+      "audience": "integration",
+      "permission": "",
+      "authority": "integration-digest+current-facts",
+      "audit": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/integration/threads/:id",
+      "operation": "http.integration.public_thread.read",
+      "owner": "feature.integration-overview",
+      "audience": "integration",
+      "permission": "",
+      "authority": "integration-digest+current-facts+whitelist+source-acl",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integration/mcp/tools/:name/call",
+      "operation": "http.integration.public_thread.mcp_read",
+      "owner": "feature.integration-overview",
+      "audience": "integration",
+      "permission": "",
+      "authority": "integration-digest+current-facts+whitelist+source-acl",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integrations",
+      "operation": "http.identity.integration.list",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.read",
+      "authority": "jwt+current-admin-session+permission",
+      "audit": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials",
+      "operation": "http.identity.integration.credentials",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.read",
+      "authority": "jwt+current-admin-session+permission",
+      "audit": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/identity/integration-endpoints",
+      "operation": "http.identity.integration.endpoints",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.read",
+      "authority": "jwt+current-admin-session+permission",
+      "audit": "none"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations",
+      "operation": "http.identity.integration.create",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/identity/integrations/:id",
+      "operation": "http.identity.integration.update",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials",
+      "operation": "http.identity.integration.issue",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id/rotate",
+      "operation": "http.identity.integration.rotate",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id",
+      "operation": "http.identity.integration.scope",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/integrations/:id/credentials/:credential_id/revoke",
+      "operation": "http.identity.integration.revoke",
+      "owner": "core.identity",
+      "audience": "admin",
+      "permission": "identity.integration.manage",
+      "authority": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "audit": "required-command+outbox"
+    }
+  ],
+  "paths": [
+    {
+      "id": "store",
+      "implementation": [
+        "internal/modules/core/identity/repository/integration_repository.go",
+        "internal/modules/core/identity/repository/pg_integration_repository.go",
+        "migrations/000025_integration_identity.up.sql",
+        "migrations/000025_integration_identity.down.sql"
+      ],
+      "tests": [
+        "TestIntegrationMemoryStore",
+        "TestIntegrationPostgreSQLStore"
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "implementation": [
+        "internal/modules/core/identity/service/integration_service.go"
+      ],
+      "tests": [
+        "TestIntegrationLifecycleAndSecretProjection",
+        "TestIntegrationLifecycleRollback",
+        "TestIntegrationManagementDomainAndMFA",
+        "TestIntegrationConcurrentRotationSingleWinner",
+        "TestIntegrationPostgreSQLLifecycleAndAtomicRotation",
+        "TestIntegrationPostgreSQLAuditOutboxRollback",
+        "TestIntegrationIssueBoundsAndClosedInventory"
+      ]
+    },
+    {
+      "id": "authentication_and_whitelist",
+      "implementation": [
+        "internal/modules/core/identity/service/integration_gateway.go",
+        "internal/modules/core/identity/policy/integration_runtime.go"
+      ],
+      "tests": [
+        "TestIntegrationCurrentCredentialAndWhitelist",
+        "TestIntegrationReadFinalProofAndResourceFailure",
+        "TestIntegrationPostgreSQLReadLocksOrderRevocation",
+        "TestIntegrationPostgreSQLCommittedRevokeAndABABeforeRead",
+        "TestIntegrationMissingAdaptersAndUnavailableProof",
+        "TestIntegrationRuntimeIndependentWireCorpus",
+        "TestIntegrationRuntimeVersionAndFinalBinding"
+      ]
+    },
+    {
+      "id": "source_and_http",
+      "implementation": [
+        "internal/modules/features/integration/public_read.go",
+        "internal/modules/core/identity/handler/integration_handler.go",
+        "pkg/middleware/integration.go"
+      ],
+      "tests": [
+        "TestIntegrationManagementHTTPCurrentAdminMFACSRFAndCodec",
+        "TestIntegrationHTTPRealPublicSourceIntersection",
+        "TestIntegrationPostgreSQLSourceACLAndCommitLock"
+      ]
+    },
+    {
+      "id": "production_and_ui",
+      "implementation": [
+        "admin/src/modules/integrations/pages/IntegrationPrincipalsView.vue",
+        "internal/transport/httpapi/router.go",
+        "internal/modules/core/identity/module.go"
+      ],
+      "tests": [
+        "TestIntegrationActualServerBrowserLifecycle",
+        "TestIntegrationRouteDomainSchemaAndAdminCSRF"
+      ],
+      "component": "admin/tests/integration-principals.spec.ts"
+    }
+  ],
+  "future_stage_ownership": {
+    "V12-03c": "v5 Dispatcher and plugin Host machine authority",
+    "V12-09a": "Knowledge collections and original source producers",
+    "V12-11": "Public Knowledge MCP/Host API and retrieval, beyond this declared public-thread foundation"
+  },
+  "invariants": [
+    "no raw credential storage or browser persistence",
+    "one-time 256bit secret; independent Integration scheme and domain",
+    "no undeclared channel/endpoint/resource or cross-rule splicing",
+    "current exact Admin session/permission/MFA management",
+    "required audit/outbox rollback and non-reusing facts",
+    "real source module ACL and machine/source row locks to commit",
+    "permanent revoke; atomic single-winner rotate; no stale proof bytes"
+  ]
+}
