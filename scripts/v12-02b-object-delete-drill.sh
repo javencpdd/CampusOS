@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+# Object owned lifecycle receipts, exact private bindings, safe pending delete retry and bounded ledger finalization.
+set -euo pipefail
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+if (( $# != 0 )); then echo "usage: $0" >&2; exit 2; fi
+mkdir -p .cache/v12-02b-object-delete/tmp
+export TMPDIR="$repo_root/.cache/v12-02b-object-delete/tmp" GOTMPDIR="$repo_root/.cache/v12-02b-object-delete/tmp"
+export GOCACHE="$repo_root/.cache/v12-g0/go-cache"
+work_dir="$(mktemp -d "$repo_root/.cache/v12-02b-object-delete/drill.XXXXXX")"
+container="campusos-v12-02b-object-delete-$$"
+database="campusos_v12_02b_author_write"
+pg_password="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
+report="docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-object-delete-linux.json"
+started=false
+cleanup() {
+  local status=$?
+  if [[ "$started" == true ]]; then
+    if (( status != 0 )); then docker logs "$container" >"$work_dir/postgres-failure.log" 2>&1 || true; fi
+    docker stop "$container" >/dev/null 2>&1 || true
+  fi
+  if (( status != 0 )); then echo "failed drill logs retained: $work_dir" >&2; fi
+}
+trap cleanup EXIT
+run_check() {
+  local name="$1"
+  shift
+  echo "V12-02b object delete receipt: $name"
+  if "$@" >"$work_dir/$name.log" 2>&1; then return; fi
+  tail -n 80 "$work_dir/$name.log" >&2
+  return 1
+}
+psql_scalar() {
+  docker exec -i -e PGPASSWORD="$pg_password" "$container" psql -h 127.0.0.1 -U campusos -d "$database" -qAtv ON_ERROR_STOP=1 -c "$1"
+}
+mkdir -p "$work_dir/bin"
+cat >"$work_dir/bin/psql" <<'SHIM'
+#!/usr/bin/env bash
+exec docker exec -i -e PGPASSWORD "$DRILL_DB_CONTAINER" psql "$@"
+SHIM
+chmod +x "$work_dir/bin/psql"
+export CAMPUSOS_SKIP_DOTENV=true PSQL_MODE=host PATH="$work_dir/bin:$PATH"
+export DRILL_DB_CONTAINER="$container" DRILL_REPO="$repo_root"
+export DB_HOST=127.0.0.1 DB_PORT=5432 DB_USER=campusos DB_PASSWORD="$pg_password" DB_NAME="$database"
+docker run --rm -d --name "$container" --tmpfs /var/lib/postgresql/data:rw,size=512m \
+  -v "$repo_root:$repo_root:ro" -w "$repo_root" \
+  -e POSTGRES_DB="$database" -e POSTGRES_USER=campusos -e POSTGRES_PASSWORD="$pg_password" \
+  -p 127.0.0.1::5432 postgres:16-alpine >/dev/null
+started=true
+for attempt in $(seq 1 80); do
+  if psql_scalar 'SELECT 1;' >/dev/null 2>&1; then break; fi
+  if (( attempt == 80 )); then echo "PostgreSQL did not become ready" >&2; exit 1; fi
+  sleep 0.5
+done
+pg_version="$(psql_scalar 'SHOW server_version_num;')"
+(( pg_version >= 160000 && pg_version < 170000 )) || { echo "PostgreSQL 16 required" >&2; exit 1; }
+pg_port="$(docker port "$container" 5432/tcp | awk -F: '/127\.0\.0\.1/ {print $NF; exit}')"
+[[ "$pg_port" =~ ^[0-9]+$ ]] || { echo "loopback PostgreSQL port required" >&2; exit 1; }
+database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/$database?sslmode=disable"
+run_check migrations-up bash scripts/migrate.sh up
+run_check migrations-check bash scripts/migrate.sh check
+expected_migrations="$(python3 -c 'from pathlib import Path; print(len(list(Path("migrations").glob("*.up.sql"))))')"
+[[ "$(psql_scalar 'SELECT count(*) FROM schema_migrations;')" == "$expected_migrations" ]] || { echo "expected all current migrations" >&2; exit 1; }
+psql_scalar 'CREATE DATABASE campusos_v12_02b_richtext_read;' >"$work_dir/read-database-create.log"
+run_check read-migrations-up env DB_NAME=campusos_v12_02b_richtext_read bash scripts/migrate.sh up
+run_check read-migrations-check env DB_NAME=campusos_v12_02b_richtext_read bash scripts/migrate.sh check
+read_database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/campusos_v12_02b_richtext_read?sslmode=disable"
+psql_scalar 'CREATE DATABASE campusos_v12_02b_asset_read_empty;' >"$work_dir/empty-database-create.log"
+run_check empty-migrations-up env DB_NAME=campusos_v12_02b_asset_read_empty bash scripts/migrate.sh up
+run_check empty-migrations-check env DB_NAME=campusos_v12_02b_asset_read_empty bash scripts/migrate.sh check
+empty_database_url="postgres://campusos:$pg_password@127.0.0.1:$pg_port/campusos_v12_02b_asset_read_empty?sslmode=disable"
+required_regex="$(python3 - <<'SELECT'
+import json,re
+from pathlib import Path
+known=set(json.loads(Path('docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-asset-read-admin-linux.json').read_text())['checks'])
+names=[]
+for folder in ['internal/modules/features/richtext','internal/modules/core/community/service','internal/modules/core/userstorage','internal/modules/features/personaldocuments','internal/server','internal/modules/core/identity/policy','internal/modules/core/identity/service']:
+ for path in Path(folder).glob('*test.go'):
+  for name in re.findall(r'^func (Test\w+)\(',path.read_text(),re.M):
+   if name in known or name.startswith('TestObjectDeleteReceipt'):names.append(name)
+names=sorted(set(names));assert len(names)==105 and len([n for n in names if n.startswith('TestObjectDeleteReceipt')])==6
+print('^('+'|'.join(names)+')$')
+SELECT
+)"
+run_check target-tests env CAMPUSOS_AUTHOR_WRITE_TEST_DATABASE_URL="$database_url" CAMPUSOS_RICHTEXT_TEST_DATABASE_URL="$read_database_url" CAMPUSOS_ASSET_EMPTY_TEST_DATABASE_URL="$empty_database_url" \
+ go test -race -p 1 -count=1 -v -run "$required_regex" ./internal/modules/features/richtext ./internal/modules/core/community/service ./internal/modules/core/userstorage ./internal/modules/features/personaldocuments ./internal/server ./internal/modules/core/identity/policy ./internal/modules/core/identity/service
+run_check composition go test -race -count=1 ./internal/modules/features/richtext ./internal/modules/core/community ./internal/modules/core/community/service ./internal/modules/features/personaldocuments ./internal/modules/core/userstorage ./internal/modules/core/identity/service ./internal/server
+run_check database bash scripts/database-check.sh all
+run_check go-all go test ./... -count=1
+run_check contracts make contracts-check
+run_check architecture make architecture-check
+run_check docs-build make docs-build
+run_check docs-links make docs-links
+run_check line-endings python3 scripts/check-line-endings.py --include-untracked
+run_check diff git diff --check
+python3 - "$work_dir" "$report" "$pg_version" "$expected_migrations" <<'REPORT'
+import hashlib,json,platform,re,subprocess,sys
+from datetime import datetime,timezone
+from pathlib import Path
+work,report=map(Path,sys.argv[1:3])
+tests=(work/'target-tests.log').read_text()
+prefix='docs/项目计划书v1/项目计划v1.2/evidence/'
+previous=json.loads(Path(prefix+'v12-02b-asset-read-admin-linux.json').read_text())
+known=set(previous['checks']);required=[]
+for folder in ['internal/modules/features/richtext','internal/modules/core/community/service','internal/modules/core/userstorage','internal/modules/features/personaldocuments','internal/server','internal/modules/core/identity/policy','internal/modules/core/identity/service']:
+ for path in Path(folder).glob('*test.go'):
+  for name in re.findall(r'^func (Test\w+)\(',path.read_text(),re.M):
+   if name in known or name.startswith('TestObjectDeleteReceipt'):required.append(name)
+required=sorted(set(required));new=[n for n in required if n.startswith('TestObjectDeleteReceipt')]
+actual=re.findall(r'^--- PASS: (\w+)(?: |$)',tests,re.M)
+assert len(new)==6 and len(required)==105 and sorted(actual)==sorted(required), f'required target tests differ: {required}, {actual}'
+assert not re.search(r'^\s*--- (?:FAIL|SKIP): ',tests,re.M),'target tests skipped or failed'
+assert 'WARNING: DATA RACE' not in tests
+sha=lambda path:hashlib.sha256(Path(path).read_bytes()).hexdigest()
+paths=['docs/api/http-routes-v0.6.json','docs/api/HTTP路由与授权矩阵-v0.6.md','docs/api/openapi-v0.6-current.yaml','cmd/campusos-contracts/main.go','internal/modules/core/identity/module.go','internal/modules/core/identity/module_test.go','admin/src/modules/architecture/pages/SystemArchitectureView.vue','admin/package.json','admin/pnpm-lock.yaml','migrations/README.md','scripts/schema-contract.sql','skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py','Makefile','internal/transport/httpapi/router.go','modules/core/user-storage/module.yaml','scripts/v12-02b-object-delete-drill.sh']
+paths += ['admin/src/modules/community/api.ts','admin/src/modules/community/pages/ThreadManageView.vue','admin/src/modules/operations/api.ts','admin/src/modules/operations/pages/EventLogView.vue','admin/tests/event-metadata.spec.ts','admin/vitest.config.ts','scripts/v12-02b-event-metadata-browser.mjs']
+for folder in ['pkg/eventbus','pkg/middleware','pkg/auth','internal/modules/features/personaldocuments','internal/modules/features/mutualaid','internal/modules/features/secondhand','internal/modules/core/community','internal/modules/core/moderation','internal/modules/core/identity/port','internal/modules/core/identity/policy','internal/modules/core/contenteditor','internal/modules/core/userstorage','internal/modules/features/richtext','internal/modules/features/personalspace','internal/modules/core/identity/portadapt','internal/modules/core/identity/repository','internal/modules/core/identity/service','internal/platform/reliability','internal/platform/transaction','internal/server']:
+ paths += [str(p) for p in Path(folder).rglob('*.go')]
+paths += [str(p) for p in Path('web/src/modules/content-editor').glob('*') if p.suffix in ['.ts','.vue']]
+paths += ['web/tests/thread-flags-view.spec.ts','web/vitest.config.ts','web/src/modules/richtext/api.ts']
+paths += ['web/src/modules/mutual-aid/pages/MutualAidDetailView.vue','web/src/modules/secondhand/pages/SecondhandDetailView.vue','web/src/modules/personal-documents/pages/PersonalDocumentsView.vue','web/src/modules/identity/session.ts','web/src/modules/community/components/SafeContentEditor.vue','web/src/modules/community/pages/CreateThreadView.vue','web/src/modules/community/pages/ThreadDetailView.vue','web/tests/checked-images.spec.ts','web/tests/structured-content.spec.ts','web/package.json','web/pnpm-lock.yaml']
+paths += [str(p) for p in Path('migrations').glob('*.sql')]
+paths += [str(p) for p in Path('internal/projectaudit').rglob('*.go')]
+paths += [str(p) for p in Path('migrations/er/current').glob('*') if p.is_file()]
+paths += [str(p) for p in Path('scripts').glob('v12-02b*drill.sh')]
+paths += [str(p) for p in Path('scripts/fixtures').glob('v12-02b-business-actor*.sql')]
+paths += ['scripts/fixtures/v12-02b-post-facts-legacy.sql','scripts/fixtures/v12-02b-article-facts-legacy.sql','scripts/fixtures/v12-02b-user-scope-facts-legacy.sql','scripts/fixtures/v12-02b-richtext-asset-facts-legacy.sql']
+prefix='docs/项目计划书v1/项目计划v1.2/evidence/'
+dependencies=['v12-02a-exit-linux.json','v12-02d-exit-linux.json','v12-02b-document-read-linux.json','v12-02b-typed-feature-read-linux.json','v12-02b-inline-image-linux.json','v12-02b-space-files-linux.json','v12-02b-author-write-linux.json','v12-02b-author-lifecycle-linux.json','v12-02b-author-create-linux.json','v12-02b-typed-author-create-linux.json','v12-02b-richtext-author-create-linux.json','v12-02b-typed-author-write-linux.json','v12-02b-richtext-author-write-linux.json','v12-02b-document-author-write-linux.json','v12-02b-admin-principal-linux.json','v12-02b-admin-permission-facts-linux.json','v12-02b-board-governance-authority-linux.json','v12-02b-business-actor-linux.json','v12-02b-thread-governance-linux.json','v12-02b-post-facts-linux.json','v12-02b-post-author-write-linux.json','v12-02b-post-governance-linux.json','v12-02b-post-read-linux.json','v12-02b-event-metadata-linux.json','v12-02b-admin-flags-linux.json','v12-02b-admin-review-linux.json','v12-02b-admin-lifecycle-linux.json','v12-02b-admin-purge-linux.json','v12-02b-article-facts-linux.json','v12-02b-richtext-governance-linux.json','v12-02b-user-scope-facts-linux.json','v12-02b-user-scope-memory-linux.json','v12-02b-user-flags-linux.json','v12-02b-moderation-preview-linux.json','v12-02b-richtext-asset-facts-linux.json','v12-02b-asset-memory-linux.json','v12-02b-attachment-metadata-linux.json','v12-02b-asset-read-linux.json','v12-02b-object-quota-linux.json','v12-02b-attachment-upload-linux.json','v12-02b-asset-read-admin-linux.json']
+r={
+ 'schema':'campusos.v12-02b-object-delete-acceptance/v1','generated_at':datetime.now(timezone.utc).isoformat(),
+ 'stage':'V12-02b','stage_status':'partial','slice_status':'completed',
+ 'implementation':'passed','automation':'passed','target_environment':'passed',
+ 'scope':'Actual Object delete lifecycle prerequisite: immutable private owned receipt including storage key, public metadata detached and nonserializable binding, current whole receipt checks under actual prepare/restore/finalize row locks, ready->deleting->deleted and exact pending/terminal retry. Failed byte-delete ledger finalization and restore reported pending, independent bounded5s finalization after cancel, once-only capacity release and no other object deletion/resurrection. Physical I/O rejected inside surrounding business transaction; no authorization supplied by Storage seam.',
+ 'environment':{'os':platform.system(),'architecture':platform.machine(),'go':subprocess.check_output(['go','version'],text=True).strip(),'postgres_version_num':int(sys.argv[3]),'database':'three owned databases in disposable PostgreSQL16 loopback tmpfs; existing richtext read PG resources plus current author DB verified User Session/Object byte repositories'},
+ 'checks':{name:'passed' for name in required},
+ 'coverage':{'new_required_tests':6,'previous_regressions':99,'real_postgres_tests':38,'impact_selected_tests':105,'native':'Four new tops: actual irreversible deletion baseline/pending exact receipt/once-only capacity retry/terminal idempotency; seven current/public alias/private key/metadata/forged/canceled/outer transaction modes, opaque JSON and cross-owner denial; actual cancel after prepare independent5s ledger finalization; deleted cannot restore and eight concurrent original-receipt attempts exactly one success.', 'postgres':'Two new actual PG tops: actual deleted-status SQL rejection P0001 after byte removal retains exact deleting receipt and capacity; retry and terminal idempotency once-only release and unchanged other bytes/metadata, terminal restore reject. Seven whole private/public proof modes including post-admission metadata change pending and actual restore SQL rejection; actual row NOWAIT lock and outer business transaction reject. Existing99/36PG including actual empty Admin read DB rerun.', 'migration_count':int(sys.argv[4]),'ddl':'No DDL; current22 three owned test DBs and immutable83 preservation. Existing99 checks/36PG rerun.'},
+ 'source_sha256':{path:sha(path) for path in sorted(set(paths))},
+ 'dependencies':{prefix+name:sha(prefix+name) for name in dependencies},
+ 'common_gates_status':'passed',
+ 'logs':{path.stem:{'status':'passed','exit_code':0,'local_log':str(path.relative_to(Path.cwd())),'log_sha256':sha(path)} for path in sorted(work.glob('*.log'))},
+ 'boundaries':['V12-02b remains partial: actual physical Asset purge must still consume92 pure metadata Policy and current manage/MFA plus lifecycle receipt proof/required phase audit. Legacy image/space writes, Admin list/history/batch/preview/SPA and exit pending.', 'Storage lifecycle seam is built-in only, grants no authentication/file read/path/plugin capability; owning business module supplies current authorization. Receipt private fields and public Object cannot be wire proof.', 'Exact full receipt is compared at preparation and restore/finalization. Supported transitions advance version; no universal arbitrary direct SQL ABA nonce is claimed.', 'External bytes cannot roll back with business SQL: Delete rejects active outer business transaction. Failed finalization/restore keeps visible pending receipt; finalization is fresh bounded5s after cancellation. Retry reads actual deleting/deleted state; never treats not-found as an automatic successful deletion receipt.', 'No DDL/shared DB reset/commit/push.105 required/38 real PG and common gates; current schema22/next23 and three dedicated DBs.'],
+
+}
+report.parent.mkdir(parents=True,exist_ok=True)
+report.write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n')
+print(f'V12-02b object delete receipt slice passed: {len(required)} required tests; stage remains partial')
+REPORT

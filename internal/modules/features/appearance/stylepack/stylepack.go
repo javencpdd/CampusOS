@@ -192,21 +192,24 @@ func loadDir(root string, strictDelivery bool) (*Package, ValidationResult) {
 	files := map[string][]byte{}
 	var total int64
 	var result ValidationResult
-
-	err := filepath.WalkDir(root, func(filePath string, entry fs.DirEntry, walkErr error) error {
+	directory, err := os.OpenRoot(root)
+	if err != nil {
+		result.addError("source style pack directory is unavailable")
+		return nil, result.finish()
+	}
+	defer directory.Close()
+	err = fs.WalkDir(directory.FS(), ".", func(rel string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			result.addError(walkErr.Error())
+			result.addError("source style pack entry cannot be read")
 			return nil
 		}
 		if entry.IsDir() {
 			return nil
 		}
-		rel, err := filepath.Rel(root, filePath)
-		if err != nil {
-			result.addError(err.Error())
+		if entry.Type()&os.ModeSymlink != 0 {
+			result.addError("source style pack must not contain symbolic links")
 			return nil
 		}
-		rel = filepath.ToSlash(rel)
 		if err := validateFilePath(rel); err != nil {
 			result.addError(err.Error())
 			return nil
@@ -217,7 +220,11 @@ func loadDir(root string, strictDelivery bool) (*Package, ValidationResult) {
 		}
 		info, err := entry.Info()
 		if err != nil {
-			result.addError(err.Error())
+			result.addError("source style pack entry cannot be inspected")
+			return nil
+		}
+		if !info.Mode().IsRegular() {
+			result.addError("source style pack entries must be regular files")
 			return nil
 		}
 		if info.Size() > MaxFileBytes {
@@ -229,16 +236,29 @@ func loadDir(root string, strictDelivery bool) (*Package, ValidationResult) {
 			result.addError(fmt.Sprintf("style pack must not exceed %d bytes", MaxPackageBytes))
 			return nil
 		}
-		data, err := os.ReadFile(filePath)
+		file, err := directory.Open(rel)
 		if err != nil {
-			result.addError(err.Error())
+			result.addError("source style pack entry cannot be opened")
+			return nil
+		}
+		opened, statErr := file.Stat()
+		if statErr != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) {
+			_ = file.Close()
+			result.addError("source style pack entry changed while reading")
+			return nil
+		}
+		data, readErr := io.ReadAll(io.LimitReader(file, MaxFileBytes+1))
+		after, afterErr := file.Stat()
+		closeErr := file.Close()
+		if readErr != nil || afterErr != nil || closeErr != nil || int64(len(data)) != info.Size() || !os.SameFile(info, after) || !info.ModTime().Equal(after.ModTime()) || info.Size() != after.Size() {
+			result.addError("source style pack entry changed or cannot be read")
 			return nil
 		}
 		files[rel] = data
 		return nil
 	})
 	if err != nil {
-		result.addError(err.Error())
+		result.addError("source style pack directory cannot be read")
 	}
 	if len(result.Errors) > 0 {
 		return nil, result.finish()
@@ -312,17 +332,25 @@ func loadZip(reader io.ReaderAt, size int64, strictDelivery bool) (*Package, Val
 }
 
 func ListSourcePacks(pluginName string) ([]SourcePackInfo, error) {
-	return listSourcePacks(pluginName, false)
+	return listSourcePacks(pluginName, false, nil)
 }
 
 // ListSourcePacksStrict marks legacy packages as non-applicable. It is used by
 // selectors and import screens, while ListSourcePacks remains available to
 // administrator migration tooling that needs to inspect legacy sources.
 func ListSourcePacksStrict(pluginName string) ([]SourcePackInfo, error) {
-	return listSourcePacks(pluginName, true)
+	return listSourcePacks(pluginName, true, nil)
 }
 
-func listSourcePacks(pluginName string, strictDelivery bool) ([]SourcePackInfo, error) {
+// SnapshotSourcePacksStrict captures catalog rows and the same loads' complete
+// packages, including RawFiles. These are private facts, not a wire response.
+func SnapshotSourcePacksStrict(pluginName string) ([]SourcePackInfo, map[string]*Package, error) {
+	packages := map[string]*Package{}
+	items, err := listSourcePacks(pluginName, true, packages)
+	return items, packages, err
+}
+
+func listSourcePacks(pluginName string, strictDelivery bool, packages map[string]*Package) ([]SourcePackInfo, error) {
 	root := SourceRoot(pluginName)
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -353,6 +381,9 @@ func listSourcePacks(pluginName string, strictDelivery bool) ([]SourcePackInfo, 
 			continue
 		}
 		pack, validation := loadDir(fullPath, strictDelivery)
+		if packages != nil {
+			packages[name] = pack
+		}
 		if pack != nil {
 			manifest := pack.Manifest
 			item.Manifest = &manifest

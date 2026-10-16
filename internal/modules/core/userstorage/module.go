@@ -3,9 +3,12 @@ package storage
 import (
 	"context"
 	"fmt"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/observability"
 )
 
@@ -21,6 +24,7 @@ type ModuleConfig struct {
 // Storage, Quota, and SafePath ports. Feature-specific compatibility adapters
 // may still translate old config shapes while A7 migrates them.
 type Module struct {
+	app           *platformmodule.AppContext
 	config        ModuleConfig
 	adapter       *LocalAdapter
 	objects       *ObjectService
@@ -33,10 +37,11 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.identity", platformobservability.ModuleID}
+	return []string{"core.identity", "core.community", platformobservability.ModuleID, reliability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
+	m.app = app
 	quotaRepository := QuotaRepository(NewMemoryQuotaRepository())
 	objectRepository := ObjectRepository(NewMemoryObjectRepository())
 	if value, ok := app.Lookup(portQuotaRepository); ok {
@@ -96,6 +101,41 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 }
 
 func (m *Module) Start(ctx context.Context) error {
+	var query communityport.AuthenticatedThreadQuery
+	var verifier identityport.SessionVerifier
+	var strength identityport.SessionStrengthReader
+	if m.app != nil {
+		if v, exists := m.app.Lookup("platform.reliability.service"); exists {
+			reliable, ok := v.(*reliability.Service)
+			if !ok || reliable == nil {
+				return fmt.Errorf("storage image reliability has incompatible type %T", v)
+			}
+			m.contentImages.SetUploadCommand(reliable, m.objects)
+			m.adapter.SetQuotaReliability(reliable)
+		}
+		if v, ok := m.app.Lookup("community.content-query"); ok {
+			query, ok = v.(communityport.AuthenticatedThreadQuery)
+			if !ok || NilImageAdapter(query) {
+				return fmt.Errorf("content image query has incompatible type %T", v)
+			}
+		}
+		if v, ok := m.app.Lookup("identity.session-verifier"); ok {
+			verifier, ok = v.(identityport.SessionVerifier)
+			if !ok || NilImageAdapter(verifier) {
+				return fmt.Errorf("storage session verifier has incompatible type %T", v)
+			}
+		}
+		if v, ok := m.app.Lookup("identity.session-strength"); ok {
+			strength, ok = v.(identityport.SessionStrengthReader)
+			if !ok || NilImageAdapter(strength) {
+				return fmt.Errorf("storage session strength has incompatible type %T", v)
+			}
+		}
+	}
+	if m.handler != nil {
+		m.handler.SetReadProof(query, verifier, strength)
+	}
+
 	// Metrics are operational telemetry only. Storage stays available when an
 	// aggregate refresh is temporarily unavailable.
 	if m.objects != nil {

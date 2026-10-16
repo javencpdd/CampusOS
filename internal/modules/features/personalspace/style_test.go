@@ -10,10 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	identitydomain "github.com/campusos/CampusOS/internal/modules/core/identity/domain"
-	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
@@ -100,25 +98,13 @@ func TestValidateStylePackageRejectsUnsafeCustomHTML(t *testing.T) {
 func TestValidateStylePackageHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
+	e := newOwnContentsHTTPEnvironment(t)
+	handler := NewHandler(NewService(e.spaces, e.users))
+	handler.SetOwnerSessionProof(e.identity, e.identity)
+	token := e.tokens.AccessToken
 
 	router := gin.New()
-	router.POST("/spaces/me/styles/validate", middleware.JWTAuth(jwtMgr), handler.ValidateStylePackage)
+	router.POST("/spaces/me/styles/validate", middleware.JWTAuth(e.jwts.User, e.identity), handler.ValidateStylePackage)
 
 	body, err := json.Marshal(validStylePackage())
 	if err != nil {
@@ -358,25 +344,13 @@ func zipStylePack(t *testing.T, files map[string]string) []byte {
 func TestValidateCustomHTMLHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
+	e := newOwnContentsHTTPEnvironment(t)
+	handler := NewHandler(NewService(e.spaces, e.users))
+	handler.SetOwnerSessionProof(e.identity, e.identity)
+	token := e.tokens.AccessToken
 
 	router := gin.New()
-	router.POST("/spaces/me/styles/html/validate", middleware.JWTAuth(jwtMgr), handler.ValidateCustomHTML)
+	router.POST("/spaces/me/styles/html/validate", middleware.JWTAuth(e.jwts.User, e.identity), handler.ValidateCustomHTML)
 
 	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/html/validate", bytes.NewReader([]byte(`{"html":"<section><h2>Alice</h2></section>"}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -457,25 +431,13 @@ func TestPreviewStylePackageWithInvalidManifestDoesNotExposePreviewManifest(t *t
 func TestPreviewStylePackageHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
+	e := newOwnContentsHTTPEnvironment(t)
+	handler := NewHandler(NewService(e.spaces, e.users))
+	handler.SetOwnerSessionProof(e.identity, e.identity)
+	token := e.tokens.AccessToken
 
 	router := gin.New()
-	router.POST("/spaces/me/styles/preview", middleware.JWTAuth(jwtMgr), handler.PreviewStylePackage)
+	router.POST("/spaces/me/styles/preview", middleware.JWTAuth(e.jwts.User, e.identity), handler.PreviewStylePackage)
 
 	body, err := json.Marshal(validStylePackage())
 	if err != nil {
@@ -493,8 +455,8 @@ func TestPreviewStylePackageHandler(t *testing.T) {
 	}
 
 	var payload struct {
-		Code int          `json:"code"`
-		Data StylePreview `json:"data"`
+		Code int               `json:"code"`
+		Data SpaceStylePreview `json:"data"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -502,8 +464,8 @@ func TestPreviewStylePackageHandler(t *testing.T) {
 	if payload.Code != 0 || !payload.Data.Validation.Valid {
 		t.Fatalf("expected valid preview response, got %#v", payload)
 	}
-	if payload.Data.Owner.ID != "1001" || payload.Data.Manifest == nil {
-		t.Fatalf("expected owner and manifest in preview, got %#v", payload.Data)
+	if payload.Data.Manifest == nil {
+		t.Fatalf("expected checked manifest in preview, got %#v", payload.Data)
 	}
 }
 
@@ -576,25 +538,13 @@ func TestExportStylePackageRejectsInvalidVersion(t *testing.T) {
 func TestExportStylePackageHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
+	e := newOwnContentsHTTPEnvironment(t)
+	handler := NewHandler(NewService(e.spaces, e.users))
+	handler.SetOwnerSessionProof(e.identity, e.identity)
+	token := e.tokens.AccessToken
 
 	router := gin.New()
-	router.POST("/spaces/me/styles/export", middleware.JWTAuth(jwtMgr), handler.ExportStylePackage)
+	router.POST("/spaces/me/styles/export", middleware.JWTAuth(e.jwts.User, e.identity), handler.ExportStylePackage)
 
 	reqBody := `{"name":"Alice Clean Blog","version":"0.2.0","description":"Exported test style"}`
 	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/export", bytes.NewReader([]byte(reqBody)))
@@ -720,56 +670,7 @@ func TestUpdateSpaceLayoutClearsAppliedStyleManifest(t *testing.T) {
 }
 
 func TestApplyStylePackageHandler(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	jwtMgr := auth.NewJWTManager(auth.JWTConfig{
-		Secret:    "test-secret",
-		AccessTTL: time.Hour,
-		Issuer:    "campusos-test",
-	})
-	token, err := jwtMgr.GenerateAccessToken("1001", "alice")
-	if err != nil {
-		t.Fatalf("generate token: %v", err)
-	}
-
-	svc := NewService(NewMemoryRepository(), newFakeUserLookup(&identitydomain.User{
-		ID:       "1001",
-		Username: "alice",
-		Nickname: "Alice",
-	}))
-	handler := NewHandler(svc)
-
-	router := gin.New()
-	router.POST("/spaces/me/styles/apply", middleware.JWTAuth(jwtMgr), handler.ApplyStylePackage)
-
-	body, err := json.Marshal(validStylePackage())
-	if err != nil {
-		t.Fatalf("marshal package: %v", err)
-	}
-	req := httptest.NewRequest(http.MethodPost, "/spaces/me/styles/apply", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rec.Code, rec.Body.String())
-	}
-
-	var payload struct {
-		Code int              `json:"code"`
-		Data StyleApplyResult `json:"data"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if payload.Code != 0 || !payload.Data.Validation.Valid {
-		t.Fatalf("expected valid apply response, got %#v", payload)
-	}
-	if payload.Data.Space == nil || payload.Data.Space.StyleManifest == nil {
-		t.Fatalf("expected applied style space, got %#v", payload.Data.Space)
-	}
+	runSpaceStyleOwnerHTTPCurrent(t)
 }
 
 func TestExampleStylePackagesAreValid(t *testing.T) {

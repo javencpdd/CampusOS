@@ -10,7 +10,11 @@ import (
 	"strings"
 	"time"
 
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
+	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -19,6 +23,35 @@ import (
 type Handler struct {
 	svc              *Service
 	contentAdmission contentAdmission
+	verifier         identityport.SessionVerifier
+	strength         identityport.SessionStrengthReader
+	adminAuthority   identityport.AdminSessionAuthorityReader
+}
+
+func (h *Handler) SetSessionProof(verifier identityport.SessionVerifier, strength identityport.SessionStrengthReader) {
+	h.verifier, h.strength = verifier, strength
+}
+
+func (h *Handler) SetAdminSessionAuthority(reader identityport.AdminSessionAuthorityReader) {
+	h.adminAuthority = reader
+}
+
+func (h *Handler) adminPrincipal(c *gin.Context) identityport.SessionPrincipalResolver {
+	id := c.GetString("admin_account_id")
+	claims := &auth.JWTClaims{UserID: id, SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		if id == "" || c.GetString("user_id") != id {
+			return identityport.PrincipalContext{}, identityport.ErrAdminSessionPrincipalUnavailable
+		}
+		return identityport.ResolveAdminSessionPrincipal(ctx, h.adminAuthority, claims)
+	}
+}
+
+func (h *Handler) readPrincipal(c *gin.Context) identityport.SessionPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: c.GetString("user_id"), SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.verifier, h.strength, claims)
+	}
 }
 
 const richTextAssetFormSlack = int64(64 * 1024)
@@ -42,7 +75,8 @@ func (h *Handler) CreateDraft(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	result, err := h.svc.CreateDraft(c.Request.Context(), userID, displayName, req)
+	_ = userID
+	result, err := h.svc.CreateDraftForPrincipal(c.Request.Context(), displayName, req, h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -61,7 +95,8 @@ func (h *Handler) UpdateDraft(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "invalid request: "+err.Error())
 		return
 	}
-	result, err := h.svc.UpdateDraft(c.Request.Context(), c.Param("id"), userID, req)
+	_ = userID
+	result, err := h.svc.UpdateDraftForPrincipal(c.Request.Context(), c.Param("id"), req, h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -75,7 +110,8 @@ func (h *Handler) Publish(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.svc.Publish(c.Request.Context(), c.Param("id"), userID)
+	_ = userID
+	result, err := h.svc.PublishForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -89,7 +125,8 @@ func (h *Handler) Offline(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.svc.Offline(c.Request.Context(), c.Param("id"), userID)
+	_ = userID
+	result, err := h.svc.OfflineForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -103,35 +140,39 @@ func (h *Handler) Delete(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	if err := h.svc.Delete(c.Request.Context(), c.Param("id"), userID); err != nil {
+	_ = userID
+	if err := h.svc.DeleteForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c)); err != nil {
 		writeRichTextError(c, err)
 		return
 	}
 	response.NoContent(c)
 }
 
-func (h *Handler) AdminOffline(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
-		return
-	}
-	reason := "administrator marked richtext article offline"
-	if c.Request.ContentLength > 0 {
+func articleGovernanceReason(c *gin.Context, fallback string) (string, bool) {
+	reason := fallback
+	if c.Request.ContentLength != 0 {
 		var req struct {
 			Reason string `json:"reason"`
 		}
 		if err := requestutil.BindJSONStrict(c, &req); err != nil {
 			response.Error(c, http.StatusBadRequest, 10001, "invalid moderation request: "+err.Error())
-			return
+			return "", false
 		}
 		if strings.TrimSpace(req.Reason) == "" {
 			response.Error(c, http.StatusBadRequest, 10001, "moderation reason is required")
-			return
+			return "", false
 		}
 		reason = strings.TrimSpace(req.Reason)
 	}
-	result, err := h.svc.AdminOfflineWithReason(c.Request.Context(), c.Param("id"), adminID, reason)
+	return reason, true
+}
+
+func (h *Handler) AdminOffline(c *gin.Context) {
+	reason, ok := articleGovernanceReason(c, "administrator marked richtext article offline")
+	if !ok {
+		return
+	}
+	result, err := h.svc.AdminGovernanceForPrincipal(c.Request.Context(), c.Param("id"), "take_down", reason, h.adminPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -140,12 +181,11 @@ func (h *Handler) AdminOffline(c *gin.Context) {
 }
 
 func (h *Handler) AdminRestore(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
+	reason, ok := articleGovernanceReason(c, "administrator restored richtext article")
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	result, err := h.svc.AdminRestore(c.Request.Context(), c.Param("id"), adminID)
+	result, err := h.svc.AdminGovernanceForPrincipal(c.Request.Context(), c.Param("id"), "direct_restore", reason, h.adminPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -154,12 +194,11 @@ func (h *Handler) AdminRestore(c *gin.Context) {
 }
 
 func (h *Handler) AdminDelete(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
+	reason, ok := articleGovernanceReason(c, "administrator moved richtext article to trash")
 	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	if err := h.svc.AdminDelete(c.Request.Context(), c.Param("id"), adminID); err != nil {
+	if _, err := h.svc.AdminGovernanceForPrincipal(c.Request.Context(), c.Param("id"), "trash", reason, h.adminPrincipal(c)); err != nil {
 		writeRichTextError(c, err)
 		return
 	}
@@ -181,7 +220,7 @@ func (h *Handler) Preview(c *gin.Context) {
 }
 
 func (h *Handler) GetPublished(c *gin.Context) {
-	article, err := h.svc.GetArticle(c.Request.Context(), c.Param("id"), "")
+	article, err := h.svc.GetArticleForPrincipal(c.Request.Context(), c.Param("id"), nil)
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -195,7 +234,8 @@ func (h *Handler) GetMine(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "unauthorized")
 		return
 	}
-	article, err := h.svc.GetArticle(c.Request.Context(), c.Param("id"), userID)
+	_ = userID
+	article, err := h.svc.GetArticleForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -204,7 +244,7 @@ func (h *Handler) GetMine(c *gin.Context) {
 }
 
 func (h *Handler) UploadAsset(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后再上传文章图片。")
 		return
@@ -225,6 +265,17 @@ func (h *Handler) UploadAsset(c *gin.Context) {
 		writeRichTextAssetUploadError(c, ErrAssetTooLarge, maxBytes, fileHeader.Size)
 		return
 	}
+	if form := c.Request.MultipartForm; form != nil {
+		defer form.RemoveAll()
+		valid := len(form.File) == 1 && len(form.File["file"]) == 1
+		for key, values := range form.Value {
+			valid = valid && (key == "thread_id" || key == "article_content_id") && len(values) == 1
+		}
+		if !valid {
+			response.Error(c, http.StatusBadRequest, 10001, "图片请求包含无效字段，请重新选择后重试。")
+			return
+		}
+	}
 	file, err := fileHeader.Open()
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "无法读取所选图片文件，请重新选择后再试。")
@@ -232,7 +283,7 @@ func (h *Handler) UploadAsset(c *gin.Context) {
 	}
 	defer file.Close()
 
-	asset, err := h.svc.UploadAsset(c.Request.Context(), userID, fileHeader.Filename, file, c.PostForm("thread_id"), c.PostForm("article_content_id"))
+	asset, err := h.svc.UploadAssetForPrincipal(c.Request.Context(), file, c.PostForm("thread_id"), c.PostForm("article_content_id"), h.readPrincipal(c))
 	if err != nil {
 		writeRichTextAssetUploadError(c, err, maxBytes, fileHeader.Size)
 		return
@@ -241,12 +292,12 @@ func (h *Handler) UploadAsset(c *gin.Context) {
 }
 
 func (h *Handler) ListMyAssets(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后查看已上传的文章图片。")
 		return
 	}
-	items, err := h.svc.ListMyAssets(c.Request.Context(), userID)
+	items, err := h.svc.ListInlineImagesForPrincipal(c.Request.Context(), h.readPrincipal(c))
 	if err != nil {
 		writeRichTextError(c, err)
 		return
@@ -255,20 +306,34 @@ func (h *Handler) ListMyAssets(c *gin.Context) {
 }
 
 func (h *Handler) ServeAsset(c *gin.Context) {
-	path, err := h.svc.AssetPath(c.Param("user_id"), c.Param("filename"))
+	var resolve identityport.SessionPrincipalResolver
+	if c.GetHeader("Authorization") != "" {
+		resolve = h.readPrincipal(c)
+	}
+	image, err := h.svc.ReadInlineImageForPrincipal(c.Request.Context(), c.Param("user_id"), c.Param("filename"), c.Query("thread_id"), c.Query("store"), resolve)
 	if err != nil {
 		writeRichTextError(c, err)
 		return
 	}
-	c.File(path)
+	corestorage.ServeCheckedImage(c, image)
 }
 
 const richTextAttachmentFormSlack = int64(64 * 1024)
 
 func (h *Handler) UploadAttachment(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后再上传文章附件。 ")
+		return
+	}
+	resolve := h.readPrincipal(c)
+	if resolve == nil {
+		writeAttachmentError(c, identityport.ErrUserSessionPrincipalUnavailable, 0)
+		return
+	}
+	principal, err := resolve(c.Request.Context())
+	if err != nil || principal.Validate() != nil || principal.Actor.Kind != "user" || principal.Audience != "user" {
+		writeAttachmentError(c, identityport.ErrUserSessionPrincipalUnavailable, 0)
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxArticleAttachmentBytes+richTextAttachmentFormSlack)
@@ -282,6 +347,13 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		response.ErrorWithDetails(c, http.StatusBadRequest, 73002, "请选择要上传的文章附件。", attachmentLimits())
 		return
 	}
+	if form := c.Request.MultipartForm; form != nil {
+		defer form.RemoveAll()
+		if len(form.Value) != 0 || len(form.File) != 1 || len(form.File["file"]) != 1 {
+			response.Error(c, http.StatusBadRequest, 10001, "附件请求只能包含一个文件，请重新选择后重试。")
+			return
+		}
+	}
 	if fileHeader.Size <= 0 || fileHeader.Size > MaxArticleAttachmentBytes {
 		writeAttachmentError(c, ErrAssetTooLarge, fileHeader.Size)
 		return
@@ -292,20 +364,16 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		return
 	}
 	defer file.Close()
-	attachment, err := h.svc.UploadAttachment(c.Request.Context(), userID, c.Param("id"), fileHeader.Filename, fileHeader.Header.Get("Content-Type"), fileHeader.Size, file)
+	attachment, err := h.svc.UploadAttachmentForPrincipal(c.Request.Context(), c.Param("id"), fileHeader.Filename, fileHeader.Header.Get("Content-Type"), fileHeader.Size, file, resolve)
 	if err != nil {
-		if usage, usageErr := attachmentObjectUsage(h.svc.objects, userID); usageErr == nil {
-			writeAttachmentError(c, err, fileHeader.Size, usage)
-		} else {
-			writeAttachmentError(c, err, fileHeader.Size)
-		}
+		writeAttachmentError(c, err, fileHeader.Size)
 		return
 	}
 	response.Created(c, attachment)
 }
 
 func (h *Handler) BindAttachment(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后再添加文章附件。 ")
 		return
@@ -315,7 +383,7 @@ func (h *Handler) BindAttachment(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "附件请求无效，请检查资源后重试。 ")
 		return
 	}
-	attachment, err := h.svc.AttachExisting(c.Request.Context(), userID, c.Param("id"), req.AssetID, req.DisplayName)
+	attachment, err := h.svc.AttachExistingForPrincipal(c.Request.Context(), c.Param("id"), req.AssetID, req.DisplayName, h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -324,7 +392,7 @@ func (h *Handler) BindAttachment(c *gin.Context) {
 }
 
 func (h *Handler) AttachPersonalDocument(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后再从个人文档添加文章附件。")
 		return
@@ -334,7 +402,7 @@ func (h *Handler) AttachPersonalDocument(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "个人文档附件请求无效，请重新选择文件后重试。")
 		return
 	}
-	attachment, err := h.svc.AttachPersonalDocument(c.Request.Context(), userID, c.Param("id"), req.DocumentID, req.DisplayName)
+	attachment, err := h.svc.AttachPersonalDocumentForPrincipal(c.Request.Context(), c.Param("id"), req.DocumentID, req.DisplayName, h.readPrincipal(c))
 	if err != nil {
 		writePersonalDocumentAttachmentError(c, err)
 		return
@@ -348,7 +416,8 @@ func (h *Handler) ListAttachments(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后查看文章附件。 ")
 		return
 	}
-	items, err := h.svc.ListArticleAttachments(c.Request.Context(), userID, c.Param("id"))
+	_ = userID
+	items, err := h.svc.ListAttachmentsForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -357,12 +426,19 @@ func (h *Handler) ListAttachments(c *gin.Context) {
 }
 
 func (h *Handler) RemoveAttachment(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后移除文章附件。 ")
 		return
 	}
-	if err := h.svc.RemoveAttachment(c.Request.Context(), userID, c.Param("id"), c.Param("attachment_id")); err != nil {
+	if c.Request.Body != nil {
+		var extra [1]byte
+		if n, err := c.Request.Body.Read(extra[:]); n != 0 || err != io.EOF {
+			response.Error(c, http.StatusBadRequest, 10001, "移除附件请求不能包含正文。")
+			return
+		}
+	}
+	if err := h.svc.RemoveAttachmentForPrincipal(c.Request.Context(), c.Param("id"), c.Param("attachment_id"), h.readPrincipal(c)); err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
@@ -370,7 +446,7 @@ func (h *Handler) RemoveAttachment(c *gin.Context) {
 }
 
 func (h *Handler) RenameAttachment(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后修改附件名称。")
 		return
@@ -380,15 +456,16 @@ func (h *Handler) RenameAttachment(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "附件名称无效，请输入 1 至 255 个字符。")
 		return
 	}
-	if err := h.svc.RenameAttachment(c.Request.Context(), userID, c.Param("id"), c.Param("attachment_id"), req.DisplayName); err != nil {
+	ack, err := h.svc.RenameAttachmentForPrincipal(c.Request.Context(), c.Param("id"), c.Param("attachment_id"), req.DisplayName, h.readPrincipal(c))
+	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"display_name": strings.TrimSpace(req.DisplayName)})
+	response.Success(c, ack)
 }
 
 func (h *Handler) ReorderAttachments(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后调整附件顺序。 ")
 		return
@@ -398,11 +475,12 @@ func (h *Handler) ReorderAttachments(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 10001, "附件排序请求无效。 ")
 		return
 	}
-	if err := h.svc.ReorderAttachments(c.Request.Context(), userID, c.Param("id"), req.AttachmentIDs); err != nil {
+	ack, err := h.svc.ReorderAttachmentsForPrincipal(c.Request.Context(), c.Param("id"), req.AttachmentIDs, h.readPrincipal(c))
+	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"attachment_ids": req.AttachmentIDs})
+	response.Success(c, ack)
 }
 
 func (h *Handler) DownloadAttachment(c *gin.Context) { h.serveAttachment(c, false) }
@@ -414,7 +492,8 @@ func (h *Handler) serveAttachment(c *gin.Context, inline bool) {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后访问文章附件。 ")
 		return
 	}
-	opened, err := h.svc.OpenAttachment(c.Request.Context(), userID, c.Param("id"), c.Param("attachment_id"))
+	_ = userID
+	opened, err := h.svc.OpenAttachmentForPrincipal(c.Request.Context(), c.Param("id"), c.Param("attachment_id"), h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -437,7 +516,8 @@ func (h *Handler) ListUserAssets(c *gin.Context) {
 		}
 		limit = parsed
 	}
-	page, err := h.svc.ListMyUserAssetPage(c.Request.Context(), userID, c.Query("status"), c.Query("cursor"), limit)
+	_ = userID
+	page, err := h.svc.UserAssetPageForPrincipal(c.Request.Context(), c.Query("status"), c.Query("cursor"), limit, h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -451,7 +531,8 @@ func (h *Handler) DownloadMyUserAsset(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后下载个人附件。")
 		return
 	}
-	opened, err := h.svc.OpenMyUserAsset(c.Request.Context(), userID, c.Param("id"))
+	_ = userID
+	opened, err := h.svc.OpenUserAssetForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
 	if err != nil {
 		writePersonalAssetError(c, err)
 		return
@@ -460,80 +541,98 @@ func (h *Handler) DownloadMyUserAsset(c *gin.Context) {
 }
 
 func (h *Handler) TrashUserAsset(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后移入回收站。 ")
 		return
 	}
-	if err := h.svc.TrashUserAsset(c.Request.Context(), userID, c.Param("id")); err != nil {
+	if !assetMutationNoBody(c) {
+		return
+	}
+	ack, err := h.svc.TrashUserAssetForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
+	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"status": AssetStatusTrashed})
+	response.Success(c, ack)
 }
 
 func (h *Handler) RestoreUserAsset(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后恢复附件。 ")
 		return
 	}
-	if err := h.svc.RestoreUserAsset(c.Request.Context(), userID, c.Param("id")); err != nil {
+	if !assetMutationNoBody(c) {
+		return
+	}
+	ack, err := h.svc.RestoreUserAssetForPrincipal(c.Request.Context(), c.Param("id"), h.readPrincipal(c))
+	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
 	}
-	response.Success(c, gin.H{"status": AssetStatusActive})
+	response.Success(c, ack)
+}
+
+func assetMutationNoBody(c *gin.Context) bool {
+	if c.Request.Body == nil {
+		return true
+	}
+	var first [1]byte
+	n, err := c.Request.Body.Read(first[:])
+	if n != 0 || err != io.EOF {
+		response.Error(c, http.StatusBadRequest, 10001, "附件状态请求无需请求体，请刷新后重试。")
+		return false
+	}
+	return true
 }
 
 // AssetGovernanceSummary exposes only aggregate counts and bytes. It is an
 // Admin operator view, never a user-file listing or live database browser.
 func (h *Handler) AssetGovernanceSummary(c *gin.Context) {
-	summary, err := h.svc.AssetGovernanceSummary(c.Request.Context())
+	if !assetMutationNoBody(c) {
+		return
+	}
+	summary, err := h.svc.AssetGovernanceSummaryForPrincipal(c.Request.Context(), h.adminPrincipal(c))
 	if err != nil {
-		response.Error(c, http.StatusServiceUnavailable, 10006, "暂时无法读取附件治理汇总，请稍后重试。")
+		writeAssetGovernanceError(c, err)
 		return
 	}
 	response.Success(c, summary)
 }
 
 func (h *Handler) AdminQuarantineUserAsset(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "请先登录管理员账号后再隔离附件。")
-		return
-	}
-	var req AssetGovernanceActionRequest
-	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 73002, "隔离原因无效，请输入 1 至 500 个字符。")
-		return
-	}
-	if err := h.svc.AdminQuarantineAsset(c.Request.Context(), adminID, c.Param("id"), req.Reason); err != nil {
-		writeAssetGovernanceError(c, err)
-		return
-	}
-	response.Success(c, gin.H{"status": AssetStatusQuarantined})
+	h.assetAdminLifecycle(c, "quarantine")
 }
 
 func (h *Handler) AdminRestoreQuarantinedUserAsset(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "请先登录管理员账号后再恢复附件。")
-		return
-	}
-	var req AssetGovernanceActionRequest
-	if err := requestutil.BindJSONStrict(c, &req); err != nil {
-		response.Error(c, http.StatusBadRequest, 73002, "恢复原因无效，请输入 1 至 500 个字符。")
-		return
-	}
-	if err := h.svc.AdminRestoreQuarantinedAsset(c.Request.Context(), adminID, c.Param("id"), req.Reason); err != nil {
+	h.assetAdminLifecycle(c, "restore")
+}
+
+func (h *Handler) assetAdminLifecycle(c *gin.Context, operation string) {
+	proof := h.adminPrincipal(c)
+	if _, err := proof(c.Request.Context()); err != nil {
 		writeAssetGovernanceError(c, err)
 		return
 	}
-	response.Success(c, gin.H{"status": AssetStatusActive})
+	var req AssetAdminLifecycleRequest
+	if err := requestutil.BindJSONStrict(c, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, 73002, "资产治理请求无效，请只填写 1 至 500 个字符的原因。")
+		return
+	}
+	ack, err := h.svc.AdminAssetLifecycleForPrincipal(c.Request.Context(), c.Param("id"), operation, req.Reason, proof)
+	if err != nil {
+		writeAssetGovernanceError(c, err)
+		return
+	}
+	response.Success(c, ack)
 }
 
 func (h *Handler) AdminPreviewUserAssetPurge(c *gin.Context) {
-	preview, err := h.svc.PreviewAssetPurge(c.Request.Context(), c.Param("id"))
+	if !assetMutationNoBody(c) {
+		return
+	}
+	preview, err := h.svc.PreviewAssetPurgeForPrincipal(c.Request.Context(), c.Param("id"), h.adminPrincipal(c))
 	if err != nil {
 		writeAssetGovernanceError(c, err)
 		return
@@ -542,9 +641,9 @@ func (h *Handler) AdminPreviewUserAssetPurge(c *gin.Context) {
 }
 
 func (h *Handler) AdminPurgeUserAsset(c *gin.Context) {
-	adminID, _, ok := currentUser(c)
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "请先登录管理员账号后再清除附件。")
+	proof := h.adminPrincipal(c)
+	if _, err := proof(c.Request.Context()); err != nil {
+		writeAssetGovernanceError(c, err)
 		return
 	}
 	var req AssetGovernanceActionRequest
@@ -556,15 +655,16 @@ func (h *Handler) AdminPurgeUserAsset(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 73002, "二次确认失败：确认的附件标识必须与待清除附件一致。")
 		return
 	}
-	if err := h.svc.AdminPurgeAsset(c.Request.Context(), adminID, c.Param("id"), req.Reason); err != nil {
+	ack, err := h.svc.AdminPurgeAssetForPrincipal(c.Request.Context(), c.Param("id"), req.Reason, proof)
+	if err != nil {
 		writeAssetGovernanceError(c, err)
 		return
 	}
-	response.Success(c, gin.H{"status": AssetStatusDeleted})
+	response.Success(c, ack)
 }
 
 func (h *Handler) CreatePDFInvocation(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后预览 PDF 附件。 ")
 		return
@@ -576,7 +676,7 @@ func (h *Handler) CreatePDFInvocation(c *gin.Context) {
 	}
 	threadID := strings.TrimSpace(c.Query("thread_id"))
 	if req.PluginKey != "" || req.ResourceType != "" || req.SurfaceID != "" {
-		invocation, err := h.svc.CreateResourceInvocation(c.Request.Context(), userID, req)
+		invocation, err := h.svc.CreateInvocationForPrincipal(c.Request.Context(), req, h.readPrincipal(c))
 		if err != nil {
 			writeAttachmentError(c, err, 0)
 			return
@@ -588,7 +688,7 @@ func (h *Handler) CreatePDFInvocation(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 73002, "预览请求缺少文章标识。 ")
 		return
 	}
-	invocation, err := h.svc.CreatePDFInvocation(c.Request.Context(), userID, threadID, req.AttachmentID, req.Presentation)
+	invocation, err := h.svc.CreateInvocationForPrincipal(c.Request.Context(), PluginUIInvocationRequest{PluginKey: PDFViewerPluginKey, SurfaceID: PDFViewerSurfaceID, ResourceType: InvocationContextArticleAttachment, ThreadID: threadID, ResourceID: req.AttachmentID, Presentation: req.Presentation}, h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -597,7 +697,7 @@ func (h *Handler) CreatePDFInvocation(c *gin.Context) {
 }
 
 func (h *Handler) CreatePersonalAssetPDFInvocation(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后预览个人 PDF 附件。")
 		return
@@ -607,7 +707,7 @@ func (h *Handler) CreatePersonalAssetPDFInvocation(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, 73002, "预览请求无效，请返回个人空间后重新打开附件。")
 		return
 	}
-	invocation, err := h.svc.CreatePersonalAssetPDFInvocation(c.Request.Context(), userID, c.Param("id"), req.Presentation)
+	invocation, err := h.svc.CreateInvocationForPrincipal(c.Request.Context(), PluginUIInvocationRequest{PluginKey: PDFViewerPluginKey, SurfaceID: PDFViewerSurfaceID, ResourceType: InvocationContextPersonalAsset, ResourceID: c.Param("id"), Presentation: req.Presentation}, h.readPrincipal(c))
 	if err != nil {
 		writePersonalAssetError(c, err)
 		return
@@ -616,12 +716,16 @@ func (h *Handler) CreatePersonalAssetPDFInvocation(c *gin.Context) {
 }
 
 func (h *Handler) GetPDFInvocation(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后打开 PDF 预览。 ")
 		return
 	}
-	attachment, invocation, err := h.svc.DescribePDFInvocation(c.Request.Context(), userID, c.Param("id"))
+	opened, invocation, err := h.svc.OpenInvocationForPrincipal(c.Request.Context(), c.Param("id"), false, h.readPrincipal(c))
+	attachment := &opened.Attachment
+	if opened.Reader != nil {
+		_ = opened.Reader.Close()
+	}
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -643,12 +747,12 @@ func (h *Handler) GetPDFInvocation(c *gin.Context) {
 }
 
 func (h *Handler) DownloadPDFInvocation(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后下载文件。")
 		return
 	}
-	opened, err := h.svc.DownloadPDFInvocation(c.Request.Context(), userID, c.Param("id"))
+	opened, _, err := h.svc.OpenInvocationForPrincipal(c.Request.Context(), c.Param("id"), true, h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -657,12 +761,12 @@ func (h *Handler) DownloadPDFInvocation(c *gin.Context) {
 }
 
 func (h *Handler) PDFInvocationContent(c *gin.Context) {
-	userID, _, ok := currentUser(c)
+	_, _, ok := currentUser(c)
 	if !ok {
 		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后读取 PDF 内容。 ")
 		return
 	}
-	opened, _, err := h.svc.OpenPDFInvocation(c.Request.Context(), userID, c.Param("id"))
+	opened, _, err := h.svc.OpenInvocationForPrincipal(c.Request.Context(), c.Param("id"), false, h.readPrincipal(c))
 	if err != nil {
 		writeAttachmentError(c, err, 0)
 		return
@@ -739,6 +843,13 @@ func attachmentObjectUsage(objects corestorage.ObjectPort, owner string) (corest
 }
 
 func writeAttachmentError(c *gin.Context, err error, providedBytes int64, usages ...corestorage.ObjectUsage) {
+	if errors.Is(err, ErrAttachmentCompensationPending) || errors.Is(err, corestorage.ErrObjectCompensationPending) {
+		response.Error(c, http.StatusServiceUnavailable, 73001, "附件未保存成功，临时文件清理尚未完成，请稍后检查容量再重试。")
+		return
+	}
+	if writeReadProofError(c, err) {
+		return
+	}
 	details := attachmentLimits()
 	if providedBytes > 0 {
 		details["provided_bytes"] = providedBytes
@@ -784,7 +895,7 @@ func writeAttachmentError(c *gin.Context, err error, providedBytes int64, usages
 		response.Error(c, http.StatusForbidden, 73003, message)
 	case errors.Is(err, ErrPermissionDenied):
 		response.Error(c, http.StatusForbidden, 73003, "当前无权访问该文章附件。")
-	case errors.Is(err, ErrAttachmentNotFound), errors.Is(err, ErrAssetNotFound), errors.Is(err, ErrArticleNotFound):
+	case errors.Is(err, ErrAttachmentNotFound), errors.Is(err, ErrAssetNotFound), errors.Is(err, ErrArticleNotFound), errors.Is(err, communityport.ErrThreadNotFound):
 		response.Error(c, http.StatusNotFound, 73004, "文章或个人附件不存在、已下架或当前无权访问。")
 	default:
 		writeRichTextError(c, err)
@@ -805,6 +916,9 @@ func writePersonalDocumentAttachmentError(c *gin.Context, err error) {
 }
 
 func writePersonalAssetError(c *gin.Context, err error) {
+	if writeReadProofError(c, err) {
+		return
+	}
 	switch {
 	case errors.Is(err, ErrAssetNotFound), errors.Is(err, ErrPermissionDenied):
 		// Do not reveal whether an asset ID belongs to another user.
@@ -830,7 +944,16 @@ func writePersonalAssetError(c *gin.Context, err error) {
 }
 
 func writeAssetGovernanceError(c *gin.Context, err error) {
+	if errors.Is(err, ErrAssetPurgePending) {
+		response.Error(c, http.StatusServiceUnavailable, 73001, "清除尚未完成，附件保持不可用；请稍后重新确认并重试。")
+		return
+	}
+	if writeReadProofError(c, err) {
+		return
+	}
 	switch {
+	case errors.Is(err, ErrPermissionDenied):
+		response.Error(c, http.StatusForbidden, 73003, "无权执行资产治理；请确认当前权限并完成 MFA 验证。")
 	case errors.Is(err, ErrAssetPurgeIneligible), errors.Is(err, ErrAssetReferenced):
 		response.Error(c, http.StatusConflict, 73002, "该附件当前不满足清除条件：请确认它已在回收站或隔离状态，且不存在文章引用。")
 	case errors.Is(err, ErrAssetNotFound):
@@ -868,7 +991,24 @@ func currentUser(c *gin.Context) (string, string, bool) {
 }
 
 func writeRichTextError(c *gin.Context, err error) {
+	if writeReadProofError(c, err) {
+		return
+	}
 	switch {
+	case errors.Is(err, ErrArticleFactsConflict), errors.Is(err, communityport.ErrGovernanceCommandConflict):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrArticleFactsUnavailable), errors.Is(err, communityport.ErrGovernanceCommandUnavailable), errors.Is(err, identityport.ErrGovernanceAuthorityUnavailable):
+		response.Error(c, 503, 50001, "当前文章治理校验暂不可用，请稍后重试。")
+	case errors.Is(err, communityport.ErrGovernanceCommandDenied):
+		response.Error(c, 403, 73003, "无权执行该文章操作；管理员请先完成当前 MFA 验证。")
+	case errors.Is(err, identityport.ErrResourcePolicyUnknownAction):
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
+	case errors.Is(err, communityport.ErrAuthorCommandUnavailable), errors.Is(err, identityport.ErrPolicyDecisionMismatch):
+		response.Error(c, 503, 50001, "当前文章操作校验暂不可用，请稍后重试")
+	case errors.Is(err, communityport.ErrAuthorCommandDenied):
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+	case errors.Is(err, communityport.ErrAuthorCommandInvalid):
+		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 	case errors.Is(err, ErrPluginDisabled):
 		response.Error(c, http.StatusForbidden, 73001, "图文文章功能当前未启用。")
 	case errors.Is(err, ErrInvalidArticle):
@@ -892,8 +1032,34 @@ func writeRichTextError(c *gin.Context, err error) {
 	}
 }
 
-func writeRichTextAssetUploadError(c *gin.Context, err error, maxBytes, providedBytes int64) {
+func writeReadProofError(c *gin.Context, err error) bool {
 	switch {
+	case errors.Is(err, ErrAssetBindingFactsUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 73001, "附件校验暂不可用，请稍后重试。")
+		return true
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable), errors.Is(err, identityport.ErrAdminSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+		return true
+	case errors.Is(err, identityport.ErrPolicyFactsChanged), errors.Is(err, identityport.ErrResourcePolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+		return true
+	}
+	return false
+}
+
+func writeRichTextAssetUploadError(c *gin.Context, err error, maxBytes, providedBytes int64) {
+	if errors.Is(err, corestorage.ErrInlineImageCleanupPending) {
+		response.Error(c, http.StatusServiceUnavailable, 73001, "图片清理尚未完成，请稍后重试。")
+		return
+	}
+	if writeReadProofError(c, err) {
+		return
+	}
+	switch {
+	case errors.Is(err, ErrPermissionDenied), errors.Is(err, communityport.ErrAuthorCommandDenied):
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+	case errors.Is(err, ErrAssetUnavailable), errors.Is(err, communityport.ErrAuthorCommandUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 73001, "图片上传校验暂不可用，请稍后重试。")
 	case errors.Is(err, ErrAssetTooLarge):
 		response.ErrorWithDetails(c, http.StatusRequestEntityTooLarge, 73002,
 			fmt.Sprintf("文章图片文件过大：单个文件最大 %s，请压缩或裁剪后重试。", formatRichTextAssetBytes(maxBytes)),

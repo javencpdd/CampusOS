@@ -8,6 +8,7 @@ import (
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/permissioncode"
 	platformroute "github.com/campusos/CampusOS/internal/platform/route"
+	"github.com/campusos/CampusOS/pkg/auth"
 	"github.com/campusos/CampusOS/pkg/middleware"
 	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/gin-gonic/gin"
@@ -38,11 +39,23 @@ type ownedGroup struct {
 	permissions      middleware.PermissionChecker
 	adminAccess      middleware.AdminAccessChecker
 	adminMFA         middleware.AdminMFAChecker
+	adminJWT         *auth.JWTManager
+	adminSessions    middleware.AdminDomainSessionVerifier
+	adminCodes       middleware.AdminCodeChecker
 	permission       string
 	permissionCode   string
 	operation        string
 	legacyOperations []string
 	scopeType        string
+}
+
+// SetAdminDomain wires the V12-02d admin identity domain into the owned
+// admin group; it replaces the legacy admission-based gate.
+func (g *ownedGroup) SetAdminDomain(jwt *auth.JWTManager, sessions middleware.AdminDomainSessionVerifier, codes middleware.AdminCodeChecker) {
+	if g == nil {
+		return
+	}
+	g.adminJWT, g.adminSessions, g.adminCodes = jwt, sessions, codes
 }
 
 func newOwnedGroup(group *gin.RouterGroup, registry *platformroute.Registry, audience platformroute.Audience, permissions middleware.PermissionChecker, adminAccess ...middleware.AdminAccessChecker) *ownedGroup {
@@ -154,11 +167,12 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 		if permissionCode == "" {
 			panic(fmt.Sprintf("admin route %s %s requires permission code metadata", method, path))
 		}
-		permissionMiddleware := middleware.RequirePermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation)
-		admissionMiddleware := middleware.RequireAdminAccess(g.adminAccess, g.adminMFA)
+		// V12-02d: admin routes authorize through the admin domain's own role
+		// bindings; the legacy user catalog and admission gate are gone.
+		permissionMiddleware := middleware.RequireAdminDomainPermission(g.adminCodes, permissionCode)
+		admissionMiddleware := func(c *gin.Context) { c.Next() }
 		if g.scopeType != "" {
-			permissionMiddleware = middleware.RequireScopedPermissionForOperation(g.permissions, parts[0], parts[1], permissionCode, operation, g.scopeType)
-			admissionMiddleware = middleware.RequireAdminAccessOrScopedPermission(g.adminAccess, g.permissions, permissionCode, g.scopeType, g.adminMFA)
+			permissionMiddleware = middleware.RequireAdminDomainPermission(g.adminCodes, permissionCode)
 		}
 		handlers = append([]gin.HandlerFunc{admissionMiddleware, permissionMiddleware}, handlers...)
 	}
@@ -215,6 +229,20 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	}
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
+	}
+	switch operation {
+	case "http.identity.admin_session.login":
+		descriptor.Audit = "required-command+outbox"
+	case "http.identity.admin_session.refresh":
+		descriptor.Auth = "admin-refresh-cookie+csrf"
+		descriptor.Audit = "required-command+outbox"
+	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
+		descriptor.Auth = "jwt+current-admin-session+browser-csrf"
+		descriptor.Audit = "required-command+outbox"
+		if operation == "http.identity.admin_self.read" {
+			descriptor.Auth = "jwt+current-admin-session"
+			descriptor.Audit = "none"
+		}
 	}
 	if err := g.registry.Add(descriptor); err != nil {
 		panic(err)

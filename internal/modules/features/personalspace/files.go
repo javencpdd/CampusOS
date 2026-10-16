@@ -644,12 +644,20 @@ func (s *LocalFileStore) avatarFiles(userID string) ([]avatarFile, error) {
 	}
 	files := make([]avatarFile, 0, len(entries))
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
 			continue
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return nil, err
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		switch strings.ToLower(filepath.Ext(entry.Name())) {
+		case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+		default:
+			continue
 		}
 		files = append(files, avatarFile{
 			dir:     avatarDir,
@@ -658,13 +666,17 @@ func (s *LocalFileStore) avatarFiles(userID string) ([]avatarFile, error) {
 			modTime: info.ModTime(),
 		})
 	}
+	sortAvatarFiles(files)
+	return files, nil
+}
+
+func sortAvatarFiles(files []avatarFile) {
 	sort.Slice(files, func(i, j int) bool {
 		if files[i].modTime.Equal(files[j].modTime) {
 			return files[i].name > files[j].name
 		}
 		return files[i].modTime.After(files[j].modTime)
 	})
-	return files, nil
 }
 
 func normalizeKeepLimit(keep, length int) int {

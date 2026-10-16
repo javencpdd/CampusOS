@@ -11,6 +11,7 @@ import (
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/pkg/eventbus"
 )
 
@@ -112,11 +113,54 @@ func (m *Module) Start(ctx context.Context) error {
 	if m.app == nil || m.repo == nil || m.users == nil || m.contentQuery == nil || m.storage == nil {
 		return errors.New("personal space module is not registered")
 	}
+	var ownerVerifier identityport.SessionVerifier
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		var compatible bool
+		ownerVerifier, compatible = value.(identityport.SessionVerifier)
+		if !compatible || nilOwnContentsAdapter(ownerVerifier) {
+			return fmt.Errorf("personal space owner session verifier port has incompatible type %T", value)
+		}
+	}
+	var ownerStrength identityport.SessionStrengthReader
+	if value, found := m.app.Lookup("identity.session-strength"); found {
+		var compatible bool
+		ownerStrength, compatible = value.(identityport.SessionStrengthReader)
+		if !compatible || nilOwnContentsAdapter(ownerStrength) {
+			return fmt.Errorf("personal space owner session strength port has incompatible type %T", value)
+		}
+	}
 	svc := NewService(m.repo, identityUserReader{reader: m.users})
+	var adminAuthority identityport.AdminSessionAuthorityReader
+	if value, found := m.app.Lookup("identity.admin-session-authority"); found {
+		var compatible bool
+		adminAuthority, compatible = value.(identityport.AdminSessionAuthorityReader)
+		if !compatible || corestorage.NilImageAdapter(adminAuthority) {
+			return fmt.Errorf("personal space admin session authority has incompatible type %T", value)
+		}
+	}
+	if value, found := m.app.Lookup("identity.admin-execution-authority"); found {
+		reader, compatible := value.(identityport.AdminExecutionAuthorityReader)
+		if !compatible || corestorage.NilImageAdapter(reader) {
+			return fmt.Errorf("personal space admin execution authority has incompatible type %T", value)
+		}
+		svc.SetAdminExecutionAuthority(reader)
+	}
 	svc.SetContentQuery(m.contentQuery)
 	svc.SetQuotaManager(m.quotaManager)
 	svc.SetPluginEnabledChecker(m.enabled)
+	if value, found := m.app.Lookup("storage.objects"); found {
+		account, compatible := value.(corestorage.InlineImageAccounting)
+		if !compatible || corestorage.NilImageAdapter(account) {
+			return fmt.Errorf("personal space avatar accounting has incompatible type %T", value)
+		}
+		svc.SetAvatarStorage(m.storage, account)
+	}
 	if value, ok := m.app.Lookup("platform.reliability.service"); ok {
+		command, compatible := value.(*reliability.Service)
+		if !compatible || command == nil {
+			return fmt.Errorf("personal space reliability command has incompatible type %T", value)
+		}
+		svc.SetReliability(command)
 		if reporter, ok := value.(CompatibilityReporter); ok {
 			svc.SetCompatibilityReporter(reporter)
 		}
@@ -155,6 +199,8 @@ func (m *Module) Start(ctx context.Context) error {
 	m.attacher.AttachSpaceStyleTarget(svc)
 	m.service = svc
 	m.handler = NewHandlerWithStyleApplication(svc, m.styles)
+	m.handler.SetOwnerSessionProof(ownerVerifier, ownerStrength)
+	m.handler.SetAdminSessionAuthority(adminAuthority)
 	return m.app.Provide("feature.personal-space.service", svc)
 }
 
@@ -176,6 +222,18 @@ func (m *Module) enabled() bool {
 
 type identityUserReader struct{ reader identityport.UserReader }
 
+func (r identityUserReader) GetByIDForUpdate(ctx context.Context, id string) (*identitydomain.User, error) {
+	reader, ok := r.reader.(identityport.UserCommandReader)
+	if !ok || corestorage.NilImageAdapter(reader) {
+		return nil, ErrSpaceFactsUnavailable
+	}
+	value, err := reader.GetUserForUpdate(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return identityUser(value), nil
+}
+
 func (r identityUserReader) GetByID(ctx context.Context, id string) (*identitydomain.User, error) {
 	value, err := r.reader.GetUser(ctx, id)
 	if err != nil {
@@ -193,7 +251,7 @@ func (r identityUserReader) GetByUsername(ctx context.Context, username string) 
 }
 
 func identityUser(value identityport.User) *identitydomain.User {
-	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Avatar: value.Avatar, Bio: value.Bio}
+	return &identitydomain.User{ID: value.ID, Username: value.Username, Nickname: value.Nickname, Email: value.Email, Avatar: value.Avatar, Bio: value.Bio, Status: identitydomain.UserStatus(value.Status)}
 }
 
 type communityThreadGateway struct{ gateway communityport.ContentGateway }

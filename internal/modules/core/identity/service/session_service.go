@@ -281,13 +281,31 @@ func (s *SessionService) VerifyAccess(ctx context.Context, claims *auth.JWTClaim
 		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
-	session, err := s.sessions.GetByID(ctx, claims.SessionID)
-	if err != nil || session.UserID != claims.UserID || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
+	var user *domain.User
+	var session *domain.Session
+	var err error
+	if transaction.Active(ctx) {
+		locker, ok := s.users.(repository.UserAuthorityLocker)
+		if !ok {
+			return ErrSessionConfiguration
+		}
+		// Lock accounts before sessions, matching account revoke/status commands.
+		user, err = locker.GetByIDForUpdate(ctx, claims.UserID)
+		if err != nil {
+			return ErrSessionInvalid
+		}
+		session, err = s.sessions.GetByIDForUpdate(ctx, claims.SessionID)
+	} else {
+		session, err = s.sessions.GetByID(ctx, claims.SessionID)
+	}
+	if err != nil || session == nil || session.UserID != claims.UserID || session.RevokedAt != nil || !s.now().Before(session.ExpiresAt) {
 		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}
-	user, err := s.users.GetByID(ctx, claims.UserID)
-	if err != nil || user.Status != domain.UserStatusActive || user.AuthVersion != claims.AuthVersion {
+	if user == nil {
+		user, err = s.users.GetByID(ctx, claims.UserID)
+	}
+	if err != nil || user == nil || user.Status != domain.UserStatusActive || user.AuthVersion != claims.AuthVersion {
 		s.observeSession("verify", "invalid")
 		return ErrSessionInvalid
 	}

@@ -1,6 +1,6 @@
 # 系统架构
 
-> 更新时间：2026-09-23
+> 更新时间：2026-10-16 14:02（Asia/Shanghai）
 
 浏览器不直接访问 PostgreSQL、Redis、NATS、个人空间文件或插件发布目录。Web/Admin 请求先经 API 的认证、稳定权限、对象归属与业务状态校验，再进入领域服务和存储层。
 
@@ -13,7 +13,7 @@
 
 | 代码区域 | 职责 |
 | --- | --- |
-| `internal/modules/core/identity` | 账号、会话、角色、管理员准入与 MFA。 |
+| `internal/modules/core/identity` | 独立 User/Admin 账号、凭据、会话与角色绑定，以及 MFA/恢复。 |
 | `internal/modules/core/community` / `moderation` | 版块、帖子、回复、标签、内容状态和治理。 |
 | `internal/modules/core/userstorage` | 用户文件路径、配额、原子写入和文件归属。 |
 | `internal/modules/core/contenteditor` | 文本/CampusDoc 校验和安全渲染。 |
@@ -30,3 +30,16 @@
 PDF Viewer 的 iframe 无法自行读取文件。它通过 Gateway 建立受校验的 Bridge，再请求有限的资源描述或 Range；API 复核文章可读性或个人文件所有权。
 
 进一步阅读：[模块、插件与资源包](/guide/module-plugin-resource-boundaries)、[数据目录](/reference/data-layout)、[三层授权](/plugins/authorization-v3)。
+
+
+## v1.2 当前授权接入范围
+
+02a策略/委托内核、02d独立管理域和02b限定资源范围均通过阶段验收。User/Admin业务分别使用当前完整主体及实际资源，公开/本人/Feature/作者/治理、字节和Space、独立Admin管理元数据/有界预览及当前SPA身份已完成；元数据或预览不能转为私人原文或执行凭据。
+
+Admin刷新使用独立HttpOnly Cookie与CSRF，认证器配置/确认/升阶在后台本人会话中完成。登录/恢复/受保护导航读取当前身份；API仍逐次检查业务权限与近期MFA，客户端丢弃身份变化后的旧结果。
+
+V12-02b 限定资源范围三态完成：144条当前资源/身份入口、八组责任链；63份历史切片的539个断言与21项新增/修改断言，在当前源码下560项必需顶层测试全部PASS，无FAIL/SKIP/race。13个隔离PG16数据库按互不兼容夹具分库；000016–000024九组迁移的四阶段原字段/主体/非复用高水位保留；17项实际cmd/server+当前Admin/Web的Chrome浏览器断言、Web89/Admin50组件及共同门禁通过。current24/next25；完整源码、日志、构建物和目标证据摘要由退出报告核对。
+
+当前24条迁移、100业务表与2执行器表。所有原始切片记录保留在仓库 `docs/进度/v1.2-dev/`；阶段出口为 `v1.2.110-dev.md`，当前责任清单及带摘要机器报告与其关联。02c首片已验收且阶段部分完成，v5/Dispatcher与Knowledge来源ACL分别属于03c/09a等后续责任；不是v1.2整版发布完成声明。
+
+V12-02c首片宿主白名单纯策略、严格输入、Schema/SDK已完成实现、自动化及Linux原生目标验收：10项原生race测试无FAIL/SKIP/race，192份实际Go输出与独立oracle一致（144组合/64并发），全量Go及共同门禁通过。完整主体与凭据/当前端点/同条规则状态、有效期和精确公开集合ID绑定，最终复核不复用旧见证。整个02c仍部分完成；摘要凭据与真实入口、存储/轮换/撤销和原资源ACL交集继续实施，current24/next25。 仓库进度为 `docs/进度/v1.2-dev/v1.2.111-dev.md`。

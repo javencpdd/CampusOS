@@ -70,8 +70,36 @@ func TestAdminRouteContractsIncludeManagementPlaneAdmission(t *testing.T) {
 			auth: "jwt+admin-account+permission", scope: "global",
 		},
 		"POST /api/v1/admin/threads/:id/take-down": {
-			auth: "jwt+admin-account-or-scope+permission", scope: "assigned-category-or-global-admin",
+			auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board",
 		},
+		"POST /api/v1/threads/:id/take-down": {
+			auth: "jwt+current-session", scope: "single-board-execution-grant",
+		},
+		"DELETE /api/v1/moderation/threads/:id/posts/:post_id": {
+			auth: "jwt+current-session", scope: "single-board-execution-grant",
+		},
+		"DELETE /api/v1/admin/posts/:post_id": {
+			auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board",
+		},
+		"GET /api/v1/threads/:id/posts": {
+			auth: "none", scope: "parent-public+published-posts",
+		},
+		"GET /api/v1/threads/:id/posts/me": {
+			auth: "jwt+current-session", scope: "parent-public-or-current-user-owner+published-posts",
+		},
+		"GET /api/v1/events": {
+			auth: "jwt+admin-account+current-session+permission", scope: "event-metadata-only",
+		},
+		"DELETE /api/v1/admin/threads/:id/purge":        {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"DELETE /api/v1/admin/threads/:id":              {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/admin/threads/:id/direct-restore": {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/admin/threads/:id/trash/restore":  {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/admin/threads/:id/review/approve": {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/admin/threads/:id/review/reject":  {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/threads/:id/pin":                  {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/threads/:id/unpin":                {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/threads/:id/lock":                 {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
+		"POST /api/v1/threads/:id/unlock":               {auth: "jwt+admin-account+permission+current-mfa", scope: "resource-board"},
 	}
 	for _, route := range routes {
 		key := route.Method + " " + route.Path

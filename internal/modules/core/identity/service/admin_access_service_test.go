@@ -9,6 +9,10 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/identity/repository"
 )
 
+// V12-02d: the admin role and management-plane admission are fully decoupled.
+// Assigning or revoking the admin role never opens or closes Admin access;
+// administrators are created only through the independent admin identity
+// domain (AdminDomainService).
 func TestAdminAccountAdmissionIsIndependentFromRoleAssignment(t *testing.T) {
 	ctx := context.Background()
 	users := repository.NewMemoryUserRepository()
@@ -29,15 +33,24 @@ func TestAdminAccountAdmissionIsIndependentFromRoleAssignment(t *testing.T) {
 	if err != nil || !assigned {
 		t.Fatalf("assign admin role: assigned=%v err=%v", assigned, err)
 	}
-	if err := access.Require(ctx, user.ID); err != nil {
-		t.Fatalf("role assignment must provision the independent admin account: %v", err)
+	// The role grant is a permission-catalog fact only; it must not provision
+	// management-plane admission.
+	if err := access.Require(ctx, user.ID); !errors.Is(err, ErrAdminAccessDenied) {
+		t.Fatalf("role assignment opened Admin access: %v", err)
 	}
-
+	// Explicit admission provisioning still works independently of roles.
+	if _, err := adminAccounts.EnsureActive(ctx, user.ID, "explicit_provision"); err != nil {
+		t.Fatalf("explicit admission provisioning: %v", err)
+	}
+	if err := access.Require(ctx, user.ID); err != nil {
+		t.Fatalf("explicitly provisioned admission denied: %v", err)
+	}
+	// Revoking the role leaves the explicitly provisioned admission untouched.
 	revoked, err := permissions.RevokeRole(ctx, user.ID, 1)
 	if err != nil || !revoked {
 		t.Fatalf("revoke admin role: revoked=%v err=%v", revoked, err)
 	}
-	if err := access.Require(ctx, user.ID); !errors.Is(err, ErrAdminAccessDenied) {
-		t.Fatalf("revoked admin account must be denied, got %v", err)
+	if err := access.Require(ctx, user.ID); err != nil {
+		t.Fatalf("role revocation closed explicit admission: %v", err)
 	}
 }

@@ -95,7 +95,12 @@ func (r *MemoryRepository) List(_ context.Context, owner string, f ListFilter) (
 		}
 		out = append(out, DocumentDetail{Document: d, CurrentVersion: current})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedAt.After(out[j].UpdatedAt) })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].UpdatedAt.Equal(out[j].UpdatedAt) {
+			return out[i].ID > out[j].ID
+		}
+		return out[i].UpdatedAt.After(out[j].UpdatedAt)
+	})
 	return out, nil
 }
 func (r *MemoryRepository) Get(_ context.Context, owner, id string) (DocumentDetail, error) {
@@ -242,7 +247,7 @@ func (r *PgRepository) Create(ctx context.Context, d Document, v DocumentVersion
 	return r.Get(ctx, d.OwnerID, d.ID)
 }
 func (r *PgRepository) List(ctx context.Context, owner string, f ListFilter) ([]DocumentDetail, error) {
-	rows, e := r.db(ctx).Query(ctx, detailSQL+` WHERE d.owner_user_id=$1::bigint AND ($2='' OR d.status=$2) ORDER BY d.updated_at DESC`, owner, f.Status)
+	rows, e := r.db(ctx).Query(ctx, detailSQL+` WHERE d.owner_user_id=$1::bigint AND ($2='' OR d.status=$2) ORDER BY d.updated_at DESC, d.id::text COLLATE "C" DESC`, owner, f.Status)
 	if e != nil {
 		return nil, e
 	}

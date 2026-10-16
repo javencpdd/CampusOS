@@ -1,0 +1,266 @@
+{
+  "schema": "campusos.v12-02b-owner-detail-acceptance/v1",
+  "generated_at": "2026-10-11T18:29:04.311073+00:00",
+  "stage": "V12-02b",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Authenticated HTTP thread /me owner detail: independent named Policy, current user-session proofs, raw facts, atomic owner/version snapshot and final complete principal/fact binding.",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres_version_num": 160014,
+    "database": "owned disposable PostgreSQL 16 container; loopback only"
+  },
+  "checks": {
+    "TestCheckThreadOwnerReadDecisionBinding": "passed",
+    "TestCheckThreadOwnerReadDecisionCurrentFactsAndPrincipal": "passed",
+    "TestCheckThreadOwnerReadDecisionCannotForgeOwnerAllow": "passed",
+    "TestCheckThreadOwnerReadDecisionRejectsInvalidInitialRequest": "passed",
+    "TestThreadOwnerReadPolicyRealmStateMatrix": "passed",
+    "TestThreadOwnerReadPolicyNonOwnerAndMFA": "passed",
+    "TestThreadOwnerReadPolicyRejectsInvalidInputs": "passed",
+    "TestThreadOwnerReadPolicyDoesNotAliasOrCache": "passed",
+    "TestThreadOwnerReadPolicyNativeInterop": "passed",
+    "TestMemoryOwnerThreadSnapshotStatesAndNoViews": "passed",
+    "TestMemoryOwnerThreadSnapshotRejectsOwnerABAAndReplacement": "passed",
+    "TestMemoryOwnerThreadSnapshotRawFactsFailClosed": "passed",
+    "TestMemoryOwnerThreadSnapshotCountersAndContent": "passed",
+    "TestMemoryOwnerThreadSnapshotConcurrentOwnerRevocation": "passed",
+    "TestPostgreSQLOwnerThreadSnapshotInvalidVersionAvoidsQuery": "passed",
+    "TestOwnerThreadDetailStateMatrix": "passed",
+    "TestOwnerThreadDetailMemoryRetryAndRevocation": "passed",
+    "TestOwnerThreadDetailPrincipalAndFailureBoundaries": "passed",
+    "TestOwnerThreadDetailPublicBranchNeverFallsBack": "passed",
+    "TestOwnerThreadDetailPostgreSQLStateMatrix": "passed",
+    "TestOwnerThreadDetailPostgreSQLCommittedRaces": "passed",
+    "TestOwnerThreadDetailPostgreSQLFailureBoundaries": "passed",
+    "TestOwnerThreadDetailPostgreSQLCountersAndVersion": "passed",
+    "TestOwnerThreadDetailPostgreSQLPublicBranchNeverFallsBack": "passed",
+    "TestThreadOwnerHTTPVerifiedSessionAndDomain": "passed",
+    "TestThreadOwnerHTTPRejectsIncompleteHostProof": "passed",
+    "TestThreadOwnerHTTPRechecksContentAndSession": "passed",
+    "TestThreadOwnerModuleSessionProofWiring": "passed",
+    "TestPublicThreadDetailPolicyStateMatrix": "passed",
+    "TestPublicThreadDetailMemoryRevocation": "passed",
+    "TestPublicThreadDetailRetryReloadsFactsAndDecision": "passed",
+    "TestPublicThreadDetailFailsClosed": "passed",
+    "TestPublicThreadDetailHTTPErrorBoundary": "passed",
+    "TestPublicThreadListStateMatrixAndPagination": "passed",
+    "TestPublicThreadListRetryWholeSnapshot": "passed",
+    "TestPublicThreadListFailsClosed": "passed",
+    "TestPublicThreadListSustainedConflictAndCancellation": "passed",
+    "TestPublicThreadListDispatchAndBoundaries": "passed",
+    "TestPublicThreadListForcesCanonicalVisibility": "passed",
+    "TestPublicThreadListHTTPErrorBoundary": "passed",
+    "TestPublicThreadListHTTPEmptyPageKeepsPublicCount": "passed",
+    "TestPublicThreadQueryUsesCanonicalList": "passed",
+    "TestPublicThreadQueryRevocationChangesWholePage": "passed",
+    "TestPublicThreadQueryPreservesAuthorList": "passed",
+    "TestPublicThreadQueryUnavailable": "passed",
+    "TestPublicListRechecksPublicationAfterAnotherServiceChangesIt": "passed",
+    "TestMemoryThreadListSnapshotPaginationAndRevocation": "passed",
+    "TestMemoryThreadListSnapshotPaginationBoundaries": "passed",
+    "TestMemoryThreadListSnapshotConcurrentCountAndRows": "passed"
+  },
+  "coverage": {
+    "state_combinations_per_adapter": 36,
+    "owner_policy_realms_and_states": 216,
+    "policy_allow_combinations": 24,
+    "postgres_committed_races": 10,
+    "http": "real JWT and Identity SessionService; same-ID admin, revoked/account-changed sessions, forged owner fields, proof faults, safe 500/409",
+    "policy_oracle": {
+      "malformed_cases": 59,
+      "binding_checks": 23,
+      "native_go_decisions": 216
+    },
+    "adapters": [
+      "memory",
+      "postgres"
+    ],
+    "consistency": "raw content/facts in one owner+version-conditional read; current session checked before and after, new decisions on retry; no private view increment"
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/thread_owner_read_policy_test.go": "2b99437238a03ccf474648e6df1e9c403465910bcf126e889517f91026430416",
+    "internal/modules/core/identity/policy/thread_owner_read_test.go": "1ac9095953e1ae8d25bfcc734365dd5452216cc05a1d1408b0df2c69f884ddce",
+    "internal/modules/core/identity/policy/thread_owner_read_interop_test.go": "5fa2145ca3b90f9121f1debe4f05ca49f79efacfa60e9ac590da03731743b046",
+    "internal/modules/core/community/repository/thread_owner_snapshot_test.go": "c960882d4fa6b66b6fb5942cd3428183d13e2409ec14fcedc2fa4957033a6a60",
+    "internal/modules/core/community/service/thread_owner_read_test.go": "c835cf8b08a81b4cd5f9a1046a6dd8ed48d38b33fc1b6933abe29ed8b894d5b8",
+    "internal/modules/core/community/service/thread_owner_read_postgres_test.go": "a95f54a0f74867338ee3eb7c4dc8b5e61eb958859acc2dbc88d4f74ab94c7aeb",
+    "internal/modules/core/community/handler/thread_owner_read_test.go": "dd1bc85dea16f86f6e6f49f5746cb4c32393cfde2a32c61c53f604c6769db917",
+    "internal/modules/core/community/thread_owner_read_test.go": "d3a07a9f5649c0fca3f799f225d92d6704485d6e6f343e5f23591a45901382cf",
+    "Makefile": "8c94fde814c9aaf2bb3f17d483680d9eb4e56a8efddcf426a424827d1f5ec976",
+    "internal/modules/core/identity/port/thread_owner_read_policy.go": "a142b2320ab01d782139549e1f221ea63d96d4bc6ebc5b6c729cd006de3d73fe",
+    "internal/modules/core/identity/policy/thread_owner_read.go": "21cbd86252e24e0b7a16dd5593775b7aca657bad92f8992ec3914182392b4572",
+    "internal/modules/core/community/service/thread_owner_read.go": "662b6e489a2adb02a965ce56530668dba41825f4ef83ec657fceab1c7c96995f",
+    "internal/modules/core/community/service/thread_service.go": "52b9bd4d0fa6cf20936887eb6285e0c301d4135b95e89c3ee38ae69d480489ce",
+    "internal/modules/core/community/repository/thread_repository.go": "7da5b61ad3a218badd2d22eb28a4968f217d3ac42294fec39932d9c4c31d0beb",
+    "internal/modules/core/community/repository/pg_thread_repository.go": "23ed5f755f242f3b6f29f94f3b0a0577a16cffe6b14faae192508d6cccf7b832",
+    "internal/modules/core/community/handler/thread_handler.go": "2a45f70a9257e3053dd1c7133f600877cf77e6f03a2deff73ac03fa90c09a15e",
+    "internal/modules/core/community/handler/thread_handler_test.go": "1fb68efe2697bac4ed5e1bca78a63119e9579694c8a0b4c619153c717266491f",
+    "internal/modules/core/community/module.go": "bbdc78816f5d6b78f7f3cecc37ef0847f90222072589fa34159471cb0b2198fa",
+    "docs/api/policy-thread-owner-read-v1.schema.json": "e38f6e7b879d4d8d266f65b9fcfd28c1a4d39458e4787ba205631fc5378d1e1e",
+    "docs/api/policy-thread-owner-read-decision-v1.schema.json": "e5b89bc2ed7e35e61faf7be5adbc819c166f3f99227bb8727b1444f4ab12de2d",
+    "docs/api/policy-thread-owner-read-v1.errors.json": "9c800a55ba49ae99d314e094efbf79bb0aac9b57880a03b9f9358ae500690d18",
+    "scripts/check-v12-thread-owner-read-contract.mjs": "7b1718c55add8f55bdcf7325206cc79c4cea3f7d7d6e3bde5b32ad4e46eb9213",
+    "scripts/v12-02b-owner-detail-drill.sh": "2c0439c5b18c9c1fc990a5417f3fda34df3fecd5e6ad406022d54ea98ba413f8",
+    "migrations/000016_v1_2_thread_facts_version.up.sql": "0445d68cb8dc1871570b78f3d7d6652ac8f366a88a8d3677965dc8b81c806e6f",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "40ce6bb990732f381c559f83a11cc8c12afbf2fba246259f7af2b7bfa4561c27",
+    "docs/api/v1.2帖子作者读取策略合同.md": "01a590324d7b9a1f7299ff6b1b70d7010a0644c85d38ffe8b4299a02b44bc411",
+    "docs/api/v1.2公开帖子事实与策略合同.md": "7071c93d14bff7cbe9c088772846a4532a8948b68dc99d5b38cd071bb57d6a5a",
+    "docs/api/v1.2其他资源与动作策略合同.md": "12e3f8deb83d64d88d830b26e7a3b628495a9cbe55498d1f4aed02aa69247bc6",
+    "docs/architecture/当前架构概览.md": "ff6d1a17d8a0cf442027b324128921fabdf5a28abfb7c73acef406b0da26da19",
+    "docs-site/guide/architecture.md": "881783a5cde45a51de52ad786b6fcc3622699cb2c1927e9cdf9e6caf6b3e5f30",
+    "skills/sources/campusos-project-onboarding/references/current-project-status.md": "0c93c6150a647353ed5e38863a0d7f62f090ddaa27619b550479005ced08a0bd",
+    "docs/进度/v1.2-dev/v1.2.48-dev.md": "0ab1d9e5021d3f0941b024c6f6382a6d4eb1761b251e9a34f6476d9603481193"
+  },
+  "dependencies": {
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-exit-linux.json": "f144f872bd91c35d9a9233bd129c40e209ae862bbb09cd14bce0a9b5820dad25",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-public-detail-linux.json": "ef63603ac7fa87404f1fac6efdc243f478178e4a0d6b07f422ce087de9d7861a",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-public-list-linux.json": "07b6137944f33509ec9a91e6d368a43aa9ace7fefb49efb53be21ed5f8cc37f3"
+  },
+  "common_gates_status": "passed",
+  "logs": {
+    "architecture": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/architecture.log",
+      "log_sha256": "d5c0baddb2ce8fc3edb7edd4b61feebc2f80aee84a0c663ee2109d555872658f"
+    },
+    "contracts": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/contracts.log",
+      "log_sha256": "349e36ec313302a43a99e36a53c531796514461c7d643574a0670f1098c1aa3f"
+    },
+    "database": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/database.log",
+      "log_sha256": "f62c0871a153328e40530956b0345825208458d1cb5039abc0b1a27f138f1a3f"
+    },
+    "diff": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "docs-build": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/docs-build.log",
+      "log_sha256": "3806211d9f5d1f7473d96d07821911d83da19a5e4ef1914592e175c7d5eb68a0"
+    },
+    "docs-links": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/docs-links.log",
+      "log_sha256": "cd92cb8138ac6dc1d2a5a8f184f40191086a8dd4355ac0c19eadd4fb06d49a6d"
+    },
+    "go-all": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/go-all.log",
+      "log_sha256": "36e47ea18ab06ed61daed4438c521b40c077c8a95fbc6970c4b1e5bfd63d734b"
+    },
+    "line-endings": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/line-endings.log",
+      "log_sha256": "ba25bf885acb93916e1fe5c83f3d9daebf5ad2bf500e788f1877e50f891d15de"
+    },
+    "migrations-check": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/migrations-check.log",
+      "log_sha256": "34c59ef2dbfce51acc0cca3ab3466c6a425ea686c1dc5e024a3576e1252e8292"
+    },
+    "migrations-up": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/migrations-up.log",
+      "log_sha256": "5525d5180ccf0c0778117965eff553deec1232abfb74dd06783aa3f92c5b63d9"
+    },
+    "owner-contract": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/owner-contract.log",
+      "log_sha256": "1bb2baa761b42d20624b612be21193cbe86120c6b4a6671796151ee3225fd4ba"
+    },
+    "owner-tests": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-owner/drill.FKqAvz/owner-tests.log",
+      "log_sha256": "525810bdca44e68b414a9ab024fbecc9d4cf09effe07c4ef422efb39848218cc"
+    }
+  },
+  "artifacts": {
+    ".cache/v12-02b-owner/drill.FKqAvz/owner-policy.jsonl": "7bc68aca1feb8bc4ea0a818a460226008114cd466f52e254b84e0a74d7ea2f0b",
+    ".cache/v12-02b-owner/drill.FKqAvz/owner-policy.json": "39e6f5e9f8649a0a80f155380b7e077472b22bc0db9d80794beff0b7398c6ff1"
+  },
+  "boundaries": [
+    "V12-02b remains partial; author lists, private reads in typed Features, moderation/MFA Principal, batch authorization and effective-permission preview await later slices.",
+    "Legacy GetThreadForViewer bare-ID private branch remains source compatible and is not accepted as this authenticated owner route.",
+    "Public-selected /me stays on public predicate; revocation never falls back to an owner exception.",
+    "No new board lifecycle permission, plugin/integration private-read grant, runtime JSON parser or public Policy endpoint is introduced.",
+    "Resource bytes linearize at the final owner/version snapshot; credential is freshly checked before/after that read, later changes cannot retract returned bytes.",
+    "HTTP real credentials use Memory Identity adapters; resource storage is separately accepted against real PostgreSQL. Full server/browser/Windows/capacity/whole-stage acceptance is not claimed.",
+    "No new migration; existing 000016 provides content/owner/state/order ABA-safe versions."
+  ],
+  "final_docs_sync": {
+    "generated_at": "2026-10-11T18:39:40.854830+00:00",
+    "status": "passed",
+    "logs": {
+      "final-docs-build": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-docs-build.log",
+        "log_sha256": "78223d36ed9697df570c19c2c99ff08ee25b47d62a3994af14d44579c45b241e"
+      },
+      "final-docs-links": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-docs-links.log",
+        "log_sha256": "e682e661651d38f4139a85889f2473cd4ae34ab85a28911fed2e832fe8f32bb3"
+      },
+      "final-architecture": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-architecture.log",
+        "log_sha256": "d5337751d1992af8021caba29d8ac4a4e366e6ceae5e210421d67c848357db36"
+      },
+      "final-skill": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-skill.log",
+        "log_sha256": "db349825903d66adffea3ecf1bd8e1803043e8a71cf1a051235dabc5371f5bb0"
+      },
+      "final-skill-bridges": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-skill-bridges.log",
+        "log_sha256": "73c56ac991f3a6397b52620f134d53a20062b0c45df00554acf2eff77099e676"
+      },
+      "final-line-endings": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-line-endings.log",
+        "log_sha256": "09fcd6499c9118bd5175abcf66944259fa73543ca55865d359319914c0cb0c93"
+      },
+      "final-diff": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-owner/drill.FKqAvz/final-diff.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "source_changes_since_target_drill": "Only documentation synchronized; all 24 target business, schema, test, Makefile and runner digests still match.",
+    "predecessor_evidence": "02a/02d/01b prerequisites and .46/.47 reports verified before implementation; historical reports unchanged. Shared service/repository/HTTP wiring changes covered by this owner slice and 21 public-path regression tests.",
+    "independent_review": "Read-only authorization/snapshot/host-proof/module review found no must-fix defects; separate audit matched 42 report references and 8 oracle references, with all 49 required tests passing without skip.",
+    "documentation_review": "Eight final documents agree on slice scope, three acceptance states, 49=28+21 required tests, 5 real PostgreSQL tests and remaining stage boundaries; stale v1.0 evidence pointer and predecessor audit tense corrected, then all seven final gates rerun."
+  }
+}

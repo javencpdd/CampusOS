@@ -315,7 +315,7 @@ func TestReadPortKeepsOwnerScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	_, err = svc.ReadOnly().GetOwnDocument(context.Background(), "1002", item.ID)
+	_, err = svc.ReadOnly().GetOwnDocument(context.Background(), documentProof("1002"), item.ID)
 	var public *apperror.AppError
 	if !errors.As(err, &public) || public.Descriptor() != apperror.PersonalDocumentNotFound {
 		t.Fatalf("read port must preserve owner scope, got %v", err)

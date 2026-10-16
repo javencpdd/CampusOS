@@ -2,12 +2,14 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/hkdf"
 )
 
 // JWTClaims JWT 声明
@@ -41,6 +43,14 @@ type JWTConfig struct {
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 	Issuer     string
+	// Audience pins the intended consumer. Empty keeps pre-v12 behavior; the
+	// v1.2 identity domains set one audience per domain and verification then
+	// rejects tokens aimed at the other domain.
+	Audience string
+	// KeyID identifies the signing key in the token header. Empty keeps
+	// pre-v12 behavior; the identity domains use one key id per domain so a
+	// token minted by the other domain never verifies.
+	KeyID string
 }
 
 // JWTManager JWT 管理器
@@ -84,7 +94,13 @@ func (m *JWTManager) GenerateAccessToken(userID, username string, contexts ...Ac
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
+	if m.cfg.Audience != "" {
+		claims.Audience = jwt.ClaimStrings{m.cfg.Audience}
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	if m.cfg.KeyID != "" {
+		token.Header["kid"] = m.cfg.KeyID
+	}
 	return token.SignedString([]byte(m.cfg.Secret))
 }
 
@@ -112,6 +128,11 @@ func (m *JWTManager) VerifyToken(tokenString string) (*JWTClaims, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
+		if m.cfg.KeyID != "" {
+			if kid, ok := t.Header["kid"].(string); !ok || kid != m.cfg.KeyID {
+				return nil, errors.New("token key id does not match this domain")
+			}
+		}
 		return []byte(m.cfg.Secret), nil
 	})
 	if err != nil {
@@ -120,6 +141,21 @@ func (m *JWTManager) VerifyToken(tokenString string) (*JWTClaims, error) {
 	claims, ok := token.Claims.(*JWTClaims)
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("invalid token")
+	}
+	if m.cfg.Issuer != "" && claims.Issuer != m.cfg.Issuer {
+		return nil, errors.New("token issuer does not match this domain")
+	}
+	if m.cfg.Audience != "" {
+		found := false
+		for _, value := range claims.Audience {
+			if value == m.cfg.Audience {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("token audience does not match this domain")
+		}
 	}
 	return claims, nil
 }
@@ -138,6 +174,38 @@ func (m *JWTManager) VerifyAccessToken(tokenString string) (*JWTClaims, error) {
 	return claims, nil
 }
 
+// Secret exposes the signing secret for HKDF domain derivation inside the
+// process only. It must never be logged, returned by an API, or copied into
+// configuration snapshots.
+func (m *JWTManager) Secret() string { return m.cfg.Secret }
+
 func (m *JWTManager) AccessTTL() time.Duration { return m.cfg.AccessTTL }
 
 func (m *JWTManager) RefreshTTL() time.Duration { return m.cfg.RefreshTTL }
+
+// DomainJWTManagers pairs one token manager per identity domain (v1.2
+// independent User/Admin identity domain contract). The caller must supply
+// distinct issuer, audience and secret/key ids; verification then rejects any
+// token minted for the other domain at every boundary.
+type DomainJWTManagers struct {
+	User  *JWTManager
+	Admin *JWTManager
+}
+
+func NewDomainJWTManagers(user JWTConfig, admin JWTConfig) *DomainJWTManagers {
+	if user.Secret == "" || admin.Secret == "" || user.Secret == admin.Secret {
+		panic("identity domains require distinct signing secrets per domain")
+	}
+	if user.Issuer == admin.Issuer || user.Audience == admin.Audience {
+		panic("identity domains require distinct issuers and audiences")
+	}
+	return &DomainJWTManagers{User: NewJWTManager(user), Admin: NewJWTManager(admin)}
+}
+
+// DeriveDomainSecret derives a per-domain signing secret from a base secret
+// with HKDF-SHA-256 domain separation. Deployments that need independent key
+// custody set the domain secret explicitly instead of deriving it.
+func DeriveDomainSecret(base, domain string) string {
+	key := hkdf.Extract(sha256.New, []byte(base), []byte(domain))
+	return base64.RawURLEncoding.EncodeToString(key)
+}

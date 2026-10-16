@@ -277,3 +277,20 @@ func (r *capturingContentRepository) DeleteContent(_ context.Context, _ string) 
 func (r *capturingContentRepository) ListContentsByUserID(_ context.Context, _ string, _, _ int) ([]*SpaceContent, int64, error) {
 	return []*SpaceContent{}, 0, nil
 }
+
+func TestThreadGovernanceSafeEventRemovesSpaceProjection(t *testing.T) {
+	ctx := context.Background()
+	repo := NewMemoryRepository()
+	svc := NewService(repo, newFakeUserLookup(&identitydomain.User{ID: "1001", Username: "alice", Nickname: "Alice"}))
+	thread := testThread("1001", "1", nil)
+	if err := svc.SyncThread(ctx, thread); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.HandleThreadEvent(ctx, eventbus.Event{Type: eventbus.EventThreadUpdated, Data: map[string]any{"id": thread.ID, "moderation_status": "taken_down"}}); err != nil {
+		t.Fatal("safe acknowledgement incorrectly demanded private owner/body", err)
+	}
+	items, total, err := svc.ListPublicContentsByUserID(ctx, "1001", 1, 20)
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatal("taken-down projection retained", items, total, err)
+	}
+}

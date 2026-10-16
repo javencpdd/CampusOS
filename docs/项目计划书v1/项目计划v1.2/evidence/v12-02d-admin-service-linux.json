@@ -1,0 +1,156 @@
+{
+  "schema": "campusos.v12-02d-admin-service-acceptance/v1",
+  "generated_at": "2026-10-11T05:25:07.202075+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "AdminDomainService account lifecycle (bootstrap/create/suspend/revoke/restore) over the identity-domains policy with last-security-admin protection, required audit atomicity and bootstrap races on real PostgreSQL; no HTTP wiring",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres": "PostgreSQL 16 (owned tmpfs container, loopback-only port; client-container psql because host /tmp is unreliable for runc exec state)"
+  },
+  "checks": {
+    "TestAdminDomainBootstrapFirstSecurityAdmin": "passed",
+    "TestAdminDomainLifecycleGuards": "passed",
+    "TestAdminDomainAuditWritesPerCommand": "passed",
+    "TestAdminDomainBootstrapRaceSingleWinner": "passed",
+    "TestPostgreSQLAdminDomainLifecycleAndRace": "passed"
+  },
+  "coverage": {
+    "service_tests": 5,
+    "adapters": [
+      "postgres",
+      "memory"
+    ],
+    "race_paths": [
+      "concurrent bootstrap single winner",
+      "audit failure rollback"
+    ],
+    "guards": [
+      "bootstrap gate",
+      "admin+MFA actor",
+      "last security admin",
+      "self transition",
+      "revoked terminal"
+    ]
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/service/admin_domain_service.go": "a348aff2a5ca3f2130dcb8aeebf40c0d12136875e5749240a1f4d9abb0b08d14",
+    "internal/modules/core/identity/service/admin_domain_service_test.go": "1bea75d2e98ba5d847019a6aeb49d42c89e25c5e9cab7ce3386a72f5302df18d",
+    "internal/modules/core/identity/repository/pg_admin_domain_repository.go": "ee00ff7f748c7e98a4d9cb337f607886b008535f7b56defa4838fe1072dc080d",
+    "internal/modules/core/identity/policy/identity_domains.go": "8155ea6cf07504ad673729b45e7ebb3b7cc1860a9176b803ff665b8e20d0c36a",
+    "internal/modules/core/identity/port/identity_domains_policy.go": "e2113bfab5aa62c5cc5995cc3d3b44b56ad9285c730c782daed45a8078240ae1",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "scripts/v12-02d-admin-service-drill.sh": "c11a0876592b25b52eff0637116a5fb9793df1ea50879b889d8ce1b50b5d8ce6"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-identity-domains-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02d-admin-store-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "migrations": {
+      "path": ".cache/v12-02d-admin-service/service.CwatmZ/migrations.log",
+      "sha256": "71cb17ad3a14d369ed205c837dd3946a1632bdb1b555284fe8a14fbbc67cdf88"
+    },
+    "service-tests": {
+      "path": ".cache/v12-02d-admin-service/service.CwatmZ/service-tests.log",
+      "sha256": "9c2ed28c27770ebd0ff36e28afdbcbcd4bd39f1ccd0eb0013235e9bd288e9879"
+    }
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/go-all.log",
+      "log_sha256": "696cbe57a9484c0e65832bb6f3f810321c9d05beb874f08d64d65a788d6242ed"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/architecture.log",
+      "log_sha256": "5f24aea6e2626418a99756a7ed5ef221b9be7561902b0885adc0d9cd8a9e6e45"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/docs-build.log",
+      "log_sha256": "c91a771aab397934839dd5802aa6f8db12185832a168e082fe724074b9d500cf"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-admin-service/service.CwatmZ/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No HTTP route or Admin UI consumes the service yet; admin login/session/JWT issuance arrives in later V12-02d slices.",
+    "The bootstrap gate uses deployment configuration only; no default administrator is created by migrations or seeds.",
+    "The legacy admission table and auto-admission trigger still serve the current Admin UI until the runtime switch slice; G1 replacement-map entries remain pending.",
+    "Audit permission_code for bootstrap/create/revoke is intentionally empty pending dedicated admin-domain codes; operation_code carries the precise action."
+  ]
+}

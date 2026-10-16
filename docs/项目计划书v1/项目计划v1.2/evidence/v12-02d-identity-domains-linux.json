@@ -1,0 +1,188 @@
+{
+  "schema": "campusos.v12-02d-identity-domains-acceptance/v1",
+  "generated_at": "2026-10-11T05:21:22.962965+00:00",
+  "stage": "V12-02d",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "campusos.identity-domains/v1 domain isolation, cross-domain credential/challenge binding and admin lifecycle judgement; pure Go Port only",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2",
+    "execution": "native Linux race-enabled compiled test binaries with env -i; no database, HTTP endpoint, credential verifier, cache, network, or shared instance mutated"
+  },
+  "checks": {
+    "TestIdentityDomainCodecRoundTrip": "passed",
+    "TestIdentityDomainCodecRejectsAmbiguousInput": "passed",
+    "TestIdentityDomainG1WireCorpus": "passed",
+    "TestIdentityDomainAcceptedShapes": "passed",
+    "TestIdentityDomainDenySequence": "passed",
+    "TestIdentityDomainMalformedTypedInput": "passed",
+    "TestIdentityDomainParallelWithoutCache": "passed"
+  },
+  "coverage": {
+    "g1_fixtures": 32,
+    "matrix_combinations": 63,
+    "native_go_oracle_outputs": 95,
+    "go_accepted_outputs": 24,
+    "go_deny_outputs": 70,
+    "go_input_rejections": 1,
+    "strict_codec_test_groups": 2,
+    "parallel_callers": 64
+  },
+  "source_sha256": {
+    "internal/modules/core/identity/port/strict_json.go": "d98d04404836c361eff759195360c6b6bb8c987e8e6a78d26b037b2ccf5af254",
+    "internal/modules/core/identity/port/resource_policy.go": "69aae3f1de7ab3e206d662b960baa4f819048815e0115c49dcb26e78917913bb",
+    "internal/modules/core/identity/port/identity_domains_policy.go": "e2113bfab5aa62c5cc5995cc3d3b44b56ad9285c730c782daed45a8078240ae1",
+    "internal/modules/core/identity/port/identity_domains_policy_test.go": "ba3c794bd3088435147de4ea67cd0c2f1f8a06c93228d7c1681202e389e65858",
+    "internal/modules/core/identity/policy/identity_domains.go": "8155ea6cf07504ad673729b45e7ebb3b7cc1860a9176b803ff665b8e20d0c36a",
+    "internal/modules/core/identity/policy/identity_domains_test.go": "ef0f0018a58520a77c2f35dedcaa992743365a286610b95a8a2767c8c9fe04a1",
+    "internal/modules/core/identity/policy/identity_domains_interop_test.go": "e9da84887085a2bfafae8ae27533d04d6652f0f616f6c8b9b7269130cbc94c69",
+    "docs/api/identity-domains-v1.schema.json": "42c7a7b1a3f29efc2118633c9f16393a8da3de86175832a32b9da596d448fd82",
+    "docs/api/identity-domains-v1.errors.json": "bab85dcf10527465c81f10076fbe8026d0b3d0e2e067810561aee6cdc7588413",
+    "docs/api/v1.2独立身份域合同.md": "9c1d2047663075bbbea0c26fc6b6b4579ff4f01e97bb37b8e13453a8fabdf82f",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "b8743058635660903ae27f0f0106c4cd169b396ec84a1dcdec786e7b94b1a739",
+    "sdk/typescript/src/identity-domains.ts": "50da16aa9d0256389a8d7ad58cdf673f6691fa3c9ed2888fdd44a140d0556187",
+    "sdk/typescript/src/index.ts": "f56af3d6340500f8deaa2ba5675cdd9287f28f855e1db5e1a31d156fc8cc7809",
+    "sdk/typescript/package.json": "b15f214fbeab4ad09dfb35cb67d9cf27e398a0ff9eab6e04af78e442077e26b0",
+    "sdk/typescript/pnpm-lock.yaml": "259871c61d03d0a151748ce8f126a2babdc34a38fb3f905ef07b88f529e40da9",
+    "scripts/check-v12-identity-domains-contract.mjs": "a84f3cd029d14dc5cbb47ccdc449537238f1bf3da0c7a006667fad995cbce5d6",
+    "scripts/check-v12-02d-identity-domains-output.mjs": "e0c0c5b906cde06cd70103188f20be6e06821ab018c68913f2c89bcd542b19a3",
+    "scripts/v12-02d-identity-domains-drill.sh": "c9a6510af5f595810a29a9e098ceb49466c4e3e5399f839ac5b74031e99fd029"
+  },
+  "dependencies": {
+    "v12-g0-exit.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g0-exit.json",
+      "sha256": "5f2a1be3562f0c026600391161e555d834901d7c0fb69d97044f09195ef75782",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-g1-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-g1-exit-linux.json",
+      "sha256": "a3b60bc4def8a77f08870a0069a9e8b3ed844937619f8830a2be0d517196b896",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json",
+      "sha256": "bd1f755b17c948e069453c01dfdc3a29d3583bce81a782260c9ee3fe3e2f7ebd",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-01b-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-01b-exit-linux.json",
+      "sha256": "624e801b4b82c3a415775628cd0727ec993652547fd49727d8ad2502a6d97a60",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    },
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "role": "accepted predecessor evidence; historical source snapshots are retained unchanged"
+    }
+  },
+  "target_logs": {
+    "g1-contract": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/g1-contract.log",
+      "sha256": "98a847480640a74f12b72c2baa9ec093eac4f684d75e84313a5c294a4be85613"
+    },
+    "generate-oracle": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/generate-oracle.log",
+      "sha256": "73120349bed27dd6b79f56a3db782343c0d6d8e8137179ac8face172ce856f95"
+    },
+    "targeted": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/targeted.log",
+      "sha256": "2f8da041ff50f8614c091343fc19fb26ca456729089357d4a075203c1b3cc285"
+    },
+    "build-port": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/build-port.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-policy": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/build-policy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native-port": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/native-port.log",
+      "sha256": "4c4ca0de17d61007f6b1af404d7018a460e195c6792de8ea40e2fba990863adc"
+    },
+    "native-policy": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/native-policy.log",
+      "sha256": "44963b6b47e0a8b9c5b4fdd7444129c53ec2f6577391895baab74f95a2e8c0a7"
+    },
+    "verify-oracle": {
+      "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/verify-oracle.log",
+      "sha256": "99063cc74de15fbb8c257ef28e0875c385b398dd620d412c2049e251d0a89735"
+    }
+  },
+  "native_binary_sha256": {
+    "identity-port.test": "a4c3fbf5c7dc55d796723709ad5ff044f391057b02bce386bdf2f87c98916b18",
+    "identity-policy.test": "43837f8cab54d5c0a3fc62b24f1284871a6d278a74828b2e535ced2e86baef8b"
+  },
+  "oracle_corpus": {
+    "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/g1-cases.json",
+    "sha256": "ac1cf2aa3307e87f9f9741cf406b7f2a8f4e79f4e93a0c52555ba69b039b1819"
+  },
+  "actual_go_output": {
+    "path": ".cache/v12-02d-identity/identity-domains.4T3dc4/go-output.json",
+    "sha256": "5c3314ef952f9c0674cc72a1c12beadfd3a88ae0ddba77a0c20eecaa1c59cc47"
+  },
+  "common_gates_status": "passed",
+  "common_gates": {
+    "go-all": {
+      "command": "go test ./... -count=1",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/go-all.log",
+      "log_sha256": "454b2d7aaf688b60423bb479e5a1b7b2f4d04b2c1a4cb8ef46c8fb0458eafbe9"
+    },
+    "contracts": {
+      "command": "make contracts-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "architecture": {
+      "command": "make architecture-check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/architecture.log",
+      "log_sha256": "3d3469522949c2bc322834eaadf2593e46968156340c8c03bc4529d118950329"
+    },
+    "docs-build": {
+      "command": "make docs-build",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/docs-build.log",
+      "log_sha256": "cb1fe5882c420cddc153a7017a74e979494e855fbd227aed2aa138171c4603fd"
+    },
+    "docs-links": {
+      "command": "make docs-links",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/docs-links.log",
+      "log_sha256": "8400f3b909958eb1b8e31ae405a3c1a8d82682690c5ba39b18d3cc2966927a79"
+    },
+    "line-endings": {
+      "command": "python3 scripts/check-line-endings.py --include-untracked",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/line-endings.log",
+      "log_sha256": "0e3d0b4ac06f525b211ca06d5cc472eb739868c19c073f4a3939bc3cbe8ea7ed"
+    },
+    "diff": {
+      "command": "git diff --check",
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02d-identity/identity-domains.4T3dc4/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "No production HTTP route, session/credential store, database table, JWT issuer, or middleware changed; the runtime identity split arrives in later V12-02d slices.",
+    "The Port evaluates host-constructed facts only; JSON validity does not authenticate an account or prove MFA.",
+    "Admin account/credential/session storage, role binding storage, the user-role auto-admission removal, recovery separation and the SQL trigger removal remain later V12-02d slices.",
+    "The G1 replacement-map checker still requires pending for the 02d items and is not falsified by this kernel slice."
+  ]
+}

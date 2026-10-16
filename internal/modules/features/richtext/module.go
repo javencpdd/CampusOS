@@ -8,6 +8,7 @@ import (
 	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
@@ -51,7 +52,7 @@ func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
 func (m *Module) ID() string { return ModuleID }
 
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.user-storage", "core.feature-registry", reliability.ModuleID, platformobservability.ModuleID}
+	return []string{"core.community", "core.identity", "core.user-storage", "core.feature-registry", reliability.ModuleID, platformobservability.ModuleID}
 }
 
 func (m *Module) Register(app *platformmodule.AppContext) error {
@@ -106,6 +107,30 @@ func (m *Module) Start(ctx context.Context) error {
 	if m.app == nil || m.store == nil || m.community == nil || m.storage == nil || m.objects == nil {
 		return errors.New("richtext module is not registered")
 	}
+	var verifier identityport.SessionVerifier
+	var strength identityport.SessionStrengthReader
+	var adminAuthority identityport.AdminSessionAuthorityReader
+	if value, found := m.app.Lookup("identity.admin-session-authority"); found {
+		var ok bool
+		adminAuthority, ok = value.(identityport.AdminSessionAuthorityReader)
+		if !ok || nilReadAdapter(adminAuthority) {
+			return fmt.Errorf("richtext admin session authority has incompatible type %T", value)
+		}
+	}
+	if value, found := m.app.Lookup("identity.session-verifier"); found {
+		var ok bool
+		verifier, ok = value.(identityport.SessionVerifier)
+		if !ok || nilReadAdapter(verifier) {
+			return fmt.Errorf("richtext session verifier has incompatible type %T", value)
+		}
+	}
+	if value, found := m.app.Lookup("identity.session-strength"); found {
+		var ok bool
+		strength, ok = value.(identityport.SessionStrengthReader)
+		if !ok || nilReadAdapter(strength) {
+			return fmt.Errorf("richtext session strength has incompatible type %T", value)
+		}
+	}
 	reliabilityValue, ok := m.app.Lookup("platform.reliability.service")
 	if !ok {
 		return errors.New("reliability service port is unavailable")
@@ -115,6 +140,13 @@ func (m *Module) Start(ctx context.Context) error {
 		return fmt.Errorf("reliability service port has incompatible type %T", reliabilityValue)
 	}
 	svc := NewService(m.store, m.community)
+	if value, found := m.app.Lookup("identity.admin-execution-authority"); found {
+		reader, ok := value.(identityport.AdminExecutionAuthorityReader)
+		if !ok || nilReadAdapter(reader) {
+			return fmt.Errorf("richtext admin execution authority has incompatible type %T", value)
+		}
+		svc.SetAdminExecutionAuthority(reader)
+	}
 	svc.SetReliability(reliable)
 	svc.SetEnabledChecker(m.enabled)
 	svc.SetPDFViewerEnabledChecker(m.pdfViewerEnabled)
@@ -140,10 +172,19 @@ func (m *Module) Start(ctx context.Context) error {
 	}
 	svc.SetAssetStore(assets)
 	svc.SetObjectPort(m.objects)
+	if v, exists := m.app.Lookup("storage.content-images"); exists {
+		images, ok := v.(*corestorage.ContentImageStore)
+		if !ok || images == nil {
+			return fmt.Errorf("content image store has incompatible type %T", v)
+		}
+		svc.contentImages = images
+	}
 	svc.SetMeter(m.meter)
 	svc.refreshAssetMetrics(ctx)
 	m.service = svc
 	m.handler = NewHandler(svc)
+	m.handler.SetSessionProof(verifier, strength)
+	m.handler.SetAdminSessionAuthority(adminAuthority)
 	retentionContext, cancel := context.WithCancel(ctx)
 	m.retentionCancel, m.retentionDone = cancel, make(chan struct{})
 	go func() {

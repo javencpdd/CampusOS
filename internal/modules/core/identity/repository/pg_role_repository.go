@@ -680,13 +680,15 @@ func scanPermissionDefinition(row interface{ Scan(...interface{}) error }) (Perm
 
 // MemoryRoleRepository 内存角色仓储
 type MemoryRoleRepository struct {
-	mu                  sync.RWMutex
-	roles               map[string]*Role
-	userRoles           map[string][]*UserRoleAssignment
-	definitions         map[string]*PermissionDefinition
-	rolePermissions     map[int64]map[string]bool
-	routeOperations     map[string]RouteOperation
-	authorizationAudits []AuthorizationAudit
+	mu                      sync.RWMutex
+	roles                   map[string]*Role
+	userRoles               map[string][]*UserRoleAssignment
+	definitions             map[string]*PermissionDefinition
+	rolePermissions         map[int64]map[string]bool
+	routeOperations         map[string]RouteOperation
+	authorizationAudits     []AuthorizationAudit
+	executionFactsEpoch     int64
+	executionFactsHighWater int64
 }
 
 type memoryRoleSnapshot struct {
@@ -696,6 +698,7 @@ type memoryRoleSnapshot struct {
 	RolePermissions     map[int64]map[string]bool        `json:"role_permissions"`
 	RouteOperations     map[string]RouteOperation        `json:"route_operations"`
 	AuthorizationAudits []AuthorizationAudit             `json:"authorization_audits"`
+	ExecutionFactsEpoch int64                            `json:"execution_facts_epoch"`
 }
 
 func NewMemoryRoleRepository() *MemoryRoleRepository {
@@ -712,6 +715,7 @@ func NewMemoryRoleRepository() *MemoryRoleRepository {
 	repo.roles["member"] = &Role{ID: 3, Name: "member", Description: "普通会员", IsSystem: true}
 	repo.roles["guest"] = &Role{ID: 4, Name: "guest", Description: "未登录用户", IsSystem: true}
 	repo.seedAuthorizationCatalog()
+	repo.executionFactsEpoch, repo.executionFactsHighWater = 1, 1
 	return repo
 }
 
@@ -725,6 +729,7 @@ func (r *MemoryRoleRepository) Snapshot() any {
 		RolePermissions:     r.rolePermissions,
 		RouteOperations:     r.routeOperations,
 		AuthorizationAudits: r.authorizationAudits,
+		ExecutionFactsEpoch: r.executionFactsEpoch,
 	})
 	if err != nil {
 		return []byte(nil)
@@ -749,6 +754,10 @@ func (r *MemoryRoleRepository) Restore(value any) {
 	r.rolePermissions = state.RolePermissions
 	r.routeOperations = state.RouteOperations
 	r.authorizationAudits = state.AuthorizationAudits
+	r.executionFactsEpoch = state.ExecutionFactsEpoch
+	if r.executionFactsEpoch > r.executionFactsHighWater {
+		r.executionFactsHighWater = r.executionFactsEpoch
+	}
 }
 
 func (r *MemoryRoleRepository) GetRoleByName(_ context.Context, name string) (*Role, error) {
@@ -758,7 +767,7 @@ func (r *MemoryRoleRepository) GetRoleByName(_ context.Context, name string) (*R
 	if !ok {
 		return nil, ErrRoleNotFound
 	}
-	return role, nil
+	return detachedUserScopeRole(role), nil
 }
 
 func (r *MemoryRoleRepository) GetRoleByID(_ context.Context, id int64) (*Role, error) {
@@ -766,7 +775,7 @@ func (r *MemoryRoleRepository) GetRoleByID(_ context.Context, id int64) (*Role, 
 	defer r.mu.RUnlock()
 	for _, role := range r.roles {
 		if role.ID == id {
-			return role, nil
+			return detachedUserScopeRole(role), nil
 		}
 	}
 	return nil, ErrRoleNotFound
@@ -776,12 +785,12 @@ func (r *MemoryRoleRepository) GetUserRoles(_ context.Context, userID string) ([
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	roles := make([]*Role, 0, len(r.userRoles[userID])+1)
-	roles = append(roles, r.roles["member"])
+	roles = append(roles, detachedUserScopeRole(r.roles["member"]))
 	seen := map[int64]bool{r.roles["member"].ID: true}
 	for _, assignment := range r.userRoles[userID] {
 		role := r.roleByID(assignment.RoleID)
 		if role != nil && role.Name != "member" && !seen[role.ID] {
-			roles = append(roles, role)
+			roles = append(roles, detachedUserScopeRole(role))
 			seen[role.ID] = true
 		}
 	}
@@ -802,6 +811,7 @@ func (r *MemoryRoleRepository) ListRoleAssignments(_ context.Context, userID str
 				continue
 			}
 			copy := *assignment
+			copy.ScopeID = copyScopeID(assignment.ScopeID)
 			assignments = append(assignments, &copy)
 		}
 	}
@@ -833,6 +843,9 @@ func (r *MemoryRoleRepository) AssignRole(_ context.Context, userID string, role
 		RoleName:  role.Name,
 		ScopeType: scopeType,
 		ScopeID:   copyScopeID(scopeID),
+	}
+	if err := r.advanceUserScopeEpoch(); err != nil {
+		return false, err
 	}
 	r.userRoles[userID] = append(r.userRoles[userID], assignment)
 	return true, nil
@@ -875,6 +888,11 @@ func (r *MemoryRoleRepository) ReplaceRoleScopes(_ context.Context, userID strin
 		})
 		changed = true
 	}
+	if changed {
+		if err := r.advanceUserScopeEpoch(); err != nil {
+			return false, err
+		}
+	}
 	r.userRoles[userID] = kept
 	return changed, nil
 }
@@ -882,7 +900,7 @@ func (r *MemoryRoleRepository) ReplaceRoleScopes(_ context.Context, userID strin
 func (r *MemoryRoleRepository) RevokeRole(_ context.Context, userID string, roleID int64) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.revokeRoleLocked(userID, roleID), nil
+	return r.revokeRoleLocked(userID, roleID)
 }
 
 func (r *MemoryRoleRepository) RevokeRoleUnlessLastGlobal(_ context.Context, userID string, roleID int64) (bool, error) {
@@ -907,10 +925,23 @@ func (r *MemoryRoleRepository) RevokeRoleUnlessLastGlobal(_ context.Context, use
 	if count <= 1 {
 		return false, ErrLastGlobalRoleAssignment
 	}
-	return r.revokeRoleLocked(userID, roleID), nil
+	return r.revokeRoleLocked(userID, roleID)
 }
 
-func (r *MemoryRoleRepository) revokeRoleLocked(userID string, roleID int64) bool {
+func (r *MemoryRoleRepository) revokeRoleLocked(userID string, roleID int64) (bool, error) {
+	hasRole := false
+	for _, assignment := range r.userRoles[userID] {
+		if assignment.RoleID == roleID {
+			hasRole = true
+			break
+		}
+	}
+	if !hasRole {
+		return false, nil
+	}
+	if err := r.advanceUserScopeEpoch(); err != nil {
+		return false, err
+	}
 	assignments := r.userRoles[userID]
 	kept := assignments[:0]
 	revoked := false
@@ -922,7 +953,7 @@ func (r *MemoryRoleRepository) revokeRoleLocked(userID string, roleID int64) boo
 		kept = append(kept, assignment)
 	}
 	r.userRoles[userID] = kept
-	return revoked
+	return revoked, nil
 }
 
 // 简化的权限表（内存模式）
@@ -998,7 +1029,7 @@ func (r *MemoryRoleRepository) ListRoles(_ context.Context) ([]*Role, error) {
 	defer r.mu.RUnlock()
 	var roles []*Role
 	for _, role := range r.roles {
-		roles = append(roles, role)
+		roles = append(roles, detachedUserScopeRole(role))
 	}
 	sort.Slice(roles, func(i, j int) bool { return roles[i].ID < roles[j].ID })
 	return roles, nil
@@ -1100,6 +1131,10 @@ func (r *MemoryRoleRepository) ListPermissionDefinitions(_ context.Context) ([]P
 	for _, definition := range r.definitions {
 		copy := *definition
 		copy.AllowedScopeTypes = append([]string(nil), definition.AllowedScopeTypes...)
+		if definition.DeprecatedAt != nil {
+			at := *definition.DeprecatedAt
+			copy.DeprecatedAt = &at
+		}
 		items = append(items, copy)
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Code < items[j].Code })
@@ -1121,6 +1156,10 @@ func (r *MemoryRoleRepository) ListRolePermissions(_ context.Context, roleID int
 			}
 			copy := *definition
 			copy.AllowedScopeTypes = append([]string(nil), definition.AllowedScopeTypes...)
+			if definition.DeprecatedAt != nil {
+				at := *definition.DeprecatedAt
+				copy.DeprecatedAt = &at
+			}
 			items = append(items, RolePermission{RoleID: role.ID, RoleName: role.Name, Permission: copy, CreatedAt: copy.CreatedAt})
 		}
 	}
@@ -1146,6 +1185,17 @@ func (r *MemoryRoleRepository) ReplaceRolePermissions(_ context.Context, roleID 
 		}
 		updated[code] = true
 	}
+	same := len(updated) == len(r.rolePermissions[roleID])
+	for code, value := range updated {
+		if r.rolePermissions[roleID][code] != value {
+			same = false
+		}
+	}
+	if !same {
+		if err := r.advanceUserScopeEpoch(); err != nil {
+			return err
+		}
+	}
 	r.rolePermissions[roleID] = updated
 	return nil
 }
@@ -1163,10 +1213,13 @@ func (r *MemoryRoleRepository) CreateCustomRole(_ context.Context, role Role) (*
 	role.ID = idgen.New()
 	role.Description = strings.TrimSpace(role.Description)
 	role.IsSystem = false
+	if err := r.advanceUserScopeEpoch(); err != nil {
+		return nil, err
+	}
 	copy := role
 	r.roles[role.Name] = &copy
 	r.rolePermissions[role.ID] = make(map[string]bool)
-	return &copy, nil
+	return detachedUserScopeRole(&copy), nil
 }
 
 func (r *MemoryRoleRepository) UpdateCustomRole(_ context.Context, role Role) (*Role, error) {
@@ -1176,9 +1229,15 @@ func (r *MemoryRoleRepository) UpdateCustomRole(_ context.Context, role Role) (*
 	if current == nil || current.IsSystem {
 		return nil, ErrRoleNotFound
 	}
-	current.Description = strings.TrimSpace(role.Description)
+	description := strings.TrimSpace(role.Description)
+	if description != current.Description {
+		if err := r.advanceUserScopeEpoch(); err != nil {
+			return nil, err
+		}
+	}
+	current.Description = description
 	copy := *current
-	return &copy, nil
+	return detachedUserScopeRole(&copy), nil
 }
 
 func (r *MemoryRoleRepository) HasPermissionCode(_ context.Context, userID, code string) (bool, error) {

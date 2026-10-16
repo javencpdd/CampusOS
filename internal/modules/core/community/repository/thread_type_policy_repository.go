@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -18,6 +19,19 @@ import (
 type ThreadTypePolicyRepository interface {
 	List(context.Context, string) ([]domain.CategoryThreadTypePolicy, error)
 	Replace(context.Context, string, []domain.ThreadType) error
+}
+
+// ThreadTypePolicyLocker pins the actual existing posting-policy rows until
+// the command commits. It never supplies compatibility-normalized facts.
+type ThreadTypePolicyLocker interface {
+	ListForUpdate(context.Context, string) ([]domain.CategoryThreadTypePolicy, error)
+}
+
+func (r *MemoryThreadTypePolicyRepository) ListForUpdate(ctx context.Context, categoryID string) ([]domain.CategoryThreadTypePolicy, error) {
+	if !transaction.Active(ctx) {
+		return nil, errors.New("thread type policy lock requires transaction")
+	}
+	return r.List(ctx, categoryID)
 }
 
 type MemoryThreadTypePolicyRepository struct {
@@ -92,8 +106,23 @@ func (r *PgThreadTypePolicyRepository) db(ctx context.Context) transaction.Execu
 }
 
 func (r *PgThreadTypePolicyRepository) List(ctx context.Context, categoryID string) ([]domain.CategoryThreadTypePolicy, error) {
-	rows, err := r.db(ctx).Query(ctx, `SELECT category_id::text, thread_type, enabled, updated_at
-		FROM category_thread_type_policies WHERE category_id = $1 ORDER BY thread_type`, categoryID)
+	return r.list(ctx, categoryID, false)
+}
+
+func (r *PgThreadTypePolicyRepository) ListForUpdate(ctx context.Context, categoryID string) ([]domain.CategoryThreadTypePolicy, error) {
+	if _, ok := transaction.FromContext(ctx); !ok {
+		return nil, errors.New("thread type policy lock requires PostgreSQL transaction")
+	}
+	return r.list(ctx, categoryID, true)
+}
+
+func (r *PgThreadTypePolicyRepository) list(ctx context.Context, categoryID string, lock bool) ([]domain.CategoryThreadTypePolicy, error) {
+	query := `SELECT category_id::text, thread_type, enabled, updated_at
+		FROM category_thread_type_policies WHERE category_id = $1 ORDER BY thread_type`
+	if lock {
+		query += " FOR UPDATE"
+	}
+	rows, err := r.db(ctx).Query(ctx, query, categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +133,9 @@ func (r *PgThreadTypePolicyRepository) List(ctx context.Context, categoryID stri
 		if err := rows.Scan(&policy.CategoryID, &policy.ThreadType, &policy.Enabled, &policy.UpdatedAt); err != nil {
 			return nil, err
 		}
-		policy.ThreadType = domain.NormalizeThreadType(policy.ThreadType)
+		if !lock {
+			policy.ThreadType = domain.NormalizeThreadType(policy.ThreadType)
+		}
 		result = append(result, policy)
 	}
 	return result, rows.Err()

@@ -34,6 +34,26 @@ func TestMemoryProfileAndModuleExposePublicPorts(t *testing.T) {
 	if err := module.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	if value, ok := app.Lookup(portBoardGovernanceAuthority); !ok {
+		t.Fatal("missing checked board governance authority")
+	} else if _, ok := value.(identityport.BoardGovernanceAuthorityReader); !ok {
+		t.Fatalf("incompatible governance authority %T", value)
+	}
+	if value, ok := app.Lookup(portAdminSessionAuthority); !ok {
+		t.Fatal("missing current Admin session authority")
+	} else if _, ok := value.(identityport.AdminSessionAuthorityReader); !ok {
+		t.Fatalf("incompatible current Admin authority %T", value)
+	}
+	if value, ok := app.Lookup(portAdminExecutionAuthority); !ok {
+		t.Fatal("missing named Admin execution authority")
+	} else if _, ok := value.(identityport.AdminExecutionAuthorityReader); !ok {
+		t.Fatalf("incompatible named Admin execution authority %T", value)
+	}
+	if value, ok := app.Lookup(portUserScopedExecutionAuthority); !ok {
+		t.Fatal("missing named User scoped execution authority")
+	} else if _, ok := value.(identityport.UserScopedExecutionAuthorityReader); !ok {
+		t.Fatalf("incompatible named User scoped authority %T", value)
+	}
 	if module.Handlers().User == nil || module.Handlers().Role == nil || module.Handlers().ChallengePolicy == nil || module.Handlers().AdminAdmission == nil || module.Permissions() == nil || module.AdminAccess() == nil || module.AdminAdmissions() == nil || module.ChallengePolicies() == nil {
 		t.Fatal("identity module did not construct its HTTP/application components")
 	}

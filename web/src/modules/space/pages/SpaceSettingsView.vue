@@ -44,9 +44,11 @@
                     @change="uploadAvatar"
                   />
                   <el-button @click="chooseAvatar" :loading="uploadingAvatar"> 上传头像 </el-button>
+                  <el-button @click="cleanupAvatars" :loading="cleaningAvatars"> 清理历史头像 </el-button>
                   <span v-if="storage" class="storage-hint">
                     已用 {{ formatBytes(storage.used_bytes) }} / {{ formatBytes(storage.quota_bytes) }}；单个头像最大
-                    {{ formatBytes(storage.max_avatar_bytes) }}；保留最近 {{ storage.avatar_keep_limit }} 个源文件
+                    {{ formatBytes(storage.max_avatar_bytes) }}；保留最近
+                    {{ storage.avatar_keep_limit }} 个源文件，资料正在使用的头像另行保留
                   </span>
                 </div>
               </div>
@@ -505,12 +507,6 @@ interface StylePreview {
   tokens?: Record<string, string>
 }
 
-interface StyleApplyResult {
-  validation: StyleValidationResult
-  space: Space
-  applied?: StylePackage['manifest']
-}
-
 interface StyleExportResult {
   package: StylePackage
   filename: string
@@ -536,7 +532,6 @@ interface StylePackResult {
 
 interface SourceStylePack {
   name: string
-  path: string
   target?: string
   version?: string
   display_name?: string
@@ -560,16 +555,6 @@ interface SpaceStorageStatus {
   available_bytes: number
   max_avatar_bytes: number
   avatar_keep_limit: number
-}
-
-interface AvatarUploadResult {
-  file_name: string
-  url: string
-  size: number
-  storage: SpaceStorageStatus
-  owner: Owner
-  space: Space
-  avatars: AvatarHistoryItem[]
 }
 
 interface AvatarHistoryItem {
@@ -612,6 +597,7 @@ const saving = ref(false)
 const uploadingAvatar = ref(false)
 const selectingAvatar = ref(false)
 const avatars = ref<AvatarHistoryItem[]>([])
+const cleaningAvatars = ref(false)
 const personalAssets = ref<PersonalAsset[]>([])
 const personalAssetsLoading = ref(false)
 const personalAssetsCursor = ref('')
@@ -799,7 +785,8 @@ const loadSourceStylePacks = async (showError = true) => {
 const saveSpace = async () => {
   saving.value = true
   try {
-    const payload = unwrap<PublicSpacePayload>(await spaceApi.updateMe({ ...form }))
+    await spaceApi.updateMe({ ...form })
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
@@ -837,14 +824,21 @@ const uploadAvatar = async (event: Event) => {
   }
   uploadingAvatar.value = true
   try {
-    const payload = unwrap<AvatarUploadResult>(await spaceApi.uploadAvatar(file))
+    const ack = unwrap<{ cleanup_pending?: boolean }>(await spaceApi.uploadAvatar(file))
+    const [profile, currentStorage, history] = await Promise.all([
+      spaceApi.me(),
+      spaceApi.storage(),
+      spaceApi.avatars(),
+    ])
+    const payload = unwrap<PublicSpacePayload>(profile)
     owner.value = payload.owner
     currentSpace.value = payload.space
-    storage.value = payload.storage
-    avatars.value = payload.avatars || []
+    storage.value = unwrap<SpaceStorageStatus>(currentStorage)
+    avatars.value = unwrap<{ items: AvatarHistoryItem[] }>(history)?.items || []
     fillForm(payload.space)
     syncHTMLEditor(payload.space)
-    userStore.setAvatar(payload.url)
+    userStore.setAvatar(payload.owner.avatar || payload.space.avatar || '')
+    if (ack.cleanup_pending) ElMessage.warning('头像已保存，旧头像清理待处理。')
     ElMessage.success('头像已更新')
   } catch (error: any) {
     ElMessage.error(error?.msg || '头像上传失败')
@@ -854,17 +848,49 @@ const uploadAvatar = async (event: Event) => {
   }
 }
 
+const cleanupAvatars = async () => {
+  if (cleaningAvatars.value) return
+  cleaningAvatars.value = true
+  try {
+    const ack = unwrap<{ cleanup_pending: boolean }>(await spaceApi.cleanupAvatars())
+    const [profile, currentStorage, history] = await Promise.all([
+      spaceApi.me(),
+      spaceApi.storage(),
+      spaceApi.avatars(),
+    ])
+    const payload = unwrap<PublicSpacePayload>(profile)
+    owner.value = payload.owner
+    currentSpace.value = payload.space
+    storage.value = unwrap<SpaceStorageStatus>(currentStorage)
+    avatars.value = unwrap<{ items: AvatarHistoryItem[] }>(history)?.items || []
+    fillForm(payload.space)
+    userStore.setAvatar(payload.owner.avatar || payload.space.avatar || '')
+    if (ack.cleanup_pending) ElMessage.warning('部分历史头像清理待处理，可稍后重试。')
+    else ElMessage.success('已保留正在使用的头像和最新记录')
+  } catch (error: any) {
+    ElMessage.error(error?.msg || '头像清理失败，请稍后重试。')
+  } finally {
+    cleaningAvatars.value = false
+  }
+}
+
 const selectAvatar = async (item: AvatarHistoryItem) => {
   if (item.active || selectingAvatar.value) return
   selectingAvatar.value = true
   try {
-    const payload = unwrap<AvatarUploadResult>(await spaceApi.selectAvatar(item.file_name))
+    await spaceApi.selectAvatar(item.file_name)
+    const [profile, currentStorage, history] = await Promise.all([
+      spaceApi.me(),
+      spaceApi.storage(),
+      spaceApi.avatars(),
+    ])
+    const payload = unwrap<PublicSpacePayload>(profile)
     owner.value = payload.owner
     currentSpace.value = payload.space
-    storage.value = payload.storage
-    avatars.value = payload.avatars || []
+    storage.value = unwrap<SpaceStorageStatus>(currentStorage)
+    avatars.value = unwrap<{ items: AvatarHistoryItem[] }>(history)?.items || []
     fillForm(payload.space)
-    userStore.setAvatar(payload.url)
+    userStore.setAvatar(payload.owner.avatar || payload.space.avatar || '')
     ElMessage.success('头像已切换，保留文件顺序未改变')
   } catch (error: any) {
     ElMessage.error(error?.msg || '切换头像失败')
@@ -912,6 +938,7 @@ const selectExample = (item: StylePackage) => {
 }
 
 const validateStyle = async () => {
+  validation.value = null
   const pkg = parseStylePackage()
   if (!pkg) return
   validating.value = true
@@ -930,6 +957,8 @@ const validateStyle = async () => {
 }
 
 const previewStyle = async () => {
+  preview.value = null
+  validation.value = null
   const pkg = parseStylePackage()
   if (!pkg) return
   previewing.value = true
@@ -954,18 +983,12 @@ const applyStyle = async () => {
   if (!pkg) return
   applying.value = true
   try {
-    const payload = unwrap<StyleApplyResult>(await spaceApi.applyStyle(pkg))
-    validation.value = payload.validation
+    await spaceApi.applyStyle(pkg)
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
+    owner.value = payload.owner
+    validation.value = null
     currentSpace.value = payload.space
-    preview.value = payload.applied
-      ? {
-          validation: payload.validation,
-          manifest: payload.applied,
-          layout: payload.applied.layout,
-          components: payload.applied.components,
-          tokens: payload.applied.tokens,
-        }
-      : null
+    preview.value = null
     fillForm(payload.space)
     syncHTMLEditor(payload.space)
     ElMessage.success('风格已应用')
@@ -977,6 +1000,9 @@ const applyStyle = async () => {
 }
 
 const generateHTMLExample = async () => {
+  preview.value = null
+  validation.value = null
+  htmlValidation.value = null
   htmlGenerating.value = true
   try {
     const payload = unwrap<StyleHTMLExampleResult>(await spaceApi.customHtmlExample())
@@ -998,6 +1024,7 @@ const generateHTMLExample = async () => {
 }
 
 const validateHTML = async () => {
+  htmlValidation.value = null
   htmlValidating.value = true
   try {
     htmlValidation.value = unwrap<StyleValidationResult>(await spaceApi.validateCustomHtml(htmlText.value))
@@ -1013,28 +1040,28 @@ const validateHTML = async () => {
   }
 }
 
+const refreshAppliedSpaceStyle = async () => {
+  const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
+  owner.value = payload.owner
+  currentSpace.value = payload.space
+  validation.value = null
+  htmlValidation.value = null
+  stylePackValidation.value = null
+  preview.value = null
+  if (payload.space.style_manifest) {
+    styleText.value = JSON.stringify({ manifest: payload.space.style_manifest }, null, 2)
+    selectedStyleName.value = payload.space.style_manifest.name
+  }
+  fillForm(payload.space)
+  syncHTMLEditor(payload.space)
+  userStore.setAvatar(payload.owner.avatar || payload.space.avatar || '')
+}
+
 const applyHTMLStyle = async () => {
   htmlApplying.value = true
   try {
-    const payload = unwrap<StyleApplyResult>(await spaceApi.applyCustomHtml(htmlText.value))
-    validation.value = payload.validation
-    currentSpace.value = payload.space
-    preview.value = payload.applied
-      ? {
-          validation: payload.validation,
-          manifest: payload.applied,
-          layout: payload.applied.layout,
-          components: payload.applied.components,
-          tokens: payload.applied.tokens,
-        }
-      : null
-    if (payload.applied) {
-      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
-      selectedStyleName.value = payload.applied.name
-    }
-    fillForm(payload.space)
-    syncHTMLEditor(payload.space)
-    htmlValidation.value = payload.validation
+    await spaceApi.applyCustomHtml(htmlText.value)
+    await refreshAppliedSpaceStyle()
     ElMessage.success('HTML 风格已应用')
   } catch (error: any) {
     ElMessage.error(error?.msg || '应用 HTML 失败')
@@ -1068,6 +1095,7 @@ const downloadStylePackExample = async () => {
 
 const validateStylePack = async () => {
   if (!stylePackFile.value) return
+  stylePackValidation.value = null
   stylePackValidating.value = true
   try {
     const payload = unwrap<StylePackResult>(await spaceApi.validateStylePack(stylePackFile.value))
@@ -1088,29 +1116,8 @@ const applyStylePack = async () => {
   if (!stylePackFile.value) return
   stylePackApplying.value = true
   try {
-    const payload = unwrap<StyleApplyResult>(await spaceApi.applyStylePack(stylePackFile.value))
-    validation.value = payload.validation
-    stylePackValidation.value = {
-      valid: payload.validation.valid,
-      errors: payload.validation.errors,
-      warnings: payload.validation.warnings,
-    }
-    currentSpace.value = payload.space
-    preview.value = payload.applied
-      ? {
-          validation: payload.validation,
-          manifest: payload.applied,
-          layout: payload.applied.layout,
-          components: payload.applied.components,
-          tokens: payload.applied.tokens,
-        }
-      : null
-    if (payload.applied) {
-      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
-      selectedStyleName.value = payload.applied.name
-    }
-    fillForm(payload.space)
-    syncHTMLEditor(payload.space)
+    await spaceApi.applyStylePack(stylePackFile.value)
+    await refreshAppliedSpaceStyle()
     ElMessage.success('拓展风格包已应用')
   } catch (error: any) {
     ElMessage.error(error?.msg || '应用拓展包失败')
@@ -1123,29 +1130,8 @@ const applySourceStylePack = async () => {
   if (!selectedSourceStylePackName.value) return
   sourceStylePackApplying.value = true
   try {
-    const payload = unwrap<StyleApplyResult>(await spaceApi.applySourceStylePack(selectedSourceStylePackName.value))
-    validation.value = payload.validation
-    stylePackValidation.value = {
-      valid: payload.validation.valid,
-      errors: payload.validation.errors,
-      warnings: payload.validation.warnings,
-    }
-    currentSpace.value = payload.space
-    preview.value = payload.applied
-      ? {
-          validation: payload.validation,
-          manifest: payload.applied,
-          layout: payload.applied.layout,
-          components: payload.applied.components,
-          tokens: payload.applied.tokens,
-        }
-      : null
-    if (payload.applied) {
-      styleText.value = JSON.stringify({ manifest: payload.applied }, null, 2)
-      selectedStyleName.value = payload.applied.name
-    }
-    fillForm(payload.space)
-    syncHTMLEditor(payload.space)
+    await spaceApi.applySourceStylePack(selectedSourceStylePackName.value)
+    await refreshAppliedSpaceStyle()
     ElMessage.success('源码目录风格包已应用')
   } catch (error: any) {
     ElMessage.error(error?.msg || '应用源码目录风格包失败')
@@ -1157,7 +1143,8 @@ const applySourceStylePack = async () => {
 const rollbackStyle = async () => {
   rollbacking.value = true
   try {
-    const payload = unwrap<PublicSpacePayload>(await spaceApi.rollbackStyle())
+    await spaceApi.rollbackStyle()
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)
@@ -1174,7 +1161,8 @@ const rollbackStyle = async () => {
 const restoreDefaultStyle = async () => {
   defaulting.value = true
   try {
-    const payload = unwrap<PublicSpacePayload>(await spaceApi.restoreDefaultStyle())
+    await spaceApi.restoreDefaultStyle()
+    const payload = unwrap<PublicSpacePayload>(await spaceApi.me())
     owner.value = payload.owner
     currentSpace.value = payload.space
     fillForm(payload.space)

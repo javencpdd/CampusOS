@@ -35,6 +35,8 @@ export const postApi = {
 export const moderationApi = {
   status: () => api.get('/moderation/status'),
   access: (threadId: string) => api.get('/moderation/me', { params: { thread_id: threadId } }),
+  preview: (threadId: string, postIds: string[]) =>
+    api.post(`/moderation/threads/${threadId}/access`, { post_ids: postIds }),
   pin: (threadId: string) => api.post(`/moderation/threads/${threadId}/pin`),
   unpin: (threadId: string) => api.post(`/moderation/threads/${threadId}/unpin`),
   lock: (threadId: string) => api.post(`/moderation/threads/${threadId}/lock`),

@@ -1,0 +1,1326 @@
+{
+  "stage": "V12-02b",
+  "updated_at": "2026-10-16 13:23 Asia/Shanghai",
+  "status": "completed: current implementation, automation and Linux target verified",
+  "scope": "原V12-02b资源事实、业务读取/作者/治理、当前Admin元数据、固定类型有界预览及Web/Admin消费；不扩展到所有管理配置功能重写",
+  "groups": {
+    "community": {
+      "description": "Core Thread公开/作者/治理/管理元数据，Post父帖/回复及事件元数据；资源由仓储加载并按命名Policy/current Principal重新检查",
+      "sources": [
+        "internal/modules/core/community/handler",
+        "internal/modules/core/community/service",
+        "internal/modules/core/community/repository"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-public-detail-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-public-list-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-author-write-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-post-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-admin-thread-read-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/threads",
+          "handler": "threadHandler.ListThreads",
+          "operation_code": "http.get.api.v1.threads",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/threads/:id",
+          "handler": "threadHandler.GetThread",
+          "operation_code": "http.get.api.v1.threads.id",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/threads/:id/posts",
+          "handler": "postHandler.ListPosts",
+          "operation_code": "http.get.api.v1.threads.id.posts",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/content/preview",
+          "handler": "threadHandler.PreviewContent",
+          "operation_code": "http.post.api.v1.content.preview",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads",
+          "handler": "threadHandler.CreateThread",
+          "operation_code": "http.post.api.v1.threads",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/take-down",
+          "handler": "threadHandler.TakeDown",
+          "operation_code": "http.community.thread.user_take_down",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/threads/:id/me",
+          "handler": "threadHandler.GetThreadForCurrentUser",
+          "operation_code": "http.get.api.v1.threads.id.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/threads/:id",
+          "handler": "threadHandler.UpdateThread",
+          "operation_code": "http.put.api.v1.threads.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/threads/:id",
+          "handler": "threadHandler.DeleteThread",
+          "operation_code": "http.delete.api.v1.threads.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/submit-review",
+          "handler": "threadHandler.SubmitForReview",
+          "operation_code": "http.post.api.v1.threads.id.submit_review",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/trash/restore",
+          "handler": "threadHandler.RestoreOwnTrash",
+          "operation_code": "http.post.api.v1.threads.id.trash.restore",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/threads/:id/posts/me",
+          "handler": "postHandler.ListPostsForCurrentUser",
+          "operation_code": "http.get.api.v1.threads.id.posts.me",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/posts",
+          "handler": "postHandler.CreatePost",
+          "operation_code": "http.post.api.v1.threads.id.posts",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/threads/:id/posts/:post_id",
+          "handler": "postHandler.UpdatePost",
+          "operation_code": "http.put.api.v1.threads.id.posts.post_id",
+          "auth": "jwt"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/threads/:id/posts/:post_id",
+          "handler": "postHandler.DeletePost",
+          "operation_code": "http.delete.api.v1.threads.id.posts.post_id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/permissions-preview",
+          "handler": "threadHandler.AdminPermissionsPreview",
+          "operation_code": "http.community.thread.admin_permissions_preview",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/threads",
+          "handler": "threadHandler.AdminListThreads",
+          "operation_code": "http.community.thread.admin_list",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/events",
+          "handler": "eventHandler.ListEvents",
+          "operation_code": "http.community.event.metadata",
+          "auth": "jwt+admin-account+current-session+permission"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/threads/trash",
+          "handler": "threadHandler.AdminListTrash",
+          "operation_code": "http.community.thread.admin_trash_list",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/threads/:id/moderation-actions",
+          "handler": "threadHandler.AdminModerationActions",
+          "operation_code": "http.community.thread.admin_history",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/pin",
+          "handler": "threadHandler.PinThread",
+          "operation_code": "http.post.api.v1.threads.id.pin",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/unpin",
+          "handler": "threadHandler.UnpinThread",
+          "operation_code": "http.post.api.v1.threads.id.unpin",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/lock",
+          "handler": "threadHandler.LockThread",
+          "operation_code": "http.post.api.v1.threads.id.lock",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/threads/:id/unlock",
+          "handler": "threadHandler.UnlockThread",
+          "operation_code": "http.post.api.v1.threads.id.unlock",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/admin/threads/:id",
+          "handler": "threadHandler.AdminDeleteThread",
+          "operation_code": "http.community.thread.trash",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/admin/posts/:post_id",
+          "handler": "postHandler.AdminGovernanceDelete",
+          "operation_code": "http.community.post.admin_delete",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/:id/take-down",
+          "handler": "threadHandler.AdminTakeDown",
+          "operation_code": "http.community.thread.take_down",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/:id/review/approve",
+          "handler": "threadHandler.AdminApprove",
+          "operation_code": "http.community.thread.review_approve",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/:id/review/reject",
+          "handler": "threadHandler.AdminReject",
+          "operation_code": "http.community.thread.review_reject",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/:id/direct-restore",
+          "handler": "threadHandler.AdminDirectRestore",
+          "operation_code": "http.community.thread.direct_restore",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/threads/:id/trash/restore",
+          "handler": "threadHandler.AdminRestoreTrash",
+          "operation_code": "http.community.thread.restore_trash",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/admin/threads/:id/purge",
+          "handler": "threadHandler.AdminPurge",
+          "operation_code": "http.community.thread.purge",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        }
+      ]
+    },
+    "moderation": {
+      "description": "User版主当前执行、同Policy有效权限预览和固定类型有界批量；管理委派上限不等于业务执行权",
+      "sources": [
+        "internal/modules/core/moderation"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-user-flags-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-moderation-preview-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/moderation/me",
+          "handler": "moderationHandler.MyAccess",
+          "operation_code": "http.community.moderation.current_preview",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/moderation/threads/:id/access",
+          "handler": "moderationHandler.PreviewBatch",
+          "operation_code": "http.community.moderation.current_preview_batch",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/moderation/threads/:id/pin",
+          "handler": "moderationHandler.Pin",
+          "operation_code": "http.community.thread.user_pin",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/moderation/threads/:id/unpin",
+          "handler": "moderationHandler.Unpin",
+          "operation_code": "http.community.thread.user_unpin",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/moderation/threads/:id/lock",
+          "handler": "moderationHandler.Lock",
+          "operation_code": "http.community.thread.user_lock",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/moderation/threads/:id/unlock",
+          "handler": "moderationHandler.Unlock",
+          "operation_code": "http.community.thread.user_unlock",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/moderation/threads/:id/posts/:post_id",
+          "handler": "moderationHandler.DeletePost",
+          "operation_code": "http.community.post.user_governance_delete",
+          "auth": "jwt+current-session"
+        }
+      ]
+    },
+    "typed_features": {
+      "description": "MutualAid/Secondhand通过Core受保护查询，再绑定Feature自身行、配置和当前完整主体；作者写入原子参与Core",
+      "sources": [
+        "internal/modules/features/mutualaid",
+        "internal/modules/features/secondhand"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-typed-feature-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-typed-author-create-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-typed-author-write-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/mutual-aid/threads",
+          "handler": "mutualAidHandler.ListPublic",
+          "operation_code": "http.get.api.v1.mutual_aid.threads",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/mutual-aid/threads/:id",
+          "handler": "mutualAidHandler.GetPublic",
+          "operation_code": "http.get.api.v1.mutual_aid.threads.id",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/secondhand/threads",
+          "handler": "secondhandHandler.ListPublic",
+          "operation_code": "http.get.api.v1.secondhand.threads",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/secondhand/threads/:id",
+          "handler": "secondhandHandler.GetPublic",
+          "operation_code": "http.get.api.v1.secondhand.threads.id",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/mutual-aid/threads",
+          "handler": "mutualAidHandler.Create",
+          "operation_code": "http.post.api.v1.mutual_aid.threads",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/mutual-aid/threads/:id/me",
+          "handler": "mutualAidHandler.GetMine",
+          "operation_code": "http.get.api.v1.mutual_aid.threads.id.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/mutual-aid/threads/:id",
+          "handler": "mutualAidHandler.Update",
+          "operation_code": "http.put.api.v1.mutual_aid.threads.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/secondhand/threads",
+          "handler": "secondhandHandler.Create",
+          "operation_code": "http.post.api.v1.secondhand.threads",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/secondhand/threads/:id/me",
+          "handler": "secondhandHandler.GetMine",
+          "operation_code": "http.get.api.v1.secondhand.threads.id.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/secondhand/threads/:id",
+          "handler": "secondhandHandler.Update",
+          "operation_code": "http.put.api.v1.secondhand.threads.id",
+          "auth": "jwt"
+        }
+      ]
+    },
+    "richtext": {
+      "description": "正文/附件/对象/用户资产与Invocation当前Core/Article/绑定/Object事实，读取I/O后复核；作者/Admin写入及字节补偿各自验收",
+      "sources": [
+        "internal/modules/features/richtext",
+        "internal/server/personal_document_pdf_viewer.go"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-richtext-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-attachment-copy-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-asset-purge-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-asset-read-admin-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/articles/:id",
+          "handler": "richTextHandler.GetPublished",
+          "operation_code": "http.get.api.v1.richtext.articles.id",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/assets/:user_id/:filename",
+          "handler": "richTextHandler.ServeAsset",
+          "operation_code": "http.get.api.v1.richtext.assets.user_id.filename",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles",
+          "handler": "richTextHandler.CreateDraft",
+          "operation_code": "http.post.api.v1.richtext.articles",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/articles/:id/me",
+          "handler": "richTextHandler.GetMine",
+          "operation_code": "http.get.api.v1.richtext.articles.id.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/richtext/articles/:id",
+          "handler": "richTextHandler.UpdateDraft",
+          "operation_code": "http.put.api.v1.richtext.articles.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/preview",
+          "handler": "richTextHandler.Preview",
+          "operation_code": "http.post.api.v1.richtext.preview",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/assets/me",
+          "handler": "richTextHandler.ListMyAssets",
+          "operation_code": "http.get.api.v1.richtext.assets.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/assets",
+          "handler": "richTextHandler.UploadAsset",
+          "operation_code": "http.feature.richtext.inline_image.author_upload",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/assets",
+          "handler": "richTextHandler.ListUserAssets",
+          "operation_code": "http.get.api.v1.assets",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/assets/:id/download",
+          "handler": "richTextHandler.DownloadMyUserAsset",
+          "operation_code": "http.get.api.v1.assets.id.download",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/assets/:id/pdf-invocations",
+          "handler": "richTextHandler.CreatePersonalAssetPDFInvocation",
+          "operation_code": "http.post.api.v1.assets.id.pdf_invocations",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/assets/:id/trash",
+          "handler": "richTextHandler.TrashUserAsset",
+          "operation_code": "http.feature.richtext.asset.owner_trash",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/assets/:id/restore",
+          "handler": "richTextHandler.RestoreUserAsset",
+          "operation_code": "http.feature.richtext.asset.owner_restore",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/articles/:id/attachments",
+          "handler": "richTextHandler.ListAttachments",
+          "operation_code": "http.get.api.v1.richtext.articles.id.attachments",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/attachments",
+          "handler": "richTextHandler.BindAttachment",
+          "operation_code": "http.feature.richtext.attachment.bind",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/attachments/from-personal-document",
+          "handler": "richTextHandler.AttachPersonalDocument",
+          "operation_code": "http.feature.richtext.attachment.copy_document",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/attachments/upload",
+          "handler": "richTextHandler.UploadAttachment",
+          "operation_code": "http.feature.richtext.attachment.upload",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/richtext/articles/:id/attachments/order",
+          "handler": "richTextHandler.ReorderAttachments",
+          "operation_code": "http.feature.richtext.attachment.reorder",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
+          "handler": "richTextHandler.RenameAttachment",
+          "operation_code": "http.feature.richtext.attachment.rename",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
+          "handler": "richTextHandler.RemoveAttachment",
+          "operation_code": "http.feature.richtext.attachment.remove",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id/download",
+          "handler": "richTextHandler.DownloadAttachment",
+          "operation_code": "http.get.api.v1.richtext.articles.id.attachments.attachment_id.download",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/plugin-ui/invocations",
+          "handler": "richTextHandler.CreatePDFInvocation",
+          "operation_code": "http.post.api.v1.plugin_ui.invocations",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/plugin-ui/invocations/:id",
+          "handler": "richTextHandler.GetPDFInvocation",
+          "operation_code": "http.get.api.v1.plugin_ui.invocations.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/plugin-ui/invocations/:id/content",
+          "handler": "richTextHandler.PDFInvocationContent",
+          "operation_code": "http.get.api.v1.plugin_ui.invocations.id.content",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/plugin-ui/invocations/:id/download",
+          "handler": "richTextHandler.DownloadPDFInvocation",
+          "operation_code": "http.get.api.v1.plugin_ui.invocations.id.download",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/publish",
+          "handler": "richTextHandler.Publish",
+          "operation_code": "http.post.api.v1.richtext.articles.id.publish",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/offline",
+          "handler": "richTextHandler.Offline",
+          "operation_code": "http.post.api.v1.richtext.articles.id.offline",
+          "auth": "jwt"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/richtext/articles/:id",
+          "handler": "richTextHandler.Delete",
+          "operation_code": "http.delete.api.v1.richtext.articles.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/admin/offline",
+          "handler": "richTextHandler.AdminOffline",
+          "operation_code": "http.community.richtext.take_down",
+          "auth": "jwt+admin-account+permission"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/richtext/articles/:id/admin/restore",
+          "handler": "richTextHandler.AdminRestore",
+          "operation_code": "http.community.richtext.restore",
+          "auth": "jwt+admin-account+permission"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/richtext/articles/:id/admin",
+          "handler": "richTextHandler.AdminDelete",
+          "operation_code": "http.community.richtext.trash",
+          "auth": "jwt+admin-account+permission"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/assets/summary",
+          "handler": "richTextHandler.AssetGovernanceSummary",
+          "operation_code": "http.personal_space.asset.governance_summary",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/assets/:id/quarantine",
+          "handler": "richTextHandler.AdminQuarantineUserAsset",
+          "operation_code": "http.personal_space.asset.quarantine",
+          "auth": "admin-domain-jwt+current-session+mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/assets/:id/restore",
+          "handler": "richTextHandler.AdminRestoreQuarantinedUserAsset",
+          "operation_code": "http.personal_space.asset.restore",
+          "auth": "admin-domain-jwt+current-session+mfa"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/assets/:id/purge-preview",
+          "handler": "richTextHandler.AdminPreviewUserAssetPurge",
+          "operation_code": "http.personal_space.asset.purge_preview",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/admin/assets/:id/purge",
+          "handler": "richTextHandler.AdminPurgeUserAsset",
+          "operation_code": "http.personal_space.asset.purge",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        }
+      ]
+    },
+    "documents": {
+      "description": "本人文档/历史版本/对象及当前凭据，读取/下载/列表和六条写入；PDF来源保持当前授权证明",
+      "sources": [
+        "internal/modules/features/personaldocuments",
+        "internal/server/personal_document_pdf_viewer.go"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-document-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-document-author-write-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/documents",
+          "handler": "personalDocumentsHandler.List",
+          "operation_code": "http.get.api.v1.documents",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents",
+          "handler": "personalDocumentsHandler.Create",
+          "operation_code": "http.post.api.v1.documents",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents/upload",
+          "handler": "personalDocumentsHandler.Upload",
+          "operation_code": "http.post.api.v1.documents.upload",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/documents/:id",
+          "handler": "personalDocumentsHandler.Get",
+          "operation_code": "http.get.api.v1.documents.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/documents/:id/content",
+          "handler": "personalDocumentsHandler.Content",
+          "operation_code": "http.get.api.v1.documents.id.content",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/documents/:id/preview",
+          "handler": "personalDocumentsHandler.Preview",
+          "operation_code": "http.get.api.v1.documents.id.preview",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents/:id/pdf-invocations",
+          "handler": "personalDocumentsHandler.CreatePDFInvocation",
+          "operation_code": "http.post.api.v1.documents.id.pdf_invocations",
+          "auth": "jwt"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/documents/:id",
+          "handler": "personalDocumentsHandler.Save",
+          "operation_code": "http.put.api.v1.documents.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/documents/:id/versions",
+          "handler": "personalDocumentsHandler.Versions",
+          "operation_code": "http.get.api.v1.documents.id.versions",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents/:id/versions/:version_id/restore",
+          "handler": "personalDocumentsHandler.RestoreVersion",
+          "operation_code": "http.post.api.v1.documents.id.versions.version_id.restore",
+          "auth": "jwt"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/v1/documents/:id",
+          "handler": "personalDocumentsHandler.Trash",
+          "operation_code": "http.delete.api.v1.documents.id",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents/:id/trash",
+          "handler": "personalDocumentsHandler.Trash",
+          "operation_code": "http.post.api.v1.documents.id.trash",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/documents/:id/restore",
+          "handler": "personalDocumentsHandler.Restore",
+          "operation_code": "http.post.api.v1.documents.id.restore",
+          "auth": "jwt"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/documents/:id/download",
+          "handler": "personalDocumentsHandler.Download",
+          "operation_code": "http.get.api.v1.documents.id.download",
+          "auth": "jwt"
+        }
+      ]
+    },
+    "space": {
+      "description": "Space23完整事实/默认无行/User7，Core内容查询、个人头像与样式及来源，独立Admin禁用/配额/管理元数据；各写入精确回执及必需审计/outbox",
+      "sources": [
+        "internal/modules/features/personalspace",
+        "internal/modules/features/appearance/runtime",
+        "internal/modules/core/userstorage"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-space-public-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-space-admin-state-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-space-admin-quota-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-space-style-read-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-space-style-catalog-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/space/:user_id/contents",
+          "handler": "spaceHandler.ListContentsByUserID",
+          "operation_code": "http.personal_space.public_contents.by_id",
+          "auth": "public"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/space/:user_id",
+          "handler": "spaceHandler.GetByUserID",
+          "operation_code": "http.personal_space.public_profile.by_id",
+          "auth": "public"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/files/:user_id/avatars/:filename",
+          "handler": "spaceHandler.ServeAvatarFile",
+          "operation_code": "http.get.api.v1.spaces.files.user_id.avatars.filename",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/u/:username/contents",
+          "handler": "spaceHandler.ListContentsByUsername",
+          "operation_code": "http.personal_space.public_contents.by_username",
+          "auth": "public"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/u/:username",
+          "handler": "spaceHandler.GetByUsername",
+          "operation_code": "http.personal_space.public_profile.by_username",
+          "auth": "public"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/appearance/space-style-packs/:name/assets/*asset_path",
+          "handler": "spaceHandler.ServeSourceStylePackAsset",
+          "operation_code": "http.get.api.v1.appearance.space_style_packs.name.assets.wildcardasset_path",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me",
+          "handler": "spaceHandler.GetMe",
+          "operation_code": "http.personal_space.owner_profile.read",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/contents",
+          "handler": "spaceHandler.ListOwnContents",
+          "operation_code": "http.personal_space.owner_contents.read",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/spaces/me",
+          "handler": "spaceHandler.UpdateMe",
+          "operation_code": "http.personal_space.owner_profile.update",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/storage",
+          "handler": "spaceHandler.GetStorageStatus",
+          "operation_code": "http.get.api.v1.spaces.me.storage",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/avatar",
+          "handler": "spaceHandler.UploadAvatar",
+          "operation_code": "http.personal_space.owner_avatar.upload",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/avatars",
+          "handler": "spaceHandler.ListAvatars",
+          "operation_code": "http.get.api.v1.spaces.me.avatars",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/avatars/cleanup",
+          "handler": "spaceHandler.CleanupAvatarHistory",
+          "operation_code": "http.personal_space.owner_avatar.cleanup",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/spaces/me/avatar",
+          "handler": "spaceHandler.SelectAvatar",
+          "operation_code": "http.personal_space.owner_avatar.select",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/validate",
+          "handler": "spaceHandler.ValidateStylePackage",
+          "operation_code": "http.personal_space.owner_style_read.validate",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/preview",
+          "handler": "spaceHandler.PreviewStylePackage",
+          "operation_code": "http.personal_space.owner_style_read.preview",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/export",
+          "handler": "spaceHandler.ExportStylePackage",
+          "operation_code": "http.personal_space.owner_style_read.export",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/apply",
+          "handler": "spaceHandler.ApplyStylePackage",
+          "operation_code": "http.personal_space.owner_style.apply",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/html/validate",
+          "handler": "spaceHandler.ValidateCustomHTML",
+          "operation_code": "http.personal_space.owner_style_read.html_validate",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/styles/html-example",
+          "handler": "spaceHandler.CustomHTMLExample",
+          "operation_code": "http.personal_space.owner_style_read.html_example",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/html/apply",
+          "handler": "spaceHandler.ApplyCustomHTML",
+          "operation_code": "http.personal_space.owner_style.html",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/packs/validate",
+          "handler": "spaceHandler.ValidateStylePackZip",
+          "operation_code": "http.personal_space.owner_style_read.zip_validate",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/styles/packs/example",
+          "handler": "spaceHandler.StylePackExample",
+          "operation_code": "http.personal_space.owner_style_read.pack_example",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/styles/packs/example.zip",
+          "handler": "spaceHandler.StylePackExampleZip",
+          "operation_code": "http.personal_space.owner_style_read.pack_zip",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/styles/packs/sources",
+          "handler": "spaceHandler.ListSourceStylePacks",
+          "operation_code": "http.personal_space.owner_style.catalog",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/packs/apply",
+          "handler": "spaceHandler.ApplyStylePackZip",
+          "operation_code": "http.personal_space.owner_style.zip",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/packs/apply-source",
+          "handler": "spaceHandler.ApplySourceStylePack",
+          "operation_code": "http.personal_space.owner_style.source",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/rollback",
+          "handler": "spaceHandler.RollbackStyle",
+          "operation_code": "http.personal_space.owner_style.rollback",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/me/styles/default",
+          "handler": "spaceHandler.RestoreDefaultStyle",
+          "operation_code": "http.personal_space.owner_style.default",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/me/sync-status",
+          "handler": "spaceHandler.GetSyncStatus",
+          "operation_code": "http.personal_space.owner_sync_status.read",
+          "auth": "jwt+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/admin/summary",
+          "handler": "spaceHandler.AdminSummary",
+          "operation_code": "http.personal_space.admin.summary",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/spaces/admin/users/:user_id/storage",
+          "handler": "spaceHandler.AdminStorageStatus",
+          "operation_code": "http.personal_space.admin.storage",
+          "auth": "jwt+admin-account+permission+current-session"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/spaces/admin/users/:user_id/storage",
+          "handler": "spaceHandler.SetStorageQuota",
+          "operation_code": "http.personal_space.admin.quota",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/:user_id/disable",
+          "handler": "spaceHandler.DisableSpace",
+          "operation_code": "http.personal_space.admin.disable",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/spaces/:user_id/enable",
+          "handler": "spaceHandler.EnableSpace",
+          "operation_code": "http.personal_space.admin.enable",
+          "auth": "jwt+admin-account+permission+current-mfa"
+        }
+      ]
+    },
+    "images": {
+      "description": "旧内联图片/当前用户图片目录/受管上传，实际Core引用和Object字节/配额检查，无物理路径直出",
+      "sources": [
+        "internal/modules/core/userstorage"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-inline-image-linux.json",
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-image-upload-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/api/v1/content/assets/images/:user_id/:filename",
+          "handler": "userStorageHandler.ServeContentImage",
+          "operation_code": "http.get.api.v1.content.assets.images.user_id.filename",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/content/assets/images/me",
+          "handler": "userStorageHandler.ListMyContentImages",
+          "operation_code": "http.get.api.v1.content.assets.images.me",
+          "auth": "jwt"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/content/assets/images",
+          "handler": "userStorageHandler.UploadContentImage",
+          "operation_code": "http.storage.inline_image.author_upload",
+          "auth": "jwt+current-session"
+        }
+      ]
+    },
+    "admin_self": {
+      "description": "独立Admin当前身份/HttpOnly刷新/CSRF/本人MFA与退出；当前资料不是业务执行凭证",
+      "sources": [
+        "internal/modules/core/identity/handler/admin_browser_http.go",
+        "internal/modules/core/identity/service/admin_self_service.go",
+        "internal/modules/core/identity/service/admin_self_logout.go",
+        "admin/src/modules/identity",
+        "admin/src/router/index.ts"
+      ],
+      "reports": [
+        "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-admin-spa-linux.json"
+      ],
+      "routes": [
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/login",
+          "handler": "d.Identity.AdminDomain.Login",
+          "operation_code": "http.identity.admin_session.login",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/refresh",
+          "handler": "d.Identity.AdminDomain.Refresh",
+          "operation_code": "http.identity.admin_session.refresh",
+          "auth": "admin-refresh-cookie+csrf"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/admin/identity/me",
+          "handler": "d.Identity.AdminDomain.Me",
+          "operation_code": "http.identity.admin_self.read",
+          "auth": "jwt+current-admin-session"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/logout",
+          "handler": "d.Identity.AdminDomain.Logout",
+          "operation_code": "http.identity.admin_self.logout",
+          "auth": "jwt+current-admin-session+browser-csrf"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/mfa/enroll",
+          "handler": "d.Identity.AdminDomain.EnrollTOTP",
+          "operation_code": "http.identity.admin_self.mfa.enroll",
+          "auth": "jwt+current-admin-session+browser-csrf"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/mfa/confirm",
+          "handler": "d.Identity.AdminDomain.ConfirmTOTP",
+          "operation_code": "http.identity.admin_self.mfa.confirm",
+          "auth": "jwt+current-admin-session+browser-csrf"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/admin/identity/mfa/step-up",
+          "handler": "d.Identity.AdminDomain.StepUp",
+          "operation_code": "http.identity.admin_self.mfa.step_up",
+          "auth": "jwt+current-admin-session+browser-csrf"
+        }
+      ]
+    }
+  },
+  "baseline_routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/richtext/status",
+      "handler": "richTextHandler.Status",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/mutual-aid/status",
+      "handler": "mutualAidHandler.Status",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/secondhand/status",
+      "handler": "secondhandHandler.Status",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories",
+      "handler": "categoryHandler.List",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/tree",
+      "handler": "categoryHandler.ListTree",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:id",
+      "handler": "categoryHandler.Get",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:id/thread-types",
+      "handler": "categoryHandler.ListThreadTypePolicies",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/mutual-aid/threads/:id/status",
+      "handler": "mutualAidHandler.UpdateStatus",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/secondhand/threads/:id/status",
+      "handler": "secondhandHandler.UpdateStatus",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notifications",
+      "handler": "notificationHandler.List",
+      "basis": "既有独立收件人通知记录，JWT当前会话及仓储recipient谓词；没有借此开放对应帖子的私有原文。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/:id/read",
+      "handler": "notificationHandler.MarkRead",
+      "basis": "既有独立收件人通知记录，JWT当前会话及仓储recipient谓词；没有借此开放对应帖子的私有原文。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications/read-all",
+      "handler": "notificationHandler.MarkAllRead",
+      "basis": "既有独立收件人通知记录，JWT当前会话及仓储recipient谓词；没有借此开放对应帖子的私有原文。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/moderation/status",
+      "handler": "moderationHandler.Status",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories",
+      "handler": "categoryHandler.ListAdmin",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/tree",
+      "handler": "categoryHandler.ListAdminTree",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/:id",
+      "handler": "categoryHandler.GetAdmin",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/categories/:id/thread-types",
+      "handler": "categoryHandler.ListThreadTypePolicies",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories",
+      "handler": "categoryHandler.Create",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/categories/:id",
+      "handler": "categoryHandler.Update",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/categories/:id/thread-types",
+      "handler": "categoryHandler.UpdateThreadTypePolicies",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/categories/:id/parent",
+      "handler": "categoryHandler.Move",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories/:id/archive-impact",
+      "handler": "categoryHandler.ArchiveImpact",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories/:id/archive",
+      "handler": "categoryHandler.Archive",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/categories/:id/restore",
+      "handler": "categoryHandler.Restore",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/categories/:id",
+      "handler": "categoryHandler.Delete",
+      "basis": "既有公开目录/功能状态或管理配置入口；不承载本阶段新增的私有原文资源读取Policy。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/moderation/admin/moderators",
+      "handler": "moderationHandler.ListModerators",
+      "basis": "02a的治理委派授予/范围管理，保留其独立管理上限，02b执行/预览不推出授予权。"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/moderation/admin/moderators/:id",
+      "handler": "moderationHandler.GetModerator",
+      "basis": "02a的治理委派授予/范围管理，保留其独立管理上限，02b执行/预览不推出授予权。"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/moderation/admin/moderators/:id",
+      "handler": "moderationHandler.SetModerator",
+      "basis": "02a的治理委派授予/范围管理，保留其独立管理上限，02b执行/预览不推出授予权。"
+    }
+  ],
+  "compatibility_review": {
+    "active_feature_http_sources": [
+      "internal/modules/features/richtext/handler.go",
+      "internal/modules/features/mutualaid/handler.go",
+      "internal/modules/features/secondhand/handler.go",
+      "internal/modules/features/personaldocuments/handler.go",
+      "internal/modules/features/personalspace/handler.go"
+    ],
+    "finding": "实际RichText HTTP正文、附件、用户资产和Invocation均调用ForPrincipal路径；旧GetArticle/ListArticleAttachments/OpenAttachment只在旧内部实现链相互调用。Core旧GetThreadForViewer/ListByThreadForViewer没有实际生产调用者；保留的内部兼容方法不能被计为新的HTTP授权入口。"
+  },
+  "deferred": [
+    {
+      "stage": "V12-02c",
+      "scope": "Integration摘要凭据、通道/端点/资源白名单和撤销，不复用User/Admin身份"
+    },
+    {
+      "stage": "V12-03c",
+      "scope": "v5贡献目录/Dispatcher及插件/机器的宿主调用链，不能由本次User/Admin业务验收代替"
+    },
+    {
+      "stage": "V12-09a",
+      "scope": "Knowledge集合与生产来源ACL；目前未建立的来源不伪报为02b交付"
+    }
+  ],
+  "current_exit_report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-exit-linux.json"
+}

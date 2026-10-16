@@ -1,0 +1,97 @@
+{
+  "schema": "campusos.v12-02d-exit-acceptance/v1",
+  "generated_at": "2026-10-11T05:35:15.750565+00:00",
+  "stage": "V12-02d",
+  "stage_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "V12-02d stage exit: identity domain policy kernel, admin domain stores/services, JWT domain separation, sessions, MFA, auto-admission removal and the HTTP domain switch re-accepted against the current tree",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "node": "v20.20.2"
+  },
+  "slices": {
+    "identity-domains": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-identity-domains-linux.json",
+      "sha256": "5aa78dd002f6d475b8dc71473ee7b12f150297efbc54aff986eaef90f6818d93"
+    },
+    "admin-store": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-store-linux.json",
+      "sha256": "a956e0a631c0deff9c5564006f600d542796743dd15263b46fb3295013b9d7ad"
+    },
+    "admin-service": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-service-linux.json",
+      "sha256": "29792a53896df723104c967c15ee60950103cb1a0d3d07868bad21e6592950b7"
+    },
+    "jwt-domains": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-jwt-domains-linux.json",
+      "sha256": "6f862f5894c7b41d9ad1e1dab2c2115505ab1edc13d5c21d0a06e861db426a6b"
+    },
+    "admin-session": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-session-linux.json",
+      "sha256": "e8498a5dea524b97031fa08f03bed4b0c27cb68c34e687cc75ee6e6a69e209ea"
+    },
+    "mfa-security": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-mfa-security-linux.json",
+      "sha256": "6718b4a79017caa3900a45e1a070173a731d044f3102dc72d1a24ce9cea0fe95"
+    },
+    "admin-mfa": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-admin-mfa-linux.json",
+      "sha256": "0df81b4b63bd434e2d3fceaa2c382ec2702ae9f0381b8dd86e986378535cdcaf"
+    },
+    "auto-admission": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-auto-admission-linux.json",
+      "sha256": "22a2919b7d7bdc588e850ab247fe4eba72011756cb018e017de74442f8591a8b"
+    },
+    "http-switch": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-http-switch-linux.json",
+      "sha256": "c563eee5ae15da8fc9eb73aab4fbf67d7a8a3c6fbb1bea634fccf348e0713519"
+    }
+  },
+  "target_logs": {
+    "identity-domains": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/identity-domains.log",
+      "sha256": "eb14748c1863b064893a6bfcd2603965ca8f43dc745ca0dc25e0eada5f460da1"
+    },
+    "admin-store": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/admin-store.log",
+      "sha256": "210ba18b2a14550cc78adf55891ae4622319bb11c43a29cbf8bfe0ddc5bc7bff"
+    },
+    "admin-service": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/admin-service.log",
+      "sha256": "547b9c1f22266cf80e29cea47acb6ac416d69b00f41ae7cdf50323983c7eab6e"
+    },
+    "jwt-domains": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/jwt-domains.log",
+      "sha256": "a1a4a2a661cbaa2d5ce5a6dfe1cb98df06443fb211cc50328dd029e00783c558"
+    },
+    "admin-session": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/admin-session.log",
+      "sha256": "5f5d486fa46007d3050c15696e585a6608776e65845440e0a3dbbe988b3c05e5"
+    },
+    "mfa-security": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/mfa-security.log",
+      "sha256": "f11a90b3ace66119bf33e7024e200442449985e9b858660e807aff38bbf54434"
+    },
+    "admin-mfa": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/admin-mfa.log",
+      "sha256": "4ac2e59c4c24b739d16ef50687bcd5c005ccfc65781087efc77fd524e3ac9e82"
+    },
+    "auto-admission": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/auto-admission.log",
+      "sha256": "f211b310af88d73473ccaed77e750b88ef94fca06bbd9e2e31d2025bddc6d7eb"
+    },
+    "http-switch": {
+      "path": ".cache/v12-02d-exit/exit.aNylOk/http-switch.log",
+      "sha256": "2ddf550027f99dd400288a7fa2e33a109f605688c92a045b32df07547e6bc911"
+    }
+  },
+  "residual_scope": [
+    "Admin recovery-ticket HTTP flows (password reset with TOTP recovery) remain for a follow-up slice.",
+    "The legacy /auth/admin/login user-surface route and legacy admission rows remain as transitional compatibility; admin API routes no longer consume them.",
+    "Admin MFA policy enforcement gate per route (admin_mfa_policies) arrives with the Admin UI policy management in V12-04."
+  ]
+}

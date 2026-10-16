@@ -1,6 +1,7 @@
 package personaldocuments
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -8,13 +9,43 @@ import (
 	"strconv"
 	"strings"
 
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/auth"
 	requestutil "github.com/campusos/CampusOS/pkg/request"
 	"github.com/campusos/CampusOS/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
-type Handler struct{ service *Service }
+type Handler struct {
+	service  *Service
+	verifier identityport.SessionVerifier
+	strength identityport.SessionStrengthReader
+}
+
+func (h *Handler) SetSessionProof(verifier identityport.SessionVerifier, strength identityport.SessionStrengthReader) {
+	h.verifier, h.strength = verifier, strength
+}
+
+func (h *Handler) principal(c *gin.Context) DocumentPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: c.GetString("user_id"), SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.verifier, h.strength, claims)
+	}
+}
+
+func writeDocumentReadError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrDocumentCommandUnavailable), errors.Is(err, ErrDocumentCompensationPending):
+		response.Error(c, http.StatusServiceUnavailable, 73001, "文档写入暂不可用，请稍后重试。")
+	default:
+		response.WriteError(c, err)
+	}
+}
 
 const maxDocumentMultipartBytes = maxBinaryBytes + 1024*1024
 
@@ -24,9 +55,10 @@ func (h *Handler) List(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, e := h.service.List(c.Request.Context(), owner, strings.TrimSpace(c.Query("status")))
+	_ = owner
+	items, e := h.service.ListForPrincipal(c.Request.Context(), h.principal(c), strings.TrimSpace(c.Query("status")))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, gin.H{"items": items})
@@ -41,9 +73,10 @@ func (h *Handler) Create(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request", "reason": "请求体格式不正确"})
 		return
 	}
-	item, e := h.service.CreateText(c.Request.Context(), owner, req)
+	_ = owner
+	item, e := h.service.CreateTextForPrincipal(c.Request.Context(), h.principal(c), req)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Created(c, item)
@@ -81,9 +114,10 @@ func (h *Handler) Upload(c *gin.Context) {
 	if name == "" {
 		name = file.Filename
 	}
-	item, e := h.service.Upload(c.Request.Context(), owner, name, format, file.Header.Get("Content-Type"), file.Size, reader)
+	_ = owner
+	item, e := h.service.UploadForPrincipal(c.Request.Context(), h.principal(c), name, format, file.Header.Get("Content-Type"), file.Size, reader)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Created(c, item)
@@ -93,9 +127,10 @@ func (h *Handler) Get(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, e := h.service.Get(c.Request.Context(), owner, c.Param("id"))
+	_ = owner
+	item, e := h.service.GetForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -105,9 +140,10 @@ func (h *Handler) Content(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, content, e := h.service.TextContentVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
+	_ = owner
+	item, content, e := h.service.TextContentForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, gin.H{"document": item, "content": content})
@@ -117,9 +153,10 @@ func (h *Handler) Preview(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, e := h.service.PreviewVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
+	_ = owner
+	item, e := h.service.PreviewForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -134,9 +171,14 @@ func (h *Handler) CreatePDFInvocation(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "presentation", "reason": "请选择弹窗、侧边栏、全屏或新标签页预览方式"})
 		return
 	}
-	invocation, e := h.service.CreatePDFInvocation(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(req.Presentation))
+	_ = owner
+	invocation, e := h.service.PDFInvocationForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), strings.TrimSpace(req.Presentation))
 	if e != nil {
-		writePDFPreviewError(c, e)
+		if errors.Is(e, identityport.ErrUserSessionPrincipalUnavailable) || errors.Is(e, identityport.ErrPolicyFactsChanged) {
+			writeDocumentReadError(c, e)
+		} else {
+			writePDFPreviewError(c, e)
+		}
 		return
 	}
 	response.Created(c, invocation)
@@ -151,9 +193,10 @@ func (h *Handler) Save(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.Save(c.Request.Context(), owner, c.Param("id"), req)
+	_ = owner
+	item, e := h.service.SaveForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), req)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -163,9 +206,10 @@ func (h *Handler) Versions(c *gin.Context) {
 	if !ok {
 		return
 	}
-	items, e := h.service.Versions(c.Request.Context(), owner, c.Param("id"))
+	_ = owner
+	items, e := h.service.VersionsForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, gin.H{"items": items})
@@ -180,9 +224,10 @@ func (h *Handler) RestoreVersion(c *gin.Context) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.RestoreVersion(c.Request.Context(), owner, c.Param("id"), c.Param("version_id"), req.ExpectedVersion)
+	_ = owner
+	item, e := h.service.RestoreVersionForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), c.Param("version_id"), req.ExpectedVersion)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -199,9 +244,10 @@ func (h *Handler) status(c *gin.Context, status string) {
 		response.ErrorDescriptor(c, apperror.PersonalDocumentInvalid, gin.H{"field": "request"})
 		return
 	}
-	item, e := h.service.SetStatus(c.Request.Context(), owner, c.Param("id"), req.ExpectedVersion, status)
+	_ = owner
+	item, e := h.service.SetStatusForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), req.ExpectedVersion, status)
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	response.Success(c, item)
@@ -211,9 +257,10 @@ func (h *Handler) Download(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, object, e := h.service.OpenVersion(c.Request.Context(), owner, c.Param("id"), strings.TrimSpace(c.Query("version_id")))
+	_ = owner
+	item, object, e := h.service.OpenVersionForPrincipal(c.Request.Context(), h.principal(c), c.Param("id"), strings.TrimSpace(c.Query("version_id")))
 	if e != nil {
-		response.WriteError(c, e)
+		writeDocumentReadError(c, e)
 		return
 	}
 	defer object.Reader.Close()

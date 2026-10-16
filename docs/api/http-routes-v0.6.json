@@ -38,7 +38,7 @@
     {
       "method": "GET",
       "path": "/api/v1/home/config",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.GetConfig",
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
@@ -55,7 +55,7 @@
     {
       "method": "GET",
       "path": "/api/v1/home/logo",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.GetLogo",
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
@@ -72,7 +72,7 @@
     {
       "method": "GET",
       "path": "/api/v1/web-themes",
-      "handler": "d.WebTheme",
+      "handler": "webThemeHandler.Catalog",
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
@@ -89,7 +89,7 @@
     {
       "method": "GET",
       "path": "/api/v1/web-themes/:name",
-      "handler": "d.WebTheme",
+      "handler": "webThemeHandler.Package",
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
@@ -106,7 +106,7 @@
     {
       "method": "GET",
       "path": "/api/v1/web-themes/:name/assets/*path",
-      "handler": "d.WebTheme",
+      "handler": "webThemeHandler.Asset",
       "module_owner": "feature.appearance",
       "audience": "public",
       "auth": "none",
@@ -157,7 +157,7 @@
     {
       "method": "GET",
       "path": "/api/v1/richtext/status",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.Status",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
@@ -174,7 +174,7 @@
     {
       "method": "GET",
       "path": "/api/v1/schedule/status",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.Status",
       "module_owner": "feature.personal-schedule",
       "audience": "public",
       "auth": "none",
@@ -191,7 +191,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mutual-aid/status",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.Status",
       "module_owner": "feature.mutual-aid",
       "audience": "public",
       "auth": "none",
@@ -208,7 +208,7 @@
     {
       "method": "GET",
       "path": "/api/v1/secondhand/status",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.Status",
       "module_owner": "feature.secondhand",
       "audience": "public",
       "auth": "none",
@@ -301,6 +301,57 @@
       "legacy_aliases": [
         "http.post.api.v1.auth.admin.login",
         "httpapi.post.api.v1.auth.admin.login"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/login",
+      "handler": "d.Identity.AdminDomain.Login",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.identity.admin_session.login",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.login",
+        "httpapi.post.api.v1.admin.identity.login"
+      ],
+      "ownership": "none",
+      "scope": "public",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/refresh",
+      "handler": "d.Identity.AdminDomain.Refresh",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "admin-refresh-cookie+csrf",
+      "operation_code": "http.identity.admin_session.refresh",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.refresh",
+        "httpapi.post.api.v1.admin.identity.refresh"
+      ],
+      "ownership": "current-admin-session",
+      "scope": "admin-refresh-family",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/bootstrap",
+      "handler": "d.Identity.AdminDomain.Bootstrap",
+      "module_owner": "core.identity",
+      "audience": "public",
+      "auth": "none",
+      "operation_code": "http.post.api.v1.admin.identity.bootstrap",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.bootstrap",
+        "httpapi.post.api.v1.admin.identity.bootstrap"
       ],
       "ownership": "none",
       "scope": "public",
@@ -463,7 +514,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mutual-aid/threads",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.ListPublic",
       "module_owner": "feature.mutual-aid",
       "audience": "public",
       "auth": "none",
@@ -480,7 +531,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mutual-aid/threads/:id",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.GetPublic",
       "module_owner": "feature.mutual-aid",
       "audience": "public",
       "auth": "none",
@@ -497,7 +548,7 @@
     {
       "method": "GET",
       "path": "/api/v1/secondhand/threads",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.ListPublic",
       "module_owner": "feature.secondhand",
       "audience": "public",
       "auth": "none",
@@ -514,7 +565,7 @@
     {
       "method": "GET",
       "path": "/api/v1/secondhand/threads/:id",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.GetPublic",
       "module_owner": "feature.secondhand",
       "audience": "public",
       "auth": "none",
@@ -531,7 +582,7 @@
     {
       "method": "GET",
       "path": "/api/v1/richtext/articles/:id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.GetPublished",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
@@ -548,7 +599,7 @@
     {
       "method": "GET",
       "path": "/api/v1/richtext/assets/:user_id/:filename",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.ServeAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "public",
       "auth": "none",
@@ -599,41 +650,41 @@
     {
       "method": "GET",
       "path": "/api/v1/space/:user_id/contents",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ListContentsByUserID",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.space.user_id.contents",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_contents.by_id",
       "legacy_aliases": [
         "http.get.api.v1.space.user_id.contents",
         "httpapi.get.api.v1.space.user_id.contents"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/space/:user_id",
-      "handler": "d.Space",
+      "handler": "spaceHandler.GetByUserID",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.space.user_id",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_profile.by_id",
       "legacy_aliases": [
         "http.get.api.v1.space.user_id",
         "httpapi.get.api.v1.space.user_id"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/files/:user_id/avatars/:filename",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ServeAvatarFile",
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
@@ -650,41 +701,41 @@
     {
       "method": "GET",
       "path": "/api/v1/u/:username/contents",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ListContentsByUsername",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.u.username.contents",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_contents.by_username",
       "legacy_aliases": [
         "http.get.api.v1.u.username.contents",
         "httpapi.get.api.v1.u.username.contents"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/u/:username",
-      "handler": "d.Space",
+      "handler": "spaceHandler.GetByUsername",
       "module_owner": "feature.personal-space",
       "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.u.username",
+      "auth": "public",
+      "operation_code": "http.personal_space.public_profile.by_username",
       "legacy_aliases": [
         "http.get.api.v1.u.username",
         "httpapi.get.api.v1.u.username"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-public-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/appearance/space-style-packs/:name/assets/*asset_path",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ServeSourceStylePackAsset",
       "module_owner": "feature.personal-space",
       "audience": "public",
       "auth": "none",
@@ -778,25 +829,8 @@
         "http.get.api.v1.threads.id.posts",
         "httpapi.get.api.v1.threads.id.posts"
       ],
-      "ownership": "none",
-      "scope": "public",
-      "audit": "request-log-read",
-      "stability": "experimental"
-    },
-    {
-      "method": "GET",
-      "path": "/api/v1/events",
-      "handler": "eventHandler.ListEvents",
-      "module_owner": "core.community",
-      "audience": "public",
-      "auth": "none",
-      "operation_code": "http.get.api.v1.events",
-      "legacy_aliases": [
-        "http.get.api.v1.events",
-        "httpapi.get.api.v1.events"
-      ],
-      "ownership": "none",
-      "scope": "public",
+      "ownership": "resource-policy",
+      "scope": "parent-public+published-posts",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -1058,58 +1092,58 @@
     {
       "method": "GET",
       "path": "/api/v1/spaces/me",
-      "handler": "d.Space",
+      "handler": "spaceHandler.GetMe",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_profile.read",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me",
         "httpapi.get.api.v1.spaces.me"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/contents",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ListOwnContents",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.contents",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_contents.read",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.contents",
         "httpapi.get.api.v1.spaces.me.contents"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "PUT",
       "path": "/api/v1/spaces/me",
-      "handler": "d.Space",
+      "handler": "spaceHandler.UpdateMe",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.put.api.v1.spaces.me",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_profile.update",
       "legacy_aliases": [
         "http.put.api.v1.spaces.me",
         "httpapi.put.api.v1.spaces.me"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/storage",
-      "handler": "d.Space",
+      "handler": "spaceHandler.GetStorageStatus",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1126,24 +1160,24 @@
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/avatar",
-      "handler": "d.Space",
+      "handler": "spaceHandler.UploadAvatar",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.avatar",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_avatar.upload",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.avatar",
         "httpapi.post.api.v1.spaces.me.avatar"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/avatars",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ListAvatars",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1158,298 +1192,315 @@
       "stability": "experimental"
     },
     {
-      "method": "PUT",
-      "path": "/api/v1/spaces/me/avatar",
-      "handler": "d.Space",
+      "method": "POST",
+      "path": "/api/v1/spaces/me/avatars/cleanup",
+      "handler": "spaceHandler.CleanupAvatarHistory",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.put.api.v1.spaces.me.avatar",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_avatar.cleanup",
+      "legacy_aliases": [
+        "http.post.api.v1.spaces.me.avatars.cleanup",
+        "httpapi.post.api.v1.spaces.me.avatars.cleanup"
+      ],
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/spaces/me/avatar",
+      "handler": "spaceHandler.SelectAvatar",
+      "module_owner": "feature.personal-space",
+      "audience": "authenticated",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_avatar.select",
       "legacy_aliases": [
         "http.put.api.v1.spaces.me.avatar",
         "httpapi.put.api.v1.spaces.me.avatar"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/validate",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ValidateStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.validate",
         "httpapi.post.api.v1.spaces.me.styles.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/preview",
-      "handler": "d.Space",
+      "handler": "spaceHandler.PreviewStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.preview",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.preview",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.preview",
         "httpapi.post.api.v1.spaces.me.styles.preview"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/export",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ExportStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.export",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.export",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.export",
         "httpapi.post.api.v1.spaces.me.styles.export"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/apply",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ApplyStylePackage",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.apply",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.apply",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.apply",
         "httpapi.post.api.v1.spaces.me.styles.apply"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/html/validate",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ValidateCustomHTML",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.html.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.html_validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.html.validate",
         "httpapi.post.api.v1.spaces.me.styles.html.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/styles/html-example",
-      "handler": "d.Space",
+      "handler": "spaceHandler.CustomHTMLExample",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.html_example",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.html_example",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.html_example",
         "httpapi.get.api.v1.spaces.me.styles.html_example"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/html/apply",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ApplyCustomHTML",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.html.apply",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.html",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.html.apply",
         "httpapi.post.api.v1.spaces.me.styles.html.apply"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/packs/validate",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ValidateStylePackZip",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.packs.validate",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.zip_validate",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.packs.validate",
         "httpapi.post.api.v1.spaces.me.styles.packs.validate"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/styles/packs/example",
-      "handler": "d.Space",
+      "handler": "spaceHandler.StylePackExample",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.pack_example",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.example",
         "httpapi.get.api.v1.spaces.me.styles.packs.example"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/styles/packs/example.zip",
-      "handler": "d.Space",
+      "handler": "spaceHandler.StylePackExampleZip",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.example.zip",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style_read.pack_zip",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.example.zip",
         "httpapi.get.api.v1.spaces.me.styles.packs.example.zip"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/styles/packs/sources",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ListSourceStylePacks",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.styles.packs.sources",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.catalog",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.styles.packs.sources",
         "httpapi.get.api.v1.spaces.me.styles.packs.sources"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/packs/apply",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ApplyStylePackZip",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.packs.apply",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.zip",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.packs.apply",
         "httpapi.post.api.v1.spaces.me.styles.packs.apply"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/packs/apply-source",
-      "handler": "d.Space",
+      "handler": "spaceHandler.ApplySourceStylePack",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.packs.apply_source",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.source",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.packs.apply_source",
         "httpapi.post.api.v1.spaces.me.styles.packs.apply_source"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/rollback",
-      "handler": "d.Space",
+      "handler": "spaceHandler.RollbackStyle",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.rollback",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.rollback",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.rollback",
         "httpapi.post.api.v1.spaces.me.styles.rollback"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/me/styles/default",
-      "handler": "d.Space",
+      "handler": "spaceHandler.RestoreDefaultStyle",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.spaces.me.styles.default",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_style.default",
       "legacy_aliases": [
         "http.post.api.v1.spaces.me.styles.default",
         "httpapi.post.api.v1.spaces.me.styles.default"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/spaces/me/sync-status",
-      "handler": "d.Space",
+      "handler": "spaceHandler.GetSyncStatus",
       "module_owner": "feature.personal-space",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.spaces.me.sync_status",
+      "auth": "jwt+current-session",
+      "operation_code": "http.personal_space.owner_sync_status.read",
       "legacy_aliases": [
         "http.get.api.v1.spaces.me.sync_status",
         "httpapi.get.api.v1.spaces.me.sync_status"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-space+current-user",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/schedule/me",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.GetMe",
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1466,7 +1517,7 @@
     {
       "method": "GET",
       "path": "/api/v1/schedule/terms",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.ListOpen",
       "module_owner": "core.academic-term",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1483,7 +1534,7 @@
     {
       "method": "GET",
       "path": "/api/v1/schedule/me/terms",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.ListTerms",
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1500,7 +1551,7 @@
     {
       "method": "POST",
       "path": "/api/v1/schedule/me/terms/activate",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.ActivateTerm",
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1517,7 +1568,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/schedule/me",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.SaveMe",
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1534,7 +1585,7 @@
     {
       "method": "POST",
       "path": "/api/v1/schedule/me/import",
-      "handler": "d.Schedule",
+      "handler": "scheduleHandler.ImportMe",
       "module_owner": "feature.personal-schedule",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1551,7 +1602,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.List",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1568,7 +1619,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Create",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1585,7 +1636,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents/upload",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Upload",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1602,7 +1653,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents/:id",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Get",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1619,7 +1670,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents/:id/content",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Content",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1636,7 +1687,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents/:id/preview",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Preview",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1653,7 +1704,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents/:id/pdf-invocations",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.CreatePDFInvocation",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1670,7 +1721,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/documents/:id",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Save",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1687,7 +1738,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents/:id/versions",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Versions",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1704,7 +1755,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents/:id/versions/:version_id/restore",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.RestoreVersion",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1721,7 +1772,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/documents/:id",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Trash",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1738,7 +1789,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents/:id/trash",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Trash",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1755,7 +1806,7 @@
     {
       "method": "POST",
       "path": "/api/v1/documents/:id/restore",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Restore",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1772,7 +1823,7 @@
     {
       "method": "GET",
       "path": "/api/v1/documents/:id/download",
-      "handler": "d.PersonalDocuments",
+      "handler": "personalDocumentsHandler.Download",
       "module_owner": "feature.personal-documents",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1789,7 +1840,7 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.CreateDraft",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1843,21 +1894,21 @@
       "handler": "userStorageHandler.UploadContentImage",
       "module_owner": "core.user-storage",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.content.assets.images",
+      "auth": "jwt+current-session",
+      "operation_code": "http.storage.inline_image.author_upload",
       "legacy_aliases": [
         "http.post.api.v1.content.assets.images",
         "httpapi.post.api.v1.content.assets.images"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owner-inventory-or-core-author+current-quota",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/richtext/articles/:id/me",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.GetMine",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1874,7 +1925,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/richtext/articles/:id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.UpdateDraft",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1891,7 +1942,7 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/preview",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.Preview",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1908,7 +1959,7 @@
     {
       "method": "GET",
       "path": "/api/v1/richtext/assets/me",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.ListMyAssets",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1925,24 +1976,24 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/assets",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.UploadAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.richtext.assets",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.inline_image.author_upload",
       "legacy_aliases": [
         "http.post.api.v1.richtext.assets",
         "httpapi.post.api.v1.richtext.assets"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owner-inventory-or-core-author+current-quota",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/assets",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.ListUserAssets",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1959,7 +2010,7 @@
     {
       "method": "GET",
       "path": "/api/v1/assets/:id/download",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.DownloadMyUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1976,7 +2027,7 @@
     {
       "method": "POST",
       "path": "/api/v1/assets/:id/pdf-invocations",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.CreatePersonalAssetPDFInvocation",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -1993,41 +2044,41 @@
     {
       "method": "POST",
       "path": "/api/v1/assets/:id/trash",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.TrashUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.assets.id.trash",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.asset.owner_trash",
       "legacy_aliases": [
         "http.post.api.v1.assets.id.trash",
         "httpapi.post.api.v1.assets.id.trash"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-asset+reference-integrity",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/assets/:id/restore",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.RestoreUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.assets.id.restore",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.asset.owner_restore",
       "legacy_aliases": [
         "http.post.api.v1.assets.id.restore",
         "httpapi.post.api.v1.assets.id.restore"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-owned-asset+reference-integrity",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/richtext/articles/:id/attachments",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.ListAttachments",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2044,109 +2095,109 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/attachments",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.BindAttachment",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.richtext.articles.id.attachments",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.bind",
       "legacy_aliases": [
         "http.post.api.v1.richtext.articles.id.attachments",
         "httpapi.post.api.v1.richtext.articles.id.attachments"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/attachments/from-personal-document",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AttachPersonalDocument",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.richtext.articles.id.attachments.from_personal_document",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.copy_document",
       "legacy_aliases": [
         "http.post.api.v1.richtext.articles.id.attachments.from_personal_document",
         "httpapi.post.api.v1.richtext.articles.id.attachments.from_personal_document"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+owned-current-document+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/attachments/upload",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.UploadAttachment",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.richtext.articles.id.attachments.upload",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.upload",
       "legacy_aliases": [
         "http.post.api.v1.richtext.articles.id.attachments.upload",
         "httpapi.post.api.v1.richtext.articles.id.attachments.upload"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "PATCH",
       "path": "/api/v1/richtext/articles/:id/attachments/order",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.ReorderAttachments",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.patch.api.v1.richtext.articles.id.attachments.order",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.reorder",
       "legacy_aliases": [
         "http.patch.api.v1.richtext.articles.id.attachments.order",
         "httpapi.patch.api.v1.richtext.articles.id.attachments.order"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "PATCH",
       "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.RenameAttachment",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.patch.api.v1.richtext.articles.id.attachments.attachment_id",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.rename",
       "legacy_aliases": [
         "http.patch.api.v1.richtext.articles.id.attachments.attachment_id",
         "httpapi.patch.api.v1.richtext.articles.id.attachments.attachment_id"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "DELETE",
       "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.RemoveAttachment",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.delete.api.v1.richtext.articles.id.attachments.attachment_id",
+      "auth": "jwt+current-session",
+      "operation_code": "http.feature.richtext.attachment.remove",
       "legacy_aliases": [
         "http.delete.api.v1.richtext.articles.id.attachments.attachment_id",
         "httpapi.delete.api.v1.richtext.articles.id.attachments.attachment_id"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-core-author+article-asset-binding",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/richtext/articles/:id/attachments/:attachment_id/download",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.DownloadAttachment",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2163,7 +2214,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-ui/invocations",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.CreatePDFInvocation",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2180,7 +2231,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-ui/invocations/:id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.GetPDFInvocation",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2197,7 +2248,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-ui/invocations/:id/content",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.PDFInvocationContent",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2214,7 +2265,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-ui/invocations/:id/download",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.DownloadPDFInvocation",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2231,7 +2282,7 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/publish",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.Publish",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2248,7 +2299,7 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/offline",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.Offline",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2265,7 +2316,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/richtext/articles/:id",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.Delete",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2282,7 +2333,7 @@
     {
       "method": "POST",
       "path": "/api/v1/mutual-aid/threads",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.Create",
       "module_owner": "feature.mutual-aid",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2299,7 +2350,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mutual-aid/threads/:id/me",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.GetMine",
       "module_owner": "feature.mutual-aid",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2316,7 +2367,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/mutual-aid/threads/:id",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.Update",
       "module_owner": "feature.mutual-aid",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2333,7 +2384,7 @@
     {
       "method": "POST",
       "path": "/api/v1/mutual-aid/threads/:id/status",
-      "handler": "d.MutualAid",
+      "handler": "mutualAidHandler.UpdateStatus",
       "module_owner": "feature.mutual-aid",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2350,7 +2401,7 @@
     {
       "method": "POST",
       "path": "/api/v1/secondhand/threads",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.Create",
       "module_owner": "feature.secondhand",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2367,7 +2418,7 @@
     {
       "method": "GET",
       "path": "/api/v1/secondhand/threads/:id/me",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.GetMine",
       "module_owner": "feature.secondhand",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2384,7 +2435,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/secondhand/threads/:id",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.Update",
       "module_owner": "feature.secondhand",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2401,7 +2452,7 @@
     {
       "method": "POST",
       "path": "/api/v1/secondhand/threads/:id/status",
-      "handler": "d.Secondhand",
+      "handler": "secondhandHandler.UpdateStatus",
       "module_owner": "feature.secondhand",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2430,6 +2481,23 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/threads/:id/take-down",
+      "handler": "threadHandler.TakeDown",
+      "module_owner": "core.community",
+      "audience": "authenticated",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.thread.user_take_down",
+      "legacy_aliases": [
+        "http.post.api.v1.threads.id.take_down",
+        "httpapi.post.api.v1.threads.id.take_down"
+      ],
+      "ownership": "resource-policy",
+      "scope": "single-board-execution-grant",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -2523,14 +2591,14 @@
       "handler": "postHandler.ListPostsForCurrentUser",
       "module_owner": "core.community",
       "audience": "authenticated",
-      "auth": "jwt",
+      "auth": "jwt+current-session",
       "operation_code": "http.get.api.v1.threads.id.posts.me",
       "legacy_aliases": [
         "http.get.api.v1.threads.id.posts.me",
         "httpapi.get.api.v1.threads.id.posts.me"
       ],
-      "ownership": "handler-enforced",
-      "scope": "self-or-resource-owner",
+      "ownership": "resource-policy",
+      "scope": "parent-public-or-current-user-owner+published-posts",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -2639,7 +2707,7 @@
     {
       "method": "GET",
       "path": "/api/v1/moderation/status",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.Status",
       "module_owner": "core.moderation",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2656,109 +2724,126 @@
     {
       "method": "GET",
       "path": "/api/v1/moderation/me",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.MyAccess",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.get.api.v1.moderation.me",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.moderation.current_preview",
       "legacy_aliases": [
         "http.get.api.v1.moderation.me",
         "httpapi.get.api.v1.moderation.me"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
+      "ownership": "resource-policy",
+      "scope": "current-user-named-policy+actual-thread-and-posts",
+      "audit": "moderation-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/moderation/threads/:id/access",
+      "handler": "moderationHandler.PreviewBatch",
+      "module_owner": "core.moderation",
+      "audience": "authenticated",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.moderation.current_preview_batch",
+      "legacy_aliases": [
+        "http.post.api.v1.moderation.threads.id.access",
+        "httpapi.post.api.v1.moderation.threads.id.access"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-user-named-policy+actual-thread-and-posts",
       "audit": "moderation-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/moderation/threads/:id/pin",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.Pin",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.moderation.threads.id.pin",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.thread.user_pin",
       "legacy_aliases": [
         "http.post.api.v1.moderation.threads.id.pin",
         "httpapi.post.api.v1.moderation.threads.id.pin"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
-      "audit": "moderation-audit",
+      "ownership": "resource-policy",
+      "scope": "explicit-user-role+resource-board",
+      "audit": "required-command-and-module-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/moderation/threads/:id/unpin",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.Unpin",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.moderation.threads.id.unpin",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.thread.user_unpin",
       "legacy_aliases": [
         "http.post.api.v1.moderation.threads.id.unpin",
         "httpapi.post.api.v1.moderation.threads.id.unpin"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
-      "audit": "moderation-audit",
+      "ownership": "resource-policy",
+      "scope": "explicit-user-role+resource-board",
+      "audit": "required-command-and-module-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/moderation/threads/:id/lock",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.Lock",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.moderation.threads.id.lock",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.thread.user_lock",
       "legacy_aliases": [
         "http.post.api.v1.moderation.threads.id.lock",
         "httpapi.post.api.v1.moderation.threads.id.lock"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
-      "audit": "moderation-audit",
+      "ownership": "resource-policy",
+      "scope": "explicit-user-role+resource-board",
+      "audit": "required-command-and-module-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/moderation/threads/:id/unlock",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.Unlock",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.post.api.v1.moderation.threads.id.unlock",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.thread.user_unlock",
       "legacy_aliases": [
         "http.post.api.v1.moderation.threads.id.unlock",
         "httpapi.post.api.v1.moderation.threads.id.unlock"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
-      "audit": "moderation-audit",
+      "ownership": "resource-policy",
+      "scope": "explicit-user-role+resource-board",
+      "audit": "required-command-and-module-audit",
       "stability": "experimental"
     },
     {
       "method": "DELETE",
       "path": "/api/v1/moderation/threads/:id/posts/:post_id",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.DeletePost",
       "module_owner": "core.moderation",
       "audience": "authenticated",
-      "auth": "jwt",
-      "operation_code": "http.delete.api.v1.moderation.threads.id.posts.post_id",
+      "auth": "jwt+current-session",
+      "operation_code": "http.community.post.user_governance_delete",
       "legacy_aliases": [
         "http.delete.api.v1.moderation.threads.id.posts.post_id",
         "httpapi.delete.api.v1.moderation.threads.id.posts.post_id"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category",
-      "audit": "moderation-audit",
+      "ownership": "resource-policy",
+      "scope": "single-board-execution-grant",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/plugin-market",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.MarketCatalog",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2775,7 +2860,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-capabilities",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.CapabilityCatalog",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2792,7 +2877,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-authorizations/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.MyAuthorizationOverview",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2809,7 +2894,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SetMyCapabilityConsent",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2826,7 +2911,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/delegations",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.IssueMyDelegation",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2843,7 +2928,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-authorizations/:name/delegations/:delegation_id",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RevokeMyDelegation",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2860,7 +2945,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-authorizations/:name/secrets",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListMyPluginSecrets",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2877,7 +2962,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SetMyPluginSecret",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2894,7 +2979,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RevokeMyPluginSecret",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2911,7 +2996,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/me",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.MarketMyGrants",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2928,7 +3013,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/me/usage",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.MarketMyUsage",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2945,7 +3030,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/sources",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.MarketplaceSources",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2962,7 +3047,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/sources/:source_id/plugins",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SearchMarketplace",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2979,7 +3064,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/requests",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RequestMarketplaceInstall",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2996,7 +3081,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/enable",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.EnableMarketPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3013,7 +3098,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/revoke",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RevokeMarketPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3030,7 +3115,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/search",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SearchMarketRecords",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3047,7 +3132,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/records/:collection",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.CreateMarketRecord",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3064,7 +3149,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/records/:collection",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListMarketRecords",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3081,7 +3166,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.GetMarketRecord",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3098,7 +3183,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.UpdateMarketRecord",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3115,7 +3200,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.DeleteMarketRecord",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3132,7 +3217,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/files",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.UploadMarketFile",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3149,7 +3234,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/files",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListMarketFiles",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3166,7 +3251,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/files/:file_id/download",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.DownloadMarketFile",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3183,7 +3268,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/files/:file_id",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.DeleteMarketFile",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3200,7 +3285,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/export",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ExportMarketData",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3217,7 +3302,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/data",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.DeleteMarketData",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3318,6 +3403,167 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/admin/identity/me",
+      "handler": "d.Identity.AdminDomain.Me",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session",
+      "operation_code": "http.identity.admin_self.read",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.identity.me",
+        "httpapi.get.api.v1.admin.identity.me"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/logout",
+      "handler": "d.Identity.AdminDomain.Logout",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.logout",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.logout",
+        "httpapi.post.api.v1.admin.identity.logout"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/enroll",
+      "handler": "d.Identity.AdminDomain.EnrollTOTP",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.enroll",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.enroll",
+        "httpapi.post.api.v1.admin.identity.mfa.enroll"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/confirm",
+      "handler": "d.Identity.AdminDomain.ConfirmTOTP",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.confirm",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.confirm",
+        "httpapi.post.api.v1.admin.identity.mfa.confirm"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/mfa/step-up",
+      "handler": "d.Identity.AdminDomain.StepUp",
+      "module_owner": "core.identity",
+      "audience": "authenticated",
+      "auth": "jwt+current-admin-session+browser-csrf",
+      "operation_code": "http.identity.admin_self.mfa.step_up",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.mfa.step_up",
+        "httpapi.post.api.v1.admin.identity.mfa.step_up"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/accounts",
+      "handler": "d.Identity.AdminDomain.CreateAccount",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "admin_account:create",
+      "permission_code": "identity.admin_account.create",
+      "operation_code": "http.post.api.v1.admin.identity.accounts",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.accounts",
+        "httpapi.post.api.v1.admin.identity.accounts"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/accounts/:id/suspend",
+      "handler": "d.Identity.AdminDomain.SuspendAccount",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "admin_account:suspend",
+      "permission_code": "identity.admin_account.suspend",
+      "operation_code": "http.post.api.v1.admin.identity.accounts.id.suspend",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.accounts.id.suspend",
+        "httpapi.post.api.v1.admin.identity.accounts.id.suspend"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/accounts/:id/revoke",
+      "handler": "d.Identity.AdminDomain.RevokeAccount",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "admin_account:revoke",
+      "permission_code": "identity.admin_account.revoke",
+      "operation_code": "http.post.api.v1.admin.identity.accounts.id.revoke",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.accounts.id.revoke",
+        "httpapi.post.api.v1.admin.identity.accounts.id.revoke"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/identity/accounts/:id/restore",
+      "handler": "d.Identity.AdminDomain.RestoreAccount",
+      "module_owner": "core.identity",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "admin_account:restore",
+      "permission_code": "identity.admin_account.restore",
+      "operation_code": "http.post.api.v1.admin.identity.accounts.id.restore",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.identity.accounts.id.restore",
+        "httpapi.post.api.v1.admin.identity.accounts.id.restore"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/admin/users",
       "handler": "userHandler.ListAdminUsers",
       "module_owner": "core.identity",
@@ -3374,21 +3620,59 @@
       "stability": "experimental"
     },
     {
+      "method": "POST",
+      "path": "/api/v1/admin/threads/permissions-preview",
+      "handler": "threadHandler.AdminPermissionsPreview",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission+current-session",
+      "permission": "thread:read",
+      "permission_code": "community.thread.read",
+      "operation_code": "http.community.thread.admin_permissions_preview",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.threads.permissions_preview",
+        "httpapi.post.api.v1.admin.threads.permissions_preview"
+      ],
+      "ownership": "resource-policy",
+      "scope": "current-admin+same-command-policies+bounded-actual-threads",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
       "method": "GET",
       "path": "/api/v1/admin/threads",
       "handler": "threadHandler.AdminListThreads",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads",
+      "operation_code": "http.community.thread.admin_list",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads",
         "httpapi.get.api.v1.admin.threads"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events",
+      "handler": "eventHandler.ListEvents",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+admin-account+current-session+permission",
+      "permission": "metrics:read",
+      "permission_code": "platform.reliability.read",
+      "operation_code": "http.community.event.metadata",
+      "legacy_aliases": [
+        "http.get.api.v1.events",
+        "httpapi.get.api.v1.events"
+      ],
+      "ownership": "resource-policy",
+      "scope": "event-metadata-only",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -3398,16 +3682,16 @@
       "handler": "threadHandler.AdminListTrash",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads.trash",
+      "operation_code": "http.community.thread.admin_trash_list",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads.trash",
         "httpapi.get.api.v1.admin.threads.trash"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -3417,16 +3701,16 @@
       "handler": "threadHandler.AdminModerationActions",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "thread:read",
       "permission_code": "community.thread.read",
-      "operation_code": "http.get.api.v1.admin.threads.id.moderation_actions",
+      "operation_code": "http.community.thread.admin_history",
       "legacy_aliases": [
         "http.get.api.v1.admin.threads.id.moderation_actions",
         "httpapi.get.api.v1.admin.threads.id.moderation_actions"
       ],
-      "ownership": "none",
-      "scope": "global",
+      "ownership": "resource-policy",
+      "scope": "current-admin+actual-board+metadata-only-before-count-page",
       "audit": "request-log-read",
       "stability": "experimental"
     },
@@ -3436,7 +3720,7 @@
       "handler": "threadHandler.PinThread",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:pin",
       "permission_code": "community.thread.pin",
       "operation_code": "http.post.api.v1.threads.id.pin",
@@ -3444,9 +3728,9 @@
         "http.post.api.v1.threads.id.pin",
         "httpapi.post.api.v1.threads.id.pin"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3455,7 +3739,7 @@
       "handler": "threadHandler.UnpinThread",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:pin",
       "permission_code": "community.thread.pin",
       "operation_code": "http.post.api.v1.threads.id.unpin",
@@ -3463,9 +3747,9 @@
         "http.post.api.v1.threads.id.unpin",
         "httpapi.post.api.v1.threads.id.unpin"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3474,7 +3758,7 @@
       "handler": "threadHandler.LockThread",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:lock",
       "permission_code": "community.thread.lock",
       "operation_code": "http.post.api.v1.threads.id.lock",
@@ -3482,9 +3766,9 @@
         "http.post.api.v1.threads.id.lock",
         "httpapi.post.api.v1.threads.id.lock"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3493,7 +3777,7 @@
       "handler": "threadHandler.UnlockThread",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:lock",
       "permission_code": "community.thread.lock",
       "operation_code": "http.post.api.v1.threads.id.unlock",
@@ -3501,9 +3785,9 @@
         "http.post.api.v1.threads.id.unlock",
         "httpapi.post.api.v1.threads.id.unlock"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3512,7 +3796,7 @@
       "handler": "threadHandler.AdminDeleteThread",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:delete",
       "permission_code": "community.thread.trash",
       "operation_code": "http.community.thread.trash",
@@ -3520,9 +3804,28 @@
         "http.delete.api.v1.admin.threads.id",
         "httpapi.delete.api.v1.admin.threads.id"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/posts/:post_id",
+      "handler": "postHandler.AdminGovernanceDelete",
+      "module_owner": "core.community",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission+current-mfa",
+      "permission": "post:delete",
+      "permission_code": "community.post.delete",
+      "operation_code": "http.community.post.admin_delete",
+      "legacy_aliases": [
+        "http.delete.api.v1.admin.posts.post_id",
+        "httpapi.delete.api.v1.admin.posts.post_id"
+      ],
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3531,7 +3834,7 @@
       "handler": "threadHandler.AdminTakeDown",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account-or-scope+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:delete",
       "permission_code": "community.thread.take_down",
       "operation_code": "http.community.thread.take_down",
@@ -3539,9 +3842,9 @@
         "http.post.api.v1.admin.threads.id.take_down",
         "httpapi.post.api.v1.admin.threads.id.take_down"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category-or-global-admin",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3550,7 +3853,7 @@
       "handler": "threadHandler.AdminApprove",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account-or-scope+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:write",
       "permission_code": "community.thread.review",
       "operation_code": "http.community.thread.review_approve",
@@ -3558,9 +3861,9 @@
         "http.post.api.v1.admin.threads.id.review.approve",
         "httpapi.post.api.v1.admin.threads.id.review.approve"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category-or-global-admin",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3569,7 +3872,7 @@
       "handler": "threadHandler.AdminReject",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account-or-scope+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:write",
       "permission_code": "community.thread.review",
       "operation_code": "http.community.thread.review_reject",
@@ -3577,9 +3880,9 @@
         "http.post.api.v1.admin.threads.id.review.reject",
         "httpapi.post.api.v1.admin.threads.id.review.reject"
       ],
-      "ownership": "category-membership",
-      "scope": "assigned-category-or-global-admin",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3588,7 +3891,7 @@
       "handler": "threadHandler.AdminDirectRestore",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:delete",
       "permission_code": "community.thread.direct_restore",
       "operation_code": "http.community.thread.direct_restore",
@@ -3596,9 +3899,9 @@
         "http.post.api.v1.admin.threads.id.direct_restore",
         "httpapi.post.api.v1.admin.threads.id.direct_restore"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3607,7 +3910,7 @@
       "handler": "threadHandler.AdminRestoreTrash",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:delete",
       "permission_code": "community.thread.restore",
       "operation_code": "http.community.thread.restore_trash",
@@ -3615,9 +3918,9 @@
         "http.post.api.v1.admin.threads.id.trash.restore",
         "httpapi.post.api.v1.admin.threads.id.trash.restore"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
@@ -3626,7 +3929,7 @@
       "handler": "threadHandler.AdminPurge",
       "module_owner": "core.community",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "thread:delete",
       "permission_code": "community.thread.purge",
       "operation_code": "http.community.thread.purge",
@@ -3634,15 +3937,15 @@
         "http.delete.api.v1.admin.threads.id.purge",
         "httpapi.delete.api.v1.admin.threads.id.purge"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "resource-board",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/admin/offline",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminOffline",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3661,7 +3964,7 @@
     {
       "method": "POST",
       "path": "/api/v1/richtext/articles/:id/admin/restore",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminRestore",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3680,7 +3983,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/richtext/articles/:id/admin",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminDelete",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3930,7 +4233,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListPlugins",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3949,7 +4252,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.GetPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3968,7 +4271,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/authorization",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminAuthorizationOverview",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -3987,7 +4290,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/authorization/decisions",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminAuthorizationDecisions",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4006,7 +4309,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/authorization/sync",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SyncPluginAuthorization",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4025,7 +4328,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/versions/:version_id/grants/:capability",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminSetCapabilityGrant",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4044,7 +4347,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/secrets",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListSystemPluginSecrets",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4063,7 +4366,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/secrets/:secret",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.SetSystemPluginSecret",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4082,7 +4385,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugins/:name/secrets/:secret",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RevokeSystemPluginSecret",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4101,7 +4404,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/logs",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListPluginLogs",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4120,7 +4423,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/export",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ExportPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4139,7 +4442,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/config",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.UpdatePluginConfig",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4158,7 +4461,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/enable",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.EnablePlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4177,7 +4480,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/disable",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.DisablePlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4196,7 +4499,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/reload",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ReloadUserPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4215,7 +4518,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugins/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.UninstallPlugin",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4234,7 +4537,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-packages/import",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ImportPluginPackage",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4253,7 +4556,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-packages/precheck",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.PrecheckPluginPackage",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4272,7 +4575,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/snapshots",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.ListVersionSnapshots",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4291,7 +4594,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/rollback",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.RollbackVersionSnapshot",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4310,7 +4613,7 @@
     {
       "method": "GET",
       "path": "/api/v1/features",
-      "handler": "d.Feature",
+      "handler": "featureHandler.List",
       "module_owner": "core.feature-registry",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4329,7 +4632,7 @@
     {
       "method": "GET",
       "path": "/api/v1/features/:id",
-      "handler": "d.Feature",
+      "handler": "featureHandler.Get",
       "module_owner": "core.feature-registry",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4348,7 +4651,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/features/:id/config",
-      "handler": "d.Feature",
+      "handler": "featureHandler.UpdateConfig",
       "module_owner": "core.feature-registry",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4367,7 +4670,7 @@
     {
       "method": "POST",
       "path": "/api/v1/features/:id/enable",
-      "handler": "d.Feature",
+      "handler": "featureHandler.Enable",
       "module_owner": "core.feature-registry",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4386,7 +4689,7 @@
     {
       "method": "POST",
       "path": "/api/v1/features/:id/disable",
-      "handler": "d.Feature",
+      "handler": "featureHandler.Disable",
       "module_owner": "core.feature-registry",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4405,7 +4708,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/overview",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminMarketOverview",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4424,7 +4727,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/sources",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminMarketplaceSources",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4443,7 +4746,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/admin/sources/:source_id",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminSaveMarketplaceSource",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4462,7 +4765,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/admin/sources/:source_id",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminDeleteMarketplaceSource",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4481,7 +4784,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/admin/catalog/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminSetMarketVisibility",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4500,7 +4803,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/requests",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminMarketRequests",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4519,7 +4822,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/admin/requests/:id/review",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminReviewMarketRequest",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4538,7 +4841,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/releases/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminMarketReleases",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4557,7 +4860,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/audits",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminMarketAudits",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4576,7 +4879,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/admin/releases/:name",
-      "handler": "d.Plugin",
+      "handler": "pluginHandler.AdminSaveMarketRelease",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4595,7 +4898,7 @@
     {
       "method": "GET",
       "path": "/api/v1/ai/status",
-      "handler": "d.AI",
+      "handler": "aIHandler.GetStatus",
       "module_owner": "feature.ai-gateway",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4614,7 +4917,7 @@
     {
       "method": "GET",
       "path": "/api/v1/ai/logs",
-      "handler": "d.AI",
+      "handler": "aIHandler.ListLogs",
       "module_owner": "feature.ai-gateway",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4633,7 +4936,7 @@
     {
       "method": "GET",
       "path": "/api/v1/integrations/overview",
-      "handler": "d.Integration",
+      "handler": "integrationHandler.Overview",
       "module_owner": "feature.integration-overview",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4652,7 +4955,7 @@
     {
       "method": "GET",
       "path": "/api/v1/metrics/summary",
-      "handler": "d.Integration",
+      "handler": "integrationHandler.Metrics",
       "module_owner": "feature.integration-overview",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4671,29 +4974,29 @@
     {
       "method": "GET",
       "path": "/api/v1/spaces/admin/summary",
-      "handler": "d.Space",
+      "handler": "spaceHandler.AdminSummary",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.get.api.v1.spaces.admin.summary",
+      "operation_code": "http.personal_space.admin.summary",
       "legacy_aliases": [
         "http.get.api.v1.spaces.admin.summary",
         "httpapi.get.api.v1.spaces.admin.summary"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "current-space-aggregate+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/admin/assets/summary",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AssetGovernanceSummary",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "asset:read_audit",
       "permission_code": "personal_space.asset.read_audit",
       "operation_code": "http.personal_space.asset.governance_summary",
@@ -4701,18 +5004,18 @@
         "http.get.api.v1.admin.assets.summary",
         "httpapi.get.api.v1.admin.assets.summary"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "asset-governance-aggregate+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/admin/assets/:id/quarantine",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminQuarantineUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "admin-domain-jwt+current-session+mfa",
       "permission": "asset:manage",
       "permission_code": "personal_space.asset.manage",
       "operation_code": "http.personal_space.asset.quarantine",
@@ -4720,18 +5023,18 @@
         "http.post.api.v1.admin.assets.id.quarantine",
         "httpapi.post.api.v1.admin.assets.id.quarantine"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-user-asset+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/admin/assets/:id/restore",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminRestoreQuarantinedUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "admin-domain-jwt+current-session+mfa",
       "permission": "asset:manage",
       "permission_code": "personal_space.asset.manage",
       "operation_code": "http.personal_space.asset.restore",
@@ -4739,18 +5042,18 @@
         "http.post.api.v1.admin.assets.id.restore",
         "httpapi.post.api.v1.admin.assets.id.restore"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-user-asset+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/admin/assets/:id/purge-preview",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminPreviewUserAssetPurge",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "asset:manage",
       "permission_code": "personal_space.asset.manage",
       "operation_code": "http.personal_space.asset.purge_preview",
@@ -4758,18 +5061,18 @@
         "http.get.api.v1.admin.assets.id.purge_preview",
         "httpapi.get.api.v1.admin.assets.id.purge_preview"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-user-asset+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "DELETE",
       "path": "/api/v1/admin/assets/:id/purge",
-      "handler": "d.RichText",
+      "handler": "richTextHandler.AdminPurgeUserAsset",
       "module_owner": "feature.controlled-richtext-article",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "asset:manage",
       "permission_code": "personal_space.asset.manage",
       "operation_code": "http.personal_space.asset.purge",
@@ -4777,15 +5080,15 @@
         "http.delete.api.v1.admin.assets.id.purge",
         "httpapi.delete.api.v1.admin.assets.id.purge"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-user-asset+current-admin-execution+owned-object-receipt",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/admin/academic-terms",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.ListAdmin",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4804,7 +5107,7 @@
     {
       "method": "POST",
       "path": "/api/v1/admin/academic-terms",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.Create",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4823,7 +5126,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/admin/academic-terms/:id",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.UpdateFirstWeek",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4842,7 +5145,7 @@
     {
       "method": "POST",
       "path": "/api/v1/admin/academic-terms/:id/open",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.Open",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4861,7 +5164,7 @@
     {
       "method": "POST",
       "path": "/api/v1/admin/academic-terms/:id/close",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.Close",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4880,7 +5183,7 @@
     {
       "method": "POST",
       "path": "/api/v1/admin/academic-terms/:id/default",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.SetDefault",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4899,7 +5202,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/admin/academic-terms/:id",
-      "handler": "d.AcademicTerm",
+      "handler": "academicTermHandler.Delete",
       "module_owner": "core.academic-term",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4918,83 +5221,83 @@
     {
       "method": "GET",
       "path": "/api/v1/spaces/admin/users/:user_id/storage",
-      "handler": "d.Space",
+      "handler": "spaceHandler.AdminStorageStatus",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-session",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.get.api.v1.spaces.admin.users.user_id.storage",
+      "operation_code": "http.personal_space.admin.storage",
       "legacy_aliases": [
         "http.get.api.v1.spaces.admin.users.user_id.storage",
         "httpapi.get.api.v1.spaces.admin.users.user_id.storage"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-quota+current-admin-execution",
+      "audit": "none",
       "stability": "experimental"
     },
     {
       "method": "PUT",
       "path": "/api/v1/spaces/admin/users/:user_id/storage",
-      "handler": "d.Space",
+      "handler": "spaceHandler.SetStorageQuota",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.put.api.v1.spaces.admin.users.user_id.storage",
+      "operation_code": "http.personal_space.admin.quota",
       "legacy_aliases": [
         "http.put.api.v1.spaces.admin.users.user_id.storage",
         "httpapi.put.api.v1.spaces.admin.users.user_id.storage"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+current-quota+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/:user_id/disable",
-      "handler": "d.Space",
+      "handler": "spaceHandler.DisableSpace",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.post.api.v1.spaces.user_id.disable",
+      "operation_code": "http.personal_space.admin.disable",
       "legacy_aliases": [
         "http.post.api.v1.spaces.user_id.disable",
         "httpapi.post.api.v1.spaces.user_id.disable"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "POST",
       "path": "/api/v1/spaces/:user_id/enable",
-      "handler": "d.Space",
+      "handler": "spaceHandler.EnableSpace",
       "module_owner": "feature.personal-space",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+admin-account+permission+current-mfa",
       "permission": "space:manage",
       "permission_code": "personal_space.space.manage",
-      "operation_code": "http.post.api.v1.spaces.user_id.enable",
+      "operation_code": "http.personal_space.admin.enable",
       "legacy_aliases": [
         "http.post.api.v1.spaces.user_id.enable",
         "httpapi.post.api.v1.spaces.user_id.enable"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log",
+      "ownership": "resource-policy",
+      "scope": "actual-target-user+space+current-admin-execution",
+      "audit": "required-command-audit",
       "stability": "experimental"
     },
     {
       "method": "GET",
       "path": "/api/v1/webhooks",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.ListEndpoints",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5013,7 +5316,7 @@
     {
       "method": "POST",
       "path": "/api/v1/webhooks",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.CreateEndpoint",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5032,7 +5335,7 @@
     {
       "method": "GET",
       "path": "/api/v1/webhooks/summary",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.Summary",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5051,7 +5354,7 @@
     {
       "method": "POST",
       "path": "/api/v1/webhooks/:id/test",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.TestEndpoint",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5070,7 +5373,7 @@
     {
       "method": "POST",
       "path": "/api/v1/webhooks/:id/enable",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.EnableEndpoint",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5089,7 +5392,7 @@
     {
       "method": "POST",
       "path": "/api/v1/webhooks/:id/disable",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.DisableEndpoint",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5108,7 +5411,7 @@
     {
       "method": "GET",
       "path": "/api/v1/webhooks/:id/deliveries",
-      "handler": "d.Webhook",
+      "handler": "webhookHandler.ListDeliveries",
       "module_owner": "feature.webhook",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5127,7 +5430,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mcp/tools",
-      "handler": "d.MCP",
+      "handler": "mCPHandler.ListTools",
       "module_owner": "feature.mcp",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5146,7 +5449,7 @@
     {
       "method": "POST",
       "path": "/api/v1/mcp/tools/:name/call",
-      "handler": "d.MCP",
+      "handler": "mCPHandler.CallTool",
       "module_owner": "feature.mcp",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5165,7 +5468,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mcp/audit",
-      "handler": "d.MCP",
+      "handler": "mCPHandler.ListAudit",
       "module_owner": "feature.mcp",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5184,7 +5487,7 @@
     {
       "method": "GET",
       "path": "/api/v1/mcp/settings",
-      "handler": "d.MCP",
+      "handler": "mCPHandler.GetSettings",
       "module_owner": "feature.mcp",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5203,7 +5506,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/mcp/settings",
-      "handler": "d.MCP",
+      "handler": "mCPHandler.UpdateSettings",
       "module_owner": "feature.mcp",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5222,7 +5525,7 @@
     {
       "method": "GET",
       "path": "/api/v1/messages/adapters",
-      "handler": "d.Message",
+      "handler": "messageHandler.ListAdapters",
       "module_owner": "feature.message",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5241,7 +5544,7 @@
     {
       "method": "POST",
       "path": "/api/v1/messages/local/inbound",
-      "handler": "d.Message",
+      "handler": "messageHandler.ReceiveLocal",
       "module_owner": "feature.message",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5260,7 +5563,7 @@
     {
       "method": "GET",
       "path": "/api/v1/messages/logs",
-      "handler": "d.Message",
+      "handler": "messageHandler.ListMessages",
       "module_owner": "feature.message",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5279,7 +5582,7 @@
     {
       "method": "POST",
       "path": "/api/v1/messages/bindings",
-      "handler": "d.Message",
+      "handler": "messageHandler.CreateBinding",
       "module_owner": "feature.message",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5298,7 +5601,7 @@
     {
       "method": "GET",
       "path": "/api/v1/messages/summary",
-      "handler": "d.Message",
+      "handler": "messageHandler.Summary",
       "module_owner": "feature.message",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5317,7 +5620,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/logs/sources",
-      "handler": "d.PlatformLog",
+      "handler": "platformLogHandler.Sources",
       "module_owner": "feature.platform-log",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5336,7 +5639,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/logs/stream",
-      "handler": "d.PlatformLog",
+      "handler": "platformLogHandler.Stream",
       "module_owner": "feature.platform-log",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5355,7 +5658,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/summary",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.Summary",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5374,7 +5677,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/events",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListEvents",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5393,7 +5696,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/attempts",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListAttempts",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5412,7 +5715,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/workers",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListWorkers",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5431,7 +5734,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/operations",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListOperations",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5450,7 +5753,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/command-audits",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListCommandAudits",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5469,7 +5772,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/compatibility",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListCompatibility",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5488,7 +5791,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/retention-preview",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.PreviewRetention",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5507,7 +5810,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/reliability/retention-runs",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.ListRetentionRuns",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5526,7 +5829,7 @@
     {
       "method": "POST",
       "path": "/api/v1/platform/reliability/retention-runs/preview",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.StartRetentionPreview",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5545,7 +5848,7 @@
     {
       "method": "POST",
       "path": "/api/v1/platform/reliability/events/:id/replay",
-      "handler": "d.Reliability",
+      "handler": "reliabilityHandler.Replay",
       "module_owner": "core.reliability",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5564,7 +5867,7 @@
     {
       "method": "GET",
       "path": "/api/v1/platform/email-delivery/status",
-      "handler": "d.EmailDelivery",
+      "handler": "emailDeliveryHandler.Status",
       "module_owner": "core.email-delivery",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5849,7 +6152,7 @@
     {
       "method": "POST",
       "path": "/api/v1/home/style-packs/validate",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.ValidateStylePack",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5868,7 +6171,7 @@
     {
       "method": "POST",
       "path": "/api/v1/home/logo",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.UploadLogo",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5887,7 +6190,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/home/logo",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.ResetLogo",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5906,7 +6209,7 @@
     {
       "method": "GET",
       "path": "/api/v1/home/style-packs/example",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.StylePackExample",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5925,7 +6228,7 @@
     {
       "method": "GET",
       "path": "/api/v1/home/style-packs/example.zip",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.StylePackExampleZip",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5944,7 +6247,7 @@
     {
       "method": "GET",
       "path": "/api/v1/home/style-packs/sources",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.ListSourceStylePacks",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5963,7 +6266,7 @@
     {
       "method": "POST",
       "path": "/api/v1/home/style-packs/apply",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.ApplyStylePack",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5982,7 +6285,7 @@
     {
       "method": "POST",
       "path": "/api/v1/home/style-packs/apply-source",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.ApplySourceStylePack",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -6001,7 +6304,7 @@
     {
       "method": "POST",
       "path": "/api/v1/home/style-packs/rollback",
-      "handler": "d.Homepage",
+      "handler": "homepageHandler.RollbackStylePack",
       "module_owner": "feature.appearance",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -6191,7 +6494,7 @@
     {
       "method": "GET",
       "path": "/api/v1/moderation/admin/moderators",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.ListModerators",
       "module_owner": "core.moderation",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -6210,7 +6513,7 @@
     {
       "method": "GET",
       "path": "/api/v1/moderation/admin/moderators/:id",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.GetModerator",
       "module_owner": "core.moderation",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -6229,7 +6532,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/moderation/admin/moderators/:id",
-      "handler": "d.Moderation",
+      "handler": "moderationHandler.SetModerator",
       "module_owner": "core.moderation",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",

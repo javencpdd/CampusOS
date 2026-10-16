@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	coreeditor "github.com/campusos/CampusOS/internal/modules/core/contenteditor"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	corestorage "github.com/campusos/CampusOS/internal/modules/core/userstorage"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
@@ -27,6 +28,7 @@ type Module struct {
 	meter      observability.Meter
 	service    *Service
 	handler    *Handler
+	app        *platformmodule.AppContext
 }
 
 func NewModule(config ModuleConfig) *Module { return &Module{config: config} }
@@ -62,7 +64,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	if !ok || reliable == nil {
 		return fmt.Errorf("personal document reliability service has incompatible type %T", value)
 	}
-	m.repository, m.objects, m.reliable = repo, objects, reliable
+	m.repository, m.objects, m.reliable, m.app = repo, objects, reliable, app
 	if value, exists := app.Lookup(platformobservability.PortMeter); exists {
 		meter, compatible := value.(observability.Meter)
 		if !compatible || meter == nil {
@@ -73,6 +75,24 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	return nil
 }
 func (m *Module) Start(ctx context.Context) error {
+	var verifier identityport.SessionVerifier
+	var strength identityport.SessionStrengthReader
+	if m.app != nil {
+		if value, found := m.app.Lookup("identity.session-verifier"); found {
+			var ok bool
+			verifier, ok = value.(identityport.SessionVerifier)
+			if !ok || nilDocumentAdapter(verifier) {
+				return fmt.Errorf("personal document session verifier has incompatible type %T", value)
+			}
+		}
+		if value, found := m.app.Lookup("identity.session-strength"); found {
+			var ok bool
+			strength, ok = value.(identityport.SessionStrengthReader)
+			if !ok || nilDocumentAdapter(strength) {
+				return fmt.Errorf("personal document session strength has incompatible type %T", value)
+			}
+		}
+	}
 	svc, e := NewService(m.repository, m.objects)
 	if e != nil {
 		return e
@@ -85,6 +105,7 @@ func (m *Module) Start(ctx context.Context) error {
 	_ = svc.RefreshPreviewMetrics(ctx)
 	m.service = svc
 	m.handler = NewHandler(svc)
+	m.handler.SetSessionProof(verifier, strength)
 	return nil
 }
 func (m *Module) Stop(context.Context) error {

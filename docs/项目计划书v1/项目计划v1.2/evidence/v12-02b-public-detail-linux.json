@@ -1,0 +1,232 @@
+{
+  "schema": "campusos.v12-02b-public-detail-acceptance/v1",
+  "generated_at": "2026-10-11T14:17:20.569980+00:00",
+  "stage": "V12-02b",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Canonical public thread detail: raw facts, pure Policy, atomic version recheck and optional view increment; 000016 ABA-safe facts epochs.",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres_version_num": 160014,
+    "database": "owned disposable PostgreSQL 16 container; loopback only"
+  },
+  "checks": {
+    "TestPublicThreadDetailPolicyStateMatrix": "passed",
+    "TestPublicThreadDetailMemoryRevocation": "passed",
+    "TestPublicThreadDetailRetryReloadsFactsAndDecision": "passed",
+    "TestPublicThreadDetailFailsClosed": "passed",
+    "TestPublicThreadDetailPostgreSQLRevocation": "passed",
+    "TestPublicThreadDetailPostgreSQLVersion": "passed",
+    "TestPublicThreadDetailPostgreSQLCommitRace": "passed",
+    "TestPublicThreadDetailHTTPErrorBoundary": "passed",
+    "TestMemoryPublicThreadSnapshotRejectsABAAndReplacement": "passed",
+    "TestMemoryThreadFactsVersionRollbackPreservesHiddenFactsAndAllocation": "passed",
+    "TestMemoryPublicThreadSnapshotCountersAndMissingState": "passed",
+    "TestMemoryPublicThreadSnapshotConcurrentRevocation": "passed"
+  },
+  "coverage": {
+    "state_combinations": 36,
+    "revocation_schedules_per_adapter": 9,
+    "adapters": [
+      "memory",
+      "postgres"
+    ],
+    "migration": "000001-000015 seed + 000016 up/down/up; content preserved, version high-water retained",
+    "commit_race": "view UPDATE waits for concurrent writer commit then rejects private row"
+  },
+  "source_sha256": {
+    "internal/modules/core/community/domain/thread.go": "fabf81711c5a5d0ecfe6830b2d78a9f30b6538275b6ee3a9a5afc7a804fb20a4",
+    "internal/modules/core/community/repository/thread_repository.go": "ba231de14c59e91d50b7c6bc201134ccc2680c3b39f1dbf608f355bf112a7f30",
+    "internal/modules/core/community/repository/pg_thread_repository.go": "0c50ad29f82b29ec25fe44a51c48bcf265920c7eca27549226fea4c4bd220027",
+    "internal/modules/core/community/repository/thread_public_snapshot_test.go": "d009eaf855c18c3c720131687152a07ccd6d200a06caa98a38d9550b276040a7",
+    "internal/modules/core/community/service/thread_service.go": "75c9c64ab150888aed6687541c6a2a7ddcea73ba2b83275ef8d4db85b5d187f1",
+    "internal/modules/core/community/service/thread_public_read.go": "c25f87f8be1b549c4b9c54a377a5a88c8683e0e977cae9d8bf182ef73bc1fbff",
+    "internal/modules/core/community/service/thread_public_read_test.go": "979467f632910af3a796f13fa6bdf1ebaf26c20d6864750b34225b5ea92e9411",
+    "internal/modules/core/community/service/thread_public_read_postgres_test.go": "828d6ec3805a0289045b418a98ddbd68602bd8e693c9e996e331dd7bf8ab654c",
+    "internal/modules/core/community/handler/thread_handler.go": "53a0b2388f1e2790f761cca862efa926f3a5a42fabd05324dbc325979e397df8",
+    "internal/modules/core/community/handler/thread_public_read_test.go": "21dce40c98093d893b58387bee85eb83e425ce0a9b0945994b50546daa281178",
+    "migrations/000016_v1_2_thread_facts_version.up.sql": "0445d68cb8dc1871570b78f3d7d6652ac8f366a88a8d3677965dc8b81c806e6f",
+    "migrations/000016_v1_2_thread_facts_version.down.sql": "98a077cc7a4de66ed9016267c760d224bcdb4100915a8e3e6c58b9c9ce77132f",
+    "admin/src/modules/architecture/pages/SystemArchitectureView.vue": "a3a9eccf46c868dcbb1c2496b3328902074edec40ea74ef84a296f5c3bcf5d88",
+    "scripts/v12-02b-public-detail-drill.sh": "60a01b260b49de3c9dc1997d555d5aaf0cfa60968ad3006e09fcf6115646fac5",
+    "scripts/schema-contract.sql": "d5893d9905c0c09c7d7e4d74f89af92463a2a779e14ad0c04b823dbee1ecfcda",
+    "docs/进度/v1.2-dev/v1.2.45-dev.md": "30de7a655082a0049fddbc5c4fa5681358a6c929e8cd6661b54b891d2e428db9",
+    "docs/进度/v1.2-dev/v1.2.46-dev.md": "dc61133f9145ad559a941a31a7260ef1b4393c94a56fc9b5a77aed771e050cae",
+    "docs/api/v1.2公开帖子事实与策略合同.md": "eb9a25fa2b4cd369afb6262978605585ee65015fab4fd7de9bee9a1a12327910",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "7d296998182ca342125cc980be310ec0f00e6068e02877428057b478e87df1a7",
+    "docs/architecture/当前架构概览.md": "d3da2c6d9e828f44e4d395dfac8e8c82b0cdabeb626130ee88ec79aca98ac92c",
+    "docs-site/guide/architecture.md": "b81d375cfa4638bc3fc3a1c6451535b1c84623b3bb8873b6005f49ad6ff53b42",
+    "docs-site/operations/database-migration-hygiene.md": "0eca90cdc9a98de7ff1187cf5cf9fbc749cfcf81df3ec3bec94b14d78d86539d",
+    "migrations/README.md": "a129942bffa37c3ee49a2a2f9501ec6efd74521e941b063a4234797e3e76c5b5",
+    "skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py": "3e8bb6dcc76e8efa363a54c663b81912aea1d07e48f75e57a97a36e360afdeff",
+    "skills/sources/campusos-project-onboarding/references/current-project-status.md": "c87f8f77c4b5af3d78d70f759f26b763f2e38e1a036008a3791cdf03de4fb6dd"
+  },
+  "common_gates_status": "passed",
+  "logs": {
+    "admin-build": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/admin-build.log",
+      "log_sha256": "948812a8bad957fcfc875a27ce4dfb18f00a08f3eb2540a8bea2bfdb1917862e"
+    },
+    "architecture": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/architecture.log",
+      "log_sha256": "180290f84027b0ea76f747fe5522bfc5396c95b06f6b925f0ab8d3da6d262fb5"
+    },
+    "contracts": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "database-guard": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/database-guard.log",
+      "log_sha256": "0f61e872d3a68ac40412e32a4b96b7c46d97655c209b8b8fafd487b605f4e2fd"
+    },
+    "database": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/database.log",
+      "log_sha256": "bb0dcdcdd34159a7d763e6d04ea8115fd932c0036b02f6a0967f20fc3595f15f"
+    },
+    "detail-tests": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/detail-tests.log",
+      "log_sha256": "7d9875516167e023b26366dbd96093c1c6f5dac23cb685bccd564a2efa7faf8a"
+    },
+    "diff": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "docs-build": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/docs-build.log",
+      "log_sha256": "5c13c470004bdee1440ddca3f6592bf30b2d0473172fe5a2ef0df776a9b448cf"
+    },
+    "docs-links": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/docs-links.log",
+      "log_sha256": "f447bee775b1339b284d96550038af667e22173db704507bfdc93ace298ea5e2"
+    },
+    "go-all": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/go-all.log",
+      "log_sha256": "0b6fe5ee624bd58ec6eb42ab605e921883cca9203077bd3f8e495fafdee5c8b8"
+    },
+    "line-endings": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/line-endings.log",
+      "log_sha256": "2d8a19c2f1ec7ed0805ae539cfe76ddb86e3972d33e32f2142944402735408dd"
+    },
+    "migrations-check": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/migrations-check.log",
+      "log_sha256": "34c59ef2dbfce51acc0cca3ab3466c6a425ea686c1dc5e024a3576e1252e8292"
+    },
+    "migrations-down": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/migrations-down.log",
+      "log_sha256": "2d92994ad5d09f78b626ab86818181abe2a502933d223dd72ecbf54e09a817f7"
+    },
+    "migrations-pre": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/migrations-pre.log",
+      "log_sha256": "03c54b778f897682c27d88a3479e539866bfb76658b4bd65a529ebf565715cb2"
+    },
+    "migrations-reup": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/migrations-reup.log",
+      "log_sha256": "d7d8c53f1fc161aa2f970c2bb6e350585ade73a87792c555a2cc580172b9cc4a"
+    },
+    "migrations-up": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/migrations-up.log",
+      "log_sha256": "1dec83be0a49d7f54facad1dfb18854f4e9d8f3a9f1d2895b85c46cd89717ff3"
+    },
+    "seed": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-public/drill.LfbCCV/seed.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "boundaries": [
+    "Lists, counts and pagination still use existing repository filters; no new Policy list consistency acceptance.",
+    "Private author reads, moderation commands, MFA ingress Principal, batch authorization and effective-permission preview remain later V12-02b slices.",
+    "Plugin/integration Scope, Grant/Consent and lifecycle checks remain ingress responsibilities; public predicate cannot grant them.",
+    "Returned bytes linearize at the final repository snapshot; later revocation cannot retract bytes already returned.",
+    "Rollback requires stopping/reverting version-aware readers; allocation sequence intentionally survives down/up.",
+    "No browser or Windows/WSL target acceptance is claimed for this backend slice."
+  ],
+  "final_documentation_checks": {
+    "make docs-build": {
+      "status": "passed",
+      "exit_code": 0
+    },
+    "make docs-links": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_links": 1644
+    },
+    "python3 scripts/check-line-endings.py --include-untracked": {
+      "status": "passed",
+      "exit_code": 0
+    },
+    "git diff --check": {
+      "status": "passed",
+      "exit_code": 0
+    },
+    "bash -n scripts/v12-02b-public-detail-drill.sh": {
+      "status": "passed",
+      "exit_code": 0
+    }
+  },
+  "prior_failed_attempts": [
+    {
+      "work_dir": ".cache/v12-02b-public/drill.AbqaVT",
+      "stage": "database",
+      "reason": "psql client container lacked repository working directory; relative audit SQL was not found",
+      "resolved": true
+    },
+    {
+      "work_dir": ".cache/v12-02b-public/drill.Rw6IQX",
+      "stage": "database",
+      "reason": "three fixture boards lacked required enabled thread type policies",
+      "resolved": true
+    }
+  ],
+  "schema_guard_negative": "disabled thread version trigger rejected by schema contract, restored guard accepted",
+  "dependencies": {
+    "v12-02a-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json",
+      "sha256": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+      "status": "completed predecessor; historical report retained"
+    },
+    "v12-02d-exit-linux.json": {
+      "report": "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-exit-linux.json",
+      "sha256": "f144f872bd91c35d9a9233bd129c40e209ae862bbb09cd14bce0a9b5820dad25",
+      "status": "completed predecessor; historical report retained"
+    }
+  }
+}

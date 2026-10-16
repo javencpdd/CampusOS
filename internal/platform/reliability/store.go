@@ -469,7 +469,7 @@ func (s *MemoryStore) StartOperation(_ context.Context, operation Operation) (*O
 	if operation.IdempotencyKey != "" {
 		for _, existing := range s.operations {
 			if existing.IdempotencyKey == operation.IdempotencyKey {
-				copyOperation := existing
+				copyOperation := cloneOperation(existing)
 				return &copyOperation, nil
 			}
 		}
@@ -483,8 +483,8 @@ func (s *MemoryStore) StartOperation(_ context.Context, operation Operation) (*O
 	}
 	operation.CreatedAt = now
 	operation.UpdatedAt = now
-	s.operations[operation.ID] = operation
-	copyOperation := operation
+	s.operations[operation.ID] = cloneOperation(operation)
+	copyOperation := cloneOperation(operation)
 	return &copyOperation, nil
 }
 
@@ -495,7 +495,7 @@ func (s *MemoryStore) UpdateOperation(_ context.Context, operation Operation) er
 		return ErrOperationNotFound
 	}
 	operation.UpdatedAt = time.Now().UTC()
-	s.operations[operation.ID] = operation
+	s.operations[operation.ID] = cloneOperation(operation)
 	return nil
 }
 
@@ -505,7 +505,7 @@ func (s *MemoryStore) ListOperations(_ context.Context, kind string, page PageRe
 	items := make([]Operation, 0, len(s.operations))
 	for _, operation := range s.operations {
 		if kind == "" || operation.Kind == kind {
-			items = append(items, operation)
+			items = append(items, cloneOperation(operation))
 		}
 	}
 	sort.Slice(items, func(i, j int) bool {
@@ -531,7 +531,7 @@ func (s *MemoryStore) RecoverInterruptedOperations(_ context.Context) ([]Operati
 		operation.Error = "interrupted by a previous process before a terminal state; inspect the snapshot and retry explicitly"
 		operation.UpdatedAt = now
 		s.operations[id] = operation
-		recovered = append(recovered, operation)
+		recovered = append(recovered, cloneOperation(operation))
 	}
 	sort.Slice(recovered, func(i, j int) bool { return recovered[i].CreatedAt.After(recovered[j].CreatedAt) })
 	return recovered, nil
@@ -672,7 +672,7 @@ func (s *MemoryStore) Snapshot() any {
 		snapshot.idempotency[key] = value
 	}
 	for key, value := range s.operations {
-		snapshot.operations[key] = value
+		snapshot.operations[key] = cloneOperation(value)
 	}
 	for key, value := range s.compatibility {
 		value.Detail = append([]byte(nil), value.Detail...)
@@ -700,7 +700,10 @@ func (s *MemoryStore) Restore(value any) {
 	s.events = snapshot.events
 	s.idempotency = snapshot.idempotency
 	s.audits = cloneCommandAudits(snapshot.audits)
-	s.operations = snapshot.operations
+	s.operations = make(map[string]Operation, len(snapshot.operations))
+	for key, op := range snapshot.operations {
+		s.operations[key] = cloneOperation(op)
+	}
 	s.compatibility = snapshot.compatibility
 	s.workers = snapshot.workers
 	s.receipts = snapshot.receipts

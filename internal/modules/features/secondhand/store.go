@@ -3,6 +3,7 @@ package secondhand
 import (
 	"context"
 	"encoding/json"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"sync"
 	"time"
 
@@ -46,12 +47,25 @@ func (s *PgStore) Create(ctx context.Context, detail *Detail) error {
 }
 
 func (s *PgStore) Get(ctx context.Context, threadID string) (*Detail, error) {
+	return s.get(ctx, threadID, false)
+}
+func (s *PgStore) LockDetailForAuthorCommand(ctx context.Context, threadID string) (*Detail, error) {
+	if _, ok := transaction.FromContext(ctx); !ok {
+		return nil, communityport.ErrAuthorCommandUnavailable
+	}
+	return s.get(ctx, threadID, true)
+}
+func (s *PgStore) get(ctx context.Context, threadID string, lock bool) (*Detail, error) {
 	detail := &Detail{}
-	err := s.db(ctx).QueryRow(ctx, `SELECT
+	query := `SELECT
 		thread_id, price_minor, currency, item_condition, trade_method, trade_status,
 		location_scope, version, created_by, created_at, updated_at
 		FROM secondhand_details
-		WHERE thread_id=$1`, threadID).Scan(
+		WHERE thread_id=$1`
+	if lock {
+		query += " FOR UPDATE"
+	}
+	err := s.db(ctx).QueryRow(ctx, query, threadID).Scan(
 		&detail.ThreadID, &detail.PriceMinor, &detail.Currency, &detail.ItemCondition,
 		&detail.TradeMethod, &detail.TradeStatus, &detail.LocationScope, &detail.Version,
 		&detail.CreatedBy, &detail.CreatedAt, &detail.UpdatedAt)
@@ -215,4 +229,11 @@ func cloneDetail(detail *Detail) *Detail {
 	}
 	clone := *detail
 	return &clone
+}
+
+func (s *MemoryStore) LockDetailForAuthorCommand(ctx context.Context, id string) (*Detail, error) {
+	if !transaction.Active(ctx) {
+		return nil, communityport.ErrAuthorCommandUnavailable
+	}
+	return s.Get(ctx, id)
 }

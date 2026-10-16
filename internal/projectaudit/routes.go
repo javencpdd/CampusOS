@@ -29,7 +29,7 @@ var (
 	legacyOperationAliasPattern  = regexp.MustCompile(`\.LegacyOperationAlias\("([^"]+)"\)`)
 	scopedPattern                = regexp.MustCompile(`\.Scoped\("([^"]+)"\)`)
 	permissionPattern            = regexp.MustCompile(`RequirePermission\([^,]+,\s*"([^"]+)",\s*"([^"]+)"\)`)
-	selectorPattern              = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*)\.([A-Za-z][A-Za-z0-9_]*)`)
+	selectorPattern              = regexp.MustCompile(`([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*)\.([A-Za-z][A-Za-z0-9_]*)`)
 )
 
 // RouteContract is the machine-readable authorization record for one Gin route.
@@ -73,6 +73,11 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		var handler string
 		if len(selectors) > 0 {
 			handler = selectors[len(selectors)-1][1] + "." + selectors[len(selectors)-1][2]
+			base := selectors[len(selectors)-1][1]
+			if strings.HasPrefix(base, "d.") && strings.Count(base, ".") == 1 {
+				name := strings.TrimPrefix(base, "d.")
+				handler = strings.ToLower(name[:1]) + name[1:] + "Handler." + selectors[len(selectors)-1][2]
+			}
 		} else if match := packageHandlerPattern.FindStringSubmatch(arguments); len(match) > 0 {
 			handler = "httpapi." + match[1]
 		} else {
@@ -118,6 +123,7 @@ func ParseServerRoutes(path string) ([]RouteContract, error) {
 		} else {
 			route.OperationCode = "http." + strings.ToLower(method) + "." + routeID(route.Path)
 		}
+		applyResourceGovernanceContract(&route)
 		route.LegacyAliases = []string{
 			"http." + strings.ToLower(method) + "." + routeID(route.Path),
 			"httpapi." + strings.ToLower(method) + "." + routeID(route.Path),
@@ -196,9 +202,9 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.platform-api"
 	case strings.HasPrefix(path, APIPrefix+"/moderation"):
 		return "core.moderation"
-	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/identity"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/admin/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
+	case strings.HasPrefix(path, APIPrefix+"/auth"), strings.HasPrefix(path, APIPrefix+"/identity"), strings.HasPrefix(path, APIPrefix+"/admin/identity"), strings.HasPrefix(path, APIPrefix+"/users"), strings.HasPrefix(path, APIPrefix+"/admin/users"), strings.HasPrefix(path, APIPrefix+"/roles"), strings.HasPrefix(path, APIPrefix+"/permissions"), strings.HasPrefix(path, APIPrefix+"/authorization-audits"), path == APIPrefix+"/health":
 		return "core.identity"
-	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), strings.HasPrefix(path, APIPrefix+"/notifications"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
+	case strings.HasPrefix(path, APIPrefix+"/categories"), strings.HasPrefix(path, APIPrefix+"/threads"), strings.HasPrefix(path, APIPrefix+"/notifications"), path == APIPrefix+"/events", strings.HasPrefix(path, APIPrefix+"/admin/threads"), strings.HasPrefix(path, APIPrefix+"/admin/posts"), strings.HasPrefix(path, APIPrefix+"/admin/categories"):
 		return "core.community"
 	case path == APIPrefix+"/content/preview":
 		return "core.community"
@@ -421,22 +427,25 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") {
+			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.OperationCode, "http.identity.admin_") {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
 			if route.Auth != "none" {
-				if route.Auth == "refresh-cookie+csrf" {
+				if route.Auth == "admin-refresh-cookie+csrf" {
+					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
+				} else if route.Auth == "refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - refreshCookie: []\n")
 				} else {
 					out.WriteString("      security:\n        - bearerAuth: []\n")
 				}
 			}
 			parameters := openAPIPathParameters(path)
-			requiresCSRF := strings.Contains(route.Auth, "csrf")
-			if len(parameters) > 0 || profile.Paginated || requiresCSRF {
+			requiresAdminCSRF := strings.HasPrefix(route.OperationCode, "http.identity.admin_") && strings.Contains(route.Auth, "csrf")
+			requiresCSRF := strings.Contains(route.Auth, "csrf") && !requiresAdminCSRF
+			if len(parameters) > 0 || profile.Paginated || requiresCSRF || requiresAdminCSRF {
 				out.WriteString("      parameters:\n")
 				for _, parameter := range parameters {
 					fmt.Fprintf(&out, "        - name: %s\n          in: path\n          required: true\n          schema:\n            type: string\n", parameter)
@@ -444,6 +453,9 @@ func OpenAPI(routes []RouteContract) []byte {
 				if profile.Paginated {
 					out.WriteString("        - name: page\n          in: query\n          schema: { type: integer, minimum: 1, default: 1 }\n")
 					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
+				}
+				if requiresAdminCSRF {
+					out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
 				}
 				if requiresCSRF {
 					out.WriteString("        - name: X-CSRF-Token\n          in: header\n          required: true\n          schema: { type: string }\n")
@@ -462,6 +474,8 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "        '%s':\n", profile.SuccessStatus)
 			if profile.SuccessStatus == "204" {
 				out.WriteString("          description: No Content\n")
+			} else if profile.ResponseContentType != "" {
+				fmt.Fprintf(&out, "          description: Success\n          content:\n            %s:\n              schema: { type: string, format: binary }\n", profile.ResponseContentType)
 			} else {
 				out.WriteString("          description: Success\n          content:\n            application/json:\n              schema:\n")
 				if profile.ResponseSchema == "" {
@@ -472,7 +486,16 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 			}
 			out.WriteString("        '400':\n          $ref: '#/components/responses/BadRequest'\n")
-			for _, status := range profile.AdditionalErrors {
+			statuses := append([]string(nil), profile.AdditionalErrors...)
+			if route.Auth != "none" {
+				statuses = append(statuses, "401", "403")
+			}
+			seen := map[string]bool{"400": true, profile.SuccessStatus: true}
+			for _, status := range statuses {
+				if seen[status] {
+					continue
+				}
+				seen[status] = true
 				switch status {
 				case "401":
 					out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
@@ -480,13 +503,15 @@ func OpenAPI(routes []RouteContract) []byte {
 					out.WriteString("        '429':\n          $ref: '#/components/responses/TooManyRequests'\n")
 				case "503":
 					out.WriteString("        '503':\n          $ref: '#/components/responses/ServiceUnavailable'\n")
+				case "403":
+					out.WriteString("        '403':\n          $ref: '#/components/responses/Forbidden'\n")
+				case "404":
+					out.WriteString("        '404':\n          $ref: '#/components/responses/NotFound'\n")
+				case "409":
+					out.WriteString("        '409':\n          $ref: '#/components/responses/Conflict'\n")
+				case "413":
+					out.WriteString("        '413':\n          $ref: '#/components/responses/PayloadTooLarge'\n")
 				}
-			}
-			if route.Auth != "none" {
-				out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
-			}
-			if route.Auth != "none" {
-				out.WriteString("        '403':\n          $ref: '#/components/responses/Forbidden'\n")
 			}
 		}
 	}
@@ -530,5 +555,155 @@ func FindRepositoryRoot(start string) (string, error) {
 			return "", fmt.Errorf("repository root not found from %s", start)
 		}
 		current = parent
+	}
+}
+
+// Explicit governance metadata follows operation extraction and scope parsing;
+// execution grants do not imply the generic authenticated owner rule.
+func applyResourceGovernanceContract(route *RouteContract) {
+	switch route.OperationCode {
+	case "http.identity.admin_session.login":
+		route.Audit = "required-command+outbox"
+		return
+	case "http.identity.admin_session.refresh":
+		route.Auth = "admin-refresh-cookie+csrf"
+		route.Ownership = "current-admin-session"
+		route.Scope = "admin-refresh-family"
+		route.Audit = "required-command+outbox"
+		return
+	case "http.identity.admin_self.read", "http.identity.admin_self.logout", "http.identity.admin_self.mfa.enroll", "http.identity.admin_self.mfa.confirm", "http.identity.admin_self.mfa.step_up":
+		route.Auth = "jwt+current-admin-session+browser-csrf"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin-self"
+		route.Audit = "required-command+outbox"
+		if route.OperationCode == "http.identity.admin_self.read" {
+			route.Auth = "jwt+current-admin-session"
+			route.Audit = "none"
+		}
+		return
+	}
+
+	if strings.HasPrefix(route.OperationCode, "http.personal_space.owner_style_read.") {
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-space+current-user"
+		route.Audit = "none"
+		return
+	}
+	switch route.OperationCode {
+	case "http.personal_space.public_profile.by_id", "http.personal_space.public_profile.by_username", "http.personal_space.public_contents.by_id", "http.personal_space.public_contents.by_username":
+		route.Auth = "public"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-public-space+current-user"
+		route.Audit = "none"
+	case "http.personal_space.owner_contents.read", "http.personal_space.owner_sync_status.read":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-space+current-user"
+		route.Audit = "none"
+	case "http.personal_space.admin.summary", "http.personal_space.admin.storage":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-space-aggregate+current-admin-execution"
+		if route.OperationCode == "http.personal_space.admin.storage" {
+			route.Scope = "actual-target-user+space+current-quota+current-admin-execution"
+		}
+		route.Audit = "none"
+	case "http.personal_space.admin.quota":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-target-user+current-quota+current-admin-execution"
+		route.Audit = "required-command-audit"
+	case "http.personal_space.admin.disable", "http.personal_space.admin.enable":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-target-user+space+current-admin-execution"
+		route.Audit = "required-command-audit"
+	case "http.personal_space.owner_profile.read", "http.personal_space.owner_profile.update", "http.personal_space.owner_avatar.select", "http.personal_space.owner_avatar.upload", "http.personal_space.owner_avatar.cleanup", "http.personal_space.owner_style.apply", "http.personal_space.owner_style.rollback", "http.personal_space.owner_style.default", "http.personal_space.owner_style.html", "http.personal_space.owner_style.zip", "http.personal_space.owner_style.source", "http.personal_space.owner_style.catalog":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-space+current-user"
+		route.Audit = "none"
+		if route.OperationCode != "http.personal_space.owner_profile.read" && route.OperationCode != "http.personal_space.owner_style.catalog" {
+			route.Audit = "required-command-audit"
+		}
+	case "http.storage.inline_image.author_upload", "http.feature.richtext.inline_image.author_upload":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owner-inventory-or-core-author+current-quota"
+		route.Audit = "required-command-audit"
+	case "http.personal_space.asset.purge":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-user-asset+current-admin-execution+owned-object-receipt"
+		route.Audit = "required-command-audit"
+	case "http.personal_space.asset.governance_summary":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "asset-governance-aggregate+current-admin-execution"
+		route.Audit = "none"
+	case "http.personal_space.asset.purge_preview":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-user-asset+current-admin-execution"
+		route.Audit = "none"
+	case "http.personal_space.asset.quarantine", "http.personal_space.asset.restore":
+		route.Auth = "admin-domain-jwt+current-session+mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-user-asset+current-admin-execution"
+		route.Audit = "required-command-audit"
+	case "http.feature.richtext.asset.owner_trash", "http.feature.richtext.asset.owner_restore":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-owned-asset+reference-integrity"
+		route.Audit = "required-command-audit"
+	case "http.feature.richtext.attachment.copy_document":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-core-author+owned-current-document+article-asset-binding"
+		route.Audit = "required-command-audit"
+	case "http.feature.richtext.attachment.upload", "http.feature.richtext.attachment.bind", "http.feature.richtext.attachment.remove", "http.feature.richtext.attachment.rename", "http.feature.richtext.attachment.reorder":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "actual-core-author+article-asset-binding"
+		route.Audit = "required-command-audit"
+	case "http.community.event.metadata":
+		route.Auth = "jwt+admin-account+current-session+permission"
+		route.Ownership = "resource-policy"
+		route.Scope = "event-metadata-only"
+	case "http.get.api.v1.threads.id.posts":
+		route.Ownership = "resource-policy"
+		route.Scope = "parent-public+published-posts"
+	case "http.get.api.v1.threads.id.posts.me":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "parent-public-or-current-user-owner+published-posts"
+	case "http.community.thread.user_take_down", "http.community.post.user_governance_delete":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "single-board-execution-grant"
+		route.Audit = "required-command-audit"
+	case "http.community.thread.user_pin", "http.community.thread.user_unpin", "http.community.thread.user_lock", "http.community.thread.user_unlock":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "explicit-user-role+resource-board"
+		route.Audit = "required-command-and-module-audit"
+	case "http.community.moderation.current_preview", "http.community.moderation.current_preview_batch":
+		route.Auth = "jwt+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-user-named-policy+actual-thread-and-posts"
+	case "http.community.thread.admin_permissions_preview":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin+same-command-policies+bounded-actual-threads"
+	case "http.community.thread.admin_list", "http.community.thread.admin_trash_list", "http.community.thread.admin_history":
+		route.Auth = "jwt+admin-account+permission+current-session"
+		route.Ownership = "resource-policy"
+		route.Scope = "current-admin+actual-board+metadata-only-before-count-page"
+	case "http.community.thread.take_down", "http.community.post.admin_delete", "http.post.api.v1.threads.id.pin", "http.post.api.v1.threads.id.unpin", "http.post.api.v1.threads.id.lock", "http.post.api.v1.threads.id.unlock", "http.community.thread.review_approve", "http.community.thread.review_reject", "http.community.thread.trash", "http.community.thread.direct_restore", "http.community.thread.restore_trash", "http.community.thread.purge":
+		route.Auth = "jwt+admin-account+permission+current-mfa"
+		route.Ownership = "resource-policy"
+		route.Scope = "resource-board"
+		route.Audit = "required-command-audit"
 	}
 }

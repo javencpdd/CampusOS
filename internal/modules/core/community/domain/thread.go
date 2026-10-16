@@ -17,31 +17,36 @@ const (
 
 // Thread 帖子领域实体
 type Thread struct {
-	ID                string            `json:"id"`
-	ThreadType        ThreadType        `json:"thread_type"`
-	Title             string            `json:"title"`
-	Content           string            `json:"content"`
-	ContentFormat     string            `json:"content_format"`
-	AuthorID          string            `json:"author_id"`
-	AuthorName        string            `json:"author_name"`
-	CategoryID        string            `json:"category_id"`
-	Status            ThreadStatus      `json:"status"`
-	PublicationStatus PublicationStatus `json:"publication_status,omitempty"`
-	ModerationStatus  ModerationStatus  `json:"moderation_status,omitempty"`
-	DeletionStatus    DeletionStatus    `json:"deletion_status,omitempty"`
-	ModerationReason  string            `json:"moderation_reason,omitempty"`
-	ModerationBy      string            `json:"moderation_by,omitempty"`
-	ModerationAt      *time.Time        `json:"moderation_at,omitempty"`
-	CurrentRevision   int               `json:"current_revision,omitempty"`
-	IsPinned          bool              `json:"is_pinned"`
-	IsLocked          bool              `json:"is_locked"`
-	IsHighlighted     bool              `json:"is_highlighted"`
-	ViewCount         int64             `json:"view_count"`
-	ReplyCount        int64             `json:"reply_count"`
-	LikeCount         int64             `json:"like_count"`
-	Tags              []string          `json:"tags,omitempty"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+	// FactsVersion is repository-owned and never accepted from or exposed to HTTP clients.
+	FactsVersion        int64             `json:"-"`
+	DeletedAt           *time.Time        `json:"-"`
+	ID                  string            `json:"id"`
+	ThreadType          ThreadType        `json:"thread_type"`
+	Title               string            `json:"title"`
+	Content             string            `json:"content"`
+	ContentFormat       string            `json:"content_format"`
+	AuthorID            string            `json:"author_id"`
+	AuthorName          string            `json:"author_name"`
+	CategoryID          string            `json:"category_id"`
+	Status              ThreadStatus      `json:"status"`
+	PublicationStatus   PublicationStatus `json:"publication_status,omitempty"`
+	ModerationStatus    ModerationStatus  `json:"moderation_status,omitempty"`
+	DeletionStatus      DeletionStatus    `json:"deletion_status,omitempty"`
+	ModerationReason    string            `json:"moderation_reason,omitempty"`
+	ModerationActorKind string            `json:"-"`
+	ModerationActorID   string            `json:"-"`
+	ModerationBy        string            `json:"moderation_by,omitempty"`
+	ModerationAt        *time.Time        `json:"moderation_at,omitempty"`
+	CurrentRevision     int               `json:"current_revision,omitempty"`
+	IsPinned            bool              `json:"is_pinned"`
+	IsLocked            bool              `json:"is_locked"`
+	IsHighlighted       bool              `json:"is_highlighted"`
+	ViewCount           int64             `json:"view_count"`
+	ReplyCount          int64             `json:"reply_count"`
+	LikeCount           int64             `json:"like_count"`
+	Tags                []string          `json:"tags,omitempty"`
+	CreatedAt           time.Time         `json:"created_at"`
+	UpdatedAt           time.Time         `json:"updated_at"`
 }
 
 // CreateThreadRequest 创建帖子请求
@@ -78,4 +83,22 @@ type ThreadListFilter struct {
 	IncludeTrashed    bool
 	Page              int
 	PageSize          int
+}
+
+// SetModerationActor records an already authenticated domain actor. The
+// resource-owning command remains responsible for authentication/authorization.
+func (t *Thread) SetModerationActor(kind, id string) {
+	t.ModerationActorKind, t.ModerationActorID = kind, id
+	t.ModerationBy = ""
+	if kind == "user" {
+		t.ModerationBy = id
+	}
+}
+func (t *Thread) NormalizeModerationActor() {
+	if t.ModerationActorKind == "" {
+		t.ModerationActorKind, t.ModerationActorID = "legacy_unknown", ""
+		if t.ModerationBy != "" {
+			t.SetModerationActor("user", t.ModerationBy)
+		}
+	}
 }

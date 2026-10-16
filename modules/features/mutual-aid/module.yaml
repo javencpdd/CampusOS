@@ -8,7 +8,7 @@ description: "Structured campus help, requests, offers, volunteering, and resour
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
-dependencies: [core.community, core.user-storage, core.feature-registry, core.reliability]
+dependencies: [core.identity, core.community, core.user-storage, core.feature-registry, core.reliability]
 presentation_parent: controlled-richtext-article
 implementation: internal/modules/features/mutualaid
 config: {}

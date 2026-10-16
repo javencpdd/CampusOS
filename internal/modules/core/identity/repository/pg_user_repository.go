@@ -56,6 +56,22 @@ func (r *PgUserRepository) GetByID(ctx context.Context, id string) (*domain.User
 	return user, nil
 }
 
+func (r *PgUserRepository) GetByIDForUpdate(ctx context.Context, id string) (*domain.User, error) {
+	query := `SELECT id, username, nickname, email, avatar, bio, status, auth_version, must_change_password, created_at, updated_at
+		FROM users WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`
+	user := &domain.User{}
+	err := transaction.ExecutorFor(ctx, r.pool).QueryRow(ctx, query, id).Scan(
+		&user.ID, &user.Username, &user.Nickname, &user.Email,
+		&user.Avatar, &user.Bio, &user.Status, &user.AuthVersion, &user.MustChangePassword, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("query user by id: %w", err)
+	}
+	return user, nil
+}
+
 func (r *PgUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	email = domain.NormalizeEmail(email)
 	query := `SELECT id, username, nickname, email, avatar, bio, status, auth_version, must_change_password, created_at, updated_at

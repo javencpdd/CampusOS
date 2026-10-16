@@ -26,6 +26,16 @@ type UserRepository interface {
 	List(ctx context.Context, page, pageSize int) ([]*domain.User, int64, error)
 }
 
+// UserAuthorityLocker retains the current account boundary through a command.
+// PostgreSQL holds this row until commit; Memory commands serialize writers.
+type UserAuthorityLocker interface {
+	GetByIDForUpdate(context.Context, string) (*domain.User, error)
+}
+
+func (r *MemoryUserRepository) GetByIDForUpdate(ctx context.Context, id string) (*domain.User, error) {
+	return r.GetByID(ctx, id)
+}
+
 // EmailAccountReader is intentionally credential-free. It is the repository
 // side of Identity's public account-state Port and must not grow password or
 // refresh-token fields.

@@ -438,3 +438,9 @@ export type { PluginV5PrivateDataDeclaration, PluginV5ManifestBase, PluginV5Mani
 export type { PluginV5DispatchCall, PluginV5DispatchTrustedFacts, PluginV5DispatchDecisionInput, PluginV5DispatchErrorCode } from "./plugin-v5-dispatch.js";
 export type { PluginV5SafeEvent, PluginV5EventDelivery, PluginV5EventDecisionInput, PluginV5EventErrorCode, PluginV5LifecycleDecisionInput, PluginV5LifecycleErrorCode } from "./plugin-v5-events.js";
 export type { ScopeDelegationScope, ScopeDelegationAction, ScopeDelegationAtom, ScopeDelegationDecisionInput, ScopeDelegationErrorCode } from "./scope-delegation.js";
+export { INTEGRATION_ACCESS_VERSION } from "./integration-access.js";
+export type {
+  IntegrationAccessTargetV1, IntegrationAccessEndpointV1, IntegrationAccessRuleV1,
+  IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1,
+  IntegrationAccessErrorCodeV1,
+} from "./integration-access.js";

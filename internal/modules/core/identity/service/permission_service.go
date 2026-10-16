@@ -323,14 +323,10 @@ func (s *PermissionService) AssignRole(ctx context.Context, userID string, roleI
 	if role.Name == "moderator" {
 		return false, ErrRoleRequiresScope
 	}
-	assigned, err := s.roleRepo.AssignRole(ctx, userID, roleID, "global", nil)
-	if err != nil || !assigned || role.Name != "admin" || s.adminAccounts == nil {
-		return assigned, err
-	}
-	if _, err := s.adminAccounts.EnsureActive(ctx, userID, "role_assignment"); err != nil {
-		return false, err
-	}
-	return true, nil
+	// V12-02d: assigning the admin role never opens management-plane access.
+	// Administrators are created only through the independent admin identity
+	// domain; admission state is no longer derived from role assignments.
+	return s.roleRepo.AssignRole(ctx, userID, roleID, "global", nil)
 }
 
 // RevokeRole revokes every active explicit assignment for the role from a user.
@@ -357,11 +353,8 @@ func (s *PermissionService) RevokeRole(ctx context.Context, userID string, roleI
 	if !revoked {
 		return false, ErrRoleAssignmentNotFound
 	}
-	if role.Name == "admin" && s.adminAccounts != nil {
-		if _, err := s.adminAccounts.Revoke(ctx, userID); err != nil {
-			return false, err
-		}
-	}
+	// V12-02d: role revocation no longer touches management-plane admission;
+	// admission is suspended or revoked only through admin-domain commands.
 	return true, nil
 }
 
@@ -476,11 +469,7 @@ func (s *PermissionService) RevokeRoleByActor(ctx context.Context, actorID, user
 	if !revoked {
 		return false, ErrRoleAssignmentNotFound
 	}
-	if role.Name == "admin" && s.adminAccounts != nil {
-		if _, err := s.adminAccounts.Revoke(ctx, userID); err != nil {
-			return false, err
-		}
-	}
+	// V12-02d: role revocation leaves management-plane admission untouched.
 	if err := s.recordRequiredAuthorizationAudit(ctx, repository.AuthorizationAudit{
 		ActorKind: "user", ActorID: actorID, PermissionCode: "identity.role.revoke", OperationCode: "identity.role.revoke",
 		ResourceType: "user_role", ResourceID: userID + ":" + strconv.FormatInt(roleID, 10), Outcome: "allow",

@@ -54,6 +54,13 @@ func (s *Service) Status() StatusResult {
 }
 
 func (s *Service) Create(ctx context.Context, authorID, authorName string, req CreateRequest) (*Result, error) {
+	create := func(ctx context.Context, authorID, name string, request domain.CreateThreadRequest, opts communityport.ThreadCreateOptions, detail communityport.StructuredThreadParticipant) (*domain.Thread, error) {
+		return s.community.CreateStructuredThread(ctx, authorID, name, request, opts, detail)
+	}
+	return s.create(ctx, authorID, authorName, req, create, nil)
+}
+
+func (s *Service) create(ctx context.Context, authorID, authorName string, req CreateRequest, create structuredCreator, checked *checkedCreateParticipant) (*Result, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
@@ -64,7 +71,7 @@ func (s *Service) Create(ctx context.Context, authorID, authorName string, req C
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	detail := &Detail{
 		PriceMinor:    req.PriceMinor,
 		Currency:      normalizeCurrency(req.Currency),
@@ -77,7 +84,13 @@ func (s *Service) Create(ctx context.Context, authorID, authorName string, req C
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-	thread, err := s.community.CreateStructuredThread(ctx, authorID, authorName, domain.CreateThreadRequest{
+	base := createParticipant{store: s.store, detail: detail}
+	var participant communityport.StructuredThreadParticipant = base
+	if checked != nil {
+		checked.createParticipant = base
+		participant = checked
+	}
+	thread, err := create(ctx, authorID, authorName, domain.CreateThreadRequest{
 		Title:      strings.TrimSpace(req.Title),
 		Content:    content.Content,
 		CategoryID: strings.TrimSpace(req.CategoryID),
@@ -88,7 +101,7 @@ func (s *Service) Create(ctx context.Context, authorID, authorName string, req C
 		ThreadType:    domain.ThreadTypeSecondhand,
 		CommandCode:   "feature.secondhand.create",
 		EventType:     "secondhand.created",
-	}, createParticipant{store: s.store, detail: detail})
+	}, participant)
 	if err != nil {
 		return nil, normalizeCommunityError(err)
 	}

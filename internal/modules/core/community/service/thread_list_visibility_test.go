@@ -12,7 +12,7 @@ import (
 func TestPublicListRechecksPublicationAfterAnotherServiceChangesIt(t *testing.T) {
 	ctx := context.Background()
 	repo := repository.NewMemoryThreadRepository()
-	if err := repo.Create(ctx, &domain.Thread{ID: "3001", Title: "private after edit", Content: "sensitive body", AuthorID: "2001", Status: domain.ThreadStatusPublished}); err != nil {
+	if err := repo.Create(ctx, &domain.Thread{ID: "3001", Title: "private after edit", Content: "sensitive body", AuthorID: "2001", CategoryID: "1", Status: domain.ThreadStatusPublished}); err != nil {
 		t.Fatal(err)
 	}
 	shared := cache.NewMemoryCache()

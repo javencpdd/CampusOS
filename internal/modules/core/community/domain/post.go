@@ -1,8 +1,18 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Post struct {
+	FactsVersion     int64           `json:"-"`
+	ContentFormat    string          `json:"content_format,omitempty"`
+	Metadata         json.RawMessage `json:"-"`
+	DeletedAt        *time.Time      `json:"-"`
+	DeletedActorKind string          `json:"-"`
+	DeletedActorID   string          `json:"-"`
+
 	ID         string  `json:"id"`
 	ThreadID   string  `json:"thread_id"`
 	AuthorID   string  `json:"author_id"`

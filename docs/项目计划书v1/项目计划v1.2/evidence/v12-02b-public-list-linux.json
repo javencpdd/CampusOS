@@ -1,0 +1,231 @@
+{
+  "schema": "campusos.v12-02b-public-list-acceptance/v1",
+  "generated_at": "2026-10-11T15:15:45.878176+00:00",
+  "stage": "V12-02b",
+  "stage_status": "partial",
+  "slice_status": "completed",
+  "implementation": "passed",
+  "automation": "passed",
+  "target_environment": "passed",
+  "scope": "Canonical public thread list, count and pagination: strict raw predicate, policy decisions per row and final whole-page snapshot recheck.",
+  "environment": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "go": "go version go1.25.0 linux/amd64",
+    "postgres_version_num": 160014,
+    "database": "owned disposable PostgreSQL 16 container; loopback only"
+  },
+  "checks": {
+    "TestMemoryThreadListSnapshotPaginationAndRevocation": "passed",
+    "TestMemoryThreadListSnapshotPaginationBoundaries": "passed",
+    "TestMemoryThreadListSnapshotConcurrentCountAndRows": "passed",
+    "TestPublicThreadListStateMatrixAndPagination": "passed",
+    "TestPublicThreadListRetryWholeSnapshot": "passed",
+    "TestPublicThreadListFailsClosed": "passed",
+    "TestPublicThreadListSustainedConflictAndCancellation": "passed",
+    "TestPublicThreadListDispatchAndBoundaries": "passed",
+    "TestPublicThreadListPostgreSQLStateMatrixAndPagination": "passed",
+    "TestPublicThreadListPostgreSQLSnapshotRetry": "passed",
+    "TestPublicThreadListPostgreSQLSustainedConflict": "passed",
+    "TestPublicThreadListPostgreSQLRawFactsFailsClosed": "passed",
+    "TestPublicThreadListPostgreSQLRepositorySnapshotConcurrency": "passed",
+    "TestPublicThreadListForcesCanonicalVisibility": "passed",
+    "TestPublicThreadListHTTPErrorBoundary": "passed",
+    "TestPublicThreadListHTTPEmptyPageKeepsPublicCount": "passed",
+    "TestPublicThreadQueryUsesCanonicalList": "passed",
+    "TestPublicThreadQueryRevocationChangesWholePage": "passed",
+    "TestPublicThreadQueryPreservesAuthorList": "passed",
+    "TestPublicThreadQueryUnavailable": "passed",
+    "TestPublicListRechecksPublicationAfterAnotherServiceChangesIt": "passed",
+    "TestPublicThreadDetailPolicyStateMatrix": "passed",
+    "TestPublicThreadDetailMemoryRevocation": "passed",
+    "TestPublicThreadDetailRetryReloadsFactsAndDecision": "passed",
+    "TestPublicThreadDetailFailsClosed": "passed",
+    "TestPublicThreadDetailHTTPErrorBoundary": "passed"
+  },
+  "coverage": {
+    "state_combinations_per_adapter": 36,
+    "postgres_commit_schedules": 9,
+    "postgres_snapshot_concurrency": {
+      "writer_transactions": 100,
+      "repository_reads": 200
+    },
+    "adapters": [
+      "memory",
+      "postgres"
+    ],
+    "http": "canonical filters, revocation, 409, safe 500, empty page count",
+    "consistency": "one SQL statement / one Memory read lock for count and rows; final whole-page recheck including empty pages"
+  },
+  "source_sha256": {
+    "internal/modules/core/community/repository/thread_repository.go": "40424b39807a85d805d6d15d64fde920b82799245a76dff582694f4c6ce8cdb7",
+    "internal/modules/core/community/repository/pg_thread_repository.go": "13d76398d3e2214a985954bd8c7e025581c1f1d4443d1ab4be8f84be0e29bcc5",
+    "internal/modules/core/community/repository/thread_list_snapshot_test.go": "4e007633065ffbbae0383a9279442accb915a78b19c0bf696514f5482621168c",
+    "internal/modules/core/community/service/thread_service.go": "3b2bbc272581949017557e671a56ff5834ebd6dc1fcab26552b56a06561fb030",
+    "internal/modules/core/community/service/thread_public_read.go": "c25f87f8be1b549c4b9c54a377a5a88c8683e0e977cae9d8bf182ef73bc1fbff",
+    "internal/modules/core/community/service/thread_public_read_test.go": "979467f632910af3a796f13fa6bdf1ebaf26c20d6864750b34225b5ea92e9411",
+    "internal/modules/core/community/service/thread_list_visibility_test.go": "7ef2769d8e073c5522d87ac3136661a1403577d989b114e1b8887efb7954679f",
+    "internal/modules/core/community/service/thread_public_list.go": "24a5da2ecf705d41b642b641cf0d509d2ea428ee2d3a7bc106daf5509c1a7361",
+    "internal/modules/core/community/service/thread_public_list_test.go": "a4c9c684a7beb5fc62b047b14bbf57098cef05bc18caa9e91cd8f75a54069e3f",
+    "internal/modules/core/community/service/thread_public_list_postgres_test.go": "15854ae79b1eca6d9744017c1af4b8885b2de0766884047f4fb71b3da968e684",
+    "internal/modules/core/community/handler/thread_handler.go": "625608eb35bd41051e3b12bc2548872da1d52009947879a344660f992d8a8142",
+    "internal/modules/core/community/handler/thread_handler_test.go": "1fb68efe2697bac4ed5e1bca78a63119e9579694c8a0b4c619153c717266491f",
+    "internal/modules/core/community/handler/thread_public_list_test.go": "3c4ec12c4aed07c7e17de06a25fdb75c353ffd803d7d14197b1c3851b3f0b16a",
+    "internal/modules/core/community/moderation_gateway.go": "24d8e09a8bf94196beae9df85328d3b0d2ff3c70de6fc2057d12899bcb26e106",
+    "internal/modules/core/community/public_list_query_test.go": "1c3c5faaa6ef84c71b5f8f1a7e945702da9f54fc1055148715a1230d1c4301de",
+    "migrations/000016_v1_2_thread_facts_version.up.sql": "0445d68cb8dc1871570b78f3d7d6652ac8f366a88a8d3677965dc8b81c806e6f",
+    "scripts/v12-02b-public-list-drill.sh": "e20fbc75b3bf812f2859f5d7942efbee77f9e8878bc0833d4a660652134c36dd",
+    "docs/进度/v1.2-dev/v1.2.47-dev.md": "3d745176bc1cd5037707d01fdb26c6927ea5604b6c56b11605b7e1c2c907615c",
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "bc7430f26b7e1efe2cb523068b2505fede6f65e07b7e8ee87e2c5897b3977aa9",
+    "docs/api/v1.2公开帖子事实与策略合同.md": "a66d4881c519b0a058d21823c29c6102f25ab8b7fc6d2ea9b7aff1af3e42b0e6",
+    "docs/architecture/当前架构概览.md": "bbd9f73425ccb0cbba328da967b704d37d1f1855a724d35bd4f110902bfe486c",
+    "docs-site/guide/architecture.md": "3fb2d0998e78d9bdb93d4a67f4501759551012e186d421803ccb5b68190bdee1",
+    "skills/sources/campusos-project-onboarding/references/current-project-status.md": "63bad0fd7feb2a0034f6c68200c5dd2abd791ad6cdfa850b281dfa8427a86172"
+  },
+  "dependencies": {
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02a-exit-linux.json": "39e062ac65db4e988938151794d250f9cdbbadd3c2b8930fea07da6f22eaf210",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02d-exit-linux.json": "f144f872bd91c35d9a9233bd129c40e209ae862bbb09cd14bce0a9b5820dad25",
+    "docs/项目计划书v1/项目计划v1.2/evidence/v12-02b-public-detail-linux.json": "ef63603ac7fa87404f1fac6efdc243f478178e4a0d6b07f422ce087de9d7861a"
+  },
+  "common_gates_status": "passed",
+  "logs": {
+    "architecture": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/architecture.log",
+      "log_sha256": "a59c54123f1d2dce8240117fc99b1e81e8f3728deb74356d48b6b7bece9a37f0"
+    },
+    "contracts": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/contracts.log",
+      "log_sha256": "930e3d2c94109ae611d6ad32d9f267e8e5365c0482f73745fa5c458072db2082"
+    },
+    "database": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/database.log",
+      "log_sha256": "98c8dcc100e91e9de219441486a940e1a93d7adc7506327e04ba8d769e909964"
+    },
+    "diff": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/diff.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "docs-build": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/docs-build.log",
+      "log_sha256": "022b2b86c3f5d36fd3ed0f3a42beb42c52ef91403592a81c0060ac6c63e092f4"
+    },
+    "docs-links": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/docs-links.log",
+      "log_sha256": "b2c6f504b4f5c0074a02549a0cfed431d8a35ec7fff3ba488b2d932b297f535d"
+    },
+    "go-all": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/go-all.log",
+      "log_sha256": "47eead4aeeb9bb02ef4d4bb4722d77ccbd49e312705dd2b0ce570ff37edb7886"
+    },
+    "line-endings": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/line-endings.log",
+      "log_sha256": "a7140bc127a8d7678670439a06ab5a5c72663ba5aeb72d385d26f438eb854b91"
+    },
+    "list-tests": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/list-tests.log",
+      "log_sha256": "d26682496aaa9b849a3a26446a8cdb03d6b352e540b1c3052d5ce184878e72fe"
+    },
+    "migrations-check": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/migrations-check.log",
+      "log_sha256": "34c59ef2dbfce51acc0cca3ab3466c6a425ea686c1dc5e024a3576e1252e8292"
+    },
+    "migrations-up": {
+      "status": "passed",
+      "exit_code": 0,
+      "local_log": ".cache/v12-02b-list/drill.hEajzO/migrations-up.log",
+      "log_sha256": "5525d5180ccf0c0778117965eff553deec1232abfb74dd06783aa3f92c5b63d9"
+    }
+  },
+  "boundaries": [
+    "V12-02b remains partial: private author reads, moderation/MFA Principal, batch authorization and effective-permission preview await subsequent slices.",
+    "Admin/author and legacy noncanonical ListThreads filters retain their authorization path; shared repository snapshot consistency does not add new Policy acceptance to them.",
+    "Plugin/integration Scope, Grant/Consent and lifecycle checks remain ingress responsibilities.",
+    "Public results linearize at the final whole-page repository snapshot; later writes cannot retract returned bytes.",
+    "No browser, Windows/WSL, capacity benchmark or full-stage acceptance is claimed.",
+    "No new migration; existing 000016 trigger supplies ABA-safe versions for content, visibility and ordering changes."
+  ],
+  "final_docs_sync": {
+    "generated_at": "2026-10-11T15:36:55.723259+00:00",
+    "status": "passed",
+    "logs": {
+      "final-architecture": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-architecture.log",
+        "log_sha256": "cea8dd1ee3a99e90acdbffab3a7b0b5fffe1a22c4426ee01a7a4aa9ef2ba0777"
+      },
+      "final-diff": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-diff.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "final-docs-build": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-docs-build.log",
+        "log_sha256": "31e9986027e0ef306f9e02fae02c9a6922c2e367e40f792cb5b4e888525f48a0"
+      },
+      "final-docs-links": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-docs-links.log",
+        "log_sha256": "9436638eddf3152df8938dd052f0f6aa6ea11211179d1749420014af8585bd31"
+      },
+      "final-line-endings": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-line-endings.log",
+        "log_sha256": "b80835fd7cb5c3bc8773c838fe60d35ddd82b1856e70f111b74334d705f3b013"
+      },
+      "final-repo": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-repo.log",
+        "log_sha256": "f0eea9a46737429c359b441d98502fe633ca1d514170ed0e3c1d7361be416d04"
+      },
+      "final-skill-bridges": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-skill-bridges.log",
+        "log_sha256": "73c56ac991f3a6397b52620f134d53a20062b0c45df00554acf2eff77099e676"
+      },
+      "final-skill": {
+        "status": "passed",
+        "exit_code": 0,
+        "local_log": ".cache/v12-02b-list/drill.hEajzO/final-skill.log",
+        "log_sha256": "db349825903d66adffea3ecf1bd8e1803043e8a71cf1a051235dabc5371f5bb0"
+      }
+    },
+    "source_changes_since_target_drill": "Only documentation synchronized; all target business, test and runner digests still match.",
+    "predecessor_evidence": "02a/02d/01b prerequisites and .46 detail verified before work; historical reports unchanged. Shared List/entry source changes covered by this slice and detail regression."
+  },
+  "bridge_sync": {
+    "status": "blocked_by_automatic_approval_review",
+    "attempted_at": "2026-10-11T15:38:48.111831+00:00",
+    "destination": "Chat Across campusos",
+    "reason": "Automatic approval review rejected sending internal implementation, testing and progress details to an external destination without explicit approval for this specific brief. No retry or indirect send.",
+    "local_reviewable_draft": ".cache/v12-02b-list/chat-across-brief.txt",
+    "local_implementation_and_acceptance": "unaffected"
+  }
+}

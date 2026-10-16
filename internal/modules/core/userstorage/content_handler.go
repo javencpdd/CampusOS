@@ -1,8 +1,14 @@
 package storage
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
+	"github.com/campusos/CampusOS/pkg/apperror"
+	"github.com/campusos/CampusOS/pkg/auth"
 	"net/http"
 
 	"github.com/campusos/CampusOS/pkg/response"
@@ -10,10 +16,24 @@ import (
 )
 
 type Handler struct {
-	images *ContentImageStore
+	images   *ContentImageStore
+	query    communityport.AuthenticatedThreadQuery
+	verifier identityport.SessionVerifier
+	strength identityport.SessionStrengthReader
 }
 
 func NewHandler(images *ContentImageStore) *Handler { return &Handler{images: images} }
+
+func (h *Handler) SetReadProof(query communityport.AuthenticatedThreadQuery, verifier identityport.SessionVerifier, strength identityport.SessionStrengthReader) {
+	h.query, h.verifier, h.strength = query, verifier, strength
+}
+
+func (h *Handler) readPrincipal(c *gin.Context) identityport.SessionPrincipalResolver {
+	claims := &auth.JWTClaims{UserID: c.GetString("user_id"), SessionID: c.GetString("session_id"), AuthVersion: c.GetInt64("auth_version"), TokenType: auth.AccessTokenType}
+	return func(ctx context.Context) (identityport.PrincipalContext, error) {
+		return identityport.ResolveUserSessionPrincipal(ctx, h.verifier, h.strength, claims)
+	}
+}
 
 func (h *Handler) UploadContentImage(c *gin.Context) {
 	userID, ok := c.Get("user_id")
@@ -39,13 +59,21 @@ func (h *Handler) UploadContentImage(c *gin.Context) {
 		response.ErrorWithDetails(c, http.StatusBadRequest, 10001, "请选择要插入正文的图片文件。", contentImageUploadDetails(h.images.MaxBytes(), 0))
 		return
 	}
+	if form := c.Request.MultipartForm; form != nil {
+		defer form.RemoveAll()
+		if len(form.Value) != 0 || len(form.File) != 1 || len(form.File["file"]) != 1 {
+			response.Error(c, http.StatusBadRequest, 10001, "图片请求只能包含一个文件，请重新选择后重试。")
+			return
+		}
+	}
 	file, err := fileHeader.Open()
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, 10001, "无法读取所选图片文件，请重新选择后再试。")
 		return
 	}
 	defer file.Close()
-	asset, err := h.images.Save(userIDValue, fileHeader.Filename, file)
+	_ = userIDValue
+	asset, err := h.images.SaveForPrincipal(c.Request.Context(), file, h.readPrincipal(c))
 	if err != nil {
 		writeContentImageError(c, err, h.images.MaxBytes(), fileHeader.Size)
 		return
@@ -57,35 +85,59 @@ func (h *Handler) UploadContentImage(c *gin.Context) {
 // The endpoint is intentionally authenticated even though individual image
 // URLs may be publicly referenced by an already-published post.
 func (h *Handler) ListMyContentImages(c *gin.Context) {
-	userID, ok := c.Get("user_id")
-	if !ok {
-		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后查看已上传的正文图片。")
-		return
-	}
-	userIDValue, ok := userID.(string)
-	if !ok || userIDValue == "" {
-		response.Error(c, http.StatusUnauthorized, 20001, "请先登录后查看已上传的正文图片。")
-		return
-	}
-	items, err := h.images.ListOwned(userIDValue)
+	items, err := h.images.ListForPrincipal(c.Request.Context(), h.readPrincipal(c))
 	if err != nil {
-		response.WriteError(c, err)
+		writeImageReadError(c, err)
 		return
 	}
 	response.Success(c, gin.H{"items": items, "limit": maxListedContentImages})
 }
 
 func (h *Handler) ServeContentImage(c *gin.Context) {
-	path, err := h.images.Path(c.Param("user_id"), c.Param("filename"))
+	var resolve identityport.SessionPrincipalResolver
+	if c.GetHeader("Authorization") != "" {
+		resolve = h.readPrincipal(c)
+	}
+	image, err := h.images.ReadForPrincipal(c.Request.Context(), c.Param("user_id"), c.Param("filename"), c.Query("thread_id"), h.query, resolve)
 	if err != nil {
-		writeContentImageError(c, err, h.images.MaxBytes(), 0)
+		writeImageReadError(c, err)
 		return
 	}
-	c.File(path)
+	ServeCheckedImage(c, image)
+}
+
+func ServeCheckedImage(c *gin.Context, image ImageBytes) {
+	c.Header("Cache-Control", "private, no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Type", image.MimeType)
+	http.ServeContent(c.Writer, c.Request, "image", image.ModifiedAt, bytes.NewReader(image.Data))
+}
+
+func writeImageReadError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.Error(c, 401, 20002, "请重新登录后读取图片。")
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.Error(c, 409, 74009, "图片或访问权限已变化，请重新加载。")
+	case errors.Is(err, ErrImageNotFound):
+		response.Error(c, 404, 74004, "图片不存在或无权访问。")
+	default:
+		response.Error(c, 503, 10006, "暂时无法检查图片访问权限。")
+	}
 }
 
 func writeContentImageError(c *gin.Context, err error, maxBytes, providedBytes int64) {
 	switch {
+	case errors.Is(err, ErrInlineImageCleanupPending):
+		response.Error(c, http.StatusServiceUnavailable, 74001, "图片清理尚未完成，请稍后重试。")
+	case errors.Is(err, identityport.ErrUserSessionPrincipalUnavailable):
+		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
+	case errors.Is(err, identityport.ErrPolicyFactsChanged):
+		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
+	case errors.Is(err, ErrInlineImageDenied):
+		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
+	case errors.Is(err, ErrObjectUnavailable):
+		response.Error(c, http.StatusServiceUnavailable, 74001, "图片上传校验暂不可用，请稍后重试。")
 	case errors.Is(err, ErrImageNotFound):
 		response.Error(c, http.StatusNotFound, 74004, "正文图片不存在或已被删除。")
 	case errors.Is(err, ErrImageTooLarge):
@@ -101,7 +153,7 @@ func writeContentImageError(c *gin.Context, err error, maxBytes, providedBytes i
 			contentImageDimensionMessage(err), contentImageDimensionDetails(err, maxBytes, providedBytes))
 	case errors.Is(err, ErrUnsafePath):
 		response.Error(c, http.StatusBadRequest, 74002, "图片文件名或请求路径不合法，请重新选择文件后再试。")
-	case errors.Is(err, ErrQuotaExceeded):
+	case errors.Is(err, ErrQuotaExceeded), errors.Is(err, ErrObjectQuota):
 		response.ErrorWithDetails(c, http.StatusConflict, 74003,
 			"个人空间剩余容量不足，无法保存正文图片。请删除不需要的文件，或联系管理员提高空间配额后重试。",
 			contentImageUploadDetails(maxBytes, providedBytes))

@@ -176,7 +176,31 @@ const avatarText = computed(() => {
 
 const unwrap = <T,>(res: unknown): T => (res as ApiResponse<T>).data
 
+type LoadContext = { generation: number; username: string; userID: string; loggedIn: boolean }
+let generation = 0
+let alive = true
+const loadedContext = ref<LoadContext | null>(null)
+const captureContext = (): LoadContext => ({
+  generation,
+  username: username.value,
+  userID: userStore.user?.id || '',
+  loggedIn: userStore.isLoggedIn,
+})
+const contextIsCurrent = (context: LoadContext) =>
+  alive &&
+  context.generation === generation &&
+  context.username === username.value &&
+  context.userID === (userStore.user?.id || '') &&
+  context.loggedIn === userStore.isLoggedIn
+const currentStyleContext = () => {
+  const context = loadedContext.value
+  if (!context || loading.value || !contextIsCurrent(context) || !payload.value) {
+    throw new Error('主页数据已更新，请重新打开风格')
+  }
+  return context
+}
 const resolveStyleQuery = async (method: string, params: Record<string, unknown>) => {
+  const context = currentStyleContext()
   if (method === 'space.profile.read') {
     return payload.value
   }
@@ -186,31 +210,49 @@ const resolveStyleQuery = async (method: string, params: Record<string, unknown>
     return { owner: payload.value?.owner, items: contents.value.slice(0, limit) }
   }
   if (method === 'schedule.me.read') {
-    if (!userStore.isLoggedIn || payload.value?.owner.id !== userStore.user?.id) {
+    if (!context.loggedIn || payload.value?.owner.id !== context.userID) {
       throw new Error('课表只允许主页所有者本人在自己的主页风格中读取')
     }
-    return unwrap(await scheduleApi.me())
+    const result = unwrap(await scheduleApi.me())
+    if (!contextIsCurrent(context) || loadedContext.value?.generation !== context.generation) {
+      throw new Error('主页数据已更新，请重新打开风格')
+    }
+    if (payload.value?.owner.id !== context.userID) {
+      throw new Error('课表只允许主页所有者本人在自己的主页风格中读取')
+    }
+    return result
   }
   throw new Error('不支持的风格包数据能力')
 }
 
 const loadSpace = async () => {
-  if (!username.value) return
-  loading.value = true
+  generation++
+  const context = captureContext()
+  loadedContext.value = null
+  payload.value = null
+  contents.value = []
   loadError.value = ''
+  loading.value = Boolean(context.username)
+  if (!context.username) return
   try {
-    const spaceRes = await spaceApi.publicByUsername(username.value)
-    payload.value = unwrap<PublicSpacePayload>(spaceRes)
-    const contentRes = isOwner.value
+    const spaceRes = await spaceApi.publicByUsername(context.username)
+    if (!contextIsCurrent(context)) return
+    const candidate = unwrap<PublicSpacePayload>(spaceRes)
+    const owner = context.loggedIn && candidate.owner.id === context.userID
+    const contentRes = owner
       ? await spaceApi.myContents({ page: 1, page_size: 20 })
-      : await spaceApi.publicContentsByUsername(username.value, { page: 1, page_size: 20 })
+      : await spaceApi.publicContentsByUsername(context.username, { page: 1, page_size: 20 })
+    if (!contextIsCurrent(context)) return
+    payload.value = candidate
     contents.value = unwrap<ListPayload<SpaceContent>>(contentRes).items || []
+    loadedContext.value = context
   } catch (error: any) {
+    if (!contextIsCurrent(context)) return
     payload.value = null
     contents.value = []
     loadError.value = error?.msg || '主页不可访问'
   } finally {
-    loading.value = false
+    if (contextIsCurrent(context)) loading.value = false
   }
 }
 
@@ -219,7 +261,7 @@ const formatDate = (value: string) => {
   return new Date(value).toLocaleDateString()
 }
 
-watch([username, () => userStore.user?.id], loadSpace, { immediate: true })
+watch([username, () => userStore.user?.id, () => userStore.isLoggedIn], loadSpace, { immediate: true, flush: 'sync' })
 
 let injectedStyle: HTMLStyleElement | null = null
 
@@ -240,6 +282,9 @@ watch(
 )
 
 onUnmounted(() => {
+  alive = false
+  generation++
+  loadedContext.value = null
   injectedStyle?.remove()
   injectedStyle = null
 })

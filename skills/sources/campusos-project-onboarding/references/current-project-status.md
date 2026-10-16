@@ -1,12 +1,31 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-09-01（Asia/Shanghai）
+> Snapshot date: 2026-10-16 14:02 (Asia/Shanghai); V12-02c first whitelist-policy slice accepted
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.14.0`
-> Latest implementation stage: `v1.0-dev` (clean database foundation implemented; plugin authorization services and UI remain planned)
-> Migrations: clean baseline `000001` through `000003`; next append-only version is `000004`
+> Latest implementation stage: `v1.2-dev` (V12-02a/02d/02b completed in their bounded scope; V12-02c first host whitelist-policy slice passed implementation/automation/Linux target; whole stage partial)
+> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000024`; next append-only version is `000025`
 
-The v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
+Current stage authority is `docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md`.
+The accepted predecessor V12-02b exit is `docs/进度/v1.2-dev/v1.2.110-dev.md`, with the exact
+144-route/eight-group resource responsibility inventory and `v12-02b-exit-linux.json` report.
+At the 02b exit, 539 historical assertions plus 21 new/changed assertions were executed against that
+stage's frozen source: 560 required top-level tests without FAIL/SKIP/race, 13 isolated PG16 databases, nine
+000016–000024 original-data/typed-actor/non-reused-highwater preservation paths, and 17 real
+cmd/server + current Admin/Web browser checks. Builds are separate from browser evidence.
+User/Admin identity, private original resource reads and metadata/permission previews remain distinct.
+Current Admin SPA uses its own HttpOnly refresh/CSRF, current profile and self MFA/logout. Resource
+commands still reload actual facts and check their own Policy, current authority and required audit.
+The static Admin architecture view covers 24 migrations, 100 business tables and two executor tables.
+Runtime development branding remains `v1.1.0-dev`; bounded v1.2 phase work is not a v1.2 release.
+Integration 02c has started a bounded host-only whitelist Policy/strict codec, Schema/SDK and independent
+oracle slice: 10 native Linux race tests, 192 actual Go/oracle outputs (144 combinations), 64 concurrent
+callers and full Go/SDK/contracts/architecture/documentation gates passed; see `v1.2.111-dev.md`.
+Digest credentials, actual endpoint authentication, persistent rotation/revocation and original-resource ACL
+composition still need implementation. v5 Dispatcher/runtime 03c, Knowledge source ACL 09a and target
+Windows/release work are not completed by this slice. Earlier per-slice progress is historical evidence, not remaining work.
+
+Historical v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
 `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`. The v1.0 formal plan is
 `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`; its clean database foundation is documented in
 `01-v1.0数据库全面重构方案.md` and `docs/进度/v1.0-dev/v1.0.1-dev.md`. Do not treat the new plugin tables as proof that
@@ -45,7 +64,7 @@ The four extension categories are not interchangeable:
 
 | Area | Verified baseline |
 | --- | --- |
-| Identity | Verified email registration, Challenge/Ticket, password recovery, email binding, revocable sessions, separate admin admission, TOTP MFA and recovery |
+| Identity | User registration/session/MFA and independent Admin accounts, credentials, roles, sessions and MFA/recovery storage; Admin API rejects User Tokens; user roles no longer create Admin admission; remaining recovery HTTP and route MFA gates are in v1.2.44 |
 | Authorization | Stable Permission Codes, route Operations, global/category scopes, custom roles, moderator bounds, last-admin protection and required audit |
 | Community | Two-level categories with group aggregation, tags, text/rich/Mutual Aid/Secondhand posts, revisions, content governance, replies/floors, notifications and batch admin actions |
 | Structured content | Built-in Mutual Aid and Secondhand modules on the reliable Community transaction boundary |
@@ -55,7 +74,7 @@ The four extension categories are not interchangeable:
 | Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
 | Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
 | Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
-| Database | 84 application tables plus checksum/lock metadata; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
+| Database | 100 application tables plus two checksum/lock metadata tables across migrations `000001`–`000024`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
 
 ## 3. Important Boundaries
 
@@ -177,7 +196,7 @@ Read these before a new task:
 | v0.13 plan and audit | `docs/项目计划书v0/项目计划v0.13/00-v0.13版本计划书.md`, `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` |
 | v0.14 implementation plan | `docs/项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md` |
 | v1.0 formal plan and DB design | `docs/项目计划书v1/项目计划v1.0/00-v1.0版本计划书.md`, `01-v1.0数据库全面重构方案.md` |
-| Current evidence | latest files in `docs/进度/v1.0-dev/` |
+| Current evidence | Verify the v1.2 main plan, `docs/进度/v1.2-dev/v1.2.110-dev.md`, actual source/log digests and reports in `docs/项目计划书v1/项目计划v1.2/evidence/`; do not infer completion from filenames or old summaries |
 | v0.13 final baseline | `docs/项目计划书v0/项目计划v0.13/02-v0.13最终专业审计与后续路线.md` and `docs/进度/v0.13-dev/` |
 
 Historical plan files and versioned Help snapshots remain useful for traceability, but they are not current operation

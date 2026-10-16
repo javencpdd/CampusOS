@@ -46,7 +46,7 @@ func (s *Service) HandleThreadEvent(ctx context.Context, event eventbus.Event) e
 	if err != nil {
 		return err
 	}
-	if event.Type == eventbus.EventThreadDeleted {
+	if event.Type == eventbus.EventThreadDeleted || event.Type == eventbus.EventThreadUpdated && thread.ModerationStatus == communitydomain.ModerationStatusTakenDown {
 		return s.deleteSyncedContent(ctx, thread.ID)
 	}
 	return s.SyncThread(ctx, thread)
@@ -142,7 +142,9 @@ func (s *Service) ListPublicContentsByUsername(ctx context.Context, username str
 	return s.contentRepo.ListContentsByUserID(ctx, user.ID, normalizePage(page), normalizePageSize(pageSize))
 }
 
-// ListOwnContents returns the homepage owner's active content from the
+// ListOwnContents preserves the legacy in-process bare-ID adapter. It has no
+// authenticated owner Policy acceptance; HTTP uses ListOwnContentsForPrincipal.
+// It returns the homepage owner's active content from the
 // Community fact source. It deliberately differs from the public profile
 // query: the owner may see draft, private, pending, rejected and taken-down
 // items together with their moderation reason, while visitors never receive

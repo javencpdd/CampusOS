@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -56,7 +57,7 @@ func (s *PgAuditStore) Log(ctx context.Context, record AuditRecord) error {
 	if record.CreatedAt.IsZero() {
 		record.CreatedAt = time.Now().UTC()
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO audit_logs
+	_, err = transaction.ExecutorFor(ctx, s.pool).Exec(ctx, `INSERT INTO audit_logs
 		(id, trace_id, actor_id, actor_type, action, resource, resource_id, before_data, after_data, metadata, ip_address, created_at)
 		VALUES ($1, $2, $3, 'user', $4, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10, $11)`,
 		idgen.New(), record.TraceID, actorID, record.Action, record.Resource, record.ResourceID,
@@ -89,4 +90,27 @@ func (s *MemoryAuditStore) Records() []AuditRecord {
 	result := make([]AuditRecord, len(s.records))
 	copy(result, s.records)
 	return result
+}
+
+func (s *MemoryAuditStore) Snapshot() any {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	raw, err := json.Marshal(s.records)
+	if err != nil {
+		return []byte(nil)
+	}
+	return append([]byte(nil), raw...)
+}
+func (s *MemoryAuditStore) Restore(value any) {
+	raw, ok := value.([]byte)
+	if !ok {
+		return
+	}
+	var rows []AuditRecord
+	if json.Unmarshal(raw, &rows) != nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.records = rows
 }

@@ -1,6 +1,7 @@
 DO $$
 DECLARE
     missing TEXT;
+    actor_guard RECORD;
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
@@ -44,7 +45,21 @@ BEGIN
         'sessions.revoke_reason', 'sessions.ip_hash',
         'categories.node_kind', 'categories.lifecycle_status', 'categories.version', 'categories.color',
         'threads.author_id', 'threads.category_id', 'threads.status', 'threads.thread_type',
-        'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision',
+        'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision', 'threads.facts_version',
+        'admin_role_permissions.facts_version',
+        'richtext_article_contents.facts_version', 'user_assets.facts_version', 'richtext_article_attachments.facts_version',
+		'user_spaces.facts_version','user_space_style_snapshots.facts_version','user_storage_quotas.facts_version',
+        'roles.facts_version', 'user_roles.facts_version', 'role_permissions.facts_version', 'permission_definitions.facts_version',
+        'posts.facts_version','posts.deleted_actor_kind','posts.deleted_actor_id',
+        'threads.moderation_actor_kind','threads.moderation_actor_id',
+        'content_revisions.created_actor_kind','content_revisions.created_actor_id',
+        'content_moderation_cases.opened_actor_kind','content_moderation_cases.opened_actor_id',
+        'content_moderation_cases.resolved_actor_kind','content_moderation_cases.resolved_actor_id',
+        'content_moderation_actions.actor_kind','content_moderation_actions.actor_ref_id',
+        'richtext_article_contents.updated_actor_kind','richtext_article_contents.updated_actor_id',
+        'asset_lifecycle_audits.actor_kind','asset_lifecycle_audits.actor_ref_id',
+        'user_spaces.disabled_actor_kind','user_spaces.disabled_actor_id',
+        'user_storage_quotas.updated_actor_kind','user_storage_quotas.updated_actor_id',
         'category_thread_type_policies.category_id', 'category_thread_type_policies.thread_type',
         'category_thread_type_policies.enabled',
         'mutual_aid_details.thread_id', 'mutual_aid_details.aid_type', 'mutual_aid_details.aid_status',
@@ -100,6 +115,19 @@ BEGIN
 
     SELECT string_agg(expected, ', ' ORDER BY expected) INTO missing
     FROM unnest(ARRAY[
+        'chk_threads_moderation_actor_domain',
+        'chk_content_revisions_created_actor_domain',
+        'chk_content_moderation_cases_opened_actor_domain',
+        'chk_content_moderation_cases_resolved_actor_domain',
+        'chk_content_moderation_actions_actor_ref_domain',
+        'chk_richtext_article_contents_updated_actor_domain',
+        'chk_asset_lifecycle_audits_actor_ref_domain',
+        'chk_user_spaces_disabled_actor_domain',
+        'chk_user_storage_quotas_updated_actor_domain',
+		'chk_user_spaces_facts_version','chk_user_space_style_snapshots_facts_version',
+        'chk_posts_facts_version',
+        'chk_richtext_article_facts_version','chk_user_assets_facts_version','chk_richtext_article_attachments_facts_version','chk_posts_deleted_actor_domain',
+        'chk_roles_facts_version','chk_user_roles_facts_version','chk_role_permissions_facts_version','chk_permission_definitions_facts_version',
         'chk_users_status', 'chk_users_auth_version', 'chk_accounts_identifier_normalized',
         'chk_accounts_verification_state', 'chk_accounts_credential_version',
         'chk_identity_admin_account_status', 'chk_identity_admin_account_version',
@@ -163,7 +191,7 @@ BEGIN
         'chk_plugin_capability_code', 'chk_plugin_admin_grants_status', 'chk_plugin_user_consents_status',
         'chk_plugin_delegations_status', 'chk_plugin_secret_values_payload', 'chk_plugin_authorization_outcome',
         'chk_plugin_configurations_definition_version', 'chk_plugin_configurations_revision',
-        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs'
+        'chk_plugin_configurations_values', 'chk_plugin_configurations_secret_refs', 'chk_threads_facts_version', 'chk_admin_permission_facts_version'
     ]) expected
     WHERE NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = expected AND convalidated
@@ -265,6 +293,79 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'plugin publication and delegation revocation guards are missing or disabled';
     END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = 'public.threads'::regclass AND attname = 'facts_version'
+          AND attnotnull AND atttypid = 'bigint'::regtype AND NOT attisdropped
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_sequence
+        WHERE seqrelid = to_regclass('public.thread_facts_version_seq')
+          AND NOT seqcycle AND seqincrement = 1 AND seqtypid = 'bigint'::regtype
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.threads'::regclass AND tgname = 'trg_threads_facts_version'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A') AND tgtype = 23
+          AND tgfoid = to_regprocedure('public.advance_thread_facts_version()')
+    ) THEN
+        RAISE EXCEPTION 'thread facts version column, allocation sequence or write guard is missing or disabled';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = 'public.admin_role_permissions'::regclass AND attname = 'facts_version'
+          AND attnotnull AND atttypid = 'bigint'::regtype AND NOT attisdropped
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_sequence
+        WHERE seqrelid = to_regclass('public.admin_permission_facts_version_seq')
+          AND NOT seqcycle AND seqincrement = 1 AND seqtypid = 'bigint'::regtype
+    ) OR NOT EXISTS (
+        SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'public.admin_role_permissions'::regclass AND tgname = 'trg_admin_permission_facts_version'
+          AND NOT tgisinternal AND tgenabled IN ('O', 'A') AND tgtype = 23
+          AND tgfoid = to_regprocedure('public.advance_admin_permission_facts_version()')
+    ) THEN
+        RAISE EXCEPTION 'admin permission facts column, allocation sequence or write guard is missing or disabled';
+    END IF;
+
+    IF NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.posts'::regclass AND attname='facts_version' AND attnotnull AND atttypid='bigint'::regtype AND NOT attisdropped)
+        OR NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.posts'::regclass AND attname='deleted_actor_kind' AND attnotnull AND atttypid='varchar'::regtype AND atttypmod=20 AND NOT attisdropped)
+        OR NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.posts'::regclass AND attname='deleted_actor_id' AND attnotnull AND atttypid='varchar'::regtype AND atttypmod=132 AND NOT attisdropped)
+        OR NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.post_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1)
+        OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.posts'::regclass AND tgname='trg_posts_facts_version' AND NOT tgisinternal AND tgenabled IN('O','A') AND tgtype=23 AND tgfoid=to_regprocedure('public.advance_post_facts_version()')) THEN
+        RAISE EXCEPTION 'post authority facts or deletion actor guards missing or disabled';
+    END IF;
+
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.user_scope_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
+       (SELECT count(*) FROM (VALUES ('public.roles','trg_roles_user_scope_facts_version'),('public.user_roles','trg_user_roles_user_scope_facts_version'),('public.role_permissions','trg_role_permissions_user_scope_facts_version'),('public.permission_definitions','trg_permission_definitions_user_scope_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_user_scope_facts_version()'))<>4 THEN RAISE EXCEPTION 'missing managed User scoped execution facts guard'; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.richtext_asset_binding_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
+       (SELECT count(*) FROM (VALUES ('public.user_assets','trg_user_assets_richtext_facts_version'),('public.richtext_article_attachments','trg_article_attachments_richtext_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_richtext_asset_binding_facts_version()'))<>2 THEN RAISE EXCEPTION 'missing managed RichText asset/binding facts guard'; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.personal_space_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
+       (SELECT count(*) FROM (VALUES ('public.user_spaces','trg_user_spaces_facts_version'),('public.user_space_style_snapshots','trg_space_style_snapshots_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_personal_space_facts_version()'))<>2 THEN RAISE EXCEPTION 'missing managed Personal Space facts guard'; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.storage_quota_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.user_storage_quotas'::regclass AND tgname='trg_user_storage_quotas_facts_version' AND NOT tgisinternal AND tgenabled IN('O','A') AND tgtype=23 AND tgfoid=to_regprocedure('public.advance_storage_quota_facts_version()')) THEN RAISE EXCEPTION 'missing managed storage quota facts guard'; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.article_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.richtext_article_contents'::regclass AND tgname='trg_article_facts_version' AND NOT tgisinternal AND tgenabled IN('O','A') AND tgtype=23 AND tgfoid=to_regprocedure('public.advance_article_facts_version()')) THEN RAISE EXCEPTION 'missing managed Article facts guard'; END IF;
+
+    FOR actor_guard IN SELECT * FROM (VALUES
+        ('threads','moderation_actor_kind','moderation_actor_id','trg_01_threads_moderation_actor_actor'),
+        ('content_revisions','created_actor_kind','created_actor_id','trg_01_content_revisions_created_actor_actor'),
+        ('content_moderation_cases','opened_actor_kind','opened_actor_id','trg_01_content_moderation_cases_opened_actor_actor'),
+        ('content_moderation_cases','resolved_actor_kind','resolved_actor_id','trg_01_content_moderation_cases_resolved_actor_actor'),
+        ('content_moderation_actions','actor_kind','actor_ref_id','trg_01_content_moderation_actions_actor_ref_actor'),
+        ('richtext_article_contents','updated_actor_kind','updated_actor_id','trg_01_richtext_article_contents_updated_actor_actor'),
+        ('asset_lifecycle_audits','actor_kind','actor_ref_id','trg_01_asset_lifecycle_audits_actor_ref_actor'),
+        ('user_spaces','disabled_actor_kind','disabled_actor_id','trg_01_user_spaces_disabled_actor_actor'),
+        ('user_storage_quotas','updated_actor_kind','updated_actor_id','trg_01_user_storage_quotas_updated_actor_actor')
+    ) AS guards(table_name,kind_column,id_column,trigger_name) LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.'||actor_guard.table_name)
+            AND attname=actor_guard.kind_column AND attnotnull AND atttypid='varchar'::regtype AND atttypmod=20 AND NOT attisdropped)
+            OR NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.'||actor_guard.table_name)
+            AND attname=actor_guard.id_column AND attnotnull AND atttypid='varchar'::regtype AND atttypmod=132 AND NOT attisdropped)
+            OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=to_regclass('public.'||actor_guard.table_name)
+            AND tgname=actor_guard.trigger_name AND NOT tgisinternal AND tgenabled IN ('O','A') AND tgtype=23
+            AND tgfoid=to_regprocedure('public.sync_business_actor_pair()')) THEN
+            RAISE EXCEPTION 'business actor domain columns or legacy provenance guard missing/disabled: %',actor_guard.table_name;
+        END IF;
+    END LOOP;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
     INTO missing

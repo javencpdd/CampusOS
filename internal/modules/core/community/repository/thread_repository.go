@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -14,6 +14,9 @@ import (
 
 var ErrThreadNotFound = errors.New("thread not found")
 var ErrThreadRevisionConflict = errors.New("thread revision conflict")
+var ErrThreadFactsVersionExhausted = errors.New("thread facts version exhausted")
+var ErrThreadPaginationOverflow = errors.New("thread pagination offset overflow")
+var ErrThreadOwnerListInvalid = errors.New("thread owner list input invalid")
 
 // ThreadRepository 帖子仓储接口
 type ThreadRepository interface {
@@ -35,10 +38,31 @@ type GovernedThreadRepository interface {
 	PurgeIfRevision(context.Context, string, int) error
 }
 
+// PublicThreadSnapshotRepository atomically rechecks current public facts and
+// returns their matching content snapshot. An optional view increment belongs
+// to the same operation, so it can never return a newly private body.
+type PublicThreadSnapshotRepository interface {
+	RecheckPublicThread(context.Context, string, int64, bool) (*domain.Thread, error)
+}
+
+// OwnerThreadSnapshotRepository returns the matching owner's current content
+// without changing view counters. Ownership, version and explicit states are
+// checked together; legacy state defaults cannot authorize an owner read.
+type OwnerThreadSnapshotRepository interface {
+	RecheckOwnerThread(context.Context, string, string, int64) (*domain.Thread, error)
+}
+
+// OwnerThreadListSnapshotRepository supplies an owner's active raw-state page
+// and total from one snapshot. The service still owns Policy and session checks.
+type OwnerThreadListSnapshotRepository interface {
+	ListOwnerThreadSnapshot(context.Context, string, domain.ThreadListFilter) ([]*domain.Thread, int64, error)
+}
+
 // MemoryThreadRepository 内存帖子仓储（Demo 用）
 type MemoryThreadRepository struct {
-	mu      sync.RWMutex
-	threads map[string]*domain.Thread
+	mu             sync.RWMutex
+	threads        map[string]*domain.Thread
+	versionCounter int64
 }
 
 // NewMemoryThreadRepository 创建内存帖子仓储
@@ -54,31 +78,40 @@ func NewMemoryThreadRepository() *MemoryThreadRepository {
 func (r *MemoryThreadRepository) Snapshot() any {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	payload, err := json.Marshal(r.threads)
-	if err != nil {
-		return []byte(nil)
+	items := make(map[string]*domain.Thread, len(r.threads))
+	for id, thread := range r.threads {
+		items[id] = cloneThread(thread)
 	}
-	return append([]byte(nil), payload...)
+	return items
 }
 
 func (r *MemoryThreadRepository) Restore(value any) {
-	payload, ok := value.([]byte)
-	if !ok || len(payload) == 0 {
-		return
-	}
-	items := make(map[string]*domain.Thread)
-	if err := json.Unmarshal(payload, &items); err != nil {
+	items, ok := value.(map[string]*domain.Thread)
+	if !ok {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.threads = items
+	r.threads = make(map[string]*domain.Thread, len(items))
+	for id, thread := range items {
+		r.threads[id] = cloneThread(thread)
+		if thread.FactsVersion > r.versionCounter {
+			r.versionCounter = thread.FactsVersion
+		}
+	}
+	// Like a PostgreSQL sequence, the allocation counter is never rolled back.
 }
 
 func (r *MemoryThreadRepository) Create(_ context.Context, thread *domain.Thread) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	version, err := r.nextFactsVersionLocked()
+	if err != nil {
+		return err
+	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
+	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
 }
@@ -87,10 +120,62 @@ func (r *MemoryThreadRepository) GetByID(_ context.Context, id string) (*domain.
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	thread, ok := r.threads[id]
-	if !ok {
+	if !ok || thread.DeletedAt != nil {
 		return nil, ErrThreadNotFound
 	}
 	return cloneThread(thread), nil
+}
+
+func (r *MemoryThreadRepository) RecheckPublicThread(_ context.Context, id string, expectedVersion int64, incrementView bool) (*domain.Thread, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	thread, ok := r.threads[id]
+	if !ok || thread.DeletedAt != nil || expectedVersion < 1 || thread.FactsVersion != expectedVersion ||
+		thread.PublicationStatus != domain.PublicationStatusPublished ||
+		thread.ModerationStatus != domain.ModerationStatusClear ||
+		thread.DeletionStatus != domain.DeletionStatusActive {
+		return nil, ErrThreadNotFound
+	}
+	if incrementView {
+		thread.ViewCount++
+	}
+	return cloneThread(thread), nil
+}
+
+func (r *MemoryThreadRepository) RecheckOwnerThread(_ context.Context, id, ownerID string, expectedVersion int64) (*domain.Thread, error) {
+	if expectedVersion < 1 || ownerID == "" {
+		return nil, ErrThreadNotFound
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	thread, ok := r.threads[id]
+	if !ok || thread == nil || thread.DeletedAt != nil || thread.ID != id || thread.AuthorID != ownerID || thread.FactsVersion != expectedVersion ||
+		!ownerThreadSnapshotStateValid(thread) {
+		return nil, ErrThreadNotFound
+	}
+	return cloneThread(thread), nil
+}
+
+func ownerThreadSnapshotStateValid(thread *domain.Thread) bool {
+	switch thread.PublicationStatus {
+	case domain.PublicationStatusDraft, domain.PublicationStatusPublished, domain.PublicationStatusPrivate:
+	default:
+		return false
+	}
+	switch thread.ModerationStatus {
+	case domain.ModerationStatusClear, domain.ModerationStatusPending, domain.ModerationStatusRejected, domain.ModerationStatusTakenDown:
+	default:
+		return false
+	}
+	return thread.DeletionStatus == domain.DeletionStatusActive || thread.DeletionStatus == domain.DeletionStatusTrashed
+}
+
+func (r *MemoryThreadRepository) nextFactsVersionLocked() (int64, error) {
+	if r.versionCounter == math.MaxInt64 {
+		return 0, ErrThreadFactsVersionExhausted
+	}
+	r.versionCounter++
+	return r.versionCounter, nil
 }
 
 func (r *MemoryThreadRepository) IncrementViewCount(_ context.Context, id string) (*domain.Thread, error) {
@@ -127,7 +212,13 @@ func (r *MemoryThreadRepository) Update(_ context.Context, thread *domain.Thread
 	if _, ok := r.threads[thread.ID]; !ok {
 		return ErrThreadNotFound
 	}
+	version, err := r.nextFactsVersionLocked()
+	if err != nil {
+		return err
+	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
+	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
 }
@@ -142,7 +233,13 @@ func (r *MemoryThreadRepository) UpdateIfRevision(_ context.Context, thread *dom
 	if current.CurrentRevision != expected {
 		return ErrThreadRevisionConflict
 	}
+	version, err := r.nextFactsVersionLocked()
+	if err != nil {
+		return err
+	}
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
+	thread.FactsVersion = version
 	r.threads[thread.ID] = cloneThread(thread)
 	return nil
 }
@@ -153,11 +250,17 @@ func (r *MemoryThreadRepository) Delete(_ context.Context, id string) error {
 	if _, ok := r.threads[id]; !ok {
 		return ErrThreadNotFound
 	}
+	version, err := r.nextFactsVersionLocked()
+	if err != nil {
+		return err
+	}
 	thread := r.threads[id]
 	thread.NormalizeContentState()
+	thread.NormalizeModerationActor()
 	thread.DeletionStatus = domain.DeletionStatusTrashed
 	thread.SyncLegacyStatus()
 	thread.UpdatedAt = time.Now().UTC()
+	thread.FactsVersion = version
 	r.threads[id] = cloneThread(thread)
 	return nil
 }
@@ -189,12 +292,21 @@ func (r *MemoryThreadRepository) PurgeIfRevision(_ context.Context, id string, e
 func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadListFilter) ([]*domain.Thread, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	return r.listThreadSnapshotLocked(filter, false)
+}
+
+func (r *MemoryThreadRepository) listThreadSnapshotLocked(filter domain.ThreadListFilter, ownerOnly bool) ([]*domain.Thread, int64, error) {
 
 	// 过滤
 	var filtered []*domain.Thread
 	for _, t := range r.threads {
+		if t == nil || t.DeletedAt != nil {
+			continue
+		}
+		if ownerOnly && (t == nil || t.DeletionStatus != domain.DeletionStatusActive || !ownerThreadSnapshotStateValid(t)) {
+			continue
+		}
 		t = cloneThread(t)
-		t.NormalizeContentState()
 		if filter.CategoryID != "" && t.CategoryID != filter.CategoryID {
 			continue
 		}
@@ -240,30 +352,42 @@ func (r *MemoryThreadRepository) List(_ context.Context, filter domain.ThreadLis
 		if filtered[i].IsPinned != filtered[j].IsPinned {
 			return filtered[i].IsPinned
 		}
+		if filtered[i].CreatedAt.Equal(filtered[j].CreatedAt) {
+			return filtered[i].ID > filtered[j].ID
+		}
 		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
 	})
 
 	total := int64(len(filtered))
 
-	// 分页
-	page := filter.Page
-	pageSize := filter.PageSize
+	pageSize, start, err := threadListPagination(filter)
+	if err != nil {
+		return nil, 0, err
+	}
+	if start >= len(filtered) {
+		return []*domain.Thread{}, total, nil
+	}
+	end := len(filtered)
+	if pageSize < len(filtered)-start {
+		end = start + pageSize
+	}
+
+	return filtered[start:end], total, nil
+}
+
+func threadListPagination(filter domain.ThreadListFilter) (pageSize, offset int, err error) {
+	page, pageSize := filter.Page, filter.PageSize
 	if page < 1 {
 		page = 1
 	}
 	if pageSize < 1 {
 		pageSize = 20
 	}
-	start := (page - 1) * pageSize
-	if start >= len(filtered) {
-		return []*domain.Thread{}, total, nil
+	maxInt := int(^uint(0) >> 1)
+	if page-1 > maxInt/pageSize {
+		return 0, 0, ErrThreadPaginationOverflow
 	}
-	end := start + pageSize
-	if end > len(filtered) {
-		end = len(filtered)
-	}
-
-	return filtered[start:end], total, nil
+	return pageSize, (page - 1) * pageSize, nil
 }
 
 func containsTag(tags []string, wanted string) bool {
@@ -302,6 +426,10 @@ func cloneThread(thread *domain.Thread) *domain.Thread {
 	if thread.ModerationAt != nil {
 		value := *thread.ModerationAt
 		clone.ModerationAt = &value
+	}
+	if thread.DeletedAt != nil {
+		value := thread.DeletedAt.UTC()
+		clone.DeletedAt = &value
 	}
 	return &clone
 }

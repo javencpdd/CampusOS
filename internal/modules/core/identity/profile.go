@@ -18,6 +18,9 @@ const (
 	portAdminAccountRepository    = "identity.adapter.admin-account-repository"
 	portMFARepository             = "identity.adapter.mfa-repository"
 	portDelegationRepository      = "identity.adapter.delegation-repository"
+	portAdminSessionRepository    = "identity.adapter.admin-session-repository"
+	portAdminSecurityRepository   = "identity.adapter.admin-security-repository"
+	portAdminDomainRepository     = "identity.adapter.admin-domain-repository"
 )
 
 // BindPostgreSQLAdapters binds only Identity's repository adapters. It is
@@ -37,6 +40,9 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 		repository.NewPgRecoveryCaseRepository(pool),
 		repository.NewPgMFARepository(pool),
 		repository.NewPgDelegationRepository(pool),
+		repository.NewPgAdminSessionRepository(pool),
+		repository.NewPgAdminSecurityRepository(pool),
+		repository.NewPgAdminDomainRepository(pool),
 	)
 }
 
@@ -55,6 +61,9 @@ func BindMemoryAdapters(app *platformmodule.AppContext) error {
 		repository.NewMemoryRecoveryCaseRepository(),
 		repository.NewMemoryMFARepository(),
 		repository.NewMemoryDelegationRepository(),
+		repository.NewMemoryAdminSessionRepository(),
+		repository.NewMemoryAdminSecurityRepository(),
+		repository.NewMemoryAdminDomainRepository(),
 	)
 }
 
@@ -69,6 +78,9 @@ func bindAdapters(
 	recoveryCases repository.RecoveryCaseRepository,
 	mfa repository.MFARepository,
 	delegations repository.DelegationRepository,
+	adminSessions repository.AdminSessionRepository,
+	adminSecurity repository.AdminSecurityRepository,
+	adminDomains repository.AdminDomainRepository,
 ) error {
 	if err := app.Provide(portUserRepository, users); err != nil {
 		return err
@@ -94,5 +106,14 @@ func bindAdapters(
 	if err := app.Provide(portMFARepository, mfa); err != nil {
 		return err
 	}
-	return app.Provide(portDelegationRepository, delegations)
+	if err := app.Provide(portDelegationRepository, delegations); err != nil {
+		return err
+	}
+	if err := app.Provide(portAdminSessionRepository, adminSessions); err != nil {
+		return err
+	}
+	if err := app.Provide(portAdminSecurityRepository, adminSecurity); err != nil {
+		return err
+	}
+	return app.Provide(portAdminDomainRepository, adminDomains)
 }

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/platform/transaction"
 	"github.com/campusos/CampusOS/pkg/idgen"
 	"github.com/jackc/pgx/v5"
@@ -16,6 +18,7 @@ import (
 )
 
 type Store interface {
+	AssetBindingAuthorityReader
 	CreateArticle(ctx context.Context, article *Article) error
 	UpdateArticle(ctx context.Context, article *Article) error
 	GetArticleByThreadID(ctx context.Context, threadID string) (*Article, error)
@@ -82,20 +85,26 @@ func (s *PgStore) db(ctx context.Context) transaction.Executor {
 }
 
 func (s *PgStore) CreateArticle(ctx context.Context, article *Article) error {
+	normalizeArticleActor(article)
 	contentJSON := normalizeJSON(article.ContentJSON)
-	_, err := s.db(ctx).Exec(ctx, `INSERT INTO richtext_article_contents (
+	err := s.db(ctx).QueryRow(ctx, `INSERT INTO richtext_article_contents (
 			id, thread_id, title, summary, cover_url, content_html, content_json, sanitized_html,
-			status, created_by, updated_by, published_at, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, NULLIF($11, '')::bigint, $12, $13, $14)`,
+			status, created_by, updated_by, published_at, created_at, updated_at, updated_actor_kind, updated_actor_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, NULLIF($11, '')::bigint, $12, $13, $14, $15, $16) RETURNING facts_version`,
 		article.ID, article.ThreadID, article.Title, article.Summary, article.CoverURL,
 		article.ContentHTML, string(contentJSON), article.SanitizedHTML, article.Status,
-		article.CreatedBy, article.UpdatedBy, article.PublishedAt, article.CreatedAt, article.UpdatedAt)
+		article.CreatedBy, article.UpdatedBy, article.PublishedAt, article.CreatedAt, article.UpdatedAt, article.UpdatedActorKind, article.UpdatedActorID).Scan(&article.FactsVersion)
 	return err
 }
 
 func (s *PgStore) UpdateArticle(ctx context.Context, article *Article) error {
+	return s.updateArticle(ctx, article, nil)
+}
+
+func (s *PgStore) updateArticle(ctx context.Context, article *Article, expected *int64) error {
+	normalizeArticleActor(article)
 	contentJSON := normalizeJSON(article.ContentJSON)
-	tag, err := s.db(ctx).Exec(ctx, `UPDATE richtext_article_contents SET
+	query := `UPDATE richtext_article_contents SET
 			title=$1,
 			summary=$2,
 			cover_url=$3,
@@ -105,38 +114,54 @@ func (s *PgStore) UpdateArticle(ctx context.Context, article *Article) error {
 			status=$7,
 			updated_by=NULLIF($8, '')::bigint,
 			published_at=$9,
-			updated_at=$10
-		WHERE thread_id=$11 AND deleted_at IS NULL`,
+			updated_at=$10,
+			updated_actor_kind=$12,
+			updated_actor_id=$13
+		WHERE thread_id=$11 AND deleted_at IS NULL`
+	args := []any{
 		article.Title, article.Summary, article.CoverURL, article.ContentHTML,
 		string(contentJSON), article.SanitizedHTML, article.Status, article.UpdatedBy,
-		article.PublishedAt, article.UpdatedAt, article.ThreadID)
+		article.PublishedAt, article.UpdatedAt, article.ThreadID, article.UpdatedActorKind, article.UpdatedActorID}
+	if expected != nil {
+		query += " AND facts_version=$14"
+		args = append(args, *expected)
+	}
+	query += " RETURNING facts_version"
+	err := s.db(ctx).QueryRow(ctx, query, args...).Scan(&article.FactsVersion)
+	if err == pgx.ErrNoRows {
+		if expected != nil {
+			return ErrArticleFactsConflict
+		}
+		return ErrArticleNotFound
+	}
 	if err != nil {
 		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrArticleNotFound
 	}
 	return nil
 }
 
 func (s *PgStore) GetArticleByThreadID(ctx context.Context, threadID string) (*Article, error) {
-	return s.getArticle(ctx, `thread_id=$1 AND deleted_at IS NULL`, threadID)
+	return s.getArticle(ctx, `thread_id=$1 AND deleted_at IS NULL`, threadID, false)
 }
 
 func (s *PgStore) GetArticleByContentID(ctx context.Context, articleID string) (*Article, error) {
-	return s.getArticle(ctx, `id=$1 AND deleted_at IS NULL`, articleID)
+	return s.getArticle(ctx, `id=$1 AND deleted_at IS NULL`, articleID, false)
 }
 
-func (s *PgStore) getArticle(ctx context.Context, where string, value string) (*Article, error) {
-	row := s.db(ctx).QueryRow(ctx, `SELECT id, thread_id, title, summary, cover_url, content_html, content_json,
-			sanitized_html, status, created_by, COALESCE(updated_by::text, ''), published_at, created_at, updated_at
+func (s *PgStore) getArticle(ctx context.Context, where string, value string, lock bool) (*Article, error) {
+	query := `SELECT id, thread_id, title, summary, cover_url, content_html, content_json,
+			sanitized_html, status, created_by, COALESCE(updated_by::text, ''), published_at, created_at, updated_at, facts_version, updated_actor_kind, updated_actor_id
 		FROM richtext_article_contents
-		WHERE `+where, value)
+		WHERE ` + where
+	if lock {
+		query += " FOR UPDATE"
+	}
+	row := s.db(ctx).QueryRow(ctx, query, value)
 	article := &Article{}
 	var contentJSON []byte
 	err := row.Scan(&article.ID, &article.ThreadID, &article.Title, &article.Summary, &article.CoverURL,
 		&article.ContentHTML, &contentJSON, &article.SanitizedHTML, &article.Status, &article.CreatedBy,
-		&article.UpdatedBy, &article.PublishedAt, &article.CreatedAt, &article.UpdatedAt)
+		&article.UpdatedBy, &article.PublishedAt, &article.CreatedAt, &article.UpdatedAt, &article.FactsVersion, &article.UpdatedActorKind, &article.UpdatedActorID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrArticleNotFound
@@ -283,19 +308,26 @@ func (s *PgStore) TransitionUserAsset(ctx context.Context, assetID, ownerID stri
 	if audit.ActorType == "" {
 		audit.ActorType = "system"
 	}
+	legacyID, actorKind, actorRef := audit.ActorID, "legacy_unknown", audit.ActorID
+	if audit.ActorType == "user" && audit.ActorID != "" {
+		actorKind = "user"
+	}
+	if audit.ActorType == "admin" {
+		legacyID, actorKind = "", "admin"
+	}
 	tag, err := s.db(ctx).Exec(ctx, `WITH updated AS (
 		UPDATE user_assets SET
-			status=$1,
+			status=$1::varchar,
 			version=version+1,
 			updated_at=$2,
-			trashed_at=CASE WHEN $1='trashed' THEN $2 WHEN $1='active' THEN NULL ELSE trashed_at END,
-			deleted_at=CASE WHEN $1='deleted' THEN $2 ELSE deleted_at END
+			trashed_at=CASE WHEN $1::varchar='trashed' THEN $2 WHEN $1::varchar='active' THEN NULL ELSE trashed_at END,
+			deleted_at=CASE WHEN $1::varchar='deleted' THEN $2 ELSE deleted_at END
 		WHERE id=$3 AND owner_user_id=$4 AND status = ANY($5)
 		RETURNING id
 	)
-	INSERT INTO asset_lifecycle_audits (id, asset_id, actor_user_id, actor_type, action, reason, created_at)
-	SELECT $6, id, NULLIF($7, '')::bigint, $8, $9, NULLIF($10, ''), $2 FROM updated`,
-		status, audit.CreatedAt, assetID, ownerID, from, audit.ID, audit.ActorID, audit.ActorType, audit.Action, audit.Reason)
+	INSERT INTO asset_lifecycle_audits (id, asset_id, actor_user_id, actor_type, action, reason, created_at, actor_kind, actor_ref_id)
+	SELECT $6, id, NULLIF($7, '')::bigint, $8, $9, NULLIF($10, ''), $2, $11, $12 FROM updated`,
+		status, audit.CreatedAt, assetID, ownerID, from, audit.ID, legacyID, audit.ActorType, audit.Action, audit.Reason, actorKind, actorRef)
 	if err != nil {
 		return err
 	}
@@ -547,16 +579,23 @@ func (s *PgStore) MarkInvocationOpened(ctx context.Context, invocationID, userID
 }
 
 type MemoryStore struct {
-	mu          sync.RWMutex
-	articles    map[string]*Article
-	assets      map[string]*Asset
-	userAssets  map[string]*UserAsset
-	attachments map[string]*ArticleAttachment
-	invocations map[string]*PluginUIInvocation
-	audits      []AssetLifecycleAudit
+	assetBindingCounter   int64
+	assetFacts            map[string]int64
+	bindingFacts          map[string]int64
+	articleVersionCounter int64
+	mu                    sync.RWMutex
+	articles              map[string]*Article
+	assets                map[string]*Asset
+	userAssets            map[string]*UserAsset
+	attachments           map[string]*ArticleAttachment
+	invocations           map[string]*PluginUIInvocation
+	audits                []AssetLifecycleAudit
 }
 
 type memoryStoreSnapshot struct {
+	AssetFacts        map[string]int64               `json:"asset_facts"`
+	BindingFacts      map[string]int64               `json:"binding_facts"`
+	ArticleFacts      map[string]articleHiddenFacts  `json:"article_facts"`
 	Articles          map[string]*Article            `json:"articles"`
 	Assets            map[string]*Asset              `json:"assets"`
 	UserAssets        map[string]*UserAsset          `json:"user_assets"`
@@ -568,7 +607,8 @@ type memoryStoreSnapshot struct {
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		articles:    make(map[string]*Article),
+		assetFacts:   make(map[string]int64),
+		bindingFacts: make(map[string]int64), articles: make(map[string]*Article),
 		assets:      make(map[string]*Asset),
 		userAssets:  make(map[string]*UserAsset),
 		attachments: make(map[string]*ArticleAttachment),
@@ -582,10 +622,14 @@ func (s *MemoryStore) Snapshot() any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	digests := make(map[string]string, len(s.invocations))
+	facts := make(map[string]articleHiddenFacts, len(s.articles))
+	for id, a := range s.articles {
+		facts[id] = articleHiddenFacts{Version: a.FactsVersion, Kind: a.UpdatedActorKind, ID: a.UpdatedActorID}
+	}
 	for id, v := range s.invocations {
 		digests[id] = v.ContextDigest
 	}
-	payload, err := json.Marshal(memoryStoreSnapshot{Articles: s.articles, Assets: s.assets, UserAssets: s.userAssets, Attachments: s.attachments, Invocations: s.invocations, InvocationDigests: digests, Audits: s.audits})
+	payload, err := json.Marshal(memoryStoreSnapshot{AssetFacts: s.assetFacts, BindingFacts: s.bindingFacts, Articles: s.articles, ArticleFacts: facts, Assets: s.assets, UserAssets: s.userAssets, Attachments: s.attachments, Invocations: s.invocations, InvocationDigests: digests, Audits: s.audits})
 	if err != nil {
 		return []byte(nil)
 	}
@@ -619,9 +663,18 @@ func (s *MemoryStore) Restore(value any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.articles = snapshot.Articles
+	for id, a := range s.articles {
+		f := snapshot.ArticleFacts[id]
+		a.FactsVersion, a.UpdatedActorKind, a.UpdatedActorID = f.Version, f.Kind, f.ID
+		if f.Version > s.articleVersionCounter {
+			s.articleVersionCounter = f.Version
+		}
+	}
 	s.assets = snapshot.Assets
 	s.userAssets = snapshot.UserAssets
 	s.attachments = snapshot.Attachments
+	s.assetFacts, s.bindingFacts = snapshot.AssetFacts, snapshot.BindingFacts
+	s.restoreAssetBindingVersions()
 	s.invocations = snapshot.Invocations
 	for id, v := range s.invocations {
 		v.ContextDigest = snapshot.InvocationDigests[id]
@@ -632,6 +685,12 @@ func (s *MemoryStore) Restore(value any) {
 func (s *MemoryStore) CreateArticle(_ context.Context, article *Article) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	version, err := s.nextArticleVersion()
+	if err != nil {
+		return err
+	}
+	normalizeArticleActor(article)
+	article.FactsVersion = version
 	s.articles[article.ThreadID] = cloneArticle(article)
 	return nil
 }
@@ -639,11 +698,11 @@ func (s *MemoryStore) CreateArticle(_ context.Context, article *Article) error {
 func (s *MemoryStore) UpdateArticle(_ context.Context, article *Article) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.articles[article.ThreadID]; !ok {
+	current, ok := s.articles[article.ThreadID]
+	if !ok {
 		return ErrArticleNotFound
 	}
-	s.articles[article.ThreadID] = cloneArticle(article)
-	return nil
+	return s.updateArticleLocked(article, current)
 }
 
 func (s *MemoryStore) GetArticleByThreadID(_ context.Context, threadID string) (*Article, error) {
@@ -722,7 +781,12 @@ func (s *MemoryStore) CreateUserAsset(_ context.Context, asset *UserAsset) error
 			return ErrAssetInvalid
 		}
 	}
+	versions, err := s.nextAssetBindingVersions(1)
+	if err != nil {
+		return err
+	}
 	s.userAssets[asset.ID] = cloneUserAsset(asset)
+	s.assetFacts[asset.ID] = versions[0]
 	return nil
 }
 
@@ -768,8 +832,16 @@ func (s *MemoryStore) TransitionUserAsset(_ context.Context, assetID, ownerID st
 	if !ok || item.OwnerID != ownerID || !containsAssetStatus(from, item.Status) {
 		return ErrAssetNotFound
 	}
+	if item.Version == math.MaxInt64 {
+		return ErrAssetBindingFactsUnavailable
+	}
+	versions, err := s.nextAssetBindingVersions(1)
+	if err != nil {
+		return err
+	}
 	now := time.Now().UTC()
 	item.Status, item.Version, item.UpdatedAt = status, item.Version+1, now
+	s.assetFacts[assetID] = versions[0]
 	if status == AssetStatusTrashed {
 		item.TrashedAt = &now
 	}
@@ -806,6 +878,7 @@ func (s *MemoryStore) DeleteUserAsset(_ context.Context, assetID, ownerID string
 		}
 	}
 	delete(s.userAssets, assetID)
+	delete(s.assetFacts, assetID)
 	return nil
 }
 
@@ -856,8 +929,13 @@ func (s *MemoryStore) CreateAttachment(_ context.Context, attachment *ArticleAtt
 	if total+asset.SizeBytes > MaxArticleAttachmentTotalBytes {
 		return ErrAttachmentTotalSize
 	}
+	versions, err := s.nextAssetBindingVersions(1)
+	if err != nil {
+		return err
+	}
 	attachment.DisplayOrder = nextOrder
 	s.attachments[attachment.ID] = cloneAttachment(attachment)
+	s.bindingFacts[attachment.ID] = versions[0]
 	return nil
 }
 
@@ -909,6 +987,13 @@ func (s *MemoryStore) UpdateAttachmentDisplayName(_ context.Context, articleID, 
 	if !ok {
 		return ErrAttachmentNotFound
 	}
+	if item.DisplayName != displayName {
+		versions, err := s.nextAssetBindingVersions(1)
+		if err != nil {
+			return err
+		}
+		s.bindingFacts[attachmentID] = versions[0]
+	}
 	item.DisplayName = displayName
 	item.UpdatedAt = time.Now().UTC()
 	return nil
@@ -921,6 +1006,7 @@ func (s *MemoryStore) RemoveAttachment(_ context.Context, articleID, attachmentI
 		return ErrAttachmentNotFound
 	}
 	delete(s.attachments, attachmentID)
+	delete(s.bindingFacts, attachmentID)
 	for id, v := range s.invocations {
 		if v.ArticleContentID == articleID && v.AttachmentID == attachmentID {
 			delete(s.invocations, id)
@@ -935,15 +1021,41 @@ func (s *MemoryStore) ReorderAttachments(_ context.Context, articleID string, at
 	if len(attachmentIDs) == 0 {
 		return ErrAttachmentNotFound
 	}
-	if len(attachmentIDs) > 10 {
+	if len(attachmentIDs) > MaxArticleAttachmentCount {
 		return ErrAttachmentLimit
 	}
+	count := 0
+	for _, a := range s.attachments {
+		if a.ArticleContentID == articleID {
+			count++
+		}
+	}
+	if count != len(attachmentIDs) {
+		return ErrAttachmentNotFound
+	}
+	seen := map[string]bool{}
+	changed := []string{}
 	for order, id := range attachmentIDs {
 		item, ok := s.attachmentLocked(articleID, id)
-		if !ok {
+		if !ok || seen[id] {
 			return ErrAttachmentNotFound
 		}
-		item.DisplayOrder, item.UpdatedAt = order, time.Now().UTC()
+		seen[id] = true
+		if item.DisplayOrder != order {
+			changed = append(changed, id)
+		}
+	}
+	versions, err := s.nextAssetBindingVersions(len(changed))
+	if err != nil {
+		return err
+	}
+	for i, id := range changed {
+		s.bindingFacts[id] = versions[i]
+	}
+	now := time.Now().UTC()
+	for order, id := range attachmentIDs {
+		s.attachments[id].DisplayOrder = order
+		s.attachments[id].UpdatedAt = now
 	}
 	return nil
 }
@@ -1055,7 +1167,17 @@ func cloneArticle(article *Article) *Article {
 	}
 	clone := *article
 	clone.ContentJSON = append(json.RawMessage(nil), normalizeJSON(article.ContentJSON)...)
-	clone.Attachments = append([]ArticleAttachment(nil), article.Attachments...)
+	clone.Attachments = make([]ArticleAttachment, len(article.Attachments))
+	if article.Attachments == nil {
+		clone.Attachments = nil
+	}
+	for i := range article.Attachments {
+		clone.Attachments[i] = *cloneAttachment(&article.Attachments[i])
+	}
+	if article.PublishedAt != nil {
+		at := *article.PublishedAt
+		clone.PublishedAt = &at
+	}
 	clone.RenderHTML = RenderArticleHTML(clone.SanitizedHTML)
 	return &clone
 }
@@ -1110,4 +1232,17 @@ func cloneAsset(asset *Asset) *Asset {
 		clone.CreatedAt = time.Now().UTC()
 	}
 	return &clone
+}
+
+func (s *PgStore) LockArticleForAuthorCommand(ctx context.Context, id string) (*Article, error) {
+	if _, ok := transaction.FromContext(ctx); !ok {
+		return nil, communityport.ErrAuthorCommandUnavailable
+	}
+	return s.getArticle(ctx, `thread_id=$1 AND deleted_at IS NULL`, id, true)
+}
+func (s *MemoryStore) LockArticleForAuthorCommand(ctx context.Context, id string) (*Article, error) {
+	if !transaction.Active(ctx) {
+		return nil, communityport.ErrAuthorCommandUnavailable
+	}
+	return s.GetArticleByThreadID(ctx, id)
 }

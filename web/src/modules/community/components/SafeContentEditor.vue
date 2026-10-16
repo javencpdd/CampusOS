@@ -61,25 +61,26 @@
         @update:model-value="$emit('update:modelValue', $event)"
       />
       <div v-if="uploadedImages.length" class="image-preview-strip">
-        <el-image
+        <CheckedImage
           v-for="image in uploadedImages"
           :key="image.file_url"
           :src="image.file_url"
-          :preview-src-list="uploadedImages.map((item) => item.file_url)"
-          fit="cover"
-          preview-teleported
+          preview
+          alt="已上传正文图片"
         />
       </div>
     </template>
 
     <el-drawer v-model="previewVisible" title="正文预览" size="min(720px, 94vw)">
-      <article class="content-preview" v-html="previewHTML"></article>
+      <CheckedHTML class="content-preview" :html="previewHTML" />
     </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import CheckedHTML from '@/modules/content-editor/CheckedHTML.vue'
+import CheckedImage from '@/modules/content-editor/CheckedImage.vue'
 import { ElMessage } from 'element-plus'
 import { Picture, View } from '@element-plus/icons-vue'
 import { contentApi, type ContentImage } from '../content'

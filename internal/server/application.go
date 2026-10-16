@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/campusos/CampusOS/internal/modules/core/identity/portadapt"
 	"github.com/campusos/CampusOS/internal/plugin"
 	"github.com/campusos/CampusOS/internal/transport/httpapi"
 	"github.com/campusos/CampusOS/pkg/auth"
@@ -57,6 +58,9 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		Permissions:       s.identity.Permissions(),
 		AdminAccess:       s.identity.AdminAccess(),
 		AdminMFA:          s.identity.MFA(),
+		AdminJWT:          s.identity.AdminDomainJWT(),
+		AdminSessions:     portadapt.NewAdminDomainSessionVerifier(s.identity.AdminDomainSessions()),
+		AdminCodes:        portadapt.NewAdminCodeChecker(s.identity.AdminDomainLifecycle()),
 		Features:          s.features,
 		Feature:           s.featureHandler,
 		ModuleCatalog:     s.moduleCatalog,

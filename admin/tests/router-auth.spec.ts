@@ -1,40 +1,68 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import router, { adminAuthGuard } from "../src/router";
-import { clearAdminSession, getAdminAccessToken, setAdminAccessToken, setAdminRoleNames } from "../src/modules/identity/session";
-
-describe("Admin navigation and permission gates", () => {
+import {
+  clearAdminSession,
+  getAdminAccessToken,
+  registerAdminSessionRestorer,
+  setAdminAccessToken,
+  setCurrentAdminProfile,
+} from "../src/modules/identity/session";
+const target = {
+  meta: { requiresAuth: true, adminOnly: true },
+  fullPath: "/features",
+  path: "/features",
+} as never;
+const self = {
+  domain: "admin",
+  account: {
+    id: "adm.opaque",
+    username: "ops",
+    display_name: "Ops",
+    status: "active",
+  },
+  roles: [{ id: "custom", name: "只读盘点" }],
+  permission_codes: [],
+  authentication_strength: "password",
+  mfa_enrolled: false,
+  session_expires_at: new Date(Date.now() + 3600000).toISOString(),
+} as const;
+describe("Admin navigation current domain gates", () => {
   beforeEach(() => {
-    localStorage.clear();
     clearAdminSession();
+    registerAdminSessionRestorer(async () => false);
   });
-
-  it("redirects unauthenticated and non-admin users", async () => {
-    const unauthenticated = await adminAuthGuard(
-      { meta: { requiresAuth: true, adminOnly: true }, fullPath: "/features", path: "/features" } as never,
-      {} as never,
-    );
-    expect(unauthenticated).toEqual({ path: "/login", query: { redirect: "/features" } });
-
-    setAdminAccessToken("test-token");
-    setAdminRoleNames(["user"]);
-    const nonAdmin = await adminAuthGuard(
-      { meta: { requiresAuth: true, adminOnly: true }, fullPath: "/features", path: "/features" } as never,
-      {} as never,
-    );
+  it("rejects unauthenticated navigation and a cached token without current Admin proof", async () => {
+    expect(await adminAuthGuard(target, {} as never)).toEqual({
+      path: "/login",
+      query: { redirect: "/features" },
+    });
+    setAdminAccessToken("cached-token");
+    expect(await adminAuthGuard(target, {} as never)).toEqual({
+      path: "/login",
+      query: { redirect: "/features" },
+    });
     expect(getAdminAccessToken()).toBeNull();
-    expect(nonAdmin).toEqual({ path: "/login", query: { redirect: "/features" } });
   });
-
-  it("keeps built-in feature management behind the inherited admin gate", () => {
-    const resolved = router.resolve("/features");
-    expect(resolved.name).toBe("Features");
-    expect(resolved.meta.requiresAuth).toBe(true);
-    expect(resolved.meta.adminOnly).toBe(true);
-
-    const appearance = router.resolve("/appearance");
-    expect(appearance.name).toBe("Appearance");
-    expect(appearance.meta.requiresAuth).toBe(true);
-    expect(appearance.meta.adminOnly).toBe(true);
+  it("accepts current independent custom roles and rechecks on every navigation", async () => {
+    setAdminAccessToken("admin-token");
+    setCurrentAdminProfile(self as never);
+    const check = vi.fn().mockResolvedValue(true);
+    registerAdminSessionRestorer(check);
+    expect(await adminAuthGuard(target, {} as never)).toBe(true);
+    expect(await adminAuthGuard(target, {} as never)).toBe(true);
+    expect(check).toHaveBeenCalledTimes(2);
+    check.mockResolvedValueOnce(false);
+    expect(await adminAuthGuard(target, {} as never)).toEqual({
+      path: "/login",
+      query: { redirect: "/features" },
+    });
+  });
+  it("keeps feature and appearance routes behind the inherited current Admin gate", () => {
+    for (const path of ["/features", "/appearance"]) {
+      const r = router.resolve(path);
+      expect(r.meta.requiresAuth).toBe(true);
+      expect(r.meta.adminOnly).toBe(true);
+    }
   });
 });
