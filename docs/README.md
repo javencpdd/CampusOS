@@ -28,7 +28,7 @@
 | 后端模块或数据所有权 | [当前架构](architecture/当前架构概览.md)、[数据库 ER 图与关系说明](../migrations/er/current/CampusOS数据库实体关系说明.md)、[可靠命令与数据所有权](architecture/v0.11可靠命令事件与数据所有权.md) |
 | HTTP API | [API 与机器合同](api/README.md)、[接口约定](../docs-site/api/overview.md) |
 | Web/Admin 前端 | [官方完整入门](../docs-site/guide/getting-started.md)、[权限配置](../docs-site/guide/permission-configuration.md) |
-| External Plugin | [插件体系](../docs-site/plugins/overview.md)、[PDF Viewer v4 实战教程](../docs-site/plugins/pdf-viewer-tutorial.md) |
+| External Plugin | [插件体系](../docs-site/plugins/overview.md)、[插件 v5 操作](help/插件v5包与签名操作说明.md)、[UI Host / Bridge 合同](api/v1.2插件UI宿主与Bridge合同.md) |
 | Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v0.13风格包双端交付标准.md) |
 | 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v0.11权限管理与可靠审计设计入门.md) |
 | 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md) |
@@ -37,7 +37,7 @@
 | 判断文档是否仍有效 | [Help 生命周期](help/README.md)、[文档审计与整理](help/文档审计与整理说明.md) |
 | v1.1 逐项完成情况 | [代码审查与项目回顾](项目计划书v1/项目计划v1.1/01-v1.1代码完成情况审查与项目回顾.md)、[最新开发进度](进度/v1.1-dev/) |
 | v1.1 新插件架构规划 | [自包含与动态加载重构计划](项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)、[用户配置与授权设计](help/系统设计相关/插件自包含动态加载与用户配置设计.md)；以计划中的最新状态表和进度记录为准 |
-| v1.2 下一版规划 | [优化版计划书](项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md)、[细粒度 RBAC](help/系统设计相关/v1.2细粒度授权与资源策略设计.md)、[校园知识库与 RAG](help/系统设计相关/v1.2校园知识库与RAG接入设计.md)；均为规划，未实施 |
+| v1.2 下一版规划 | [优化版计划书](项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md)、[细粒度 RBAC](help/系统设计相关/v1.2细粒度授权与资源策略设计.md)、[校园知识库与 RAG](help/系统设计相关/v1.2校园知识库与RAG接入设计.md)；各阶段实施与验收以主计划三态及证据为准 |
 
 ## 3. 文档类型和职责
 
@@ -77,7 +77,7 @@
 
 - CampusOS 是模块化单体，不是单模块，也没有拆成大量微服务。
 - Core Module、Built-in Feature、External Plugin、Resource Package 使用不同生命周期和数据目录。
-- `plugins/<key>/` 是 v4 外部插件源码，`plugins/.installed/` 是校验后的不可变发布包；`data/plugins` 与 `data/plugin_data` 保留给旧运行时，不作为 v4 的源码/自动发现入口；
+- `plugins/<key>/` 是 v5 插件源码，签名包显式导入 `PLUGIN_DATA_DIR/v5`；配置由宿主 PostgreSQL 按版本和 owner 管理，旧 `.installed` / `data/plugins` / `data/plugin_data` 不能作为当前发现入口；
   `data/resources` 保存无 Runtime 的资源包。
 - 管理平面使用独立管理员准入事实，但密码凭据仍由 Identity 的 `accounts` 安全拥有。
 - 标准 MCP Server、真实 protobuf gRPC、Discord/OneBot 生产 Adapter、远程公共插件市场和完整 Agent
@@ -100,7 +100,7 @@ CampusDoc 协议版本等技术标识保持其既有写法，例如 `/api/v1`。
 - [v1.0 插件三层授权与运行安全说明](help/系统设计相关/v1.0插件三层授权与运行安全说明.md)
 - [当前数据库管理与迁移](help/系统设计相关/数据库管理指南.md)
 - [v1.1 插件自包含与动态加载重构计划](项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)；本轮范围权威，已实现与未决项均记录在状态表
-- [v1.2 版本优化计划书](项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md)；下一版规划，承接尚未验收的插件任务并引入受控知识检索设计
+- [v1.2 版本优化计划书](项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md)；当前 v1.2 按依赖分阶段实施，未验收项保持未完成
 - [v1.1 图文附件与 PDF 原始方案](项目计划书v1/项目计划v1.1/00-v1.1版本计划书.md)；保留追溯，已被自包含重构方案取代
 - [v1.1 图文附件、PDF 预览插件与授权设计说明](help/系统设计相关/v1.1个人资源预览与授权设计说明.md)
 - [v0.14 正式项目计划](项目计划书v0/项目计划v0.14/00-v0.14版本计划书.md)

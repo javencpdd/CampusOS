@@ -1,22 +1,32 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { resolve } from "path";
+import Components from "unplugin-vue-components/vite";
+import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
-const apiProxyTarget = process.env.CAMPUSOS_API_PROXY_TARGET || 'http://localhost:8080'
+const apiProxyTarget =
+  process.env.CAMPUSOS_API_PROXY_TARGET || "http://localhost:8080";
 
 export default defineConfig({
-	plugins: [vue(), Components({ resolvers: [ElementPlusResolver()], dts: false })],
+  plugins: [
+    vue(),
+    Components({ resolvers: [ElementPlusResolver()], dts: false }),
+  ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      "@": resolve(__dirname, "src"),
     },
   },
   server: {
+    fs: {
+      allow: [
+        resolve(__dirname, "."),
+        resolve(__dirname, "../sdk/typescript/src"),
+      ],
+    },
     port: 3001,
     proxy: {
-      '/api': {
+      "/api": {
         target: apiProxyTarget,
         // Keep the browser's Host header for v4 isolated-plugin UI origins.
         // `api:8080` is a Docker-only name and must never reach the browser.
@@ -28,9 +38,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          framework: ['vue', 'vue-router', 'pinia'],
+          framework: ["vue", "vue-router", "pinia"],
         },
       },
     },
   },
-})
+});

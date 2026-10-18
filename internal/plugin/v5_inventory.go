@@ -19,10 +19,12 @@ type V5OperationView struct {
 	Error      string `json:"error_code"`
 	Purge      bool   `json:"purge_data"`
 	Attempts   int    `json:"attempts"`
+	Revision   string `json:"revision"`
+	Reason     string `json:"reason,omitempty"`
 }
 
 func V5PublicOperation(op V5Operation) V5OperationView {
-	return V5OperationView{op.V5Coordinate, op.ID, op.Owner, op.Kind, op.Status, v5Counter(op.Generation), op.Error, op.Purge, op.Attempts}
+	return V5OperationView{V5Coordinate: op.V5Coordinate, ID: op.ID, Owner: op.Owner, Kind: op.Kind, Status: op.Status, Generation: v5Counter(op.Generation), Error: op.Error, Purge: op.Purge, Attempts: op.Attempts, Revision: v5Counter(op.Revision), Reason: op.Reason}
 }
 
 type V5InventoryEntry struct {
@@ -63,7 +65,11 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 		if !admin {
 			kind = v5Global
 		}
-		rows, err := s.store.list(tx, kind, v5Query{After: after, Limit: limit + 1, Visible: !admin})
+		query := v5Query{After: after, Limit: limit + 1, Now: s.now().UnixMilli()}
+		if !admin {
+			query.VisibleOwner = a.p.Actor.ID
+		}
+		rows, err := s.store.list(tx, kind, query)
 		if err != nil {
 			return err
 		}
@@ -87,6 +93,9 @@ func (s *V5Platform) Inventory(ctx context.Context, admin bool, after string, li
 			out.Items = append(out.Items, entry)
 			if len(rows) > limit {
 				out.Next = v5RecordID(kind, raw)
+				if !admin {
+					out.Next = c.id()
+				}
 			}
 		}
 		return nil
@@ -113,8 +122,8 @@ func (s *V5Platform) entry(ctx context.Context, c V5Coordinate, a v5Actor, priva
 	}
 	if !a.admin {
 		global, e := s.installation(ctx, c, "")
-		visible := e == nil && global.Installed && global.Version == c.Version && gerr == nil && g.Approved
-		if !visible && !(private && ierr == nil && (i.Version == c.Version || i.DesiredVersion == c.Version)) {
+		visible := e == nil && global.Installed && global.Version == c.Version && gerr == nil && v5GrantActive(g, s.now().UnixMilli())
+		if !visible && !(ierr == nil && (private || i.Installed) && (i.Version == c.Version || i.DesiredVersion == c.Version)) {
 			return out, ErrV5NotFound
 		}
 	}
@@ -123,6 +132,10 @@ func (s *V5Platform) entry(ctx context.Context, c V5Coordinate, a v5Actor, priva
 		out.Installation = &i
 	}
 	if gerr == nil {
+		if !a.admin {
+			g.Reason = ""
+			g.ApprovedBy = ""
+		}
 		out.Grant = &g
 	}
 	m, err := ParsePluginV5Manifest(r.Manifest)

@@ -17,8 +17,18 @@ assert(user({...request,kind:'consent',accepted:true,purpose_hash:'sha256:'+'a'.
 assert(!admin({...request,kind:'consent',accepted:true,purpose_hash:'sha256:'+'a'.repeat(64),expected_revision:'0'}));
 for(const extra of [{owner_user_id:'2'},{observed:'ready'},{lease_generation:'1'},{actor_kind:'admin'},{database_url:'postgres://x'}])assert(!user({...request,kind:'install',expected_generation:'0',...extra}));
 for(const generation of [1,-1,'-1','1.0','01'])assert(!user({...request,kind:'enable',expected_generation:generation}));
-const safe={publisher:'campusos',plugin_key:'sample',version:'1.0.0',id:'a'.repeat(32),owner_user_id:'1',kind:'enable',status:'waiting',generation:'2',error_code:'plugin.runtime_unavailable',purge_data:false,attempts:1};
+const safe={publisher:'campusos',plugin_key:'sample',version:'1.0.0',id:'a'.repeat(32),owner_user_id:'1',kind:'enable',status:'waiting',generation:'2',error_code:'plugin.runtime_unavailable',purge_data:false,attempts:1,revision:'3'};
 assert(operation(safe));for(const field of ['request_hash','idempotency_key','lease_generation','preparation','values'])assert(!operation({...safe,[field]:'private'}));
+// Current04 composition adds explicit parts, finite Grant metadata and operation CAS.
+for (const validate of [admin,user]) {
+ assert(validate({...request,kind:'configure',configuration_part:'values',values:{x:1},expected_revision:'2'}));
+ assert(validate({...request,kind:'configure',configuration_part:'secret_refs',secret_refs:{},expected_revision:'2'}));
+ assert(!validate({...request,kind:'configure',configuration_part:'values',values:{},secret_refs:{},expected_revision:'2'}));
+ assert(validate({...request,kind:'retry',operation_id:'a'.repeat(32),expected_revision:'3'}));
+ assert(!validate({...request,kind:'retry',operation_id:'a'.repeat(32)}));
+}
+assert(admin({...request,kind:'grant',approved:true,consumes:[],expected_revision:'0',reason:'version approval',expires_at_ms:'1900000000000'}));
+assert(operation({...safe,reason:'version approval'}));
 const work=resolve('.cache/v12-03b-completion/contracts');mkdirSync(work,{recursive:true});
 const source=`import type { PluginV5InstallationCommand as U, PluginV5AdminInstallationCommand as A } from '${resolve('sdk/typescript/src/index')}';
 const good:U={kind:'install',version:'1.0.0',idempotency_key:'x',expected_generation:'0'};

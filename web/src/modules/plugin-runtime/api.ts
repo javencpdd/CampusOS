@@ -3,6 +3,7 @@ import api from '../../shared/api/client'
 
 export const uiRuntimeApi = {
   manifest: () => api.get('/ui/runtime-manifest'),
+  v5Manifest: (after = '') => api.get('/plugin-v5/ui', { params: { parent_origin: window.location.origin, after } }),
   openSurface: (plugin: string, action: UIAction, context: UIResourceContext) =>
     api.post('/plugin-ui/invocations', {
       plugin_key: plugin,

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
@@ -31,6 +31,9 @@ type V5Mutation struct {
 	PurposeHash        string                     `json:"purpose_hash,omitempty"`
 	Values             json.RawMessage            `json:"values,omitempty"`
 	SecretRefs         map[string]string          `json:"secret_refs,omitempty"`
+	ConfigurationPart  string                     `json:"configuration_part,omitempty"`
+	Reason             string                     `json:"reason,omitempty"`
+	ExpiresAtMS        int64                      `json:"expires_at_ms,string,omitempty"`
 	Purge              bool                       `json:"purge_data"`
 	OperationID        string                     `json:"operation_id,omitempty"`
 }
@@ -47,6 +50,7 @@ type V5Platform struct {
 	// absent adapter never turns a declaration or opaque string into permission.
 	VerifySelector  func(context.Context, V5Coordinate, string, string, string) (bool, error)
 	VerifySecretRef func(context.Context, V5Coordinate, string, string, string) error
+	ConfigResources V5ConfigResourceReader
 }
 
 func NewV5Platform(store V5StateStore, files *V5ManagedFiles, catalog *PluginV5PackageCatalog, reliable *reliability.Service, admins identity.AdminExecutionAuthorityReader) *V5Platform {
@@ -229,8 +233,14 @@ func v5GrantValid(m *PluginV5Manifest, g V5Grant) bool {
 	}
 	return true
 }
+func v5GrantActive(g V5Grant, now int64) bool {
+	return g.Approved && (g.ExpiresAtMS == 0 || g.ExpiresAtMS > now)
+}
 func v5GrantComplete(m *PluginV5Manifest, g V5Grant) bool {
-	if !g.Approved || !v5GrantValid(m, g) {
+	return v5GrantCompleteAt(m, g, time.Now().UnixMilli())
+}
+func v5GrantCompleteAt(m *PluginV5Manifest, g V5Grant, now int64) bool {
+	if !v5GrantActive(g, now) || !v5GrantValid(m, g) {
 		return false
 	}
 	for _, c := range m.Consumes {
@@ -256,6 +266,9 @@ func (s *V5Platform) consentOK(ctx context.Context, c V5Coordinate, owner string
 	return s.store.load(ctx, v5Consent, v5VersionOwnerID(c, owner), &consent) == nil && consent.Accepted && consent.PurposeHash == V5PurposeHash(m) && consent.GrantRevision == g.Revision
 }
 func (s *V5Platform) validateConfig(ctx context.Context, c V5Coordinate, owner string, m *PluginV5Manifest, cfg V5Configuration) error {
+	return s.validateConfigPart(ctx, c, owner, m, cfg, "")
+}
+func (s *V5Platform) validateConfigPart(ctx context.Context, c V5Coordinate, owner string, m *PluginV5Manifest, cfg V5Configuration, part string) error {
 	raw, err := json.Marshal(m)
 	if err != nil {
 		return ErrV5Invalid
@@ -267,11 +280,17 @@ func (s *V5Platform) validateConfig(ctx context.Context, c V5Coordinate, owner s
 	if err = validatePluginV5Values(d, cfg.Values); err != nil {
 		return err
 	}
+	if err = validatePluginV5SecretRefs(d, cfg.SecretRefs); err != nil {
+		return err
+	}
 	var values map[string]json.RawMessage
 	if json.Unmarshal(cfg.Values, &values) != nil {
 		return ErrV5Invalid
 	}
 	for _, selector := range d.Selectors {
+		if part == "secret_refs" {
+			continue
+		}
 		v, ok := values[selector.Field]
 		if !ok {
 			continue
@@ -280,27 +299,35 @@ func (s *V5Platform) validateConfig(ctx context.Context, c V5Coordinate, owner s
 		if json.Unmarshal(v, &value) != nil {
 			return ErrV5Invalid
 		}
-		if s.VerifySelector == nil {
-			return ErrV5Denied
+		allowed, err := s.configResourceAllowed(ctx, c, owner, selector.Kind, "", value)
+		if s.VerifySelector != nil {
+			allowed, err = s.VerifySelector(ctx, c, owner, selector.Kind, value)
 		}
-		allowed, err := s.VerifySelector(ctx, c, owner, selector.Kind, value)
 		if err != nil || !allowed {
 			return ErrV5Denied
 		}
 	}
 	seen := map[string]bool{}
 	for name, ref := range cfg.SecretRefs {
+		if part == "values" {
+			continue
+		}
 		declared := false
 		for _, n := range d.SecretNames {
 			if n == name {
 				declared = true
 			}
 		}
-		if !declared || seen[ref] || !strings.HasPrefix(ref, "secret-ref:") || len(ref) > 256 || s.VerifySecretRef == nil {
+		if !declared || seen[ref] || !pluginV5SecretRefPattern.MatchString(ref) {
 			return ErrV5Denied
 		}
 		seen[ref] = true
-		if err := s.VerifySecretRef(ctx, c, owner, name, ref); err != nil {
+		allowed, err := s.configResourceAllowed(ctx, c, owner, "secret_ref", name, ref)
+		if s.VerifySecretRef != nil {
+			err = s.VerifySecretRef(ctx, c, owner, name, ref)
+			allowed = err == nil
+		}
+		if err != nil || !allowed {
 			return ErrV5Denied
 		}
 	}
@@ -343,6 +370,15 @@ func (s *V5Platform) validateInstanceConfiguration(ctx context.Context, c V5Coor
 	return nil
 }
 func v5MutationValid(r V5Mutation, admin bool) bool {
+	if r.ExpiresAtMS < 0 || r.ExpiresAtMS != 0 && (!admin || r.Kind != "grant") {
+		return false
+	}
+	if utf8.RuneCountInString(r.Reason) > 512 || !utf8.ValidString(r.Reason) || r.Reason != "" && (!admin || r.Kind != "grant" && r.Kind != "revoke") {
+		return false
+	}
+	if r.ConfigurationPart != "" && (r.Kind != "configure" || r.ConfigurationPart != "values" && r.ConfigurationPart != "secret_refs" || r.ConfigurationPart == "values" && (r.Values == nil || r.SecretRefs != nil) || r.ConfigurationPart == "secret_refs" && (r.Values != nil || r.SecretRefs == nil)) {
+		return false
+	}
 	if !v5Version(r.Version) || r.ExpectedGeneration < 0 || r.ExpectedRevision < 0 || !v5String(1, 128, `^[A-Za-z0-9_.:-]+$`)(r.IdempotencyKey) {
 		return false
 	}
@@ -470,7 +506,7 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 }
 
 func (s *V5Platform) command(ctx context.Context, a v5Actor, c V5Coordinate, owner string, r V5Mutation, hash string, resolve identity.SessionPrincipalResolver, apply func(context.Context, *V5Operation) error) (V5Operation, error) {
-	op := V5Operation{V5Coordinate: c, ID: v5RandomID(), ActorKind: a.p.Actor.Kind, ActorID: a.p.Actor.ID, Owner: owner, IdempotencyKey: r.IdempotencyKey, RequestHash: hash, Kind: r.Kind, Status: "queued", Purge: r.Purge}
+	op := V5Operation{V5Coordinate: c, ID: v5RandomID(), ActorKind: a.p.Actor.Kind, ActorID: a.p.Actor.ID, Owner: owner, IdempotencyKey: r.IdempotencyKey, Reason: r.Reason, RequestHash: hash, Kind: r.Kind, Status: "queued", Purge: r.Purge}
 	if op.ID == "" {
 		return op, ErrV5PlatformUnavailable
 	}
@@ -553,9 +589,12 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if g.Revision != r.ExpectedRevision {
 			return ErrV5Conflict
 		}
-		g = V5Grant{V5Coordinate: c, Approved: r.Kind == "grant" && r.Approved, Consumes: r.Consumes, Resources: r.Resources}
+		g = V5Grant{V5Coordinate: c, Approved: r.Kind == "grant" && r.Approved, Consumes: r.Consumes, Resources: r.Resources, Reason: r.Reason, ApprovedBy: op.ActorID, ExpiresAtMS: r.ExpiresAtMS}
 		if g.Consumes == nil {
 			g.Consumes = []PluginV5Consume{}
+		}
+		if g.ExpiresAtMS != 0 && (g.ExpiresAtMS <= s.now().UnixMilli() || g.ExpiresAtMS > s.now().Add(30*24*time.Hour).UnixMilli()) {
+			return ErrV5Invalid
 		}
 		if !v5GrantValid(m, g) {
 			return ErrV5Denied
@@ -591,7 +630,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if old.Owner != owner || old.V5Coordinate.family() != c.family() || old.Version != c.Version || !op.ActorKindIsAdmin() && old.ActorID != op.ActorID {
 			return ErrV5Denied
 		}
-		if old.Status != "failed" && old.Status != "waiting" {
+		if old.Revision != r.ExpectedRevision || old.Status != "failed" && old.Status != "waiting" {
 			return ErrV5Conflict
 		}
 		old.Status = "queued"
@@ -611,7 +650,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 	}
 	g, grantErr := s.grant(ctx, c)
 	if r.Kind == "consent" {
-		if owner == "" || r.PurposeHash != V5PurposeHash(m) || r.Accepted && (grantErr != nil || !g.Approved) {
+		if owner == "" || r.PurposeHash != V5PurposeHash(m) || r.Accepted && (grantErr != nil || !v5GrantActive(g, s.now().UnixMilli())) {
 			return ErrV5Denied
 		}
 		var old V5Consent
@@ -656,12 +695,16 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if cfg.Revision != r.ExpectedRevision {
 			return ErrV5Conflict
 		}
-		cfg.Values = r.Values
-		cfg.SecretRefs = r.SecretRefs
+		if r.ConfigurationPart != "secret_refs" {
+			cfg.Values = r.Values
+		}
+		if r.ConfigurationPart != "values" {
+			cfg.SecretRefs = r.SecretRefs
+		}
 		if cfg.SecretRefs == nil {
 			cfg.SecretRefs = map[string]string{}
 		}
-		if err := s.validateConfig(ctx, c, owner, m, cfg); err != nil {
+		if err := s.validateConfigPart(ctx, c, owner, m, cfg, r.ConfigurationPart); err != nil {
 			return err
 		}
 		cfg.Revision, err = s.store.next(ctx)
@@ -693,7 +736,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if i.Installed {
 			return ErrV5Conflict
 		}
-		if owner != "" && (grantErr != nil || !g.Approved) {
+		if owner != "" && (grantErr != nil || !v5GrantActive(g, s.now().UnixMilli())) {
 			return ErrV5Denied
 		}
 		if err := s.compatible(ctx, i, c, m); err != nil {
@@ -704,7 +747,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		i.DesiredVersion = c.Version
 		i.Desired = "disabled"
 	case "enable":
-		if !i.Installed || i.Version != c.Version || grantErr != nil || !v5GrantComplete(m, g) || !s.consentOK(ctx, c, owner, m, g) {
+		if !i.Installed || i.Version != c.Version || grantErr != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, owner, m, g) {
 			return ErrV5Denied
 		}
 		if err := s.validateInstanceConfiguration(ctx, c, owner, m); err != nil {
@@ -730,7 +773,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		i.Installed = false
 		i.Desired = "uninstalled"
 	case "upgrade":
-		if !i.Installed || i.Version == c.Version || grantErr != nil || !v5GrantComplete(m, g) || !s.consentOK(ctx, c, owner, m, g) {
+		if !i.Installed || i.Version == c.Version || grantErr != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, owner, m, g) {
 			return ErrV5Denied
 		}
 		if err := s.compatible(ctx, i, c, m); err != nil {

@@ -1,4 +1,8 @@
 export declare const UI_CONTRACT_VERSION: "campusos.ui/v1";
+export * from "./exact-json.js";
+export * from "./v5-configuration-form.js";
+export * from "./isolated-plugin-bridge.js";
+export * from "./plugin-frame-policy.js";
 export declare const CAPABILITY_CONTRACT_VERSION: "campusos.capability/v1";
 export declare const EVENT_CONTRACT_VERSION: "campusos.event/v1";
 export declare const PROCESS_CONTRACT_VERSION: "campusos.process/v1";
@@ -160,8 +164,8 @@ export declare class CampusExtensionClient {
     private headers;
 }
 export { PRINCIPAL_CONTEXT_VERSION } from "./principal";
-export type { PrincipalKind, PrincipalRef, PrincipalContextV1, PrincipalContextErrorCode } from "./principal";
-export { THREAD_PUBLIC_READ_CONTRACT, THREAD_PUBLIC_READ_POLICY } from "./thread-public-read-policy";
+export type { PrincipalKind, PrincipalRef, PrincipalContextV1, PrincipalContextErrorCode, } from "./principal";
+export { THREAD_PUBLIC_READ_CONTRACT, THREAD_PUBLIC_READ_POLICY, } from "./thread-public-read-policy";
 export type { ThreadResourceRef, ThreadPublicReadFactsV1, ThreadPublicReadRequestV1, ThreadPublicReadDecisionV1, ThreadPublicReadErrorCode, } from "./thread-public-read-policy";
 export { BOARD_DELEGATION_CONTRACT } from "./board-delegation";
 export type { BoardGovernanceAction, BoardGrantAtomV1, BoardDelegationBoundV1, BoardDelegationRequestV1, BoardDelegationDenyReason, BoardDelegationDecisionV1, BoardDelegationErrorCode, } from "./board-delegation";
@@ -173,14 +177,14 @@ export type { PluginV5ExtensionCallBase, PluginV5ExtensionResultBase, PluginV5Pr
 export type { PluginV5ResourceSet, PluginV5ResourceDecisionInput, PluginV5HostFingerprint, PluginV5InstallMutationKind, PluginV5InstallPlan, PluginV5ResourceInstallErrorCode, } from "./plugin-v5-resource-install";
 export type { PluginV5ConfigField, PluginV5ConfigDefinition, PluginV5ConfigUpdate, PluginV5ConfigDecisionInput, PluginV5ConfigErrorCode, } from "./plugin-v5-config";
 export type { ResourcePolicyActionV1, ResourcePolicyFactsV1, ResourcePolicyGrantV1, ResourcePolicyRequestV1, ResourcePolicyDecisionV1, ResourcePolicyErrorCodeV1, } from "./resource-policy";
-export type { IdentityKind, IdentityDomainDescriptor, IdentityDomainProbe, AdminDomainOperation, IdentityDomainDecisionInput, IdentityDomainErrorCode } from "./identity-domains.js";
-export type { PluginV5PrivateDataDeclaration, PluginV5ManifestBase, PluginV5Manifest, PluginV5ManifestErrorCode } from "./plugin-v5-manifest.js";
-export type { PluginV5DispatchCall, PluginV5DispatchTrustedFacts, PluginV5DispatchDecisionInput, PluginV5DispatchErrorCode } from "./plugin-v5-dispatch.js";
-export type { PluginV5SafeEvent, PluginV5EventDelivery, PluginV5EventDecisionInput, PluginV5EventErrorCode, PluginV5LifecycleDecisionInput, PluginV5LifecycleErrorCode } from "./plugin-v5-events.js";
-export type { ScopeDelegationScope, ScopeDelegationAction, ScopeDelegationAtom, ScopeDelegationDecisionInput, ScopeDelegationErrorCode } from "./scope-delegation.js";
+export type { IdentityKind, IdentityDomainDescriptor, IdentityDomainProbe, AdminDomainOperation, IdentityDomainDecisionInput, IdentityDomainErrorCode, } from "./identity-domains.js";
+export type { PluginV5PrivateDataDeclaration, PluginV5ManifestBase, PluginV5Manifest, PluginV5ManifestErrorCode, } from "./plugin-v5-manifest.js";
+export type { PluginV5DispatchCall, PluginV5DispatchTrustedFacts, PluginV5DispatchDecisionInput, PluginV5DispatchErrorCode, } from "./plugin-v5-dispatch.js";
+export type { PluginV5SafeEvent, PluginV5EventDelivery, PluginV5EventDecisionInput, PluginV5EventErrorCode, PluginV5LifecycleDecisionInput, PluginV5LifecycleErrorCode, } from "./plugin-v5-events.js";
+export type { ScopeDelegationScope, ScopeDelegationAction, ScopeDelegationAtom, ScopeDelegationDecisionInput, ScopeDelegationErrorCode, } from "./scope-delegation.js";
 export { INTEGRATION_ACCESS_VERSION } from "./integration-access.js";
 export type { IntegrationAccessTargetV1, IntegrationAccessEndpointV1, IntegrationAccessRuleV1, IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1, IntegrationAccessErrorCodeV1, } from "./integration-access.js";
 export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
-export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread } from "./integration-runtime.js";
-export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5PackageCheckResult, PluginV5PackageErrorCode } from "./plugin-v5-package.js";
-export type { PluginV5Coordinate, PluginV5Installation, PluginV5Operation, PluginV5InstallationCommand, PluginV5AdminInstallationCommand, PluginV5InstallationErrorCode } from "./plugin-v5-installation.js";
+export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread, } from "./integration-runtime.js";
+export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5PackageCheckResult, PluginV5PackageErrorCode, } from "./plugin-v5-package.js";
+export type { PluginV5Coordinate, PluginV5Installation, PluginV5Operation, PluginV5InstallationCommand, PluginV5AdminInstallationCommand, PluginV5InstallationErrorCode, } from "./plugin-v5-installation.js";

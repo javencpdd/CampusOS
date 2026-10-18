@@ -2926,6 +2926,40 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/:publisher/:key/:version/config-options",
+      "handler": "pluginV5Handler.ConfigOptions",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.publisher.key.version.config_options",
+        "httpapi.get.api.v1.plugin_v5.publisher.key.version.config_options"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/:publisher/:key/:version/ui",
+      "handler": "pluginV5Handler.UIState",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.publisher.key.version.ui",
+        "httpapi.get.api.v1.plugin_v5.publisher.key.version.ui"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/plugin-v5/:publisher/:key/commands",
       "handler": "pluginV5Handler.Mutate",
@@ -2940,6 +2974,23 @@
       "ownership": "handler-enforced",
       "scope": "self-or-resource-owner",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/ui",
+      "handler": "pluginV5Handler.UIManifest",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.catalog",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.ui",
+        "httpapi.get.api.v1.plugin_v5.ui"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
       "stability": "experimental"
     },
     {
@@ -4559,6 +4610,44 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/admin/plugin-v5/:publisher/:key/:version/config-options",
+      "handler": "pluginV5Handler.ConfigOptions",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5.publisher.key.version.config_options",
+        "httpapi.get.api.v1.admin.plugin_v5.publisher.key.version.config_options"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/plugin-v5/:publisher/:key/:version/ui",
+      "handler": "pluginV5Handler.UIState",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5.publisher.key.version.ui",
+        "httpapi.get.api.v1.admin.plugin_v5.publisher.key.version.ui"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/admin/plugin-v5/packages",
       "handler": "pluginV5Handler.Import",
@@ -4575,6 +4664,25 @@
       "ownership": "none",
       "scope": "global",
       "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/plugin-v5/ui",
+      "handler": "pluginV5Handler.UIManifest",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.catalog",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5.ui",
+        "httpapi.get.api.v1.admin.plugin_v5.ui"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
       "stability": "experimental"
     },
     {

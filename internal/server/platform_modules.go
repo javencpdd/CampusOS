@@ -295,6 +295,16 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	users, _ := m.app.Lookup("identity.user-reader")
 	m.platform.Users, _ = users.(identityport.UserReader)
 	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform}
+	if m.owner.cfg.Plugin.UIListen != "" || m.owner.cfg.Plugin.UIOrigin != "" {
+		if m.owner.cfg.Plugin.UIListen == "" {
+			return errors.New("plugin UI requires a dedicated listener")
+		}
+		m.owner.pluginUI, err = plugin.NewV5UIHost(m.platform, m.owner.cfg.Plugin.UIOrigin, m.owner.cfg.Plugin.UIParents)
+		if err != nil {
+			return errors.New("plugin UI origin/parents configuration is invalid")
+		}
+		m.v5Handler.UIHost = m.owner.pluginUI
+	}
 	adminSessions, _ := m.app.Lookup("identity.admin-session-authority")
 	m.v5Handler.AdminSessions, _ = adminSessions.(identityport.AdminSessionAuthorityReader)
 	userSessions, _ := m.app.Lookup("identity.session-verifier")

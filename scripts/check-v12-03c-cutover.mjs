@@ -18,7 +18,9 @@ const start=read('internal/server/platform_modules.go');assert(start.includes('p
 assert(read('internal/server/bootstrap.go').includes('plugin.NewPgV5EventStore(pool)'));
 const events=read('internal/plugin/v5_events.go');assert(events.includes('transaction.Active(ctx)'));assert(events.includes('.CheckedRead('));assert(events.includes('.RegisterConsumer('));assert(!events.includes('source.Payload'));assert(!events.includes('source.Headers'));
 const catalog=JSON.parse(read('docs/api/plugin-v5-host-catalog-current.json'));
-assert.deepEqual(catalog.items.map(x=>x.code),['community.thread.public.read','plugin.lifecycle.subscribe','community.thread.public.subscribe','knowledge.source.public.subscribe']);
-assert(catalog.items.every(x=>x.scope_kind==='public'&&x.data_classification==='public'&&x.consent_required===false));
+assert.deepEqual(catalog.items.slice(0,4).map(x=>x.code),['community.thread.public.read','plugin.lifecycle.subscribe','community.thread.public.subscribe','knowledge.source.public.subscribe']);
+assert(catalog.items.slice(0,4).every(x=>x.scope_kind==='public'&&x.data_classification==='public'&&x.consent_required===false));
+assert.deepEqual(catalog.items.slice(4).map(x=>x.code),['ui.resource.selected.read','ui.surface.open']);
+assert(catalog.items.slice(4).every(x=>x.scope_kind==='self'&&x.data_classification==='sensitive'&&x.consent_required===true));
 execFileSync(process.execPath,['scripts/check-v12-03c-native-dispatch.mjs'],{stdio:'inherit'});
 console.log('03c composed cutover: typed managed dispatch and independent metadata delivery; legacy production authority retired');

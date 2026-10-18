@@ -130,6 +130,24 @@ func (s *PgV5StateStore) list(ctx context.Context, k v5RecordKind, q v5Query) ([
 	}
 	query := `SELECT r.state FROM ` + string(k) + ` r WHERE r.record_id>$1`
 	args := []any{q.After, limit}
+	if q.VisibleOwner != "" {
+		if k != v5Global || !v5OwnerValid(q.VisibleOwner) {
+			return nil, ErrV5Invalid
+		}
+		// Visibility is applied before pagination: current available versions
+		// UNION the caller's own installed versions, including revoked releases.
+		query = `SELECT r.state FROM (
+		 SELECT DISTINCT ON (cursor) state,cursor FROM (
+		  SELECT i.state, i.publisher||'/'||i.plugin_key||'@'||i.version AS cursor
+		  FROM plugin_installations i WHERE (i.state->>'installed')::boolean AND EXISTS(
+		   SELECT 1 FROM plugin_v5_admin_grants g WHERE g.publisher=i.publisher AND g.plugin_key=i.plugin_key AND g.version=i.version AND (g.state->>'approved')::boolean
+		    AND (COALESCE((g.state->>'expires_at_ms')::bigint,0)=0 OR (g.state->>'expires_at_ms')::bigint>$4))
+		  UNION ALL
+		  SELECT i.state,i.publisher||'/'||i.plugin_key||'@'||i.version AS cursor FROM plugin_user_installations i WHERE i.state->>'owner_user_id'=$3 AND (i.state->>'installed')::boolean
+		 ) visible ORDER BY cursor
+		) r WHERE r.cursor>$1 ORDER BY r.cursor LIMIT $2`
+		args = []any{q.After, limit, q.VisibleOwner, q.Now}
+	}
 	if q.Owner != "" {
 		query += ` AND r.state->>'owner_user_id'=$3`
 		args = append(args, q.Owner)
@@ -151,9 +169,9 @@ func (s *PgV5StateStore) list(ctx context.Context, k v5RecordKind, q v5Query) ([
 		query += fmt.Sprintf(` AND r.publisher=$%d AND r.plugin_key=$%d`, len(args)+1, len(args)+2)
 		args = append(args, q.Publisher, q.Key)
 	}
-	if q.Pending {
+	if q.VisibleOwner == "" && q.Pending {
 		query += ` ORDER BY CASE r.state->>'status' WHEN 'queued' THEN 0 WHEN 'working' THEN 1 ELSE 2 END, (r.state->>'lease_until_ms')::bigint, r.record_id LIMIT $2`
-	} else {
+	} else if q.VisibleOwner == "" {
 		query += ` ORDER BY r.record_id LIMIT $2`
 	}
 	rows, err := db.Query(ctx, query, args...)

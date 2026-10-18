@@ -114,7 +114,10 @@ func TestV5ReconcileTamperFaultAndRetry(t *testing.T) {
 	if bad.Status != "failed" {
 		t.Fatal(bad)
 	}
-	v.mutate(t, V5Mutation{Kind: "retry", OperationID: op.ID, IdempotencyKey: "retry"}, true, v.admin)
+	if _, err := v.s.Mutate(ctx, v.c.Publisher, v.c.Key, V5Mutation{Version: v.c.Version, Kind: "retry", OperationID: op.ID, ExpectedRevision: bad.Revision - 1, IdempotencyKey: "stale-retry"}, true, v.admin); err != ErrV5Conflict {
+		t.Fatal("stale operation revision retried", err)
+	}
+	v.mutate(t, V5Mutation{Kind: "retry", OperationID: op.ID, ExpectedRevision: bad.Revision, IdempotencyKey: "retry"}, true, v.admin)
 	v.process(t)
 	if v.operation(t, op.ID).Status != "failed" {
 		t.Fatal("retry hid corrupt capsule")

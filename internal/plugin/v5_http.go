@@ -17,6 +17,7 @@ import (
 
 type V5HTTPHandler struct {
 	Platform      *V5Platform
+	UIHost        *V5UIHost
 	AdminSessions identity.AdminSessionAuthorityReader
 	UserSessions  identity.SessionVerifier
 	UserStrength  identity.SessionStrengthReader
@@ -41,15 +42,15 @@ func (h *V5HTTPHandler) resolver(c *gin.Context, admin bool) identity.SessionPri
 func v5HTTPError(c *gin.Context, err error) {
 	descriptor := apperror.PluginV5Unavailable
 	switch {
-	case errors.Is(err, ErrV5Invalid), errors.Is(err, ErrPluginV5PackageInvalid), errors.Is(err, ErrPluginV5ManifestInvalid):
+	case errors.Is(err, ErrV5Invalid), errors.Is(err, ErrPluginV5PackageInvalid), errors.Is(err, ErrPluginV5ManifestInvalid), errors.Is(err, ErrPluginV5ConfigInvalid), errors.Is(err, ErrPluginV5ConfigSchemaUnsupported), errors.Is(err, ErrPluginV5ConfigDefaultsInvalid), errors.Is(err, ErrPluginV5SecretRefInvalid):
 		descriptor = apperror.PluginV5Invalid
 	case errors.Is(err, ErrV5NotFound):
 		descriptor = apperror.PluginV5NotFound
-	case errors.Is(err, ErrV5Conflict), errors.Is(err, identity.ErrPolicyFactsChanged):
+	case errors.Is(err, ErrV5Conflict), errors.Is(err, identity.ErrPolicyFactsChanged), errors.Is(err, ErrPluginV5ConfigRevisionConflict):
 		descriptor = apperror.PluginV5Conflict
 	case errors.Is(err, ErrV5Rollback):
 		descriptor = apperror.PluginV5Rollback
-	case errors.Is(err, ErrV5Denied), errors.Is(err, identity.ErrAdminSessionPrincipalUnavailable), errors.Is(err, identity.ErrUserSessionPrincipalUnavailable):
+	case errors.Is(err, ErrV5Denied), errors.Is(err, identity.ErrAdminSessionPrincipalUnavailable), errors.Is(err, identity.ErrUserSessionPrincipalUnavailable), errors.Is(err, ErrPluginV5ConfigSelectorForbidden):
 		descriptor = apperror.PluginV5Denied
 	case errors.Is(err, ErrPluginV5PackageConflict):
 		descriptor = apperror.PluginV5PackageConflict
@@ -163,7 +164,7 @@ func (h *V5HTTPHandler) Mutate(admin bool) gin.HandlerFunc {
 		}
 		parsed, ok := v5JSON(raw)
 		allowed := map[string]bool{}
-		for _, key := range []string{"kind", "version", "expected_generation", "expected_revision", "idempotency_key", "approved", "consumes", "host_resources", "accepted", "purpose_hash", "values", "secret_refs", "purge_data", "operation_id"} {
+		for _, key := range []string{"kind", "version", "expected_generation", "expected_revision", "idempotency_key", "approved", "consumes", "host_resources", "accepted", "purpose_hash", "values", "secret_refs", "configuration_part", "reason", "expires_at_ms", "purge_data", "operation_id"} {
 			allowed[key] = true
 		}
 		object, isObject := parsed.(map[string]any)
@@ -175,7 +176,7 @@ func (h *V5HTTPHandler) Mutate(admin bool) gin.HandlerFunc {
 				ok = false
 			}
 		}
-		for _, key := range []string{"expected_generation", "expected_revision"} {
+		for _, key := range []string{"expected_generation", "expected_revision", "expires_at_ms"} {
 			if value, exists := object[key]; exists {
 				wire, isString := value.(string)
 				if !isString || !v5String(1, 19, `^(0|[1-9][0-9]*)$`)(wire) {

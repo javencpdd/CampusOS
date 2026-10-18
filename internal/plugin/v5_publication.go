@@ -20,6 +20,9 @@ func CurrentPluginV5Catalogs() ([]byte, []byte) {
 	for _, code := range []string{"community.thread.public.read", "plugin.lifecycle.subscribe", "community.thread.public.subscribe", "knowledge.source.public.subscribe"} {
 		items = append(items, v5HostCapability{Code: code, ScopeKind: "public", DataClassification: "public", ConsentRequired: false})
 	}
+	for _, code := range []string{"ui.resource.selected.read", "ui.surface.open"} {
+		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
+	}
 	host, _ := json.Marshal(v5HostManifestCatalog{Contract: "campusos.host-capabilities/v1", HostContract: "campusos.host/v1", Items: items})
 	points := []v5ExtensionDescriptor{
 		{Point: "preview.renderer", ContractVersion: "v1", InputSchema: "campusos.preview.renderer.request/v1", OutputSchema: "campusos.preview.renderer.response/v1", Capabilities: []string{"pdf"}, DataModes: []string{"authorized_resource"}},

@@ -2,12 +2,29 @@
   "api_version": "campusos.plugin/v5",
   "publisher": "campusos",
   "key": "pdf-viewer",
-  "version": "3.0.0-dev.1",
+  "version": "3.0.0-dev.2",
   "host_contracts": [
     "campusos.host/v1"
   ],
   "runtime": "none",
-  "consumes": [],
+  "consumes": [
+    {
+      "capability": "ui.resource.selected.read",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Read only the PDF explicitly selected through an authorized host resource context",
+      "required": true
+    },
+    {
+      "capability": "ui.surface.open",
+      "scope": {
+        "kind": "self"
+      },
+      "purpose": "Open the isolated PDF viewer after an explicit user action",
+      "required": true
+    }
+  ],
   "provides": [],
   "configuration": {
     "contract": "campusos.plugin-config/v1",
@@ -36,12 +53,12 @@
     {
       "audience": "user",
       "entrypoint": "dist/user/index.html",
-      "digest": "sha256:ccc75ba225628073d8b7bdb2646573687d10b9f42651ce577c811cdc36826a9d"
+      "digest": "sha256:0ac5b47f22bc977b326ed87c3d80cf73f299405920cd767331fd84148a9a27e0"
     },
     {
       "audience": "admin",
       "entrypoint": "dist/admin/index.html",
-      "digest": "sha256:f18011b99f748562648917f0c5b736280f38bc11a129bfd18624fda4f860f4ad"
+      "digest": "sha256:1114a3c6ab9b73fa1d139b9ae06851b8c1671fd00fd6cd739d7dd7dfb43866e4"
     }
   ]
 }

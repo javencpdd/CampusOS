@@ -90,7 +90,10 @@ type EmailConfig struct {
 }
 
 type PluginConfig struct {
-	DataDir string
+	DataDir   string
+	UIListen  string
+	UIOrigin  string
+	UIParents []string
 }
 
 // DeploymentConfig makes local-provider safety explicit. v0.9 supports one
@@ -193,7 +196,10 @@ func Load() *Config {
 			SMTPStartTLS: getBool("EMAIL_SMTP_STARTTLS", true),
 		},
 		Plugin: PluginConfig{
-			DataDir: get("PLUGIN_DATA_DIR", "data/plugin_data"),
+			DataDir:   get("PLUGIN_DATA_DIR", "data/plugin_data"),
+			UIListen:  strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_LISTEN", "")),
+			UIOrigin:  strings.TrimSpace(get("CAMPUSOS_PLUGIN_UI_ORIGIN", "")),
+			UIParents: strings.Fields(get("CAMPUSOS_PLUGIN_UI_PARENTS", "")),
 		},
 		Deployment: DeploymentConfig{
 			InstanceMode: strings.ToLower(get("CAMPUSOS_INSTANCE_MODE", "single")),

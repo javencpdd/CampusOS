@@ -207,7 +207,7 @@ func TestV5InstallAtomicFailuresAndConfig(t *testing.T) {
 	if _, e := v.s.Mutate(ctx, v.c.Publisher, v.c.Key, V5Mutation{Kind: "configure", Version: v.c.Version, IdempotencyKey: "stale-config", ExpectedRevision: 0, Values: json.RawMessage(`{"locale":"zh-CN"}`)}, true, v.admin); e != ErrV5Conflict {
 		t.Fatal("config CAS bypass", e)
 	}
-	if _, e := v.s.Mutate(ctx, v.c.Publisher, v.c.Key, V5Mutation{Kind: "configure", Version: v.c.Version, IdempotencyKey: "secret", ExpectedRevision: cfg.Revision, Values: cfg.Values, SecretRefs: map[string]string{"token": "plaintext"}}, true, v.admin); e != ErrV5Denied {
+	if _, e := v.s.Mutate(ctx, v.c.Publisher, v.c.Key, V5Mutation{Kind: "configure", Version: v.c.Version, IdempotencyKey: "secret", ExpectedRevision: cfg.Revision, Values: cfg.Values, SecretRefs: map[string]string{"token": "plaintext"}}, true, v.admin); e != ErrPluginV5SecretRefInvalid {
 		t.Fatal("secret declaration/ref accepted", e)
 	}
 	if op.Generation <= i.Generation {

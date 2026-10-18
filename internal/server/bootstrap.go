@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"log"
 	"strings"
 	"time"
@@ -172,33 +173,38 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
 		},
-		PDFViewerEnabled: func() bool {
-			// PDF preview is now solely the self-contained v4 external release.
-			// Do not retain a feature.pdf-viewer compatibility switch here: it
-			// would both expose a duplicate built-in entry and disable the real
-			// plugin after the descriptor is removed.
-			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerV4PluginName)
-			return found && installed != nil && installed.Status == plugin.StatusRunning && installed.DesiredEnabled
-		},
+		PDFViewerEnabled: func() bool { return plugins.platform != nil && s.pluginUI != nil },
 		PDFViewerAuthorizer: func(ctx context.Context, input richtext.PDFViewerAuthorizationInput) error {
-			if plugins.authorization == nil || !plugins.authorization.Available() {
-				return &richtext.PDFViewerAuthorizationError{Reason: "unavailable", Message: "PDF 预览插件授权服务暂不可用，请确认数据库迁移完成后重试。"}
+			if input.PluginKey != richtext.PDFViewerPluginKey || plugins.platform == nil || s.pluginUI == nil {
+				return richtext.ErrPluginAuthorization
 			}
-			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: input.PluginKey, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
-			if !result.Allow {
-				return &richtext.PDFViewerAuthorizationError{Reason: string(result.ReasonCode), Message: result.Message}
+			switch input.CapabilityCode {
+			case "article_attachment.self.preview", "personal_space_file.self.read", "plugin_ui.surface.open":
+			default:
+				return richtext.ErrPluginAuthorization
+			}
+			_, err := plugins.platform.PDFUI(ctx, input.UserID, identityport.SessionPrincipalResolverFromContext(ctx))
+			if err != nil {
+				return &richtext.PDFViewerAuthorizationError{Reason: "v5_ui_denied", Message: "此版本尚未安装、启用或获得当前授权，请在插件中心检查后重试。"}
 			}
 			return nil
 		},
 		PersonalDocumentPDFReader:        personalDocumentReader,
 		PersonalDocumentAttachmentReader: personalDocumentReader,
 		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
-			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
-				if identityModule.Permissions() == nil {
-					return false, nil
-				}
-				return identityModule.Permissions().Check(ctx, user, resource, action)
-			})
+			if plugins.platform == nil || s.pluginUI == nil || invocation.PluginKey != richtext.PDFViewerPluginKey || invocation.SurfaceID != richtext.PDFViewerSurfaceID || actionID != "" {
+				return "", richtext.ErrPluginAuthorization
+			}
+			switch invocation.Presentation {
+			case "modal", "drawer", "fullscreen", "new-tab":
+			default:
+				return "", richtext.ErrInvocationPresentation
+			}
+			facts, err := plugins.platform.PDFUI(ctx, invocation.UserID, identityport.SessionPrincipalResolverFromContext(ctx))
+			if err != nil {
+				return "", richtext.ErrPluginAuthorization
+			}
+			return facts.AuthorityProof, nil
 		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{

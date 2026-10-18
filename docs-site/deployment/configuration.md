@@ -43,7 +43,7 @@ DATABASE_DSN=postgres://campusos:campusos_dev@localhost:5433/campusos?sslmode=di
 | `WEB_PORT` | `3000` | 用户前台开发端口。 |
 | `ADMIN_PORT` | `3001` | 管理后台开发端口。 |
 | `DOCS_PORT` | `3002` | 官方文档开发端口。 |
-| `CAMPUSOS_DEV_PLUGIN_UI_PORT` | `3003` | v4 Plugin UI Gateway 开发端口。 |
+| `CAMPUSOS_DEV_PLUGIN_UI_PORT` | `3003` | v5 独立 Plugin UI Gateway 开发端口。 |
 | `PGADMIN_PORT` | `5050` | pgAdmin 页面端口。 |
 
 Admin 中的官方文档链接默认指向 `http://localhost:3002`。独立部署文档站后，在构建 Admin 前设置：
@@ -56,20 +56,23 @@ VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS
 
 `VITE_WEB_URL` 用于 Admin 的“外观与风格包”页面打开用户端主题切换页；它不是后端 API 地址。
 
-## v4 插件目录
+## v5 插件与隔离界面
+
+签名包由 Admin 显式导入，受管存储位于 `PLUGIN_DATA_DIR/v5`，普通配置保存在 PostgreSQL；不扫描旧 `.installed` 或源码目录自动运行。
+
+原生服务需同时配置以下三项，未配置则关闭外部 UI：
 
 ```dotenv
-CAMPUSOS_PLUGIN_V4_DIR=plugins
-CAMPUSOS_PLUGIN_V4_DEV_SOURCE=true
-CAMPUSOS_PLUGIN_UI_ORIGIN=http://localhost:3003
+CAMPUSOS_PLUGIN_UI_LISTEN=127.0.0.1:3004
+CAMPUSOS_PLUGIN_UI_ORIGIN=http://{isolation}.localhost:3003
+CAMPUSOS_PLUGIN_UI_PARENTS="http://localhost:3000 http://localhost:3001"
 ```
 
-- `CAMPUSOS_PLUGIN_V4_DIR`：v4 源码和 `.installed` 发布包的根目录。
-- `CAMPUSOS_PLUGIN_V4_DEV_SOURCE=true`：仅开发环境使用，将已验证源码制作为可发现的发布版本；生产模式只扫描 `.installed/`。
-- `CAMPUSOS_PLUGIN_UI_ORIGIN`：Web/Admin 中隔离 iframe 的 Gateway 来源；浏览器不可使用 Docker 内部 `api` 主机名。
+`{isolation}` 必须是域名前缀，宿主按当前版本、owner、会话和授权证明分配随机租约域。3004 是仅接收受管静态资源的内部监听；浏览器使用 3003 网关，不能使用 Docker 内部 `api` 名称。父页面必须是精确 Origin，不能设置通配符。网关不提供 API、Cookie/Authorization 透传或宿主目录。
 
-用户配置由宿主创建在 `data/personal-space/<user-id>/plugins/<key>/`。旧 `data/plugins` 和
-`data/plugin_data` 只保留 v1-v3 兼容资料，不能配置为新插件的发现入口。
+Docker 开发配置使用 `CAMPUSOS_PLUGIN_UI_SCHEME=http`、`CAMPUSOS_PLUGIN_UI_DOMAIN=localhost` 和 `CAMPUSOS_DEV_PLUGIN_UI_PORT=3003` 构造带 `{isolation}` 的 Origin，`CAMPUSOS_PLUGIN_UI_PARENTS` 与实际 Web/Admin Origin 一致。更改 Compose、入口或 SDK 挂载后运行 `docker-dev.* rebuild`。
+
+生产为独立 UI 域配置通配 DNS/TLS，例如 `https://{isolation}.plugins.example.edu`；不能与 Web/Admin 同源，也不能把父页面放在该隔离命名空间。局域网浏览器的 localhost 指向设备自身，须使用解析到开发机的专用通配域并更新精确父 Origin；不自动依赖公网 DNS 服务。详见[Docker 开发](docker-development.md)与插件操作（仓库 `docs/help/插件v5包与签名操作说明.md`）。
 
 ## 实例模式
 
@@ -100,3 +103,5 @@ CAMPUSOS_LOG_DIR=.campusos/logs
 - 第三方平台凭据。
 
 生产环境应由部署平台的 Secret 管理能力注入，而不是复用开发 `.env`。
+
+签名信任文件由操作者提供，设置容器可见的 `CAMPUSOS_PLUGIN_V5_TRUST_STORE` 路径；空值不信任任何发布者。开发可放在被 Git 忽略的 `.campusos/` 并使用 `/workspace/.campusos/...` 路径，不能放私钥。生产 API Compose 传入完整 UI 三变量，默认全空；TLS 反向代理只向独立 UI 监听（如 `api:3004`）转发有限静态请求并保留租约 Host，不能把 UI 域转到平台 API。正式栈不自动开通外部域、证书或端口。

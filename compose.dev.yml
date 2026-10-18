@@ -64,8 +64,6 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
-      plugin-ui:
-        condition: service_healthy
     working_dir: /workspace
     environment:
       CAMPUSOS_ENV: ${CAMPUSOS_ENV:-development}
@@ -123,11 +121,11 @@ services:
       HOST_API_ADDR: 127.0.0.1:18080
       OBSERVABILITY_PROMETHEUS_ENABLED: "false"
       PLUGINS_DIR: data/plugins
-      # Package reviewed source into an immutable v4 release on API startup.
-      # The user browser receives it only through the isolated plugin gateway.
-      CAMPUSOS_PLUGIN_V4_DIR: /workspace/plugins
-      CAMPUSOS_PLUGIN_V4_DEV_SOURCE: "true"
-      CAMPUSOS_PLUGIN_UI_ORIGIN: http://{host}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}
+      # Explicitly imported v5 packages only; trust is supplied by the operator.
+      CAMPUSOS_PLUGIN_V5_TRUST_STORE: ${CAMPUSOS_PLUGIN_V5_TRUST_STORE:-}
+      CAMPUSOS_PLUGIN_UI_LISTEN: 0.0.0.0:3004
+      CAMPUSOS_PLUGIN_UI_ORIGIN: "${CAMPUSOS_PLUGIN_UI_SCHEME:-http}://{isolation}.${CAMPUSOS_PLUGIN_UI_DOMAIN:-localhost}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}"
+      CAMPUSOS_PLUGIN_UI_PARENTS: ${CAMPUSOS_PLUGIN_UI_PARENTS:-http://localhost:3000 http://localhost:3001}
       PLUGIN_DATA_DIR: data/plugin_data
       MODULE_DATA_DIR: data/module_data
       RESOURCE_DIR: data/resources
@@ -147,6 +145,9 @@ services:
       retries: 30
 
   plugin-ui:
+    depends_on:
+      api:
+        condition: service_healthy
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile.dev
@@ -157,10 +158,8 @@ services:
       CAMPUSOS_FRONTEND_SEED: /opt/campusos-deps/plugins/campusos.pdf-viewer/frontend
       CAMPUSOS_DEV_UID: ${CAMPUSOS_DEV_UID:-1000}
       CAMPUSOS_DEV_GID: ${CAMPUSOS_DEV_GID:-1000}
-      CAMPUSOS_PLUGIN_V4_DIR: /workspace/plugins
       CAMPUSOS_PLUGIN_UI_PORT: 3003
-      # Development default. Production must list only its exact Web/Admin origins.
-      CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS: ${CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS:-*}
+      CAMPUSOS_PLUGIN_UI_UPSTREAM: http://api:3004
     ports:
       - "${CAMPUSOS_DEV_PLUGIN_UI_BIND:-127.0.0.1}:${CAMPUSOS_DEV_PLUGIN_UI_PORT:-3003}:3003"
     volumes:
@@ -195,6 +194,7 @@ services:
       - "${CAMPUSOS_DEV_WEB_BIND:-127.0.0.1}:${CAMPUSOS_DEV_WEB_PORT:-3000}:3000"
     volumes:
       - ./web:/workspace/web
+      - ./sdk/typescript/src:/workspace/sdk/typescript/src:ro
       - ./.campusos/logs:/workspace/.campusos/logs
       - web-node-modules:/workspace/web/node_modules
     healthcheck:
@@ -229,6 +229,7 @@ services:
       - "${CAMPUSOS_DEV_ADMIN_BIND:-127.0.0.1}:${CAMPUSOS_DEV_ADMIN_PORT:-3001}:3001"
     volumes:
       - ./admin:/workspace/admin
+      - ./sdk/typescript/src:/workspace/sdk/typescript/src:ro
       - ./.campusos/logs:/workspace/.campusos/logs
       - admin-node-modules:/workspace/admin/node_modules
     healthcheck:

@@ -1,71 +1,20 @@
-# v4 自包含外部插件体系
+# v5 外部插件体系
 
-> V12-03a状态更新（2026-10-16，Asia/Shanghai）：本页保留v4/旧协议的历史说明，旧命令和自动发现入口已关闭。当前包使用[v5 Manifest与包检查](/plugins/manifest)；持久安装、Dispatcher、动态UI和Runtime按03b及后续阶段接入。
+> 更新时间：2026-10-18（Asia/Shanghai）。当前 v1.2 按阶段验收，真实后端 Runner 仍由 V12-05/06 实施。
 
-> 更新时间：2026-09-23（Asia/Shanghai）
-> 适用范围：`campusos.plugin/v4` 新插件开发。v1-v3 目录和文档仅保留兼容与历史参考，不能作为新插件模板。
-
-## 先选对扩展类型
-
-| 目标 | 正确类型 | 生命周期 |
+| 目标 | 类型 | 边界 |
 | --- | --- | --- |
-| 身份、权限、社区、User Storage 等平台完整性能力 | Core Module | 始终随主程序运行。 |
-| 官方业务功能，例如课表、个人空间、富文本 | Built-in Feature | 随 CampusOS 编译，可配置/启停，不可市场安装。 |
-| 可独立发布、安装、授权和卸载的业务扩展 | External Plugin | 使用 `campusos.plugin/v4`。 |
-| 主题、主页样式、Prompt、Skill 等无业务 Runtime 的数据 | Resource Package | 校验、导入、应用，不执行插件代码。 |
+| 身份、权限、社区、User Storage | Core Module | 随主程序运行 |
+| 课表、个人空间、富文本、内置 AI/Knowledge | Built-in Feature | 编译装配，按各业务生命周期管理 |
+| 独立发布/安装/授权的扩展 | External Plugin | `campusos.plugin/v5`，显式签名导入 |
+| 主题、主页样式、Prompt、Skill | Resource Package | 数据资源，不执行插件代码 |
 
-本章的“插件”只指 External Plugin。第三方代码不能通过 `runtime: builtin` 获取进程内访问权，也不能直接读取平台数据库、
-宿主目录、JWT、Cookie、Redis、NATS 或环境密钥。
+源码位于 `plugins/<key>/`，受管签名包和操作状态由宿主维护；不从源码或旧 `.installed` 自动发现、构建和执行。配置保存在宿主 PostgreSQL，按版本和 owner 分域。安装不运行 shell/npm/go 钩子，不允许插件连接平台数据库、读取宿主目录、Token 或环境密钥。
 
-## 当前 v4 文件与数据边界
+管理员在 `/plugins` 导入包和独立签名文件，分别安装、按版本批准业务能力/运行资源、启用。用户在自己的 `/plugins` 安装已获批版本，确认当前用途并启用。配置页由不可变声明生成；普通值和 Secret 引用分别提交。撤权/到期后本人安装仍可卸载。
 
-```text
-plugins/<plugin-key>/                         # 受版本控制的插件源码
-  plugin.yaml
-  config/{system,user}.{schema,defaults}.json
-  frontend/{user,admin}/                      # 可选的隔离 UI 源码
-  backend/ storage/sqlite/ tests/             # 按需使用
+PDF Viewer `3.0.0-dev.2` 是 `runtime: none` 的 UI-only 示例：文章附件、个人资源和个人文档的 PDF 通过宿主选择的有限资源句柄预览。PC/移动端提供弹窗、侧边、全屏、新标签页；没有插件仍可下载。Echo 是后端包合同示例，不能把通过包检查视作真实 Runner 已交付。
 
-plugins/.installed/<plugin-key>/<version>-<digest>/  # 已校验的不可变 release，唯一可发现运行产物
-plugins/.staging/                              # 宿主原子安装临时目录，不可执行
-data/personal-space/<user-id>/plugins/<key>/config/  # 宿主创建的用户配置，不对 iframe 暴露
-```
+UI 在每个当前证明的独立子域加载，由有限 MessagePort 读取普通配置和已选择 PDF。授权、原业务 ACL 和资源修订始终由宿主复核。Wasm/Container 的 CPU/内存/跨进程隔离与恢复验收不由 UI-only 运行替代。
 
-源码目录、暂存目录和用户配置目录不会被直接执行或作为静态网页根目录。开发模式会先把源码打包为 release，再走同一套
-校验/安装路径；生产模式只扫描 `.installed/`。旧 `data/plugins/`、`data/plugin_data/` 属于 v1-v3 兼容运行时，
-不能作为 v4 源码发现入口。
-
-## 当前可运行样例：PDF Viewer
-
-[`plugins/campusos.pdf-viewer/`](https://github.com/javencpdd/CampusOS/tree/main/plugins/campusos.pdf-viewer) 是当前唯一的 v4 外部插件：
-
-- `runtime: none`，不运行插件后端进程；预览内容仍由宿主按权限读取。
-- 用户端 PDF.js 页面和管理端设置页随 release 发布到独立 Origin（开发栈默认 `:3003`）。
-- 图文文章附件、个人附件、个人文档三种 PDF 入口由宿主创建短期 Invocation；插件只通过 Bridge 请求受限的描述和 Range 字节。
-- 静态 JS/Worker 可按 release digest 使用浏览器缓存；受保护 PDF 字节不写入 Service Worker、IndexedDB 或共享缓存。
-
-请从 [PDF Viewer 入门教程](/plugins/pdf-viewer-tutorial) 开始，而不是从旧课表示例复制 Manifest。
-
-## 新插件的通用流程
-
-```text
-编写源码和 plugin.yaml
-  -> v4 静态校验、构建 UI 产物
-  -> stage / pack / 可选签名
-  -> 校验后原子安装到 .installed
-  -> 管理员审查并授予声明能力、发布目录
-  -> 用户“添加到我的插件”并生成配置目录
-  -> 用户同意个人数据能力
-  -> 宿主按资源 ACL 与三层授权创建受限 UI/Host 调用
-```
-
-“用户添加”不等于管理员授权，也不等于用户已经同意所有能力；升级后版本身份、声明用途或能力变化会使旧授权失效。
-平台每次调用都重新检查插件版本、运行状态、管理员 Grant、用户 Consent 和业务资源 ACL。
-
-## Runtime 的当前边界
-
-v4 Manifest 可以声明 `none`、`wasm` 或 `container`。`none` 是当前 PDF Viewer 已有的可运行路径。Wasm/Container
-需要受限 Runtime Adapter、资源限制、恢复与目标环境证据；在这些门禁未完成前，不应把其目录、Manifest 字段或计划设计表述为已交付的通用执行平台。
-
-下一步：[v4 Manifest 与配置](/plugins/manifest)、[隔离 UI、Bridge 与 Gateway](/plugins/frontend-runtime)、
-[三层授权与资源访问](/plugins/authorization-v3)。
+继续阅读：[Manifest 与配置](/plugins/manifest)、[隔离 UI 与 Bridge](/plugins/frontend-runtime)、[授权与资源访问](/plugins/authorization-v3)、签名包与管理操作（仓库 `docs/help/插件v5包与签名操作说明.md`）。旧 v4 教程仅供历史参考。

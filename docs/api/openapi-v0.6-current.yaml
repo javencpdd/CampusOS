@@ -1709,6 +1709,33 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/ui:
+    get:
+      operationId: pluginV5Handler_UIManifest
+      summary: GET /api/v1/admin/plugin-v5/ui
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.catalog
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/plugin-v5/{publisher}/{key}/commands:
     post:
       operationId: pluginV5Handler_Mutate
@@ -1819,6 +1846,92 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}/config-options:
+    get:
+      operationId: pluginV5Handler_ConfigOptions
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version/config-options
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}/ui:
+    get:
+      operationId: pluginV5Handler_UIState
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version/ui
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/posts/{post_id}:
     delete:
       operationId: postHandler_AdminGovernanceDelete
@@ -8730,6 +8843,31 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/ui:
+    get:
+      operationId: pluginV5Handler_UIManifest
+      summary: GET /api/v1/plugin-v5/ui
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.catalog
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-v5/{publisher}/{key}/commands:
     post:
       operationId: pluginV5Handler_Mutate
@@ -8836,6 +8974,88 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/config-options:
+    get:
+      operationId: pluginV5Handler_ConfigOptions
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version/config-options
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/ui:
+    get:
+      operationId: pluginV5Handler_UIState
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version/ui
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugins:
     get:
       operationId: plugin_V5RetiredHTTP

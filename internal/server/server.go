@@ -58,6 +58,7 @@ type Server struct {
 	integration       *integration.Module
 	reliability       *reliability.Module
 	appContext        *platformmodule.AppContext
+	pluginUI          *plugin.V5UIHost
 }
 
 func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }

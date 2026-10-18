@@ -246,7 +246,7 @@ func (s *V5Platform) preparation(ctx context.Context, i V5Installation, m *Plugi
 	c := V5Coordinate{i.Publisher, i.Key, i.DesiredVersion}
 	binding := V5Preparation{}
 	g, err := s.grant(ctx, c)
-	if err != nil || !v5GrantComplete(m, g) || !s.consentOK(ctx, c, i.Owner, m, g) {
+	if err != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, i.Owner, m, g) {
 		return binding, nil, ErrV5Denied
 	}
 	global, err := s.installation(ctx, c, "")
@@ -501,7 +501,7 @@ func (s *V5Platform) ExecutionFacts(ctx context.Context, c V5Coordinate, owner s
 			ready := func(x V5Installation) bool {
 				return x.Installed && x.Version == c.Version && x.DesiredVersion == c.Version && x.Desired == "enabled" && x.Observed == "ready" && x.Generation == x.ActiveGeneration && x.Generation == x.ObservedGeneration
 			}
-			out.ReadyForDispatch = ready(i) && ready(global) && v5GrantComplete(p.Manifest, g) && s.consentOK(tx, c, owner, p.Manifest, g)
+			out.ReadyForDispatch = ready(i) && ready(global) && v5GrantCompleteAt(p.Manifest, g, s.now().UnixMilli()) && s.consentOK(tx, c, owner, p.Manifest, g)
 			if out.ReadyForDispatch {
 				_, capsule, err := s.preparation(tx, i, p.Manifest)
 				if err != nil {

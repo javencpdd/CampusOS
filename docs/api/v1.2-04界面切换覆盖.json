@@ -1,0 +1,11 @@
+{
+  "contract": "campusos.v12-04-cutover/v1",
+  "previous_overlay": "v1.2-03c旧机制退役覆盖.json",
+  "stage": "V12-04",
+  "boundaries": [
+    {"id":"admin.v5-entry","runtime_status":"current","current_path":"admin/src/modules/plugins/routes.ts","retirement_boundary":"Admin插件目录、详情、配置与生命周期使用v5；旧plugin-center路由重定向，不向退役market/authorization API提交。"},
+    {"id":"user.v5-entry","runtime_status":"current","current_path":"web/src/modules/plugin-center/routes.ts","retirement_boundary":"用户仅从当前v5可见版本及本人安装操作，旧v4前端实现保留作历史资料，不作为当前路由或PDF授权事实。"},
+    {"id":"ui.asset-host","runtime_status":"current","current_path":"internal/plugin/v5_ui_host.go","retirement_boundary":"每个当前证明使用独立租约子域，只发布验证包的有限静态产物；Node网关不扫描源码/.installed，不代理API或凭据。"},
+    {"id":"pdf.current-authority","runtime_status":"current","current_path":"internal/server/bootstrap.go","retirement_boundary":"生产PDF读授权依赖当前v5包、安装代次、Grant/Consent/配置及原业务ACL；不复用旧Manager/Host Token或假Runner ready。"}
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://campusos.local/schemas/plugin-v5-installation-v1.schema.json",
-  "title": "CampusOS V12-03b host installation commands and safe projections",
+  "title": "CampusOS V12-03b/04 current installation commands and safe projections",
   "definitions": {
     "PluginV5AdminCommand": {
       "oneOf": [
@@ -137,14 +137,63 @@
                 "type": "string",
                 "maxLength": 256
               }
+            },
+            "configuration_part": {
+              "enum": [
+                "values",
+                "secret_refs"
+              ]
             }
           },
           "required": [
             "version",
             "idempotency_key",
             "kind",
-            "expected_revision",
-            "values"
+            "expected_revision"
+          ],
+          "oneOf": [
+            {
+              "not": {
+                "required": [
+                  "configuration_part"
+                ]
+              },
+              "required": [
+                "values"
+              ]
+            },
+            {
+              "properties": {
+                "configuration_part": {
+                  "const": "values"
+                }
+              },
+              "required": [
+                "configuration_part",
+                "values"
+              ],
+              "not": {
+                "required": [
+                  "secret_refs"
+                ]
+              }
+            },
+            {
+              "properties": {
+                "configuration_part": {
+                  "const": "secret_refs"
+                }
+              },
+              "required": [
+                "configuration_part",
+                "secret_refs"
+              ],
+              "not": {
+                "required": [
+                  "values"
+                ]
+              }
+            }
           ]
         },
         {
@@ -164,7 +213,8 @@
               "const": "0"
             },
             "expected_revision": {
-              "const": "0"
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$"
             },
             "approved": {
               "const": false
@@ -189,7 +239,8 @@
             "version",
             "idempotency_key",
             "kind",
-            "operation_id"
+            "operation_id",
+            "expected_revision"
           ]
         },
         {
@@ -231,6 +282,14 @@
             },
             "host_resources": {
               "$ref": "https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/host_resources"
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "expires_at_ms": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$"
             }
           },
           "required": [
@@ -275,6 +334,10 @@
               "enum": [
                 "revoke"
               ]
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 512
             }
           },
           "required": [
@@ -460,14 +523,63 @@
                 "type": "string",
                 "maxLength": 256
               }
+            },
+            "configuration_part": {
+              "enum": [
+                "values",
+                "secret_refs"
+              ]
             }
           },
           "required": [
             "version",
             "idempotency_key",
             "kind",
-            "expected_revision",
-            "values"
+            "expected_revision"
+          ],
+          "oneOf": [
+            {
+              "not": {
+                "required": [
+                  "configuration_part"
+                ]
+              },
+              "required": [
+                "values"
+              ]
+            },
+            {
+              "properties": {
+                "configuration_part": {
+                  "const": "values"
+                }
+              },
+              "required": [
+                "configuration_part",
+                "values"
+              ],
+              "not": {
+                "required": [
+                  "secret_refs"
+                ]
+              }
+            },
+            {
+              "properties": {
+                "configuration_part": {
+                  "const": "secret_refs"
+                }
+              },
+              "required": [
+                "configuration_part",
+                "secret_refs"
+              ],
+              "not": {
+                "required": [
+                  "values"
+                ]
+              }
+            }
           ]
         },
         {
@@ -487,7 +599,8 @@
               "const": "0"
             },
             "expected_revision": {
-              "const": "0"
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,18})$"
             },
             "approved": {
               "const": false
@@ -512,7 +625,8 @@
             "version",
             "idempotency_key",
             "kind",
-            "operation_id"
+            "operation_id",
+            "expected_revision"
           ]
         },
         {
@@ -701,6 +815,14 @@
         "attempts": {
           "type": "integer",
           "minimum": 0
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 512
         }
       },
       "required": [
@@ -714,7 +836,8 @@
         "generation",
         "error_code",
         "purge_data",
-        "attempts"
+        "attempts",
+        "revision"
       ]
     }
   },

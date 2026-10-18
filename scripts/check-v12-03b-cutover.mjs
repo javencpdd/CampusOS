@@ -16,8 +16,18 @@ assert(!startup.includes('pluginport.NewCatalogAdapter(m.manager.Catalog())'));
 const routes=read('internal/transport/httpapi/router.go');
 assert(!/d\.Plugin\./.test(routes),'legacy Handler still reachable');
 assert(routes.includes('plugin.V5RetiredHTTP'));
-assert.equal((routes.match(/d\.PluginV5\./g)||[]).length,9);
+// Preserve the nine 03b routes and account for the six finite 04 read-only
+// endpoints explicitly; an arbitrary additional control still fails the gate.
+const uiReads=[
+ ['/plugin-v5/:publisher/:key/:version/config-options','ConfigOptions(false)'],
+ ['/admin/plugin-v5/:publisher/:key/:version/config-options','ConfigOptions(true)'],
+ ['/plugin-v5/:publisher/:key/:version/ui','UIState(false)'],
+ ['/admin/plugin-v5/:publisher/:key/:version/ui','UIState(true)'],
+ ['/plugin-v5/ui','UIManifest(false)'],['/admin/plugin-v5/ui','UIManifest(true)'],
+];
+for(const [path,handler] of uiReads)assert(routes.includes(`GET("${path}", d.PluginV5.${handler})`),path);
+assert.equal((routes.match(/d\.PluginV5\./g)||[]).length,9+uiReads.length);
 const state=read('internal/plugin/v5_state_pg.go');assert(state.includes('transaction.ExecutorFor'));
 assert(read('internal/server/bootstrap.go').includes('plugin.NewPgV5StateStore(pool)'));
 assert(!/\.Observe\(/.test(start),'production fake observer');
-console.log('03b composed cutover: v5 authoritative state,9 new routes,legacy production controls retired');
+console.log('03b composed cutover: nine authoritative controls plus six bounded 04 reads; legacy controls retired');

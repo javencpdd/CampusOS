@@ -31,10 +31,25 @@ export interface PluginV5Operation extends PluginV5Coordinate {
     error_code: string;
     purge_data: boolean;
     attempts: number;
+    revision: string;
+    reason?: string;
 }
 type Request = {
     version: string;
     idempotency_key: string;
+};
+type ConfigurationPayload = {
+    configuration_part?: never;
+    values: Record<string, unknown>;
+    secret_refs?: Record<string, string>;
+} | {
+    configuration_part: "values";
+    values: Record<string, unknown>;
+    secret_refs?: never;
+} | {
+    configuration_part: "secret_refs";
+    secret_refs: Record<string, string>;
+    values?: never;
 };
 export type PluginV5InstallationCommand = Request & ({
     kind: "install" | "enable" | "disable" | "upgrade";
@@ -43,12 +58,10 @@ export type PluginV5InstallationCommand = Request & ({
     kind: "uninstall";
     expected_generation: string;
     purge_data?: boolean;
-} | {
+} | ({
     kind: "configure";
     expected_revision: string;
-    values: Record<string, unknown>;
-    secret_refs?: Record<string, string>;
-} | {
+} & ConfigurationPayload) | {
     kind: "consent";
     expected_revision: string;
     accepted: boolean;
@@ -56,6 +69,7 @@ export type PluginV5InstallationCommand = Request & ({
 } | {
     kind: "retry";
     operation_id: string;
+    expected_revision: string;
 });
 export type PluginV5AdminInstallationCommand = Exclude<PluginV5InstallationCommand, {
     kind: "consent";
@@ -65,9 +79,12 @@ export type PluginV5AdminInstallationCommand = Exclude<PluginV5InstallationComma
     approved: boolean;
     consumes: PluginV5Consume[];
     host_resources?: NonNullable<PluginV5Manifest["host_resources"]>;
+    reason?: string;
+    expires_at_ms?: string;
 } | {
     kind: "revoke";
     expected_revision: string;
+    reason?: string;
 } | {
     kind: "purge_release";
 }));

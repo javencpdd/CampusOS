@@ -59,6 +59,7 @@ WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
+COPY sdk/typescript/src/ /src/sdk/typescript/src/
 RUN pnpm build
 
 FROM ${NGINX_IMAGE} AS web
@@ -75,6 +76,7 @@ WORKDIR /src/admin
 COPY admin/package.json admin/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY admin/ ./
+COPY sdk/typescript/src/ /src/sdk/typescript/src/
 ARG VITE_WEB_URL=
 ARG VITE_DOCS_URL=
 ARG VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS

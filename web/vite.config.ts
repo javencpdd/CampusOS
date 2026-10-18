@@ -14,6 +14,7 @@ export default defineConfig({
     },
   },
   server: {
+    fs: { allow: [resolve(__dirname, '.'), resolve(__dirname, '../sdk/typescript/src')] },
     port: 3000,
     proxy: {
       '/api': {

@@ -3,27 +3,26 @@
     <iframe
       v-if="state !== 'blocked'"
       ref="frame"
+      :key="frameKey"
       :src="src"
       :title="title"
       sandbox="allow-scripts allow-same-origin"
       referrerpolicy="no-referrer"
-      @load="loaded = true"
+      @load="onLoad"
     />
     <el-alert v-if="message" :title="message" :type="state === 'ready' ? 'success' : 'warning'" :closable="false" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { getAccessToken } from '@/modules/identity/session'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   PLUGIN_BRIDGE_VERSION,
+  dispatchPluginBridgeRequest,
   createPluginBridgeSession,
   isMatchingHandshake,
   isMatchingReady,
-  pluginBridgeError,
-  pluginBridgeResult,
-  pluginBridgeTransferables,
-  validatePluginBridgeRequest,
   type PluginBridgeRequest,
   type PluginBridgeSession,
   type PluginFrameIdentity,
@@ -39,7 +38,10 @@ const props = defineProps<{
 
 const frame = ref<HTMLIFrameElement>()
 const loaded = ref(false)
-const state = ref<'connecting' | 'ready' | 'blocked'>('connecting')
+const state = ref<'connecting' | 'ready' | 'blocked'>(
+  validFrameIdentity(props.identity, window.location.origin) && sourceMatchesIdentity() ? 'connecting' : 'blocked',
+)
+const frameKey = computed(() => JSON.stringify([props.identity, props.src]))
 const message = computed(() => {
   if (state.value === 'blocked') return '插件界面未通过隔离连接校验，已阻止加载。'
   if (state.value === 'ready') return ''
@@ -47,6 +49,10 @@ const message = computed(() => {
 })
 
 let session: PluginBridgeSession | undefined
+let identityToken = getAccessToken()
+let identityTimer: ReturnType<typeof setInterval>
+let requestIDs = new Set<string>()
+let requests = { count: 0 }
 let timeout: ReturnType<typeof setTimeout> | undefined
 
 function closeSession() {
@@ -54,6 +60,8 @@ function closeSession() {
   timeout = undefined
   session?.close()
   session = undefined
+  requestIDs = new Set<string>()
+  requests = { count: 0 }
 }
 
 function reject() {
@@ -64,7 +72,7 @@ function reject() {
 function newChallenge(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function')
-    return `${Date.now()}-${Math.random()}`
+    throw new Error('安全随机数不可用。')
   const values = new Uint32Array(4)
   crypto.getRandomValues(values)
   return Array.from(values, (value) => value.toString(16)).join('-')
@@ -90,11 +98,37 @@ function onWindowMessage(event: MessageEvent<unknown>) {
   ) {
     return
   }
-  closeSession()
+  if (session || state.value === 'blocked') return
   const channel = new MessageChannel()
-  const challenge = newChallenge()
+  let challenge: string
+  try {
+    challenge = newChallenge()
+  } catch {
+    channel.port1.close()
+    channel.port2.close()
+    reject()
+    return
+  }
   session = createPluginBridgeSession(props.identity, challenge, channel)
-  session.port.onmessage = (portEvent) => handlePortMessage(portEvent)
+  const connected = session
+  const fingerprint = frameKey.value
+  const token = identityToken
+  const seen = requestIDs,
+    budget = requests
+  const handler = props.request
+  connected.port.onmessage = (portEvent) =>
+    handlePortMessage(
+      connected,
+      portEvent,
+      () =>
+        session === connected &&
+        frameKey.value === fingerprint &&
+        getAccessToken() === token &&
+        state.value !== 'blocked',
+      handler,
+      seen,
+      budget,
+    )
   iframeWindow.postMessage(
     {
       type: 'campusos.bridge.connect',
@@ -113,36 +147,51 @@ function onWindowMessage(event: MessageEvent<unknown>) {
   }, 10_000)
 }
 
-async function handlePortMessage(event: MessageEvent<unknown>) {
-  if (!session) return
-  if (!session.active) {
-    if (!isMatchingHandshake(event.data, session.challenge)) {
+async function handlePortMessage(
+  connected: PluginBridgeSession,
+  event: MessageEvent<unknown>,
+  current: () => boolean,
+  handler: (request: PluginBridgeRequest) => Promise<unknown>,
+  seen: Set<string>,
+  budget: { count: number },
+) {
+  if (!current()) return
+  if (!connected.active) {
+    if (!isMatchingHandshake(event.data, connected.challenge)) {
       reject()
       return
     }
-    session.active = true
+    connected.active = true
     if (timeout) clearTimeout(timeout)
     state.value = 'ready'
     return
   }
-  const request = validatePluginBridgeRequest(event.data)
-  if (!request) {
-    session.port.postMessage(pluginBridgeError('invalid', 'bridge.invalid_request', '插件请求格式无效，已被宿主拒绝。'))
-    return
-  }
-  try {
-    const result = await props.request(request)
-    session.port.postMessage(pluginBridgeResult(request.request_id, result), pluginBridgeTransferables(result))
-  } catch {
-    session.port.postMessage(pluginBridgeError(request.request_id, 'bridge.denied', '当前操作未获授权或资源已不可用。'))
-  }
+  await dispatchPluginBridgeRequest(connected, event.data, current, handler, seen, budget)
 }
+function onLoad() {
+  if (loaded.value) reject()
+  loaded.value = true
+}
+watch(
+  frameKey,
+  () => {
+    closeSession()
+    loaded.value = false
+    state.value =
+      validFrameIdentity(props.identity, window.location.origin) && sourceMatchesIdentity() ? 'connecting' : 'blocked'
+  },
+  { flush: 'sync' },
+)
 
 onMounted(() => {
   if (!validFrameIdentity(props.identity, window.location.origin) || !sourceMatchesIdentity()) reject()
   else window.addEventListener('message', onWindowMessage)
+  identityTimer = setInterval(() => {
+    if (getAccessToken() !== identityToken || (session && state.value === 'ready' && !session.active)) reject()
+  }, 100)
 })
 onBeforeUnmount(() => {
+  clearInterval(identityTimer)
   window.removeEventListener('message', onWindowMessage)
   closeSession()
 })

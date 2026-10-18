@@ -50,10 +50,13 @@ func (s V5Installation) coordinate() V5Coordinate { return V5Coordinate{s.Publis
 
 type V5Grant struct {
 	V5Coordinate
-	Approved  bool                       `json:"approved"`
-	Consumes  []PluginV5Consume          `json:"consumes"`
-	Resources *PluginV5ManifestResources `json:"host_resources,omitempty"`
-	Revision  int64                      `json:"revision,string"`
+	ExpiresAtMS int64                      `json:"expires_at_ms,string,omitempty"`
+	Reason      string                     `json:"reason,omitempty"`
+	ApprovedBy  string                     `json:"approved_by,omitempty"`
+	Approved    bool                       `json:"approved"`
+	Consumes    []PluginV5Consume          `json:"consumes"`
+	Resources   *PluginV5ManifestResources `json:"host_resources,omitempty"`
+	Revision    int64                      `json:"revision,string"`
 }
 type V5Consent struct {
 	V5Coordinate
@@ -72,6 +75,7 @@ type V5Configuration struct {
 }
 type V5Operation struct {
 	V5Coordinate
+	Reason          string         `json:"reason,omitempty"`
 	ID              string         `json:"id"`
 	ActorKind       string         `json:"actor_kind"`
 	ActorID         string         `json:"actor_id"`
@@ -124,6 +128,7 @@ type v5Query struct {
 	Pending        bool
 	Now            int64
 	Visible        bool
+	VisibleOwner   string
 }
 type V5StateStore interface {
 	lock(context.Context, string) error
@@ -235,6 +240,43 @@ func (s *MemoryV5StateStore) list(ctx context.Context, k v5RecordKind, q v5Query
 	limit := q.Limit
 	if limit < 1 || limit > 51 {
 		limit = 51
+	}
+	if q.VisibleOwner != "" {
+		if k != v5Global || !v5OwnerValid(q.VisibleOwner) {
+			return nil, ErrV5Invalid
+		}
+		visible := map[string]json.RawMessage{}
+		for _, raw := range s.records[v5Global] {
+			var i V5Installation
+			_ = json.Unmarshal(raw, &i)
+			var g V5Grant
+			_ = json.Unmarshal(s.records[v5Grant][i.coordinate().id()], &g)
+			if i.Installed && v5GrantActive(g, q.Now) {
+				visible[i.coordinate().id()] = raw
+			}
+		}
+		for _, raw := range s.records[v5User] {
+			var i V5Installation
+			_ = json.Unmarshal(raw, &i)
+			if i.Installed && i.Owner == q.VisibleOwner {
+				visible[i.coordinate().id()] = raw
+			}
+		}
+		ids := []string{}
+		for id := range visible {
+			if id > q.After {
+				ids = append(ids, id)
+			}
+		}
+		sort.Strings(ids)
+		if len(ids) > limit {
+			ids = ids[:limit]
+		}
+		out := []json.RawMessage{}
+		for _, id := range ids {
+			out = append(out, append(json.RawMessage(nil), visible[id]...))
+		}
+		return out, nil
 	}
 	ids := []string{}
 	for id, b := range s.records[k] {

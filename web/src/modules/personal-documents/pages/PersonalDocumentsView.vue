@@ -45,9 +45,21 @@
             <el-table-column prop="updated_at" label="更新时间" min-width="160" />
             <el-table-column label="操作" width="200">
               <template #default="{ row }">
-                <el-button v-if="row.format === 'pdf'" link type="primary" @click.stop="previewPDF(row)"
-                  >预览</el-button
+                <el-dropdown
+                  v-if="row.format === 'pdf'"
+                  trigger="click"
+                  @command="(p: string) => previewPDF(row, p as SurfacePresentation)"
                 >
+                  <el-button link type="primary" @click.stop>预览</el-button>
+                  <template #dropdown
+                    ><el-dropdown-menu
+                      ><el-dropdown-item command="modal">弹窗预览</el-dropdown-item
+                      ><el-dropdown-item command="drawer">侧边预览</el-dropdown-item
+                      ><el-dropdown-item command="fullscreen">全屏预览</el-dropdown-item
+                      ><el-dropdown-item command="new-tab">新标签页预览</el-dropdown-item></el-dropdown-menu
+                    ></template
+                  >
+                </el-dropdown>
                 <el-button link type="primary" @click.stop="download(row)">下载</el-button>
                 <el-button v-if="row.status === 'active'" link type="danger" @click.stop="changeStatus(row, true)"
                   >移入回收站</el-button
@@ -94,9 +106,21 @@
               <el-table-column prop="updated_at" label="更新时间" min-width="170" />
               <el-table-column label="操作" width="220">
                 <template #default="{ row }">
-                  <el-button v-if="isPDFAsset(row)" link type="primary" @click="previewArticleAttachmentPDF(row)"
-                    >预览</el-button
+                  <el-dropdown
+                    v-if="isPDFAsset(row)"
+                    trigger="click"
+                    @command="(p: string) => previewArticleAttachmentPDF(row, p as SurfacePresentation)"
                   >
+                    <el-button link type="primary" @click.stop>预览</el-button>
+                    <template #dropdown
+                      ><el-dropdown-menu
+                        ><el-dropdown-item command="modal">弹窗预览</el-dropdown-item
+                        ><el-dropdown-item command="drawer">侧边预览</el-dropdown-item
+                        ><el-dropdown-item command="fullscreen">全屏预览</el-dropdown-item
+                        ><el-dropdown-item command="new-tab">新标签页预览</el-dropdown-item></el-dropdown-menu
+                      ></template
+                    >
+                  </el-dropdown>
                   <el-button link type="primary" @click="downloadArticleAttachment(row)">下载</el-button>
                   <el-button
                     v-if="row.status === 'active'"
@@ -490,8 +514,7 @@ function isPDFAsset(row: any) {
   )
 }
 
-async function previewArticleAttachmentPDF(row: any) {
-  const presentation: SurfacePresentation = 'modal'
+async function previewArticleAttachmentPDF(row: any, presentation: SurfacePresentation = 'modal') {
   try {
     await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
     await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')
@@ -524,8 +547,7 @@ async function changeArticleAttachmentStatus(row: any, trash: boolean) {
   }
 }
 
-async function previewPDF(row: any) {
-  const presentation: SurfacePresentation = 'modal'
+async function previewPDF(row: any, presentation: SurfacePresentation = 'modal') {
   try {
     await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'personal_space_file.self.read')
     await ensurePluginCapabilityConsent('campusos.pdf-viewer', 'plugin_ui.surface.open')

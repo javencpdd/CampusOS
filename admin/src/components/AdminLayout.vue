@@ -74,6 +74,7 @@
             <el-menu-item index="/features">内置功能</el-menu-item>
             <el-menu-item index="/appearance">外观与风格包</el-menu-item>
             <el-menu-item index="/plugins">外部插件运行管理</el-menu-item>
+            <el-menu-item index="/plugin-config">插件系统配置</el-menu-item>
             <el-menu-item index="/plugin-center">用户目录与授权</el-menu-item>
             <el-menu-item index="/integrations">集成中心</el-menu-item>
           </el-sub-menu>
@@ -228,6 +229,7 @@ const currentPageTitle = computed(() => {
     "/architecture": "数据架构",
     "/extensions": "扩展与集成",
     "/plugins": "外部插件运行管理",
+    "/plugin-config": "插件系统配置",
     "/plugin-center": "用户目录与授权",
     "/features": "内置功能",
     "/appearance": "外观与风格包",
