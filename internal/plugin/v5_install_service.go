@@ -6,6 +6,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
@@ -34,6 +35,7 @@ type V5Mutation struct {
 	OperationID        string                     `json:"operation_id,omitempty"`
 }
 type V5Platform struct {
+	managed  atomic.Pointer[V5ManagedRuntime]
 	store    V5StateStore
 	files    *V5ManagedFiles
 	catalog  *PluginV5PackageCatalog
@@ -411,7 +413,7 @@ func (s *V5Platform) Import(ctx context.Context, raw, envelope []byte, key strin
 	})
 	return result, err
 }
-func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Mutation, admin bool, resolve identity.SessionPrincipalResolver) (V5Operation, error) {
+func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Mutation, admin bool, resolve identity.SessionPrincipalResolver) (result V5Operation, err error) {
 	c := V5Coordinate{publisher, key, r.Version}
 	if !c.valid() || !v5MutationValid(r, admin) {
 		return V5Operation{}, ErrV5Invalid
@@ -426,10 +428,20 @@ func (s *V5Platform) Mutate(ctx context.Context, publisher, key string, r V5Muta
 	}
 	raw, _ := json.Marshal(r)
 	hash := v5BytesDigest(raw)
-	var result V5Operation
+	changed := false
+	defer func() {
+		if err == nil && changed && result.Generation > 0 {
+			if h := s.managed.Load(); h != nil {
+				h.withdrawFamily(c.family(), owner)
+			}
+		}
+	}()
 	apply := func(m *PluginV5Manifest) error {
 		var e error
-		result, e = s.command(ctx, a, c, owner, r, hash, resolve, func(tx context.Context, op *V5Operation) error { return s.apply(tx, c, owner, r, m, op) })
+		result, e = s.command(ctx, a, c, owner, r, hash, resolve, func(tx context.Context, op *V5Operation) error {
+			changed = true
+			return s.apply(tx, c, owner, r, m, op)
+		})
 		return e
 	}
 	needsVerification := r.Kind == "install" || r.Kind == "enable" || r.Kind == "upgrade" || r.Kind == "configure" || r.Kind == "grant" && r.Approved || r.Kind == "consent" && r.Accepted

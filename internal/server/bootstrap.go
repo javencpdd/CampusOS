@@ -115,6 +115,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	// accepting an identity into a new, forgetful registry.
 	identityStore := plugin.NewPgPluginV5IdentityStore(pool)
 	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore, identityStore, plugin.NewPgV5StateStore(pool))
+	plugins.eventStore = plugin.NewPgV5EventStore(pool)
 	identityModule := identitycore.NewModule(identitycore.Config{
 		JWT:                   s.newJWTManager(),
 		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,

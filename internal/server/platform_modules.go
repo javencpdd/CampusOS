@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
@@ -187,6 +188,10 @@ type pluginPlatformModule struct {
 	hostAPI            *hostapi.HostAPIServer
 	cancel             context.CancelFunc
 	workerDone         chan struct{}
+	managed            *plugin.V5ManagedRuntime
+	eventStore         plugin.V5EventStore
+	metadata           *plugin.V5EventService
+	eventWorkerDone    chan struct{}
 }
 
 func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore, authorizationStore plugin.AuthorizationStore, secretStore plugin.SecretStore, identityStore plugin.PluginV5IdentityStore, states ...plugin.V5StateStore) *pluginPlatformModule {
@@ -321,6 +326,38 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.app.Provide("plugin.v5.chat-dispatcher", plugin.NewV5ChatDispatcher(directory, nil, "", nil)); err != nil {
 		return err
 	}
+	m.managed = plugin.NewV5ManagedRuntime(directory)
+	if err := m.app.Provide("plugin.v5.runtime", m.managed); err != nil {
+		return err
+	}
+	if err := m.app.Provide("plugin.v5.dispatcher", m.managed); err != nil {
+		return err
+	}
+	var publicMetadata plugin.V5MetadataAuthorizer
+	if value, ok := m.app.Lookup("community.content-query"); ok {
+		if reader, ok := value.(communityport.ContentQuery); ok && reader != nil {
+			if err := m.managed.BindHost("community.thread.public.read", plugin.V5PublicThreadEndpoint(reader, pluginCommunityGate{}, "core.community")); err != nil {
+				return err
+			}
+			publicMetadata = func(ctx context.Context, kind, ref string) (bool, error) {
+				if kind != "community.thread.public.changed/v1" || !strings.HasPrefix(ref, "thread:") {
+					return false, nil
+				}
+				thread, err := reader.GetPublicThread(ctx, strings.TrimPrefix(ref, "thread:"))
+				return err == nil && thread != nil && thread.FactsVersion > 0, err
+			}
+		}
+	}
+	if m.eventStore == nil {
+		// An absent durable store stays unavailable; never silently fall back
+		// to a process-local delivery queue in production.
+		m.eventStore = plugin.NewPgV5EventStore(nil)
+	}
+	m.metadata = plugin.NewV5EventService(m.managed, m.eventStore, publicMetadata)
+	m.metadata.Register()
+	if err := m.app.Provide("plugin.v5.metadata-events", m.metadata); err != nil {
+		return err
+	}
 	workerCtx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 	m.workerDone = make(chan struct{})
@@ -333,14 +370,37 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 			case <-workerCtx.Done():
 				return
 			case <-ticker.C:
+				m.managed.Sweep(workerCtx)
 				if _, err := m.platform.ProcessOnce(workerCtx, 16); err != nil && workerCtx.Err() == nil {
 					log.Printf("插件 v5 操作等待重试")
 				}
 			}
 		}
 	}()
+	m.eventWorkerDone = make(chan struct{})
+	go func() {
+		defer close(m.eventWorkerDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-workerCtx.Done():
+				return
+			case <-ticker.C:
+				// Callback IO, leases and retries are independent of both the
+				// Core transaction and its durable Outbox worker.
+				_, _ = m.metadata.ProcessOnce(workerCtx, 16)
+			}
+		}
+	}()
 	return nil
 }
+
+// Community is an always-on Core module. Its protected public-read Port is
+// the authority; no synthetic optional Feature is added to the registry.
+type pluginCommunityGate struct{}
+
+func (pluginCommunityGate) Enabled(id string) bool { return id == "core.community" }
 
 // ensurePDFViewerDefaultGrants creates auditable, revocable administrator
 // grants for the compiled first-party reader. It is not an authorization
@@ -383,14 +443,31 @@ func (m *pluginPlatformModule) ensurePDFViewerDefaultGrants(ctx context.Context)
 	return nil
 }
 
-func (m *pluginPlatformModule) Stop(context.Context) error {
+func (m *pluginPlatformModule) Stop(ctx context.Context) error {
 	if m.cancel != nil {
 		m.cancel()
 		m.cancel = nil
 	}
+	if m.managed != nil {
+		if err := m.managed.Close(ctx); err != nil {
+			return err
+		}
+	}
 	if m.workerDone != nil {
-		<-m.workerDone
+		select {
+		case <-m.workerDone:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		m.workerDone = nil
+	}
+	if m.eventWorkerDone != nil {
+		select {
+		case <-m.eventWorkerDone:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		m.eventWorkerDone = nil
 	}
 	if m.manager != nil {
 		m.manager.StopAll()

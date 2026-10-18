@@ -1,0 +1,11 @@
+{
+  "contract": "campusos.v12-03c-cutover/v1",
+  "base": "v1.2旧机制删除与替换清单.json",
+  "previous_overlay": "v1.2-03b旧机制退役覆盖.json",
+  "stage": "V12-03c",
+  "overrides": [
+    {"id":"plugin.legacy_capability_map","replacement_stage":"V12-03c","runtime_status":"retired","retired_evidence":"v12-03c-exit-linux.json","retirement_boundary":"生产v5调用只接受受管实例凭据、有限Host目录、Manifest/Grant精确typed consumes和当前Core资源政策；不映射v1/v2 permissions。旧AuthorizationService只保留历史测试实现，生产无构造或调用入口。"},
+    {"id":"plugin.untyped_scope","replacement_stage":"V12-03c","runtime_status":"retired","retired_evidence":"v12-03c-exit-linux.json","retirement_boundary":"v5只比较类型化Scope与精确用途声明，再调用编译期资源Authorizer；无map scopeContains或缺失授权fallback。历史旧协议代码不赋予v5执行权，不宣称全仓历史类型已删除。"},
+    {"id":"plugin.legacy_event","replacement_stage":"V12-03c","runtime_status":"retired","retired_evidence":"v12-03c-exit-linux.json","retirement_boundary":"新事件入口仅从已提交Core Outbox取来源证明，不解析旧Manifest事件订阅；白名单有限元数据单独事务入队、独立工作器投递，当前Grant/owner/发布代次围栏、有限重试/死信，回调不占用Core事务。"}
+  ]
+}

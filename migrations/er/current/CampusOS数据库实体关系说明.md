@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=c2c0814d99ef4cbb7b770c383d9569ebccc3c4bba3f9eeab886e8f1cf21a606e;tables=111;foreign_keys=131 -->
+<!-- campusos-er:schema_sha256=89635174c0577907d25045f32d79c73b79399f97b41dfeafc258e9513c9896ac;tables=112;foreign_keys=132 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**111**
-- 物理外键：**131**
+- 实体表：**112**
+- 物理外键：**132**
 - 一对一/可选一对一关系：**16**
-- 一对多关系：**115**
+- 一对多关系：**116**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`c2c0814d99ef4cbb7b770c383d9569ebccc3c4bba3f9eeab886e8f1cf21a606e`
+- Schema 指纹：`89635174c0577907d25045f32d79c73b79399f97b41dfeafc258e9513c9896ac`
 
 ## 1. 生成范围与判定规则
 
@@ -44,6 +44,7 @@
 - `000025_integration_identity.up.sql`
 - `000026_plugin_package_identities.up.sql`
 - `000027_plugin_v5_installations.up.sql`
+- `000028_plugin_v5_event_deliveries.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -114,7 +115,7 @@
 | 插件生态与授权 | `plugin_market_sources` | 9 | `id` | 0 | 1 |
 | 插件生态与授权 | `plugin_operations` | 9 | `record_id` | 1 | 0 |
 | 插件生态与授权 | `plugin_package_identities` | 5 | `publisher, plugin_key, version` | 0 | 1 |
-| 插件生态与授权 | `plugin_package_releases` | 5 | `record_id` | 2 | 8 |
+| 插件生态与授权 | `plugin_package_releases` | 5 | `record_id` | 2 | 9 |
 | 插件生态与授权 | `plugin_packages` | 3 | `publisher, plugin_key` | 0 | 1 |
 | 插件生态与授权 | `plugin_permissions` | 6 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_publishers` | 10 | `id` | 1 | 1 |
@@ -127,6 +128,7 @@
 | 插件生态与授权 | `plugin_user_installations` | 9 | `record_id` | 4 | 0 |
 | 插件生态与授权 | `plugin_v5_admin_grants` | 6 | `record_id` | 1 | 0 |
 | 插件生态与授权 | `plugin_v5_configurations` | 7 | `record_id` | 2 | 0 |
+| 插件生态与授权 | `plugin_v5_event_deliveries` | 8 | `id` | 1 | 0 |
 | 插件生态与授权 | `plugin_v5_user_consents` | 7 | `record_id` | 2 | 0 |
 | 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 4 |
 | 插件生态与授权 | `plugins` | 24 | `id` | 1 | 2 |
@@ -267,6 +269,7 @@
 | `plugin_installations` | `plugin_user_installations` | `fk_plugin_user_installations_4` | `publisher, plugin_key` → `publisher, plugin_key` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `users` | `plugin_v5_configurations` | `fk_plugin_v5_configurations_1` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `plugin_package_releases` | `plugin_v5_configurations` | `fk_plugin_v5_configurations_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_v5_event_deliveries` | `fk_plugin_v5_event_deliveries_1` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `users` | `plugin_v5_user_consents` | `fk_plugin_v5_user_consents_1` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `plugin_package_releases` | `plugin_v5_user_consents` | `fk_plugin_v5_user_consents_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `plugins` | `plugin_versions` | `plugin_versions_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -1749,7 +1752,7 @@
 
 - 主键：`record_id`
 - 唯一列集：(publisher, plugin_key, version)
-- 出站外键：2；入站外键：8
+- 出站外键：2；入站外键：9
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -2023,6 +2026,27 @@
 
 - `fk_plugin_v5_configurations_1`：`plugin_v5_configurations(owner_user_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 - `fk_plugin_v5_configurations_2`：`plugin_v5_configurations(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_v5_event_deliveries`
+
+- 主键：`id`
+- 唯一列集：(source_event_id, instance_id, instance_generation)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `source_event_id` | `text` | NN | 否 | `—` |
+| `instance_id` | `text` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `instance_generation` | `bigint` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_v5_event_deliveries_1`：`plugin_v5_event_deliveries(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
 
 #### `plugin_v5_user_consents`
 

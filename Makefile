@@ -103,7 +103,7 @@ v12-scope-delegation-contract-check:
 
 .PHONY: v12-g1-replacement-map-check
 v12-g1-replacement-map-check:
-	node scripts/check-v12-03b-cutover.mjs
+	node scripts/check-v12-03c-cutover.mjs
 
 .PHONY: v12-g1-exit-check
 v12-g1-exit-check:

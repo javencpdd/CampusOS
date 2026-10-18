@@ -10,9 +10,9 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000027（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000028（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
-        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本）</el-tag
+        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列）</el-tag
       >
     </section>
 
@@ -339,6 +339,7 @@ const databaseTables: DbTable[] = [
   {name: "plugin_v5_user_consents", title: "v5 用户同意", domain: "plugin", purpose: "按版本、owner、用途摘要和Grant修订绑定同意。", fields: ["record_id", "state", "owner_user_id", "revision"], migration: "000027", relationshipNote: "FK到User和发布版本，不引用可变展示名。"},
   {name: "plugin_v5_configurations", title: "v5 分域配置", domain: "plugin", purpose: "按版本和system/User域保留配置与不透明Secret ref，禁止明文凭据。", fields: ["record_id", "state", "owner_user_id", "revision"], migration: "000027", relationshipNote: "FK到发布版本与可空User；系统域owner为空。"},
   {name: "plugin_operations", title: "v5 持久生命周期操作", domain: "plugin", purpose: "幂等意图、租约、重试、准备绑定与进度；同事务审计和Outbox。", fields: ["record_id", "state", "actor_kind", "actor_id", "idempotency_key", "revision"], migration: "000027", relationshipNote: "FK到发布版本；actor是显式域审计标识，不以User外键误绑Admin。"},
+  {name: "plugin_v5_event_deliveries", title: "v5 独立元数据事件队列", domain: "plugin", purpose: "仅保留白名单资源引用、修订及投递状态；插件回调不占用Core事务或Outbox工作器。", fields: ["id", "state", "source_event_id", "instance_id", "publisher", "plugin_key", "version", "instance_generation"], migration: "000028", relationshipNote: "FK到发布版本；来源事件为逻辑引用，独立租约/重试/死信保留证据，重启不复活旧实例。"},
   { name: "plugin_package_identities", title: "v5 包不可变发布身份", domain: "plugin", purpose: "按publisher/key/version永久固定首个已验证包摘要，跨进程/重启拒绝同版本不同字节；不保存包字节、信任凭据、安装或授权状态。", fields: ["publisher", "plugin_key", "version", "package_digest", "created_at"], migration: "000026", relationshipNote: "独立于旧Manager与plugin_versions，不转换旧身份，不外键关联User/Admin；publisher来自当前受信包声明，信任仍须每次重新验证。" },
   { name: "integration_principals", title: "独立机器集成身份", domain: "identity", purpose: "保存机器名称、当前启停/永久撤销及非复用事实版本，独立于 User/Admin/插件身份。", fields: ["id","name","status","facts_version","created_by_admin_id","created_at","updated_at"], migration: "000025", relationshipNote: "integration_credentials.principal_id 外键引用本表；created_by_admin_id 为独立 Admin 域逻辑审计关联，不关联用户 ID。" },
   { name: "integration_credentials", title: "机器集成凭据摘要与白名单", domain: "identity", purpose: "仅存256位随机token的单向摘要、可辨识前缀、用途、有效期、精确通道/端点/资源规则及撤销事实；不保存原始凭据。", fields: ["id","principal_id","prefix","digest","purpose","status","rules","not_before_ms","expires_at_ms","facts_version","created_by_admin_id"], migration: "000025", relationshipNote: "principal_id 显式外键且禁止级联删除；created_by_admin_id 为 Admin 逻辑审计关联；生命周期命令关联平台必需审计/Outbox。" },
@@ -1944,6 +1945,7 @@ const relations: Relation[] = [
   {id: "v5-27-9", source: "plugin_package_releases", target: "plugin_v5_configurations", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
   {id: "v5-27-10", source: "users", target: "plugin_v5_configurations", sourceCardinality: "1", targetCardinality: "0..N", label: "owner_user_id (可空 FK, RESTRICT)", domains: ["plugin"]},
   {id: "v5-27-11", source: "plugin_package_releases", target: "plugin_operations", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-28-0", source: "plugin_package_releases", target: "plugin_v5_event_deliveries", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
   { id: "integration-principal-credentials", source: "integration_principals", target: "integration_credentials", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> principal_id (FK, RESTRICT)", domains: ["identity"] },
   { id: "admin-integration-principals", source: "admin_accounts", target: "integration_principals", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> created_by_admin_id（逻辑审计关联，非FK）", domains: ["identity"] },
   {
@@ -2984,6 +2986,7 @@ const relations: Relation[] = [
 ];
 
 const storageRows = [
+ { path: "PostgreSQL / plugin_v5_event_deliveries", category: "v5 事件证据", type: "primary", purpose: "独立于Core Outbox的元数据投递及重试证据。", contents: ["白名单资源引用、状态、修订与5分钟期限", "实例代次、单赢家租约、5次尝试与死信"], note: "禁止正文/Prompt/Secret或请求自证提交；备份与v5目录一同保留，重启后旧凭据和发布不恢复。" },
  { path: "PLUGIN_DATA_DIR/v5/", category: "v5 受管插件文件", type: "primary", purpose: "完整签名包、按owner与代次隔离的私有准备配置及数据。", contents: ["packages/<sha256>.tar.gz：不可变完整包，不解压到宿主源码", "prepared/<publisher>/<key>/system|user-ID/<generation>.json：私有配置快照，不经HTTP公开", "data/<publisher>/<key>/system|user-ID：插件私有数据，卸载默认保留"], note: "与000026/27数据库作为同一备份集合；显式owner purge只清理本owner，release GC须无current/desired安装引用；不含可信缓存授权。" },
   {
     path: "PostgreSQL",
@@ -3100,6 +3103,7 @@ const storageRows = [
 ];
 
 const migrations = [
+  {version: "000028", file: "000028_plugin_v5_event_deliveries.up.sql", title: "v1.2 v5 元数据投递队列", scope: "Plugin Platform 提交后事件", summary: "单表有限元数据载荷，独立租约/5次重试/死信与代次围栏，不保留Core正文或Secret；非空拒绝down，旧表/序列不变。", tables: ["plugin_v5_event_deliveries"]},
   {version: "000027", file: "000027_plugin_v5_installations.up.sql", title: "v1.2 v5 安装与操作事实", scope: "Plugin Platform 包目录/分域安装与授权/生命周期", summary: "8张表，独立安装/Grant/Consent/配置，单调代次与租约，审计/Outbox同事务；无默认发布或授权，有数据拒绝down，空域回滚保留代次序列。", tables: ["plugin_packages", "plugin_package_releases", "plugin_installations", "plugin_user_installations", "plugin_v5_admin_grants", "plugin_v5_user_consents", "plugin_v5_configurations", "plugin_operations"]},
   { version: "000026", file: "000026_plugin_package_identities.up.sql", title: "v1.2 v5 包身份持久化", scope: "Plugin Platform 不可变发布坐标与摘要", summary: "单表复合主键固定首个摘要，数据库禁止更新/删除/清空；非空拒绝down，空域down/up保留全部既有数据，不创建安装/Grant/Operation或默认发布记录。", tables: ["plugin_package_identities"] },
   { version: "000025", file: "000025_integration_identity.up.sql", title: "v1.2 独立机器集成与摘要凭据", scope: "Identity Integration Principal 与当前凭据生命周期", summary: "两个独立表、摘要/精确白名单/终态守卫及非复用序列；Admin管理权限独立播种。存在机器数据时拒绝down；空域down/up保留序列高水位，既有24版数据/typed主体均保留。", tables: ["integration_principals", "integration_credentials", "permission_definitions / admin_role_permissions（两个管理码）"] },

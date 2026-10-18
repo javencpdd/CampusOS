@@ -11,7 +11,7 @@ BEGIN
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
-        'plugin_packages','plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations',
+        'plugin_packages','plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations', 'plugin_v5_event_deliveries',
         'plugin_publishers', 'plugin_versions', 'plugin_package_identities', 'plugin_capability_declarations', 'plugin_admin_grants',
         'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_configurations', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',

@@ -13,10 +13,14 @@ import (
 func v5Marshal(v any) ([]byte, error) { return json.Marshal(v) }
 
 // CurrentPluginV5Catalogs publishes host-owned package contracts, not runnable
-// providers. No v5 Host capability is callable before the 03c Dispatcher.
-// In particular this catalog contains no synthetic Knowledge collections.
+// providers.03c binds only these implemented read/subscription contracts.
+// There are no synthetic collections, private readers or arbitrary Host calls.
 func CurrentPluginV5Catalogs() ([]byte, []byte) {
-	host, _ := json.Marshal(v5HostManifestCatalog{Contract: "campusos.host-capabilities/v1", HostContract: "campusos.host/v1", Items: []v5HostCapability{}})
+	items := []v5HostCapability{}
+	for _, code := range []string{"community.thread.public.read", "plugin.lifecycle.subscribe", "community.thread.public.subscribe", "knowledge.source.public.subscribe"} {
+		items = append(items, v5HostCapability{Code: code, ScopeKind: "public", DataClassification: "public", ConsentRequired: false})
+	}
+	host, _ := json.Marshal(v5HostManifestCatalog{Contract: "campusos.host-capabilities/v1", HostContract: "campusos.host/v1", Items: items})
 	points := []v5ExtensionDescriptor{
 		{Point: "preview.renderer", ContractVersion: "v1", InputSchema: "campusos.preview.renderer.request/v1", OutputSchema: "campusos.preview.renderer.response/v1", Capabilities: []string{"pdf"}, DataModes: []string{"authorized_resource"}},
 		{Point: "ai.chat", ContractVersion: "v1", InputSchema: "campusos.ai.chat.request/v1", OutputSchema: "campusos.ai.chat.response/v1", Capabilities: []string{"text"}, DataModes: []string{"public_only", "no_host_private_data"}},

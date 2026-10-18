@@ -47,4 +47,18 @@ func TestV5ChatDispatcherAssemblyHasNoFakeRunner(t *testing.T) {
 	if err != plugin.ErrV5RuntimeMissing || out.Text != "" {
 		t.Fatal("production assembly fabricated a runner", err)
 	}
+	value, ok = app.Lookup("plugin.v5.dispatcher")
+	runtime, typed := value.(*plugin.V5ManagedRuntime)
+	if !ok || !typed || runtime != m.managed {
+		t.Fatal("managed host boundary absent")
+	}
+	if _, err := runtime.Select(context.Background(), "", plugin.V5ContributionQuery{Point: plugin.V5AIChat, ContractVersion: "v1", Capability: "text"}, nil); err != plugin.ErrV5ContributionUnpublished {
+		t.Fatal("assembly fabricated a publication", err)
+	}
+	if _, err := m.metadata.ProcessOnce(context.Background(), 1); err != plugin.ErrV5PlatformUnavailable {
+		t.Fatal("missing durable queue silently fell back", err)
+	}
+	if features.Registry().Enabled("contract-chat-consumer") {
+		t.Fatal("synthetic consumer leaked into production")
+	}
 }
