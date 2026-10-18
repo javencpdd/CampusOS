@@ -71,6 +71,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		UserStorage:       s.storage.Handler(),
 		Space:             s.space.Handler(),
 		Plugin:            pluginHandler,
+		PluginV5:          s.pluginsV5Handler(),
 		AI:                s.ai.Handler(),
 		Integration:       s.integration.Handler(),
 		Webhook:           s.webhook.Handler(),
@@ -159,4 +160,13 @@ func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 		})
 	}
 	log.Printf("✅ 已注册 %d 个默认事件订阅（含插件分发）", len(eventTypes))
+}
+
+func (s *Server) pluginsV5Handler() *plugin.V5HTTPHandler {
+	if s.appContext == nil {
+		return nil
+	}
+	value, _ := s.appContext.Lookup("plugin.v5.http-handler")
+	handler, _ := value.(*plugin.V5HTTPHandler)
+	return handler
 }

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -147,19 +148,28 @@ func VerifyPluginV5Release(raw, envelope, trustBytes []byte) (*PluginV5Package, 
 }
 
 // PluginV5PackageCatalog is distinct from Manager and stores immutable package
-// identities only. 03b owns durable installation/operation state; this in-memory
-// host publication index is not installed state or a recovery authority.
+// identities only. A recorded identity never replaces current signature/trust
+// verification. Installation/operation state belongs to subsequent 03b slices.
 type PluginV5PackageCatalog struct {
-	mu      sync.Mutex
-	trust   []byte
-	digests map[string]string
+	mu    sync.Mutex
+	trust []byte
+	store PluginV5IdentityStore
 }
 
 func NewPluginV5PackageCatalog(trust []byte) (*PluginV5PackageCatalog, error) {
+	return NewPluginV5PackageCatalogWithIdentityStore(trust, NewMemoryPluginV5IdentityStore())
+}
+
+// NewPluginV5PackageCatalogWithIdentityStore binds host-owned persistence. A
+// missing store is an error; callers must explicitly choose a memory adapter.
+func NewPluginV5PackageCatalogWithIdentityStore(trust []byte, store PluginV5IdentityStore) (*PluginV5PackageCatalog, error) {
 	if _, err := parseV5Trust(trust); err != nil {
 		return nil, err
 	}
-	return &PluginV5PackageCatalog{trust: bytes.Clone(trust), digests: map[string]string{}}, nil
+	if store == nil {
+		return nil, ErrPluginV5IdentityUnavailable
+	}
+	return &PluginV5PackageCatalog{trust: bytes.Clone(trust), store: store}, nil
 }
 func (c *PluginV5PackageCatalog) SetTrust(trust []byte) error {
 	if c == nil {
@@ -174,21 +184,39 @@ func (c *PluginV5PackageCatalog) SetTrust(trust []byte) error {
 	return nil
 }
 func (c *PluginV5PackageCatalog) VerifyAndRecord(raw, envelope []byte) (*PluginV5Package, error) {
+	return c.VerifyAndRecordContext(context.Background(), raw, envelope)
+}
+
+func (c *PluginV5PackageCatalog) VerifyAndRecordContext(ctx context.Context, raw, envelope []byte) (*PluginV5Package, error) {
+	var result *PluginV5Package
+	err := c.WithVerified(ctx, raw, envelope, func(p *PluginV5Package) error { result = p; return nil })
+	return result, err
+}
+
+// WithVerified retains this host's current trust through the caller's durable
+// command. A callback failure does not erase the write-once known identity.
+// The callback is host-only; it must never call SetTrust or this catalog again.
+func (c *PluginV5PackageCatalog) WithVerified(ctx context.Context, raw, envelope []byte, action func(*PluginV5Package) error) error {
 	if c == nil {
-		return nil, ErrPluginV5PackageSignature
+		return ErrPluginV5PackageSignature
 	}
 	// Hold the current trust and immutable identity check through publication;
 	// a committed revocation cannot be bypassed by a cached verification.
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if ctx.Err() != nil || c.store == nil {
+		return ErrPluginV5IdentityUnavailable
+	}
 	p, err := VerifyPluginV5Release(raw, envelope, c.trust)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	id := p.Manifest.Publisher + "/" + p.Manifest.Key + "@" + p.Manifest.Version
-	if old, ok := c.digests[id]; ok && old != p.Digest {
-		return nil, ErrPluginV5PackageConflict
+	id := PluginV5PackageIdentity{Publisher: p.Manifest.Publisher, Key: p.Manifest.Key, Version: p.Manifest.Version, Digest: p.Digest}
+	if err = c.store.RecordPluginV5Identity(ctx, id); err != nil {
+		return err
 	}
-	c.digests[id] = p.Digest
-	return p, nil
+	if action == nil {
+		return ErrV5Invalid
+	}
+	return action(p)
 }

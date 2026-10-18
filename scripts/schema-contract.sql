@@ -11,7 +11,8 @@ BEGIN
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
-        'plugin_publishers', 'plugin_versions', 'plugin_capability_declarations', 'plugin_admin_grants',
+        'plugin_packages','plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations',
+        'plugin_publishers', 'plugin_versions', 'plugin_package_identities', 'plugin_capability_declarations', 'plugin_admin_grants',
         'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_configurations', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',
         'richtext_article_assets', 'user_assets', 'richtext_article_attachments', 'plugin_ui_invocations', 'asset_lifecycle_audits',
@@ -95,6 +96,7 @@ BEGIN
         'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
         'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
         'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint', 'plugin_versions.activated_at',
+        'plugin_package_identities.publisher', 'plugin_package_identities.plugin_key', 'plugin_package_identities.version', 'plugin_package_identities.package_digest', 'plugin_package_identities.created_at',
         'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
         'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
         'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
@@ -368,6 +370,19 @@ BEGIN
             RAISE EXCEPTION 'business actor domain columns or legacy provenance guard missing/disabled: %',actor_guard.table_name;
         END IF;
     END LOOP;
+
+    IF (SELECT count(*) FROM (VALUES ('plugin_package_identity_write_once',27),('plugin_package_identity_no_truncate',34)) x(name,kind)
+        JOIN pg_trigger t ON t.tgrelid='public.plugin_package_identities'::regclass AND t.tgname=x.name
+        WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=x.kind
+        AND t.tgfoid=to_regprocedure('public.reject_plugin_package_identity_mutation()')) <> 2 THEN
+        RAISE EXCEPTION 'missing or disabled plugin package identity immutability guards';
+    END IF;
+
+    FOREACH missing IN ARRAY ARRAY['plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations'] LOOP
+      IF (SELECT count(*) FROM pg_trigger WHERE tgrelid=to_regclass('public.'||missing) AND NOT tgisinternal AND tgenabled IN('O','A') AND tgfoid=to_regprocedure('public.guard_plugin_v5_state()'))<>2 THEN RAISE EXCEPTION 'missing v5 state history guard: %',missing; END IF;
+      IF NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.'||missing) AND attname='state' AND attnotnull AND atttypid='jsonb'::regtype) THEN RAISE EXCEPTION 'missing v5 state fact: %',missing; END IF;
+    END LOOP;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.plugin_v5_generations') AND NOT seqcycle AND seqtypid='bigint'::regtype) THEN RAISE EXCEPTION 'missing v5 monotonic generation sequence'; END IF;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
     INTO missing

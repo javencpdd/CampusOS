@@ -2893,8 +2893,76 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/plugin-v5",
+      "handler": "pluginV5Handler.Inventory",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.catalog",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5",
+        "httpapi.get.api.v1.plugin_v5"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/:publisher/:key/:version",
+      "handler": "pluginV5Handler.Detail",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.publisher.key.version",
+        "httpapi.get.api.v1.plugin_v5.publisher.key.version"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/plugin-v5/:publisher/:key/commands",
+      "handler": "pluginV5Handler.Mutate",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.command",
+      "legacy_aliases": [
+        "http.post.api.v1.plugin_v5.publisher.key.commands",
+        "httpapi.post.api.v1.plugin_v5.publisher.key.commands"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/plugin-v5/operations/:id",
+      "handler": "pluginV5Handler.Operation",
+      "module_owner": "core.plugin-platform",
+      "audience": "authenticated",
+      "auth": "jwt",
+      "operation_code": "http.plugin.v5.user.operation",
+      "legacy_aliases": [
+        "http.get.api.v1.plugin_v5.operations.id",
+        "httpapi.get.api.v1.plugin_v5.operations.id"
+      ],
+      "ownership": "handler-enforced",
+      "scope": "self-or-resource-owner",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/plugin-market",
-      "handler": "pluginHandler.MarketCatalog",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2911,7 +2979,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-capabilities",
-      "handler": "pluginHandler.CapabilityCatalog",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2928,7 +2996,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-authorizations/:name",
-      "handler": "pluginHandler.MyAuthorizationOverview",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2945,7 +3013,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability",
-      "handler": "pluginHandler.SetMyCapabilityConsent",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2962,7 +3030,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-authorizations/:name/versions/:version_id/delegations",
-      "handler": "pluginHandler.IssueMyDelegation",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2979,7 +3047,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-authorizations/:name/delegations/:delegation_id",
-      "handler": "pluginHandler.RevokeMyDelegation",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -2996,7 +3064,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-authorizations/:name/secrets",
-      "handler": "pluginHandler.ListMyPluginSecrets",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3013,7 +3081,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
-      "handler": "pluginHandler.SetMyPluginSecret",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3030,7 +3098,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-authorizations/:name/secrets/:secret",
-      "handler": "pluginHandler.RevokeMyPluginSecret",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3047,7 +3115,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/me",
-      "handler": "pluginHandler.MarketMyGrants",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3064,7 +3132,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/me/usage",
-      "handler": "pluginHandler.MarketMyUsage",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3081,7 +3149,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/sources",
-      "handler": "pluginHandler.MarketplaceSources",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3098,7 +3166,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/sources/:source_id/plugins",
-      "handler": "pluginHandler.SearchMarketplace",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3115,7 +3183,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/requests",
-      "handler": "pluginHandler.RequestMarketplaceInstall",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3132,7 +3200,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/enable",
-      "handler": "pluginHandler.EnableMarketPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3149,7 +3217,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/revoke",
-      "handler": "pluginHandler.RevokeMarketPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3166,7 +3234,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/search",
-      "handler": "pluginHandler.SearchMarketRecords",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3183,7 +3251,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/records/:collection",
-      "handler": "pluginHandler.CreateMarketRecord",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3200,7 +3268,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/records/:collection",
-      "handler": "pluginHandler.ListMarketRecords",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3217,7 +3285,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "pluginHandler.GetMarketRecord",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3234,7 +3302,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "pluginHandler.UpdateMarketRecord",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3251,7 +3319,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/records/:collection/:key",
-      "handler": "pluginHandler.DeleteMarketRecord",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3268,7 +3336,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/:name/files",
-      "handler": "pluginHandler.UploadMarketFile",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3285,7 +3353,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/files",
-      "handler": "pluginHandler.ListMarketFiles",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3302,7 +3370,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/files/:file_id/download",
-      "handler": "pluginHandler.DownloadMarketFile",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3319,7 +3387,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/files/:file_id",
-      "handler": "pluginHandler.DeleteMarketFile",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3336,7 +3404,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/:name/export",
-      "handler": "pluginHandler.ExportMarketData",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -3353,7 +3421,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/:name/data",
-      "handler": "pluginHandler.DeleteMarketData",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "authenticated",
       "auth": "jwt",
@@ -4454,8 +4522,103 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/admin/plugin-v5",
+      "handler": "pluginV5Handler.Inventory",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.catalog",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5",
+        "httpapi.get.api.v1.admin.plugin_v5"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/plugin-v5/:publisher/:key/:version",
+      "handler": "pluginV5Handler.Detail",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.detail",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5.publisher.key.version",
+        "httpapi.get.api.v1.admin.plugin_v5.publisher.key.version"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/plugin-v5/packages",
+      "handler": "pluginV5Handler.Import",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:install",
+      "permission_code": "plugin.plugin.install",
+      "operation_code": "http.plugin.v5.admin.import",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.plugin_v5.packages",
+        "httpapi.post.api.v1.admin.plugin_v5.packages"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/plugin-v5/operations/:id",
+      "handler": "pluginV5Handler.Operation",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.operation",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.plugin_v5.operations.id",
+        "httpapi.get.api.v1.admin.plugin_v5.operations.id"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/plugin-v5/:publisher/:key/commands",
+      "handler": "pluginV5Handler.Mutate",
+      "module_owner": "core.plugin-platform",
+      "audience": "admin",
+      "auth": "jwt+admin-account+permission",
+      "permission": "plugin:read",
+      "permission_code": "plugin.plugin.read",
+      "operation_code": "http.plugin.v5.admin.command",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.plugin_v5.publisher.key.commands",
+        "httpapi.post.api.v1.admin.plugin_v5.publisher.key.commands"
+      ],
+      "ownership": "none",
+      "scope": "global",
+      "audit": "request-log",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/plugins",
-      "handler": "pluginHandler.ListPlugins",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4474,7 +4637,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name",
-      "handler": "pluginHandler.GetPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4493,7 +4656,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/authorization",
-      "handler": "pluginHandler.AdminAuthorizationOverview",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4512,7 +4675,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/authorization/decisions",
-      "handler": "pluginHandler.AdminAuthorizationDecisions",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4531,7 +4694,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/authorization/sync",
-      "handler": "pluginHandler.SyncPluginAuthorization",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4550,7 +4713,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/versions/:version_id/grants/:capability",
-      "handler": "pluginHandler.AdminSetCapabilityGrant",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4569,7 +4732,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/secrets",
-      "handler": "pluginHandler.ListSystemPluginSecrets",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4588,7 +4751,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/secrets/:secret",
-      "handler": "pluginHandler.SetSystemPluginSecret",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4607,7 +4770,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugins/:name/secrets/:secret",
-      "handler": "pluginHandler.RevokeSystemPluginSecret",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4626,7 +4789,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/logs",
-      "handler": "pluginHandler.ListPluginLogs",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4645,7 +4808,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/export",
-      "handler": "pluginHandler.ExportPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4664,7 +4827,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugins/:name/config",
-      "handler": "pluginHandler.UpdatePluginConfig",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4683,7 +4846,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/enable",
-      "handler": "pluginHandler.EnablePlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4702,7 +4865,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/disable",
-      "handler": "pluginHandler.DisablePlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4721,7 +4884,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/reload",
-      "handler": "pluginHandler.ReloadUserPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4740,7 +4903,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugins/:name",
-      "handler": "pluginHandler.UninstallPlugin",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4759,7 +4922,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-packages/import",
-      "handler": "pluginHandler.ImportPluginPackage",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4778,7 +4941,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-packages/precheck",
-      "handler": "pluginHandler.PrecheckPluginPackage",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4797,7 +4960,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugins/:name/snapshots",
-      "handler": "pluginHandler.ListVersionSnapshots",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4816,7 +4979,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugins/:name/rollback",
-      "handler": "pluginHandler.RollbackVersionSnapshot",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4930,7 +5093,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/overview",
-      "handler": "pluginHandler.AdminMarketOverview",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4949,7 +5112,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/sources",
-      "handler": "pluginHandler.AdminMarketplaceSources",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4968,7 +5131,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/admin/sources/:source_id",
-      "handler": "pluginHandler.AdminSaveMarketplaceSource",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -4987,7 +5150,7 @@
     {
       "method": "DELETE",
       "path": "/api/v1/plugin-market/admin/sources/:source_id",
-      "handler": "pluginHandler.AdminDeleteMarketplaceSource",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5006,7 +5169,7 @@
     {
       "method": "PUT",
       "path": "/api/v1/plugin-market/admin/catalog/:name",
-      "handler": "pluginHandler.AdminSetMarketVisibility",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5025,7 +5188,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/requests",
-      "handler": "pluginHandler.AdminMarketRequests",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5044,7 +5207,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/admin/requests/:id/review",
-      "handler": "pluginHandler.AdminReviewMarketRequest",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5063,7 +5226,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/releases/:name",
-      "handler": "pluginHandler.AdminMarketReleases",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5082,7 +5245,7 @@
     {
       "method": "GET",
       "path": "/api/v1/plugin-market/admin/audits",
-      "handler": "pluginHandler.AdminMarketAudits",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",
@@ -5101,7 +5264,7 @@
     {
       "method": "POST",
       "path": "/api/v1/plugin-market/admin/releases/:name",
-      "handler": "pluginHandler.AdminSaveMarketRelease",
+      "handler": "plugin.V5RetiredHTTP",
       "module_owner": "core.plugin-platform",
       "audience": "admin",
       "auth": "jwt+admin-account+permission",

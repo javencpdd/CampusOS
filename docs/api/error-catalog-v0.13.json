@@ -346,6 +346,86 @@
       "retryable": false
     },
     {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.legacy_retired",
+      "legacy_code": 88007,
+      "http_status": 410,
+      "message": "旧插件入口已退役，请使用 plugin-v5 接口",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.lifecycle_generation_conflict",
+      "legacy_code": 88004,
+      "http_status": 409,
+      "message": "状态已变化，请刷新后重试",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.lifecycle_invalid",
+      "legacy_code": 88005,
+      "http_status": 400,
+      "message": "请求格式无效，请检查版本与操作参数",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.lifecycle_rollback_unverifiable",
+      "legacy_code": 88006,
+      "http_status": 409,
+      "message": "无法验证数据兼容性，请使用相同数据版本的保留模式包",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.not_found",
+      "legacy_code": 88002,
+      "http_status": 404,
+      "message": "未找到可访问的插件或操作",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.package_digest_mismatch",
+      "legacy_code": 88010,
+      "http_status": 400,
+      "message": "包或准备文件完整性校验失败",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.package_signature_invalid",
+      "legacy_code": 88009,
+      "http_status": 400,
+      "message": "包签名或当前发布者信任无效",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.permission_denied",
+      "legacy_code": 88003,
+      "http_status": 403,
+      "message": "当前会话、权限、MFA 或授权不满足操作要求",
+      "retryable": false
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.platform_unavailable",
+      "legacy_code": 88001,
+      "http_status": 503,
+      "message": "插件服务暂不可用，请稍后重试",
+      "retryable": true
+    },
+    {
+      "owner": "plugin-platform",
+      "machine_code": "plugin.release_digest_conflict",
+      "legacy_code": 88008,
+      "http_status": 409,
+      "message": "该发布坐标已绑定其他包摘要，请提升版本",
+      "retryable": false
+    },
+    {
       "owner": "reliability",
       "machine_code": "reliability.attempts.unavailable",
       "legacy_code": 89111,

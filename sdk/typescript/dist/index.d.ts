@@ -183,3 +183,4 @@ export type { IntegrationAccessTargetV1, IntegrationAccessEndpointV1, Integratio
 export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
 export type { IntegrationRuntimeInputV2, IntegrationRuntimeDecisionV2, IntegrationCredentialIssueResponse, IntegrationPublicThread } from "./integration-runtime.js";
 export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5PackageCheckResult, PluginV5PackageErrorCode } from "./plugin-v5-package.js";
+export type { PluginV5Coordinate, PluginV5Installation, PluginV5Operation, PluginV5InstallationCommand, PluginV5AdminInstallationCommand, PluginV5InstallationErrorCode } from "./plugin-v5-installation.js";

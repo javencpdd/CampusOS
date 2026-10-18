@@ -1586,6 +1586,239 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5:
+    get:
+      operationId: pluginV5Handler_Inventory
+      summary: GET /api/v1/admin/plugin-v5
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.catalog
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Inventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/operations/{id}:
+    get:
+      operationId: pluginV5Handler_Operation
+      summary: GET /api/v1/admin/plugin-v5/operations/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.operation
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/packages:
+    post:
+      operationId: pluginV5Handler_Import
+      summary: POST /api/v1/admin/plugin-v5/packages
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.import
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.install
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PluginV5Import'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/commands:
+    post:
+      operationId: pluginV5Handler_Mutate
+      summary: POST /api/v1/admin/plugin-v5/:publisher/:key/commands
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.command
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5AdminCommand'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}:
+    get:
+      operationId: pluginV5Handler_Detail
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5InventoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/posts/{post_id}:
     delete:
       operationId: postHandler_AdminGovernanceDelete
@@ -7041,7 +7274,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}:
     get:
-      operationId: pluginHandler_MyAuthorizationOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-authorizations/:name
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7058,7 +7291,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7072,7 +7305,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/delegations/{delegation_id}:
     delete:
-      operationId: pluginHandler_RevokeMyDelegation
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-authorizations/:name/delegations/:delegation_id
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7094,7 +7327,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7108,7 +7341,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/secrets:
     get:
-      operationId: pluginHandler_ListMyPluginSecrets
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-authorizations/:name/secrets
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7125,7 +7358,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7139,7 +7372,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/secrets/{secret}:
     delete:
-      operationId: pluginHandler_RevokeMyPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-authorizations/:name/secrets/:secret
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7161,7 +7394,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7174,7 +7407,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_SetMyPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-authorizations/:name/secrets/:secret
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7195,15 +7428,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7217,7 +7443,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/versions/{version_id}/consents/{capability}:
     put:
-      operationId: pluginHandler_SetMyCapabilityConsent
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7243,15 +7469,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7265,7 +7484,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/versions/{version_id}/delegations:
     post:
-      operationId: pluginHandler_IssueMyDelegation
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-authorizations/:name/versions/:version_id/delegations
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7286,15 +7505,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7308,7 +7520,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-capabilities:
     get:
-      operationId: pluginHandler_CapabilityCatalog
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-capabilities
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7319,7 +7531,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7333,7 +7545,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market:
     get:
-      operationId: pluginHandler_MarketCatalog
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7344,7 +7556,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7358,7 +7570,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/audits:
     get:
-      operationId: pluginHandler_AdminMarketAudits
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/audits
       tags: [admin]
       x-campusos-stability: experimental
@@ -7371,7 +7583,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7385,7 +7597,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/catalog/{name}:
     put:
-      operationId: pluginHandler_AdminSetMarketVisibility
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/admin/catalog/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -7403,15 +7615,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7425,7 +7630,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/overview:
     get:
-      operationId: pluginHandler_AdminMarketOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/overview
       tags: [admin]
       x-campusos-stability: experimental
@@ -7438,7 +7643,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7452,7 +7657,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/releases/{name}:
     get:
-      operationId: pluginHandler_AdminMarketReleases
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/releases/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -7471,7 +7676,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7484,7 +7689,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_AdminSaveMarketRelease
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/admin/releases/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -7502,15 +7707,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7524,7 +7722,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/requests:
     get:
-      operationId: pluginHandler_AdminMarketRequests
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/requests
       tags: [admin]
       x-campusos-stability: experimental
@@ -7537,7 +7735,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7551,7 +7749,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/requests/{id}/review:
     post:
-      operationId: pluginHandler_AdminReviewMarketRequest
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/admin/requests/:id/review
       tags: [admin]
       x-campusos-stability: experimental
@@ -7569,15 +7767,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7591,7 +7782,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/sources:
     get:
-      operationId: pluginHandler_AdminMarketplaceSources
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/sources
       tags: [admin]
       x-campusos-stability: experimental
@@ -7604,7 +7795,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7618,7 +7809,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/sources/{source_id}:
     delete:
-      operationId: pluginHandler_AdminDeleteMarketplaceSource
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/admin/sources/:source_id
       tags: [admin]
       x-campusos-stability: experimental
@@ -7637,7 +7828,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7650,7 +7841,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_AdminSaveMarketplaceSource
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/admin/sources/:source_id
       tags: [admin]
       x-campusos-stability: experimental
@@ -7668,15 +7859,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7690,7 +7874,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/me:
     get:
-      operationId: pluginHandler_MarketMyGrants
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/me
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7701,7 +7885,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7715,7 +7899,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/me/usage:
     get:
-      operationId: pluginHandler_MarketMyUsage
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/me/usage
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7726,7 +7910,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7740,7 +7924,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/requests:
     post:
-      operationId: pluginHandler_RequestMarketplaceInstall
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/requests
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7750,15 +7934,8 @@ paths:
       x-campusos-operation: http.post.api.v1.plugin_market.requests
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7772,7 +7949,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/search:
     get:
-      operationId: pluginHandler_SearchMarketRecords
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/search
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7783,7 +7960,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7797,7 +7974,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/sources:
     get:
-      operationId: pluginHandler_MarketplaceSources
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/sources
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7808,7 +7985,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7822,7 +7999,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/sources/{source_id}/plugins:
     get:
-      operationId: pluginHandler_SearchMarketplace
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/sources/:source_id/plugins
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7839,7 +8016,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7853,7 +8030,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/data:
     delete:
-      operationId: pluginHandler_DeleteMarketData
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/data
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7870,7 +8047,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7884,7 +8061,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/enable:
     post:
-      operationId: pluginHandler_EnableMarketPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/enable
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7900,15 +8077,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7922,7 +8092,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/export:
     get:
-      operationId: pluginHandler_ExportMarketData
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/export
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7939,7 +8109,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7953,7 +8123,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files:
     get:
-      operationId: pluginHandler_ListMarketFiles
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/files
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7970,7 +8140,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7983,7 +8153,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_UploadMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/files
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7999,15 +8169,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8021,7 +8184,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files/{file_id}:
     delete:
-      operationId: pluginHandler_DeleteMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/files/:file_id
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8043,7 +8206,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8057,7 +8220,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files/{file_id}/download:
     get:
-      operationId: pluginHandler_DownloadMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/files/:file_id/download
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8079,7 +8242,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8093,7 +8256,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/records/{collection}:
     get:
-      operationId: pluginHandler_ListMarketRecords
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/records/:collection
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8115,7 +8278,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8128,7 +8291,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_CreateMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/records/:collection
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8149,15 +8312,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8171,7 +8327,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/records/{collection}/{key}:
     delete:
-      operationId: pluginHandler_DeleteMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8198,7 +8354,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8211,7 +8367,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     get:
-      operationId: pluginHandler_GetMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8238,7 +8394,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8251,7 +8407,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_UpdateMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8277,15 +8433,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8299,7 +8448,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/revoke:
     post:
-      operationId: pluginHandler_RevokeMarketPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/revoke
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -8315,15 +8464,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8337,7 +8479,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-packages/import:
     post:
-      operationId: pluginHandler_ImportPluginPackage
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-packages/import
       tags: [admin]
       x-campusos-stability: experimental
@@ -8349,15 +8491,8 @@ paths:
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MultipartRequest'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8371,7 +8506,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-packages/precheck:
     post:
-      operationId: pluginHandler_PrecheckPluginPackage
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-packages/precheck
       tags: [admin]
       x-campusos-stability: experimental
@@ -8383,15 +8518,8 @@ paths:
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MultipartRequest'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8528,9 +8656,189 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5:
+    get:
+      operationId: pluginV5Handler_Inventory
+      summary: GET /api/v1/plugin-v5
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.catalog
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Inventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/operations/{id}:
+    get:
+      operationId: pluginV5Handler_Operation
+      summary: GET /api/v1/plugin-v5/operations/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/{publisher}/{key}/commands:
+    post:
+      operationId: pluginV5Handler_Mutate
+      summary: POST /api/v1/plugin-v5/:publisher/:key/commands
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.command
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5UserCommand'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}:
+    get:
+      operationId: pluginV5Handler_Detail
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5InventoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/plugins:
     get:
-      operationId: pluginHandler_ListPlugins
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins
       tags: [admin]
       x-campusos-stability: experimental
@@ -8543,7 +8851,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8557,7 +8865,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}:
     delete:
-      operationId: pluginHandler_UninstallPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugins/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -8576,8 +8884,12 @@ paths:
           schema:
             type: string
       responses:
-        '204':
-          description: No Content
+        '410':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -8585,7 +8897,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     get:
-      operationId: pluginHandler_GetPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -8604,7 +8916,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8618,7 +8930,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization:
     get:
-      operationId: pluginHandler_AdminAuthorizationOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/authorization
       tags: [admin]
       x-campusos-stability: experimental
@@ -8637,7 +8949,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8651,7 +8963,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization/decisions:
     get:
-      operationId: pluginHandler_AdminAuthorizationDecisions
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/authorization/decisions
       tags: [admin]
       x-campusos-stability: experimental
@@ -8670,7 +8982,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8684,7 +8996,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization/sync:
     post:
-      operationId: pluginHandler_SyncPluginAuthorization
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/authorization/sync
       tags: [admin]
       x-campusos-stability: experimental
@@ -8702,15 +9014,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8724,7 +9029,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/config:
     put:
-      operationId: pluginHandler_UpdatePluginConfig
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/config
       tags: [admin]
       x-campusos-stability: experimental
@@ -8742,15 +9047,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8764,7 +9062,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/disable:
     post:
-      operationId: pluginHandler_DisablePlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/disable
       tags: [admin]
       x-campusos-stability: experimental
@@ -8783,7 +9081,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8797,7 +9095,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/enable:
     post:
-      operationId: pluginHandler_EnablePlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/enable
       tags: [admin]
       x-campusos-stability: experimental
@@ -8816,7 +9114,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8830,7 +9128,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/export:
     get:
-      operationId: pluginHandler_ExportPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/export
       tags: [admin]
       x-campusos-stability: experimental
@@ -8849,7 +9147,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8863,7 +9161,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/logs:
     get:
-      operationId: pluginHandler_ListPluginLogs
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/logs
       tags: [admin]
       x-campusos-stability: experimental
@@ -8882,7 +9180,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8896,7 +9194,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/reload:
     post:
-      operationId: pluginHandler_ReloadUserPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/reload
       tags: [admin]
       x-campusos-stability: experimental
@@ -8915,7 +9213,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8929,7 +9227,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/rollback:
     post:
-      operationId: pluginHandler_RollbackVersionSnapshot
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/rollback
       tags: [admin]
       x-campusos-stability: experimental
@@ -8947,15 +9245,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PluginRollbackRequest'
-      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8969,7 +9260,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/secrets:
     get:
-      operationId: pluginHandler_ListSystemPluginSecrets
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/secrets
       tags: [admin]
       x-campusos-stability: experimental
@@ -8988,7 +9279,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -9002,7 +9293,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/secrets/{secret}:
     delete:
-      operationId: pluginHandler_RevokeSystemPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugins/:name/secrets/:secret
       tags: [admin]
       x-campusos-stability: experimental
@@ -9026,7 +9317,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -9039,7 +9330,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_SetSystemPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/secrets/:secret
       tags: [admin]
       x-campusos-stability: experimental
@@ -9062,15 +9353,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -9084,7 +9368,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/snapshots:
     get:
-      operationId: pluginHandler_ListVersionSnapshots
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/snapshots
       tags: [admin]
       x-campusos-stability: experimental
@@ -9103,7 +9387,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -9117,7 +9401,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/versions/{version_id}/grants/{capability}:
     put:
-      operationId: pluginHandler_AdminSetCapabilityGrant
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/versions/:version_id/grants/:capability
       tags: [admin]
       x-campusos-stability: experimental
@@ -9145,15 +9429,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -13327,6 +13604,570 @@ components:
         content: {type: string}
         content_format: {type: string}
         updated_at: {type: string, format: date-time}
+    PluginV5AdminCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            type: boolean
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - grant
+          consumes:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/consumes
+          host_resources:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/host_resources
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - approved
+        - consumes
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - revoke
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - purge_release
+        required:
+        - version
+        - idempotency_key
+        - kind
+    PluginV5UserCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            type: boolean
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - consent
+          purpose_hash:
+            type: string
+            pattern: ^sha256:[0-9a-f]{64}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - accepted
+        - purpose_hash
+    PluginV5Installation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        owner_user_id:
+          type: string
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        desired_version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        installed:
+          type: boolean
+        desired:
+          enum:
+          - enabled
+          - disabled
+          - uninstalled
+        observed:
+          enum:
+          - pending
+          - ready
+          - failed
+          - stopped
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        revision:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        observed_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        active_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        config_digest:
+          type: string
+      required:
+      - publisher
+      - plugin_key
+      - owner_user_id
+      - version
+      - desired_version
+      - installed
+      - desired
+      - observed
+      - generation
+      - revision
+      - observed_generation
+      - active_generation
+      - error_code
+      - config_digest
+    PluginV5Operation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        id:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+        owner_user_id:
+          type: string
+        kind:
+          enum:
+          - import
+          - install
+          - enable
+          - disable
+          - upgrade
+          - uninstall
+          - configure
+          - grant
+          - revoke
+          - consent
+          - retry
+          - purge_release
+        status:
+          enum:
+          - queued
+          - working
+          - waiting
+          - done
+          - failed
+          - superseded
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        purge_data:
+          type: boolean
+        attempts:
+          type: integer
+          minimum: 0
+      required:
+      - publisher
+      - plugin_key
+      - version
+      - id
+      - owner_user_id
+      - kind
+      - status
+      - generation
+      - error_code
+      - purge_data
+      - attempts
+    PluginV5InventoryEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        release:
+          type: object
+          description: Immutable coordinate/digest/manifest/release envelope; storage
+            is last observed availability, never trust/authorization.
+        installation:
+          $ref: '#/components/schemas/PluginV5Installation'
+        grant:
+          type: object
+        consent:
+          type: object
+        configuration:
+          type: object
+          description: Current domain only, ordinary values and opaque Secret refs; no
+            other owner or system configuration in User response.
+        purpose_hash:
+          type: string
+      required:
+      - release
+      - purpose_hash
+    PluginV5Inventory:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PluginV5InventoryEntry'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+    PluginV5Import:
+      type: object
+      additionalProperties: false
+      properties:
+        package:
+          type: string
+          format: binary
+        release:
+          type: string
+          description: Detached JSON Ed25519 release envelope, at most1 MiB.
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_.:-]+$
+      required:
+      - package
+      - release
+      - idempotency_key
     EmptyObject:
       type: object
       additionalProperties: false

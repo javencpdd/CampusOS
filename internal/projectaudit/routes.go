@@ -238,7 +238,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "core.reliability"
 	case strings.HasPrefix(path, APIPrefix+"/platform/email-delivery"):
 		return "core.email-delivery"
-	case strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/plugin-capabilities"), strings.HasPrefix(path, APIPrefix+"/plugin-authorizations"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
+	case strings.HasPrefix(path, APIPrefix+"/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/admin/plugin-v5"), strings.HasPrefix(path, APIPrefix+"/plugins"), strings.HasPrefix(path, APIPrefix+"/plugin-packages"), strings.HasPrefix(path, APIPrefix+"/plugin-market"), strings.HasPrefix(path, APIPrefix+"/plugin-capabilities"), strings.HasPrefix(path, APIPrefix+"/plugin-authorizations"), strings.HasPrefix(path, APIPrefix+"/extensions"), strings.HasPrefix(path, APIPrefix+"/ui/"):
 		return "core.plugin-platform"
 	case strings.HasPrefix(path, APIPrefix+"/ai"):
 		return "feature.ai-gateway"
@@ -333,6 +333,23 @@ func applyAuthorization(route *RouteContract, group, method string) {
 	}
 	if method == "GET" && route.Audit == "request-log" {
 		route.Audit = "request-log-read"
+	}
+	if strings.HasPrefix(route.OperationCode, "http.plugin.v5.") {
+		route.Auth = "jwt+current-user-session"
+		route.Ownership = "current-user-derived"
+		route.Scope = "own-installation"
+		if route.Audience == "admin" {
+			route.Auth = "admin-jwt+current-admin-session+current-permission"
+			route.Scope = "plugin-installation-inventory"
+			route.Ownership = "current-admin-domain"
+		}
+		if method != "GET" {
+			route.Auth += "+browser-csrf"
+			if route.Audience == "admin" {
+				route.Auth += "+recent-mfa"
+			}
+			route.Audit = "required-command+outbox"
+		}
 	}
 	if route.Path == APIPrefix+"/auth/refresh" {
 		route.Auth = "refresh-cookie+csrf"

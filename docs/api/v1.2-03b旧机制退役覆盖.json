@@ -1,0 +1,13 @@
+{
+  "contract": "campusos.v12-03b-cutover/v1",
+  "base": "v1.2旧机制删除与替换清单.json",
+  "previous_overlay": "v1.2-03a旧机制退役覆盖.json",
+  "stage": "V12-03b",
+  "overrides": [{
+    "id": "plugin.legacy_manager",
+    "replacement_stage": "V12-03b",
+    "runtime_status": "retired",
+    "retired_evidence": "v12-03b-exit-linux.json",
+    "retirement_boundary": "生产包目录、安装、Grant/Consent、配置、desired/observed及Operation事实改用PG与受管文件，不再调用Manager生命周期、旧市场或HostAPI运行入口。Manager及旧类型仅作为历史测试和尚待04替换的空UI投影外壳保留，不接受v5适配或赋予执行权。旧HTTP控制/数据/市场入口返回410；新Host Catalog只读v5事实，未来03c Dispatcher仍须当前授权和代次复核。"
+  }]
+}

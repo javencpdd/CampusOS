@@ -110,7 +110,11 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	events := newEventBusModule(s.cfg)
 	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
-	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore)
+	// Package identity is a durable security fact. Even in a memory business
+	// profile, an absent database leaves this port unavailable rather than
+	// accepting an identity into a new, forgetful registry.
+	identityStore := plugin.NewPgPluginV5IdentityStore(pool)
+	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore, identityStore, plugin.NewPgV5StateStore(pool))
 	identityModule := identitycore.NewModule(identitycore.Config{
 		JWT:                   s.newJWTManager(),
 		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,

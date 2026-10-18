@@ -13,6 +13,12 @@ type operationProfile struct {
 }
 
 var operationProfiles = map[string]operationProfile{
+	"pluginV5Handler.Inventory":            {ResponseSchema: "PluginV5Inventory", NoBody: true, AdditionalErrors: []string{"401", "403", "409", "503"}},
+	"pluginV5Handler.Detail":               {ResponseSchema: "PluginV5InventoryEntry", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"pluginV5Handler.Operation":            {ResponseSchema: "PluginV5Operation", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "503"}},
+	"pluginV5Handler.Mutate":               {RequestSchema: "PluginV5UserCommand", ResponseSchema: "PluginV5Operation", AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
+	"pluginV5Handler.Import":               {ContentType: "multipart/form-data", RequestSchema: "PluginV5Import", ResponseSchema: "PluginV5Operation", AdditionalErrors: []string{"401", "403", "409", "413", "503"}},
+	"plugin.V5RetiredHTTP":                 {SuccessStatus: "410", NoBody: true},
 	"d.Identity.Integration.List":          {ResponseSchema: "IntegrationInventory", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
 	"d.Identity.Integration.Endpoints":     {ResponseSchema: "IntegrationEndpointInventory", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
 	"d.Identity.Integration.Me":            {ResponseSchema: "IntegrationCurrentSelf", NoBody: true, AdditionalErrors: []string{"401", "403", "404", "409", "503"}},
@@ -210,6 +216,9 @@ var noContentHandlers = map[string]bool{
 
 func profileFor(route RouteContract) operationProfile {
 	profile := operationProfiles[route.Handler]
+	if route.Handler == "pluginV5Handler.Mutate" && route.Audience == "admin" {
+		profile.RequestSchema = "PluginV5AdminCommand"
+	}
 	if multipartHandlers[route.Handler] {
 		profile.ContentType = "multipart/form-data"
 		if profile.RequestSchema == "" {
@@ -258,7 +267,7 @@ func openAPIComponents() string {
       name: Authorization
       description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-` + integrationOpenAPISchemas() + `    EmptyObject:
+` + integrationOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

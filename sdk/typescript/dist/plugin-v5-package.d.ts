@@ -20,4 +20,4 @@ export interface PluginV5PackageCheckResult {
     signature_verified: boolean;
     installed: false;
 }
-export type PluginV5PackageErrorCode = "plugin.package_invalid" | "plugin.package_digest_mismatch" | "plugin.package_signature_invalid" | "plugin.release_digest_conflict" | "plugin.legacy_protocol_removed";
+export type PluginV5PackageErrorCode = "plugin.package_invalid" | "plugin.package_digest_mismatch" | "plugin.package_signature_invalid" | "plugin.release_digest_conflict" | "plugin.package_identity_unavailable" | "plugin.legacy_protocol_removed";

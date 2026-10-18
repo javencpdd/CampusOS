@@ -1,10 +1,10 @@
 # CampusOS Current Project Status
 
-> Snapshot date: 2026-10-16 20:34 (Asia/Shanghai); V12-03a complete exit
+> Snapshot date: 2026-10-18 12:32 (Asia/Shanghai); V12-03c prompt-only Chat dispatch slice
 > Repository: active CampusOS workspace (Windows or Linux)
 > Current release baseline: `v0.14.0`
-> Latest implementation stage: `v1.2-dev` (V12-02a/02d/02b/02c completed in their planned scope; stage03a fully accepted;03b dependencies satisfied, not started)
-> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000025`; next append-only version is `000026`
+> Latest implementation stage: `v1.2-dev` (V12-02a/02d/02b/02c completed in their planned scope; stages03a/03b fully accepted;03c directory accepted; prompt-only Chat dispatch accepted;03c incomplete)
+> Migrations: immutable v1.1 baseline plus forward migrations `000001` through `000027`; next append-only version is `000028`
 
 Current stage authority is `docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md`.
 The accepted predecessor V12-02b exit is `docs/进度/v1.2-dev/v1.2.110-dev.md`, with the exact
@@ -16,9 +16,9 @@ cmd/server + current Admin/Web browser checks. Builds are separate from browser 
 User/Admin identity, private original resource reads and metadata/permission previews remain distinct.
 Current Admin SPA uses its own HttpOnly refresh/CSRF, current profile and self MFA/logout. Resource
 commands still reload actual facts and check their own Policy, current authority and required audit.
-The static Admin architecture view covers 25 migrations, 102 business tables and two executor tables.
+The static Admin architecture view covers 26 migrations, 103 business tables and two executor tables.
 Runtime development branding remains `v1.1.0-dev`; bounded v1.2 phase work is not a v1.2 release.
-Integration02c is complete: independent digest credentials in PG/Memory, current Admin permission/MFA/CSRF management, one-time issue, atomic rotate/revoke and exact channel/endpoint/resource whitelists. Explicit runtimev2 adds the existing Community public-thread Port while retaining frozenv1. Actual source ACLs and machine/source row locks compose until required typed audit/outbox commit; no User/Admin/Host identity fallback or plaintext persistence. Twelve routes and Admin lifecycle UI are delivered. Native30 tops without FAIL/SKIP/race,384 Go/oracle decisions,PG rollback/ABA/lock/rotation and18 real cmd/server+Admin+Chrome checks,54 Admin components and common gates passed; see v1.2.112-dev.md and v12-02c-exit-linux.json. Migration25 preserves all100 prior business tables, typed attribution and allocation highwater; nonempty identities or live permission references reject down. Knowledge producers09a/full public Knowledge MCP11,v5Dispatcher03c and Windows/whole-version release retain their own stages. Stage03a is now complete: shared full-Manifest DTO, actual host catalogs, bounded deterministic package snapshots, referenced digests, Ed25519/current publisher trust and revocation, in-process immutable release identities, primary CLI and rebuilt PDF/UI plus Echo/WASI examples. Old production discovery/adapter/CLI/import entry paths are retired; historical types remain for03b/data tests. Native11 tops/99 PASS events, CLI12 tops/15 events and SDK12 tops passed without FAIL/SKIP/race;64 Manifest checks and16 concurrent publications,23 Go/oracle decisions,43 actual CLI processes,5 actual cmd/server+owned PG16 assertions and13 common gates passed. See v1.2.114-dev.md and v12-03a-exit-linux.json. Current Host capability items are empty until03c; extension DTOs are not installed providers. The release identity index is in-process; durable catalog/install/operation/recovery is03b. UI/Bridge and Runner execution are04/05/06. The earliest incomplete stage is03b with03a/02a/02d dependencies met; no03b work started. Current25/next26 is unchanged. Earlier progress files and frozen G1 evidence remain historical;03a retirement uses an explicit overlay.
+Current v1.2 snapshot (2026-10-18 05:06 Asia/Shanghai): G0/G1,01a/01b,02a/02d/02b/02c,03a and03b have passed their scoped exits. Full03b now has durable signed bytes/catalog, separate global/user installation, version grants/consents/configuration, monotonic generations/leases and atomic Operation/audit/Outbox; production legacy controls are retired. Current27/next28,111 business tables plus2 executor tables. Native29 top-level/117 PASS events, full target33 top-level/126 events with no required target FAIL/SKIP/race; PostgreSQL restart,103 old tables/sequences,12 host CAS and actual cmd/server current Admin/User HTTP passed, alongside13 common gates. See v1.2.116-dev.md and v12-03b-exit-linux.json. The earliest incomplete stage is03c. Desired enable stays pending/runtime_unavailable in production; Dispatcher/publication, resource ACL, UI Host and real runners remain03c/04/05/06. Old .115 and G1/03a evidence are historical and unchanged.
 
 Historical v0.14 implementation audit remains in `docs/进度/v0.14-dev/` and
 `docs/项目计划书v0/项目计划v0.14/01-v0.14计划逐项审查与项目回顾.md`. The v1.0 formal plan is
@@ -69,7 +69,7 @@ The four extension categories are not interchangeable:
 | Plugin platform | Manifest v1/v2, Wasm and managed-process runtimes, Host API, Extension Gateway, managed records/files, Catalog, user Grant and package governance |
 | Operations | AI Gateway, Webhook, MCP-like read-only tools, Message Local, platform logs, low-cardinality metrics, Prometheus boundary and Admin architecture view |
 | Delivery | Native development plus Docker development; separate API/Web/Admin/Docs production images; aggregate and per-component Compose; backup/restore and migration |
-| Database | 102 application tables plus two checksum/lock metadata tables across migrations `000001`–`000025`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
+| Database | 111 application tables plus two checksum/lock metadata tables across migrations `000001`–`000027`; no default users or credentials; old `000001-000049` test chain requires an explicit development/test reset |
 
 ## 3. Important Boundaries
 
@@ -206,3 +206,7 @@ instructions. Planned capabilities must not be reported as implemented without l
 5. Keep API/data compatibility unless the task explicitly authorizes a reset boundary and supplies a replacement migration/rollback path.
 6. Run impact-specific checks plus full Go tests.
 7. Update the canonical guide, current progress evidence and generated contracts when behavior changes.
+
+Current03c first slice (2026-10-18 11:49 Asia/Shanghai): host-only typed contribution directory/selection is implemented and directed race passed; native Linux/owned PG16 target passed with7 top-level/24 PASS events and no required FAIL/SKIP/race; all8 common gates passed. Production port `plugin.v5.contributions` derives current signed-package and03b installation/grant/owner/ready-generation facts, refuses conflicts/unsupported versions and stale bindings, and closes on startup reconciliation failure. Discovery is bounded to20 pages of50 families. No Dispatcher, runtime publication, feature/resource ACL invocation, cancellation/drain or event delivery yet; no built-in AI/RAG dependency. See v1.2.117-dev.md and v12-03c-directory-linux.json.03c remains earliest incomplete stage.
+
+Current03c Chat slice (2026-10-18 12:32 Asia/Shanghai): strict prompt-only host-to-contribution ai.chat Port is implemented with current User/owner/consumer Feature and contribution binding checks before/after IO, bounded bytes/deadline/process-local concurrency, and zero response on revoked/stale facts. Directed race passed; native Linux/owned PG target passed (13 top-level/62 PASS events including directory regression, no required FAIL/SKIP/race); all8 common gates passed. A compiled consumer must bind its real Feature and exact-generation Transport; production binds neither and remains runtime_unavailable. AI Gateway has no switchable FeatureID; do not invent one or make built-in AI/RAG depend on plugins. No host resource access/public context, full bidirectional envelope, plugin-to-Host credentials/capabilities, managed publication, drain/cancel or events yet. See v1.2.118-dev.md and v12-03c-chat-dispatch-linux.json.
