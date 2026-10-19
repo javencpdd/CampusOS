@@ -85,7 +85,8 @@ func (h *V5ManagedRuntime) HostCall(ctx context.Context, credential string, enve
 	if len(payload) > V5ChatMaxRequestBytes || call.RequestBytes != int64(len(payload)) {
 		return nil, ErrV5ContributionBudget
 	}
-	i, endpoint, scope, g, err := h.hostProof(ctx, credential, call.Target.ID)
+	nestedID, _ := ctx.Value(v5NestedCallKey{}).(string)
+	i, endpoint, scope, g, err := h.hostCallProof(ctx, credential, call.Target.ID, nestedID != "")
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,13 @@ func (h *V5ManagedRuntime) HostCall(ctx context.Context, credential string, enve
 	if err != nil || stamp == "" {
 		return nil, ErrV5Denied
 	}
-	leave, err := h.enter(i, g.Resources.MaxConcurrency, cancel)
+	leave := func() {}
+	if nestedID != "" && nestedID != i.id {
+		return nil, ErrV5Denied
+	}
+	if nestedID == "" {
+		leave, err = h.enter(i, g.Resources.MaxConcurrency, cancel)
+	}
 	if err != nil {
 		return nil, err
 	}

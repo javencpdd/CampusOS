@@ -221,6 +221,23 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 			if !i.Installed || i.Desired != "enabled" || i.DesiredVersion != c.Version {
 				return ErrV5Conflict
 			}
+			// A restart queues global and owner generations together. Do not
+			// terminally fail an owner before the real global worker is ready.
+			if i.Owner != "" {
+				global, e := s.installation(tx, c, "")
+				g, ge := s.grant(tx, c)
+				if e == nil && ge == nil && v5GrantCompleteAt(p.Manifest, g, s.now().UnixMilli()) && global.Installed && global.Desired == "enabled" && global.DesiredVersion == c.Version && global.Observed != "ready" {
+					current.Status = "queued"
+					current.Preparation = nil
+					current.LeaseUntil = s.now().Add(time.Second).UnixMilli()
+					current.Error = "plugin.global_runtime_pending"
+					i.Observed = "pending"
+					i.ObservedGeneration = i.Generation
+					i.ActiveGeneration = 0
+					i.Error = current.Error
+					return s.saveInstall(tx, &i)
+				}
+			}
 			binding, capsule, err := s.preparation(tx, i, p.Manifest)
 			if err != nil {
 				return err

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,12 +33,21 @@ type v5ManagedInstance struct {
 	generation, globalGeneration int64
 	grant                        string
 	expires                      time.Time
+	renewedExpiry                atomic.Int64
 	adapter                      V5ManagedAdapter
 	accepting                    bool
 	draining                     bool
 	calls                        map[uint64]context.CancelFunc
 	idle                         chan struct{}
 }
+
+func (i *v5ManagedInstance) expiresAt() time.Time {
+	if n := i.renewedExpiry.Load(); n != 0 {
+		return time.UnixMilli(n)
+	}
+	return i.expires
+}
+
 type V5ManagedBinding struct {
 	binding  V5ContributionBinding
 	instance string
@@ -100,8 +110,26 @@ func (h *V5ManagedRuntime) Publish(ctx context.Context, c V5Coordinate, owner st
 			return zero, ErrV5ContributionConflict
 		}
 	}
+	credential := V5RuntimeCredential{ID: id, Token: token, ExpiresAt: i.expires}
+	if binder, ok := adapter.(v5CredentialBinder); ok {
+		binder.BindCredential(credential)
+	}
 	h.instances[id] = i
-	return V5RuntimeCredential{ID: id, Token: token, ExpiresAt: i.expires}, nil
+	return credential, nil
+}
+
+func (h *V5ManagedRuntime) renew(ctx context.Context, id string) error {
+	i, err := h.current(ctx, id)
+	if err != nil {
+		return err
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.instances[id] != i || !i.accepting {
+		return ErrV5ContributionUnpublished
+	}
+	i.renewedExpiry.Store(time.Now().Add(5 * time.Minute).UnixMilli())
+	return nil
 }
 
 func (h *V5ManagedRuntime) current(ctx context.Context, id string) (*v5ManagedInstance, error) {
@@ -114,7 +142,7 @@ func (h *V5ManagedRuntime) currentForCall(ctx context.Context, id string, admitt
 	}
 	h.mu.Lock()
 	i := h.instances[id]
-	live := !h.closed && i != nil && time.Now().Before(i.expires)
+	live := !h.closed && i != nil && time.Now().Before(i.expiresAt())
 	draining := live && i.draining && len(i.calls) > 0
 	valid := live && (i.accepting || admitted && draining)
 	h.mu.Unlock()
@@ -255,7 +283,7 @@ func (h *V5ManagedRuntime) checkCallBinding(ctx context.Context, b V5ManagedBind
 func (h *V5ManagedRuntime) enter(i *v5ManagedInstance, limit int64, cancel context.CancelFunc) (func(), error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.closed || !i.accepting || !time.Now().Before(i.expires) {
+	if h.closed || !i.accepting || !time.Now().Before(i.expiresAt()) {
 		return nil, ErrV5ContributionUnpublished
 	}
 	if limit < 1 || int64(len(i.calls)) >= limit || h.total >= 8 {
@@ -267,7 +295,15 @@ func (h *V5ManagedRuntime) enter(i *v5ManagedInstance, limit int64, cancel conte
 	h.total++
 	return func() {
 		h.mu.Lock()
-		defer h.mu.Unlock()
+		defer func() {
+			abort := !i.accepting && len(i.calls) == 0
+			h.mu.Unlock()
+			if abort {
+				if a, ok := i.adapter.(v5RuntimeAborter); ok {
+					a.Abort()
+				}
+			}
+		}()
 		delete(i.calls, n)
 		h.total--
 		if !i.accepting && len(i.calls) == 0 {
@@ -285,8 +321,16 @@ func (h *V5ManagedRuntime) enter(i *v5ManagedInstance, limit int64, cancel conte
 // or waiting for any in-flight adapter IO.
 func (h *V5ManagedRuntime) retire(id string, cancel bool) <-chan struct{} {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	i := h.instances[id]
+	defer func() {
+		abort := i != nil && (cancel || len(i.calls) == 0)
+		h.mu.Unlock()
+		if abort {
+			if a, ok := i.adapter.(v5RuntimeAborter); ok {
+				a.Abort()
+			}
+		}
+	}()
 	if i == nil {
 		done := make(chan struct{})
 		close(done)

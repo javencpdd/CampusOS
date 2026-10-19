@@ -1,6 +1,6 @@
 # 系统架构
 
-> 更新时间：2026-10-18 16:56（Asia/Shanghai）
+> 更新时间：2026-10-19（Asia/Shanghai）
 
 浏览器不直接访问 PostgreSQL、Redis、NATS、个人空间文件或插件发布目录。Web/Admin 请求先经 API 的认证、稳定权限、对象归属与业务状态校验，再进入领域服务和存储层。
 
@@ -67,6 +67,19 @@ V12-03a完整阶段三态通过：完整v5 Manifest/共享SDK、当前宿主目�
 
 000028增加独立元数据队列表，current28/next29、112业务表+2执行器。已提交Core Outbox证明、有限引用/状态/修订、独立事务扇出及独立插件工作器，带单赢家租约、旧ACK拒绝、5次重试和死信；不复制正文、Prompt、Secret或原始Outbox。非空down拒绝并保留证据。短期凭据和发布不跨重启，旧ready事实不恢复执行权。
 
-本阶段依计划使用有界编译契约适配器；生产尚无真实Runner，启用继续pending/runtime_unavailable。04负责UI Host，05/06负责Wasm/Container与硬隔离，09负责真实知识绑定。前两节为当时的历史范围，旧证据不回写。
+03c退出时依计划使用有界编译契约适配器，当时生产无真实Runner。04负责UI Host，05/06负责Wasm/Container与硬隔离，09负责真实知识绑定。前两节为当时的历史范围，旧证据不回写。
 
 当前源码59项必需顶层/265 PASS事件、13项共同门禁通过；111旧业务表和11旧序列完整保留。依赖已满足的最前未完成阶段转为04，本轮未启动。
+
+## V12-05 Linux Wasm Runtime
+
+更新时间：2026-10-19（Asia/Shanghai）。原生 API 显式绑定固定宿主 worker 镜像，执行签名不可变 Wasm；事务外真实编译/初始化、实际 cgroup CPU/RSS/PID 校验成功，才提交 Observe 并发布受管贡献。逐次复核当前安装、信任、Grant/Consent、配置/代次/Feature/Core ACL。有限 `campusos.host_call` 的正向路径为公开线程读，元数据和普通配置使用有限 ABI；没有 WASI/目录/网络/DB/宿主凭据。
+
+单写宿主预留总预算并持有 PG 独占 guard，失锁/到期/撤销/退出先撤下并回收。强杀重启先清理相同部署命名空间的旧 worker，再发布新代次。配置见[Wasm 执行器](/deployment/configuration#v12-05-wasm-执行器)，完整实现/自动化/Linux 目标证据见仓库 `.123` 及 `v12-05-runtime-exit-linux.json`。当前28/next29，无新迁移；Container/Windows 和内建 AI/RAG 绑定仍属06/14c。
+
+
+## V12-06 Container Runtime（Linux）
+
+更新时间：2026-10-19（Asia/Shanghai）。原生宿主显式开启[Container执行器](/deployment/configuration#v12-06-container-执行器)，精确本地签名镜像在network none、非root/只读根/cgroup v2与独立限额临时目录内执行。HTTP/gRPC经私有标准输入/输出管道，无监听端口/host mount/socket/数据库或运行凭据暴露；普通配置、元数据ACK和当前typed Host Broker由受管层复核。
+
+Wasm/Container共用PG guard与总预算；只有真实readiness才Observe/发布，取消/OOM/退出与撤权/到期关闭当前代次，重启先围栏同部署孤儿。Linux证据为仓库`.125`与`v12-06-runtime-linux.json`；Windows原生Docker Desktop实际目标仍未验收，06保持进行中。前一节05的阶段边界是历史记录。

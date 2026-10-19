@@ -232,7 +232,7 @@ func (s *V5EventService) ProcessOnce(ctx context.Context, limit int) (int, error
 			leave, admitErr := s.hub.enter(i, 1, cancel)
 			if admitErr == nil {
 				wire, _ := json.Marshal(d.Event)
-				admitErr = i.adapter.Event(callCtx, wire)
+				admitErr = i.adapter.Event(context.WithValue(callCtx, v5NestedCallKey{}, i.id), wire)
 				if callCtx.Err() != nil {
 					admitErr = callCtx.Err()
 				}

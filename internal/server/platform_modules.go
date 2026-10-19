@@ -17,9 +17,11 @@ import (
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/plugin"
+	plugincontainer "github.com/campusos/CampusOS/internal/plugin/container"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
+	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
 	"github.com/campusos/CampusOS/pkg/eventbus"
@@ -189,6 +191,8 @@ type pluginPlatformModule struct {
 	cancel             context.CancelFunc
 	workerDone         chan struct{}
 	managed            *plugin.V5ManagedRuntime
+	wasmCoordinator    *plugin.V5RuntimeCoordinator
+	containerFactory   *plugincontainer.V5Factory
 	eventStore         plugin.V5EventStore
 	metadata           *plugin.V5EventService
 	eventWorkerDone    chan struct{}
@@ -322,8 +326,51 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.app.Provide("plugin.v5.http-handler", m.v5Handler); err != nil {
 		return err
 	}
+	var wasmFactory plugin.V5RuntimeFactory
+	var containerFactory plugin.V5RuntimeFactory
+	var wasmLeader plugin.V5RuntimeLeader
+	var runnerErr error
+	if m.owner.cfg.Plugin.WasmImage != "" || m.owner.cfg.Plugin.ContainerEnabled {
+		if store, ok := m.stateStore.(*plugin.PgV5StateStore); ok {
+			if m.owner.cfg.Plugin.WasmImage != "" {
+				wasmFactory, runnerErr = pluginwasm.NewV5IsolatedFactoryForDeployment(m.owner.cfg.Plugin.WasmImage, store.RuntimeNamespace())
+			}
+			if runnerErr == nil && m.owner.cfg.Plugin.ContainerEnabled {
+				m.containerFactory, runnerErr = plugincontainer.NewV5Factory(store.RuntimeNamespace())
+				if runnerErr == nil {
+					containerFactory = m.containerFactory
+				}
+			}
+			if runnerErr == nil {
+				wasmLeader, runnerErr = store.AcquireRuntimeLeader(ctx)
+				if runnerErr == nil {
+					if wasmFactory != nil {
+						runnerErr = wasmFactory.(interface{ FenceOrphans(context.Context) error }).FenceOrphans(ctx)
+					}
+					if runnerErr == nil && m.containerFactory != nil {
+						runnerErr = m.containerFactory.FenceOrphans(ctx)
+					}
+					if runnerErr != nil {
+						_ = wasmLeader.Release(ctx)
+						wasmLeader = nil
+					}
+				}
+			}
+		} else {
+			runnerErr = plugin.ErrV5RuntimeMissing
+		}
+	}
+	if runnerErr != nil && m.containerFactory != nil {
+		closeCtx, stop := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = m.containerFactory.Close(closeCtx)
+		stop()
+		m.containerFactory = nil
+		containerFactory = nil
+	}
 	directory := plugin.NewV5ContributionDirectory(nil)
-	if err := m.platform.ReconcileStartup(ctx); err != nil {
+	if runnerErr != nil {
+		log.Printf("插件隔离执行器不可用，入口将保持关闭")
+	} else if err := m.platform.ReconcileStartup(ctx); err != nil {
 		log.Printf("插件 v5 对账暂不可用，入口将保持关闭")
 	} else {
 		directory = plugin.NewV5ContributionDirectory(m.platform)
@@ -337,6 +384,15 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 		return err
 	}
 	m.managed = plugin.NewV5ManagedRuntime(directory)
+	if runnerErr == nil && (wasmFactory != nil || containerFactory != nil) && wasmLeader != nil {
+		m.wasmCoordinator = plugin.NewV5RuntimeCoordinator(m.platform, m.managed, plugin.NewV5RuntimeRouter(wasmFactory, containerFactory), wasmLeader)
+		if err := m.app.Provide("plugin.v5.runtime-coordinator", m.wasmCoordinator); err != nil {
+			return err
+		}
+		if err := m.app.Provide("plugin.v5.wasm-coordinator", m.wasmCoordinator); err != nil {
+			return err
+		}
+	}
 	if err := m.app.Provide("plugin.v5.runtime", m.managed); err != nil {
 		return err
 	}
@@ -373,7 +429,7 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	m.workerDone = make(chan struct{})
 	go func() {
 		defer close(m.workerDone)
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 		for {
 			select {
@@ -383,6 +439,11 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 				m.managed.Sweep(workerCtx)
 				if _, err := m.platform.ProcessOnce(workerCtx, 16); err != nil && workerCtx.Err() == nil {
 					log.Printf("插件 v5 操作等待重试")
+				}
+				if m.wasmCoordinator != nil {
+					callCtx, stop := context.WithTimeout(workerCtx, 8*time.Second)
+					_, _ = m.wasmCoordinator.ProcessOnce(callCtx)
+					stop()
 				}
 			}
 		}
@@ -458,6 +519,11 @@ func (m *pluginPlatformModule) Stop(ctx context.Context) error {
 		m.cancel()
 		m.cancel = nil
 	}
+	if m.wasmCoordinator != nil {
+		if err := m.wasmCoordinator.Close(ctx); err != nil {
+			return err
+		}
+	}
 	if m.managed != nil {
 		if err := m.managed.Close(ctx); err != nil {
 			return err
@@ -481,6 +547,12 @@ func (m *pluginPlatformModule) Stop(ctx context.Context) error {
 	}
 	if m.manager != nil {
 		m.manager.StopAll()
+	}
+	if m.containerFactory != nil {
+		if err := m.containerFactory.Close(ctx); err != nil {
+			return err
+		}
+		m.containerFactory = nil
 	}
 	if m.files != nil {
 		m.files.Close()

@@ -121,7 +121,7 @@ func (h *V5ManagedRuntime) invokeProof(ctx context.Context, c V5Consumer, b V5Ma
 
 func v5ManagedFacts(i *v5ManagedInstance, g V5Grant, c campusossdk.V5DispatchCall, feature bool) v5DispatchFacts {
 	maxTimeout := min(g.Resources.TimeoutMS, int64(v5ChatMaxTimeoutMS))
-	return v5DispatchFacts{NowMS: time.Now().UnixMilli(), CurrentGeneration: i.generation, Desired: "enabled", Observed: "ready", GlobalInstalled: true, UserRequired: i.owner != "", UserInstalled: true, Grant: g.Approved, Consent: true, Declared: true, Published: true, Feature: feature, Audience: "host-api", CredentialExpiry: i.expires.UnixMilli(), Selected: c.Target.ID, MaxRequest: V5ChatMaxRequestBytes, MaxResponse: V5ChatMaxResponseBytes, MaxDeadline: time.Now().Add(time.Duration(maxTimeout) * time.Millisecond).UnixMilli()}
+	return v5DispatchFacts{NowMS: time.Now().UnixMilli(), CurrentGeneration: i.generation, Desired: "enabled", Observed: "ready", GlobalInstalled: true, UserRequired: i.owner != "", UserInstalled: true, Grant: g.Approved, Consent: true, Declared: true, Published: true, Feature: feature, Audience: "host-api", CredentialExpiry: i.expiresAt().UnixMilli(), Selected: c.Target.ID, MaxRequest: V5ChatMaxRequestBytes, MaxResponse: V5ChatMaxResponseBytes, MaxDeadline: time.Now().Add(time.Duration(maxTimeout) * time.Millisecond).UnixMilli()}
 }
 
 // Invoke implements the untrusted outer envelope and all three frozen typed
@@ -186,7 +186,7 @@ func (h *V5ManagedRuntime) Invoke(ctx context.Context, consumer V5Consumer, b V5
 	})
 	defer stopGuard()
 	w := &v5BoundedOutput{ctx: callCtx, limit: int(call.ResponseLimitBytes)}
-	err = i.adapter.Invoke(callCtx, V5ChatTarget{info, i.owner}, bytes.Clone(payload), w)
+	err = i.adapter.Invoke(context.WithValue(callCtx, v5NestedCallKey{}, i.id), V5ChatTarget{info, i.owner}, bytes.Clone(payload), w)
 	raw, writeErr := w.finish()
 	if writeErr != nil {
 		return nil, writeErr

@@ -1,7 +1,7 @@
 # v5 Manifest 与包校验
 
-> 更新时间：2026-10-18（Asia/Shanghai）
-> 当前wire：`campusos.plugin/v5`；旧v4生产入口已退役。安装/操作已接入，03c提供有界受管Dispatcher；04接入隔离UI，真实Runtime仍由05/06实施。
+> 更新时间：2026-10-19（Asia/Shanghai）
+> 当前wire：`campusos.plugin/v5`；旧v4生产入口已退役。安装/操作已接入，03c提供有界受管Dispatcher；04接入隔离UI，05已接 Linux 固定 worker Wasm；06已接Linux Container执行，Windows目标仍待验收。
 
 每个当前源码包以`plugin.json`为完整声明入口。publisher/key/version组成发布身份；包摘要与签名放在独立外封，避免自摘要循环。声明本身不授予文件、网络、数据库或执行权限。
 
@@ -37,11 +37,19 @@ go run ./cmd/campusosctl plugin pack plugins/campusos.chat-echo --out /tmp/chat-
 
 当前操作使用仓库`docs/help/插件v5包与签名操作说明.md`，阶段证据见仓库`docs/进度/v1.2-dev/v1.2.114-dev.md`。当前[授权说明](/plugins/authorization-v3)不替代服务端实际授权。
 
-03c受管调用与独立元数据队列的当前合同见仓库`docs/api/v1.2插件双向调用事件与生命周期合同.md`，进度为`v1.2.119-dev.md`。000028增加独立投递证据表，迁移非空拒绝回滚。启用在生产仍pending/runtime_unavailable：宿主没有Wasm/Container Runner，不得手工伪造ready、实例凭据或发布记录。
+03c受管调用与独立元数据队列的当前合同见仓库`docs/api/v1.2插件双向调用事件与生命周期合同.md`，进度为`v1.2.119-dev.md`。000028增加独立投递证据表，迁移非空拒绝回滚。默认未配置执行器时仍pending/runtime_unavailable；05提供显式启用的 Linux Wasm 固定 worker，实际 readiness 后才能发布。不得手工伪造ready、实例凭据或发布记录。
 
 
 ## v1.2 当前界面与配置
 
-更新时间：2026-10-18（Asia/Shanghai）。v5 包通过 Admin 显式签名导入、安装、审批和启用；业务能力与运行资源分栏并记录原因/期限。Web/Admin 从不可变声明生成普通配置和独立 Secret 引用表单，精确数字不会经过浮点取整；当前宿主未绑定的业务选择器返回空选项。
+更新时间：2026-10-19（Asia/Shanghai）。v5 包通过 Admin 显式签名导入、安装、审批和启用；业务能力与运行资源分栏并记录原因/期限。Web/Admin 从不可变声明生成普通配置和独立 Secret 引用表单，精确数字不会经过浮点取整；当前宿主未绑定的业务选择器返回空选项。
 
-UI 资产来自每个当前证明的独立租约子域，有限 MessagePort 只提供普通配置读取与当前选择资源的 PDF 分段读取。父页限制 iframe 导航，插件不接触 Token、Secret 或宿主目录。真实后端 Runner 仍属 V12-05/06。完整边界见UI/Bridge 合同（仓库 `docs/api/v1.2插件UI宿主与Bridge合同.md`）、配置合同（仓库 `docs/api/v1.2插件配置Schema与Secret分流合同.md`）与操作说明（仓库 `docs/help/插件v5包与签名操作说明.md`）。
+UI 资产来自每个当前证明的独立租约子域，有限 MessagePort 只提供普通配置读取与当前选择资源的 PDF 分段读取。父页限制 iframe 导航，插件不接触 Token、Secret 或宿主目录。后端 Wasm 配置见[执行器配置](/deployment/configuration#v12-05-wasm-执行器)，Container 配置见[执行器配置](/deployment/configuration#v12-06-container-执行器)，Windows目标仍在V12-06。完整边界见UI/Bridge 合同（仓库 `docs/api/v1.2插件UI宿主与Bridge合同.md`）、配置合同（仓库 `docs/api/v1.2插件配置Schema与Secret分流合同.md`）与操作说明（仓库 `docs/help/插件v5包与签名操作说明.md`）。
+
+Wasm 产物必须实现 `campusos.wasm-json/v1` 有限 ABI；不能运行任意 WASI/进程。当前 Echo 是签名/Manifest/WASI 包合同示例，其作者侧 ABI 转换和 SDK 属08a。05正向 Host import 只开放当前已发布 typed 能力，Secret/Egress 未发布能力默认拒绝。完整 ABI、限制及验收见仓库 `docs/api/v1.2插件Wasm执行沙箱合同.md` 和 `.123`。
+
+## V12-06 镜像准入首片
+
+更新时间：2026-10-19（Asia/Shanghai）。Container签名声明已有内部捕获与本地不可变镜像核验：明确registry/小写规范仓库与完整`@sha256`，拒绝tag/默认registry/非规范地址；缺失镜像不会自动拉取。Manifest digest与平台配置ID分别核验，二者不是同一种摘要。此首片只检查元数据，不启动Container或发布ready；真实隔离/端点/授权生命周期与Windows/Linux执行仍在06。仓库证据为 `docs/api/v1.2插件Container镜像准入合同.md`、`.124`及 `v12-06-container-image-linux.json`。
+
+当前Linux Container执行支持有限HTTP/1.1与unary gRPC/HTTP2标准输入/输出协议、实际隔离及受管生命周期，须显式配置，见仓库 `docs/api/v1.2插件Container执行沙箱合同.md`与`.125`。上面的镜像首片是历史验收范围；Windows目标未通过，06整体仍进行中。
