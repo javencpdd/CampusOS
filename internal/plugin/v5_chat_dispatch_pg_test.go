@@ -70,9 +70,15 @@ func v5ChatOwnedPool(t *testing.T) (context.Context, *pgxpool.Pool, string) {
 }
 
 func v5ChatPGSession(t *testing.T, ctx context.Context, pool *pgxpool.Pool, reliable *reliability.Service) (*identityservice.SessionService, identity.SessionPrincipalResolver, string) {
+	return v5ChatPGSessionFor(t, ctx, pool, reliable, "2801001")
+}
+func v5ChatPGSessionFor(t *testing.T, ctx context.Context, pool *pgxpool.Pool, reliable *reliability.Service, uid string) (*identityservice.SessionService, identity.SessionPrincipalResolver, string) {
 	t.Helper()
-	const uid = "2801001"
-	if _, err := pool.Exec(ctx, `INSERT INTO users(id,username,nickname,email,status) VALUES($1,'v5-chat-user','V5 Chat','v5-chat@example.test','active') ON CONFLICT(id) DO NOTHING`, uid); err != nil {
+	username, email := "v5-chat-"+uid, "v5-chat-"+uid+"@example.test"
+	if uid == "2801001" {
+		username, email = "v5-chat-user", "v5-chat@example.test"
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO users(id,username,nickname,email,status) VALUES($1,$2,'V5 Chat',$3,'active') ON CONFLICT(id) DO NOTHING`, uid, username, email); err != nil {
 		t.Fatal(err)
 	}
 	users := repository.NewPgUserRepository(pool)

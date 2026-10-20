@@ -129,6 +129,12 @@ func (s *V5Platform) entry(ctx context.Context, c V5Coordinate, a v5Actor, priva
 	}
 	out.Release = r
 	if ierr == nil {
+		// Recovery pointers select host-private files, never HTTP authority.
+		i.Rollback = V5Checkpoint{}
+		i.PendingCheckpoint = V5Checkpoint{}
+		i.PendingRestore = V5Checkpoint{}
+		i.DataGeneration = 0
+		i.PendingDataGeneration = 0
 		out.Installation = &i
 	}
 	if gerr == nil {

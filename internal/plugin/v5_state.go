@@ -30,20 +30,25 @@ type V5PackageRelease struct {
 	Revision int64           `json:"revision,string"`
 }
 type V5Installation struct {
-	Publisher          string `json:"publisher"`
-	Key                string `json:"plugin_key"`
-	Owner              string `json:"owner_user_id"`
-	Version            string `json:"version"`
-	DesiredVersion     string `json:"desired_version"`
-	Installed          bool   `json:"installed"`
-	Desired            string `json:"desired"`
-	Observed           string `json:"observed"`
-	Generation         int64  `json:"generation,string"`
-	Revision           int64  `json:"revision,string"`
-	ObservedGeneration int64  `json:"observed_generation,string"`
-	ActiveGeneration   int64  `json:"active_generation,string"`
-	Error              string `json:"error_code"`
-	ConfigDigest       string `json:"config_digest"`
+	Publisher             string       `json:"publisher"`
+	Key                   string       `json:"plugin_key"`
+	Owner                 string       `json:"owner_user_id"`
+	Version               string       `json:"version"`
+	DesiredVersion        string       `json:"desired_version"`
+	Installed             bool         `json:"installed"`
+	Desired               string       `json:"desired"`
+	Observed              string       `json:"observed"`
+	Generation            int64        `json:"generation,string"`
+	Revision              int64        `json:"revision,string"`
+	ObservedGeneration    int64        `json:"observed_generation,string"`
+	ActiveGeneration      int64        `json:"active_generation,string"`
+	Error                 string       `json:"error_code"`
+	ConfigDigest          string       `json:"config_digest"`
+	Rollback              V5Checkpoint `json:"rollback_checkpoint,omitzero"`
+	PendingCheckpoint     V5Checkpoint `json:"pending_checkpoint,omitzero"`
+	PendingRestore        V5Checkpoint `json:"pending_restore,omitzero"`
+	DataGeneration        int64        `json:"data_generation,string,omitempty"`
+	PendingDataGeneration int64        `json:"pending_data_generation,string,omitempty"`
 }
 
 func (s V5Installation) coordinate() V5Coordinate { return V5Coordinate{s.Publisher, s.Key, s.Version} }
@@ -94,6 +99,8 @@ type V5Operation struct {
 	StorageRevision int64          `json:"storage_revision,string"`
 	Preparation     *V5Preparation `json:"preparation,omitempty"`
 	CleanupAfter    string         `json:"cleanup_after"`
+	Checkpoint      V5Checkpoint   `json:"upgrade_checkpoint,omitzero"`
+	Restore         V5Checkpoint   `json:"restore_checkpoint,omitzero"`
 }
 type V5Preparation struct {
 	GlobalGeneration     int64  `json:"global_generation,string"`
@@ -102,6 +109,7 @@ type V5Preparation struct {
 	UserConfigRevision   int64  `json:"user_config_revision,string"`
 	PackageDigest        string `json:"package_digest"`
 	ConfigDigest         string `json:"config_digest"`
+	DataGeneration       int64  `json:"data_generation,string,omitempty"`
 }
 
 // Finite record kinds select physically separate tables. Their identity,
@@ -371,7 +379,7 @@ func (s *MemoryV5StateStore) referenced(ctx context.Context, c V5Coordinate) (bo
 		for _, b := range s.records[k] {
 			var i V5Installation
 			json.Unmarshal(b, &i)
-			if i.Publisher == c.Publisher && i.Key == c.Key && i.Installed && (i.Version == c.Version || i.DesiredVersion == c.Version) {
+			if i.Publisher == c.Publisher && i.Key == c.Key && i.Installed && (i.Version == c.Version || i.DesiredVersion == c.Version || i.Rollback.Version == c.Version) {
 				return true, nil
 			}
 		}

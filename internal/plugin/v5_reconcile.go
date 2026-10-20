@@ -187,9 +187,9 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 					current.LeaseUntil = 0
 					return nil
 				}
-			}
-			if i.Installed {
-				i.Version = i.DesiredVersion
+				i.Rollback = V5Checkpoint{}
+				i.DataGeneration = 0
+				i.PendingDataGeneration = 0
 			}
 			i.Observed = "stopped"
 			i.ObservedGeneration = i.Generation
@@ -226,7 +226,7 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 			if i.Owner != "" {
 				global, e := s.installation(tx, c, "")
 				g, ge := s.grant(tx, c)
-				if e == nil && ge == nil && v5GrantCompleteAt(p.Manifest, g, s.now().UnixMilli()) && global.Installed && global.Desired == "enabled" && global.DesiredVersion == c.Version && global.Observed != "ready" {
+				if e == nil && ge == nil && v5GrantCompleteAt(p.Manifest, g, s.now().UnixMilli()) && global.Installed && global.Desired == "enabled" && global.DesiredVersion == c.Version && global.Observed != "ready" && !(p.Manifest.Runtime == "none" && s.uiHostReady.Load()) {
 					current.Status = "queued"
 					current.Preparation = nil
 					current.LeaseUntil = s.now().Add(time.Second).UnixMilli()
@@ -238,6 +238,12 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 					return s.saveInstall(tx, &i)
 				}
 			}
+			if err := s.restoreCheckpoint(tx, &i, *current, p.Manifest); err != nil {
+				return err
+			}
+			if err := s.verifyUpgradeCheckpoint(tx, i, *current); err != nil {
+				return err
+			}
 			binding, capsule, err := s.preparation(tx, i, p.Manifest)
 			if err != nil {
 				return err
@@ -247,6 +253,19 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 				return err
 			}
 			i.ConfigDigest = binding.ConfigDigest
+			if p.Manifest.Runtime == "none" && s.uiHostReady.Load() {
+				// A configured, compiled UI Host activates verified assets; this
+				// is deliberately not a ready backend Runner observation.
+				v5ActivateCheckpoint(&i, *current)
+				i.Version = i.DesiredVersion
+				i.Observed = "stopped"
+				i.ObservedGeneration = i.Generation
+				i.ActiveGeneration = 0
+				i.Error = ""
+				current.Status = "done"
+				current.Error = ""
+				return s.saveInstall(tx, &i)
+			}
 			i.Observed = "pending"
 			i.ObservedGeneration = i.Generation
 			i.ActiveGeneration = 0
@@ -262,6 +281,17 @@ func (s *V5Platform) processClaim(ctx context.Context, op V5Operation) error {
 func (s *V5Platform) preparation(ctx context.Context, i V5Installation, m *PluginV5Manifest) (V5Preparation, []byte, error) {
 	c := V5Coordinate{i.Publisher, i.Key, i.DesiredVersion}
 	binding := V5Preparation{}
+	binding.DataGeneration = i.DataGeneration
+	if i.PendingDataGeneration != 0 {
+		binding.DataGeneration = i.PendingDataGeneration
+	}
+	if binding.DataGeneration > 0 {
+		view, err := s.files.dataView(i, binding.DataGeneration)
+		if err != nil {
+			return binding, nil, err
+		}
+		view.Close()
+	}
 	g, err := s.grant(ctx, c)
 	if err != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, i.Owner, m, g) {
 		return binding, nil, ErrV5Denied
@@ -281,7 +311,7 @@ func (s *V5Platform) preparation(ctx context.Context, i V5Installation, m *Plugi
 		if err != nil || u.Status != "active" || u.ID != i.Owner {
 			return binding, nil, ErrV5Denied
 		}
-		if global.Version != c.Version || global.Desired != "enabled" || global.Observed != "ready" || global.Generation != global.ActiveGeneration {
+		if global.Version != c.Version || global.DesiredVersion != c.Version || global.Desired != "enabled" || !(m.Runtime == "none" && s.uiHostReady.Load()) && (global.Observed != "ready" || global.Generation != global.ActiveGeneration) {
 			return binding, nil, ErrV5Denied
 		}
 	}
@@ -315,12 +345,13 @@ func (s *V5Platform) preparation(ctx context.Context, i V5Installation, m *Plugi
 		user = &v
 	}
 	capsule, err := json.Marshal(struct {
-		Coordinate V5Coordinate     `json:"release"`
-		Owner      string           `json:"owner"`
-		Generation string           `json:"generation"`
-		System     *V5Configuration `json:"system_configuration,omitempty"`
-		User       *V5Configuration `json:"user_configuration,omitempty"`
-	}{c, i.Owner, v5Counter(i.Generation), system, user})
+		Coordinate     V5Coordinate     `json:"release"`
+		Owner          string           `json:"owner"`
+		Generation     string           `json:"generation"`
+		System         *V5Configuration `json:"system_configuration,omitempty"`
+		User           *V5Configuration `json:"user_configuration,omitempty"`
+		DataGeneration int64            `json:"data_generation,string,omitempty"`
+	}{c, i.Owner, v5Counter(i.Generation), system, user, binding.DataGeneration})
 	return binding, capsule, err
 }
 func (s *V5Platform) Observe(ctx context.Context, r V5Observation) error {
@@ -356,6 +387,9 @@ func (s *V5Platform) Observe(ctx context.Context, r V5Observation) error {
 			if !i.Installed || i.Desired != "enabled" || i.Generation != r.Generation || i.DesiredVersion != c.Version {
 				return ErrV5Conflict
 			}
+			if err := s.verifyUpgradeCheckpoint(tx, i, *current); err != nil {
+				return err
+			}
 			binding, capsule, err := s.preparation(tx, i, p.Manifest)
 			if err != nil {
 				return err
@@ -368,6 +402,7 @@ func (s *V5Platform) Observe(ctx context.Context, r V5Observation) error {
 				return err
 			}
 			if r.Ready {
+				v5ActivateCheckpoint(&i, *current)
 				i.Version = i.DesiredVersion
 				i.Observed = "ready"
 				i.ActiveGeneration = i.Generation
@@ -395,6 +430,9 @@ func (s *V5Platform) failClaim(ctx context.Context, op V5Operation, cause error)
 		current.Error = "plugin.reconcile_failed"
 		if errors.Is(cause, ErrV5Denied) {
 			current.Error = "plugin.authorization_changed"
+		}
+		if errors.Is(cause, ErrV5Rollback) {
+			current.Error = ErrV5Rollback.Error()
 		}
 		if errors.Is(cause, ErrPluginV5PackageSignature) {
 			current.Error = "plugin.package_signature_invalid"

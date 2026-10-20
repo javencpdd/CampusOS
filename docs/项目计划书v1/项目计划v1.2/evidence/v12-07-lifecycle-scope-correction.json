@@ -1,0 +1,10 @@
+{
+  "schema": "campusos.v12-07-scope-correction/v1",
+  "supersedes_overall_exit": "v12-07-lifecycle-exit-linux.json",
+  "prior_report_sha256": "24ce5c8f9d0dcbf07ae9e5ac9debb171c5579f6b095c2b9921ee4978edcb7c5b",
+  "prior_native_evidence": "Wasm/Container verified; preserved unchanged",
+  "missing_path": "UI-only asset version activation must not await or fabricate a backend Runner",
+  "authoritative_successor": "v12-07-lifecycle-exit-linux-v2.json",
+  "windows": "deferred_by_user",
+  "stage_status_at_correction": "pending_ui_completion_until_v2_exit"
+}

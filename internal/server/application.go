@@ -20,13 +20,17 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 
 	if infra.database == nil {
 		log.Printf("⚠️  PostgreSQL 基础设施不可用，回退到内存模式: %v", infra.databaseErr)
-	} else if err := SeedAdmin(infra.database, adminSeedOptions{
-		Environment:                  s.cfg.Deployment.Environment,
-		PasswordHashEnabled:          s.cfg.Auth.PasswordHashEnabled,
-		BootstrapAdminSecret:         s.cfg.Auth.BootstrapAdminSecret,
-		AllowDevelopmentDefaultAdmin: s.cfg.Auth.AllowDevelopmentDefaultAdmin,
-	}); err != nil {
-		return fmt.Errorf("initialize bootstrap administrator: %w", err)
+	} else if !infra.restoredInstance {
+		// Reviewed recovery must not recreate a removed bootstrap role or
+		// account after the operator has attested the exact restored facts.
+		if err := SeedAdmin(infra.database, adminSeedOptions{
+			Environment:                  s.cfg.Deployment.Environment,
+			PasswordHashEnabled:          s.cfg.Auth.PasswordHashEnabled,
+			BootstrapAdminSecret:         s.cfg.Auth.BootstrapAdminSecret,
+			AllowDevelopmentDefaultAdmin: s.cfg.Auth.AllowDevelopmentDefaultAdmin,
+		}); err != nil {
+			return fmt.Errorf("initialize bootstrap administrator: %w", err)
+		}
 	}
 
 	if s.identity == nil || s.identity.Permissions() == nil {

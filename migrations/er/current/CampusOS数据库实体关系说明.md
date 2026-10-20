@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=89635174c0577907d25045f32d79c73b79399f97b41dfeafc258e9513c9896ac;tables=112;foreign_keys=132 -->
+<!-- campusos-er:schema_sha256=b995ca880afdae3717c6c30a447630bd6c5855b0364719ec22fd1b242bc4ac47;tables=113;foreign_keys=132 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**112**
+- 实体表：**113**
 - 物理外键：**132**
 - 一对一/可选一对一关系：**16**
 - 一对多关系：**116**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`89635174c0577907d25045f32d79c73b79399f97b41dfeafc258e9513c9896ac`
+- Schema 指纹：`b995ca880afdae3717c6c30a447630bd6c5855b0364719ec22fd1b242bc4ac47`
 
 ## 1. 生成范围与判定规则
 
@@ -45,6 +45,7 @@
 - `000026_plugin_package_identities.up.sql`
 - `000027_plugin_v5_installations.up.sql`
 - `000028_plugin_v5_event_deliveries.up.sql`
+- `000029_instance_recovery_epochs.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -155,6 +156,7 @@
 | 其他平台数据 | `content_moderation_actions` | 11 | `id` | 0 | 0 |
 | 其他平台数据 | `content_moderation_cases` | 12 | `id` | 0 | 0 |
 | 其他平台数据 | `content_revisions` | 13 | `id` | 0 | 0 |
+| 其他平台数据 | `instance_recovery_epochs` | 11 | `singleton` | 0 | 0 |
 | 其他平台数据 | `integration_credentials` | 13 | `id` | 1 | 0 |
 | 其他平台数据 | `integration_principals` | 7 | `id` | 0 | 1 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
@@ -2623,6 +2625,26 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `created_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
 | `created_actor_id` | `varchar(128)` | NN | 否 | `''` |
+
+#### `instance_recovery_epochs`
+
+- 主键：`singleton`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `singleton` | `boolean` | PK | 是 | `true` |
+| `epoch` | `varchar(64)` | NN | 否 | `—` |
+| `archive_sha256` | `varchar(64)` | NN | 否 | `—` |
+| `phase` | `varchar(16)` | NN | 否 | `—` |
+| `inventory_sha256` | `varchar(64)` | NN | 否 | `''` |
+| `reviewed_by` | `varchar(128)` | NN | 否 | `''` |
+| `review_reason` | `varchar(500)` | NN | 否 | `''` |
+| `rotated_at` | `timestamptz` | NN | 否 | `now()` |
+| `reviewed_at` | `timestamptz` | — | 是 | `—` |
+| `egress_paused` | `boolean` | NN | 否 | `true` |
+| `audit` | `jsonb` | NN | 否 | `'[]'` |
 
 #### `integration_credentials`
 

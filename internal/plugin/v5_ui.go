@@ -62,6 +62,13 @@ func (s *V5Platform) withUI(ctx context.Context, c V5Coordinate, admin bool, res
 			if !usable(global) {
 				return ErrV5Denied
 			}
+			if global.DataGeneration > 0 {
+				view, err := s.files.dataView(global, global.DataGeneration)
+				if err != nil {
+					return err
+				}
+				view.Close()
+			}
 			grant, err := s.grant(tx, c)
 			if err != nil {
 				return err
@@ -79,6 +86,13 @@ func (s *V5Platform) withUI(ctx context.Context, c V5Coordinate, admin bool, res
 				}
 				if !usable(installation) || !s.consentOK(tx, c, owner, p.Manifest, grant) {
 					return ErrV5Denied
+				}
+				if installation.DataGeneration > 0 {
+					view, err := s.files.dataView(installation, installation.DataGeneration)
+					if err != nil {
+						return err
+					}
+					view.Close()
 				}
 			}
 			if err := s.validateInstanceConfiguration(tx, c, owner, p.Manifest); err != nil {
@@ -244,5 +258,5 @@ func (s *V5Platform) PDFUI(ctx context.Context, user string, resolve identity.Se
 }
 
 func v5UIUnavailable(err error) bool {
-	return errors.Is(err, ErrV5Denied) || errors.Is(err, ErrV5NotFound) || errors.Is(err, ErrV5PlatformUnavailable) || errors.Is(err, ErrV5Conflict)
+	return errors.Is(err, ErrV5Denied) || errors.Is(err, ErrV5NotFound) || errors.Is(err, ErrV5PlatformUnavailable) || errors.Is(err, ErrV5Conflict) || errors.Is(err, ErrV5Rollback)
 }

@@ -39,6 +39,13 @@ type V5WasmTestHarness struct {
 	GrantUntil             func(int64)
 	SetAuditFault          func(bool)
 	PublishEvent           func() string
+	ImportVersion          func(string) V5Coordinate
+	ImportVariant          func(string, func(*PluginV5Manifest)) V5Coordinate
+	ImportUIVersion        func(string, string) V5Coordinate
+	UserSession            func(*testing.T, string) identity.SessionPrincipalResolver
+	Installation           func(*testing.T, V5Coordinate, string) V5Installation
+	PrivateFiles           func(*testing.T, V5Coordinate, string) *os.Root
+	ConfigurationAt        func(*testing.T, V5Coordinate, string) V5Configuration
 }
 
 func NewV5WasmTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool, code []byte) *V5WasmTestHarness {
@@ -47,20 +54,64 @@ func NewV5WasmTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
 func NewV5ContainerTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool, ref, transport string) *V5WasmTestHarness {
 	return newV5RuntimeTestHarness(t, ctx, pool, nil, ref, transport)
 }
-func newV5RuntimeTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool, code []byte, ref, transport string) *V5WasmTestHarness {
+func NewV5LifecycleTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool, code []byte, ref, transport string) *V5WasmTestHarness {
+	return newV5RuntimeTestHarness(t, ctx, pool, code, ref, transport, func(m *PluginV5Manifest) {
+		m.Data.PrivateKVBytes = 16384
+		m.Consumes = append(m.Consumes, PluginV5Consume{Capability: "ui.resource.selected.read", Scope: PluginV5ConsumeScope{Kind: "self"}, Purpose: "Explicit lifecycle consent fixture; no resource is read", Required: true})
+	})
+}
+func NewV5UILifecycleTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool) *V5WasmTestHarness {
+	return newV5RuntimeTestHarness(t, ctx, pool, nil, "", "ui", func(m *PluginV5Manifest) {
+		m.Data.PrivateKVBytes = 16384
+		m.Consumes = []PluginV5Consume{{Capability: "ui.resource.selected.read", Scope: PluginV5ConsumeScope{Kind: "self"}, Purpose: "Read only a currently selected resource", Required: true}, {Capability: "ui.surface.open", Scope: PluginV5ConsumeScope{Kind: "self"}, Purpose: "Open this isolated UI", Required: true}}
+	})
+}
+func newV5RuntimeTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Pool, code []byte, ref, transport string, options ...func(*PluginV5Manifest)) *V5WasmTestHarness {
 	t.Helper()
 	v, priv := newV5ContributionTestPlatform(t)
 	m := v.manifest
 	m.Key = "wasm-" + v5RandomID()[:12]
-	m.UI = nil
+	if transport != "ui" {
+		m.UI = nil
+	}
 	m.HostResources = &PluginV5ManifestResources{NetworkTargets: []string{}, StorageBytes: 1048576, CPUMillis: 500, MemoryMB: 128, MaxConcurrency: 1, TimeoutMS: 5000}
-	m.Provides = []PluginV5Provide{m.Provides[1]}
+	if transport == "ui" {
+		m.Provides = []PluginV5Provide{}
+		m.HostResources = nil
+		// The lifecycle target exercises both audiences; the base author
+		// fixture intentionally ships only a user UI.
+		adminUI := m.UI[0]
+		adminUI.Audience = "admin"
+		adminUI.Entrypoint = "dist/admin/index.html"
+		raw, err := os.ReadFile(filepath.Join(v.dir, m.UI[0].Entrypoint))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(v.dir, "dist/admin"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(v.dir, adminUI.Entrypoint), raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+		m.UI = append(m.UI, adminUI)
+	} else {
+		m.Provides = []PluginV5Provide{m.Provides[1]}
+	}
 	m.Consumes = []PluginV5Consume{
 		{Capability: "community.thread.public.read", Scope: PluginV5ConsumeScope{Kind: "public"}, Purpose: "Read current public thread metadata", Required: true},
 		{Capability: "community.thread.public.subscribe", Scope: PluginV5ConsumeScope{Kind: "public"}, Purpose: "Receive current public metadata events", Required: false},
 	}
 	m.Configuration = json.RawMessage(`{"contract":"campusos.plugin-config/v1","version":"v1","schema":{"type":"object","additionalProperties":false,"properties":{"message":{"type":"string","title":"Message"}},"required":[]},"defaults":{"message":"ordinary-v1"},"selectors":[],"secret_names":[]}`)
-	if ref != "" {
+	for _, edit := range options {
+		edit(m)
+	}
+	if transport == "ui" {
+		m.Runtime = "none"
+		m.Backend = nil
+		if err := os.Remove(filepath.Join(v.dir, "dist/module.wasm")); err != nil {
+			t.Fatal(err)
+		}
+	} else if ref != "" {
 		m.Runtime = "container"
 		m.Backend.Artifact.Kind = "container"
 		m.Backend.Artifact.Path = ""
@@ -109,6 +160,87 @@ func newV5RuntimeTestHarness(t *testing.T, ctx context.Context, pool *pgxpool.Po
 	userSessions, userProof, userSID := v5ChatPGSession(t, ctx, pool, reliable)
 	h := &V5WasmTestHarness{Platform: v.s, Hub: NewV5ManagedRuntime(NewV5ContributionDirectory(v.s)), Coordinate: v.c, Admin: adminProof, User: userProof}
 	h.ManagedRoot, h.TrustPath = managedParent, filepath.Join(managedParent, "trust.json")
+	h.ImportVariant = func(version string, edit func(*PluginV5Manifest)) V5Coordinate {
+		t.Helper()
+		var candidate PluginV5Manifest
+		wire, _ := json.Marshal(m)
+		if err := json.Unmarshal(wire, &candidate); err != nil {
+			t.Fatal(err)
+		}
+		candidate.Version = version
+		candidate.Data.Upgrade.Mode = "preserve"
+		if edit != nil {
+			edit(&candidate)
+		}
+		wire, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(v.dir, "plugin.json"), wire, 0600); err != nil {
+			t.Fatal(err)
+		}
+		archive, _, err := BuildPluginV5Package(v.dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		release, err := SignPluginV5Package(archive, "test-key", priv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := v.s.Import(ctx, archive, release, v5RandomID(), h.Admin); err != nil {
+			t.Fatal(err)
+		}
+		return V5Coordinate{candidate.Publisher, candidate.Key, candidate.Version}
+	}
+	h.ImportVersion = func(version string) V5Coordinate { return h.ImportVariant(version, nil) }
+	h.ImportUIVersion = func(version, marker string) V5Coordinate {
+		return h.ImportVariant(version, func(m *PluginV5Manifest) {
+			for n := range m.UI {
+				raw := []byte("<!doctype html><title>" + marker + "</title>")
+				if err := os.WriteFile(filepath.Join(v.dir, m.UI[n].Entrypoint), raw, 0600); err != nil {
+					t.Fatal(err)
+				}
+				m.UI[n].Digest = v5BytesDigest(raw)
+			}
+		})
+	}
+	h.UserSession = func(tt *testing.T, uid string) identity.SessionPrincipalResolver {
+		_, proof, _ := v5ChatPGSessionFor(tt, ctx, pool, reliable, uid)
+		return proof
+	}
+	h.Installation = func(tt *testing.T, c V5Coordinate, owner string) V5Installation {
+		tt.Helper()
+		i, err := v.s.installation(ctx, c, owner)
+		if err != nil {
+			tt.Fatal(err)
+		}
+		return i
+	}
+	h.PrivateFiles = func(tt *testing.T, c V5Coordinate, owner string) *os.Root {
+		tt.Helper()
+		i := h.Installation(tt, c, owner)
+		root, err := v.s.files.dataView(i, i.DataGeneration)
+		if err != nil {
+			tt.Fatal(err)
+		}
+		return root
+	}
+	h.ConfigurationAt = func(tt *testing.T, c V5Coordinate, owner string) V5Configuration {
+		tt.Helper()
+		release, err := v.s.release(ctx, c)
+		if err != nil {
+			tt.Fatal(err)
+		}
+		m, err := ParsePluginV5Manifest(release.Manifest)
+		if err != nil {
+			tt.Fatal(err)
+		}
+		cfg, err := v.s.configuration(ctx, c, owner, m)
+		if err != nil {
+			tt.Fatal(err)
+		}
+		return cfg
+	}
 	if err := os.WriteFile(h.TrustPath, trust, 0600); err != nil {
 		t.Fatal(err)
 	}

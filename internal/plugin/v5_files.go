@@ -33,7 +33,7 @@ func NewV5ManagedFiles(directory string) (*V5ManagedFiles, error) {
 		return nil, ErrV5PlatformUnavailable
 	}
 	f := &V5ManagedFiles{root: r}
-	for _, name := range []string{"packages", "prepared", "data"} {
+	for _, name := range []string{"packages", "prepared", "data", "checkpoints", "restored-data"} {
 		d, err := f.directory(name)
 		if err != nil {
 			r.Close()
@@ -258,7 +258,7 @@ func (f *V5ManagedFiles) PurgeOwner(p, k, owner string) error {
 	if f == nil || f.root == nil || !v5FamilyValid(p, k) || !v5OwnerValid(owner) {
 		return ErrV5Invalid
 	}
-	for _, prefix := range []string{"data/", "prepared/"} {
+	for _, prefix := range []string{"data/", "prepared/", "checkpoints/", "restored-data/"} {
 		parent, err := f.directory(prefix + p + "/" + k)
 		if err != nil {
 			return err

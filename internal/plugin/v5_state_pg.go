@@ -19,7 +19,7 @@ func (s *PgV5StateStore) referenced(ctx context.Context, c V5Coordinate) (bool, 
 		return false, err
 	}
 	var found bool
-	err = db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_installations WHERE publisher=$1 AND plugin_key=$2 AND (state->>'installed')::boolean AND (version=$3 OR desired_version=$3) UNION ALL SELECT 1 FROM plugin_user_installations WHERE publisher=$1 AND plugin_key=$2 AND (state->>'installed')::boolean AND (version=$3 OR desired_version=$3))`, c.Publisher, c.Key, c.Version).Scan(&found)
+	err = db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_installations WHERE publisher=$1 AND plugin_key=$2 AND (state->>'installed')::boolean AND (version=$3 OR desired_version=$3 OR state->'rollback_checkpoint'->>'version'=$3) UNION ALL SELECT 1 FROM plugin_user_installations WHERE publisher=$1 AND plugin_key=$2 AND (state->>'installed')::boolean AND (version=$3 OR desired_version=$3 OR state->'rollback_checkpoint'->>'version'=$3))`, c.Publisher, c.Key, c.Version).Scan(&found)
 	if err != nil {
 		return false, ErrV5PlatformUnavailable
 	}

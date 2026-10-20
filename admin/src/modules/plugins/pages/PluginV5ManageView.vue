@@ -82,6 +82,31 @@
           >
             切换到此版本（升级或回退）
           </button>
+          <button
+            v-if="
+              allowed('lifecycle') &&
+              selected.installation?.installed &&
+              selected.installation.version !== selected.release.version &&
+              selected.installation.desired_version ===
+                selected.release.version &&
+              selected.installation.desired === 'disabled'
+            "
+            @click="command('enable')"
+          >
+            启用此版本
+          </button>
+          <p
+            v-if="
+              selected.installation?.desired === 'disabled' &&
+              selected.installation.desired_version !==
+                selected.installation.version
+            "
+          >
+            已准备切换，当前版本仍为
+            {{
+              selected.installation.version
+            }}。不会自动启用；显式启用且实际就绪后才切换版本。
+          </p>
           <template
             v-if="
               selected.installation?.installed &&

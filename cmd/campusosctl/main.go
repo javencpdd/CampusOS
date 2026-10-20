@@ -17,6 +17,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	switch args[0] {
+	case "recovery":
+		return runRecovery(args[1:], stdout, stderr)
 	case "version":
 		return runVersion(args[1:], stdout, stderr)
 	case "plugin":
@@ -65,4 +67,5 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  storage   local user-storage reconciliation commands")
 	fmt.Fprintln(w, "  schedule  historical schedule adoption commands")
 	fmt.Fprintln(w, "  secret    local plugin Secret key rotation commands")
+	fmt.Fprintln(w, "  recovery  trusted offline backup verification, restore and authorization review")
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -31,19 +32,38 @@ import (
 // One owned PG16, real cmd/server, current production builds and a separate UI
 // listener. Browser requests use actual identities and resource services.
 func TestPluginV5UIActualServerBrowser(t *testing.T) {
-	dsn, binary, work := os.Getenv("CAMPUSOS_V5_UI_DATABASE_URL"), os.Getenv("CAMPUSOS_V5_UI_SERVER_BINARY"), os.Getenv("CAMPUSOS_V5_UI_OUTPUT")
+	runPluginV5UIActualServerBrowser(t, v5UIActualTarget{
+		dsn: os.Getenv("CAMPUSOS_V5_UI_DATABASE_URL"), binary: os.Getenv("CAMPUSOS_V5_UI_SERVER_BINARY"), work: os.Getenv("CAMPUSOS_V5_UI_OUTPUT"),
+		database: "campusos_v12_04_ui", tailOnly: os.Getenv("CAMPUSOS_V5_UI_TAIL_ONLY") == "1",
+	})
+}
+
+// Shared journey: both targets exercise the same real production UI and HTTP
+// boundary. Only08a additionally requires a pre-signed author archive and OS
+// read-only mounts; the historical04 target retains its original scope.
+type v5UIActualTarget struct {
+	dsn, binary, work, database string
+	pdfInput                    string
+	tailOnly                    bool
+	ecosystem                   bool // Compiled test consumer; never a production route.
+	observe                     func(*testing.T, *os.Process, string) func()
+}
+
+func runPluginV5UIActualServerBrowser(t *testing.T, target v5UIActualTarget) {
+	t.Helper()
+	dsn, binary, work := target.dsn, target.binary, target.work
 	if dsn == "" || binary == "" || work == "" {
-		t.Skip("requires owned V12-04 full UI target")
+		t.Skip("requires owned full UI target")
 	}
 	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil || cfg.ConnConfig.Database != "campusos_v12_04_ui" {
-		t.Fatal("requires exact owned V12-04 UI database")
+	if err != nil || cfg.ConnConfig.Database != target.database {
+		t.Fatal("requires exact owned UI target database")
 	}
 	root, err := projectaudit.FindRepositoryRoot(".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
@@ -99,7 +119,16 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	trust, _ := json.Marshal(plugin.PluginV5TrustStore{Contract: "campusos.plugin-trust/v1", Keys: []plugin.PluginV5TrustKey{{Publisher: "campusos", KeyID: "ui-test", PublicKey: base64.StdEncoding.EncodeToString(pub), Status: "active"}}})
+	trustStore := plugin.PluginV5TrustStore{Contract: "campusos.plugin-trust/v1", Keys: []plugin.PluginV5TrustKey{{Publisher: "campusos", KeyID: "ui-test", PublicKey: base64.StdEncoding.EncodeToString(pub), Status: "active"}}}
+	if target.pdfInput != "" {
+		wire, err := os.ReadFile(filepath.Join(target.pdfInput, "trust.json"))
+		var authorTrust plugin.PluginV5TrustStore
+		if err != nil || json.Unmarshal(wire, &authorTrust) != nil || authorTrust.Contract != trustStore.Contract || len(authorTrust.Keys) != 1 {
+			t.Fatal("missing author release trust")
+		}
+		trustStore.Keys = append(trustStore.Keys, authorTrust.Keys...)
+	}
+	trust, _ := json.Marshal(trustStore)
 	trustPath := filepath.Join(work, "trust.json")
 	if err := os.WriteFile(trustPath, trust, 0600); err != nil {
 		t.Fatal(err)
@@ -121,7 +150,46 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 		}
 		packages = append(packages, map[string]string{"key": p.Manifest.Key, "version": p.Manifest.Version, "archive": ap, "release": rp})
 	}
-	writePackage(filepath.Join(root, "plugins/campusos.pdf-viewer"), "pdf-viewer")
+	if target.pdfInput == "" {
+		writePackage(filepath.Join(root, "plugins/campusos.pdf-viewer"), "pdf-viewer")
+	} else {
+		archivePath, releasePath := filepath.Join(target.pdfInput, "pdf-viewer.tar.gz"), filepath.Join(target.pdfInput, "pdf-viewer.release.json")
+		archive, err := plugin.ReadPluginV5PackageFile(archivePath)
+		if err != nil {
+			t.Fatal("read author PDF archive", err)
+		}
+		envelope, err := os.ReadFile(releasePath)
+		if err != nil {
+			t.Fatal("read author PDF signature", err)
+		}
+		p, err := plugin.VerifyPluginV5Release(archive, envelope, trust)
+		if err != nil || p.Manifest.Publisher != "campusos" || p.Manifest.Key != "pdf-viewer" || p.Manifest.Runtime != "none" {
+			t.Fatal("verify author PDF release", err)
+		}
+		current, _, err := plugin.BuildPluginV5Package(filepath.Join(root, "plugins/campusos.pdf-viewer"))
+		if err != nil || !bytes.Equal(current, archive) {
+			t.Fatal("author archive differs from current explicit PDF build", err)
+		}
+		packages = append(packages, map[string]string{"key": p.Manifest.Key, "version": p.Manifest.Version, "archive": archivePath, "release": releasePath})
+	}
+	if target.ecosystem {
+		for _, name := range []string{"echo-1.1.0", "echo-1.1.1"} {
+			ap, rp := filepath.Join(target.pdfInput, name+".tar.gz"), filepath.Join(target.pdfInput, name+".release.json")
+			a, err := os.ReadFile(ap)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r, err := os.ReadFile(rp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p, err := plugin.VerifyPluginV5Release(a, r, trust)
+			if err != nil || p.Manifest.Runtime != "container" || p.Manifest.Key != "chat-echo" || len(p.Manifest.UI) != 0 || len(p.Manifest.Consumes) != 0 {
+				t.Fatal("independent signed headless release", err)
+			}
+			packages = append(packages, map[string]string{"key": p.Manifest.Key, "version": p.Manifest.Version, "archive": ap, "release": rp})
+		}
+	}
 	template, err := os.ReadFile(filepath.Join(root, "plugins/campusos.pdf-viewer/plugin.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -153,9 +221,32 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 		t.Fatal("manifest")
 	}
 	writePackage(source, "full-config")
+	contractSocket := "@campusos08a-" + controlKey[:24]
+	contractClient := &http.Client{Timeout: 6 * time.Second, Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", contractSocket)
+	}}}
+	defer contractClient.CloseIdleConnections()
 	control := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" || r.Header.Get("Authorization") != "Bearer "+controlKey {
 			w.WriteHeader(403)
+			return
+		}
+		if target.ecosystem && r.URL.Path == "/contract" {
+			request, err := http.NewRequestWithContext(r.Context(), "POST", "http://contract/", http.MaxBytesReader(w, r.Body, 8192))
+			if err != nil {
+				w.WriteHeader(500)
+				return
+			}
+			request.Header.Set("Authorization", "Bearer "+controlKey)
+			response, err := contractClient.Do(request)
+			if err != nil {
+				w.WriteHeader(502)
+				return
+			}
+			defer response.Body.Close()
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(response.StatusCode)
+			_, _ = io.Copy(w, response.Body)
 			return
 		}
 		var err error
@@ -212,9 +303,15 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 	}
 	defer func() { _ = gateway.Process.Kill(); _ = gateway.Wait() }()
 	command := exec.CommandContext(ctx, binary)
+	if target.ecosystem {
+		command = exec.CommandContext(ctx, binary, "-test.run=^TestV5EcosystemHostProcess$", "-test.v", "-test.timeout=1500s")
+	}
 	command.Dir = processDir
 	for k, v := range map[string]string{"PATH": os.Getenv("PATH"), "CAMPUSOS_SKIP_DOTENV": "true", "DATABASE_DSN": dsn, "SERVER_HOST": "127.0.0.1", "SERVER_PORT": fmt.Sprint(apiPort), "CAMPUSOS_ENV": "test", "REDIS_ENABLED": "false", "NATS_URL": "nats://127.0.0.1:1", "HOST_API_ENABLED": "false", "AUTH_PASSWORD_HASH_ENABLED": "true", "AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN": "false", "AUTH_REFRESH_BODY_COMPAT": "false", "JWT_SECRET": jwtKey, "AUTH_MFA_ACTIVE_KEY_ID": "test", "AUTH_MFA_ENCRYPTION_KEYS": "test:" + mfaKey, "PLUGIN_DATA_DIR": filepath.Join(processDir, "managed"), "CAMPUSOS_PLUGIN_V5_TRUST_STORE": trustPath, "CAMPUSOS_PLUGIN_UI_LISTEN": fmt.Sprintf("127.0.0.1:%d", uiListenPort), "CAMPUSOS_PLUGIN_UI_ORIGIN": uiOrigin, "CAMPUSOS_PLUGIN_UI_PARENTS": fmt.Sprintf("http://127.0.0.1:%d http://127.0.0.1:%d", adminPort, webPort), "EMAIL_PROVIDER": "fake", "AI_ENABLED": "false", "OBSERVABILITY_PROMETHEUS_ENABLED": "false", "GIN_MODE": "release"} {
 		command.Env = append(command.Env, k+"="+v)
+	}
+	if target.ecosystem {
+		command.Env = append(command.Env, "CAMPUSOS_V5_ECOSYSTEM_PROCESS=true", "CAMPUSOS_V5_ECOSYSTEM_SOCKET="+contractSocket, "CAMPUSOS_V5_ECOSYSTEM_KEY="+controlKey, "CAMPUSOS_PLUGIN_CONTAINER_ENABLED=true", "DOCKER_HOST=unix:///var/run/docker.sock", "HOME="+os.Getenv("HOME"), "GORACE=halt_on_error=1")
 	}
 	command.Stdout = logfile
 	command.Stderr = logfile
@@ -253,12 +350,18 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 	if !healthy {
 		t.Fatal("actual server health deadline")
 	}
-	browserConfig := map[string]any{"backend": base, "uiOrigin": uiOrigin, "adminPort": adminPort, "webPort": webPort, "control": control.URL, "controlKey": controlKey, "password": password, "adminUsername": "v5-ui-browser@example.test", "alice": "v5_ui_alice@example.test", "bob": "v5_ui_bob@example.test", "packages": packages, "result": filepath.Join(work, "browser-result.json"), "output": work, "tailOnly": os.Getenv("CAMPUSOS_V5_UI_TAIL_ONLY") == "1"}
+	if target.observe != nil {
+		verify := target.observe(t, command.Process, processDir)
+		defer verify()
+	}
+	browserConfig := map[string]any{"backend": base, "uiOrigin": uiOrigin, "adminPort": adminPort, "webPort": webPort, "control": control.URL, "controlKey": controlKey, "password": password, "adminUsername": "v5-ui-browser@example.test", "alice": "v5_ui_alice@example.test", "bob": "v5_ui_bob@example.test", "packages": packages, "result": filepath.Join(work, "browser-result.json"), "output": work, "tailOnly": target.tailOnly}
+	browserConfig["ecosystem"] = target.ecosystem
 	configPath := filepath.Join(work, "browser-input.json")
 	wire, _ = json.Marshal(browserConfig)
 	if err := os.WriteFile(configPath, wire, 0600); err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove(configPath) // Passwords and the private control key are not evidence.
 	node := exec.CommandContext(ctx, "node", filepath.Join(root, "scripts/v12-04-ui-browser.mjs"), configPath)
 	browserTmp, err := os.MkdirTemp("/tmp", "v12-04-ui-")
 	if err != nil {
@@ -289,7 +392,7 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 	}
 	wire, err = os.ReadFile(filepath.Join(work, "browser-result.json"))
 	requiredChecks := 25
-	if os.Getenv("CAMPUSOS_V5_UI_TAIL_ONLY") == "1" {
+	if target.tailOnly {
 		requiredChecks = 20
 	}
 	if err != nil || json.Unmarshal(wire, &report) != nil || report.Status != "passed" || len(report.Checks) < requiredChecks {
@@ -307,6 +410,9 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 		t.Fatal("missing reliable grants", audits, err)
 	}
 	logData, _ := os.ReadFile(filepath.Join(work, "actual-server.log"))
+	if strings.Contains(string(logData), "DATA RACE") {
+		t.Fatal("actual API race detected")
+	}
 	for _, secret := range []string{password, jwtKey, mfaKey, controlKey} {
 		if strings.Contains(string(logData), secret) {
 			t.Fatal("credential in server log")
@@ -321,7 +427,7 @@ func TestPluginV5UIActualServerBrowser(t *testing.T) {
 	if _, err := io.Copy(digest, b); err != nil {
 		t.Fatal(err)
 	}
-	proof, _ := json.MarshalIndent(map[string]any{"status": "passed", "actual_cmd_server": true, "server_binary_sha256": fmt.Sprintf("%x", digest.Sum(nil)), "actual_pg_configuration": true, "typed_grant_audits": audits, "browser_checks": len(report.Checks), "migration": 28}, "", "  ")
+	proof, _ := json.MarshalIndent(map[string]any{"status": "passed", "actual_cmd_server": !target.ecosystem, "actual_server_composition": true, "server_binary_sha256": fmt.Sprintf("%x", digest.Sum(nil)), "actual_pg_configuration": true, "typed_grant_audits": audits, "browser_checks": len(report.Checks), "migration": 28}, "", "  ")
 	if err := os.WriteFile(filepath.Join(work, "server-result.json"), append(proof, '\n'), 0600); err != nil {
 		t.Fatal(err)
 	}

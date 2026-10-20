@@ -150,20 +150,14 @@ function Ensure-RuntimeVolumes {
 function New-StackBackup {
     New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
     $ComposeArgs = Get-ComposeArgs
-    $ContainerId = (& docker @ComposeArgs ps -q api).Trim()
+    $ContainerId = (& docker @ComposeArgs ps -a -q api).Trim()
     if (-not $ContainerId) {
-        throw "CampusOS API container is not running."
+        throw "A created API container is required to copy its persistent volume backup."
     }
-
+    Invoke-Compose @("stop", "web", "admin", "api")
     $StagingDir = "/app/data/.backup-staging"
-    & docker @ComposeArgs exec -T api sh -c "mkdir -p '$StagingDir' && rm -f '$StagingDir'/campusos-backup-*.tar.gz"
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-    $BackupOutput = & docker @ComposeArgs exec -T api /app/scripts/backup.sh $StagingDir
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    $BackupOutput = & docker @ComposeArgs run --pull never --rm --no-deps maintenance /app/scripts/backup.sh $StagingDir
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     $ArchivePath = ($BackupOutput | Select-Object -Last 1).Trim()
     if (-not $ArchivePath.StartsWith("$StagingDir/campusos-backup-")) {
         throw "CampusOS API returned an unexpected backup path: $ArchivePath"
@@ -172,7 +166,7 @@ function New-StackBackup {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    Invoke-Compose @("exec", "-T", "api", "rm", "-f", $ArchivePath)
+    Invoke-Compose @("run", "--pull", "never", "--rm", "--no-deps", "maintenance", "rm", "-f", $ArchivePath)
     $HostArchive = Join-Path $BackupDir ([System.IO.Path]::GetFileName($ArchivePath))
     if ($env:OS -ne "Windows_NT") {
         & chmod 0600 $HostArchive
@@ -196,10 +190,9 @@ function Restore-Stack {
     $RelativePath = $ArchivePath.Substring($BackupPrefix.Length)
     $ContainerArchive = "/backups/" + $RelativePath.Replace("\", "/")
 
-    Invoke-Compose @("build", "api")
     Ensure-RuntimeNetworks
     Ensure-RuntimeVolumes
-    Invoke-Compose @("run", "--rm", "--no-deps", "maintenance", "/app/scripts/restore.sh", "verify", $ContainerArchive)
+    Invoke-Compose @("run", "--pull", "never", "--rm", "--no-deps", "maintenance", "/app/scripts/restore.sh", "verify", $ContainerArchive)
 
     $ComposeArgs = Get-ComposeArgs
     $ContainerId = (& docker @ComposeArgs ps -q api).Trim()
@@ -212,10 +205,9 @@ function Restore-Stack {
 
     Invoke-Compose @("stop", "web", "admin", "api")
     Invoke-Compose @("up", "-d", "--wait", "--wait-timeout", "300", "postgres", "redis", "nats")
-    Invoke-Compose @("run", "--rm", "--no-deps", "maintenance", "/app/scripts/docker-restore.sh", $ContainerArchive, "--confirm")
-    Invoke-Compose @("up", "-d", "--wait", "--wait-timeout", "300")
+    Invoke-Compose @("run", "--pull", "never", "--rm", "--no-deps", "maintenance", "/app/scripts/docker-restore.sh", $ContainerArchive, "--confirm")
     Invoke-Compose @("ps")
-    Write-Host "Restore completed. Preserve the source .env.docker until login, MFA and integration checks pass."
+    Write-Host "Restore quarantined. Keep traffic offline; review the exact current authorization inventory using the local recovery CLI before starting the API."
 }
 
 switch ($Command) {

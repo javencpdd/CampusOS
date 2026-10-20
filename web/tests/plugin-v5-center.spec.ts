@@ -91,3 +91,24 @@ it('cannot submit cached consent after current user identity changes', async () 
   expect(w.find('[aria-label="本人插件安装"]').exists()).toBe(false)
   expect(w.text()).toContain('用户身份已变化')
 })
+
+it('keeps a stopped staged version inactive until an explicit enable command', async () => {
+  const staged = {
+    ...entry(),
+    release: { ...entry().release, version: '8.2.0' },
+    installation: { ...entry().installation, desired_version: '8.2.0' },
+  }
+  mock.list.mockResolvedValue({ code: 0, data: { items: [staged], next_cursor: '' } })
+  mock.detail.mockResolvedValue({ code: 0, data: staged })
+  const w = await opened()
+  expect(w.text()).toContain('当前版本仍为')
+  expect(mock.command).not.toHaveBeenCalled()
+  await w
+    .findAll('button')
+    .find((b) => b.text() === '启用此版本')!
+    .trigger('click')
+  await flushPromises()
+  expect(mock.command).toHaveBeenCalledOnce()
+  expect(mock.command.mock.calls[0][0].version).toBe('8.2.0')
+  expect(mock.command.mock.calls[0][1]).toEqual({ kind: 'enable', expected_generation: '9007199254740993' })
+})

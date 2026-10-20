@@ -6,6 +6,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { createServer, request as proxyRequest } from "node:http";
 import { createHmac } from "node:crypto";
 import { extname, resolve, sep } from "node:path";
+import { ecosystemPhase } from "./v12-08a-ecosystem-browser.mjs";
 const cfg = JSON.parse(await readFile(process.argv[2], "utf8"));
 const require = createRequire(resolve("web/package.json"));
 const { chromium } = require("playwright-core");
@@ -107,7 +108,7 @@ const evil = createServer((_, res) => {
   res
     .writeHead(200, { "Content-Type": "text/html" })
     .end(
-      `<script>window.__connections=0;addEventListener('message',e=>{if(e.data?.type==='campusos.bridge.connect')window.__connections++});parent.postMessage({type:'campusos.bridge.ready',version:'campusos.bridge/v1',plugin_key:'campusos.pdf-viewer',plugin_version:'3.0.0-dev.2',surface_id:'preview',audience:'user'},'*')</script>`,
+      `<script>window.__connections=0;addEventListener('message',e=>{if(e.data?.type==='campusos.bridge.connect')window.__connections++});parent.postMessage({type:'campusos.bridge.ready',version:'campusos.bridge/v1',plugin_key:'campusos.pdf-viewer',plugin_version:'3.0.0-dev.3',surface_id:'preview',audience:'user'},'*')</script>`,
     );
 });
 await new Promise((r) => evil.listen(0, "127.0.0.1", r));
@@ -276,7 +277,7 @@ try {
     "admin",
     "POST",
     "/admin/plugin-v5/campusos/pdf-viewer/commands",
-    { kind: "install", version: "3.0.0-dev.2", idempotency_key: "without-mfa" },
+    { kind: "install", version: "3.0.0-dev.3", idempotency_key: "without-mfa" },
   );
   assert.equal(r.status, 403);
   await ap.getByRole("button", { name: "确认管理员身份", exact: true }).click();
@@ -303,6 +304,33 @@ try {
   check(
     "independent Admin login; password-only denied; actual MFA enrollment and step-up",
   );
+  let lastAdminStep = step + 1;
+  async function refreshAdminForWrite() {
+    const renewedSession = ap.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        res.url().endsWith("/admin/identity/refresh"),
+    );
+    await ap.reload({ waitUntil: "domcontentloaded" });
+    assert.equal((await renewedSession).status(), 200);
+    await ap
+      .getByRole("button", { name: "确认管理员身份", exact: true })
+      .click();
+    const renewedMFA = ap.getByRole("dialog", { name: "确认管理员身份" });
+    let currentStep = Math.floor(Date.now() / 30000);
+    if (currentStep <= lastAdminStep) {
+      await ap.waitForTimeout((lastAdminStep + 1) * 30000 - Date.now() + 50);
+      currentStep = Math.floor(Date.now() / 30000);
+    }
+    await renewedMFA
+      .locator('input[autocomplete="one-time-code"]')
+      .fill(totp(secret, currentStep));
+    await renewedMFA
+      .getByRole("button", { name: "确认身份", exact: true })
+      .click();
+    await renewedMFA.waitFor({ state: "hidden" });
+    lastAdminStep = currentStep;
+  }
   for (const p of cfg.packages) {
     await ap.getByLabel("包文件", { exact: true }).setInputFiles(p.archive);
     await ap
@@ -388,9 +416,9 @@ try {
     "actual v5 Admin iframe and finite config.read Bridge on dedicated origin",
   );
   await ap.getByRole("button", { name: "关闭隔离界面", exact: true }).click();
-  let pendingOperation;
+  let activationOperation;
   for (let attempt = 0; attempt < 30; attempt++) {
-    pendingOperation = ok(
+    activationOperation = ok(
       await api(
         ap,
         "admin",
@@ -398,10 +426,23 @@ try {
         `/admin/plugin-v5/operations/${pdfEnableID}`,
       ),
     );
-    if (pendingOperation.status === "waiting") break;
+    if (activationOperation.status === "done") break;
     await ap.waitForTimeout(500);
   }
-  assert.equal(pendingOperation.status, "waiting");
+  // Since07 a verified UI-only asset activation completes without a Runner.
+  // A completed operation must not offer or accept retry, even with its current
+  // revision; preserve the stale CAS negative check as a separate assertion.
+  assert.equal(activationOperation.status, "done");
+  pd = ok(
+    await api(
+      ap,
+      "admin",
+      "GET",
+      `/admin/plugin-v5/campusos/pdf-viewer/${pdfPackage.version}`,
+    ),
+  );
+  assert.equal(pd.installation.observed, "stopped");
+  assert.equal(pd.installation.active_generation, "0");
   assert.equal(
     (
       await api(
@@ -420,11 +461,32 @@ try {
     ).status,
     409,
   );
+  assert.equal(
+    (
+      await api(
+        ap,
+        "admin",
+        "POST",
+        "/admin/plugin-v5/campusos/pdf-viewer/commands",
+        {
+          kind: "retry",
+          version: pdfPackage.version,
+          operation_id: pdfEnableID,
+          expected_revision: activationOperation.revision,
+          idempotency_key: "completed-operation-retry",
+        },
+      )
+    ).status,
+    409,
+  );
   await ap.getByRole("button", { name: "查询操作状态", exact: true }).click();
-  await ap.getByRole("button", { name: "重试此操作", exact: true }).waitFor();
-  await adminCommand("重试此操作");
+  await ap.getByText("done", { exact: true }).waitFor();
+  assert.equal(
+    await ap.getByRole("button", { name: "重试此操作", exact: true }).count(),
+    0,
+  );
   check(
-    "actual Admin operation query and explicit retry use current revision; stale operation CAS is rejected",
+    "actual Admin operation query confirms UI-only asset activation without Runner; completed retry and stale operation CAS are rejected",
   );
   await ap.goto(admin.origin + "/plugin-config");
   await ap
@@ -775,7 +837,12 @@ try {
     if (mode === "new-tab") {
       await page.close();
       await up.reload();
-      await up.waitForLoadState("networkidle").catch(() => {});
+      // Runtime polling continues while the SPA is active. Require the real
+      // restored user session before starting another navigation.
+      await up.waitForFunction((source) => {
+        const user = eval("(" + source + ")")("user");
+        return Boolean(user?.isLoggedIn && user.user?.id);
+      }, findStore.toString());
     } else
       await page
         .locator(
@@ -926,7 +993,19 @@ try {
   check(
     "second current user cannot read owner asset, personal document or opaque invocation",
   );
-  await bc.close();
+  if (cfg.ecosystem) await refreshAdminForWrite();
+  if (cfg.ecosystem)
+    await ecosystemPhase("coexist", {
+      cfg,
+      ap,
+      up,
+      bp,
+      api,
+      identity,
+      ok,
+      check,
+    });
+  if (!cfg.ecosystem) await bc.close();
   await close(up, "modal");
   let releaseHeld, notifyHeld;
   const hold = new Promise((r) => {
@@ -969,7 +1048,13 @@ try {
   pluginFrame = up.frames().find(isPluginFrame);
   assert.equal((await assetFetch(pluginFrame.url())).status, 200);
   // Revoke current Admin Grant while an existing resource/iframe is open.
-  await control("/restore-mfa");
+  // Reload clears the memory-only access token. Exercise the actual SPA's
+  // HttpOnly refresh-cookie/CSRF flow and a fresh authenticator step-up before
+  // later writes, even when this long journey outlives the old access token.
+  await refreshAdminForWrite();
+  check(
+    "actual Admin SPA refresh-cookie restoration and fresh MFA precede later writes without expired mutation replay",
+  );
   pd = ok(
     await api(
       ap,
@@ -1021,7 +1106,6 @@ try {
     "no active plugin: all three authorized download paths remain available",
   );
   // An actual short-lived Grant expires without a revoke command or DB patch.
-  await control("/restore-mfa");
   pd = ok(
     await api(
       ap,
@@ -1143,6 +1227,24 @@ try {
   check(
     "expired own installation stays visible for explicit uninstall; no plugin is required for business downloads",
   );
+  if (cfg.ecosystem) {
+    await ecosystemPhase("exit", { cfg, ap, up, bp, api, identity, ok, check });
+    await bc.close();
+    await up.goto(web.origin + "/extensions/campusos.full-config/ui");
+    await up
+      .frameLocator("iframe")
+      .getByText(/本人独立配置/)
+      .waitFor();
+    for (const path of [
+      `/richtext/articles/${article.thread_id}/attachments/${attachment.id}/download`,
+      `/assets/${assetID}/download`,
+      `/documents/${document.id}/download`,
+    ])
+      assert.equal((await api(up, "user", "GET", path)).status, 200);
+    check(
+      "headless uninstall and package GC preserve another plugin UI and all three actual Core downloads",
+    );
+  }
   const userID = await identity(up, "user"),
     adminID = await identity(ap, "admin");
   let cross = await fetch(cfg.backend + "/api/v1/admin/plugin-v5", {
@@ -1190,7 +1292,8 @@ try {
       {
         status: "passed",
         mocked_api: false,
-        actual_cmd_server: true,
+        actual_cmd_server: !cfg.ecosystem,
+        actual_server_composition: true,
         checks,
         browser_errors: errors,
         pdf_presentations: presentations,

@@ -38,14 +38,15 @@ type V5Mutation struct {
 	OperationID        string                     `json:"operation_id,omitempty"`
 }
 type V5Platform struct {
-	managed  atomic.Pointer[V5ManagedRuntime]
-	store    V5StateStore
-	files    *V5ManagedFiles
-	catalog  *PluginV5PackageCatalog
-	reliable *reliability.Service
-	admins   identity.AdminExecutionAuthorityReader
-	Users    identity.UserReader
-	now      func() time.Time
+	managed     atomic.Pointer[V5ManagedRuntime]
+	uiHostReady atomic.Bool
+	store       V5StateStore
+	files       *V5ManagedFiles
+	catalog     *PluginV5PackageCatalog
+	reliable    *reliability.Service
+	admins      identity.AdminExecutionAuthorityReader
+	Users       identity.UserReader
+	now         func() time.Time
 	// Compiled host adapters may bind current selectors/Secret references. An
 	// absent adapter never turns a declaration or opaque string into permission.
 	VerifySelector  func(context.Context, V5Coordinate, string, string, string) (bool, error)
@@ -678,6 +679,7 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if installErr == nil && i.Installed {
 			if !r.Accepted {
 				i.Desired = "disabled"
+				i.DesiredVersion = i.Version
 			}
 			return s.queueInstall(ctx, &i, op)
 		}
@@ -685,6 +687,9 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		return nil
 	}
 	if r.Kind == "configure" {
+		if i.PendingRestore.ID != "" && i.DesiredVersion == c.Version {
+			return ErrV5Conflict
+		}
 		if installErr != nil || !i.Installed || owner == "" && m.Data.ConfigScope == "user" || owner != "" && m.Data.ConfigScope == "system" {
 			return ErrV5Denied
 		}
@@ -747,7 +752,8 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		i.DesiredVersion = c.Version
 		i.Desired = "disabled"
 	case "enable":
-		if !i.Installed || i.Version != c.Version || grantErr != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, owner, m, g) {
+		staged := i.DesiredVersion == c.Version && i.PendingCheckpoint.ID != "" && i.PendingCheckpoint.Version == i.Version
+		if !i.Installed || i.Version != c.Version && !staged || grantErr != nil || !v5GrantCompleteAt(m, g, s.now().UnixMilli()) || !s.consentOK(ctx, c, owner, m, g) {
 			return ErrV5Denied
 		}
 		if err := s.validateInstanceConfiguration(ctx, c, owner, m); err != nil {
@@ -763,6 +769,9 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 			return ErrV5Conflict
 		}
 		i.Desired = "disabled"
+		// Disabling the current release cancels an uncommitted upgrade. The
+		// stop reconciler must not promote a candidate that never became ready.
+		i.DesiredVersion = i.Version
 	case "uninstall":
 		if c.Version != i.Version {
 			return ErrV5Conflict
@@ -779,6 +788,23 @@ func (s *V5Platform) apply(ctx context.Context, c V5Coordinate, owner string, r 
 		if err := s.compatible(ctx, i, c, m); err != nil {
 			return err
 		}
+		if i.Rollback.Version == c.Version {
+			body, err := s.checkpoint(ctx, i, i.Rollback)
+			if err != nil {
+				return err
+			}
+			if err := s.validateConfig(ctx, c, owner, m, body.Configuration); err != nil {
+				return err
+			}
+			op.Restore = i.Rollback
+		}
+		checkpoint, err := s.captureCheckpoint(ctx, i, op.ID)
+		if err != nil {
+			return err
+		}
+		op.Checkpoint = checkpoint
+		i.PendingCheckpoint = checkpoint
+		i.PendingRestore = op.Restore
 		i.DesiredVersion = c.Version
 	default:
 		return ErrV5Invalid
@@ -792,6 +818,17 @@ func (s *V5Platform) queueInstall(ctx context.Context, i *V5Installation, op *V5
 		return err
 	}
 	i.Generation = n
+	i.PendingDataGeneration = 0
+	if i.Desired != "enabled" && (op.Kind == "disable" || op.Kind == "uninstall" || op.Kind == "revoke" || op.Kind == "grant") {
+		i.DesiredVersion = i.Version
+	}
+	if i.DesiredVersion == i.Version {
+		i.PendingCheckpoint = V5Checkpoint{}
+		i.PendingRestore = V5Checkpoint{}
+	} else {
+		op.Checkpoint = i.PendingCheckpoint
+		op.Restore = i.PendingRestore
+	}
 	i.Observed = "pending"
 	i.Error = ""
 	if i.Desired != "enabled" {
@@ -813,6 +850,9 @@ func (s *V5Platform) compatible(ctx context.Context, i V5Installation, c V5Coord
 		return err
 	}
 	if m.Data.Upgrade.Mode != "preserve" || previous.Data.Upgrade.SchemaVersion != m.Data.Upgrade.SchemaVersion {
+		return ErrV5Rollback
+	}
+	if v5VersionBefore(c.Version, i.Version) && (previous.Data.Upgrade.Rollback == "forbidden" || i.Rollback.Version != c.Version || i.Rollback.ID == "") {
 		return ErrV5Rollback
 	}
 	// Per-version config is retained. Reusing values is explicit: no implicit

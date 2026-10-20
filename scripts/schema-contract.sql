@@ -5,7 +5,7 @@ DECLARE
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
-        'schema_migrations', 'schema_migration_locks', 'integration_principals', 'integration_credentials',
+        'schema_migrations', 'schema_migration_locks', 'instance_recovery_epochs', 'integration_principals', 'integration_credentials',
         'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles',
         'identity_legacy_email_placeholders', 'identity_reserved_identifiers',
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',

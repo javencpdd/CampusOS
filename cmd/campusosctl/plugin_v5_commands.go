@@ -22,7 +22,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
-		fmt.Fprintln(stdout, "plugin init|validate|inspect|pack|sign|verify|catalog: v5 packages only; installation is pending V12-03b")
+		fmt.Fprintln(stdout, "plugin init|validate|inspect|pack|sign|verify|catalog: offline v5 package tools; install, approve, configure and enable through the host Web/Admin")
 		return 0
 	}
 	if err := runPluginV5(args, stdout); err != nil {

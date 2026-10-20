@@ -80,6 +80,7 @@ func NewV5UIHost(platform *V5Platform, origin string, parents []string) (*V5UIHo
 		h.parents[parent] = true
 	}
 	h.ancestors = strings.Join(parents, " ")
+	platform.uiHostReady.Store(true)
 	return h, nil
 }
 func (h *V5UIHost) leaseOrigin(id string) string {

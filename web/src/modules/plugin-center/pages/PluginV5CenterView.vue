@@ -28,6 +28,15 @@
           ><template v-else
             ><button v-if="selected.installation.version !== selected.release.version" @click="command('upgrade')">
               切换到此版本</button
+            ><button
+              v-if="
+                selected.installation.version !== selected.release.version &&
+                selected.installation.desired_version === selected.release.version &&
+                selected.installation.desired === 'disabled'
+              "
+              @click="command('enable')"
+            >
+              启用此版本</button
             ><template v-else
               ><button @click="command('enable')">启用</button><button @click="command('disable')">停用</button
               ><label><input type="checkbox" v-model="purge" />卸载时清理插件自身数据</label
@@ -35,6 +44,15 @@
             ></template
           >
         </fieldset>
+        <p
+          v-if="
+            selected.installation?.desired === 'disabled' &&
+            selected.installation.desired_version !== selected.installation.version
+          "
+        >
+          已准备切换，当前版本仍为
+          {{ selected.installation.version }}。显式启用时会重新核对当前批准和本人同意，实际就绪后才切换版本。
+        </p>
         <form aria-label="本人数据用途同意" @submit.prevent="consent(true)">
           <fieldset :disabled="busy">
             <legend>此版本的数据用途</legend>

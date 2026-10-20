@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	identity "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/platform/security"
 	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
@@ -209,6 +210,19 @@ func (s *V5Platform) runtimeSpec(ctx context.Context, op V5Operation) (V5Runtime
 		return out, err
 	}
 	err = s.reliable.CheckedRead(ctx, func(tx context.Context) error {
+		// Match HTTP session verification and prepare/observe: account first,
+		// then family. preparation rechecks this same row under the lock. Taking
+		// the family first deadlocks against a current owner reading its state.
+		if op.Owner != "" {
+			users, ok := s.Users.(identity.UserCommandReader)
+			if !ok || users == nil {
+				return ErrV5PlatformUnavailable
+			}
+			u, err := users.GetUserForUpdate(tx, op.Owner)
+			if err != nil || u.ID != op.Owner || u.Status != "active" {
+				return ErrV5Denied
+			}
+		}
 		if err := s.store.lock(tx, c.family()); err != nil {
 			return err
 		}
@@ -225,6 +239,9 @@ func (s *V5Platform) runtimeSpec(ctx context.Context, op V5Operation) (V5Runtime
 		}
 		if !i.Installed || i.Desired != "enabled" || i.Generation != op.Generation {
 			return ErrV5Conflict
+		}
+		if err := s.verifyUpgradeCheckpoint(tx, i, current); err != nil {
+			return err
 		}
 		var m *PluginV5Manifest
 		if m, err = ParsePluginV5Manifest(r.Manifest); err != nil {

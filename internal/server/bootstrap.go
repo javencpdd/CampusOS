@@ -28,6 +28,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
 	"github.com/campusos/CampusOS/internal/modules/features/secondhand"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
+	"github.com/campusos/CampusOS/internal/operations/recovery"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
@@ -39,9 +40,12 @@ import (
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"path/filepath"
 )
 
 type infrastructureBootstrap struct {
+	restoredInstance         bool
+	releaseRecovery          func()
 	runtime                  *platformruntime.Runtime
 	modules                  *platformmodule.Registry
 	bus                      eventbus.EventBus
@@ -60,6 +64,30 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		return nil, err
 	}
 	pool, databaseErr := database.New(s.cfg.Database.DSN)
+	recoveryState, releaseRecovery, recoveryErr := recovery.Startup(context.Background(), pool, filepath.Dir(s.cfg.Plugin.DataDir))
+	if recoveryErr != nil {
+		if pool != nil {
+			pool.Close()
+		}
+		return nil, recoveryErr
+	}
+	bootstrapComplete := false
+	defer func() {
+		if !bootstrapComplete {
+			releaseRecovery()
+			if pool != nil {
+				pool.Close()
+			}
+		}
+	}()
+	if recoveryState != nil {
+		copyConfig := *s.cfg
+		copyConfig.JWT.Secret = recovery.DeriveSecret(copyConfig.JWT.Secret, recoveryState.Epoch)
+		if recoveryState.EgressPaused {
+			copyConfig.AI.Enabled = false
+		}
+		s.cfg = &copyConfig
+	}
 	profileName := platformruntime.ProfileMemory
 	if databaseErr != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，业务装配将使用内存 Adapter: %v", databaseErr)
@@ -133,9 +161,6 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	})
 	emailTimeout, err := time.ParseDuration(s.cfg.Email.SMTPTimeout)
 	if err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, fmt.Errorf("parse EMAIL_SMTP_TIMEOUT: %w", err)
 	}
 	emailDeliveryModule := emaildelivery.NewModule(emaildelivery.Config{
@@ -398,21 +423,16 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Modules: entries,
 	})
 	if err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, err
 	}
 	if err := appRuntime.Start(context.Background()); err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, err
 	}
 	s.appContext = appRuntime.AppContext()
 	s.modules = appRuntime.Registry()
 	s.bus = events.EventBus()
-	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
+	bootstrapComplete = true
+	return &infrastructureBootstrap{restoredInstance: recoveryState != nil, releaseRecovery: releaseRecovery, runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
 }
 func (b *infrastructureBootstrap) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -421,6 +441,9 @@ func (b *infrastructureBootstrap) Stop() {
 		log.Printf("⚠️  模块停止失败: %v", err)
 	}
 	if b.database != nil {
+		if b.releaseRecovery != nil {
+			b.releaseRecovery()
+		}
 		b.database.Close()
 	}
 }
