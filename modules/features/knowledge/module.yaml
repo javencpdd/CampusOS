@@ -1,0 +1,12 @@
+schema: campusos.module/v1
+id: feature.knowledge
+feature_id: knowledge
+name: knowledge
+display_name: "Knowledge"
+version: "1.2.0-dev"
+description: "Explicit public Community text candidates for trusted Built-in Features; collection selection and indexing remain pending."
+kind: builtin-feature
+activation_mode: hot-gated
+default_enabled: false
+dependencies: [core.community, core.feature-registry, feature.controlled-richtext-article]
+implementation: internal/modules/features/knowledge

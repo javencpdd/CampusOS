@@ -100,7 +100,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		}
 		m.meter = meter
 	}
-	return nil
+	return app.Provide(PortPublicTextSource, PublicTextSourceReader(modulePublicTextSource{module: m}))
 }
 
 func (m *Module) Start(ctx context.Context) error {

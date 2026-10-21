@@ -18,6 +18,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/runtime"
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
+	"github.com/campusos/CampusOS/internal/modules/features/knowledge"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
@@ -175,6 +176,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		SMTPStartTLS: s.cfg.Email.SMTPStartTLS,
 	})
 	communityModule := communitycore.NewModule()
+	knowledgeModule := knowledge.NewModule(func() bool { return features.Registry() != nil && features.Registry().Enabled(knowledge.FeatureID) })
 	academicTermModule := academicterm.NewModule()
 	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: corestorage.DefaultQuotaBytes})
 	appearanceModule := appearance.NewModule(appearance.ModuleConfig{FeatureRegistry: features.Registry})
@@ -299,6 +301,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: emailDeliveryModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: knowledgeModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: academicTermModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: moderationModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: storageModule, Kind: platformmodule.KindCore, Enabled: true},
