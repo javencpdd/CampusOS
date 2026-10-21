@@ -33,6 +33,12 @@ type CategoryCatalog interface {
 // ContentQuery is Community's read-only content fact contract. Consumers may
 // choose author/category/tag/pagination filters, but cannot widen public
 // visibility by submitting publication, moderation, or deletion states.
+// SourceCategoryCatalog returns current owning-domain board facts under the
+// caller's command/read transaction. It grants no content visibility.
+type SourceCategoryCatalog interface {
+	ListSourceCategories(context.Context) ([]*domain.Category, error)
+}
+
 type ContentQuery interface {
 	GetPublicThread(context.Context, string) (*domain.Thread, error)
 	ListPublicThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)

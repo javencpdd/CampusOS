@@ -13,8 +13,11 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"github.com/campusos/CampusOS/internal/modules/features/richtext"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
+	"github.com/campusos/CampusOS/internal/platform/reliability"
+	"github.com/campusos/CampusOS/internal/platform/transaction"
 )
 
 type queryFunc func(context.Context, string) (*domain.Thread, error)
@@ -295,6 +298,12 @@ func TestPublicCandidateModuleContract(t *testing.T) {
 	if e := app.Provide(richtext.PortPublicTextSource, articleTextFunc(func(context.Context, string) (richtext.PublicTextSource, error) { return articleTextFixture(), nil })); e != nil {
 		t.Fatal(e)
 	}
+	fixture := fixtureCollections(t)
+	_ = BindMemoryAdapter(app)
+	_ = app.Provide("platform.reliability.service", reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
+	_ = app.Provide("identity.admin-execution-authority", identityport.AdminExecutionAuthorityReader(fixture.admins))
+	_ = app.Provide("identity.admin-session-authority", identityport.AdminSessionAuthorityReader(noAdminSession{}))
+	_ = app.Provide("community.source-category-catalog", fixture.cat)
 	if e := m.Register(app); e != nil {
 		t.Fatal(e)
 	}
@@ -312,4 +321,10 @@ func TestPublicCandidateModuleContract(t *testing.T) {
 	if m.Health(t.Context()).Status != platformmodule.HealthHealthy {
 		t.Fatal("module unhealthy")
 	}
+}
+
+type noAdminSession struct{}
+
+func (noAdminSession) CurrentAdminSession(context.Context, string, string) (identityport.AdminSessionAuthority, error) {
+	return identityport.AdminSessionAuthority{}, ErrDenied
 }

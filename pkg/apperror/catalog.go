@@ -8,6 +8,9 @@ import (
 const CatalogVersion = "campusos.errors/v1"
 
 var (
+	KnowledgeDisabled        = descriptor("knowledge", "knowledge.disabled", 89301, 503, "知识集合已停用", false)
+	KnowledgeCapacity        = descriptor("knowledge", "knowledge.capacity_exceeded", 89302, 409, "知识集合达到容量上限，请缩小集合或规则范围", false)
+	KnowledgeUnavailable     = descriptor("knowledge", "knowledge.unavailable", 89303, 503, "知识集合暂时无法读取，请稍后重试", true)
 	PluginV5Unavailable      = descriptor("plugin-platform", "plugin.platform_unavailable", 88001, 503, "插件服务暂不可用，请稍后重试", true)
 	PluginV5NotFound         = descriptor("plugin-platform", "plugin.not_found", 88002, 404, "未找到可访问的插件或操作", false)
 	PluginV5Denied           = descriptor("plugin-platform", "plugin.permission_denied", 88003, 403, "当前会话、权限、MFA 或授权不满足操作要求", false)
@@ -112,6 +115,7 @@ var (
 )
 
 var catalog = []Descriptor{
+	KnowledgeDisabled, KnowledgeCapacity, KnowledgeUnavailable,
 	PluginV5Unavailable, PluginV5NotFound, PluginV5Denied, PluginV5Conflict, PluginV5Invalid, PluginV5Rollback, PluginV5LegacyRetired, PluginV5PackageConflict, PluginV5PackageSignature, PluginV5PackageDigest,
 	RequestInvalid, ResourceConflict, InternalError, AuthRequired, AuthInvalidToken, PermissionDenied, ResourceNotFound,
 	IdentityChallengeInvalid, IdentityChallengeRateLimited, IdentityRegistrationVerificationRequired,

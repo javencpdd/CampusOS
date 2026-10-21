@@ -42,12 +42,15 @@
 
 | `000027` | `000027_plugin_v5_installations.up.sql` / `.down.sql` | v5包目录、全局/用户安装、版本Grant/Consent/配置、单调代次与持久Operation共8表；不改旧事实，有数据拒绝down，空域保留序列。 |
 | `000029` | `000029_instance_recovery_epochs.up.sql` / `.down.sql` | 可信离线恢复单行认证代次/隔离与授权复核、归档/盘点摘要及必需审计；无种子，非空拒绝down，空域保留旧数据。 |
+| `000030` | `000030_knowledge_sources.up.sql` / `.down.sql` | Knowledge集合、官方资料/不可变修订、独立规则/成员五表与独立Admin权限；非空或非播种权限引用拒绝down，空域保留旧数据和序列高水位。 |
+| `000031` | `000031_knowledge_index_requests.up.sql` / `.down.sql` | 元数据索引任务请求一表，当前目标代次幂等键/缺失目标0版本；仅pending意图，非空拒绝down，不改旧表、权限、回执或序列。 |
+| `000032` | `000032_knowledge_index_backfill.up.sql` / `.down.sql` | Knowledge集合/官方资料各自的持久分页补扫断点；当前版本请求与进度同事务，周期从头重扫，无事件水位或正文。非空拒绝down，不改旧119表/权限/请求/回执/序列。 |
 
 | `000028` | `000028_plugin_v5_event_deliveries.up.sql` / `.down.sql` | 独立元数据事件队列；唯一来源/实例/代次，租约、有限重试与死信；非空拒绝down，不改旧表或序列。 |
 
 该基线整合了此前 `000001`–`000011` 的最终有效结构，包含：
 
-- 113 张业务表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；`000004`–`000006` 只调整现有表，`000007` 新增一张受管配置表，`000008` 新增身份委托表，`000009` 新增四张管理域身份表，`000010` 新增管理域会话表，`000011` 新增三张管理域安全表，`000012` 移除自动准入触发器，`000013` 新增管理域角色权限绑定表，`000014` 追加四个管理域权限码，`000015` 补管理域恢复表 FK 索引，`000016` 新增帖子事实版本，`000017` 新增管理域执行权限事实版本列、序列和触发器，均不新增表；`000018` 在八张现有表增加九组actor字段，旧外键/表数不变；
+- 120 张业务/系统受管表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；`000004`–`000006` 只调整现有表，`000007` 新增一张受管配置表，`000008` 新增身份委托表，`000009` 新增四张管理域身份表，`000010` 新增管理域会话表，`000011` 新增三张管理域安全表，`000012` 移除自动准入触发器，`000013` 新增管理域角色权限绑定表，`000014` 追加四个管理域权限码，`000015` 补管理域恢复表 FK 索引，`000016` 新增帖子事实版本，`000017` 新增管理域执行权限事实版本列、序列和触发器，均不新增表；`000018` 在八张现有表增加九组actor字段，旧外键/表数不变；
 - 身份、RBAC、管理员准入、MFA、会话摘要、插件发布者/版本/三层授权与审计；
 - 社区、图文文章、`user_assets`、`richtext_article_attachments`、短期 `plugin_ui_invocations` 和资产生命周期审计；
 - 个人空间、对象配额、个人文档、文档版本与预览；
@@ -129,7 +132,7 @@ ER 工具从当前前向迁移链的 UP 文件生成 [PNG、SVG 与中文实体�
 
 ## 5. 后续规范
 
-这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000029`，下一项结构变更从 `000030_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
+这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000032`，下一项结构变更从 `000033_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
 
 1. 说明表归属、外键、索引、状态约束、数据修复和回滚损失；
 2. 更新 `scripts/schema-contract.sql`、Admin `/architecture`、ER、架构与操作文档；
@@ -173,3 +176,24 @@ python3 skills/sources/campusos-data-architecture-sync/scripts/check_architectur
 ## 整库恢复认证围栏（000029）
 
 更新时间：2026-10-21（Asia/Shanghai）。当前29/next30，113业务表+2执行器。新增instance_recovery_epochs，普通HTTP设置不可编辑；每次完整恢复先写不进备份的宿主隔离标记，实际SQL恢复后同事务废止User/Admin会话与恢复票据、机器凭据、插件Grant/Consent和待执行操作，暂停出站，再写新随机认证代次与必需证据。恢复后的JWT签名派生绑定新代次。可信本地运维核对当前角色/授权盘点SHA后复核，DB与文件均一致才可启动；插件/出站不自动重新授权。共享启动锁与独占维护锁禁止存活API上恢复。有记录down原子拒绝，不能删恢复证据强行回滚；空域down/up不触碰任何旧表或序列。
+
+
+## Knowledge 集合、选择和显式成员（000030）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前30/next31，118业务/系统受管表+2执行器。新增knowledge_collections、knowledge_official_sources、knowledge_official_revisions、knowledge_source_selections、knowledge_collection_sources；独立Admin只播种read/manage权限目录与security_admin参考绑定，无默认集合/官方资料/业务来源。官方资料与修订是Knowledge自有有界结构化文本；Community/RichText只保存引用，原始正文仍由原域提供。规则与成员物理独立，成员绑定规则代次且不持有ACL或出站权。
+
+非循环knowledge_facts_version_seq和触发器推进每次写入版本，失败分配不回用。官方历史禁止UPDATE/DELETE/TRUNCATE；当前/历史/必需Admin审计与低敏Outbox同事务。五表任何非空，或新增权限被非播种绑定/路由引用，down原子拒绝；空域down/up保留旧数据及序列高水位。不得通过删历史强制降级。数据库与原Community/RichText数据须一同备份；没有新增字节目录、第三方依赖、索引或模型调用。
+
+
+## Knowledge Outbox 到持久任务请求（000031）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前31/next32，119业务/系统受管表+2执行器。新增knowledge_index_tasks六个元数据列；集合/官方资料目标、当前版本和pending状态，无正文、Principal/ACL、凭据或event_id。按kind/id/当前事实版本唯一，源不存在用0版本请求后续清理；目标是允许缺失的逻辑关联，不建立会阻止删除清理的FK。
+
+索引请求当前只允许INSERT，禁止UPDATE/DELETE/TRUNCATE；非空down先加排他锁再拒绝，空域down/up不改旧118业务表/权限/序列。没有索引执行器、租约、ready投影、分页回填或对账，后续在09b的独立切片追加；不能把pending请求当成已索引或来源授权。数据库备份包含该表，没有新字节目录或依赖。
+
+
+## Knowledge 周期元数据补扫断点（000032）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前32/next33，120业务/系统受管表+2执行器。新增knowledge_index_backfill_checkpoints五列：target_kind、after_id、completed_passes、next_scan_at、updated_at，无种子、FK、来源正文/ACL或event_id。正常Knowledge模块生命周期每秒每域最多一页32个目标，只枚举ID、锁读当前epoch；该页请求与断点同事务提交。部分扫描可重启续跑，完成后清空枚举边界并等待60秒再从头补扫，处理游标前方迟出现/更新的自有行；不扫描Community/RichText正文，不宣称索引执行或删除权威对账。
+
+非空down持排他锁后原子拒绝，防止丢断点；空域down/up保留全部旧119业务表、请求/回执/权限和所有序列，1–31 SQL不回写。断点随整库备份；恢复后的枚举仍须由后续执行器逐次复核当前授权/来源。大库按32项事务渐进推进，跨实例按断点行锁SKIP LOCKED串行；单页失败/取消回滚，后续有限间隔重试并降级模块健康。删除后不再可枚举的目标及跨域来源/规则修订仍属09b后续权威对账，不能用已完成轮数宣称ready。

@@ -4,9 +4,9 @@ feature_id: knowledge
 name: knowledge
 display_name: "Knowledge"
 version: "1.2.0-dev"
-description: "Explicit public Community text candidates for trusted Built-in Features; collection selection and indexing remain pending."
+description: "Public collections, independent source selections and members, versioned official sources and checked Community/RichText adapters; metadata-only pending index requests and durable periodic own-target backfill; index execution/reconciliation and external egress remain unavailable."
 kind: builtin-feature
 activation_mode: hot-gated
 default_enabled: false
-dependencies: [core.community, core.feature-registry, feature.controlled-richtext-article]
+dependencies: [core.community, core.identity, core.reliability, core.feature-registry, feature.controlled-richtext-article]
 implementation: internal/modules/features/knowledge

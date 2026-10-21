@@ -1586,6 +1586,620 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections:
+    get:
+      operationId: knowledgeHandler_Inventory
+      summary: GET /api/v1/admin/knowledge/collections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.inventory
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollectionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: knowledgeHandler_SaveCollection
+      summary: POST /api/v1/admin/knowledge/collections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeCollectionCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}:
+    get:
+      operationId: knowledgeHandler_State
+      summary: GET /api/v1/admin/knowledge/collections/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.read
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: knowledgeHandler_SaveCollection
+      summary: PUT /api/v1/admin/knowledge/collections/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeCollectionUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/members/{member_id}/remove:
+    post:
+      operationId: knowledgeHandler_RemoveMember
+      summary: POST /api/v1/admin/knowledge/collections/:id/members/:member_id/remove
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.member.remove
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeRemoveMember'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections:
+    post:
+      operationId: knowledgeHandler_SaveSelection
+      summary: POST /api/v1/admin/knowledge/collections/:id/selections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeSelectionCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections/{selection_id}:
+    put:
+      operationId: knowledgeHandler_SaveSelection
+      summary: PUT /api/v1/admin/knowledge/collections/:id/selections/:selection_id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeSelectionUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections/{selection_id}/refresh:
+    post:
+      operationId: knowledgeHandler_Refresh
+      summary: POST /api/v1/admin/knowledge/collections/:id/selections/:selection_id/refresh
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.refresh
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeRefreshRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeRefresh'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials:
+    get:
+      operationId: knowledgeHandler_Inventory
+      summary: GET /api/v1/admin/knowledge/officials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.inventory
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficialList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: knowledgeHandler_SaveOfficial
+      summary: POST /api/v1/admin/knowledge/officials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeOfficialCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials/{id}:
+    put:
+      operationId: knowledgeHandler_SaveOfficial
+      summary: PUT /api/v1/admin/knowledge/officials/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeOfficialUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials/{id}/revisions:
+    get:
+      operationId: knowledgeHandler_History
+      summary: GET /api/v1/admin/knowledge/officials/:id/revisions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.history
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/plugin-v5:
     get:
       operationId: pluginV5Handler_Inventory
@@ -5944,6 +6558,131 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/knowledge/collections:
+    get:
+      operationId: knowledgeHandler_Collections
+      summary: GET /api/v1/knowledge/collections
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.collection.list
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollectionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/collections/{id}/sources:
+    get:
+      operationId: knowledgeHandler_Sources
+      summary: GET /api/v1/knowledge/collections/:id/sources
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.source.list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSourcePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/collections/{id}/sources/{member_id}:
+    get:
+      operationId: knowledgeHandler_Source
+      summary: GET /api/v1/knowledge/collections/:id/sources/:member_id
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.source.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/mcp/audit:
     get:
       operationId: mCPHandler_ListAudit
@@ -13824,6 +14563,362 @@ components:
         content: {type: string}
         content_format: {type: string}
         updated_at: {type: string, format: date-time}
+    KnowledgeCollectionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - status
+      properties:
+        title: &id001
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: UTF-8 bytes <=1024; nonblank and single line.
+        status: &id002
+          type: string
+          enum:
+          - active
+          - disabled
+    KnowledgeCollectionUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - status
+      - version
+      properties:
+        title: *id001
+        status: *id002
+        version: &id006
+          type: string
+          pattern: ^[1-9][0-9]*$
+    KnowledgeOfficialCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - content
+      - format
+      - status
+      properties:
+        title: *id001
+        content: &id003
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: UTF-8 bytes <=65536, text/Markdown data only; never interpreted
+            or fetched.
+        format: &id004
+          type: string
+          enum:
+          - text
+          - markdown
+        status: &id005
+          type: string
+          enum:
+          - draft
+          - published
+          - withdrawn
+    KnowledgeOfficialUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - content
+      - format
+      - status
+      - version
+      properties:
+        title: *id001
+        content: *id003
+        format: *id004
+        status: *id005
+        version: *id006
+    KnowledgeSelectionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - source_id
+      - active
+      - collection_version
+      properties:
+        kind: &id007
+          type: string
+          enum:
+          - thread
+          - board
+          - official
+        source_id: &id008
+          type: string
+        active: &id009
+          type: boolean
+        collection_version: *id006
+    KnowledgeSelectionUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - source_id
+      - active
+      - collection_version
+      - version
+      properties:
+        kind: *id007
+        source_id: *id008
+        active: *id009
+        collection_version: *id006
+        version: *id006
+    KnowledgeCollection:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - title
+      - status
+      - created_by_admin_id
+      properties:
+        id: *id008
+        version: *id006
+        title: *id001
+        status: *id002
+        created_by_admin_id: *id008
+    KnowledgeOfficial:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - title
+      - content
+      - format
+      - status
+      - created_by_admin_id
+      properties:
+        id: *id008
+        version: *id006
+        title: *id001
+        content: *id003
+        format: *id004
+        status: *id005
+        created_by_admin_id: *id008
+    KnowledgeSelection:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - collection_id
+      - kind
+      - source_id
+      - active
+      properties:
+        id: *id008
+        version: *id006
+        collection_id: *id008
+        kind: *id007
+        source_id: *id008
+        active:
+          type: boolean
+    KnowledgeMember:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - collection_id
+      - selection_id
+      - selection_version
+      - kind
+      - source_id
+      - source_revision
+      properties:
+        id: *id008
+        version: *id006
+        collection_id: *id008
+        selection_id: *id008
+        selection_version: *id006
+        kind: &id010
+          type: string
+          enum:
+          - community.thread
+          - richtext.article
+          - knowledge.official
+        source_id: *id008
+        source_revision: *id008
+    KnowledgeState:
+      type: object
+      additionalProperties: false
+      required:
+      - collection
+      - selections
+      - members
+      properties:
+        collection:
+          $ref: '#/components/schemas/KnowledgeCollection'
+        selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSelection'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeMember'
+    KnowledgeRefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - collection_version
+      - selection_version
+      - page
+      properties:
+        collection_version: *id006
+        selection_version: *id006
+        page:
+          type: integer
+          minimum: 1
+          maximum: 100000
+    KnowledgeRefresh:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - page
+      - next_page
+      - examined
+      - materialized
+      - skipped_unsupported
+      - has_more
+      properties:
+        state:
+          $ref: '#/components/schemas/KnowledgeState'
+        page:
+          type: integer
+        next_page:
+          type: integer
+        examined:
+          type: integer
+        materialized:
+          type: integer
+        skipped_unsupported:
+          type: integer
+        has_more:
+          type: boolean
+    KnowledgeRemoveMember:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      properties:
+        version: *id006
+    KnowledgeOfficialRevision:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - source_id
+      - official_version
+      - snapshot
+      - changed_by_admin_id
+      - changed_at_ms
+      properties:
+        id: *id008
+        version: *id006
+        source_id: *id008
+        official_version: *id006
+        snapshot:
+          $ref: '#/components/schemas/KnowledgeOfficial'
+        changed_by_admin_id: *id008
+        changed_at_ms:
+          type: integer
+    KnowledgeHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_before
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeOfficialRevision'
+        next_before:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          description: 0 means end; pass other value as before for next 50 revisions.
+    KnowledgeSourceReference:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - id
+      - revision
+      properties:
+        kind: *id010
+        id: *id008
+        revision: *id008
+    KnowledgeCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - reference
+      - category_id
+      - title
+      - content
+      - format
+      - url
+      properties:
+        reference:
+          $ref: '#/components/schemas/KnowledgeSourceReference'
+        category_id: *id008
+        title: *id001
+        content: *id003
+        format: *id008
+        url: *id008
+    KnowledgeSource:
+      type: object
+      additionalProperties: false
+      required:
+      - member_id
+      - collection_id
+      - revision
+      - source
+      properties:
+        member_id: *id008
+        collection_id: *id008
+        revision: *id008
+        source:
+          $ref: '#/components/schemas/KnowledgeCandidate'
+    KnowledgeSourcePage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSource'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+    KnowledgeCollectionList:
+      type: array
+      items:
+        $ref: '#/components/schemas/KnowledgeCollection'
+    KnowledgeOfficialList:
+      type: array
+      items:
+        $ref: '#/components/schemas/KnowledgeOfficial'
     PluginV5AdminCommand:
       oneOf:
       - type: object

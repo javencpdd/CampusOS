@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=b995ca880afdae3717c6c30a447630bd6c5855b0364719ec22fd1b242bc4ac47;tables=113;foreign_keys=132 -->
+<!-- campusos-er:schema_sha256=1ae6d3fc24dc12fd59e9ffe73d74bdd7ffe6a023e33aa0b631f3006f72015db7;tables=120;foreign_keys=136 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**113**
-- 物理外键：**132**
+- 实体表：**120**
+- 物理外键：**136**
 - 一对一/可选一对一关系：**16**
-- 一对多关系：**116**
+- 一对多关系：**120**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`b995ca880afdae3717c6c30a447630bd6c5855b0364719ec22fd1b242bc4ac47`
+- Schema 指纹：`1ae6d3fc24dc12fd59e9ffe73d74bdd7ffe6a023e33aa0b631f3006f72015db7`
 
 ## 1. 生成范围与判定规则
 
@@ -46,6 +46,9 @@
 - `000027_plugin_v5_installations.up.sql`
 - `000028_plugin_v5_event_deliveries.up.sql`
 - `000029_instance_recovery_epochs.up.sql`
+- `000030_knowledge_sources.up.sql`
+- `000031_knowledge_index_requests.up.sql`
+- `000032_knowledge_index_backfill.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -159,6 +162,13 @@
 | 其他平台数据 | `instance_recovery_epochs` | 11 | `singleton` | 0 | 0 |
 | 其他平台数据 | `integration_credentials` | 13 | `id` | 1 | 0 |
 | 其他平台数据 | `integration_principals` | 7 | `id` | 0 | 1 |
+| 其他平台数据 | `knowledge_collection_sources` | 5 | `id` | 2 | 0 |
+| 其他平台数据 | `knowledge_collections` | 3 | `id` | 0 | 2 |
+| 其他平台数据 | `knowledge_index_backfill_checkpoints` | 5 | `target_kind` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_tasks` | 6 | `id` | 0 | 0 |
+| 其他平台数据 | `knowledge_official_revisions` | 4 | `id` | 1 | 0 |
+| 其他平台数据 | `knowledge_official_sources` | 3 | `id` | 0 | 1 |
+| 其他平台数据 | `knowledge_source_selections` | 4 | `id` | 1 | 1 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
 | 其他平台数据 | `platform_compatibility_usage` | 6 | `usage_key` | 0 | 0 |
 | 其他平台数据 | `platform_operation_runs` | 11 | `id` | 0 | 0 |
@@ -223,6 +233,10 @@
 | `users` | `identity_mfa_tickets` | `fk_identity_mfa_ticket_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_mfa_totp_methods` | `fk_identity_mfa_totp_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `integration_principals` | `integration_credentials` | `integration_credentials_principal_id_fkey` | `principal_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_collections` | `knowledge_collection_sources` | `knowledge_collection_sources_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_source_selections` | `knowledge_collection_sources` | `fk_knowledge_collection_sources_2` | `selection_id, collection_id` → `id, collection_id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_official_sources` | `knowledge_official_revisions` | `knowledge_official_revisions_source_id_fkey` | `source_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_collections` | `knowledge_source_selections` | `knowledge_source_selections_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `likes` | `fk_likes_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `mutual_aid_details` | `fk_mutual_aid_details_created_by` | `created_by` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `notifications` | `fk_notifications_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -2687,6 +2701,112 @@
 | `created_by_admin_id` | `varchar(128)` | NN | 否 | `—` |
 | `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
 | `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_collection_sources`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：2；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `collection_id` | `text` | FK/NN | 否 | `—` |
+| `selection_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_collection_sources_collection_id_fkey`：`knowledge_collection_sources(collection_id)` → `knowledge_collections(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_knowledge_collection_sources_2`：`knowledge_collection_sources(selection_id, collection_id)` → `knowledge_source_selections(id, collection_id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_collections`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：2
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+
+#### `knowledge_index_backfill_checkpoints`
+
+- 主键：`target_kind`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `target_kind` | `text` | PK | 是 | `—` |
+| `after_id` | `text` | NN | 否 | `''` |
+| `completed_passes` | `bigint` | NN | 否 | `0` |
+| `next_scan_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_index_tasks`
+
+- 主键：`id`
+- 唯一列集：(target_kind, target_id, target_version)
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `target_kind` | `text` | NN | 否 | `—` |
+| `target_id` | `text` | NN | 否 | `—` |
+| `target_version` | `bigint` | NN | 否 | `—` |
+| `status` | `text` | NN | 否 | `'pending'` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_official_revisions`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `source_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_official_revisions_source_id_fkey`：`knowledge_official_revisions(source_id)` → `knowledge_official_sources(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_official_sources`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+
+#### `knowledge_source_selections`
+
+- 主键：`id`
+- 唯一列集：(id, collection_id)
+- 出站外键：1；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `collection_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_source_selections_collection_id_fkey`：`knowledge_source_selections(collection_id)` → `knowledge_collections(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 #### `platform_command_audits`
 

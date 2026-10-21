@@ -491,3 +491,18 @@ func (g *moderationGateway) DeletePostForPrincipal(ctx context.Context, threadID
 	}
 	return err
 }
+
+// Source reads pin the current board/parent lifecycle until the enclosing
+// checked read or required-audit command commits. No repository crosses Port.
+func (g *moduleCategoryCatalog) ListSourceCategories(ctx context.Context) ([]*domain.Category, error) {
+	if g == nil || g.module == nil || g.module.categories == nil {
+		return nil, errors.New("source category catalogue unavailable")
+	}
+	reader, ok := g.module.categories.(interface {
+		ListForSource(context.Context) ([]*domain.Category, error)
+	})
+	if !ok {
+		return nil, errors.New("checked source categories unavailable")
+	}
+	return reader.ListForSource(ctx)
+}

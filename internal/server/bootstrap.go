@@ -279,6 +279,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.moderation = moderationModule
 	s.storage = storageModule
 	s.space = spaceModule
+	s.knowledge = knowledgeModule
 	s.richtext = richtextModule
 	s.schedule = scheduleModule
 	s.personalDocuments = personalDocumentsModule
@@ -338,6 +339,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				if err := schedule.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
+				if err := knowledge.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
 				if err := personaldocuments.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
@@ -383,6 +387,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 				return err
 			}
 			if err := schedule.BindMemoryAdapter(app); err != nil {
+				return err
+			}
+			if err := knowledge.BindMemoryAdapter(app); err != nil {
 				return err
 			}
 			if err := personaldocuments.BindMemoryAdapter(app); err != nil {

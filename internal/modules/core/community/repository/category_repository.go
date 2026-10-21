@@ -79,6 +79,10 @@ func (r *MemoryCategoryRepository) List(_ context.Context) ([]*domain.Category, 
 	return items, nil
 }
 
+func (r *MemoryCategoryRepository) ListForSource(ctx context.Context) ([]*domain.Category, error) {
+	return r.List(ctx)
+}
+
 func (r *MemoryCategoryRepository) ListChildren(_ context.Context, parentID string) ([]*domain.Category, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

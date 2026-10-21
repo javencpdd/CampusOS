@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000029（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000032（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列）</el-tag
       >
@@ -331,6 +331,13 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+  {name: "knowledge_index_backfill_checkpoints", title: "知识元数据补扫断点", domain: "community", purpose: "常驻补扫器按集合/官方资料分别保存分页进度与下次扫描时限；请求和断点原子提交。", fields: ["target_kind","after_id","completed_passes","next_scan_at","updated_at"], migration: "000032", relationshipNote: "after_id是可缺失的逻辑枚举边界，不是来源/权限快照或事件ID水位；每轮完成后从头周期重扫，有断点拒绝down，不代表索引或权威全量对账就绪。"},
+  {name: "knowledge_index_tasks", title: "知识索引任务请求", domain: "community", purpose: "Outbox常驻消费者保存当前目标版本的待处理元数据请求；尚无索引执行或ready状态。", fields: ["id","target_kind","target_id","target_version","status","created_at"], migration: "000031", relationshipNote: "target_kind区分集合/官方资料，target_id为逻辑引用；允许缺失目标的0版本清理意图，不存正文/ACL/凭据或event_id游标。当前请求不可更新/删除/清空，非空拒绝down。"},
+  {name: "knowledge_collections", title: "公开知识集合", domain: "community", purpose: "公开集合展示/启停与当前不可复用版本；默认关闭Feature。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "Admin创建者是独立管理域逻辑审计引用，不外键到User。"},
+  {name: "knowledge_official_sources", title: "官方知识资料", domain: "community", purpose: "有界text/Markdown正文及draft/published/withdrawn生命周期。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "当前内容与追加修订同必需审计事务；不抓取URL或执行指令。"},
+  {name: "knowledge_official_revisions", title: "官方资料修订历史", domain: "community", purpose: "每次官方写入追加完整内容、状态与显式Admin变更者；数据库禁止修改/删除/清空。", fields: ["id", "data", "source_id", "facts_version"], migration: "000030", relationshipNote: "source_id外键到官方资料；版本是历史事实，不是公开授权。"},
+  {name: "knowledge_source_selections", title: "知识来源选择规则", domain: "community", purpose: "独立存储单篇/公开板块/官方规则与当前active及代次。", fields: ["id", "data", "collection_id", "facts_version"], migration: "000030", relationshipNote: "collection_id外键到集合；来源ID逻辑关联Community或官方域，不复制来源ACL。"},
+  {name: "knowledge_collection_sources", title: "知识集合显式成员", domain: "community", purpose: "每条规则的独立来源引用、观察修订和规则代次；无Community正文副本。", fields: ["id", "data", "collection_id", "selection_id", "facts_version"], migration: "000030", relationshipNote: "集合及(selection_id,collection_id)复合外键；每次输出复核当前来源/板块/规则，成员不授予出站权限。"},
   {name: "plugin_packages", title: "v5 包族", domain: "plugin", purpose: "按发布者与插件键区分包族，不对应账号身份。", fields: ["publisher", "plugin_key", "created_at"], migration: "000027", relationshipNote: "与发布版本一对多，不外键绑定User/Admin。"},
   {name: "plugin_package_releases", title: "v5 发布目录", domain: "plugin", purpose: "保存签名包元数据、可用性与修订；真实字节由摘要定位受管文件。", fields: ["record_id", "state", "publisher", "plugin_key", "version"], migration: "000027", relationshipNote: "FK到包族和000026不可变摘要账本；历史不删除。"},
   {name: "plugin_installations", title: "v5 全局安装", domain: "plugin", purpose: "安装事实与desired/observed/current代次分离，审批不自动安装/启用。", fields: ["record_id", "state", "publisher", "plugin_key", "version", "desired_version", "generation", "revision"], migration: "000027", relationshipNote: "current与desired分别FK到发布版本；全局安装唯一。"},
@@ -1934,6 +1941,14 @@ const databaseTables: DbTable[] = [
 ];
 
 const relations: Relation[] = [
+ {id:"knowledge-collection-backfill-cursor",source:"knowledge_collections",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"collection枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
+ {id:"knowledge-official-backfill-cursor",source:"knowledge_official_sources",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"official枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
+ {id: "knowledge-collection-index-intent",source:"knowledge_collections",target:"knowledge_index_tasks",sourceCardinality:"1",targetCardinality:"N",label:"target_kind=collection 的逻辑目标引用（无FK）",domains:["community"]},
+ {id: "knowledge-official-index-intent",source:"knowledge_official_sources",target:"knowledge_index_tasks",sourceCardinality:"1",targetCardinality:"N",label:"target_kind=official 的逻辑目标引用（无FK）",domains:["community"]},
+  {id: "knowledge_collections-knowledge_source_selections", source: "knowledge_collections", target: "knowledge_source_selections", sourceCardinality: "1", targetCardinality: "N", label: "集合到选择规则 FK", domains: ["community"]},
+  {id: "knowledge_collections-knowledge_collection_sources", source: "knowledge_collections", target: "knowledge_collection_sources", sourceCardinality: "1", targetCardinality: "N", label: "集合到显式成员 FK", domains: ["community"]},
+  {id: "knowledge_source_selections-knowledge_collection_sources", source: "knowledge_source_selections", target: "knowledge_collection_sources", sourceCardinality: "1", targetCardinality: "N", label: "规则/集合复合 FK", domains: ["community"]},
+  {id: "knowledge_official_sources-knowledge_official_revisions", source: "knowledge_official_sources", target: "knowledge_official_revisions", sourceCardinality: "1", targetCardinality: "N", label: "官方来源修订 FK", domains: ["community"]},
   {id: "v5-27-0", source: "plugin_packages", target: "plugin_package_releases", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key (FK)", domains: ["plugin"]},
   {id: "v5-27-1", source: "plugin_package_identities", target: "plugin_package_releases", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
   {id: "v5-27-2", source: "plugin_package_releases", target: "plugin_installations", sourceCardinality: "1", targetCardinality: "0..N", label: "current/desired version (FK)", domains: ["plugin"]},
@@ -3106,6 +3121,9 @@ const storageRows = [
 ];
 
 const migrations = [
+ {version:"000032",file:"000032_knowledge_index_backfill.up.sql",title:"v1.2 知识元数据补扫断点",scope:"Knowledge 周期补扫",summary:"两个逻辑目标域分别按ID分页，当前版本请求和断点同事务；完成后等待再从头重扫，无正文/授权/事件游标，非空拒绝down。",tables:["knowledge_index_backfill_checkpoints"]},
+ {version:"000031",file:"000031_knowledge_index_requests.up.sql",title:"v1.2 索引任务请求",scope:"Knowledge 元数据队列",summary:"按当前集合/官方资料代次幂等入队，任务持久化后才允许Outbox回执；无正文/授权副本/执行器，非空拒绝down。",tables:["knowledge_index_tasks"]},
+  {version: "000030", file: "000030_knowledge_sources.up.sql", title: "v1.2 知识集合与来源", scope: "Knowledge 自有事实", summary: "集合/官方资料及不可变修订/选择规则/显式成员五表，匿名来源逐次复核；独立Admin read/manage权限与审计，非空拒绝down，序列高水位保留。", tables: ["knowledge_collections","knowledge_official_sources","knowledge_official_revisions","knowledge_source_selections","knowledge_collection_sources"]},
   {version: "000029", file: "000029_instance_recovery_epochs.up.sql", title: "v1.2 整库恢复认证代次", scope: "离线恢复与安全开服", summary: "独立单行围栏，认证代次/归档/授权盘点指纹与必需审计；无种子，有记录拒绝down，空域down/up保留所有旧数据。", tables: ["instance_recovery_epochs"]},
   {version: "000028", file: "000028_plugin_v5_event_deliveries.up.sql", title: "v1.2 v5 元数据投递队列", scope: "Plugin Platform 提交后事件", summary: "单表有限元数据载荷，独立租约/5次重试/死信与代次围栏，不保留Core正文或Secret；非空拒绝down，旧表/序列不变。", tables: ["plugin_v5_event_deliveries"]},
   {version: "000027", file: "000027_plugin_v5_installations.up.sql", title: "v1.2 v5 安装与操作事实", scope: "Plugin Platform 包目录/分域安装与授权/生命周期", summary: "8张表，独立安装/Grant/Consent/配置，单调代次与租约，审计/Outbox同事务；无默认发布或授权，有数据拒绝down，空域回滚保留代次序列。", tables: ["plugin_packages", "plugin_package_releases", "plugin_installations", "plugin_user_installations", "plugin_v5_admin_grants", "plugin_v5_user_consents", "plugin_v5_configurations", "plugin_operations"]},

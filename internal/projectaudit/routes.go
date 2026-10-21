@@ -228,6 +228,8 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.secondhand"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "feature.personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"):
+		return "feature.knowledge"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):
 		return "feature.personal-documents"
 	case strings.HasPrefix(path, APIPrefix+"/home"), strings.HasPrefix(path, APIPrefix+"/web-themes"):
@@ -290,6 +292,8 @@ func featureForRoute(path string) string {
 		return "pdf-viewer"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
+	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"):
+		return "knowledge"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):
 		return "personal-documents"
 	case strings.HasPrefix(path, APIPrefix+"/mutual-aid"):
@@ -587,6 +591,23 @@ func FindRepositoryRoot(start string) (string, error) {
 // Explicit governance metadata follows operation extraction and scope parsing;
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
+	if strings.HasPrefix(route.OperationCode, "http.knowledge.") {
+		route.Ownership = "current-origin-and-collection"
+		route.Scope = "public-collection+current-origin"
+		route.Auth = "none+current-origin-policy"
+		route.Audit = "none"
+		if strings.HasPrefix(route.Path, APIPrefix+"/admin/knowledge") {
+			route.Scope = "knowledge.collection_inventory/all"
+			route.Ownership = "knowledge-managed"
+			route.Auth = "jwt+current-admin-session+permission"
+			route.Audit = "none"
+			if route.Method != "GET" {
+				route.Auth += "+recent-mfa+browser-csrf"
+				route.Audit = "required-command+outbox"
+			}
+		}
+	}
+
 	if strings.HasPrefix(route.OperationCode, "http.identity.integration.") {
 		route.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
 		route.Scope = "identity.integration_inventory/all"

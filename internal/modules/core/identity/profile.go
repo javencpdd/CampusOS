@@ -54,7 +54,7 @@ func BindPostgreSQLAdapters(app *platformmodule.AppContext, pool *pgxpool.Pool) 
 func BindMemoryAdapters(app *platformmodule.AppContext) error {
 	adminAccounts := repository.NewMemoryAdminAccountRepository()
 	adminDomains := repository.NewMemoryAdminDomainRepository()
-	if err := adminDomains.ReplaceAdminRolePermissionFacts(context.Background(), "security_admin", []string{"identity.integration.read", "identity.integration.manage"}, "system:memory-profile"); err != nil {
+	if err := adminDomains.ReplaceAdminRolePermissionFacts(context.Background(), "security_admin", []string{"identity.integration.read", "identity.integration.manage", "knowledge.collection.read", "knowledge.collection.manage"}, "system:memory-profile"); err != nil {
 		return err
 	}
 	return bindAdapters(

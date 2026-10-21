@@ -234,6 +234,30 @@
       "retryable": true
     },
     {
+      "owner": "knowledge",
+      "machine_code": "knowledge.capacity_exceeded",
+      "legacy_code": 89302,
+      "http_status": 409,
+      "message": "知识集合达到容量上限，请缩小集合或规则范围",
+      "retryable": false
+    },
+    {
+      "owner": "knowledge",
+      "machine_code": "knowledge.disabled",
+      "legacy_code": 89301,
+      "http_status": 503,
+      "message": "知识集合已停用",
+      "retryable": false
+    },
+    {
+      "owner": "knowledge",
+      "machine_code": "knowledge.unavailable",
+      "legacy_code": 89303,
+      "http_status": 503,
+      "message": "知识集合暂时无法读取，请稍后重试",
+      "retryable": true
+    },
+    {
       "owner": "mutual-aid",
       "machine_code": "mutual_aid.feature_disabled",
       "legacy_code": 50301,

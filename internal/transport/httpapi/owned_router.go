@@ -233,6 +233,17 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
 	}
+	if strings.HasPrefix(operation, "http.knowledge.") {
+		descriptor.Auth = "none+current-origin-policy"
+		descriptor.Audit = "none"
+		if g.audience == platformroute.AudienceAdmin {
+			descriptor.Auth = "jwt+current-admin-session+permission"
+			if method != "GET" {
+				descriptor.Auth += "+recent-mfa+browser-csrf"
+				descriptor.Audit = "required-command+outbox"
+			}
+		}
+	}
 	if strings.HasPrefix(operation, "http.identity.integration.") {
 		descriptor.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
 		descriptor.Audit = "required-command+outbox"
@@ -293,6 +304,8 @@ func runtimeFunctionName(handler gin.HandlerFunc) string {
 
 func moduleOwner(handlerName, path string) string {
 	switch {
+	case strings.Contains(handlerName, "/internal/modules/features/knowledge.") || strings.Contains(handlerName, "/internal/modules/features/knowledge/"):
+		return "feature.knowledge"
 	case strings.Contains(handlerName, "/internal/transport/httpapi/"), strings.Contains(handlerName, "/internal/transport/httpapi."):
 		return "core.platform-api"
 	case strings.Contains(handlerName, "/internal/modules/core/identity/"):
@@ -350,6 +363,9 @@ func routeDescriptorID(method, path string) string {
 }
 
 func routeFeature(path string) string {
+	if strings.HasPrefix(path, "/api/v1/knowledge") || strings.HasPrefix(path, "/api/v1/admin/knowledge") {
+		return "knowledge"
+	}
 	switch {
 	case strings.HasPrefix(path, "/api/v1/spaces"), strings.HasPrefix(path, "/api/v1/space"), strings.HasPrefix(path, "/api/v1/u/"), strings.HasPrefix(path, "/api/v1/appearance/space-style-packs"):
 		return "personal-space"

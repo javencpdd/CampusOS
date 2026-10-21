@@ -17,6 +17,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/homepage"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/webtheme"
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
+	"github.com/campusos/CampusOS/internal/modules/features/knowledge"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
@@ -70,6 +71,7 @@ type Dependencies struct {
 	RichText          *richtext.Handler
 	Schedule          *schedule.Handler
 	PersonalDocuments *personaldocuments.Handler
+	Knowledge         *knowledge.Handler
 	MutualAid         *mutualaid.Handler
 	Secondhand        *secondhand.Handler
 	PlatformLog       *platformlog.Handler
@@ -118,6 +120,8 @@ func Build(d Dependencies) *Router {
 			Prefix: "/api/v1/schedule", FeatureID: "personal-schedule",
 			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/schedule/status"}},
 		},
+		platformfeature.PathRule{Prefix: "/api/v1/knowledge", FeatureID: "knowledge"},
+		platformfeature.PathRule{Prefix: "/api/v1/admin/knowledge", FeatureID: "knowledge"},
 		platformfeature.PathRule{Prefix: "/api/v1/documents", FeatureID: "personal-documents"},
 		platformfeature.PathRule{
 			Prefix: "/api/v1/mutual-aid", FeatureID: "mutual-aid",
@@ -148,6 +152,9 @@ func Build(d Dependencies) *Router {
 		public.GET("/web-themes/:name/assets/*path", d.WebTheme.Asset)
 		public.GET("/ui/runtime-manifest", middleware.OptionalJWT(d.JWT, d.SessionVerifier), runtimeHTTPHandler.RuntimeManifest)
 		public.GET("/ui/events", runtimeHTTPHandler.Events)
+		public.Operation("http.knowledge.collection.list").GET("/knowledge/collections", d.Knowledge.Collections)
+		public.Operation("http.knowledge.source.list").GET("/knowledge/collections/:id/sources", d.Knowledge.Sources)
+		public.Operation("http.knowledge.source.read").GET("/knowledge/collections/:id/sources/:member_id", d.Knowledge.Source)
 		public.GET("/richtext/status", d.RichText.Status)
 		public.GET("/schedule/status", d.Schedule.Status)
 		public.GET("/mutual-aid/status", d.MutualAid.Status)
@@ -366,6 +373,18 @@ func Build(d Dependencies) *Router {
 	admin := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAdmin, d.Permissions, d.AdminAccess)
 	admin.SetAdminDomain(d.AdminJWT, d.AdminSessions, d.AdminCodes)
 	admin.Use(middleware.RequireAdminDomainAccess(d.AdminJWT, d.AdminSessions, nil))
+	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.collection.inventory").GET("/admin/knowledge/collections", d.Knowledge.Inventory)
+	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.collection.read").GET("/admin/knowledge/collections/:id", d.Knowledge.State)
+	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.official.inventory").GET("/admin/knowledge/officials", d.Knowledge.Inventory)
+	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.official.history").GET("/admin/knowledge/officials/:id/revisions", d.Knowledge.History)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.collection.create").POST("/admin/knowledge/collections", d.Knowledge.SaveCollection)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.collection.update").PUT("/admin/knowledge/collections/:id", d.Knowledge.SaveCollection)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.official.create").POST("/admin/knowledge/officials", d.Knowledge.SaveOfficial)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.official.update").PUT("/admin/knowledge/officials/:id", d.Knowledge.SaveOfficial)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.selection.create").POST("/admin/knowledge/collections/:id/selections", d.Knowledge.SaveSelection)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.selection.update").PUT("/admin/knowledge/collections/:id/selections/:selection_id", d.Knowledge.SaveSelection)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.selection.refresh").POST("/admin/knowledge/collections/:id/selections/:selection_id/refresh", d.Knowledge.Refresh)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.member.remove").POST("/admin/knowledge/collections/:id/members/:member_id/remove", d.Knowledge.RemoveMember)
 	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.list").GET("/admin/identity/integrations", d.Identity.Integration.List)
 	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.credentials").GET("/admin/identity/integrations/:id/credentials", d.Identity.Integration.List)
 	admin.PermissionCode("identity.integration.read").Operation("http.identity.integration.endpoints").GET("/admin/identity/integration-endpoints", d.Identity.Integration.Endpoints)

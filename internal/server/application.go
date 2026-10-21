@@ -48,7 +48,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	if s.moderation == nil || s.moderation.Handler() == nil {
 		return fmt.Errorf("moderation core module is unavailable")
 	}
-	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.personalDocuments == nil || s.personalDocuments.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
+	if s.knowledge == nil || s.knowledge.Handler() == nil || s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.personalDocuments == nil || s.personalDocuments.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
 		return fmt.Errorf("built-in feature modules are unavailable")
 	}
 	pluginHandler, err := s.pluginHTTPHandler()
@@ -86,6 +86,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		RichText:          s.richtext.Handler(),
 		Schedule:          s.schedule.Handler(),
 		PersonalDocuments: s.personalDocuments.Handler(),
+		Knowledge:         s.knowledge.Handler(),
 		MutualAid:         s.mutualAid.Handler(),
 		Secondhand:        s.secondhand.Handler(),
 		PlatformLog:       s.platformLog.Handler(),

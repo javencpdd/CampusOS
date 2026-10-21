@@ -18,6 +18,10 @@ func (q AdminExecutionQuery) Validate() error {
 		if q.Scope.Kind != "plugin.installation_inventory" || q.Scope.ID != "all" {
 			return ErrResourcePolicyInvalid
 		}
+	case "knowledge.collection.read", "knowledge.collection.manage":
+		if q.Scope.Kind != "knowledge.collection_inventory" || q.Scope.ID != "all" {
+			return ErrResourcePolicyInvalid
+		}
 	case "identity.integration.read", "identity.integration.manage":
 		if q.Scope.Kind != "identity.integration_inventory" || q.Scope.ID != "all" {
 			return ErrResourcePolicyInvalid
@@ -67,7 +71,7 @@ func (q AdminExecutionQuery) RequiresCurrentMFA() bool {
 	if q.PermissionCode == "personal_space.space.manage" && (q.Scope.Kind == "personal_space.storage_status" || q.Scope.Kind == "personal_space.space_summary") {
 		return false
 	}
-	return q.PermissionCode != "plugin.plugin.read" && q.PermissionCode != "identity.integration.read" && q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
+	return q.PermissionCode != "knowledge.collection.read" && q.PermissionCode != "plugin.plugin.read" && q.PermissionCode != "identity.integration.read" && q.PermissionCode != "community.thread.read" && q.PermissionCode != "platform.reliability.read" && q.PermissionCode != "personal_space.asset.read_audit"
 }
 
 type AdminExecutionAuthority struct {

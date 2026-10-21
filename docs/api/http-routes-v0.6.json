@@ -207,6 +207,57 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/knowledge/collections",
+      "handler": "knowledgeHandler.Collections",
+      "module_owner": "feature.knowledge",
+      "audience": "public",
+      "auth": "none+current-origin-policy",
+      "operation_code": "http.knowledge.collection.list",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.collections",
+        "httpapi.get.api.v1.knowledge.collections"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-origin",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/collections/:id/sources",
+      "handler": "knowledgeHandler.Sources",
+      "module_owner": "feature.knowledge",
+      "audience": "public",
+      "auth": "none+current-origin-policy",
+      "operation_code": "http.knowledge.source.list",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.collections.id.sources",
+        "httpapi.get.api.v1.knowledge.collections.id.sources"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-origin",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/collections/:id/sources/:member_id",
+      "handler": "knowledgeHandler.Source",
+      "module_owner": "feature.knowledge",
+      "audience": "public",
+      "auth": "none+current-origin-policy",
+      "operation_code": "http.knowledge.source.read",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.collections.id.sources.member_id",
+        "httpapi.get.api.v1.knowledge.collections.id.sources.member_id"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-origin",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/richtext/status",
       "handler": "richTextHandler.Status",
       "module_owner": "feature.controlled-richtext-article",
@@ -3653,6 +3704,234 @@
       ],
       "ownership": "resource-policy",
       "scope": "current-admin-self",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/knowledge/collections",
+      "handler": "knowledgeHandler.Inventory",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "collection:read",
+      "permission_code": "knowledge.collection.read",
+      "operation_code": "http.knowledge.collection.inventory",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.knowledge.collections",
+        "httpapi.get.api.v1.admin.knowledge.collections"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/knowledge/collections/:id",
+      "handler": "knowledgeHandler.State",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "collection:read",
+      "permission_code": "knowledge.collection.read",
+      "operation_code": "http.knowledge.collection.read",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.knowledge.collections.id",
+        "httpapi.get.api.v1.admin.knowledge.collections.id"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/knowledge/officials",
+      "handler": "knowledgeHandler.Inventory",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "collection:read",
+      "permission_code": "knowledge.collection.read",
+      "operation_code": "http.knowledge.official.inventory",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.knowledge.officials",
+        "httpapi.get.api.v1.admin.knowledge.officials"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/knowledge/officials/:id/revisions",
+      "handler": "knowledgeHandler.History",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "collection:read",
+      "permission_code": "knowledge.collection.read",
+      "operation_code": "http.knowledge.official.history",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.knowledge.officials.id.revisions",
+        "httpapi.get.api.v1.admin.knowledge.officials.id.revisions"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/collections",
+      "handler": "knowledgeHandler.SaveCollection",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.collection.create",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.collections",
+        "httpapi.post.api.v1.admin.knowledge.collections"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/knowledge/collections/:id",
+      "handler": "knowledgeHandler.SaveCollection",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.collection.update",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.knowledge.collections.id",
+        "httpapi.put.api.v1.admin.knowledge.collections.id"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/officials",
+      "handler": "knowledgeHandler.SaveOfficial",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.official.create",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.officials",
+        "httpapi.post.api.v1.admin.knowledge.officials"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/knowledge/officials/:id",
+      "handler": "knowledgeHandler.SaveOfficial",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.official.update",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.knowledge.officials.id",
+        "httpapi.put.api.v1.admin.knowledge.officials.id"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/collections/:id/selections",
+      "handler": "knowledgeHandler.SaveSelection",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.selection.create",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.collections.id.selections",
+        "httpapi.post.api.v1.admin.knowledge.collections.id.selections"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/knowledge/collections/:id/selections/:selection_id",
+      "handler": "knowledgeHandler.SaveSelection",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.selection.update",
+      "legacy_aliases": [
+        "http.put.api.v1.admin.knowledge.collections.id.selections.selection_id",
+        "httpapi.put.api.v1.admin.knowledge.collections.id.selections.selection_id"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/collections/:id/selections/:selection_id/refresh",
+      "handler": "knowledgeHandler.Refresh",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.selection.refresh",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.collections.id.selections.selection_id.refresh",
+        "httpapi.post.api.v1.admin.knowledge.collections.id.selections.selection_id.refresh"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/collections/:id/members/:member_id/remove",
+      "handler": "knowledgeHandler.RemoveMember",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.member.remove",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.collections.id.members.member_id.remove",
+        "httpapi.post.api.v1.admin.knowledge.collections.id.members.member_id.remove"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
       "audit": "required-command+outbox",
       "stability": "experimental"
     },
