@@ -19,12 +19,13 @@ type Service struct {
 }
 
 type ServiceStatus struct {
-	Enabled  bool                   `json:"enabled"`
-	Ready    bool                   `json:"ready"`
-	Provider string                 `json:"provider"`
-	Config   map[string]interface{} `json:"config,omitempty"`
-	Error    string                 `json:"error,omitempty"`
-	Logs     int                    `json:"logs"`
+	Definition *Definition            `json:"definition,omitempty"`
+	Enabled    bool                   `json:"enabled"`
+	Ready      bool                   `json:"ready"`
+	Provider   string                 `json:"provider"`
+	Config     map[string]interface{} `json:"config,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Logs       int                    `json:"logs"`
 }
 
 func NewServiceFromConfig(cfg config.AIConfig) (*Service, error) {
@@ -91,6 +92,10 @@ func (s *Service) Status() ServiceStatus {
 		Ready:    s.ready,
 		Provider: s.provider,
 		Logs:     len(logs),
+	}
+	if s.gateway != nil {
+		d := s.gateway.provider.Definition()
+		status.Definition = &d
 	}
 	if s.providerConfig.BaseURL != "" || s.providerConfig.Model != "" {
 		status.Config = s.providerConfig.Redacted()
