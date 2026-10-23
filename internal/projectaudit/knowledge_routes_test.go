@@ -62,9 +62,9 @@ func TestKnowledgePrivateSourcePreflightContractHasNoIndexingGrant(t *testing.T)
 		}
 	}
 	properties := response["properties"].(map[string]any)
-	if !reflect.DeepEqual(properties["can_index"].(map[string]any)["enum"], []any{false}) ||
+	if properties["can_index"].(map[string]any)["type"] != "boolean" ||
 		!reflect.DeepEqual(properties["format"].(map[string]any)["enum"], []any{"text", "markdown", "campusdoc", "pdf", "docx"}) ||
-		!reflect.DeepEqual(properties["reason"].(map[string]any)["enum"], []any{"private_storage_unavailable", "unsupported_format"}) {
+		!reflect.DeepEqual(properties["reason"].(map[string]any)["enum"], []any{"ready", "private_storage_unavailable", "unsupported_format"}) {
 		t.Fatal("preflight must only report known metadata and deny indexing", properties)
 	}
 }
@@ -106,15 +106,25 @@ func TestKnowledgeRoutesCurrentAuthorityAndClosedDTOs(t *testing.T) {
 			if r.PermissionCode != expected {
 				t.Fatal("wrong exact permission", r)
 			}
-		} else if r.OperationCode == "http.knowledge.private.source.preflight" {
-			if r.Audience != "authenticated" || r.Auth != "jwt+current-user-session+document-owner" || r.Scope != "self+current-document-version" || r.Ownership != "current-document-owner" || r.PermissionCode != "" || r.Permission != "" || r.Audit != "none" {
+		} else if strings.HasPrefix(r.OperationCode, "http.knowledge.private.") {
+			expectedAudit := "none"
+			if r.OperationCode == "http.knowledge.private.select" || r.OperationCode == "http.knowledge.private.withdraw" || r.OperationCode == "http.knowledge.private.retry" {
+				expectedAudit = "required-command+outbox"
+			}
+			expectedAuth, expectedScope, expectedOwner := "jwt+current-user-session+source-owner", "self+current-source-version", "current-source-owner"
+			if r.OperationCode == "http.knowledge.private.source.preflight" {
+				expectedAuth = "jwt+current-user-session+document-owner"
+				expectedScope = "self+current-document-version"
+				expectedOwner = "current-document-owner"
+			}
+			if r.Audience != "authenticated" || r.Auth != expectedAuth || r.Scope != expectedScope || r.Ownership != expectedOwner || r.PermissionCode != "" || r.Permission != "" || r.Audit != expectedAudit {
 				t.Fatal("private preflight must recheck the current User and document owner without granting a mutation", r)
 			}
 		} else if r.Auth != "none+current-origin-policy" || r.Scope != "public-collection+current-origin" {
 			t.Fatal("public source must recheck origin", r)
 		}
 	}
-	if count != 19 || writes != 9 {
+	if count != 27 || writes != 9 {
 		t.Fatal("Knowledge route inventory incomplete", count, writes)
 	}
 }

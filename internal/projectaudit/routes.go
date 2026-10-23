@@ -455,7 +455,7 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || route.OperationCode == "http.knowledge.private.source.preflight" || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
+			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || strings.HasPrefix(route.OperationCode, "http.knowledge.private.") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
@@ -641,11 +641,20 @@ func applyResourceGovernanceContract(route *RouteContract) {
 				route.Audit = "required-command+outbox"
 			}
 		}
-		if route.OperationCode == "http.knowledge.private.source.preflight" {
+		if strings.HasPrefix(route.OperationCode, "http.knowledge.private.") {
 			route.Auth = "jwt+current-user-session+document-owner"
 			route.Ownership = "current-document-owner"
 			route.Scope = "self+current-document-version"
+			if route.OperationCode != "http.knowledge.private.source.preflight" {
+				route.Auth = "jwt+current-user-session+source-owner"
+				route.Ownership = "current-source-owner"
+				route.Scope = "self+current-source-version"
+			}
 			route.Audit = "none"
+			if route.OperationCode == "http.knowledge.private.select" || route.OperationCode == "http.knowledge.private.withdraw" || route.OperationCode == "http.knowledge.private.retry" {
+				route.Audit = "required-command+outbox"
+			}
+
 		}
 	}
 

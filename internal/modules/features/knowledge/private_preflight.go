@@ -38,8 +38,8 @@ type PrivateSourcePreflightRequest struct {
 }
 
 // This is an eligibility explanation, never consent or an indexing receipt.
-// No protected private storage/parser/job path has been accepted, so CanIndex
-// always remains false. Enabling the public Knowledge Feature cannot change it.
+// Only the independently configured protected runtime may report readiness;
+// enabling public Knowledge alone cannot enable private intake.
 type PrivateSourcePreflightResult struct {
 	DocumentID string `json:"document_id"`
 	VersionID  string `json:"version_id"`
@@ -164,6 +164,17 @@ func (h *Handler) PrivateSourcePreflight(c *gin.Context) {
 	if err != nil {
 		knowledgeError(c, err)
 		return
+	}
+	if h.privateIndex.available() && privateSupported(out.Format) {
+		src, err := h.privateIndex.Preview(c.Request.Context(), resolve, "personal_document", out.DocumentID)
+		if err != nil {
+			knowledgeError(c, err)
+			return
+		}
+		if src.Format == out.Format {
+			out.CanIndex = true
+			out.Reason = "ready"
+		}
 	}
 	response.Success(c, out)
 }

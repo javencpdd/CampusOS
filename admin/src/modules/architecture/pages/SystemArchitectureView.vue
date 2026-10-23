@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000033（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000034（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列）</el-tag
       >
@@ -331,6 +331,8 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+ {name:"knowledge_private_sources",title:"私人知识逐项同意与密文",domain:"community",purpose:"本人逐项选择的精确原来源修订与AEAD密文；无默认入库或外发同意。",fields:["id","owner_user_id","kind","source_id","revision","format","consent_version","state","nonce","ciphertext"],migration:"000034",relationshipNote:"owner_user_id外键users；来源为逻辑引用。独立外置每选择密钥，不进入应用备份；先退役删钥再撤回。新请求逐次原域复核，非空拒绝down。"},
+ {name:"knowledge_private_tasks",title:"私人密文索引任务",domain:"community",purpose:"只调度已加密快照的发布与当前事实对账；不持有User凭据或读取原始字节。",fields:["source_id","consent_version","state","attempts","lease_token","lease_until_ms","available_at_ms","error_code"],migration:"000034",relationshipNote:"source_id外键私人选择并级联清理；源行→任务锁序、单赢家租约、5次尝试与显式本人重试，不复用围栏。"},
   {name: "knowledge_index_jobs", title: "知识索引执行与断点", domain: "community", purpose: "每集合独立保存请求代次、租约围栏、有限重试、来源/成员分页断点和已完成代次；周期复核消失目标。", fields: ["id","data","facts_version","state","available_at_ms","lease_until_ms","lease_token"], migration: "000033", relationshipNote: "id逻辑引用集合，无FK以保留消失目标清理任务；请求表仍不可变pending，只有完成代次可进入当前来源复核。非空拒绝down。"},
   {name: "knowledge_index_documents", title: "公开知识文本投影", domain: "community", purpose: "当前G1复核后的Community/RichText/官方公开文本分块与来源/规则修订、解析器/分块器/Profile指纹及构建代次。", fields: ["id","data","facts_version","collection_id","selection_id","generation"], migration: "000033", relationshipNote: "集合/规则/成员均逻辑引用以允许删除对账；正文是非可信数据，输出仍复核来源和完成代次，未提供检索/AI/出站权。非空拒绝down。"},
   {name: "knowledge_index_backfill_checkpoints", title: "知识元数据补扫断点", domain: "community", purpose: "常驻补扫器按集合/官方资料分别保存分页进度与下次扫描时限；请求和断点原子提交。", fields: ["target_kind","after_id","completed_passes","next_scan_at","updated_at"], migration: "000032", relationshipNote: "after_id是可缺失的逻辑枚举边界，不是来源/权限快照或事件ID水位；每轮完成后从头周期重扫，有断点拒绝down，不代表索引或权威全量对账就绪。"},
@@ -1944,6 +1946,8 @@ const databaseTables: DbTable[] = [
 
 const relations: Relation[] = [
  {id:"knowledge-collection-index-job",source:"knowledge_collections",target:"knowledge_index_jobs",sourceCardinality:"1",targetCardinality:"1",label:"逻辑集合执行任务（无FK，缺失时仍清理）",domains:["community"]},
+ {id:"private-source-owner",source:"users",target:"knowledge_private_sources",sourceCardinality:"1",targetCardinality:"N",label:"私人选择owner外键",domains:["identity","community"]},
+ {id:"private-source-task",source:"knowledge_private_sources",target:"knowledge_private_tasks",sourceCardinality:"1",targetCardinality:"1",label:"同意修订与级联任务",domains:["community"]},
  {id:"knowledge-rule-index-document",source:"knowledge_source_selections",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑规则修订投影（无FK）",domains:["community"]},
  {id:"knowledge-job-index-document",source:"knowledge_index_jobs",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑collection_id与完成generation（无FK）",domains:["community"]},
  {id:"knowledge-collection-backfill-cursor",source:"knowledge_collections",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"collection枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
@@ -3007,6 +3011,7 @@ const relations: Relation[] = [
 ];
 
 const storageRows = [
+ {path:"KNOWLEDGE_PRIVATE_KEY_DIR（外置目录）",category:"私人索引密钥",type:"primary",purpose:"Linux0700目录/0600每选择密钥和不可复用的退役标记，位于所有应用备份来源之外。",contents:["每次本人选择独立AES-GCM密钥；数据库/WAL/应用备份只含密文", "撤回先fsync退役标记并删钥，旧数据库恢复不能恢复已撤回密钥", "退役标记永久保留；不保存正文或owner名称，密钥不进入应用备份"],note:"未配置/权限不足/缺钥/Windows未验收时禁止私人索引；丢钥需本人重新选择重建，不从旧备份恢复授权或退役密钥。"},
  { path: "PostgreSQL / plugin_v5_event_deliveries", category: "v5 事件证据", type: "primary", purpose: "独立于Core Outbox的元数据投递及重试证据。", contents: ["白名单资源引用、状态、修订与5分钟期限", "实例代次、单赢家租约、5次尝试与死信"], note: "禁止正文/Prompt/Secret或请求自证提交；备份与v5目录一同保留，重启后旧凭据和发布不恢复。" },
  { path: "PLUGIN_DATA_DIR/v5/", category: "v5 受管插件文件", type: "primary", purpose: "完整签名包、按owner与代次隔离的私有准备配置及数据。", contents: ["packages/<sha256>.tar.gz：不可变完整包，不解压到宿主源码", "prepared/<publisher>/<key>/system|user-ID/<generation>.json：私有配置快照，不经HTTP公开", "data/<publisher>/<key>/system|user-ID：初始私有数据视图，卸载默认保留", "checkpoints/<publisher>/<key>/system|user-ID/<operation-ID>.json：摘要固定的版本/配置/有界私有文件检查点，无Grant或Consent", "restored-data/<publisher>/<key>/system|user-ID/<generation>/：独立恢复视图，真实ready后与版本原子切换数据库指针"], note: "与000026/27数据库作为同一备份集合；显式owner purge清理本owner的配置、原数据、恢复视图和检查点；release GC须无current/desired/回退检查点的已安装引用；插件检查点不恢复Grant/Consent；整库恢复另须新认证代次、废止旧凭据及按盘点指纹授权重核；不自动恢复插件授权或出站。" },
  { path: "data/.campusos-recovery.json", category: "恢复启动围栏", type: "primary", purpose: "SQL/文件恢复前先持久设置隔离，失败后保留；与DB认证代次/复核指纹逐项一致才可启动。", contents: ["仅代次、归档/盘点摘要及状态，不含密钥", "普通备份不带入旧标记，每次恢复新生成"], note: "恢复API保持停止；只有可信本地运维可按当前盘点明确复核。插件与出站仍须独立重新批准。" },
@@ -3126,6 +3131,7 @@ const storageRows = [
 ];
 
 const migrations = [
+ {version:"000034",file:"000034_knowledge_private_index.up.sql",title:"v1.2 私人来源与加密索引任务",scope:"Knowledge 本人逐项选择",summary:"默认不入库、每选择AEAD密文与外置密钥、耐久任务及非复用租约围栏；撤回/源失效删钥和级联清理。非空拒绝down。",tables:["knowledge_private_sources","knowledge_private_tasks"]},
  {version:"000033",file:"000033_knowledge_index_execution.up.sql",title:"v1.2 公开知识索引执行与投影",scope:"Knowledge 有界分页对账",summary:"独立任务租约/有限重试/持久断点和公开文本投影；来源/规则修订与Profile指纹、原子整页提交、周期消失目标清理。非空拒绝down，保留版本序列高水位，不改旧表。",tables:["knowledge_index_jobs","knowledge_index_documents"]},
  {version:"000032",file:"000032_knowledge_index_backfill.up.sql",title:"v1.2 知识元数据补扫断点",scope:"Knowledge 周期补扫",summary:"两个逻辑目标域分别按ID分页，当前版本请求和断点同事务；完成后等待再从头重扫，无正文/授权/事件游标，非空拒绝down。",tables:["knowledge_index_backfill_checkpoints"]},
  {version:"000031",file:"000031_knowledge_index_requests.up.sql",title:"v1.2 索引任务请求",scope:"Knowledge 元数据队列",summary:"按当前集合/官方资料代次幂等入队，任务持久化后才允许Outbox回执；无正文/授权副本/执行器，非空拒绝down。",tables:["knowledge_index_tasks"]},

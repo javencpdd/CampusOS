@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
@@ -21,28 +22,35 @@ const (
 )
 
 type Module struct {
-	privateReader PrivateDocumentMetadataReader
-	meter         observability.Meter
-	app           *platformmodule.AppContext
-	collections   *CollectionService
-	handler       *Handler
-	enabled       func() bool
-	service       *PublicSourceService
-	articles      *PublicArticleSourceService
-	indexRequests *indexRequestConsumer
-	backfill      *indexBackfiller
-	indexer       *IndexService
-	sourceEvents  *indexSourceConsumer
-	retrieval     *RetrievalService
+	privateReader     PrivateDocumentMetadataReader
+	privateFullReader PrivateSourceReader
+	privateVault      *PrivateVault
+	privateIndex      *PrivateIndexService
+	meter             observability.Meter
+	app               *platformmodule.AppContext
+	collections       *CollectionService
+	handler           *Handler
+	enabled           func() bool
+	service           *PublicSourceService
+	articles          *PublicArticleSourceService
+	indexRequests     *indexRequestConsumer
+	backfill          *indexBackfiller
+	indexer           *IndexService
+	sourceEvents      *indexSourceConsumer
+	retrieval         *RetrievalService
 }
 
 func NewModule(enabled func() bool) *Module { return &Module{enabled: enabled} }
 func NewModuleWithPrivateDocuments(enabled func() bool, reader PrivateDocumentMetadataReader) *Module {
 	return &Module{enabled: enabled, privateReader: reader}
 }
-func (m *Module) ID() string { return ModuleID }
+func (m *Module) ConfigurePrivateIndex(reader PrivateSourceReader, vault *PrivateVault) {
+	m.privateFullReader, m.privateVault = reader, vault
+}
+func (m *Module) PrivateIndex() *PrivateIndexService { return m.privateIndex }
+func (m *Module) ID() string                         { return ModuleID }
 func (m *Module) Dependencies() []string {
-	return []string{"core.community", "core.identity", reliability.ModuleID, "core.feature-registry", richtext.ModuleID}
+	return []string{"core.community", "core.identity", reliability.ModuleID, "core.feature-registry", richtext.ModuleID, "feature.personal-documents"}
 }
 func (m *Module) Register(app *platformmodule.AppContext) error {
 	if app == nil {
@@ -105,6 +113,13 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	for event := range indexSourceEvents {
 		reliable.RegisterConsumer(event, IndexSourceConsumerName, sourceConsumer.consume)
 	}
+	reliable.RegisterConsumer("knowledge.private.changed.v1", "knowledge.private.metadata", func(_ context.Context, event reliability.Event) error {
+		var payload map[string]string
+		if json.Unmarshal(event.Payload, &payload) != nil || len(payload) != 1 || !validPrivateID(payload["id"]) {
+			return ErrInvalid
+		}
+		return nil
+	})
 	m.sourceEvents = sourceConsumer
 	m.indexRequests = consumer
 	m.backfill = backfill
@@ -142,6 +157,9 @@ func (m *Module) Start(ctx context.Context) error {
 		}
 	}
 	if m.collections != nil && m.handler != nil {
+		if m.privateIndex != nil {
+			m.privateIndex.start(ctx)
+		}
 		if m.handler.privateSources != nil {
 			m.handler.privateSources.stopped.Store(false)
 		}
@@ -221,6 +239,15 @@ func (m *Module) Start(ctx context.Context) error {
 	m.handler.privateSources = &privateSourcePreflight{reader: m.privateReader, enabled: m.enabled}
 	m.handler.userVerifier, m.handler.userStrength = verifier, strength
 	m.handler.machine = machine
+	if pg, ok := repo.(*PgRepository); ok && !nilSourceAdapter(m.privateFullReader) && m.privateVault != nil {
+		var schemaReady bool
+		_ = pg.pool.QueryRow(ctx, `SELECT to_regclass('knowledge_private_sources') IS NOT NULL AND to_regclass('knowledge_private_tasks') IS NOT NULL`).Scan(&schemaReady)
+		if schemaReady {
+			m.privateIndex = &PrivateIndexService{repo: pg, vault: m.privateVault, reader: m.privateFullReader, reliable: reliable, enabled: m.enabled}
+			m.handler.privateIndex = m.privateIndex
+			m.privateIndex.start(ctx)
+		}
+	}
 	if e = m.backfill.start(ctx); e != nil {
 		return e
 	}
@@ -231,6 +258,9 @@ func (m *Module) Collections() *CollectionService { return m.collections }
 func (m *Module) Indexer() *IndexService          { return m.indexer }
 func (m *Module) Retrieval() PublicRetrieval      { return m.retrieval }
 func (m *Module) Stop(ctx context.Context) error {
+	if m.privateIndex != nil {
+		m.privateIndex.stop()
+	}
 	if m.handler != nil && m.handler.privateSources != nil {
 		m.handler.privateSources.stopped.Store(true)
 	}

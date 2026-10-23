@@ -8,6 +8,10 @@ it('registers an anonymous public Knowledge route with a mobile navigation title
   expect(route.name).toBe('KnowledgeSearch')
   expect(route.meta.title).toBe('知识检索')
   expect(route.meta.requiresAuth).toBeUndefined()
-  expect(knowledgeRoutes).toHaveLength(1)
+  expect(knowledgeRoutes).toHaveLength(2)
   expect(await webAuthGuard(route, {} as never, (() => {}) as never)).toBe(true)
+})
+
+it('requires a current User login for private knowledge', () => {
+  expect(router.resolve('/knowledge/private').meta.requiresAuth).toBe(true)
 })

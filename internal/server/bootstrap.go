@@ -265,6 +265,13 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		state, found := features.Registry().Get(personaldocuments.FeatureID)
 		return found && state.Enabled && state.DesiredEnabled
 	}})
+	knowledgeModule.ConfigurePrivateIndex(privateIndexSourceAdapter{documents: personalDocumentsModule, community: communityModule, documentsEnabled: func() bool {
+		if features.Registry() == nil {
+			return false
+		}
+		state, found := features.Registry().Get(personaldocuments.FeatureID)
+		return found && state.Enabled && state.DesiredEnabled
+	}}, privateIndexVaultFromEnvironment())
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(mutualaid.FeatureID) },
 	})

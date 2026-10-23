@@ -43,8 +43,15 @@
               <template #default="{ row }">v{{ row.current_version?.version_number || 0 }}</template>
             </el-table-column>
             <el-table-column prop="updated_at" label="更新时间" min-width="160" />
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="240">
               <template #default="{ row }">
+                <RouterLink
+                  v-if="row.status === 'active' && ['text', 'markdown', 'campusdoc'].includes(row.format)"
+                  :to="{ path: '/knowledge/private', query: { kind: 'personal_document', source_id: row.id } }"
+                  @click.stop
+                  >加入私人知识</RouterLink
+                >
+
                 <el-dropdown
                   v-if="row.format === 'pdf'"
                   trigger="click"

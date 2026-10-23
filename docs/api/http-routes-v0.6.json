@@ -1022,6 +1022,142 @@
       "stability": "experimental"
     },
     {
+      "method": "GET",
+      "path": "/api/v1/knowledge/private/status",
+      "handler": "knowledgeHandler.PrivateStatus",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.status",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.private.status",
+        "httpapi.get.api.v1.knowledge.private.status"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/preview",
+      "handler": "knowledgeHandler.PrivatePreview",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.preview",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.preview",
+        "httpapi.post.api.v1.knowledge.private.preview"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/private/selections",
+      "handler": "knowledgeHandler.PrivateSelections",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.list",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.private.selections",
+        "httpapi.get.api.v1.knowledge.private.selections"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/selections",
+      "handler": "knowledgeHandler.PrivateSelect",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.select",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.selections",
+        "httpapi.post.api.v1.knowledge.private.selections"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/knowledge/private/selections/:selection_id",
+      "handler": "knowledgeHandler.PrivateWithdraw",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.withdraw",
+      "legacy_aliases": [
+        "http.delete.api.v1.knowledge.private.selections.selection_id",
+        "httpapi.delete.api.v1.knowledge.private.selections.selection_id"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/selections/:selection_id/retry",
+      "handler": "knowledgeHandler.PrivateRetry",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.retry",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.selections.selection_id.retry",
+        "httpapi.post.api.v1.knowledge.private.selections.selection_id.retry"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/search",
+      "handler": "knowledgeHandler.PrivateSearch",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.search",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.search",
+        "httpapi.post.api.v1.knowledge.private.search"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/selections/:selection_id/source",
+      "handler": "knowledgeHandler.PrivateSource",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.source",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.selections.selection_id.source",
+        "httpapi.post.api.v1.knowledge.private.selections.selection_id.source"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
       "method": "POST",
       "path": "/api/v1/knowledge/private/sources/preflight",
       "handler": "knowledgeHandler.PrivateSourcePreflight",

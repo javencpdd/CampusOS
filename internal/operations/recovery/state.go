@@ -177,7 +177,8 @@ func exclusive(ctx context.Context, pool *pgxpool.Pool) (*pgxpool.Conn, func(), 
 
 // Quarantine runs after a complete SQL restore, while the exclusive lock and
 // the prewritten marker keep every normal Server from starting. It preserves
-// rows/audits and invalidates authority rather than deleting security history.
+// original rows/audits and invalidates authority. Private derived selections are
+// discarded: restored consent is never a new owner opt-in.
 func Quarantine(ctx context.Context, c *pgxpool.Conn, state State) error {
 	if !shaPattern.MatchString(state.Epoch) || !shaPattern.MatchString(state.ArchiveSHA) {
 		return ErrQuarantined
@@ -188,6 +189,7 @@ func Quarantine(ctx context.Context, c *pgxpool.Conn, state State) error {
 	}
 	defer tx.Rollback(ctx)
 	statements := []string{
+		`DO $$ BEGIN IF to_regclass('public.knowledge_private_sources') IS NOT NULL THEN DELETE FROM knowledge_private_sources; END IF; END $$`,
 		`UPDATE users SET auth_version=auth_version+1`,
 		`UPDATE admin_accounts SET version=version+1,updated_at=now()`,
 		`UPDATE sessions SET revoked_at=now(),revoke_reason='whole_restore',updated_at=now() WHERE revoked_at IS NULL`,

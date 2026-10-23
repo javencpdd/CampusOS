@@ -243,8 +243,15 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 				descriptor.Audit = "required-command+outbox"
 			}
 		}
-		if operation == "http.knowledge.private.source.preflight" {
+		if strings.HasPrefix(operation, "http.knowledge.private.") {
 			descriptor.Auth = "jwt+current-user-session+document-owner"
+			if operation != "http.knowledge.private.source.preflight" {
+				descriptor.Auth = "jwt+current-user-session+source-owner"
+			}
+
+			if operation == "http.knowledge.private.select" || operation == "http.knowledge.private.withdraw" || operation == "http.knowledge.private.retry" {
+				descriptor.Audit = "required-command+outbox"
+			}
 		}
 	}
 	if strings.HasPrefix(operation, "http.identity.integration.") {

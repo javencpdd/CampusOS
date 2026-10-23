@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=742e95f7c7370ab34761af8f0ba549437bbc193bc4e2d7b007a7091698cab9c6;tables=122;foreign_keys=136 -->
+<!-- campusos-er:schema_sha256=b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e;tables=124;foreign_keys=138 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**122**
-- 物理外键：**136**
-- 一对一/可选一对一关系：**16**
-- 一对多关系：**120**
+- 实体表：**124**
+- 物理外键：**138**
+- 一对一/可选一对一关系：**17**
+- 一对多关系：**121**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`742e95f7c7370ab34761af8f0ba549437bbc193bc4e2d7b007a7091698cab9c6`
+- Schema 指纹：`b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e`
 
 ## 1. 生成范围与判定规则
 
@@ -50,6 +50,7 @@
 - `000031_knowledge_index_requests.up.sql`
 - `000032_knowledge_index_backfill.up.sql`
 - `000033_knowledge_index_execution.up.sql`
+- `000034_knowledge_private_index.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -81,7 +82,7 @@
 | 身份与访问控制 | `roles` | 8 | `id` | 0 | 2 |
 | 身份与访问控制 | `sessions` | 20 | `id` | 1 | 0 |
 | 身份与访问控制 | `user_roles` | 8 | `id` | 2 | 0 |
-| 身份与访问控制 | `users` | 12 | `id` | 0 | 52 |
+| 身份与访问控制 | `users` | 12 | `id` | 0 | 53 |
 | 社区与内容 | `categories` | 18 | `id` | 1 | 4 |
 | 社区与内容 | `category_thread_type_policies` | 5 | `category_id, thread_type` | 1 | 0 |
 | 社区与内容 | `likes` | 7 | `id` | 1 | 0 |
@@ -171,6 +172,8 @@
 | 其他平台数据 | `knowledge_index_tasks` | 6 | `id` | 0 | 0 |
 | 其他平台数据 | `knowledge_official_revisions` | 4 | `id` | 1 | 0 |
 | 其他平台数据 | `knowledge_official_sources` | 3 | `id` | 0 | 1 |
+| 其他平台数据 | `knowledge_private_sources` | 11 | `id` | 1 | 1 |
+| 其他平台数据 | `knowledge_private_tasks` | 8 | `source_id` | 1 | 0 |
 | 其他平台数据 | `knowledge_source_selections` | 4 | `id` | 1 | 1 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
 | 其他平台数据 | `platform_compatibility_usage` | 6 | `usage_key` | 0 | 0 |
@@ -193,6 +196,7 @@
 | `identity_email_challenges` | `identity_account_recovery_cases` | `fk_identity_recovery_case_challenge` | `challenge_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `accounts` | `identity_admin_accounts` | `fk_identity_admin_account_credential` | `credential_account_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_admin_accounts` | `fk_identity_admin_account_user` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_private_sources` | `knowledge_private_tasks` | `knowledge_private_tasks_source_id_fkey` | `source_id` → `id` | 父 1 : 子 0..1 | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `threads` | `mutual_aid_details` | `fk_mutual_aid_details_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `personal_document_versions` | `personal_document_previews` | `personal_document_previews_document_version_id_fkey` | `document_version_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `plugin_package_identities` | `plugin_package_releases` | `fk_plugin_package_releases_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
@@ -239,6 +243,7 @@
 | `knowledge_collections` | `knowledge_collection_sources` | `knowledge_collection_sources_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `knowledge_source_selections` | `knowledge_collection_sources` | `fk_knowledge_collection_sources_2` | `selection_id, collection_id` → `id, collection_id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `knowledge_official_sources` | `knowledge_official_revisions` | `knowledge_official_revisions_source_id_fkey` | `source_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `users` | `knowledge_private_sources` | `knowledge_private_sources_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `knowledge_collections` | `knowledge_source_selections` | `knowledge_source_selections_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `likes` | `fk_likes_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `mutual_aid_details` | `fk_mutual_aid_details_created_by` | `created_by` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -812,7 +817,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：52
+- 出站外键：0；入站外键：53
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -2824,6 +2829,51 @@
 | `id` | `text` | PK | 是 | `—` |
 | `data` | `jsonb` | NN | 否 | `—` |
 | `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+
+#### `knowledge_private_sources`
+
+- 主键：`id`
+- 唯一列集：(owner_user_id, kind, source_id)
+- 出站外键：1；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `owner_user_id` | `bigint` | FK/NN | 否 | `—` |
+| `kind` | `text` | NN | 否 | `—` |
+| `source_id` | `bigint` | NN | 否 | `—` |
+| `revision` | `text` | NN | 否 | `—` |
+| `format` | `text` | NN | 否 | `—` |
+| `consent_version` | `bigint` | NN | 否 | `nextval('knowledge_private_epoch_seq')` |
+| `state` | `text` | NN | 否 | `'pending'` |
+| `nonce` | `bytea` | NN | 否 | `—` |
+| `ciphertext` | `bytea` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+
+外键明细：
+
+- `knowledge_private_sources_owner_user_id_fkey`：`knowledge_private_sources(owner_user_id)` → `users(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_private_tasks`
+
+- 主键：`source_id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `source_id` | `text` | PK/FK | 是 | `—` |
+| `consent_version` | `bigint` | NN | 否 | `—` |
+| `state` | `text` | NN | 否 | `'pending'` |
+| `attempts` | `integer` | NN | 否 | `0` |
+| `lease_token` | `bigint` | NN | 否 | `0` |
+| `lease_until_ms` | `bigint` | NN | 否 | `0` |
+| `available_at_ms` | `bigint` | NN | 否 | `0` |
+| `error_code` | `text` | NN | 否 | `''` |
+
+外键明细：
+
+- `knowledge_private_tasks_source_id_fkey`：`knowledge_private_tasks(source_id)` → `knowledge_private_sources(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
 
 #### `knowledge_source_selections`
 

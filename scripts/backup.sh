@@ -25,6 +25,20 @@ MODULES_DIR="${MODULES_DIR:-modules}"
 MODULE_DATA_DIR="${MODULE_DATA_DIR:-data/module_data}"
 RESOURCE_DIR="${RESOURCE_DIR:-data/resources}"
 
+# Private derivative keys and retirement markers have separate custody. Resolve
+# configurable source symlinks before staging; no valid configuration may put
+# this vault beneath a source tree or the backup output tree.
+python3 - "$OUTPUT_DIR" "$PLUGINS_DIR" "$PLUGIN_DATA_DIR" "$MODULES_DIR" "$MODULE_DATA_DIR" "$RESOURCE_DIR" <<'PYPRIVATE'
+import os, pathlib, sys
+value=os.environ.get('KNOWLEDGE_PRIVATE_KEY_DIR','')
+if value:
+ vault=pathlib.Path(value).resolve()
+ for source in sys.argv[1:]+['data','migrations']:
+  path=pathlib.Path(source).resolve()
+  if vault==path or vault.is_relative_to(path) or path.is_relative_to(vault):
+   raise SystemExit('private index key custody overlaps a backup path; backup refused')
+PYPRIVATE
+
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUTPUT_DIR"
 # Keep staging on the output filesystem so the final hard-link publication is
@@ -87,6 +101,8 @@ created_at=$timestamp
 database=$DB_NAME
 root_dotenv=excluded
 deployment_keys=separate_custody_required
+private_index_keys=excluded_separate_custody
+private_index_withdrawal_ledger=external_never_restore_from_application_backup
 apply=offline_quarantine_then_current_authorization_review
 plugins_dir=$PLUGINS_DIR
 plugin_data_dir=$PLUGIN_DATA_DIR

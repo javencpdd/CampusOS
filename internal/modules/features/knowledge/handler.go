@@ -19,6 +19,7 @@ import (
 
 type Handler struct {
 	privateSources *privateSourcePreflight
+	privateIndex   *PrivateIndexService
 	userVerifier   identityport.SessionVerifier
 	userStrength   identityport.SessionStrengthReader
 	service        *CollectionService

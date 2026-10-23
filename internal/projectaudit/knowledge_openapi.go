@@ -1,6 +1,9 @@
 package projectaudit
 
 func knowledgeProfile(operation string) (operationProfile, bool) {
+	if p, ok := privateIndexProfile(operation); ok {
+		return p, true
+	}
 	switch operation {
 	case "http.knowledge.private.source.preflight":
 		return operationProfile{RequestSchema: "KnowledgePrivateSourcePreflightRequest", ResponseSchema: "KnowledgePrivateSourcePreflight", AdditionalErrors: []string{"401", "403", "404", "409", "503"}}, true
@@ -92,7 +95,7 @@ func knowledgeOpenAPIPathParameter(operation, name string) string {
 }
 
 func knowledgeOpenAPISchemas() string {
-	return `    KnowledgePrivateSourcePreflightRequest:
+	return privateIndexSchemas() + `    KnowledgePrivateSourcePreflightRequest:
       type: object
       additionalProperties: false
       description: Read-only private source preflight using a current User JWT and live session. Strict JSON at most 1024 bytes; no URL query parameters, duplicate, null, unknown fields or invalid Unicode. IDs are canonical positive decimal int64 strings, maximum 9223372036854775807. The current document owner, live version, document lifecycle and both knowledge and personal-documents features are rechecked. This does not select a source, extract bytes, create an index or authorize any future request.
@@ -103,14 +106,14 @@ func knowledgeOpenAPISchemas() string {
     KnowledgePrivateSourcePreflight:
       type: object
       additionalProperties: false
-      description: Metadata-only refusal. All formats remain unavailable in this slice; protected private storage and format extraction are not implemented. No body, title, owner, storage object, digest or key is returned. Unsupported formats are distinguished from unavailable protected private storage. Re-run current preflight after any document change; a successful preflight response is not an indexing grant.
+      description: Metadata-only readiness. Private intake is available only with protected external key custody, PostgreSQL and current supported source facts. No body, title, owner, storage object, digest or key is returned. Unsupported formats are distinguished from unavailable protected private storage. Re-run current preflight after any document change; a successful preflight response is not an indexing grant.
       required: [document_id, version_id, format, can_index, reason]
       properties:
         document_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
         version_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
         format: {type: string, enum: [text, markdown, campusdoc, pdf, docx]}
-        can_index: {type: boolean, enum: [false]}
-        reason: {type: string, enum: [private_storage_unavailable, unsupported_format]}
+        can_index: {type: boolean}
+        reason: {type: string, enum: [ready, private_storage_unavailable, unsupported_format]}
     KnowledgeMCPRequest:
       type: object
       additionalProperties: false
