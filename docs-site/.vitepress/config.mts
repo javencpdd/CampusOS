@@ -40,6 +40,7 @@ export default defineConfig({
           { text: '项目介绍', link: '/guide/introduction' },
           { text: '系统架构', link: '/guide/architecture' },
           { text: '模块与插件边界', link: '/guide/module-plugin-resource-boundaries' },
+          { text: '受管 AI 模型', link: '/guide/managed-ai' },
           { text: '数据目录', link: '/reference/data-layout' },
         ],
       },

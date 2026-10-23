@@ -190,6 +190,11 @@ func Quarantine(ctx context.Context, c *pgxpool.Conn, state State) error {
 	defer tx.Rollback(ctx)
 	statements := []string{
 		`DO $$ BEGIN IF to_regclass('public.knowledge_private_sources') IS NOT NULL THEN DELETE FROM knowledge_private_sources; END IF; END $$`,
+		`DO $$ BEGIN IF to_regclass('public.ai_model_profiles') IS NOT NULL THEN
+         UPDATE ai_model_profiles SET enabled=false,revision=nextval('ai_gateway_epoch_seq');
+         UPDATE ai_model_bindings SET revision=nextval('ai_gateway_epoch_seq');
+         UPDATE ai_model_runs SET lease_until_ms=1 WHERE state IN ('reserved','dispatched');
+         END IF; END $$`,
 		`UPDATE users SET auth_version=auth_version+1`,
 		`UPDATE admin_accounts SET version=version+1,updated_at=now()`,
 		`UPDATE sessions SET revoked_at=now(),revoke_reason='whole_restore',updated_at=now() WHERE revoked_at IS NULL`,
@@ -247,6 +252,31 @@ func inventory(ctx context.Context, q queryer) (json.RawMessage, string, error) 
  )::text`).Scan(&raw)
 	if e != nil {
 		return nil, "", e
+	}
+	// Keep older recovery schemas usable. AI authority and accounting enter the
+	// exact review digest only when the forward migration is present. No Secret
+	// ciphertext, key reference, prompt or output belongs in this inventory.
+	var hasAI bool
+	if e = q.QueryRow(ctx, `SELECT to_regclass('public.ai_model_profiles') IS NOT NULL`).Scan(&hasAI); e != nil {
+		return nil, "", e
+	}
+	if hasAI {
+		var facts []byte
+		if e = q.QueryRow(ctx, `SELECT jsonb_build_object(
+         'profiles',(SELECT COALESCE(jsonb_agg(jsonb_build_object('id',id,'revision',revision,'definition',definition,'model',model,'enabled',enabled,'fingerprint',fingerprint) ORDER BY id),'[]') FROM ai_model_profiles),
+         'bindings',(SELECT COALESCE(jsonb_agg(to_jsonb(b) ORDER BY name),'[]') FROM ai_model_bindings b),
+         'budgets',(SELECT COALESCE(jsonb_agg(to_jsonb(b) ORDER BY profile_id),'[]') FROM ai_model_budgets b)
+         )::text`).Scan(&facts); e != nil {
+			return nil, "", e
+		}
+		var combined map[string]json.RawMessage
+		if e = json.Unmarshal(raw, &combined); e != nil {
+			return nil, "", e
+		}
+		combined["managed_ai"] = facts
+		if raw, e = json.Marshal(combined); e != nil {
+			return nil, "", e
+		}
 	}
 	sum := sha256.Sum256(raw)
 	return raw, hex.EncodeToString(sum[:]), nil

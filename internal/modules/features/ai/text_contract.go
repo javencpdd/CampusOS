@@ -28,7 +28,7 @@ func textDefinition() Definition {
 	return Definition{Version: TextContractVersion, ID: "builtin.openai-compatible.text", InputModalities: []string{"text"}, OutputModalities: []string{"text"}}
 }
 func (d Definition) validate() error {
-	if d.Version != TextContractVersion || d.ID != "builtin.openai-compatible.text" || len(d.InputModalities) != 1 || d.InputModalities[0] != "text" || len(d.OutputModalities) != 1 || d.OutputModalities[0] != "text" || d.Tools || d.Streaming {
+	if d.Version != TextContractVersion || (d.ID != "builtin.openai-compatible.text" && d.ID != "builtin.local-openai.text") || len(d.InputModalities) != 1 || d.InputModalities[0] != "text" || len(d.OutputModalities) != 1 || d.OutputModalities[0] != "text" || d.Tools || d.Streaming {
 		return newGatewayError(ErrUnsupportedCapability, "unsupported AI text contract", nil)
 	}
 	return nil

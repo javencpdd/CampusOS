@@ -50,4 +50,5 @@ V12-11 单集合机器POST检索、独立端点/集合授权、返回前当前�
 - [我的私人知识操作说明](../../docs-site/guide/private-knowledge.md)：选入、检索、重试、撤回与 Linux 保护目录准备。
 - [v1.2私人知识来源预检合同](v1.2私人知识来源预检合同.md)：.150 首片历史快照；当前条件 readiness 见上方合同，预检不记录同意或创建任务。
 
-- [v1.2 AI文本能力与错误边界合同](v1.2AI文本能力与错误边界合同.md)：14a首片的text-only Definition、封闭协议、错误隔离与取消；完整Profile/预算/Egress与RAG仍待后续。
+- [v1.2 受管AI模型与执行合同](v1.2受管AI模型与执行合同.md)：14a完整受管Profile/Instance/Binding、双路径、Secret/Egress、请求预算/事件与恢复边界。
+- [v1.2 AI文本能力与错误边界合同](v1.2AI文本能力与错误边界合同.md)：14a首片的text-only Definition、封闭协议、错误隔离与取消；首片历史快照；当前受管执行见新合同，RAG属14b。

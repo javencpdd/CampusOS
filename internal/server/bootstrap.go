@@ -278,7 +278,13 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	secondhandModule := secondhand.NewModule(secondhand.ModuleConfig{
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(secondhand.FeatureID) },
 	})
-	aiModule := ai.NewModule(s.cfg.AI)
+	aiModule := ai.NewModule(s.cfg.AI, func() bool {
+		if !s.cfg.AI.Enabled || features.Registry() == nil {
+			return false
+		}
+		state, ok := features.Registry().Get(ai.FeatureID)
+		return ok && state.Enabled && state.DesiredEnabled
+	})
 	webhookModule := webhook.NewModule(metricsCollector, webhook.Config{EgressPolicy: webhook.EgressPolicy{
 		AllowedHosts:        s.cfg.Webhook.AllowedHosts,
 		AllowPrivateNetwork: s.cfg.Webhook.AllowPrivateNetwork,

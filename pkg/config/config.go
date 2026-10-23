@@ -106,6 +106,14 @@ type DeploymentConfig struct {
 }
 
 type AIConfig struct {
+	LocalBaseURL         string
+	LocalModel           string
+	LocalAPIKey          string
+	ActiveKeyID          string
+	EncryptionKeys       string
+	DefaultProfile       string
+	BudgetRequests       int
+	MaxOutputTokens      int
 	Enabled              bool
 	Provider             string
 	BaseURL              string
@@ -210,6 +218,14 @@ func Load() *Config {
 			Environment:  environment,
 		},
 		AI: AIConfig{
+			LocalBaseURL:         get("AI_LOCAL_BASE_URL", "http://127.0.0.1:11434/v1"),
+			LocalModel:           get("AI_LOCAL_MODEL", ""),
+			LocalAPIKey:          get("AI_LOCAL_API_KEY", ""),
+			ActiveKeyID:          get("AI_ACTIVE_KEY_ID", ""),
+			EncryptionKeys:       get("AI_ENCRYPTION_KEYS", ""),
+			DefaultProfile:       get("AI_DEFAULT_PROFILE", "remote-chat"),
+			BudgetRequests:       getInt("AI_BUDGET_REQUESTS", 10000),
+			MaxOutputTokens:      getInt("AI_MAX_OUTPUT_TOKENS", 512),
 			Enabled:              get("AI_ENABLED", "false") == "true",
 			Provider:             get("AI_PROVIDER", "openai-compatible"),
 			BaseURL:              get("AI_BASE_URL", "https://api.openai.com/v1"),

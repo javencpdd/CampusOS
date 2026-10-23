@@ -5949,17 +5949,17 @@
       "handler": "aIHandler.GetStatus",
       "module_owner": "feature.ai-gateway",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+current-admin-session+permission",
       "permission": "ai:read",
       "permission_code": "ai.ai.read",
-      "operation_code": "http.get.api.v1.ai.status",
+      "operation_code": "http.ai.status",
       "legacy_aliases": [
         "http.get.api.v1.ai.status",
         "httpapi.get.api.v1.ai.status"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "ai-managed",
+      "scope": "ai.profile_inventory/all",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -5968,17 +5968,74 @@
       "handler": "aIHandler.ListLogs",
       "module_owner": "feature.ai-gateway",
       "audience": "admin",
-      "auth": "jwt+admin-account+permission",
+      "auth": "jwt+current-admin-session+permission",
       "permission": "ai:read",
       "permission_code": "ai.ai.read",
-      "operation_code": "http.get.api.v1.ai.logs",
+      "operation_code": "http.ai.logs",
       "legacy_aliases": [
         "http.get.api.v1.ai.logs",
         "httpapi.get.api.v1.ai.logs"
       ],
-      "ownership": "none",
-      "scope": "global",
-      "audit": "request-log-read",
+      "ownership": "ai-managed",
+      "scope": "ai.profile_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/profiles",
+      "handler": "aIHandler.Profiles",
+      "module_owner": "feature.ai-gateway",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "ai:read",
+      "permission_code": "ai.ai.read",
+      "operation_code": "http.ai.profiles",
+      "legacy_aliases": [
+        "http.get.api.v1.ai.profiles",
+        "httpapi.get.api.v1.ai.profiles"
+      ],
+      "ownership": "ai-managed",
+      "scope": "ai.profile_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/bindings/chat",
+      "handler": "aIHandler.BindChat",
+      "module_owner": "feature.ai-gateway",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "ai:manage",
+      "permission_code": "ai.ai.manage",
+      "operation_code": "http.ai.binding.change",
+      "legacy_aliases": [
+        "http.post.api.v1.ai.bindings.chat",
+        "httpapi.post.api.v1.ai.bindings.chat"
+      ],
+      "ownership": "ai-managed",
+      "scope": "ai.profile_inventory/all",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/profiles/:profile_id/state",
+      "handler": "aIHandler.ProfileState",
+      "module_owner": "feature.ai-gateway",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "ai:manage",
+      "permission_code": "ai.ai.manage",
+      "operation_code": "http.ai.profile.state",
+      "legacy_aliases": [
+        "http.post.api.v1.ai.profiles.profile_id.state",
+        "httpapi.post.api.v1.ai.profiles.profile_id.state"
+      ],
+      "ownership": "ai-managed",
+      "scope": "ai.profile_inventory/all",
+      "audit": "required-command+outbox",
       "stability": "experimental"
     },
     {

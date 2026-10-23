@@ -233,6 +233,14 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
 	}
+	if strings.HasPrefix(operation, "http.ai.") {
+		descriptor.Auth = "jwt+current-admin-session+permission"
+		descriptor.Audit = "none"
+		if method != "GET" {
+			descriptor.Auth += "+recent-mfa+browser-csrf"
+			descriptor.Audit = "required-command+outbox"
+		}
+	}
 	if strings.HasPrefix(operation, "http.knowledge.") {
 		descriptor.Auth = "none+current-origin-policy"
 		descriptor.Audit = "none"

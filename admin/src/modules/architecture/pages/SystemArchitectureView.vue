@@ -10,9 +10,9 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000034（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000035（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
-        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列）</el-tag
+        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列/受管AI模型）</el-tag
       >
     </section>
 
@@ -331,6 +331,12 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+  {name: "ai_model_profiles", title: "受管模型 Profile", domain: "integration", purpose: "固定部署定义、模型、精确端点、启停与非复用修订；无调用方覆盖。", fields: ["id", "revision", "definition", "model", "enabled", "secret_ref", "timeout_ms", "max_tokens", "max_concurrent"], migration: "000035", relationshipNote: "secret_ref逻辑引用ai_model_secrets.id，双向绑定由AEAD和服务复核；定义为编译内置，不依赖插件。"},
+  {name: "ai_model_secrets", title: "受管 AI Secret 密文", domain: "integration", purpose: "独立AI密钥环加密凭据，AAD绑定Profile、定义、精确端点、用途和引用。", fields: ["id", "profile_id", "key_id", "nonce", "ciphertext", "endpoint", "purpose"], migration: "000035", relationshipNote: "profile_id外键Profile；仅Broker执行边界解密，主密钥不入数据库或备份。"},
+  {name: "ai_model_bindings", title: "Chat 模型绑定", domain: "integration", purpose: "唯一chat绑定与非复用CAS版本，当前Admin/MFA变更取消旧实例。", fields: ["name", "profile_id", "revision"], migration: "000035", relationshipNote: "profile_id外键Profile；重启保留选择，不从默认配置覆盖。"},
+  {name: "ai_model_budgets", title: "持久请求单位预算", domain: "integration", purpose: "每Profile预留和结算，分发后未知结果保守收费1；令牌不是货币账单。", fields: ["profile_id", "quota", "charged", "reserved"], migration: "000035", relationshipNote: "profile_id外键Profile，锁序binding→profile→budget→run；恢复不清零。"},
+  {name: "ai_model_runs", title: "受管模型执行元数据", domain: "integration", purpose: "仅owner逻辑引用、Profile/Binding修订、Instance、状态、租约与用量；无提示词和答案。", fields: ["id", "owner_id", "profile_id", "profile_revision", "binding_revision", "instance_id", "state", "lease_until_ms", "charged_units", "usage_known"], migration: "000035", relationshipNote: "profile_id外键Profile；owner_id为当前User逻辑引用，逐次会话复核，无Admin/机器同号复用。"},
+  {name: "ai_model_run_events", title: "受管执行有序事件", domain: "integration", purpose: "每run最多started/usage/terminal三项版本化元数据，禁止改写历史。", fields: ["run_id", "ordinal", "kind"], migration: "000035", relationshipNote: "run_id外键执行；事件顺序及正文脱敏由事务和服务共同保障，取消不重放模型。"},
  {name:"knowledge_private_sources",title:"私人知识逐项同意与密文",domain:"community",purpose:"本人逐项选择的精确原来源修订与AEAD密文；无默认入库或外发同意。",fields:["id","owner_user_id","kind","source_id","revision","format","consent_version","state","nonce","ciphertext"],migration:"000034",relationshipNote:"owner_user_id外键users；来源为逻辑引用。独立外置每选择密钥，不进入应用备份；先退役删钥再撤回。新请求逐次原域复核，非空拒绝down。"},
  {name:"knowledge_private_tasks",title:"私人密文索引任务",domain:"community",purpose:"只调度已加密快照的发布与当前事实对账；不持有User凭据或读取原始字节。",fields:["source_id","consent_version","state","attempts","lease_token","lease_until_ms","available_at_ms","error_code"],migration:"000034",relationshipNote:"source_id外键私人选择并级联清理；源行→任务锁序、单赢家租约、5次尝试与显式本人重试，不复用围栏。"},
   {name: "knowledge_index_jobs", title: "知识索引执行与断点", domain: "community", purpose: "每集合独立保存请求代次、租约围栏、有限重试、来源/成员分页断点和已完成代次；周期复核消失目标。", fields: ["id","data","facts_version","state","available_at_ms","lease_until_ms","lease_token"], migration: "000033", relationshipNote: "id逻辑引用集合，无FK以保留消失目标清理任务；请求表仍不可变pending，只有完成代次可进入当前来源复核。非空拒绝down。"},
@@ -1945,6 +1951,11 @@ const databaseTables: DbTable[] = [
 ];
 
 const relations: Relation[] = [
+  {id: "ai_model_profiles-ai_model_secrets", source: "ai_model_profiles", target: "ai_model_secrets", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_bindings", source: "ai_model_profiles", target: "ai_model_bindings", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_budgets", source: "ai_model_profiles", target: "ai_model_budgets", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_runs", source: "ai_model_profiles", target: "ai_model_runs", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_runs-ai_model_run_events", source: "ai_model_runs", target: "ai_model_run_events", sourceCardinality: "1", targetCardinality: "N", label: "run_id FK", domains: ["integration"]},
  {id:"knowledge-collection-index-job",source:"knowledge_collections",target:"knowledge_index_jobs",sourceCardinality:"1",targetCardinality:"1",label:"逻辑集合执行任务（无FK，缺失时仍清理）",domains:["community"]},
  {id:"private-source-owner",source:"users",target:"knowledge_private_sources",sourceCardinality:"1",targetCardinality:"N",label:"私人选择owner外键",domains:["identity","community"]},
  {id:"private-source-task",source:"knowledge_private_sources",target:"knowledge_private_tasks",sourceCardinality:"1",targetCardinality:"1",label:"同意修订与级联任务",domains:["community"]},
@@ -3011,6 +3022,7 @@ const relations: Relation[] = [
 ];
 
 const storageRows = [
+ {path:"PostgreSQL ai_model_* / 独立AI密钥",category:"受管模型与预算",type:"primary",purpose:"持久模型绑定、AEAD凭据密文、请求单位预算与执行事件，无Prompt或答案。",contents:["主密钥AI_ENCRYPTION_KEYS由部署单独托管，不进入应用备份","恢复隔离停用Profile并推进绑定；只结算未决请求，不重放、不清零预算"],note:"本地模型由运维预先运行；网关固定loopback端点，不安装模型或启动守护进程。缺钥/错钥失败关闭。"},
  {path:"KNOWLEDGE_PRIVATE_KEY_DIR（外置目录）",category:"私人索引密钥",type:"primary",purpose:"Linux0700目录/0600每选择密钥和不可复用的退役标记，位于所有应用备份来源之外。",contents:["每次本人选择独立AES-GCM密钥；数据库/WAL/应用备份只含密文", "撤回先fsync退役标记并删钥，旧数据库恢复不能恢复已撤回密钥", "退役标记永久保留；不保存正文或owner名称，密钥不进入应用备份"],note:"未配置/权限不足/缺钥/Windows未验收时禁止私人索引；丢钥需本人重新选择重建，不从旧备份恢复授权或退役密钥。"},
  { path: "PostgreSQL / plugin_v5_event_deliveries", category: "v5 事件证据", type: "primary", purpose: "独立于Core Outbox的元数据投递及重试证据。", contents: ["白名单资源引用、状态、修订与5分钟期限", "实例代次、单赢家租约、5次尝试与死信"], note: "禁止正文/Prompt/Secret或请求自证提交；备份与v5目录一同保留，重启后旧凭据和发布不恢复。" },
  { path: "PLUGIN_DATA_DIR/v5/", category: "v5 受管插件文件", type: "primary", purpose: "完整签名包、按owner与代次隔离的私有准备配置及数据。", contents: ["packages/<sha256>.tar.gz：不可变完整包，不解压到宿主源码", "prepared/<publisher>/<key>/system|user-ID/<generation>.json：私有配置快照，不经HTTP公开", "data/<publisher>/<key>/system|user-ID：初始私有数据视图，卸载默认保留", "checkpoints/<publisher>/<key>/system|user-ID/<operation-ID>.json：摘要固定的版本/配置/有界私有文件检查点，无Grant或Consent", "restored-data/<publisher>/<key>/system|user-ID/<generation>/：独立恢复视图，真实ready后与版本原子切换数据库指针"], note: "与000026/27数据库作为同一备份集合；显式owner purge清理本owner的配置、原数据、恢复视图和检查点；release GC须无current/desired/回退检查点的已安装引用；插件检查点不恢复Grant/Consent；整库恢复另须新认证代次、废止旧凭据及按盘点指纹授权重核；不自动恢复插件授权或出站。" },
@@ -3131,6 +3143,7 @@ const storageRows = [
 ];
 
 const migrations = [
+  {version: "000035", file: "000035_ai_managed_gateway.up.sql", title: "v1.2 受管 AI 模型与执行", scope: "内置文本模型", summary: "六表持久Profile/Secret/Binding/请求预算/执行/顺序事件；独立Admin管理权限。非空拒绝down，保留非复用版本序列。", tables: ["ai_model_profiles", "ai_model_secrets", "ai_model_bindings", "ai_model_budgets", "ai_model_runs", "ai_model_run_events"]},
  {version:"000034",file:"000034_knowledge_private_index.up.sql",title:"v1.2 私人来源与加密索引任务",scope:"Knowledge 本人逐项选择",summary:"默认不入库、每选择AEAD密文与外置密钥、耐久任务及非复用租约围栏；撤回/源失效删钥和级联清理。非空拒绝down。",tables:["knowledge_private_sources","knowledge_private_tasks"]},
  {version:"000033",file:"000033_knowledge_index_execution.up.sql",title:"v1.2 公开知识索引执行与投影",scope:"Knowledge 有界分页对账",summary:"独立任务租约/有限重试/持久断点和公开文本投影；来源/规则修订与Profile指纹、原子整页提交、周期消失目标清理。非空拒绝down，保留版本序列高水位，不改旧表。",tables:["knowledge_index_jobs","knowledge_index_documents"]},
  {version:"000032",file:"000032_knowledge_index_backfill.up.sql",title:"v1.2 知识元数据补扫断点",scope:"Knowledge 周期补扫",summary:"两个逻辑目标域分别按ID分页，当前版本请求和断点同事务；完成后等待再从头重扫，无正文/授权/事件游标，非空拒绝down。",tables:["knowledge_index_backfill_checkpoints"]},

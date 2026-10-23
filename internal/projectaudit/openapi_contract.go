@@ -220,6 +220,9 @@ func profileFor(route RouteContract) operationProfile {
 	if current, ok := knowledgeProfile(route.OperationCode); ok {
 		profile = current
 	}
+	if current, ok := aiProfile(route.OperationCode); ok {
+		profile = current
+	}
 	if route.Handler == "pluginV5Handler.Mutate" && route.Audience == "admin" {
 		profile.RequestSchema = "PluginV5AdminCommand"
 	}
@@ -271,7 +274,7 @@ func openAPIComponents() string {
       name: Authorization
       description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
-` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
+` + integrationOpenAPISchemas() + knowledgeOpenAPISchemas() + aiOpenAPISchemas() + v5InstallationOpenAPISchemas() + `    EmptyObject:
       type: object
       additionalProperties: false
     AdminDomainLoginRequest:

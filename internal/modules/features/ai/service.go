@@ -9,6 +9,7 @@ import (
 )
 
 type Service struct {
+	managed        *ManagedService
 	enabled        bool
 	ready          bool
 	provider       string
@@ -76,6 +77,9 @@ func NewServiceFromConfig(cfg config.AIConfig) (*Service, error) {
 }
 
 func (s *Service) ChatCompletion(ctx context.Context, request ChatRequest) (*ChatResponse, error) {
+	if s != nil && s.managed != nil {
+		return nil, ErrManagedDenied
+	}
 	if s == nil || !s.ready || s.gateway == nil {
 		return nil, newGatewayError(ErrProviderConfig, "AI Gateway is not ready", nil)
 	}
@@ -85,6 +89,33 @@ func (s *Service) ChatCompletion(ctx context.Context, request ChatRequest) (*Cha
 func (s *Service) Status() ServiceStatus {
 	if s == nil {
 		return ServiceStatus{Enabled: false, Ready: false}
+	}
+	if s.managed != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		status := ServiceStatus{Enabled: s.enabled, Provider: "managed", Ready: s.managed.check(ctx) == nil}
+		if status.Ready {
+			b, e := s.managed.binding(ctx, false)
+			if e == nil {
+				p, e := s.managed.profile(ctx, b.ProfileID, false)
+				if e == nil && p.Enabled {
+					d := textDefinition()
+					d.ID = p.Definition
+					status.Definition = &d
+					secret, e := s.managed.secret(ctx, p)
+					clear(secret)
+					status.Ready = e == nil
+				} else {
+					status.Ready = false
+				}
+			} else {
+				status.Ready = false
+			}
+		}
+		if !status.Ready {
+			status.Error = "ai.managed_unavailable"
+		}
+		return status
 	}
 	logs, _ := s.ListLogs(context.Background(), 0)
 	status := ServiceStatus{

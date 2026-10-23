@@ -67,7 +67,7 @@ func (m *Module) Start(context.Context) error {
 	if err != nil {
 		return err
 	}
-	aiService, err := lookup[*ai.Service](m.app, "integration.ai.service")
+	aiService, err := lookup[ai.StatusReader](m.app, ai.PortStatus)
 	if err != nil {
 		return err
 	}

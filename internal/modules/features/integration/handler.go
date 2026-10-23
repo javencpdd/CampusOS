@@ -50,7 +50,7 @@ type Handler struct {
 	pool          *pgxpool.Pool
 	cfg           *config.Config
 	plugins       pluginport.Catalog
-	aiSvc         *ai.Service
+	aiSvc         ai.StatusReader
 	spaceSvc      *space.Service
 	webhookSvc    *webhook.Service
 	mcpSvc        *mcp.Service
@@ -75,7 +75,7 @@ func WithPluginCatalog(catalog pluginport.Catalog) Option {
 	return func(h *Handler) { h.plugins = catalog }
 }
 
-func WithAIService(service *ai.Service) Option {
+func WithAIService(service ai.StatusReader) Option {
 	return func(h *Handler) { h.aiSvc = service }
 }
 

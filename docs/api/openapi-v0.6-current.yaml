@@ -3161,17 +3161,64 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/ai/bindings/chat:
+    post:
+      operationId: aIHandler_BindChat
+      summary: POST /api/v1/ai/bindings/chat
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: ai-managed
+      x-campusos-module-owner: feature.ai-gateway
+      x-campusos-scope: ai.profile_inventory/all
+      x-campusos-operation: http.ai.binding.change
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: ai.ai.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIManagedBind'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AIManagedUpdated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/v1/ai/logs:
     get:
       operationId: aIHandler_ListLogs
       summary: GET /api/v1/ai/logs
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: ai-managed
       x-campusos-module-owner: feature.ai-gateway
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.ai.logs
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: ai.profile_inventory/all
+      x-campusos-operation: http.ai.logs
+      x-campusos-auth: jwt+current-admin-session+permission
       x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
@@ -3188,17 +3235,103 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/ai/profiles:
+    get:
+      operationId: aIHandler_Profiles
+      summary: GET /api/v1/ai/profiles
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: ai-managed
+      x-campusos-module-owner: feature.ai-gateway
+      x-campusos-scope: ai.profile_inventory/all
+      x-campusos-operation: http.ai.profiles
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: ai.ai.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AIManagedInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/ai/profiles/{profile_id}/state:
+    post:
+      operationId: aIHandler_ProfileState
+      summary: POST /api/v1/ai/profiles/:profile_id/state
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: ai-managed
+      x-campusos-module-owner: feature.ai-gateway
+      x-campusos-scope: ai.profile_inventory/all
+      x-campusos-operation: http.ai.profile.state
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: ai.ai.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIManagedState'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AIManagedUpdated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /api/v1/ai/status:
     get:
       operationId: aIHandler_GetStatus
       summary: GET /api/v1/ai/status
       tags: [admin]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: ai-managed
       x-campusos-module-owner: feature.ai-gateway
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.ai.status
-      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-scope: ai.profile_inventory/all
+      x-campusos-operation: http.ai.status
+      x-campusos-auth: jwt+current-admin-session+permission
       x-campusos-permission: ai.ai.read
       security:
         - bearerAuth: []
@@ -15994,6 +16127,66 @@ components:
       required: [accepted]
       properties:
         accepted: {type: boolean, enum: [true]}
+    AIManagedInventory:
+      type: object
+      additionalProperties: false
+      required: [profiles, bindings, budgets]
+      properties:
+        profiles: {type: array, maxItems: 2, items: {$ref: '#/components/schemas/AIManagedProfile'}}
+        bindings: {type: array, maxItems: 1, items: {$ref: '#/components/schemas/AIManagedBinding'}}
+        budgets: {type: array, maxItems: 2, items: {$ref: '#/components/schemas/AIManagedBudget'}}
+    AIManagedProfile:
+      type: object
+      additionalProperties: false
+      required: [id, revision, definition, model, enabled, timeout_ms, max_tokens, max_concurrent]
+      properties:
+        id: {type: string, enum: [remote-chat, local-chat]}
+        revision: {type: string, pattern: '^[1-9][0-9]*$'}
+        definition: {type: string, enum: [builtin.openai-compatible.text, builtin.local-openai.text]}
+        model: {type: string, maxLength: 256}
+        enabled: {type: boolean}
+        timeout_ms: {type: integer, minimum: 100, maximum: 60000}
+        max_tokens: {type: integer, minimum: 1, maximum: 65536}
+        max_concurrent: {type: integer, minimum: 1, maximum: 32}
+    AIManagedBinding:
+      type: object
+      additionalProperties: false
+      required: [name, profile_id, revision]
+      properties:
+        name: {type: string, enum: [chat]}
+        profile_id: {type: string, enum: [remote-chat, local-chat]}
+        revision: {type: string, pattern: '^[1-9][0-9]*$'}
+    AIManagedBudget:
+      type: object
+      additionalProperties: false
+      required: [profile_id, quota, charged, reserved]
+      description: Durable request units; one charged per dispatched invocation including uncertain outcomes. Token usage is descriptive, not currency pricing.
+      properties:
+        profile_id: {type: string, enum: [remote-chat, local-chat]}
+        quota: {type: integer, minimum: 1, maximum: 1000000000}
+        charged: {type: integer, minimum: 0}
+        reserved: {type: integer, minimum: 0}
+    AIManagedBind:
+      type: object
+      additionalProperties: false
+      required: [profile_id, binding_version, profile_version]
+      properties:
+        profile_id: {type: string, enum: [remote-chat, local-chat]}
+        binding_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        profile_version: {type: string, pattern: '^[1-9][0-9]*$'}
+    AIManagedState:
+      type: object
+      additionalProperties: false
+      required: [version, enabled]
+      properties:
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        enabled: {type: boolean}
+    AIManagedUpdated:
+      type: object
+      additionalProperties: false
+      required: [updated]
+      properties:
+        updated: {type: boolean, enum: [true]}
     PluginV5AdminCommand:
       oneOf:
       - type: object

@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e;tables=124;foreign_keys=138 -->
+<!-- campusos-er:schema_sha256=d62dfe20f6d8765710b825bfed42c0f5bb96c56b61bb72eff3341e8f8f5386af;tables=130;foreign_keys=143 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**124**
-- 物理外键：**138**
-- 一对一/可选一对一关系：**17**
-- 一对多关系：**121**
+- 实体表：**130**
+- 物理外键：**143**
+- 一对一/可选一对一关系：**18**
+- 一对多关系：**125**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e`
+- Schema 指纹：`d62dfe20f6d8765710b825bfed42c0f5bb96c56b61bb72eff3341e8f8f5386af`
 
 ## 1. 生成范围与判定规则
 
@@ -51,6 +51,7 @@
 - `000032_knowledge_index_backfill.up.sql`
 - `000033_knowledge_index_execution.up.sql`
 - `000034_knowledge_private_index.up.sql`
+- `000035_ai_managed_gateway.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -139,6 +140,12 @@
 | 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 4 |
 | 插件生态与授权 | `plugins` | 24 | `id` | 1 | 2 |
 | 平台可靠性与集成 | `ai_call_logs` | 12 | `id` | 0 | 0 |
+| 平台可靠性与集成 | `ai_model_bindings` | 3 | `name` | 1 | 0 |
+| 平台可靠性与集成 | `ai_model_budgets` | 4 | `profile_id` | 1 | 0 |
+| 平台可靠性与集成 | `ai_model_profiles` | 11 | `id` | 0 | 4 |
+| 平台可靠性与集成 | `ai_model_run_events` | 3 | `run_id, ordinal` | 1 | 0 |
+| 平台可靠性与集成 | `ai_model_runs` | 15 | `id` | 1 | 1 |
+| 平台可靠性与集成 | `ai_model_secrets` | 7 | `id` | 1 | 0 |
 | 平台可靠性与集成 | `audit_logs` | 12 | `id` | 0 | 0 |
 | 平台可靠性与集成 | `builtin_feature_states` | 6 | `feature_id` | 0 | 0 |
 | 平台可靠性与集成 | `configurations` | 11 | `id` | 1 | 0 |
@@ -193,6 +200,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `admin_accounts` | `admin_credentials` | `admin_credentials_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..1 | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `admin_accounts` | `admin_mfa_totp` | `admin_mfa_totp_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..1 | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
+| `ai_model_profiles` | `ai_model_budgets` | `ai_model_budgets_profile_id_fkey` | `profile_id` → `id` | 父 1 : 子 0..1 | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `identity_email_challenges` | `identity_account_recovery_cases` | `fk_identity_recovery_case_challenge` | `challenge_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `accounts` | `identity_admin_accounts` | `fk_identity_admin_account_credential` | `credential_account_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_admin_accounts` | `fk_identity_admin_account_user` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -222,6 +230,10 @@
 | `admin_roles` | `admin_role_bindings` | `admin_role_bindings_role_id_fkey` | `role_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `admin_roles` | `admin_role_permissions` | `admin_role_permissions_role_id_fkey` | `role_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `admin_accounts` | `admin_sessions` | `admin_sessions_account_id_fkey` | `account_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `ai_model_profiles` | `ai_model_bindings` | `ai_model_bindings_profile_id_fkey` | `profile_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `ai_model_runs` | `ai_model_run_events` | `ai_model_run_events_run_id_fkey` | `run_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `ai_model_profiles` | `ai_model_runs` | `ai_model_runs_profile_id_fkey` | `profile_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `ai_model_profiles` | `ai_model_secrets` | `ai_model_secrets_profile_id_fkey` | `profile_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `user_assets` | `asset_lifecycle_audits` | `fk_asset_lifecycle_audits_asset` | `asset_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `users` | `asset_lifecycle_audits` | `fk_asset_lifecycle_audits_actor` | `actor_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `categories` | `categories` | `fk_categories_parent` | `parent_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -2182,6 +2194,123 @@
 | `error_message` | `text` | NN | 否 | `''::text` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `deleted_at` | `timestamptz` | — | 是 | `—` |
+
+#### `ai_model_bindings`
+
+- 主键：`name`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `name` | `text` | PK | 是 | `—` |
+| `profile_id` | `text` | FK/NN | 否 | `—` |
+| `revision` | `bigint` | NN | 否 | `nextval('ai_gateway_epoch_seq')` |
+
+外键明细：
+
+- `ai_model_bindings_profile_id_fkey`：`ai_model_bindings(profile_id)` → `ai_model_profiles(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `ai_model_budgets`
+
+- 主键：`profile_id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `profile_id` | `text` | PK/FK | 是 | `—` |
+| `quota` | `bigint` | NN | 否 | `—` |
+| `charged` | `bigint` | NN | 否 | `0` |
+| `reserved` | `bigint` | NN | 否 | `0` |
+
+外键明细：
+
+- `ai_model_budgets_profile_id_fkey`：`ai_model_budgets(profile_id)` → `ai_model_profiles(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `ai_model_profiles`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：4
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `revision` | `bigint` | NN | 否 | `nextval('ai_gateway_epoch_seq')` |
+| `definition` | `text` | NN | 否 | `—` |
+| `model` | `text` | NN | 否 | `—` |
+| `endpoint` | `text` | NN | 否 | `—` |
+| `fingerprint` | `text` | NN | 否 | `—` |
+| `secret_ref` | `text` | NN | 否 | `—` |
+| `enabled` | `boolean` | NN | 否 | `true` |
+| `timeout_ms` | `bigint` | NN | 否 | `—` |
+| `max_tokens` | `integer` | NN | 否 | `—` |
+| `max_concurrent` | `integer` | NN | 否 | `—` |
+
+#### `ai_model_run_events`
+
+- 主键：`run_id, ordinal`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `run_id` | `text` | PK/FK/NN | 否 | `—` |
+| `ordinal` | `integer` | PK/NN | 否 | `—` |
+| `kind` | `text` | NN | 否 | `—` |
+
+外键明细：
+
+- `ai_model_run_events_run_id_fkey`：`ai_model_run_events(run_id)` → `ai_model_runs(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `ai_model_runs`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `owner_id` | `text` | NN | 否 | `—` |
+| `profile_id` | `text` | FK/NN | 否 | `—` |
+| `profile_revision` | `bigint` | NN | 否 | `—` |
+| `binding_revision` | `bigint` | NN | 否 | `—` |
+| `instance_id` | `text` | NN | 否 | `—` |
+| `state` | `text` | NN | 否 | `—` |
+| `lease_until_ms` | `bigint` | NN | 否 | `—` |
+| `charged_units` | `integer` | — | 是 | `—` |
+| `usage_known` | `boolean` | NN | 否 | `false` |
+| `prompt_tokens` | `integer` | NN | 否 | `0` |
+| `completion_tokens` | `integer` | NN | 否 | `0` |
+| `total_tokens` | `integer` | NN | 否 | `0` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+| `error_code` | `text` | NN | 否 | `''` |
+
+外键明细：
+
+- `ai_model_runs_profile_id_fkey`：`ai_model_runs(profile_id)` → `ai_model_profiles(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `ai_model_secrets`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `profile_id` | `text` | FK/NN | 否 | `—` |
+| `key_id` | `text` | NN | 否 | `—` |
+| `nonce` | `bytea` | NN | 否 | `—` |
+| `ciphertext` | `bytea` | NN | 否 | `—` |
+| `endpoint` | `text` | NN | 否 | `—` |
+| `purpose` | `text` | NN | 否 | `—` |
+
+外键明细：
+
+- `ai_model_secrets_profile_id_fkey`：`ai_model_secrets(profile_id)` → `ai_model_profiles(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 #### `audit_logs`
 

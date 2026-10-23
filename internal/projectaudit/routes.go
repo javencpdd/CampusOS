@@ -626,6 +626,16 @@ func FindRepositoryRoot(start string) (string, error) {
 // Explicit governance metadata follows operation extraction and scope parsing;
 // execution grants do not imply the generic authenticated owner rule.
 func applyResourceGovernanceContract(route *RouteContract) {
+	if strings.HasPrefix(route.OperationCode, "http.ai.") {
+		route.Auth = "jwt+current-admin-session+permission"
+		route.Scope = "ai.profile_inventory/all"
+		route.Ownership = "ai-managed"
+		route.Audit = "none"
+		if route.Method != "GET" {
+			route.Auth += "+recent-mfa+browser-csrf"
+			route.Audit = "required-command+outbox"
+		}
+	}
 	if strings.HasPrefix(route.OperationCode, "http.knowledge.") {
 		route.Ownership = "current-origin-and-collection"
 		route.Scope = "public-collection+current-origin"
