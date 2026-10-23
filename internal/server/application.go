@@ -20,13 +20,17 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 
 	if infra.database == nil {
 		log.Printf("⚠️  PostgreSQL 基础设施不可用，回退到内存模式: %v", infra.databaseErr)
-	} else if err := SeedAdmin(infra.database, adminSeedOptions{
-		Environment:                  s.cfg.Deployment.Environment,
-		PasswordHashEnabled:          s.cfg.Auth.PasswordHashEnabled,
-		BootstrapAdminSecret:         s.cfg.Auth.BootstrapAdminSecret,
-		AllowDevelopmentDefaultAdmin: s.cfg.Auth.AllowDevelopmentDefaultAdmin,
-	}); err != nil {
-		return fmt.Errorf("initialize bootstrap administrator: %w", err)
+	} else if !infra.restoredInstance {
+		// Reviewed recovery must not recreate a removed bootstrap role or
+		// account after the operator has attested the exact restored facts.
+		if err := SeedAdmin(infra.database, adminSeedOptions{
+			Environment:                  s.cfg.Deployment.Environment,
+			PasswordHashEnabled:          s.cfg.Auth.PasswordHashEnabled,
+			BootstrapAdminSecret:         s.cfg.Auth.BootstrapAdminSecret,
+			AllowDevelopmentDefaultAdmin: s.cfg.Auth.AllowDevelopmentDefaultAdmin,
+		}); err != nil {
+			return fmt.Errorf("initialize bootstrap administrator: %w", err)
+		}
 	}
 
 	if s.identity == nil || s.identity.Permissions() == nil {
@@ -44,7 +48,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 	if s.moderation == nil || s.moderation.Handler() == nil {
 		return fmt.Errorf("moderation core module is unavailable")
 	}
-	if s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.personalDocuments == nil || s.personalDocuments.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
+	if s.knowledge == nil || s.knowledge.Handler() == nil || s.space == nil || s.space.Handler() == nil || s.richtext == nil || s.richtext.Handler() == nil || s.schedule == nil || s.schedule.Handler() == nil || s.personalDocuments == nil || s.personalDocuments.Handler() == nil || s.mutualAid == nil || s.mutualAid.Handler() == nil || s.secondhand == nil || s.secondhand.Handler() == nil || s.appearance == nil || s.appearance.HomepageHandler() == nil || s.appearance.WebThemeHandler() == nil {
 		return fmt.Errorf("built-in feature modules are unavailable")
 	}
 	pluginHandler, err := s.pluginHTTPHandler()
@@ -71,6 +75,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		UserStorage:       s.storage.Handler(),
 		Space:             s.space.Handler(),
 		Plugin:            pluginHandler,
+		PluginV5:          s.pluginsV5Handler(),
 		AI:                s.ai.Handler(),
 		Integration:       s.integration.Handler(),
 		Webhook:           s.webhook.Handler(),
@@ -81,6 +86,7 @@ func (s *Server) runApplication(infra *infrastructureBootstrap) error {
 		RichText:          s.richtext.Handler(),
 		Schedule:          s.schedule.Handler(),
 		PersonalDocuments: s.personalDocuments.Handler(),
+		Knowledge:         s.knowledge.Handler(),
 		MutualAid:         s.mutualAid.Handler(),
 		Secondhand:        s.secondhand.Handler(),
 		PlatformLog:       s.platformLog.Handler(),
@@ -159,4 +165,13 @@ func (s *Server) registerDefaultSubscriptions(bus eventbus.EventBus) {
 		})
 	}
 	log.Printf("✅ 已注册 %d 个默认事件订阅（含插件分发）", len(eventTypes))
+}
+
+func (s *Server) pluginsV5Handler() *plugin.V5HTTPHandler {
+	if s.appContext == nil {
+		return nil
+	}
+	value, _ := s.appContext.Lookup("plugin.v5.http-handler")
+	handler, _ := value.(*plugin.V5HTTPHandler)
+	return handler
 }

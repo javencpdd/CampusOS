@@ -8,6 +8,38 @@ import (
 
 type CatalogAdapter struct{ catalog *pluginpkg.PluginCatalog }
 
+type V5CatalogAdapter struct{ Current func() *pluginpkg.V5Platform }
+
+func (a *V5CatalogAdapter) List(ctx context.Context) ([]Descriptor, error) {
+	out := []Descriptor{}
+	after := ""
+	for {
+		entries, next, err := a.Current().HostCatalogPage(ctx, after)
+		if err != nil {
+			return nil, err
+		}
+		for _, e := range entries {
+			out = append(out, Descriptor{ID: e.ID, Version: e.Version, Runtime: e.Runtime, Status: e.Status})
+		}
+		if next == "" {
+			return out, nil
+		}
+		after = next
+	}
+}
+func (a *V5CatalogAdapter) Get(ctx context.Context, id string) (Descriptor, error) {
+	entries, err := a.List(ctx)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	for _, e := range entries {
+		if e.ID == id {
+			return e, nil
+		}
+	}
+	return Descriptor{}, pluginpkg.ErrV5NotFound
+}
+
 func NewCatalogAdapter(catalog *pluginpkg.PluginCatalog) *CatalogAdapter {
 	return &CatalogAdapter{catalog: catalog}
 }

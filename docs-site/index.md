@@ -55,7 +55,7 @@ cd CampusOS
 ::: warning 当前开发边界
 当前统一版本为 `v1.1.0-dev`，对应 `v1.1-dev` 图文附件和插件自包含开发主线；应用与部署镜像默认标签保持一致，但这不表示已宣布 `v1.1 Final`。
 CampusOS 提供 Docker 开发栈和单主机 Compose 交付，但不包含生产级高可用、自动 TLS 或多节点故障转移。Windows 使用 Docker Desktop
-Linux Containers，不支持原生 Windows Containers。`campusos.plugin/v4` 当前提供纯 UI 的 `runtime: none` 实践样例；通用 Wasm/Container Runner 的完整生产验收仍未完成。
+Linux Containers，不支持原生 Windows Containers。当前插件使用 `campusos.plugin/v5`，PDF 是 `runtime: none` 示例；V12-05 已接 Linux 原生宿主的显式 Wasm 固定 worker，V12-06已接Linux Container有限管道执行与隔离生命周期，Windows目标未验收、整版交付仍待所属阶段。见[插件体系](/plugins/overview)。
 :::
 
 ## 参与开发

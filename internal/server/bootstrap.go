@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"log"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/runtime"
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
+	"github.com/campusos/CampusOS/internal/modules/features/knowledge"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
@@ -27,6 +29,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/schedule"
 	"github.com/campusos/CampusOS/internal/modules/features/secondhand"
 	"github.com/campusos/CampusOS/internal/modules/features/webhook"
+	"github.com/campusos/CampusOS/internal/operations/recovery"
 	platformfeature "github.com/campusos/CampusOS/internal/platform/feature"
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	platformobservability "github.com/campusos/CampusOS/internal/platform/observability"
@@ -38,9 +41,12 @@ import (
 	"github.com/campusos/CampusOS/pkg/eventbus"
 	"github.com/campusos/CampusOS/pkg/observability"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"path/filepath"
 )
 
 type infrastructureBootstrap struct {
+	restoredInstance         bool
+	releaseRecovery          func()
 	runtime                  *platformruntime.Runtime
 	modules                  *platformmodule.Registry
 	bus                      eventbus.EventBus
@@ -59,6 +65,30 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		return nil, err
 	}
 	pool, databaseErr := database.New(s.cfg.Database.DSN)
+	recoveryState, releaseRecovery, recoveryErr := recovery.Startup(context.Background(), pool, filepath.Dir(s.cfg.Plugin.DataDir))
+	if recoveryErr != nil {
+		if pool != nil {
+			pool.Close()
+		}
+		return nil, recoveryErr
+	}
+	bootstrapComplete := false
+	defer func() {
+		if !bootstrapComplete {
+			releaseRecovery()
+			if pool != nil {
+				pool.Close()
+			}
+		}
+	}()
+	if recoveryState != nil {
+		copyConfig := *s.cfg
+		copyConfig.JWT.Secret = recovery.DeriveSecret(copyConfig.JWT.Secret, recoveryState.Epoch)
+		if recoveryState.EgressPaused {
+			copyConfig.AI.Enabled = false
+		}
+		s.cfg = &copyConfig
+	}
 	profileName := platformruntime.ProfileMemory
 	if databaseErr != nil {
 		log.Printf("⚠️  PostgreSQL 连接失败，业务装配将使用内存 Adapter: %v", databaseErr)
@@ -110,7 +140,12 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	events := newEventBusModule(s.cfg)
 	reliabilityModule := reliability.NewModule()
 	features := newFeatureRegistryModule(s, featureStore)
-	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore)
+	// Package identity is a durable security fact. Even in a memory business
+	// profile, an absent database leaves this port unavailable rather than
+	// accepting an identity into a new, forgetful registry.
+	identityStore := plugin.NewPgPluginV5IdentityStore(pool)
+	plugins := newPluginPlatformModule(s, events, features, pluginRepo, marketStore, authorizationStore, secretStore, identityStore, plugin.NewPgV5StateStore(pool))
+	plugins.eventStore = plugin.NewPgV5EventStore(pool)
 	identityModule := identitycore.NewModule(identitycore.Config{
 		JWT:                   s.newJWTManager(),
 		PasswordHashEnabled:   s.cfg.Auth.PasswordHashEnabled,
@@ -127,9 +162,6 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	})
 	emailTimeout, err := time.ParseDuration(s.cfg.Email.SMTPTimeout)
 	if err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, fmt.Errorf("parse EMAIL_SMTP_TIMEOUT: %w", err)
 	}
 	emailDeliveryModule := emaildelivery.NewModule(emaildelivery.Config{
@@ -167,33 +199,38 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Enabled: func() bool {
 			return features.Registry() != nil && features.Registry().Enabled("controlled-richtext-article")
 		},
-		PDFViewerEnabled: func() bool {
-			// PDF preview is now solely the self-contained v4 external release.
-			// Do not retain a feature.pdf-viewer compatibility switch here: it
-			// would both expose a duplicate built-in entry and disable the real
-			// plugin after the descriptor is removed.
-			installed, found := plugins.manager.GetPlugin(plugin.PDFViewerV4PluginName)
-			return found && installed != nil && installed.Status == plugin.StatusRunning && installed.DesiredEnabled
-		},
+		PDFViewerEnabled: func() bool { return plugins.platform != nil && s.pluginUI != nil },
 		PDFViewerAuthorizer: func(ctx context.Context, input richtext.PDFViewerAuthorizationInput) error {
-			if plugins.authorization == nil || !plugins.authorization.Available() {
-				return &richtext.PDFViewerAuthorizationError{Reason: "unavailable", Message: "PDF 预览插件授权服务暂不可用，请确认数据库迁移完成后重试。"}
+			if input.PluginKey != richtext.PDFViewerPluginKey || plugins.platform == nil || s.pluginUI == nil {
+				return richtext.ErrPluginAuthorization
 			}
-			result := plugins.authorization.Authorize(ctx, plugin.AuthorizationInput{PluginName: input.PluginKey, CapabilityCode: input.CapabilityCode, OperationCode: input.OperationCode, ActorUserID: input.UserID, ResourceOwnerID: input.ResourceOwnerID, ResourceScope: map[string]interface{}{"scope": "self"}})
-			if !result.Allow {
-				return &richtext.PDFViewerAuthorizationError{Reason: string(result.ReasonCode), Message: result.Message}
+			switch input.CapabilityCode {
+			case "article_attachment.self.preview", "personal_space_file.self.read", "plugin_ui.surface.open":
+			default:
+				return richtext.ErrPluginAuthorization
+			}
+			_, err := plugins.platform.PDFUI(ctx, input.UserID, identityport.SessionPrincipalResolverFromContext(ctx))
+			if err != nil {
+				return &richtext.PDFViewerAuthorizationError{Reason: "v5_ui_denied", Message: "此版本尚未安装、启用或获得当前授权，请在插件中心检查后重试。"}
 			}
 			return nil
 		},
 		PersonalDocumentPDFReader:        personalDocumentReader,
 		PersonalDocumentAttachmentReader: personalDocumentReader,
 		SurfaceValidator: func(ctx context.Context, invocation *richtext.PluginUIInvocation, actionID string) (string, error) {
-			return validateResourceSurface(ctx, plugins.manager, plugins.authorization, invocation, actionID, func(ctx context.Context, user, resource, action string) (bool, error) {
-				if identityModule.Permissions() == nil {
-					return false, nil
-				}
-				return identityModule.Permissions().Check(ctx, user, resource, action)
-			})
+			if plugins.platform == nil || s.pluginUI == nil || invocation.PluginKey != richtext.PDFViewerPluginKey || invocation.SurfaceID != richtext.PDFViewerSurfaceID || actionID != "" {
+				return "", richtext.ErrPluginAuthorization
+			}
+			switch invocation.Presentation {
+			case "modal", "drawer", "fullscreen", "new-tab":
+			default:
+				return "", richtext.ErrInvocationPresentation
+			}
+			facts, err := plugins.platform.PDFUI(ctx, invocation.UserID, identityport.SessionPrincipalResolverFromContext(ctx))
+			if err != nil {
+				return "", richtext.ErrPluginAuthorization
+			}
+			return facts.AuthorityProof, nil
 		},
 	})
 	scheduleModule := schedule.NewModule(schedule.ModuleConfig{
@@ -217,6 +254,24 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			return personaldocuments.PDFPreviewInvocation{ID: invocation.ID}, nil
 		},
 	})
+	knowledgeModule := knowledge.NewModuleWithPrivateDocuments(func() bool {
+		return features.Registry() != nil && features.Registry().Enabled(knowledge.FeatureID)
+	}, privateDocumentMetadataAdapter{module: personalDocumentsModule, enabled: func() bool {
+		if features.Registry() == nil {
+			return false
+		}
+		// Original Documents uses restart activation. New private intake closes
+		// immediately on a pending disable and never enables ahead of restart.
+		state, found := features.Registry().Get(personaldocuments.FeatureID)
+		return found && state.Enabled && state.DesiredEnabled
+	}})
+	knowledgeModule.ConfigurePrivateIndex(privateIndexSourceAdapter{documents: personalDocumentsModule, community: communityModule, documentsEnabled: func() bool {
+		if features.Registry() == nil {
+			return false
+		}
+		state, found := features.Registry().Get(personaldocuments.FeatureID)
+		return found && state.Enabled && state.DesiredEnabled
+	}}, privateIndexVaultFromEnvironment())
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(mutualaid.FeatureID) },
 	})
@@ -241,6 +296,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 	s.moderation = moderationModule
 	s.storage = storageModule
 	s.space = spaceModule
+	s.knowledge = knowledgeModule
 	s.richtext = richtextModule
 	s.schedule = scheduleModule
 	s.personalDocuments = personalDocumentsModule
@@ -263,6 +319,7 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		{Module: identityModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: emailDeliveryModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: communityModule, Kind: platformmodule.KindCore, Enabled: true},
+		{Module: knowledgeModule, Kind: platformmodule.KindBuiltinFeature, Enabled: true},
 		{Module: academicTermModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: moderationModule, Kind: platformmodule.KindCore, Enabled: true},
 		{Module: storageModule, Kind: platformmodule.KindCore, Enabled: true},
@@ -297,6 +354,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 					return err
 				}
 				if err := schedule.BindPostgreSQLAdapter(app, pool); err != nil {
+					return err
+				}
+				if err := knowledge.BindPostgreSQLAdapter(app, pool); err != nil {
 					return err
 				}
 				if err := personaldocuments.BindPostgreSQLAdapter(app, pool); err != nil {
@@ -346,6 +406,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			if err := schedule.BindMemoryAdapter(app); err != nil {
 				return err
 			}
+			if err := knowledge.BindMemoryAdapter(app); err != nil {
+				return err
+			}
 			if err := personaldocuments.BindMemoryAdapter(app); err != nil {
 				return err
 			}
@@ -387,21 +450,16 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		Modules: entries,
 	})
 	if err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, err
 	}
 	if err := appRuntime.Start(context.Background()); err != nil {
-		if pool != nil {
-			pool.Close()
-		}
 		return nil, err
 	}
 	s.appContext = appRuntime.AppContext()
 	s.modules = appRuntime.Registry()
 	s.bus = events.EventBus()
-	return &infrastructureBootstrap{runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
+	bootstrapComplete = true
+	return &infrastructureBootstrap{restoredInstance: recoveryState != nil, releaseRecovery: releaseRecovery, runtime: appRuntime, modules: appRuntime.Registry(), bus: events.EventBus(), memoryBus: events.MemoryBus(), cache: appCache, metrics: metricsCollector, database: pool, databaseErr: databaseErr, pluginRepo: pluginRepo, pluginAuthorizationStore: authorizationStore, pluginSecretStore: secretStore}, nil
 }
 func (b *infrastructureBootstrap) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -410,6 +468,9 @@ func (b *infrastructureBootstrap) Stop() {
 		log.Printf("⚠️  模块停止失败: %v", err)
 	}
 	if b.database != nil {
+		if b.releaseRecovery != nil {
+			b.releaseRecovery()
+		}
 		b.database.Close()
 	}
 }

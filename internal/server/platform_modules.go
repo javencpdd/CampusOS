@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
@@ -14,10 +17,10 @@ import (
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/plugin"
+	plugincontainer "github.com/campusos/CampusOS/internal/plugin/container"
 	plugingrpc "github.com/campusos/CampusOS/internal/plugin/grpc"
 	"github.com/campusos/CampusOS/internal/plugin/hostapi"
 	pluginport "github.com/campusos/CampusOS/internal/plugin/port"
-	pluginv4 "github.com/campusos/CampusOS/internal/plugin/v4"
 	pluginwasm "github.com/campusos/CampusOS/internal/plugin/wasm"
 	modulecatalog "github.com/campusos/CampusOS/modules"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -173,6 +176,12 @@ type pluginPlatformModule struct {
 	authorizationStore plugin.AuthorizationStore
 	authorization      *plugin.AuthorizationService
 	secretStore        plugin.SecretStore
+	identityStore      plugin.PluginV5IdentityStore
+	stateStore         plugin.V5StateStore
+	catalog            *plugin.PluginV5PackageCatalog
+	platform           *plugin.V5Platform
+	files              *plugin.V5ManagedFiles
+	v5Handler          *plugin.V5HTTPHandler
 	secrets            *plugin.SecretService
 	manager            *plugin.Manager
 	market             *plugin.MarketService
@@ -180,15 +189,26 @@ type pluginPlatformModule struct {
 	handler            *plugin.Handler
 	hostAPI            *hostapi.HostAPIServer
 	cancel             context.CancelFunc
+	workerDone         chan struct{}
+	managed            *plugin.V5ManagedRuntime
+	wasmCoordinator    *plugin.V5RuntimeCoordinator
+	containerFactory   *plugincontainer.V5Factory
+	eventStore         plugin.V5EventStore
+	metadata           *plugin.V5EventService
+	eventWorkerDone    chan struct{}
 }
 
-func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore, authorizationStore plugin.AuthorizationStore, secretStore plugin.SecretStore) *pluginPlatformModule {
-	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore, authorizationStore: authorizationStore, secretStore: secretStore}
+func newPluginPlatformModule(owner *Server, events *eventBusModule, features *featureRegistryModule, repository plugin.PluginRepository, marketStore plugin.MarketStore, authorizationStore plugin.AuthorizationStore, secretStore plugin.SecretStore, identityStore plugin.PluginV5IdentityStore, states ...plugin.V5StateStore) *pluginPlatformModule {
+	var state plugin.V5StateStore
+	if len(states) > 0 {
+		state = states[0]
+	}
+	return &pluginPlatformModule{owner: owner, events: events, features: features, repository: repository, marketStore: marketStore, authorizationStore: authorizationStore, secretStore: secretStore, identityStore: identityStore, stateStore: state}
 }
 
 func (m *pluginPlatformModule) ID() string { return modulePluginPlatform }
 func (m *pluginPlatformModule) Dependencies() []string {
-	return []string{moduleEventBus, moduleFeatureConfig, corestorage.ModuleID, reliability.ModuleID}
+	return []string{moduleEventBus, moduleFeatureConfig, corestorage.ModuleID, reliability.ModuleID, "core.identity"}
 }
 
 func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
@@ -205,12 +225,7 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	if m.repository != nil {
 		m.manager.SetPluginRepository(m.repository)
 	}
-	m.grpcRuntime = plugingrpc.NewGRPCRuntime()
-	m.manager.RegisterRuntime("grpc", m.grpcRuntime)
-	m.manager.RegisterRuntime("process", m.grpcRuntime)
-	m.manager.RegisterRuntime("wasm", pluginwasm.NewRuntime())
-	m.manager.RegisterRuntime("builtin", plugin.NewBuiltinRuntime())
-	m.manager.RegisterRuntime("none", plugin.NewNoneRuntime())
+	// V12-03b retires legacy runtime registration in production.
 	m.owner.manager = m.manager
 	if m.features == nil || m.features.Registry() == nil {
 		return errors.New("authoritative feature registry is unavailable")
@@ -218,7 +233,23 @@ func (m *pluginPlatformModule) Register(app *platformmodule.AppContext) error {
 	if err := app.Provide(portPluginManager, m.manager); err != nil {
 		return err
 	}
-	return app.Provide("plugin.catalog", pluginport.NewCatalogAdapter(m.manager.Catalog()))
+	if err := app.Provide("plugin.catalog", &pluginport.V5CatalogAdapter{Current: func() *plugin.V5Platform { return m.platform }}); err != nil {
+		return err
+	}
+	trust := []byte(`{"contract":"campusos.plugin-trust/v1","keys":[]}`)
+	if name := os.Getenv("CAMPUSOS_PLUGIN_V5_TRUST_STORE"); name != "" {
+		var err error
+		trust, err = plugin.ReadPluginV5DocumentFile(name)
+		if err != nil || len(trust) > plugin.PluginV5ManifestMaxBytes {
+			return plugin.ErrPluginV5PackageSignature
+		}
+	}
+	catalog, err := plugin.NewPluginV5PackageCatalogWithIdentityStore(trust, m.identityStore)
+	if err != nil {
+		return err
+	}
+	m.catalog = catalog
+	return app.Provide("plugin.v5.package-catalog", catalog)
 }
 
 type reliabilityPluginOperationTracker struct {
@@ -243,102 +274,207 @@ func (t reliabilityPluginOperationTracker) RecordCompatibility(ctx context.Conte
 }
 
 func (m *pluginPlatformModule) Start(ctx context.Context) error {
-	if m.manager == nil || m.events.EventBus() == nil {
-		return fmt.Errorf("plugin platform dependencies are not registered")
+	if m.manager == nil || m.app == nil || m.catalog == nil {
+		return errors.New("plugin platform is not registered")
 	}
-	m.owner.registerDefaultSubscriptions(m.events.EventBus())
-	if plugin.V4DevelopmentSourceEnabled() {
-		if err := m.manager.InstallV4DevelopmentSources(plugin.V4PluginsDirFromEnv()); err != nil {
-			return fmt.Errorf("install v4 development plugin release: %w", err)
-		}
+	reliableValue, _ := m.app.Lookup("platform.reliability.service")
+	reliable, ok := reliableValue.(*reliability.Service)
+	if !ok || reliable == nil {
+		return errors.New("plugin reliability is unavailable")
 	}
-	if err := m.manager.LoadV4Releases(plugin.V4PluginsDirFromEnv(), plugin.V4UIOriginFromEnv()); err != nil {
-		return fmt.Errorf("load v4 plugin releases: %w", err)
-	}
-	if err := m.manager.InstallFromPluginsDir(plugin.PluginsDirFromEnv()); err != nil {
-		log.Printf("⚠️  加载插件失败: %v", err)
-	}
-	m.authorization = plugin.NewAuthorizationService(m.authorizationStore, m.repository, func(name string) bool {
-		installed, found := m.manager.GetPlugin(name)
-		return found && installed != nil && installed.Status == plugin.StatusRunning
-	})
-	m.manager.SetAuthorizationService(m.authorization)
-	if secrets, err := plugin.NewSecretServiceFromEnv(m.secretStore); err != nil {
-		log.Printf("⚠️ 插件 Secret Store 未启用: %v", err)
-	} else {
-		m.secrets = secrets
-	}
-	for _, installed := range m.manager.ListPlugins() {
-		if installed == nil || installed.Manifest == nil {
-			continue
-		}
-		if _, err := m.authorization.SyncInstalled(ctx, installed, ""); err != nil {
-			// A semantic version is an immutable security identity. A changed package
-			// must never inherit the grants recorded for the old digest, but one bad
-			// development package must not take the whole CampusOS API offline. Keep
-			// the plugin disabled and let an administrator install a bumped version.
-			reason := "同一插件版本的包摘要或能力指纹已变化，请提升版本后重新安装"
-			if disableErr := m.manager.Quarantine(installed.Manifest.Name, reason); disableErr != nil {
-				log.Printf("⚠️  插件 %s 授权事实校验失败，且无法自动停用: %v（原始错误: %v）", installed.Manifest.Name, disableErr, err)
-			} else {
-				log.Printf("⚠️  插件 %s 已隔离：同版本包内容或能力声明发生变化，请提升插件版本后重新安装（%v）", installed.Manifest.Name, err)
-			}
-		}
-	}
-	if err := m.ensurePDFViewerDefaultGrants(ctx); err != nil {
-		return fmt.Errorf("initialize PDF Viewer administrator grants: %w", err)
-	}
-	m.manager.StartDesiredPlugins(plugin.ScopeSystem)
-	m.manager.StartDesiredPlugins(plugin.ScopeUser)
-	storageValue, ok := m.app.Lookup("storage.user")
+	adminValue, _ := m.app.Lookup("identity.admin-execution-authority")
+	admins, ok := adminValue.(identityport.AdminExecutionAuthorityReader)
 	if !ok {
-		return errors.New("user storage port is unavailable for plugin market")
+		return errors.New("plugin admin authority is unavailable")
 	}
-	userStorage, ok := storageValue.(corestorage.Port)
-	if !ok {
-		return fmt.Errorf("user storage port has incompatible type %T", storageValue)
+	if m.stateStore == nil {
+		m.stateStore = plugin.NewPgV5StateStore(nil)
 	}
-	m.market = plugin.NewMarketService(m.marketStore, userStorage, func(name string) (*plugin.Manifest, bool) {
-		installed, found := m.manager.GetPlugin(name)
-		if !found || installed == nil || installed.Manifest == nil {
-			return nil, false
+	var err error
+	m.files, err = plugin.NewV5ManagedFiles(filepath.Join(m.owner.cfg.Plugin.DataDir, "v5"))
+	if err != nil {
+		return err
+	}
+	m.platform = plugin.NewV5Platform(m.stateStore, m.files, m.catalog, reliable, admins)
+	users, _ := m.app.Lookup("identity.user-reader")
+	m.platform.Users, _ = users.(identityport.UserReader)
+	m.v5Handler = &plugin.V5HTTPHandler{Platform: m.platform}
+	if m.owner.cfg.Plugin.UIListen != "" || m.owner.cfg.Plugin.UIOrigin != "" {
+		if m.owner.cfg.Plugin.UIListen == "" {
+			return errors.New("plugin UI requires a dedicated listener")
 		}
-		return installed.Manifest, true
-	})
-	m.market.SetPluginActiveResolver(func(name string) bool {
-		installed, found := m.manager.GetPlugin(name)
-		return found && installed != nil && installed.Status == plugin.StatusRunning
-	})
-	m.market.SetAuthorizationService(m.authorization)
-	if localStorage, ok := userStorage.(*corestorage.LocalAdapter); ok {
-		m.market.SetUserInstallProvisioner(func(_ context.Context, pluginName, userID string) error {
-			release, found := m.manager.V4Release(pluginName)
-			if !found || release.Release.Manifest == nil || release.Release.Manifest.Configuration.User == nil {
-				return nil
-			}
-			_, _, err := pluginv4.InitializeUserConfig(release.Release.Path, userID, pluginv4.UserConfigOptions{
-				PersonalSpaceRoot: localStorage.Root(),
-				PluginVersion:     release.Release.Manifest.Version,
-				Generation:        release.Release.Digest,
-			})
-			return err
-		})
+		m.owner.pluginUI, err = plugin.NewV5UIHost(m.platform, m.owner.cfg.Plugin.UIOrigin, m.owner.cfg.Plugin.UIParents)
+		if err != nil {
+			return errors.New("plugin UI origin/parents configuration is invalid")
+		}
+		m.v5Handler.UIHost = m.owner.pluginUI
 	}
-	if err := m.market.SyncCatalog(ctx, m.manager.ListPlugins()); err != nil {
-		return fmt.Errorf("sync plugin market catalog: %w", err)
-	}
-	m.handler = plugin.NewHandler(m.manager, plugin.WithPluginsDir(plugin.PluginsDirFromEnv()), plugin.WithBuiltinFeatureCompatibility(m.features.Handler()), plugin.WithMarketService(m.market), plugin.WithAuthorizationService(m.authorization), plugin.WithSecretService(m.secrets))
+	adminSessions, _ := m.app.Lookup("identity.admin-session-authority")
+	m.v5Handler.AdminSessions, _ = adminSessions.(identityport.AdminSessionAuthorityReader)
+	userSessions, _ := m.app.Lookup("identity.session-verifier")
+	m.v5Handler.UserSessions, _ = userSessions.(identityport.SessionVerifier)
+	strength, _ := m.app.Lookup("identity.session-strength")
+	m.v5Handler.UserStrength, _ = strength.(identityport.SessionStrengthReader)
+	// Legacy handlers remain only for historical tests and closed endpoints.
+	m.handler = plugin.NewHandler(m.manager, plugin.WithBuiltinFeatureCompatibility(m.features.Handler()))
 	if err := m.app.Provide("plugin.http-handler", m.handler); err != nil {
 		return err
 	}
-	if err := m.startHostAPI(); err != nil {
+	if err := m.app.Provide("plugin.v5.platform", m.platform); err != nil {
 		return err
 	}
-	healthContext, cancel := context.WithCancel(ctx)
+	if err := m.app.Provide("plugin.v5.http-handler", m.v5Handler); err != nil {
+		return err
+	}
+	var wasmFactory plugin.V5RuntimeFactory
+	var containerFactory plugin.V5RuntimeFactory
+	var wasmLeader plugin.V5RuntimeLeader
+	var runnerErr error
+	if m.owner.cfg.Plugin.WasmImage != "" || m.owner.cfg.Plugin.ContainerEnabled {
+		if store, ok := m.stateStore.(*plugin.PgV5StateStore); ok {
+			if m.owner.cfg.Plugin.WasmImage != "" {
+				wasmFactory, runnerErr = pluginwasm.NewV5IsolatedFactoryForDeployment(m.owner.cfg.Plugin.WasmImage, store.RuntimeNamespace())
+			}
+			if runnerErr == nil && m.owner.cfg.Plugin.ContainerEnabled {
+				m.containerFactory, runnerErr = plugincontainer.NewV5Factory(store.RuntimeNamespace())
+				if runnerErr == nil {
+					containerFactory = m.containerFactory
+				}
+			}
+			if runnerErr == nil {
+				wasmLeader, runnerErr = store.AcquireRuntimeLeader(ctx)
+				if runnerErr == nil {
+					if wasmFactory != nil {
+						runnerErr = wasmFactory.(interface{ FenceOrphans(context.Context) error }).FenceOrphans(ctx)
+					}
+					if runnerErr == nil && m.containerFactory != nil {
+						runnerErr = m.containerFactory.FenceOrphans(ctx)
+					}
+					if runnerErr != nil {
+						_ = wasmLeader.Release(ctx)
+						wasmLeader = nil
+					}
+				}
+			}
+		} else {
+			runnerErr = plugin.ErrV5RuntimeMissing
+		}
+	}
+	if runnerErr != nil && m.containerFactory != nil {
+		closeCtx, stop := context.WithTimeout(context.Background(), 3*time.Second)
+		_ = m.containerFactory.Close(closeCtx)
+		stop()
+		m.containerFactory = nil
+		containerFactory = nil
+	}
+	directory := plugin.NewV5ContributionDirectory(nil)
+	if runnerErr != nil {
+		log.Printf("插件隔离执行器不可用，入口将保持关闭")
+	} else if err := m.platform.ReconcileStartup(ctx); err != nil {
+		log.Printf("插件 v5 对账暂不可用，入口将保持关闭")
+	} else {
+		directory = plugin.NewV5ContributionDirectory(m.platform)
+	}
+	if err := m.app.Provide("plugin.v5.contributions", directory); err != nil {
+		return err
+	}
+	// A consumer Feature and managed transport must be bound by a compiled
+	// adapter. Do not invent a registry Feature or couple built-in AI to plugins.
+	if err := m.app.Provide("plugin.v5.chat-dispatcher", plugin.NewV5ChatDispatcher(directory, nil, "", nil)); err != nil {
+		return err
+	}
+	m.managed = plugin.NewV5ManagedRuntime(directory)
+	if runnerErr == nil && (wasmFactory != nil || containerFactory != nil) && wasmLeader != nil {
+		m.wasmCoordinator = plugin.NewV5RuntimeCoordinator(m.platform, m.managed, plugin.NewV5RuntimeRouter(wasmFactory, containerFactory), wasmLeader)
+		if err := m.app.Provide("plugin.v5.runtime-coordinator", m.wasmCoordinator); err != nil {
+			return err
+		}
+		if err := m.app.Provide("plugin.v5.wasm-coordinator", m.wasmCoordinator); err != nil {
+			return err
+		}
+	}
+	if err := m.app.Provide("plugin.v5.runtime", m.managed); err != nil {
+		return err
+	}
+	if err := m.app.Provide("plugin.v5.dispatcher", m.managed); err != nil {
+		return err
+	}
+	if err := m.bindKnowledgeHost(); err != nil {
+		return err
+	}
+	var publicMetadata plugin.V5MetadataAuthorizer
+	if value, ok := m.app.Lookup("community.content-query"); ok {
+		if reader, ok := value.(communityport.ContentQuery); ok && reader != nil {
+			if err := m.managed.BindHost("community.thread.public.read", plugin.V5PublicThreadEndpoint(reader, pluginCommunityGate{}, "core.community")); err != nil {
+				return err
+			}
+			publicMetadata = func(ctx context.Context, kind, ref string) (bool, error) {
+				if kind != "community.thread.public.changed/v1" || !strings.HasPrefix(ref, "thread:") {
+					return false, nil
+				}
+				thread, err := reader.GetPublicThread(ctx, strings.TrimPrefix(ref, "thread:"))
+				return err == nil && thread != nil && thread.FactsVersion > 0, err
+			}
+		}
+	}
+	if m.eventStore == nil {
+		// An absent durable store stays unavailable; never silently fall back
+		// to a process-local delivery queue in production.
+		m.eventStore = plugin.NewPgV5EventStore(nil)
+	}
+	m.metadata = plugin.NewV5EventService(m.managed, m.eventStore, publicMetadata)
+	m.metadata.Register()
+	if err := m.app.Provide("plugin.v5.metadata-events", m.metadata); err != nil {
+		return err
+	}
+	workerCtx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
-	m.grpcRuntime.StartHealthChecker(healthContext, 10*time.Second, m.manager)
+	m.workerDone = make(chan struct{})
+	go func() {
+		defer close(m.workerDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-workerCtx.Done():
+				return
+			case <-ticker.C:
+				m.managed.Sweep(workerCtx)
+				if _, err := m.platform.ProcessOnce(workerCtx, 16); err != nil && workerCtx.Err() == nil {
+					log.Printf("插件 v5 操作等待重试")
+				}
+				if m.wasmCoordinator != nil {
+					callCtx, stop := context.WithTimeout(workerCtx, 8*time.Second)
+					_, _ = m.wasmCoordinator.ProcessOnce(callCtx)
+					stop()
+				}
+			}
+		}
+	}()
+	m.eventWorkerDone = make(chan struct{})
+	go func() {
+		defer close(m.eventWorkerDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-workerCtx.Done():
+				return
+			case <-ticker.C:
+				// Callback IO, leases and retries are independent of both the
+				// Core transaction and its durable Outbox worker.
+				_, _ = m.metadata.ProcessOnce(workerCtx, 16)
+			}
+		}
+	}()
 	return nil
 }
+
+// Community is an always-on Core module. Its protected public-read Port is
+// the authority; no synthetic optional Feature is added to the registry.
+type pluginCommunityGate struct{}
+
+func (pluginCommunityGate) Enabled(id string) bool { return id == "core.community" }
 
 // ensurePDFViewerDefaultGrants creates auditable, revocable administrator
 // grants for the compiled first-party reader. It is not an authorization
@@ -381,13 +517,49 @@ func (m *pluginPlatformModule) ensurePDFViewerDefaultGrants(ctx context.Context)
 	return nil
 }
 
-func (m *pluginPlatformModule) Stop(context.Context) error {
+func (m *pluginPlatformModule) Stop(ctx context.Context) error {
 	if m.cancel != nil {
 		m.cancel()
 		m.cancel = nil
 	}
+	if m.wasmCoordinator != nil {
+		if err := m.wasmCoordinator.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if m.managed != nil {
+		if err := m.managed.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if m.workerDone != nil {
+		select {
+		case <-m.workerDone:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		m.workerDone = nil
+	}
+	if m.eventWorkerDone != nil {
+		select {
+		case <-m.eventWorkerDone:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		m.eventWorkerDone = nil
+	}
 	if m.manager != nil {
 		m.manager.StopAll()
+	}
+	if m.containerFactory != nil {
+		if err := m.containerFactory.Close(ctx); err != nil {
+			return err
+		}
+		m.containerFactory = nil
+	}
+	if m.files != nil {
+		m.files.Close()
+		m.files = nil
 	}
 	if m.hostAPI != nil {
 		m.hostAPI.Stop()

@@ -1,0 +1,1207 @@
+[
+  {
+    "name": "host-to-plugin",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "plugin-to-host",
+    "input": {
+      "direction": "plugin_to_host",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "host_api",
+          "id": "community.thread.public.read"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "direction-target-mismatch",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "host_api",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_target_mismatch"
+  },
+  {
+    "name": "stale-generation",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 5,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.instance_stale"
+  },
+  {
+    "name": "expired-deadline",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 999,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_deadline"
+  },
+  {
+    "name": "excess-deadline",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 2001,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_deadline"
+  },
+  {
+    "name": "large-request",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 4097,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_budget"
+  },
+  {
+    "name": "large-response",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 8193
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_budget"
+  },
+  {
+    "name": "not-installed",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": false,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.global_install_required"
+  },
+  {
+    "name": "desired-disabled",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "disabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.runtime_unavailable"
+  },
+  {
+    "name": "desired-uninstalled",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "uninstalled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.runtime_unavailable"
+  },
+  {
+    "name": "observed-pending",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "pending",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.runtime_unavailable"
+  },
+  {
+    "name": "observed-failed",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "failed",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.runtime_unavailable"
+  },
+  {
+    "name": "observed-stopped",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "stopped",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.runtime_unavailable"
+  },
+  {
+    "name": "grant-revoked",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": false,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.grant_revoked"
+  },
+  {
+    "name": "personal-install-missing",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": true,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.user_install_required"
+  },
+  {
+    "name": "personal-install-present",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": true,
+        "user_installed": true,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "consent-missing",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": true,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.consent_required"
+  },
+  {
+    "name": "consent-present",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": true,
+        "consent_active": true,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "feature-disabled",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": false,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.feature_disabled"
+  },
+  {
+    "name": "undeclared",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": false,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.target_undeclared"
+  },
+  {
+    "name": "unpublished",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": false,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.target_unpublished"
+  },
+  {
+    "name": "selection-conflict",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "other",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.contribution_selection_conflict"
+  },
+  {
+    "name": "wrong-credential-audience",
+    "input": {
+      "direction": "plugin_to_host",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "host_api",
+          "id": "community.thread.public.read"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "other",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.instance_credential_invalid"
+  },
+  {
+    "name": "expired-instance-credential",
+    "input": {
+      "direction": "plugin_to_host",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "host_api",
+          "id": "community.thread.public.read"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 1000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.instance_credential_invalid"
+  },
+  {
+    "name": "untrusted-actor",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096,
+        "actor": "forged"
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_invalid"
+  },
+  {
+    "name": "untrusted-roles",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096,
+        "roles": "forged"
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_invalid"
+  },
+  {
+    "name": "untrusted-secret",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096,
+        "secret": "forged"
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_invalid"
+  },
+  {
+    "name": "untrusted-db_connection",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096,
+        "db_connection": "forged"
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_invalid"
+  },
+  {
+    "name": "untrusted-permissions",
+    "input": {
+      "direction": "host_to_plugin",
+      "call": {
+        "request_id": "req-1",
+        "contract": "campusos.plugin-dispatch/v1",
+        "target": {
+          "kind": "contribution",
+          "id": "chat-main"
+        },
+        "instance_generation": 4,
+        "deadline_ms": 1500,
+        "request_bytes": 2048,
+        "response_limit_bytes": 4096,
+        "permissions": "forged"
+      },
+      "trusted": {
+        "now_ms": 1000,
+        "current_generation": 4,
+        "desired_state": "enabled",
+        "observed_state": "ready",
+        "global_installed": true,
+        "user_install_required": false,
+        "user_installed": false,
+        "grant_active": true,
+        "consent_required": false,
+        "consent_active": false,
+        "declared": true,
+        "published": true,
+        "feature_enabled": true,
+        "instance_audience": "host-api",
+        "credential_expires_at_ms": 2000,
+        "selected_id": "chat-main",
+        "max_request_bytes": 4096,
+        "max_response_bytes": 8192,
+        "max_deadline_ms": 2000
+      }
+    },
+    "expected": "plugin.call_invalid"
+  }
+]

@@ -8,13 +8,14 @@ import (
 type ErrorCode string
 
 const (
-	ErrInvalidRequest   ErrorCode = "invalid_request"
-	ErrProviderConfig   ErrorCode = "provider_config"
-	ErrProviderRequest  ErrorCode = "provider_request"
-	ErrProviderResponse ErrorCode = "provider_response"
-	ErrRateLimited      ErrorCode = "rate_limited"
-	ErrContextCancelled ErrorCode = "context_cancelled"
-	ErrContextDeadline  ErrorCode = "context_deadline"
+	ErrUnsupportedCapability ErrorCode = "unsupported_capability"
+	ErrInvalidRequest        ErrorCode = "invalid_request"
+	ErrProviderConfig        ErrorCode = "provider_config"
+	ErrProviderRequest       ErrorCode = "provider_request"
+	ErrProviderResponse      ErrorCode = "provider_response"
+	ErrRateLimited           ErrorCode = "rate_limited"
+	ErrContextCancelled      ErrorCode = "context_cancelled"
+	ErrContextDeadline       ErrorCode = "context_deadline"
 )
 
 type GatewayError struct {
@@ -50,6 +51,7 @@ func newProviderHTTPError(code ErrorCode, statusCode int, message string, err er
 }
 
 type Provider interface {
+	Definition() Definition
 	Name() string
 	ChatCompletion(ctx context.Context, request ChatRequest) (*ChatResponse, error)
 }
@@ -99,17 +101,4 @@ type EmbeddingResponse struct {
 	Usage      TokenUsage  `json:"usage"`
 }
 
-func (r ChatRequest) validate() error {
-	if len(r.Messages) == 0 {
-		return newGatewayError(ErrInvalidRequest, "messages are required", nil)
-	}
-	for i, msg := range r.Messages {
-		if msg.Role == "" {
-			return newGatewayError(ErrInvalidRequest, fmt.Sprintf("messages[%d].role is required", i), nil)
-		}
-		if msg.Content == "" {
-			return newGatewayError(ErrInvalidRequest, fmt.Sprintf("messages[%d].content is required", i), nil)
-		}
-	}
-	return nil
-}
+func (r ChatRequest) validate() error { return validateTextRequest(r) }

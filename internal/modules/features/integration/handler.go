@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"net/http"
 	"time"
 
@@ -45,16 +47,18 @@ type SummaryPortFunc func(context.Context) Card
 func (f SummaryPortFunc) SummaryCard(ctx context.Context) Card { return f(ctx) }
 
 type Handler struct {
-	pool       *pgxpool.Pool
-	cfg        *config.Config
-	plugins    pluginport.Catalog
-	aiSvc      *ai.Service
-	spaceSvc   *space.Service
-	webhookSvc *webhook.Service
-	mcpSvc     *mcp.Service
-	messageSvc *message.Service
-	metrics    *observability.Collector
-	summaries  []SummaryPort
+	pool          *pgxpool.Pool
+	cfg           *config.Config
+	plugins       pluginport.Catalog
+	aiSvc         *ai.Service
+	spaceSvc      *space.Service
+	webhookSvc    *webhook.Service
+	mcpSvc        *mcp.Service
+	messageSvc    *message.Service
+	metrics       *observability.Collector
+	summaries     []SummaryPort
+	machine       identityport.IntegrationReadGateway
+	publicContent communityport.ContentQuery
 }
 
 type Option func(*Handler)

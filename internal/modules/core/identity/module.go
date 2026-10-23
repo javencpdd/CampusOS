@@ -63,6 +63,7 @@ type HTTPHandlers struct {
 	ChallengePolicy *handler.ChallengePolicyHandler
 	AdminAdmission  *handler.AdminAdmissionHandler
 	AdminDomain     *handler.AdminDomainHandler
+	Integration     *handler.IntegrationHandler
 }
 
 // Module owns Identity application composition. Its Profile adapters are
@@ -82,6 +83,7 @@ type Module struct {
 	adminDomains      repository.AdminDomainRepository
 	adminSessions     repository.AdminSessionRepository
 	adminSecurity     repository.AdminSecurityRepository
+	integrations      repository.IntegrationRepository
 
 	userService            *service.UserService
 	challengeService       *service.ChallengeService
@@ -234,6 +236,14 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.adminSessions = adminSessionRepository
 	m.adminSecurity = adminSecurityRepository
 	m.adminDomains = adminDomainRepository
+	integrationValue, exists := app.Lookup(portIntegrationRepository)
+	if !exists {
+		return errors.New("identity Integration repository is not bound by profile")
+	}
+	m.integrations, ok = integrationValue.(repository.IntegrationRepository)
+	if !ok || m.integrations == nil {
+		return errors.New("identity Integration repository is incompatible")
+	}
 	m.adminAccessService = service.NewAdminAccessService(m.adminAccounts)
 	if err := app.Provide(portUserReader, identityportadapt.NewRepositoryUserReader(userRepository)); err != nil {
 		return err
@@ -396,6 +406,11 @@ func (m *Module) Start(context.Context) error {
 		return err
 	}
 	executionAuthority := service.NewBoardGovernanceAuthorityService(m.delegations, m.adminDomains, m.adminSessionService)
+	integrations := service.NewIntegrationService(m.integrations, executionAuthority, reliable)
+	m.handlers.Integration = handler.NewIntegrationHandler(integrations, adminHandler)
+	if err := m.app.Provide("identity.integration-read-gateway", identityport.IntegrationReadGateway(integrations)); err != nil {
+		return err
+	}
 	if err := m.app.Provide(portBoardGovernanceAuthority, identityport.BoardGovernanceAuthorityReader(executionAuthority)); err != nil {
 		return err
 	}

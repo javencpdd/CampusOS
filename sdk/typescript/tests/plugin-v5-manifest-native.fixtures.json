@@ -1,0 +1,2206 @@
+[
+  {
+    "name": "headless-wasm",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "headless-container",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "container",
+      "backend": {
+        "artifact": {
+          "kind": "container",
+          "image": "registry.example/plugin@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "transport": "grpc"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "ui-only",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "none",
+      "consumes": [],
+      "provides": [],
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      },
+      "ui": [
+        {
+          "audience": "user",
+          "entrypoint": "ui/index.html",
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ]
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "combined",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      },
+      "ui": [
+        {
+          "audience": "admin",
+          "entrypoint": "ui/admin.html",
+          "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      ]
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "accepted"
+  },
+  {
+    "name": "missing-consumes",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "missing-config",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "missing-data",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "undeclared-extension",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "embedding",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "wrong-input-schema",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.preview.renderer.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_schema_mismatch"
+  },
+  {
+    "name": "unknown-capability",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "host.db.query",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_capability_unpublished"
+  },
+  {
+    "name": "scope-mismatch",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "self"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_capability_unpublished"
+  },
+  {
+    "name": "private-profile",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "knowledge.collection.public.search",
+          "scope": {
+            "kind": "collection",
+            "collection_ids": [
+              "private"
+            ]
+          },
+          "purpose": "Search",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_capability_unpublished"
+  },
+  {
+    "name": "resource-missing",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "resource-quota",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 2048,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_resource_invalid"
+  },
+  {
+    "name": "unsafe-rollback",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 100,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "migrate",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_upgrade_unrecoverable"
+  },
+  {
+    "name": "raw-secret",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN",
+          "token": "sk-secret"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "remote-schema-ref",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ],
+              "$ref": "https://example.test/schema"
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "runtime-artifact-mismatch",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "container",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_shape_mismatch"
+  },
+  {
+    "name": "empty-headless",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_shape_mismatch"
+  },
+  {
+    "name": "install-script",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      },
+      "install_script": "sh"
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_invalid"
+  },
+  {
+    "name": "unknown-host",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v2"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_schema_mismatch"
+  },
+  {
+    "name": "duplicate-contribution",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        },
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_extension_unpublished"
+  },
+  {
+    "name": "release-identity",
+    "manifest": {
+      "api_version": "campusos.plugin/v5",
+      "publisher": "campusos",
+      "key": "example-plugin",
+      "version": "1.0.0",
+      "host_contracts": [
+        "campusos.host/v1"
+      ],
+      "runtime": "wasm",
+      "backend": {
+        "artifact": {
+          "kind": "wasm",
+          "path": "backend/main.wasm",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "transport": "host-call"
+      },
+      "consumes": [
+        {
+          "capability": "community.thread.public.read",
+          "scope": {
+            "kind": "public"
+          },
+          "purpose": "Read public posts",
+          "required": true
+        }
+      ],
+      "provides": [
+        {
+          "id": "chat-main",
+          "point": "ai.chat",
+          "contract_version": "v1",
+          "input_schema": "campusos.ai.chat.request/v1",
+          "output_schema": "campusos.ai.chat.response/v1",
+          "capabilities": [
+            "text"
+          ],
+          "data_mode": "no_host_private_data"
+        }
+      ],
+      "host_resources": {
+        "network_targets": [],
+        "storage_bytes": 1024,
+        "cpu_millis": 100,
+        "memory_mb": 64,
+        "max_concurrency": 1,
+        "timeout_ms": 3000
+      },
+      "configuration": {
+        "contract": "campusos.plugin-config/v1",
+        "version": "v1",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "locale": {
+              "type": "string",
+              "title": "Language",
+              "enum": [
+                "zh-CN",
+                "en-US"
+              ]
+            }
+          },
+          "required": [
+            "locale"
+          ]
+        },
+        "defaults": {
+          "locale": "zh-CN"
+        },
+        "selectors": [],
+        "secret_names": []
+      },
+      "data": {
+        "config_scope": "system",
+        "private_kv_bytes": 0,
+        "private_object_bytes": 0,
+        "upgrade": {
+          "schema_version": 1,
+          "mode": "preserve",
+          "rollback": "snapshot"
+        }
+      }
+    },
+    "release": {
+      "publisher": "campusos",
+      "key": "wrong",
+      "version": "1.0.0",
+      "package_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "signature": {
+        "key_id": "test",
+        "value": "signed"
+      }
+    },
+    "expected": "plugin.manifest_release_mismatch"
+  }
+]

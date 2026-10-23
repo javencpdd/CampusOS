@@ -194,7 +194,7 @@ Linux 同样可能被宿主防火墙拦截。Ubuntu/Debian 用 `sudo ufw status`
 nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3003，不要直接创建面向任意来源的规则。
 
 脚本会自动输出应使用的开发机 IPv4；局域网设备分别访问
-`http://<开发机IPv4>:3000`、`:3001`、`:3002`。其中 `:3003` 是只服务已校验不可变插件产物的跨 Origin 网关；普通用户不需要直接打开它，但远程浏览器加载 PDF 等隔离插件时必须能连接该端口。Web/Admin 的 Vite API 代理必须保留浏览器原始 Host，不能改写为 Docker 内部 `api:8080`；否则 API 会生成浏览器无法解析的 `http://api:3003/...` 插件地址。若仍无法连接，检查 Windows 当前网络类别或 Linux
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。其中 `:3003` 是只服务已校验不可变插件产物的跨 Origin 网关；普通用户不需要直接打开它，但远程浏览器加载 PDF 等隔离插件时必须能连接该端口。v5 UI Origin 由显式配置生成，不能使用 Docker 内部 `api` 名称。远程设备须使用指向开发机的专用通配 DNS 域，设置 `CAMPUSOS_PLUGIN_UI_DOMAIN`、`CAMPUSOS_PLUGIN_UI_SCHEME` 和精确的 `CAMPUSOS_PLUGIN_UI_PARENTS` 后运行 `rebuild`；默认 `*.localhost` 仅适用于开发机浏览器。若仍无法连接，检查 Windows 当前网络类别或 Linux
 防火墙、路由器/AP 客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
 只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值。Windows
 如果创建过项目规则，再删除：
@@ -533,3 +533,9 @@ Vite 在容器内必须使用 `CAMPUSOS_API_PROXY_TARGET=http://api:8080`。不�
 `sh` 只会尝试进入 POSIX Shell。PowerShell 的项目启动命令是
 `.\scripts\docker-dev.ps1 setup -Start` 或 `.\scripts\docker-dev.ps1 up`；误进入 Shell 时使用
 `exit` 或 `Ctrl+C` 返回。
+
+## v1.2 v5 UI 网关
+
+更新时间：2026-10-18（Asia/Shanghai）。插件 UI 只来自已签名、受管且当前获批的包。API 在内部 3004 监听资源请求，Node 网关在 3003 只代理有限 `/ui/<租约>/...` 静态资源，不挂载源码目录，不构建插件，不透传认证头。每个租约有独立子域，父页还限制 iframe 可导航的域。配置、SDK 挂载或容器入口变更需 `docker-dev.* rebuild`；本轮验收使用独占 PG16、原生 race 服务与相同 Node 网关，没有重启共享开发栈。
+
+原生、Docker 和 LAN 的变量及通配 DNS/TLS 要求见[配置与端口](configuration.md#v5-插件与隔离界面)。默认父页面为 localhost:3000/3001，改用 127.0.0.1、LAN IP 或域名时须同步精确父 Origin。安装与批准不自动启用插件；真实后端 Runner 仍由 V12-05/06 实施。

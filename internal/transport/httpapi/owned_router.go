@@ -203,6 +203,9 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	case platformroute.AudienceAuthenticated:
 		descriptor.Auth = "jwt"
 		descriptor.Audit = "request-log"
+	case platformroute.AudienceIntegration:
+		descriptor.Auth = "integration-digest+current-facts+whitelist+source-acl"
+		descriptor.Audit = "required-command+outbox"
 	case platformroute.AudienceAdmin:
 		if g.scopeType == "" {
 			descriptor.Auth = "jwt+admin-account+permission"
@@ -229,6 +232,39 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 	}
 	if strings.HasPrefix(fullPath, "/api/v1/identity/") {
 		descriptor.Audit = "identity-recovery-audit"
+	}
+	if strings.HasPrefix(operation, "http.knowledge.") {
+		descriptor.Auth = "none+current-origin-policy"
+		descriptor.Audit = "none"
+		if g.audience == platformroute.AudienceAdmin {
+			descriptor.Auth = "jwt+current-admin-session+permission"
+			if method != "GET" {
+				descriptor.Auth += "+recent-mfa+browser-csrf"
+				descriptor.Audit = "required-command+outbox"
+			}
+		}
+		if strings.HasPrefix(operation, "http.knowledge.private.") {
+			descriptor.Auth = "jwt+current-user-session+document-owner"
+			if operation != "http.knowledge.private.source.preflight" {
+				descriptor.Auth = "jwt+current-user-session+source-owner"
+			}
+
+			if operation == "http.knowledge.private.select" || operation == "http.knowledge.private.withdraw" || operation == "http.knowledge.private.retry" {
+				descriptor.Audit = "required-command+outbox"
+			}
+		}
+	}
+	if strings.HasPrefix(operation, "http.identity.integration.") {
+		descriptor.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
+		descriptor.Audit = "required-command+outbox"
+		if method == "GET" {
+			descriptor.Auth = "jwt+current-admin-session+permission"
+			descriptor.Audit = "none"
+		}
+	}
+	if operation == "http.identity.integration_self.read" {
+		descriptor.Auth = "integration-digest+current-facts"
+		descriptor.Audit = "none"
 	}
 	switch operation {
 	case "http.identity.admin_session.login":
@@ -278,6 +314,8 @@ func runtimeFunctionName(handler gin.HandlerFunc) string {
 
 func moduleOwner(handlerName, path string) string {
 	switch {
+	case strings.Contains(handlerName, "/internal/modules/features/knowledge.") || strings.Contains(handlerName, "/internal/modules/features/knowledge/"):
+		return "feature.knowledge"
 	case strings.Contains(handlerName, "/internal/transport/httpapi/"), strings.Contains(handlerName, "/internal/transport/httpapi."):
 		return "core.platform-api"
 	case strings.Contains(handlerName, "/internal/modules/core/identity/"):
@@ -335,6 +373,9 @@ func routeDescriptorID(method, path string) string {
 }
 
 func routeFeature(path string) string {
+	if strings.HasPrefix(path, "/api/v1/knowledge") || strings.HasPrefix(path, "/api/v1/admin/knowledge") || strings.HasPrefix(path, "/api/v1/integration/knowledge") {
+		return "knowledge"
+	}
 	switch {
 	case strings.HasPrefix(path, "/api/v1/spaces"), strings.HasPrefix(path, "/api/v1/space"), strings.HasPrefix(path, "/api/v1/u/"), strings.HasPrefix(path, "/api/v1/appearance/space-style-packs"):
 		return "personal-space"

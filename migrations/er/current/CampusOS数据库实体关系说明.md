@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608;tables=100;foreign_keys=116 -->
+<!-- campusos-er:schema_sha256=b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e;tables=124;foreign_keys=138 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**100**
-- 物理外键：**116**
-- 一对一/可选一对一关系：**14**
-- 一对多关系：**102**
-- 推断的逻辑多对多关系：**6**
-- Schema 指纹：`cbf1e43624969d42d360f882031c92930ca60a3e0b7a6df360c430e978907608`
+- 实体表：**124**
+- 物理外键：**138**
+- 一对一/可选一对一关系：**17**
+- 一对多关系：**121**
+- 推断的逻辑多对多关系：**9**
+- Schema 指纹：`b892c4c43c0a57f09e6d1843c0f8738ebb225ba36577f9c6d7931ca4b1fcea1e`
 
 ## 1. 生成范围与判定规则
 
@@ -41,6 +41,16 @@
 - `000022_v1_2_richtext_asset_binding_facts.up.sql`
 - `000023_v1_2_personal_space_facts.up.sql`
 - `000024_v1_2_storage_quota_facts.up.sql`
+- `000025_integration_identity.up.sql`
+- `000026_plugin_package_identities.up.sql`
+- `000027_plugin_v5_installations.up.sql`
+- `000028_plugin_v5_event_deliveries.up.sql`
+- `000029_instance_recovery_epochs.up.sql`
+- `000030_knowledge_sources.up.sql`
+- `000031_knowledge_index_requests.up.sql`
+- `000032_knowledge_index_backfill.up.sql`
+- `000033_knowledge_index_execution.up.sql`
+- `000034_knowledge_private_index.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -72,7 +82,7 @@
 | 身份与访问控制 | `roles` | 8 | `id` | 0 | 2 |
 | 身份与访问控制 | `sessions` | 20 | `id` | 1 | 0 |
 | 身份与访问控制 | `user_roles` | 8 | `id` | 2 | 0 |
-| 身份与访问控制 | `users` | 12 | `id` | 0 | 49 |
+| 身份与访问控制 | `users` | 12 | `id` | 0 | 53 |
 | 社区与内容 | `categories` | 18 | `id` | 1 | 4 |
 | 社区与内容 | `category_thread_type_policies` | 5 | `category_id, thread_type` | 1 | 0 |
 | 社区与内容 | `likes` | 7 | `id` | 1 | 0 |
@@ -105,9 +115,14 @@
 | 插件生态与授权 | `plugin_delegations` | 12 | `id` | 3 | 1 |
 | 插件生态与授权 | `plugin_file_metadata` | 11 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_install_requests` | 14 | `id` | 1 | 0 |
+| 插件生态与授权 | `plugin_installations` | 8 | `record_id` | 2 | 1 |
 | 插件生态与授权 | `plugin_logs` | 9 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_market_audits` | 7 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_market_sources` | 9 | `id` | 0 | 1 |
+| 插件生态与授权 | `plugin_operations` | 9 | `record_id` | 1 | 0 |
+| 插件生态与授权 | `plugin_package_identities` | 5 | `publisher, plugin_key, version` | 0 | 1 |
+| 插件生态与授权 | `plugin_package_releases` | 5 | `record_id` | 2 | 9 |
+| 插件生态与授权 | `plugin_packages` | 3 | `publisher, plugin_key` | 0 | 1 |
 | 插件生态与授权 | `plugin_permissions` | 6 | `id` | 0 | 0 |
 | 插件生态与授权 | `plugin_publishers` | 10 | `id` | 1 | 1 |
 | 插件生态与授权 | `plugin_records` | 12 | `id` | 0 | 0 |
@@ -116,6 +131,11 @@
 | 插件生态与授权 | `plugin_ui_invocations` | 16 | `id` | 5 | 0 |
 | 插件生态与授权 | `plugin_user_consents` | 13 | `id` | 2 | 1 |
 | 插件生态与授权 | `plugin_user_grants` | 9 | `id` | 0 | 0 |
+| 插件生态与授权 | `plugin_user_installations` | 9 | `record_id` | 4 | 0 |
+| 插件生态与授权 | `plugin_v5_admin_grants` | 6 | `record_id` | 1 | 0 |
+| 插件生态与授权 | `plugin_v5_configurations` | 7 | `record_id` | 2 | 0 |
+| 插件生态与授权 | `plugin_v5_event_deliveries` | 8 | `id` | 1 | 0 |
+| 插件生态与授权 | `plugin_v5_user_consents` | 7 | `record_id` | 2 | 0 |
 | 插件生态与授权 | `plugin_versions` | 16 | `id` | 2 | 4 |
 | 插件生态与授权 | `plugins` | 24 | `id` | 1 | 2 |
 | 平台可靠性与集成 | `ai_call_logs` | 12 | `id` | 0 | 0 |
@@ -141,6 +161,20 @@
 | 其他平台数据 | `content_moderation_actions` | 11 | `id` | 0 | 0 |
 | 其他平台数据 | `content_moderation_cases` | 12 | `id` | 0 | 0 |
 | 其他平台数据 | `content_revisions` | 13 | `id` | 0 | 0 |
+| 其他平台数据 | `instance_recovery_epochs` | 11 | `singleton` | 0 | 0 |
+| 其他平台数据 | `integration_credentials` | 13 | `id` | 1 | 0 |
+| 其他平台数据 | `integration_principals` | 7 | `id` | 0 | 1 |
+| 其他平台数据 | `knowledge_collection_sources` | 5 | `id` | 2 | 0 |
+| 其他平台数据 | `knowledge_collections` | 3 | `id` | 0 | 2 |
+| 其他平台数据 | `knowledge_index_backfill_checkpoints` | 5 | `target_kind` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_documents` | 6 | `id` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_jobs` | 7 | `id` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_tasks` | 6 | `id` | 0 | 0 |
+| 其他平台数据 | `knowledge_official_revisions` | 4 | `id` | 1 | 0 |
+| 其他平台数据 | `knowledge_official_sources` | 3 | `id` | 0 | 1 |
+| 其他平台数据 | `knowledge_private_sources` | 11 | `id` | 1 | 1 |
+| 其他平台数据 | `knowledge_private_tasks` | 8 | `source_id` | 1 | 0 |
+| 其他平台数据 | `knowledge_source_selections` | 4 | `id` | 1 | 1 |
 | 其他平台数据 | `platform_command_audits` | 14 | `id` | 1 | 0 |
 | 其他平台数据 | `platform_compatibility_usage` | 6 | `usage_key` | 0 | 0 |
 | 其他平台数据 | `platform_operation_runs` | 11 | `id` | 0 | 0 |
@@ -162,8 +196,11 @@
 | `identity_email_challenges` | `identity_account_recovery_cases` | `fk_identity_recovery_case_challenge` | `challenge_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `accounts` | `identity_admin_accounts` | `fk_identity_admin_account_credential` | `credential_account_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_admin_accounts` | `fk_identity_admin_account_user` | `user_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_private_sources` | `knowledge_private_tasks` | `knowledge_private_tasks_source_id_fkey` | `source_id` → `id` | 父 1 : 子 0..1 | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `threads` | `mutual_aid_details` | `fk_mutual_aid_details_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `personal_document_versions` | `personal_document_previews` | `personal_document_previews_document_version_id_fkey` | `document_version_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `plugin_package_identities` | `plugin_package_releases` | `fk_plugin_package_releases_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_v5_admin_grants` | `fk_plugin_v5_admin_grants_1` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `threads` | `richtext_article_contents` | `fk_richtext_contents_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `threads` | `secondhand_details` | `fk_secondhand_details_thread` | `thread_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `storage_objects` | `user_assets` | `fk_user_assets_storage_object` | `storage_object_id` → `id` | 父 1 : 子 0..1 | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -202,6 +239,12 @@
 | `users` | `identity_mfa_recovery_codes` | `fk_identity_mfa_recovery_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_mfa_tickets` | `fk_identity_mfa_ticket_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `identity_mfa_totp_methods` | `fk_identity_mfa_totp_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `integration_principals` | `integration_credentials` | `integration_credentials_principal_id_fkey` | `principal_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_collections` | `knowledge_collection_sources` | `knowledge_collection_sources_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_source_selections` | `knowledge_collection_sources` | `fk_knowledge_collection_sources_2` | `selection_id, collection_id` → `id, collection_id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `knowledge_official_sources` | `knowledge_official_revisions` | `knowledge_official_revisions_source_id_fkey` | `source_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `users` | `knowledge_private_sources` | `knowledge_private_sources_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `knowledge_collections` | `knowledge_source_selections` | `knowledge_source_selections_collection_id_fkey` | `collection_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `likes` | `fk_likes_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `mutual_aid_details` | `fk_mutual_aid_details_created_by` | `created_by` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
 | `users` | `notifications` | `fk_notifications_user` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `RESTRICT` | `NO ACTION` |
@@ -229,6 +272,10 @@
 | `users` | `plugin_delegations` | `plugin_delegations_subject_user_id_fkey` | `subject_user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_delegations` | `plugin_delegations_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugin_market_sources` | `plugin_install_requests` | `fk_plugin_install_requests_market_source` | `market_source_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `CASCADE` |
+| `plugin_package_releases` | `plugin_installations` | `fk_plugin_installations_1` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_installations` | `fk_plugin_installations_2` | `publisher, plugin_key, desired_version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_operations` | `fk_plugin_operations_1` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_packages` | `plugin_package_releases` | `fk_plugin_package_releases_1` | `publisher, plugin_key` → `publisher, plugin_key` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `users` | `plugin_publishers` | `plugin_publishers_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugins` | `plugin_secret_values` | `plugin_secret_values_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_secret_values` | `plugin_secret_values_owner_user_id_fkey` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
@@ -240,6 +287,15 @@
 | `personal_documents` | `plugin_ui_invocations` | `fk_plugin_ui_invocations_personal_document` | `personal_document_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_user_consents` | `plugin_user_consents_user_id_fkey` | `user_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `plugin_capability_declarations` | `plugin_user_consents` | `fk_plugin_user_consent_declaration` | `plugin_version_id, capability_code` → `plugin_version_id, capability_code` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
+| `users` | `plugin_user_installations` | `fk_plugin_user_installations_1` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_user_installations` | `fk_plugin_user_installations_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_user_installations` | `fk_plugin_user_installations_3` | `publisher, plugin_key, desired_version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_installations` | `plugin_user_installations` | `fk_plugin_user_installations_4` | `publisher, plugin_key` → `publisher, plugin_key` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `users` | `plugin_v5_configurations` | `fk_plugin_v5_configurations_1` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_v5_configurations` | `fk_plugin_v5_configurations_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_v5_event_deliveries` | `fk_plugin_v5_event_deliveries_1` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
+| `users` | `plugin_v5_user_consents` | `fk_plugin_v5_user_consents_1` | `owner_user_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `RESTRICT` | `NO ACTION` |
+| `plugin_package_releases` | `plugin_v5_user_consents` | `fk_plugin_v5_user_consents_2` | `publisher, plugin_key, version` → `publisher, plugin_key, version` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `NO ACTION` | `NO ACTION` |
 | `plugins` | `plugin_versions` | `plugin_versions_plugin_id_fkey` | `plugin_id` → `id` | 父 1 : 子 0..N | 必选（恰好 1 个父记录） | `CASCADE` | `NO ACTION` |
 | `users` | `plugin_versions` | `plugin_versions_created_by_fkey` | `created_by` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
 | `plugin_publishers` | `plugins` | `fk_plugins_publisher` | `publisher_id` → `id` | 父 1 : 子 0..N | 可选（0..1 个父记录） | `SET NULL` | `NO ACTION` |
@@ -289,6 +345,9 @@
 | `academic_terms` | `users` | `user_schedule_terms` | 关联列受主键/唯一约束共同约束 |
 | `richtext_article_contents` | `user_assets` | `richtext_article_attachments` | 关联列受主键/唯一约束共同约束 |
 | `admin_accounts` | `admin_roles` | `admin_role_bindings` | 按关联实体命名与双外键推断（非唯一性保证） |
+| `plugin_packages` | `plugin_package_identities` | `plugin_package_releases` | 关联列受主键/唯一约束共同约束 |
+| `users` | `plugin_installations` | `plugin_user_installations` | 关联列受主键/唯一约束共同约束 |
+| `users` | `plugin_package_releases` | `plugin_v5_user_consents` | 关联列受主键/唯一约束共同约束 |
 
 ## 6. 各实体字段与约束
 
@@ -758,7 +817,7 @@
 
 - 主键：`id`
 - 唯一列集：无全局唯一列集
-- 出站外键：0；入站外键：49
+- 出站外键：0；入站外键：53
 
 | 字段 | 数据类型 | 标记 | 可空 | 默认值 |
 | --- | --- | --- | --- | --- |
@@ -1603,6 +1662,28 @@
 
 - `fk_plugin_install_requests_market_source`：`plugin_install_requests(market_source_id)` → `plugin_market_sources(id)`；ON DELETE `RESTRICT`；ON UPDATE `CASCADE`。
 
+#### `plugin_installations`
+
+- 主键：`record_id`
+- 唯一列集：(publisher, plugin_key)
+- 出站外键：2；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+| `generation` | `bigint` | NN | 否 | `—` |
+| `desired_version` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_installations_1`：`plugin_installations(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+- `fk_plugin_installations_2`：`plugin_installations(publisher, plugin_key, desired_version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
 #### `plugin_logs`
 
 - 主键：`id`
@@ -1654,6 +1735,73 @@
 | `updated_by` | `varchar(64)` | NN | 否 | `''` |
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+
+#### `plugin_operations`
+
+- 主键：`record_id`
+- 唯一列集：(actor_kind, actor_id, idempotency_key)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+| `actor_kind` | `text` | NN | 否 | `—` |
+| `actor_id` | `text` | NN | 否 | `—` |
+| `idempotency_key` | `text` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_operations_1`：`plugin_operations(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_package_identities`
+
+- 主键：`publisher, plugin_key, version`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `publisher` | `VARCHAR(63)` | PK/NN | 否 | `—` |
+| `plugin_key` | `VARCHAR(63)` | PK/NN | 否 | `—` |
+| `version` | `VARCHAR(128)` | PK/NN | 否 | `—` |
+| `package_digest` | `VARCHAR(71)` | NN | 否 | `—` |
+| `created_at` | `TIMESTAMPTZ` | NN | 否 | `CURRENT_TIMESTAMP` |
+
+#### `plugin_package_releases`
+
+- 主键：`record_id`
+- 唯一列集：(publisher, plugin_key, version)
+- 出站外键：2；入站外键：9
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_package_releases_1`：`plugin_package_releases(publisher, plugin_key)` → `plugin_packages(publisher, plugin_key)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+- `fk_plugin_package_releases_2`：`plugin_package_releases(publisher, plugin_key, version)` → `plugin_package_identities(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_packages`
+
+- 主键：`publisher, plugin_key`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `publisher` | `varchar(63)` | PK/NN | 否 | `—` |
+| `plugin_key` | `varchar(63)` | PK/NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
 
 #### `plugin_permissions`
 
@@ -1837,6 +1985,113 @@
 | `granted_at` | `timestamptz` | NN | 否 | `now()` |
 | `revoked_at` | `timestamptz` | — | 是 | `—` |
 | `updated_at` | `timestamptz` | NN | 否 | `now()` |
+
+#### `plugin_user_installations`
+
+- 主键：`record_id`
+- 唯一列集：(publisher, plugin_key, owner_user_id)
+- 出站外键：4；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `owner_user_id` | `bigint` | FK | 是 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+| `generation` | `bigint` | NN | 否 | `—` |
+| `desired_version` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_user_installations_1`：`plugin_user_installations(owner_user_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_plugin_user_installations_2`：`plugin_user_installations(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+- `fk_plugin_user_installations_3`：`plugin_user_installations(publisher, plugin_key, desired_version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+- `fk_plugin_user_installations_4`：`plugin_user_installations(publisher, plugin_key)` → `plugin_installations(publisher, plugin_key)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_v5_admin_grants`
+
+- 主键：`record_id`
+- 唯一列集：(publisher, plugin_key, version)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_v5_admin_grants_1`：`plugin_v5_admin_grants(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_v5_configurations`
+
+- 主键：`record_id`
+- 唯一列集：无全局唯一列集
+- 出站外键：2；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `owner_user_id` | `bigint` | FK | 是 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_v5_configurations_1`：`plugin_v5_configurations(owner_user_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_plugin_v5_configurations_2`：`plugin_v5_configurations(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_v5_event_deliveries`
+
+- 主键：`id`
+- 唯一列集：(source_event_id, instance_id, instance_generation)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `source_event_id` | `text` | NN | 否 | `—` |
+| `instance_id` | `text` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `instance_generation` | `bigint` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_v5_event_deliveries_1`：`plugin_v5_event_deliveries(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
+
+#### `plugin_v5_user_consents`
+
+- 主键：`record_id`
+- 唯一列集：(publisher, plugin_key, version, owner_user_id)
+- 出站外键：2；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `record_id` | `text` | PK | 是 | `—` |
+| `state` | `jsonb` | NN | 否 | `—` |
+| `publisher` | `text` | FK/NN | 否 | `—` |
+| `plugin_key` | `text` | FK/NN | 否 | `—` |
+| `version` | `text` | FK/NN | 否 | `—` |
+| `owner_user_id` | `bigint` | FK | 是 | `—` |
+| `revision` | `bigint` | NN | 否 | `—` |
+
+外键明细：
+
+- `fk_plugin_v5_user_consents_1`：`plugin_v5_user_consents(owner_user_id)` → `users(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_plugin_v5_user_consents_2`：`plugin_v5_user_consents(publisher, plugin_key, version)` → `plugin_package_releases(publisher, plugin_key, version)`；ON DELETE `NO ACTION`；ON UPDATE `NO ACTION`。
 
 #### `plugin_versions`
 
@@ -2392,6 +2647,250 @@
 | `created_at` | `timestamptz` | NN | 否 | `now()` |
 | `created_actor_kind` | `varchar(16)` | NN | 否 | `'legacy_unknown'` |
 | `created_actor_id` | `varchar(128)` | NN | 否 | `''` |
+
+#### `instance_recovery_epochs`
+
+- 主键：`singleton`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `singleton` | `boolean` | PK | 是 | `true` |
+| `epoch` | `varchar(64)` | NN | 否 | `—` |
+| `archive_sha256` | `varchar(64)` | NN | 否 | `—` |
+| `phase` | `varchar(16)` | NN | 否 | `—` |
+| `inventory_sha256` | `varchar(64)` | NN | 否 | `''` |
+| `reviewed_by` | `varchar(128)` | NN | 否 | `''` |
+| `review_reason` | `varchar(500)` | NN | 否 | `''` |
+| `rotated_at` | `timestamptz` | NN | 否 | `now()` |
+| `reviewed_at` | `timestamptz` | — | 是 | `—` |
+| `egress_paused` | `boolean` | NN | 否 | `true` |
+| `audit` | `jsonb` | NN | 否 | `'[]'` |
+
+#### `integration_credentials`
+
+- 主键：`id`
+- 唯一列集：(prefix)；(digest)
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `varchar(128)` | PK | 是 | `—` |
+| `principal_id` | `varchar(128)` | FK/NN | 否 | `—` |
+| `prefix` | `varchar(22)` | UQ/NN | 否 | `—` |
+| `digest` | `bytea` | UQ/NN | 否 | `—` |
+| `purpose` | `varchar(32)` | NN | 否 | `—` |
+| `status` | `varchar(16)` | NN | 否 | `—` |
+| `rules` | `jsonb` | NN | 否 | `—` |
+| `not_before_ms` | `bigint` | NN | 否 | `—` |
+| `expires_at_ms` | `bigint` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
+| `created_by_admin_id` | `varchar(128)` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+外键明细：
+
+- `integration_credentials_principal_id_fkey`：`integration_credentials(principal_id)` → `integration_principals(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `integration_principals`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `varchar(128)` | PK | 是 | `—` |
+| `name` | `varchar(120)` | NN | 否 | `—` |
+| `status` | `varchar(16)` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `—` |
+| `created_by_admin_id` | `varchar(128)` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_collection_sources`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：2；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `collection_id` | `text` | FK/NN | 否 | `—` |
+| `selection_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_collection_sources_collection_id_fkey`：`knowledge_collection_sources(collection_id)` → `knowledge_collections(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+- `fk_knowledge_collection_sources_2`：`knowledge_collection_sources(selection_id, collection_id)` → `knowledge_source_selections(id, collection_id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_collections`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：2
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+
+#### `knowledge_index_backfill_checkpoints`
+
+- 主键：`target_kind`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `target_kind` | `text` | PK | 是 | `—` |
+| `after_id` | `text` | NN | 否 | `''` |
+| `completed_passes` | `bigint` | NN | 否 | `0` |
+| `next_scan_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+| `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_index_documents`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_index_epoch_seq')` |
+| `collection_id` | `text` | NN | 否 | `—` |
+| `selection_id` | `text` | NN | 否 | `—` |
+| `generation` | `bigint` | NN | 否 | `—` |
+
+#### `knowledge_index_jobs`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_index_epoch_seq')` |
+| `state` | `text` | NN | 否 | `—` |
+| `available_at_ms` | `bigint` | NN | 否 | `—` |
+| `lease_until_ms` | `bigint` | NN | 否 | `—` |
+| `lease_token` | `bigint` | NN | 否 | `—` |
+
+#### `knowledge_index_tasks`
+
+- 主键：`id`
+- 唯一列集：(target_kind, target_id, target_version)
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `target_kind` | `text` | NN | 否 | `—` |
+| `target_id` | `text` | NN | 否 | `—` |
+| `target_version` | `bigint` | NN | 否 | `—` |
+| `status` | `text` | NN | 否 | `'pending'` |
+| `created_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_official_revisions`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `source_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_official_revisions_source_id_fkey`：`knowledge_official_revisions(source_id)` → `knowledge_official_sources(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_official_sources`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+
+#### `knowledge_private_sources`
+
+- 主键：`id`
+- 唯一列集：(owner_user_id, kind, source_id)
+- 出站外键：1；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `owner_user_id` | `bigint` | FK/NN | 否 | `—` |
+| `kind` | `text` | NN | 否 | `—` |
+| `source_id` | `bigint` | NN | 否 | `—` |
+| `revision` | `text` | NN | 否 | `—` |
+| `format` | `text` | NN | 否 | `—` |
+| `consent_version` | `bigint` | NN | 否 | `nextval('knowledge_private_epoch_seq')` |
+| `state` | `text` | NN | 否 | `'pending'` |
+| `nonce` | `bytea` | NN | 否 | `—` |
+| `ciphertext` | `bytea` | NN | 否 | `—` |
+| `created_at` | `timestamptz` | NN | 否 | `now()` |
+
+外键明细：
+
+- `knowledge_private_sources_owner_user_id_fkey`：`knowledge_private_sources(owner_user_id)` → `users(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_private_tasks`
+
+- 主键：`source_id`
+- 唯一列集：无全局唯一列集
+- 出站外键：1；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `source_id` | `text` | PK/FK | 是 | `—` |
+| `consent_version` | `bigint` | NN | 否 | `—` |
+| `state` | `text` | NN | 否 | `'pending'` |
+| `attempts` | `integer` | NN | 否 | `0` |
+| `lease_token` | `bigint` | NN | 否 | `0` |
+| `lease_until_ms` | `bigint` | NN | 否 | `0` |
+| `available_at_ms` | `bigint` | NN | 否 | `0` |
+| `error_code` | `text` | NN | 否 | `''` |
+
+外键明细：
+
+- `knowledge_private_tasks_source_id_fkey`：`knowledge_private_tasks(source_id)` → `knowledge_private_sources(id)`；ON DELETE `CASCADE`；ON UPDATE `NO ACTION`。
+
+#### `knowledge_source_selections`
+
+- 主键：`id`
+- 唯一列集：(id, collection_id)
+- 出站外键：1；入站外键：1
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_facts_version_seq')` |
+| `collection_id` | `text` | FK/NN | 否 | `—` |
+
+外键明细：
+
+- `knowledge_source_selections_collection_id_fkey`：`knowledge_source_selections(collection_id)` → `knowledge_collections(id)`；ON DELETE `RESTRICT`；ON UPDATE `NO ACTION`。
 
 #### `platform_command_audits`
 

@@ -1,4 +1,8 @@
 export const UI_CONTRACT_VERSION = "campusos.ui/v1" as const;
+export * from "./exact-json.js";
+export * from "./v5-configuration-form.js";
+export * from "./isolated-plugin-bridge.js";
+export * from "./plugin-frame-policy.js";
 export const CAPABILITY_CONTRACT_VERSION = "campusos.capability/v1" as const;
 export const EVENT_CONTRACT_VERSION = "campusos.event/v1" as const;
 export const PROCESS_CONTRACT_VERSION = "campusos.process/v1" as const;
@@ -382,65 +386,171 @@ export class CampusExtensionClient {
 
 // Target v1.2 G1 data contract; does not enable a runtime authorization path.
 export { PRINCIPAL_CONTEXT_VERSION } from "./principal";
-export type { PrincipalKind, PrincipalRef, PrincipalContextV1, PrincipalContextErrorCode } from "./principal";
-
-export { THREAD_PUBLIC_READ_CONTRACT, THREAD_PUBLIC_READ_POLICY } from "./thread-public-read-policy";
 export type {
-  ThreadResourceRef, ThreadPublicReadFactsV1, ThreadPublicReadRequestV1,
-  ThreadPublicReadDecisionV1, ThreadPublicReadErrorCode,
+  PrincipalKind,
+  PrincipalRef,
+  PrincipalContextV1,
+  PrincipalContextErrorCode,
+} from "./principal";
+
+export {
+  THREAD_PUBLIC_READ_CONTRACT,
+  THREAD_PUBLIC_READ_POLICY,
+} from "./thread-public-read-policy";
+export type {
+  ThreadResourceRef,
+  ThreadPublicReadFactsV1,
+  ThreadPublicReadRequestV1,
+  ThreadPublicReadDecisionV1,
+  ThreadPublicReadErrorCode,
 } from "./thread-public-read-policy";
 
 export { BOARD_DELEGATION_CONTRACT } from "./board-delegation";
 export type {
-  BoardGovernanceAction, BoardGrantAtomV1, BoardDelegationBoundV1, BoardDelegationRequestV1,
-  BoardDelegationDenyReason, BoardDelegationDecisionV1, BoardDelegationErrorCode,
+  BoardGovernanceAction,
+  BoardGrantAtomV1,
+  BoardDelegationBoundV1,
+  BoardDelegationRequestV1,
+  BoardDelegationDenyReason,
+  BoardDelegationDecisionV1,
+  BoardDelegationErrorCode,
 } from "./board-delegation";
 
 export { PLUGIN_V5_API_VERSION } from "./plugin-v5-package-shape";
 export type {
-  PluginV5Runtime, PluginV5UiAudience, PluginV5ExtensionPoint, PluginV5UiArtifact,
-  PluginV5BackendArtifact, PluginV5ProviderShape, PluginV5PackageShape,
-  PluginV5ReleaseEnvelope, PluginV5ShapeErrorCode,
+  PluginV5Runtime,
+  PluginV5UiAudience,
+  PluginV5ExtensionPoint,
+  PluginV5UiArtifact,
+  PluginV5BackendArtifact,
+  PluginV5ProviderShape,
+  PluginV5PackageShape,
+  PluginV5ReleaseEnvelope,
+  PluginV5ShapeErrorCode,
 } from "./plugin-v5-package-shape";
 
 export type {
-  PluginV5ConsumeScope, PluginV5Consume, PluginV5Consumes,
-  PluginV5HostCapability, PluginV5HostCatalog, PluginV5ConsumesErrorCode,
+  PluginV5ConsumeScope,
+  PluginV5Consume,
+  PluginV5Consumes,
+  PluginV5HostCapability,
+  PluginV5HostCatalog,
+  PluginV5ConsumesErrorCode,
 } from "./plugin-v5-consumes";
 
 export type {
-  PluginV5DataMode, PluginV5SchemaFileRef, PluginV5Provide,
-  PluginV5ExtensionPointDescriptor, PluginV5ExtensionCatalog, PluginV5ProvidesErrorCode,
+  PluginV5DataMode,
+  PluginV5SchemaFileRef,
+  PluginV5Provide,
+  PluginV5ExtensionPointDescriptor,
+  PluginV5ExtensionCatalog,
+  PluginV5ProvidesErrorCode,
 } from "./plugin-v5-provides";
 export type {
-  PluginV5ExtensionCallBase, PluginV5ExtensionResultBase,
-  PluginV5PreviewRequest, PluginV5PreviewResponse,
-  PluginV5ChatRequest, PluginV5ChatResponse,
-  PluginV5KnowledgeSourceRequest, PluginV5KnowledgeSourceItem, PluginV5KnowledgeSourceResponse,
+  PluginV5ExtensionCallBase,
+  PluginV5ExtensionResultBase,
+  PluginV5PreviewRequest,
+  PluginV5PreviewResponse,
+  PluginV5ChatRequest,
+  PluginV5ChatResponse,
+  PluginV5KnowledgeSourceRequest,
+  PluginV5KnowledgeSourceItem,
+  PluginV5KnowledgeSourceResponse,
 } from "./plugin-v5-provides";
 
 export type {
-  PluginV5ResourceSet, PluginV5ResourceDecisionInput, PluginV5HostFingerprint,
-  PluginV5InstallMutationKind, PluginV5InstallPlan, PluginV5ResourceInstallErrorCode,
+  PluginV5ResourceSet,
+  PluginV5ResourceDecisionInput,
+  PluginV5HostFingerprint,
+  PluginV5InstallMutationKind,
+  PluginV5InstallPlan,
+  PluginV5ResourceInstallErrorCode,
 } from "./plugin-v5-resource-install";
 
 export type {
-  PluginV5ConfigField, PluginV5ConfigDefinition, PluginV5ConfigUpdate,
-  PluginV5ConfigDecisionInput, PluginV5ConfigErrorCode,
+  PluginV5ConfigField,
+  PluginV5ConfigDefinition,
+  PluginV5ConfigUpdate,
+  PluginV5ConfigDecisionInput,
+  PluginV5ConfigErrorCode,
 } from "./plugin-v5-config";
 
 export type {
-  ResourcePolicyActionV1, ResourcePolicyFactsV1, ResourcePolicyGrantV1,
-  ResourcePolicyRequestV1, ResourcePolicyDecisionV1, ResourcePolicyErrorCodeV1,
+  ResourcePolicyActionV1,
+  ResourcePolicyFactsV1,
+  ResourcePolicyGrantV1,
+  ResourcePolicyRequestV1,
+  ResourcePolicyDecisionV1,
+  ResourcePolicyErrorCodeV1,
 } from "./resource-policy";
-export type { IdentityKind, IdentityDomainDescriptor, IdentityDomainProbe, AdminDomainOperation, IdentityDomainDecisionInput, IdentityDomainErrorCode } from "./identity-domains.js";
-export type { PluginV5PrivateDataDeclaration, PluginV5ManifestBase, PluginV5Manifest, PluginV5ManifestErrorCode } from "./plugin-v5-manifest.js";
-export type { PluginV5DispatchCall, PluginV5DispatchTrustedFacts, PluginV5DispatchDecisionInput, PluginV5DispatchErrorCode } from "./plugin-v5-dispatch.js";
-export type { PluginV5SafeEvent, PluginV5EventDelivery, PluginV5EventDecisionInput, PluginV5EventErrorCode, PluginV5LifecycleDecisionInput, PluginV5LifecycleErrorCode } from "./plugin-v5-events.js";
-export type { ScopeDelegationScope, ScopeDelegationAction, ScopeDelegationAtom, ScopeDelegationDecisionInput, ScopeDelegationErrorCode } from "./scope-delegation.js";
+export type {
+  IdentityKind,
+  IdentityDomainDescriptor,
+  IdentityDomainProbe,
+  AdminDomainOperation,
+  IdentityDomainDecisionInput,
+  IdentityDomainErrorCode,
+} from "./identity-domains.js";
+export type {
+  PluginV5PrivateDataDeclaration,
+  PluginV5ManifestBase,
+  PluginV5Manifest,
+  PluginV5ManifestErrorCode,
+} from "./plugin-v5-manifest.js";
+export type {
+  PluginV5DispatchCall,
+  PluginV5DispatchTrustedFacts,
+  PluginV5DispatchDecisionInput,
+  PluginV5DispatchErrorCode,
+} from "./plugin-v5-dispatch.js";
+export type {
+  PluginV5SafeEvent,
+  PluginV5EventDelivery,
+  PluginV5EventDecisionInput,
+  PluginV5EventErrorCode,
+  PluginV5LifecycleDecisionInput,
+  PluginV5LifecycleErrorCode,
+} from "./plugin-v5-events.js";
+export type {
+  ScopeDelegationScope,
+  ScopeDelegationAction,
+  ScopeDelegationAtom,
+  ScopeDelegationDecisionInput,
+  ScopeDelegationErrorCode,
+} from "./scope-delegation.js";
 export { INTEGRATION_ACCESS_VERSION } from "./integration-access.js";
 export type {
-  IntegrationAccessTargetV1, IntegrationAccessEndpointV1, IntegrationAccessRuleV1,
-  IntegrationAccessInputV1, IntegrationAccessDecisionV1, IntegrationAccessDenyReasonV1,
+  IntegrationAccessTargetV1,
+  IntegrationAccessEndpointV1,
+  IntegrationAccessRuleV1,
+  IntegrationAccessInputV1,
+  IntegrationAccessDecisionV1,
+  IntegrationAccessDenyReasonV1,
   IntegrationAccessErrorCodeV1,
 } from "./integration-access.js";
+export { INTEGRATION_RUNTIME_VERSION } from "./integration-runtime.js";
+export type {
+  IntegrationRuntimeInputV2,
+  IntegrationRuntimeDecisionV2,
+  IntegrationCredentialIssueResponse,
+  IntegrationPublicThread,
+} from "./integration-runtime.js";
+
+export type {
+  PluginV5PublisherTrustKey,
+  PluginV5PublisherTrustStore,
+  PluginV5PackageCheckResult,
+  PluginV5PackageErrorCode,
+} from "./plugin-v5-package.js";
+
+export type {
+  PluginV5Coordinate,
+  PluginV5Installation,
+  PluginV5Operation,
+  PluginV5InstallationCommand,
+  PluginV5AdminInstallationCommand,
+  PluginV5InstallationErrorCode,
+} from "./plugin-v5-installation.js";
+
+export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
+export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";

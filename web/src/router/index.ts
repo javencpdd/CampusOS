@@ -6,6 +6,7 @@ import { pluginCenterRoutes } from '../modules/plugin-center/routes'
 import { spaceRoutes } from '../modules/space/routes'
 import { mutualAidRoutes } from '../modules/mutual-aid/routes'
 import { secondhandRoutes } from '../modules/secondhand/routes'
+import { knowledgeRoutes } from '../modules/knowledge/routes'
 import { ensureAccessToken, getAccessToken } from '../modules/identity/session'
 
 const router = createRouter({
@@ -17,6 +18,7 @@ const router = createRouter({
     ...pluginCenterRoutes,
     ...mutualAidRoutes,
     ...secondhandRoutes,
+    ...knowledgeRoutes,
   ],
 })
 

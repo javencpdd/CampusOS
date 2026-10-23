@@ -116,6 +116,8 @@ type fakeProvider struct {
 	err      error
 }
 
+func (p fakeProvider) Definition() Definition { return textDefinition() }
+
 func (p fakeProvider) Name() string {
 	return p.name
 }

@@ -336,5 +336,7 @@
       "risk": "low",
       "description": "Read available Web style packs and current selection."
     }
-  ]
+  ],
+  "runtime_host_api_enabled": false,
+  "status": "retired_legacy_host_api_metadata"
 }

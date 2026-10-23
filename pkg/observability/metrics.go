@@ -46,6 +46,10 @@ type Meter interface {
 }
 
 var metricDescriptors = []MetricDescriptor{
+	{Name: "campusos_knowledge_index_pages_total", Help: "Total nonempty Knowledge index page attempts, including claim failures; not ready generations.", Type: MetricCounter, Unit: "pages", LabelNames: []string{"result"}, MaximumSeries: 2},
+	{Name: "campusos_knowledge_index_page_duration_seconds", Help: "Knowledge index claim and page execution duration.", Type: MetricHistogram, Unit: "seconds", LabelNames: []string{"result"}, Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10}, MaximumSeries: 2},
+	{Name: "campusos_knowledge_index_schedule_lag_seconds", Help: "Knowledge successful claim delay after a positive scheduled due time (or expired lease), by prior durable state. Immediate zero-time requests have no age sample.", Type: MetricHistogram, Unit: "seconds", LabelNames: []string{"state"}, Buckets: []float64{0.001, 0.01, 0.1, 1, 5, 10, 30, 60, 300}, MaximumSeries: 5},
+
 	{Name: "campusos_http_requests_total", Help: "Total CampusOS HTTP requests.", Type: MetricCounter, Unit: "requests", LabelNames: []string{"method", "operation", "status_class"}, MaximumSeries: defaultMaximumSeries},
 	{Name: "campusos_http_request_duration_seconds", Help: "CampusOS HTTP request duration.", Type: MetricHistogram, Unit: "seconds", LabelNames: []string{"method", "operation", "status_class"}, Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5}, MaximumSeries: defaultMaximumSeries},
 	{Name: "campusos_http_in_flight", Help: "Current CampusOS HTTP requests in flight.", Type: MetricGauge, Unit: "requests", MaximumSeries: 1},

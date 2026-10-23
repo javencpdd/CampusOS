@@ -221,7 +221,7 @@ API 启动时会等待 PostgreSQL 并执行尚未应用的向前 migration。不
 .\scripts\docker-deploy.ps1 backup
 ```
 
-归档保存在仓库根目录 `backups/`，包含：
+命令先停止 API/Web/Admin，在同 UID 的非 root 维护容器中生成当前 v3 归档，结束后保持停止。预构建镜像须先准备；备份/恢复不自动构建或拉取。归档保存在仓库根目录 `backups/`，包含：
 
 - PostgreSQL 逻辑备份；
 - 归一化到固定 `modules/` 与 `data/*` 布局的插件数据、模块数据、资源包和个人空间文件；
@@ -239,9 +239,9 @@ NATS 是可重建运行状态，不作为跨主机权威备份。
 2. 原主机的 `.env.docker`，通过受控加密渠道单独传输。
 
 保留原密钥才能继续解密既有 MFA 数据和受保护配置。CampusOS Session、Access Token、Refresh Token
-不是导出数据；恢复后仍应主动撤销旧会话并重新登录。
+不是可重新使用的恢复凭据；当前 v3 恢复会自动废止旧会话/机器凭据并建立新认证代次，复核后重新登录。
 
-在新主机检出目标版本，把归档放入 `backups/`，把密钥文件放到仓库根目录并限制读取权限，然后执行：
+在新主机准备相同运行版本的预构建镜像和 migration/checksum；新空库先显式初始化当前迁移。把可信 v3 归档放入 `backups/`，密钥文件独立限制读取权限，然后执行：
 
 ```bash
 ./scripts/docker-deploy.sh restore backups/campusos-backup-20260729T000000Z.tar.gz --confirm
@@ -255,9 +255,9 @@ Windows：
   -Confirm
 ```
 
-恢复入口会先校验归档。如果旧 API 正在运行，还会自动生成一份恢复前安全备份；随后停止 API/Web/Admin，
-恢复 PostgreSQL 与 `data/`，执行向前 migration，并等待整栈健康。恢复不是跨数据库和文件卷的分布式事务，
-所以必须保留恢复前备份，验收完成前不要删除源主机。
+恢复入口先严格校验归档。如果旧 API 正在运行，会先停止 API/Web/Admin 并产生安全备份；随后恢复受管数据和 SQL、轮换实例认证代次、废止旧凭据并暂停插件/出站。恢复后保持隔离，不自动重开整栈。可信本地运维应在相同维护镜像/数据卷中执行 `campusosctl recovery status`，依据独立撤权记录纠正账号/角色/授权，再按该次精确盘点 SHA 执行 `recovery review --confirm-offline`，最后显式启动。陈旧盘点、缺标记或 DB/文件不一致都拒绝启动。
+
+完整命令与边界见[备份、恢复与版本验收](../operations/recovery.md)。仅支持同版本 v3；旧 v1/v2 不能直接开服。普通备份不包含部署密钥或容器镜像，仍须分别保管。Windows入口保持同一合同，实机验收按用户要求延期；不能把Linux结果视为Windows证据。
 
 ## 验收清单
 

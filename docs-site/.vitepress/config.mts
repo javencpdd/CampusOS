@@ -78,9 +78,9 @@ export default defineConfig({
       {
         text: '插件开发',
         items: [
-          { text: 'v4 自包含插件体系', link: '/plugins/overview' },
+          { text: '插件体系（历史/迁移）', link: '/plugins/overview' },
           { text: 'PDF Viewer 入门教程', link: '/plugins/pdf-viewer-tutorial' },
-          { text: 'v4 Manifest 与配置', link: '/plugins/manifest' },
+          { text: 'v5 Manifest 与包检查', link: '/plugins/manifest' },
           { text: '隔离 UI、Bridge 与 Gateway', link: '/plugins/frontend-runtime' },
           { text: '三层授权与资源访问', link: '/plugins/authorization-v3' },
           { text: '打包、安装与生命周期', link: '/plugins/package-import' },

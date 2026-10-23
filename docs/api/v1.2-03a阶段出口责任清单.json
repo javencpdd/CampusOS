@@ -1,0 +1,21 @@
+{
+  "schema": "campusos.v12-03a-responsibilities/v1",
+  "stage": "V12-03a",
+  "scope": "Complete v5 Manifest, source contract, actual package bytes, trust verification, immutable package identity, primary CLI and rebuilt examples",
+  "paths": [
+    {"id": "manifest", "implementation": ["internal/plugin/v5_manifest_contract.go", "internal/plugin/v5_manifest_json.go", "internal/plugin/v5_manifest_catalog.go", "sdk/go/v5_manifest.go"], "tests": ["TestPluginV5ManifestStrictDecode", "TestPluginV5ManifestCatalogAndRelease", "TestPluginV5ManifestCatalogIsolation"]},
+    {"id": "bytes", "implementation": ["internal/plugin/v5_package.go"], "tests": ["TestPluginV5PackageByteSnapshot", "TestPluginV5PackageArchiveDenials"]},
+    {"id": "trust_and_identity", "implementation": ["internal/plugin/v5_publication.go"], "tests": ["TestPluginV5PublicationCurrentTrustAndConflict"]},
+    {"id": "cutover", "implementation": ["cmd/campusosctl/plugin_v5_commands.go", "internal/server/platform_modules.go", "internal/plugin/handler.go"], "tests": ["TestPluginV5CutoverHasNoLegacyTransport", "TestPluginV5ActualServerIgnoresRetiredPackages"], "retired": ["plugin.legacy_manifest", "plugin.v4_ui_self_only"], "removed_adapter": "plugin.v4_adapter"},
+    {"id": "examples", "implementation": ["plugins/campusos.pdf-viewer/plugin.json", "plugins/campusos.chat-echo/plugin.json", "plugins/campusos.chat-echo/main.go", "scripts/build-v5-examples.sh"], "target": "Actual built primary CLI, independent SHA-256/Ed25519 in both directions, unsigned/revoked/trailing/no-overwrite rejection"}
+  ],
+  "boundaries": {
+    "production_host_capabilities": "Empty until03c Dispatcher; published extension DTO metadata is not an available runtime provider.",
+    "release_index": "Host-owned in-process immutable package identity index; durable install/operation state and recovery semantics belong to03b.",
+    "legacy_types": "Historical Manager/storage/inspection types remain until03b; production entry paths do not parse, adapt, discover, install or execute old packages.",
+    "ui": "PDF source rebuilt as v5 package; dynamic UI/Bridge mounting belongs to04, existing original-resource downloads remain separate.",
+    "runtime": "WASI bytes built and verified, pinned OCI declaration validated without pulling; executing either adapter belongs to05/06."
+  },
+  "limits": {"compressed_and_expanded_bytes": 67108864, "single_file_bytes": 33554432, "files": 1024, "source_entries": 4096, "directory_depth": 32, "manifest_bytes": 1048576},
+  "future_stage_ownership": {"V12-03b": "Durable catalog/install/grant/desired-observed/operation lifecycle", "V12-03c": "Dispatcher, callable capabilities and provider registration", "V12-04": "UI Host and Bridge", "V12-05/06": "Wasm/Container runtime isolation", "V12-08b": "Windows/WSL2 and whole-system recovery"}
+}

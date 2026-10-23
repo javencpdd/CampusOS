@@ -1,0 +1,85 @@
+{
+  "api_version": "campusos.plugin/v5",
+  "publisher": "campusos",
+  "key": "knowledge-reader",
+  "version": "1.2.0",
+  "host_contracts": [
+    "campusos.host/v1"
+  ],
+  "runtime": "container",
+  "backend": {
+    "artifact": {
+      "kind": "container",
+      "image": "localhost/campusos-knowledge-reader@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "transport": "http"
+  },
+  "consumes": [
+    {
+      "capability": "knowledge.public.search",
+      "scope": {
+        "kind": "collection",
+        "collection_ids": [
+          "collection_to_select"
+        ]
+      },
+      "purpose": "Read a currently public collection selected by the operator",
+      "required": true
+    },
+    {
+      "capability": "knowledge.public.source.read",
+      "scope": {
+        "kind": "collection",
+        "collection_ids": [
+          "collection_to_select"
+        ]
+      },
+      "purpose": "Read a currently public collection selected by the operator",
+      "required": true
+    }
+  ],
+  "provides": [
+    {
+      "id": "chat-main",
+      "point": "ai.chat",
+      "contract_version": "v1",
+      "input_schema": "campusos.ai.chat.request/v1",
+      "output_schema": "campusos.ai.chat.response/v1",
+      "capabilities": [
+        "text"
+      ],
+      "data_mode": "no_host_private_data"
+    }
+  ],
+  "host_resources": {
+    "network_targets": [],
+    "storage_bytes": 1024,
+    "cpu_millis": 500,
+    "memory_mb": 128,
+    "max_concurrency": 1,
+    "timeout_ms": 5000
+  },
+  "configuration": {
+    "contract": "campusos.plugin-config/v1",
+    "version": "v1",
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    },
+    "defaults": {},
+    "selectors": [],
+    "secret_names": []
+  },
+  "data": {
+    "config_scope": "both",
+    "private_kv_bytes": 0,
+    "private_object_bytes": 0,
+    "upgrade": {
+      "schema_version": 1,
+      "mode": "preserve",
+      "rollback": "snapshot"
+    }
+  }
+}

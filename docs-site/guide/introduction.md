@@ -36,3 +36,10 @@ Web (:3000) / Admin (:3001) / Docs (:3002)
 ```
 
 从[完整入门路径](/guide/getting-started)开始；想开发扩展请直接阅读[PDF Viewer 插件教程](/plugins/pdf-viewer-tutorial)。
+
+## v1.2 开发增量
+
+2026-10-23：Web 已提供[公开集合检索与当前引用](/guide/public-knowledge-search)入口。
+独立 Admin 提供集合、官方资料、来源规则、诊断指标和重试。Linux 桌面/移动视口验收见教程链接；Windows实机延期，不代表正式版本交付。
+
+V12-13 的[我的私人知识](/guide/private-knowledge)提供本人文档/讨论帖逐项同意、私人检索、任务状态与撤回；需显式准备独立 Linux 密钥目录，默认不入库且不授权外发。

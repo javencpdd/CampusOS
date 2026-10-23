@@ -55,7 +55,7 @@ if (!hostOrigin || new URL(hostOrigin).origin !== hostOrigin || window.parent ==
   const client = new PluginBridgeClient(
     {
       pluginKey: 'campusos.pdf-viewer',
-      pluginVersion: '2.0.0-dev.2',
+      pluginVersion: '3.0.0-dev.3',
       surfaceID: 'preview',
       audience: 'user',
     },

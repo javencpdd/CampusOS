@@ -6,6 +6,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { useUserStore } from './modules/identity/store'
+import { receivePreviewSessionHandoff } from './modules/identity/previewSessionHandoff'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -17,6 +18,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(pinia)
 const userStore = useUserStore(pinia)
-app.use(router)
-
-void userStore.restore().finally(() => app.mount('#app'))
+void (async () => {
+  const token = await receivePreviewSessionHandoff()
+  if (token) userStore.updateAccessToken(token)
+  app.use(router)
+  await userStore.restore()
+})().finally(() => app.mount('#app'))

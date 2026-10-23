@@ -60,6 +60,7 @@ export interface UIAction {
   body?: Record<string, unknown>
 }
 export interface UISurface {
+  context_proof?: string
   id: string
   version: string
   type: string

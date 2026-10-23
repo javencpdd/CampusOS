@@ -21,6 +21,14 @@ const (
 	CategoryLifecycleArchived CategoryLifecycleStatus = "archived"
 )
 
+// SourceCategoryFact contains immutable source-lifecycle values, not an allow.
+type SourceCategoryFact struct {
+	ID, ParentID    string
+	NodeKind        CategoryNodeKind
+	LifecycleStatus CategoryLifecycleStatus
+	Version         int64
+}
+
 type Category struct {
 	ID              string                  `json:"id"`
 	Name            string                  `json:"name"`

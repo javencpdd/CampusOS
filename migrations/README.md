@@ -1,7 +1,7 @@
 # CampusOS 数据库迁移
 
-> 当前结构：v1.1 冻结基线与前向修订，加上 v1.2 授权审计、插件版本/配置、身份委托、独立管理身份域与帖子事实版本修订（000001–000024）
-> 更新时间：2026-10-16（Asia/Shanghai）
+> 当前结构：v1.1 冻结基线与前向修订，加上 v1.2 授权审计、插件版本/配置、身份委托、独立管理身份域与帖子事实版本修订及v5发布身份/安装与Operation与独立元数据事件队列及公开知识来源/请求/索引执行（000001–000034）
+> 更新时间：2026-10-23（Asia/Shanghai）
 > 数据库：PostgreSQL 16+
 > 数据边界：本仓库当前开发数据均为可丢弃测试数据；本次已将旧链重构为单一 clean baseline。
 
@@ -36,9 +36,23 @@
 | `000023` | `000023_v1_2_personal_space_facts.up.sql` / `.down.sql` | 既有 user_spaces 与 user_space_style_snapshots 完整事实版本；仅空间同步时间/错误及 updated_at 忽略，快照 created_at 为排序事实。down 只移除列/守卫，保留全部原 metadata、typed actor18、行与非循环序列高水位，re-up 不重用旧证明。业务命令需独立验收。 |
 | `000024` | `000024_v1_2_storage_quota_facts.up.sql` / `.down.sql` | 在既有配额表增加完整行非复用事实版本与触发器，补足同事务 NOW() 不变导致的配额 ABA；保留全部旧配额、User FK、actor18 归属和 down/up 分配高水位，不新增表或删除文件。 |
 
+| `000025` | `000025_integration_identity.up.sql` / `.down.sql` | 独立 integration_principals / integration_credentials，机器token只存摘要/前缀，Scope白名单/有效期/撤销与非复用事实版本；播种独立Admin管理码。存在机器身份或凭据时拒绝down；空域down/up保留分配高水位，既有数据/主体不变。 |
+
+| `000026` | `000026_plugin_package_identities.up.sql` / `.down.sql` | 独立v5发布身份账本，以publisher/key/version复合主键固定首个摘要；禁止更新/删除/清空，同摘要幂等，不同摘要冲突。非空拒绝down，空域down/up保留全部旧数据；不保存包字节或安装/授权状态。 |
+
+| `000027` | `000027_plugin_v5_installations.up.sql` / `.down.sql` | v5包目录、全局/用户安装、版本Grant/Consent/配置、单调代次与持久Operation共8表；不改旧事实，有数据拒绝down，空域保留序列。 |
+| `000029` | `000029_instance_recovery_epochs.up.sql` / `.down.sql` | 可信离线恢复单行认证代次/隔离与授权复核、归档/盘点摘要及必需审计；无种子，非空拒绝down，空域保留旧数据。 |
+| `000030` | `000030_knowledge_sources.up.sql` / `.down.sql` | Knowledge集合、官方资料/不可变修订、独立规则/成员五表与独立Admin权限；非空或非播种权限引用拒绝down，空域保留旧数据和序列高水位。 |
+| `000031` | `000031_knowledge_index_requests.up.sql` / `.down.sql` | 元数据索引任务请求一表，当前目标代次幂等键/缺失目标0版本；仅pending意图，非空拒绝down，不改旧表、权限、回执或序列。 |
+| `000032` | `000032_knowledge_index_backfill.up.sql` / `.down.sql` | Knowledge集合/官方资料各自的持久分页补扫断点；当前版本请求与进度同事务，周期从头重扫，无事件水位或正文。非空拒绝down，不改旧119表/权限/请求/回执/序列。 |
+| `000033` | `000033_knowledge_index_execution.up.sql` / `.down.sql` | Knowledge执行任务/租约/持久分页断点与当前公开文本分块投影两表；独立来源/规则/Profile修订，周期权威对账与消失目标清理。逻辑引用允许目标缺失；任一表非空拒绝down，空域保留旧120业务表/权限和epoch高水位。 |
+| `000034` | `000034_knowledge_private_index.up.sql` / `.down.sql` | 本人逐项同意/精确原来源及每选择AEAD密文、独立元数据任务两表；外置密钥不入备份，撤回先持久退役和删钥。非空拒绝down，空域保留非复用consent/lease序列高水位。 |
+
+| `000028` | `000028_plugin_v5_event_deliveries.up.sql` / `.down.sql` | 独立元数据事件队列；唯一来源/实例/代次，租约、有限重试与死信；非空拒绝down，不改旧表或序列。 |
+
 该基线整合了此前 `000001`–`000011` 的最终有效结构，包含：
 
-- 100 张业务表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；`000004`–`000006` 只调整现有表，`000007` 新增一张受管配置表，`000008` 新增身份委托表，`000009` 新增四张管理域身份表，`000010` 新增管理域会话表，`000011` 新增三张管理域安全表，`000012` 移除自动准入触发器，`000013` 新增管理域角色权限绑定表，`000014` 追加四个管理域权限码，`000015` 补管理域恢复表 FK 索引，`000016` 新增帖子事实版本，`000017` 新增管理域执行权限事实版本列、序列和触发器，均不新增表；`000018` 在八张现有表增加九组actor字段，旧外键/表数不变；
+- 124 张业务/系统受管表，以及执行器管理的 `schema_migrations`、`schema_migration_locks` 两张系统表；`000004`–`000006` 只调整现有表，`000007` 新增一张受管配置表，`000008` 新增身份委托表，`000009` 新增四张管理域身份表，`000010` 新增管理域会话表，`000011` 新增三张管理域安全表，`000012` 移除自动准入触发器，`000013` 新增管理域角色权限绑定表，`000014` 追加四个管理域权限码，`000015` 补管理域恢复表 FK 索引，`000016` 新增帖子事实版本，`000017` 新增管理域执行权限事实版本列、序列和触发器，均不新增表；`000018` 在八张现有表增加九组actor字段，旧外键/表数不变；
 - 身份、RBAC、管理员准入、MFA、会话摘要、插件发布者/版本/三层授权与审计；
 - 社区、图文文章、`user_assets`、`richtext_article_attachments`、短期 `plugin_ui_invocations` 和资产生命周期审计；
 - 个人空间、对象配额、个人文档、文档版本与预览；
@@ -46,9 +60,10 @@
 
 附件字节仍只由 `storage_objects` 和 Object Port 管理；`user_assets` 只管理业务身份；外部插件不得自行创建平台 PostgreSQL 表。
 
+
 ## 2. 此次 clean baseline 的影响
 
-此前 `000001`–`000011` 是开发阶段逐段演进记录。由于项目所有者已明确当前数据均可清空，它们已被合并为 `000001_v1_1_schema_baseline`，因此旧 `000008`–`000011` 不再独立存在。v1.1 的 `000002`、`000003` 和 v1.2 的 `000004`–`000024` 都是基线发布后的前向修订：不能重新改写已应用的迁移文件，否则 checksum 门禁会拒绝启动。
+此前 `000001`–`000011` 是开发阶段逐段演进记录。由于项目所有者已明确当前数据均可清空，它们已被合并为 `000001_v1_1_schema_baseline`，因此旧 `000008`–`000011` 不再独立存在。v1.1 的 `000002`、`000003` 和 v1.2 的 `000004`–`000028` 都是基线发布后的前向修订：不能重新改写已应用的迁移文件，否则 checksum 门禁会拒绝启动。
 
 这不是兼容升级：任何记录了旧迁移名称或校验和的数据库执行 `up`/`status` 都会被 checksum 门禁拒绝。必须先确认目标为测试库，再执行 `reset`。不得将本规则用于生产库或包含需保留数据的库；这类环境必须先制定导出、转换和前向迁移方案。
 
@@ -119,7 +134,7 @@ ER 工具从当前前向迁移链的 UP 文件生成 [PNG、SVG 与中文实体�
 
 ## 5. 后续规范
 
-这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000022`，下一项结构变更从 `000023_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
+这次整体重构是“可丢弃测试数据”的一次性例外。自本基线被团队共享或进入任何不可丢弃环境后，`000001` 必须视为不可变。当前最高版本为 `000034`，下一项结构变更从 `000035_<业务名>.up.sql` 与对应 `.down.sql` 开始追加，并同时完成：
 
 1. 说明表归属、外键、索引、状态约束、数据修复和回滚损失；
 2. 更新 `scripts/schema-contract.sql`、Admin `/architecture`、ER、架构与操作文档；
@@ -137,3 +152,52 @@ python3 skills/sources/campusos-data-architecture-sync/scripts/check_architectur
 ```
 
 当前 01a 退出脚本自行创建绑定 `127.0.0.1`、数据目录位于 tmpfs 的 PostgreSQL 16 容器，退出即清理；不会重置当前开发数据库。它验证 000001–000006 顺序迁移、发布声明封存、版本切换后的委托撤销、`up/down/up`、checksum、`make database-check`、PostgreSQL 仓储定向测试及最小 API 启动。最终通过状态和原始结果以[退出报告](../docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-exit-linux.json)为准。000004 [授权审计](../docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-audit-actor-linux.json)与 000005 [版本身份](../docs/项目计划书v1/项目计划v1.2/evidence/v12-01a-plugin-version-linux.json)的隔离证据保留为当时源码快照，不替代 000006 后的整阶段复验。
+
+## Integration 身份迁移边界（000025）
+
+02c退出时最高迁移 `000025`，当时下一条为 `000026`；102 张业务表加 2 张执行器表。历史1–24不可改写。25只向独立Admin security_admin播种identity.integration.read/manage，不为用户角色播种机器权限。创建者是Admin逻辑审计关联，不建立User或Session外键。机器凭据为独立256bit随机秘密，仅存域分离SHA-256摘要；轮换/撤销与审计/Outbox同事务。存在身份数据时down拒绝并保留全部数据；空域down/up保留integration_facts_version_seq高水位。目标验收见v1.2.112-dev进度和V12-02c退出报告。
+
+## v5 发布身份账本（000026）
+
+更新时间：2026-10-16 21:26（Asia/Shanghai）。本节记录.115首片完成时26/next27、103业务表+2执行器；当前以000028节为准。新表`plugin_package_identities`独立于旧Manager/安装，不把历史publisher或User/Admin外键当作v5信任；每次须先验证当前签名。复合主键与写入事务保障同版本不同摘要拒绝，数据库禁止更新/删除/清空；有数据时拒绝down，空域允许down/up。无包字节、Secret或默认发布种子。
+
+详见[持久化合同](../docs/api/v1.2插件v5发布身份持久化合同.md)、[.115进度](../docs/进度/v1.2-dev/v1.2.115-dev.md)。只可在自建隔离库运行本轮[验收脚本](../scripts/v12-03b-identity-drill.sh)，不对共享库重置或尝试删除身份以强制降级。
+
+## v5 安装与 Operation（000027）
+
+更新时间：2026-10-18（Asia/Shanghai）。本节为03b验收时27/next28、111业务表+2执行器；当前以000028节为准。新增8张宿主表：包族/发布目录、全局/用户安装、v5 Grant/Consent/配置与Operation。DTO JSON是唯一状态事实；生成列负责PK/FK/索引与代次约束，用户域FK到User，Admin仅保留显式域审计标识。无种子，不迁移旧Manager权限。
+
+包字节在 `PLUGIN_DATA_DIR/v5/packages` 以完整摘要命名；私有准备配置在 `prepared/<publisher>/<key>/<owner>/<generation>.json`，数据在独立owner目录。数据库、包字节与私有配置/数据须作为一个备份集合。SQL历史不删除；卸载默认保留，显式owner purge异步清理自己的文件与分版本配置；release GC在持久意图提交后复核所有current/desired安装引用。非空down拒绝，空域down/up保留 `plugin_v5_generations` 高水位。没有静默数据迁移或无法验证的快照回退。
+
+## v5 独立元数据事件队列（000028）
+
+更新时间：2026-10-18 16:56（Asia/Shanghai）。当前28/next29，112业务表+2执行器。新增`plugin_v5_event_deliveries`一表，无种子；来源事件必须已提交，Core Outbox消费者仅做独立事务扇出，插件回调由独立工作器执行。仅允许生命周期、公开帖子与公开知识源的有限引用/状态/修订，禁止源正文、Prompt、Headers及Secret。知识源生产授权Port未装配时关闭该类投递。租约使用既有非复用代次序列，单赢家`SKIP LOCKED`、旧ACK拒绝、最多5次尝试与死信。旧实例凭据不跨重启恢复，旧队列项失效为死信；不将历史ready事实视为运行时发布。队列意图不可更新、删除或清空，down先取得队列排他锁再检查，有任何记录均拒绝；空域down/up不改既有111业务表和任何旧序列。不得为回滚删证据或重置共享数据库。
+
+完整实现/自动化/Linux目标与迁移证据见[.119](../docs/进度/v1.2-dev/v1.2.119-dev.md)及[03c退出报告](../docs/项目计划书v1/项目计划v1.2/evidence/v12-03c-exit-linux.json)。
+
+## 整库恢复认证围栏（000029）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前29/next30，113业务表+2执行器。新增instance_recovery_epochs，普通HTTP设置不可编辑；每次完整恢复先写不进备份的宿主隔离标记，实际SQL恢复后同事务废止User/Admin会话与恢复票据、机器凭据、插件Grant/Consent和待执行操作，暂停出站，再写新随机认证代次与必需证据。恢复后的JWT签名派生绑定新代次。可信本地运维核对当前角色/授权盘点SHA后复核，DB与文件均一致才可启动；插件/出站不自动重新授权。共享启动锁与独占维护锁禁止存活API上恢复。有记录down原子拒绝，不能删恢复证据强行回滚；空域down/up不触碰任何旧表或序列。
+
+
+## Knowledge 集合、选择和显式成员（000030）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前30/next31，118业务/系统受管表+2执行器。新增knowledge_collections、knowledge_official_sources、knowledge_official_revisions、knowledge_source_selections、knowledge_collection_sources；独立Admin只播种read/manage权限目录与security_admin参考绑定，无默认集合/官方资料/业务来源。官方资料与修订是Knowledge自有有界结构化文本；Community/RichText只保存引用，原始正文仍由原域提供。规则与成员物理独立，成员绑定规则代次且不持有ACL或出站权。
+
+非循环knowledge_facts_version_seq和触发器推进每次写入版本，失败分配不回用。官方历史禁止UPDATE/DELETE/TRUNCATE；当前/历史/必需Admin审计与低敏Outbox同事务。五表任何非空，或新增权限被非播种绑定/路由引用，down原子拒绝；空域down/up保留旧数据及序列高水位。不得通过删历史强制降级。数据库与原Community/RichText数据须一同备份；没有新增字节目录、第三方依赖、索引或模型调用。
+
+
+## Knowledge Outbox 到持久任务请求（000031）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前31/next32，119业务/系统受管表+2执行器。新增knowledge_index_tasks六个元数据列；集合/官方资料目标、当前版本和pending状态，无正文、Principal/ACL、凭据或event_id。按kind/id/当前事实版本唯一，源不存在用0版本请求后续清理；目标是允许缺失的逻辑关联，不建立会阻止删除清理的FK。
+
+索引请求当前只允许INSERT，禁止UPDATE/DELETE/TRUNCATE；非空down先加排他锁再拒绝，空域down/up不改旧118业务表/权限/序列。没有索引执行器、租约、ready投影、分页回填或对账，后续在09b的独立切片追加；不能把pending请求当成已索引或来源授权。数据库备份包含该表，没有新字节目录或依赖。
+
+
+## Knowledge 周期元数据补扫断点（000032）
+
+更新时间：2026-10-21（Asia/Shanghai）。当前32/next33，120业务/系统受管表+2执行器。新增knowledge_index_backfill_checkpoints五列：target_kind、after_id、completed_passes、next_scan_at、updated_at，无种子、FK、来源正文/ACL或event_id。正常Knowledge模块生命周期每秒每域最多一页32个目标，只枚举ID、锁读当前epoch；该页请求与断点同事务提交。部分扫描可重启续跑，完成后清空枚举边界并等待60秒再从头补扫，处理游标前方迟出现/更新的自有行；不扫描Community/RichText正文，不宣称索引执行或删除权威对账。
+
+非空down持排他锁后原子拒绝，防止丢断点；空域down/up保留全部旧119业务表、请求/回执/权限和所有序列，1–31 SQL不回写。断点随整库备份；恢复后的枚举仍须由后续执行器逐次复核当前授权/来源。大库按32项事务渐进推进，跨实例按断点行锁SKIP LOCKED串行；单页失败/取消回滚，后续有限间隔重试并降级模块健康。删除后不再可枚举的目标及跨域来源/规则修订仍属09b后续权威对账，不能用已完成轮数宣称ready。
+
+`000033` 不修改000031不可变pending请求或000032补扫断点。当前33/next34、122业务/系统受管+2执行器；正文投影属于数据库备份范围，没有新增字节目录。down先锁两表，非空原子拒绝；空域移除表/触发器函数，保留knowledge_index_epoch_seq的非循环高水位，re-up不复用旧租约/构建代次。来源引用为逻辑关系，不能把FK缺失解释为免除当前来源/规则复核。

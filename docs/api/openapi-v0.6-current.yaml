@@ -813,6 +813,470 @@ paths:
                 $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /api/v1/admin/identity/integration-endpoints:
+    get:
+      operationId: d_Identity_Integration_Endpoints
+      summary: GET /api/v1/admin/identity/integration-endpoints
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.endpoints
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationEndpointInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations:
+    get:
+      operationId: d_Identity_Integration_List
+      summary: GET /api/v1/admin/identity/integrations
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.list
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: d_Identity_Integration_Create
+      summary: POST /api/v1/admin/identity/integrations
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPrincipal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}:
+    put:
+      operationId: d_Identity_Integration_Update
+      summary: PUT /api/v1/admin/identity/integrations/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationUpdateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPrincipal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials:
+    get:
+      operationId: d_Identity_Integration_List
+      summary: GET /api/v1/admin/identity/integrations/:id/credentials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.credentials
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: identity.integration.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: d_Identity_Integration_Issue
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.issue
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationIssueRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationIssueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}:
+    put:
+      operationId: d_Identity_Integration_Scope
+      summary: PUT /api/v1/admin/identity/integrations/:id/credentials/:credential_id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.scope
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationScopeRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCredential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}/revoke:
+    post:
+      operationId: d_Identity_Integration_Revoke
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials/:credential_id/revoke
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.revoke
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationVersionRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCredential'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/identity/integrations/{id}/credentials/{credential_id}/rotate:
+    post:
+      operationId: d_Identity_Integration_Rotate
+      summary: POST /api/v1/admin/identity/integrations/:id/credentials/:credential_id/rotate
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: identity-managed
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: identity.integration_inventory/all
+      x-campusos-operation: http.identity.integration.rotate
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: identity.integration.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationRotateRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationIssueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/admin/identity/login:
     post:
       operationId: d_Identity_AdminDomain_Login
@@ -1122,6 +1586,1066 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections:
+    get:
+      operationId: knowledgeHandler_Inventory
+      summary: GET /api/v1/admin/knowledge/collections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.inventory
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollectionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: knowledgeHandler_SaveCollection
+      summary: POST /api/v1/admin/knowledge/collections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeCollectionCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}:
+    get:
+      operationId: knowledgeHandler_State
+      summary: GET /api/v1/admin/knowledge/collections/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.read
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      operationId: knowledgeHandler_SaveCollection
+      summary: PUT /api/v1/admin/knowledge/collections/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.collection.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeCollectionUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/index:
+    get:
+      operationId: knowledgeHandler_IndexDiagnostics
+      summary: GET /api/v1/admin/knowledge/collections/:id/index
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.index.diagnostics
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeIndexDiagnostics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/index/retry:
+    post:
+      operationId: knowledgeHandler_RetryIndex
+      summary: POST /api/v1/admin/knowledge/collections/:id/index/retry
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.index.retry
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeIndexRetry'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeIndexAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/members/{member_id}/remove:
+    post:
+      operationId: knowledgeHandler_RemoveMember
+      summary: POST /api/v1/admin/knowledge/collections/:id/members/:member_id/remove
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.member.remove
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeRemoveMember'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections:
+    post:
+      operationId: knowledgeHandler_SaveSelection
+      summary: POST /api/v1/admin/knowledge/collections/:id/selections
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeSelectionCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections/{selection_id}:
+    put:
+      operationId: knowledgeHandler_SaveSelection
+      summary: PUT /api/v1/admin/knowledge/collections/:id/selections/:selection_id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeSelectionUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/collections/{id}/selections/{selection_id}/refresh:
+    post:
+      operationId: knowledgeHandler_Refresh
+      summary: POST /api/v1/admin/knowledge/collections/:id/selections/:selection_id/refresh
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.selection.refresh
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeRefreshRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeRefresh'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials:
+    get:
+      operationId: knowledgeHandler_Inventory
+      summary: GET /api/v1/admin/knowledge/officials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.inventory
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficialList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: knowledgeHandler_SaveOfficial
+      summary: POST /api/v1/admin/knowledge/officials
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.create
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeOfficialCreate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials/{id}:
+    put:
+      operationId: knowledgeHandler_SaveOfficial
+      summary: PUT /api/v1/admin/knowledge/officials/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.update
+      x-campusos-auth: jwt+current-admin-session+permission+recent-mfa+browser-csrf
+      x-campusos-permission: knowledge.collection.manage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Admin-CSRF-Token
+          in: header
+          required: false
+          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeOfficialUpdate'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeOfficial'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/knowledge/officials/{id}/revisions:
+    get:
+      operationId: knowledgeHandler_History
+      summary: GET /api/v1/admin/knowledge/officials/:id/revisions
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: knowledge-managed
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: knowledge.collection_inventory/all
+      x-campusos-operation: http.knowledge.official.history
+      x-campusos-auth: jwt+current-admin-session+permission
+      x-campusos-permission: knowledge.collection.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5:
+    get:
+      operationId: pluginV5Handler_Inventory
+      summary: GET /api/v1/admin/plugin-v5
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.catalog
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Inventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/operations/{id}:
+    get:
+      operationId: pluginV5Handler_Operation
+      summary: GET /api/v1/admin/plugin-v5/operations/:id
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.operation
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/packages:
+    post:
+      operationId: pluginV5Handler_Import
+      summary: POST /api/v1/admin/plugin-v5/packages
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.import
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.install
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PluginV5Import'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/ui:
+    get:
+      operationId: pluginV5Handler_UIManifest
+      summary: GET /api/v1/admin/plugin-v5/ui
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.catalog
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/commands:
+    post:
+      operationId: pluginV5Handler_Mutate
+      summary: POST /api/v1/admin/plugin-v5/:publisher/:key/commands
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.command
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5AdminCommand'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}:
+    get:
+      operationId: pluginV5Handler_Detail
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5InventoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}/config-options:
+    get:
+      operationId: pluginV5Handler_ConfigOptions
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version/config-options
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/plugin-v5/{publisher}/{key}/{version}/ui:
+    get:
+      operationId: pluginV5Handler_UIState
+      summary: GET /api/v1/admin/plugin-v5/:publisher/:key/:version/ui
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.plugin.v5.admin.detail
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/admin/posts/{post_id}:
     delete:
       operationId: postHandler_AdminGovernanceDelete
@@ -4977,6 +6501,407 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/integration/identity/me:
+    get:
+      operationId: d_Identity_Integration_Me
+      summary: GET /api/v1/integration/identity/me
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-integration-self
+      x-campusos-module-owner: core.identity
+      x-campusos-scope: current-integration-self
+      x-campusos-operation: http.identity.integration_self.read
+      x-campusos-auth: integration-digest+current-facts
+      security:
+        - integrationCredential: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationCurrentSelf'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/knowledge/collections/{id}/mcp:
+    get:
+      operationId: knowledgeHandler_IntegrationMCP
+      summary: GET /api/v1/integration/knowledge/collections/:id/mcp
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: endpoint+public-collection+current-origin
+      x-campusos-operation: http.integration.knowledge.mcp.stream
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '405':
+          description: SSE is unsupported; empty body, Allow POST
+        '400':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '401':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '403':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '404':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '409':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '503':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+    post:
+      operationId: knowledgeHandler_IntegrationMCP
+      summary: POST /api/v1/integration/knowledge/collections/:id/mcp
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: endpoint+public-collection+current-origin
+      x-campusos-operation: http.integration.knowledge.mcp
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeMCPRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Direct JSON-RPC result or protocol/tool error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeMCPResponse'
+        '400':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '202':
+          description: Notification accepted; empty body
+        '401':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '403':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '404':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '409':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '406':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '415':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+        '503':
+          description: JSON-RPC transport rejection or platform ingress/Feature rejection
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/KnowledgeMCPResponse'
+                  - $ref: '#/components/schemas/Envelope'
+  /api/v1/integration/knowledge/collections/{id}/search:
+    post:
+      operationId: knowledgeHandler_IntegrationSearch
+      summary: POST /api/v1/integration/knowledge/collections/:id/search
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: endpoint+public-collection+current-origin
+      x-campusos-operation: http.integration.knowledge.search
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeIntegrationSearchRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSearchPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/knowledge/collections/{id}/sources/{member_id}/revisions/{revision}:
+    get:
+      operationId: knowledgeHandler_IntegrationSource
+      summary: GET /api/v1/integration/knowledge/collections/:id/sources/:member_id/revisions/:revision
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: endpoint+public-collection+current-origin
+      x-campusos-operation: http.integration.knowledge.source.read
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revision
+          in: path
+          required: true
+          description: Exact current visibility_revision from a public source citation; changed or revoked facts reject the proof. Endpoint whitelist knowledge.source.read must allow this exact public_collection ID, and the original source policy is rechecked. All query parameters and request bodies are rejected.
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/mcp/tools/{name}/call:
+    post:
+      operationId: integrationHandler_IntegrationMCP
+      summary: POST /api/v1/integration/mcp/tools/:name/call
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: source-module-public-policy
+      x-campusos-module-owner: feature.integration-overview
+      x-campusos-scope: exact-channel-endpoint-resource
+      x-campusos-operation: http.integration.public_thread.mcp_read
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationPublicThreadRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPublicThread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/integration/threads/{id}:
+    get:
+      operationId: integrationHandler_IntegrationThread
+      summary: GET /api/v1/integration/threads/:id
+      tags: [integration]
+      x-campusos-stability: experimental
+      x-campusos-ownership: source-module-public-policy
+      x-campusos-module-owner: feature.integration-overview
+      x-campusos-scope: exact-channel-endpoint-resource
+      x-campusos-operation: http.integration.public_thread.read
+      x-campusos-auth: integration-digest+current-facts+whitelist+source-acl
+      security:
+        - integrationCredential: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IntegrationPublicThread'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/integrations/overview:
     get:
       operationId: integrationHandler_Overview
@@ -5004,6 +6929,567 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/knowledge/collections:
+    get:
+      operationId: knowledgeHandler_Collections
+      summary: GET /api/v1/knowledge/collections
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.collection.list
+      x-campusos-auth: none+current-origin-policy
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeCollectionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/collections/{id}/search:
+    get:
+      operationId: knowledgeHandler_Search
+      summary: GET /api/v1/knowledge/collections/:id/search
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.search.public
+      x-campusos-auth: none+current-origin-policy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: true
+          description: One UTF-8 query of at most 1024 bytes and 16 distinct Unicode letter/number terms; AND literal substrings, no query language. Raw encoded query string is at most 3200 bytes. Unknown/duplicate query parameters, malformed encoding and any request body are rejected.
+          schema: {type: string, minLength: 1, maxLength: 1024}
+        - name: page
+          in: query
+          description: Canonical positive decimal integer; no sign or leading zero.
+          schema: {type: integer, minimum: 1, maximum: 100000, default: 1}
+        - name: page_size
+          in: query
+          description: Canonical positive decimal integer; no sign or leading zero.
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSearchPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/collections/{id}/sources:
+    get:
+      operationId: knowledgeHandler_Sources
+      summary: GET /api/v1/knowledge/collections/:id/sources
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.source.list
+      x-campusos-auth: none+current-origin-policy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSourcePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/collections/{id}/sources/{member_id}:
+    get:
+      operationId: knowledgeHandler_Source
+      summary: GET /api/v1/knowledge/collections/:id/sources/:member_id
+      tags: [public]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-origin-and-collection
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: public-collection+current-origin
+      x-campusos-operation: http.knowledge.source.read
+      x-campusos-auth: none+current-origin-policy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revision
+          in: query
+          description: Pass the search citation visibility_revision to open that exact current source; changed or revoked facts reject the old proof. Omission reads the currently visible source. If provided, must be a nonempty lower-case SHA-256 digest; duplicates, malformed encoding, unknown parameters and request bodies are rejected.
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeSource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/preview:
+    post:
+      operationId: knowledgeHandler_PrivatePreview
+      summary: POST /api/v1/knowledge/private/preview
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.preview
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePrivatePreviewRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivatePreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/search:
+    post:
+      operationId: knowledgeHandler_PrivateSearch
+      summary: POST /api/v1/knowledge/private/search
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.search
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePrivateSearchRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateSearchPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/selections:
+    get:
+      operationId: knowledgeHandler_PrivateSelections
+      summary: GET /api/v1/knowledge/private/selections
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.list
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateSelections'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      operationId: knowledgeHandler_PrivateSelect
+      summary: POST /api/v1/knowledge/private/selections
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.select
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePrivateSelectRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateSelection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/selections/{selection_id}:
+    delete:
+      operationId: knowledgeHandler_PrivateWithdraw
+      summary: DELETE /api/v1/knowledge/private/selections/:selection_id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.withdraw
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateWithdrawn'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/selections/{selection_id}/retry:
+    post:
+      operationId: knowledgeHandler_PrivateRetry
+      summary: POST /api/v1/knowledge/private/selections/:selection_id/retry
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.retry
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgeIndexRetryAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/selections/{selection_id}/source:
+    post:
+      operationId: knowledgeHandler_PrivateSource
+      summary: POST /api/v1/knowledge/private/selections/:selection_id/source
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.source
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: selection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePrivateSourceRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateSource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/sources/preflight:
+    post:
+      operationId: knowledgeHandler_PrivateSourcePreflight
+      summary: POST /api/v1/knowledge/private/sources/preflight
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-document-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-document-version
+      x-campusos-operation: http.knowledge.private.source.preflight
+      x-campusos-auth: jwt+current-user-session+document-owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePrivateSourcePreflightRequest'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateSourcePreflight'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/knowledge/private/status:
+    get:
+      operationId: knowledgeHandler_PrivateStatus
+      summary: GET /api/v1/knowledge/private/status
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: current-source-owner
+      x-campusos-module-owner: feature.knowledge
+      x-campusos-scope: self+current-source-version
+      x-campusos-operation: http.knowledge.private.status
+      x-campusos-auth: jwt+current-user-session+source-owner
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KnowledgePrivateStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/mcp/audit:
     get:
       operationId: mCPHandler_ListAudit
@@ -6447,7 +8933,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}:
     get:
-      operationId: pluginHandler_MyAuthorizationOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-authorizations/:name
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6464,7 +8950,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6478,7 +8964,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/delegations/{delegation_id}:
     delete:
-      operationId: pluginHandler_RevokeMyDelegation
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-authorizations/:name/delegations/:delegation_id
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6500,7 +8986,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6514,7 +9000,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/secrets:
     get:
-      operationId: pluginHandler_ListMyPluginSecrets
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-authorizations/:name/secrets
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6531,7 +9017,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6545,7 +9031,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/secrets/{secret}:
     delete:
-      operationId: pluginHandler_RevokeMyPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-authorizations/:name/secrets/:secret
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6567,7 +9053,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6580,7 +9066,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_SetMyPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-authorizations/:name/secrets/:secret
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6601,15 +9087,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6623,7 +9102,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/versions/{version_id}/consents/{capability}:
     put:
-      operationId: pluginHandler_SetMyCapabilityConsent
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-authorizations/:name/versions/:version_id/consents/:capability
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6649,15 +9128,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6671,7 +9143,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-authorizations/{name}/versions/{version_id}/delegations:
     post:
-      operationId: pluginHandler_IssueMyDelegation
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-authorizations/:name/versions/:version_id/delegations
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6692,15 +9164,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6714,7 +9179,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-capabilities:
     get:
-      operationId: pluginHandler_CapabilityCatalog
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-capabilities
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6725,7 +9190,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6739,7 +9204,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market:
     get:
-      operationId: pluginHandler_MarketCatalog
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -6750,7 +9215,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6764,7 +9229,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/audits:
     get:
-      operationId: pluginHandler_AdminMarketAudits
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/audits
       tags: [admin]
       x-campusos-stability: experimental
@@ -6777,7 +9242,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6791,7 +9256,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/catalog/{name}:
     put:
-      operationId: pluginHandler_AdminSetMarketVisibility
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/admin/catalog/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -6809,15 +9274,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6831,7 +9289,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/overview:
     get:
-      operationId: pluginHandler_AdminMarketOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/overview
       tags: [admin]
       x-campusos-stability: experimental
@@ -6844,7 +9302,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6858,7 +9316,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/releases/{name}:
     get:
-      operationId: pluginHandler_AdminMarketReleases
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/releases/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -6877,7 +9335,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6890,7 +9348,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_AdminSaveMarketRelease
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/admin/releases/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -6908,15 +9366,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6930,7 +9381,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/requests:
     get:
-      operationId: pluginHandler_AdminMarketRequests
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/requests
       tags: [admin]
       x-campusos-stability: experimental
@@ -6943,7 +9394,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6957,7 +9408,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/requests/{id}/review:
     post:
-      operationId: pluginHandler_AdminReviewMarketRequest
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/admin/requests/:id/review
       tags: [admin]
       x-campusos-stability: experimental
@@ -6975,15 +9426,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -6997,7 +9441,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/sources:
     get:
-      operationId: pluginHandler_AdminMarketplaceSources
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/admin/sources
       tags: [admin]
       x-campusos-stability: experimental
@@ -7010,7 +9454,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7024,7 +9468,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/admin/sources/{source_id}:
     delete:
-      operationId: pluginHandler_AdminDeleteMarketplaceSource
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/admin/sources/:source_id
       tags: [admin]
       x-campusos-stability: experimental
@@ -7043,7 +9487,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7056,7 +9500,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_AdminSaveMarketplaceSource
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/admin/sources/:source_id
       tags: [admin]
       x-campusos-stability: experimental
@@ -7074,15 +9518,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7096,7 +9533,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/me:
     get:
-      operationId: pluginHandler_MarketMyGrants
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/me
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7107,7 +9544,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7121,7 +9558,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/me/usage:
     get:
-      operationId: pluginHandler_MarketMyUsage
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/me/usage
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7132,7 +9569,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7146,7 +9583,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/requests:
     post:
-      operationId: pluginHandler_RequestMarketplaceInstall
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/requests
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7156,15 +9593,8 @@ paths:
       x-campusos-operation: http.post.api.v1.plugin_market.requests
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7178,7 +9608,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/search:
     get:
-      operationId: pluginHandler_SearchMarketRecords
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/search
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7189,7 +9619,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7203,7 +9633,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/sources:
     get:
-      operationId: pluginHandler_MarketplaceSources
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/sources
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7214,7 +9644,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7228,7 +9658,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/sources/{source_id}/plugins:
     get:
-      operationId: pluginHandler_SearchMarketplace
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/sources/:source_id/plugins
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7245,7 +9675,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7259,7 +9689,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/data:
     delete:
-      operationId: pluginHandler_DeleteMarketData
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/data
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7276,7 +9706,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7290,7 +9720,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/enable:
     post:
-      operationId: pluginHandler_EnableMarketPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/enable
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7306,15 +9736,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7328,7 +9751,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/export:
     get:
-      operationId: pluginHandler_ExportMarketData
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/export
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7345,7 +9768,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7359,7 +9782,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files:
     get:
-      operationId: pluginHandler_ListMarketFiles
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/files
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7376,7 +9799,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7389,7 +9812,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_UploadMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/files
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7405,15 +9828,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7427,7 +9843,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files/{file_id}:
     delete:
-      operationId: pluginHandler_DeleteMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/files/:file_id
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7449,7 +9865,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7463,7 +9879,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/files/{file_id}/download:
     get:
-      operationId: pluginHandler_DownloadMarketFile
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/files/:file_id/download
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7485,7 +9901,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7499,7 +9915,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/records/{collection}:
     get:
-      operationId: pluginHandler_ListMarketRecords
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/records/:collection
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7521,7 +9937,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7534,7 +9950,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      operationId: pluginHandler_CreateMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/records/:collection
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7555,15 +9971,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7577,7 +9986,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/records/{collection}/{key}:
     delete:
-      operationId: pluginHandler_DeleteMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7604,7 +10013,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7617,7 +10026,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     get:
-      operationId: pluginHandler_GetMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7644,7 +10053,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7657,7 +10066,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_UpdateMarketRecord
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugin-market/:name/records/:collection/:key
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7683,15 +10092,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7705,7 +10107,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-market/{name}/revoke:
     post:
-      operationId: pluginHandler_RevokeMarketPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-market/:name/revoke
       tags: [authenticated]
       x-campusos-stability: experimental
@@ -7721,15 +10123,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7743,7 +10138,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-packages/import:
     post:
-      operationId: pluginHandler_ImportPluginPackage
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-packages/import
       tags: [admin]
       x-campusos-stability: experimental
@@ -7755,15 +10150,8 @@ paths:
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MultipartRequest'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7777,7 +10165,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugin-packages/precheck:
     post:
-      operationId: pluginHandler_PrecheckPluginPackage
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugin-packages/precheck
       tags: [admin]
       x-campusos-stability: experimental
@@ -7789,15 +10177,8 @@ paths:
       x-campusos-permission: plugin.plugin.install
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MultipartRequest'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -7934,18 +10315,90 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /api/v1/plugins:
+  /api/v1/plugin-v5:
     get:
-      operationId: pluginHandler_ListPlugins
-      summary: GET /api/v1/plugins
-      tags: [admin]
+      operationId: pluginV5Handler_Inventory
+      summary: GET /api/v1/plugin-v5
+      tags: [authenticated]
       x-campusos-stability: experimental
-      x-campusos-ownership: none
+      x-campusos-ownership: handler-enforced
       x-campusos-module-owner: core.plugin-platform
-      x-campusos-scope: global
-      x-campusos-operation: http.get.api.v1.plugins
-      x-campusos-auth: jwt+admin-account+permission
-      x-campusos-permission: plugin.plugin.read
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.catalog
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Inventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/operations/{id}:
+    get:
+      operationId: pluginV5Handler_Operation
+      summary: GET /api/v1/plugin-v5/operations/:id
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.operation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/ui:
+    get:
+      operationId: pluginV5Handler_UIManifest
+      summary: GET /api/v1/plugin-v5/ui
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.catalog
       security:
         - bearerAuth: []
       responses:
@@ -7961,9 +10414,224 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/{publisher}/{key}/commands:
+    post:
+      operationId: pluginV5Handler_Mutate
+      summary: POST /api/v1/plugin-v5/:publisher/:key/commands
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.command
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginV5UserCommand'
+      x-campusos-schema-level: field-contract
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5Operation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}:
+    get:
+      operationId: pluginV5Handler_Detail
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PluginV5InventoryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/config-options:
+    get:
+      operationId: pluginV5Handler_ConfigOptions
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version/config-options
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugin-v5/{publisher}/{key}/{version}/ui:
+    get:
+      operationId: pluginV5Handler_UIState
+      summary: GET /api/v1/plugin-v5/:publisher/:key/:version/ui
+      tags: [authenticated]
+      x-campusos-stability: experimental
+      x-campusos-ownership: handler-enforced
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: self-or-resource-owner
+      x-campusos-operation: http.plugin.v5.user.detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/plugins:
+    get:
+      operationId: plugin_V5RetiredHTTP
+      summary: GET /api/v1/plugins
+      tags: [admin]
+      x-campusos-stability: experimental
+      x-campusos-ownership: none
+      x-campusos-module-owner: core.plugin-platform
+      x-campusos-scope: global
+      x-campusos-operation: http.get.api.v1.plugins
+      x-campusos-auth: jwt+admin-account+permission
+      x-campusos-permission: plugin.plugin.read
+      security:
+        - bearerAuth: []
+      responses:
+        '410':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}:
     delete:
-      operationId: pluginHandler_UninstallPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugins/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -7982,8 +10650,12 @@ paths:
           schema:
             type: string
       responses:
-        '204':
-          description: No Content
+        '410':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -7991,7 +10663,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     get:
-      operationId: pluginHandler_GetPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name
       tags: [admin]
       x-campusos-stability: experimental
@@ -8010,7 +10682,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8024,7 +10696,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization:
     get:
-      operationId: pluginHandler_AdminAuthorizationOverview
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/authorization
       tags: [admin]
       x-campusos-stability: experimental
@@ -8043,7 +10715,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8057,7 +10729,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization/decisions:
     get:
-      operationId: pluginHandler_AdminAuthorizationDecisions
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/authorization/decisions
       tags: [admin]
       x-campusos-stability: experimental
@@ -8076,7 +10748,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8090,7 +10762,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/authorization/sync:
     post:
-      operationId: pluginHandler_SyncPluginAuthorization
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/authorization/sync
       tags: [admin]
       x-campusos-stability: experimental
@@ -8108,15 +10780,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8130,7 +10795,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/config:
     put:
-      operationId: pluginHandler_UpdatePluginConfig
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/config
       tags: [admin]
       x-campusos-stability: experimental
@@ -8148,15 +10813,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8170,7 +10828,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/disable:
     post:
-      operationId: pluginHandler_DisablePlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/disable
       tags: [admin]
       x-campusos-stability: experimental
@@ -8189,7 +10847,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8203,7 +10861,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/enable:
     post:
-      operationId: pluginHandler_EnablePlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/enable
       tags: [admin]
       x-campusos-stability: experimental
@@ -8222,7 +10880,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8236,7 +10894,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/export:
     get:
-      operationId: pluginHandler_ExportPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/export
       tags: [admin]
       x-campusos-stability: experimental
@@ -8255,7 +10913,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8269,7 +10927,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/logs:
     get:
-      operationId: pluginHandler_ListPluginLogs
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/logs
       tags: [admin]
       x-campusos-stability: experimental
@@ -8288,7 +10946,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8302,7 +10960,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/reload:
     post:
-      operationId: pluginHandler_ReloadUserPlugin
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/reload
       tags: [admin]
       x-campusos-stability: experimental
@@ -8321,7 +10979,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8335,7 +10993,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/rollback:
     post:
-      operationId: pluginHandler_RollbackVersionSnapshot
+      operationId: plugin_V5RetiredHTTP
       summary: POST /api/v1/plugins/:name/rollback
       tags: [admin]
       x-campusos-stability: experimental
@@ -8353,15 +11011,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PluginRollbackRequest'
-      x-campusos-schema-level: field-contract
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8375,7 +11026,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/secrets:
     get:
-      operationId: pluginHandler_ListSystemPluginSecrets
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/secrets
       tags: [admin]
       x-campusos-stability: experimental
@@ -8394,7 +11045,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8408,7 +11059,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/secrets/{secret}:
     delete:
-      operationId: pluginHandler_RevokeSystemPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: DELETE /api/v1/plugins/:name/secrets/:secret
       tags: [admin]
       x-campusos-stability: experimental
@@ -8432,7 +11083,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8445,7 +11096,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     put:
-      operationId: pluginHandler_SetSystemPluginSecret
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/secrets/:secret
       tags: [admin]
       x-campusos-stability: experimental
@@ -8468,15 +11119,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8490,7 +11134,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/snapshots:
     get:
-      operationId: pluginHandler_ListVersionSnapshots
+      operationId: plugin_V5RetiredHTTP
       summary: GET /api/v1/plugins/:name/snapshots
       tags: [admin]
       x-campusos-stability: experimental
@@ -8509,7 +11153,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -8523,7 +11167,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/plugins/{name}/versions/{version_id}/grants/{capability}:
     put:
-      operationId: pluginHandler_AdminSetCapabilityGrant
+      operationId: plugin_V5RetiredHTTP
       summary: PUT /api/v1/plugins/:name/versions/:version_id/grants/:capability
       tags: [admin]
       x-campusos-stability: experimental
@@ -8551,15 +11195,8 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericObject'
-      x-campusos-schema-level: generic-experimental
       responses:
-        '200':
+        '410':
           description: Success
           content:
             application/json:
@@ -12570,7 +15207,1357 @@ components:
       type: apiKey
       in: cookie
       name: campusos_admin_refresh
+    integrationCredential:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "Integration cint1_<selector>.<secret>; independent of JWT and ApiKey."
   schemas:
+    IntegrationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+    IntegrationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, status, version]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 120}
+        status: {type: string, enum: [active, suspended, revoked]}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+    IntegrationVersionRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+    IntegrationRule:
+      type: object
+      additionalProperties: false
+      required: [id, channel, endpoint, action, resource_kind, resource_ids, status, not_before_ms, expires_at_ms]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 128}
+        channel: {type: string, enum: [integration_http, integration_mcp]}
+        endpoint: {type: string, enum: [public_thread.read, public_thread_read, knowledge.source.read, knowledge.search, knowledge.public.read]}
+        action: {type: string, enum: [community.thread.read, knowledge.source.read]}
+        resource_kind: {type: string, enum: [community.thread, public_collection]}
+        resource_ids: {type: array, minItems: 1, maxItems: 32, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$'}}
+        status: {type: string, enum: [active, suspended, revoked]}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991}
+    IntegrationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [principal_version, not_before_ms, expires_at_ms, rules]
+      properties:
+        principal_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991, description: 'Must be future and no more than 90 days from issuance.'}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationRotateRequest:
+      type: object
+      additionalProperties: false
+      required: [principal_version, version, not_before_ms, expires_at_ms, rules]
+      properties:
+        principal_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}
+        expires_at_ms: {type: integer, minimum: 1, maximum: 9007199254740991}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [version, rules]
+      properties:
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        rules: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/IntegrationRule'}}
+    IntegrationPrincipal:
+      type: object
+      additionalProperties: false
+      required: [id, name, status, version, created_by_admin_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [active, suspended, revoked]}
+        version: {type: string}
+        created_by_admin_id: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    IntegrationCredential:
+      type: object
+      additionalProperties: false
+      required: [id, principal_id, prefix, purpose, status, rules, not_before_ms, expires_at_ms, version, created_by_admin_id, created_at, updated_at]
+      properties:
+        id: {type: string}
+        principal_id: {type: string}
+        prefix: {type: string, pattern: '^cint1_[a-f0-9]{16}$'}
+        purpose: {type: string, enum: [integration_api]}
+        status: {type: string, enum: [active, revoked]}
+        rules: {type: array, items: {$ref: '#/components/schemas/IntegrationRule'}}
+        not_before_ms: {type: integer}
+        expires_at_ms: {type: integer}
+        version: {type: string}
+        created_by_admin_id: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    IntegrationInventory:
+      type: object
+      additionalProperties: false
+      required: [principals, credentials, next_cursor]
+      properties:
+        principals: {type: array, items: {$ref: '#/components/schemas/IntegrationPrincipal'}}
+        credentials: {type: array, items: {$ref: '#/components/schemas/IntegrationCredential'}}
+        next_cursor: {type: string}
+    IntegrationIssueResponse:
+      type: object
+      additionalProperties: false
+      required: [credential, token]
+      properties:
+        credential: {$ref: '#/components/schemas/IntegrationCredential'}
+        token: {type: string, readOnly: true, description: 'One-time response only. Never returned by inventory/self APIs or persisted server-side.'}
+    IntegrationEndpointInventory:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [channel, id, action, resource_kind, enabled, integration_allowed]
+        properties:
+          channel: {type: string}
+          id: {type: string}
+          action: {type: string}
+          resource_kind: {type: string}
+          enabled: {type: boolean}
+          integration_allowed: {type: boolean}
+    IntegrationCurrentSelf:
+      type: object
+      additionalProperties: false
+      required: [principal, name, prefix, expires_at_ms]
+      properties:
+        principal:
+          type: object
+          additionalProperties: false
+          required: [contract, actor, audience, authentication_strength, credential_id]
+          properties:
+            contract: {type: string, enum: [campusos.principal/v1]}
+            actor:
+              type: object
+              additionalProperties: false
+              required: [kind, id]
+              properties:
+                kind: {type: string, enum: [integration]}
+                id: {type: string}
+            audience: {type: string, enum: [integration_api]}
+            authentication_strength: {type: string, enum: [credential]}
+            credential_id: {type: string}
+        name: {type: string}
+        prefix: {type: string}
+        expires_at_ms: {type: integer}
+    IntegrationPublicThreadRequest:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$', maxLength: 128}
+    IntegrationPublicThread:
+      type: object
+      additionalProperties: false
+      required: [id, title, content, content_format, updated_at]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        content: {type: string}
+        content_format: {type: string}
+        updated_at: {type: string, format: date-time}
+    KnowledgePrivateStatus:
+      type: object
+      additionalProperties: false
+      required: [can_index, reason, default_inclusion, supported_formats, max_sources, max_source_bytes, outbound_authorized]
+      properties:
+        can_index: {type: boolean}
+        reason: {type: string, enum: [ready, private_storage_unavailable]}
+        default_inclusion: {type: boolean, enum: [false]}
+        supported_formats: {type: array, items: {type: string, enum: [text, markdown, campusdoc]}}
+        max_sources: {type: integer, enum: [100]}
+        max_source_bytes: {type: integer, enum: [65536]}
+        outbound_authorized: {type: boolean, enum: [false]}
+    KnowledgePrivatePreviewRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, source_id]
+      properties:
+        kind: {type: string, enum: [personal_document, community_thread]}
+        source_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+    KnowledgePrivateSelectRequest:
+      type: object
+      additionalProperties: false
+      description: Explicit current owner consent for one exact current source revision. Encryption and external key custody are mandatory; no AI or outbound consent is implied. 409 on duplicate or stale source; no automatic replay.
+      required: [kind, source_id, revision, consent]
+      properties:
+        kind: {type: string, enum: [personal_document, community_thread]}
+        source_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        consent: {type: boolean, enum: [true]}
+    KnowledgePrivateSource:
+      type: object
+      additionalProperties: false
+      required: [kind, source_id, revision, format]
+      properties:
+        kind: {type: string, enum: [personal_document, community_thread]}
+        source_id: {type: string}
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        format: {type: string, enum: [text, markdown, campusdoc, pdf, docx]}
+        title: {type: string, maxLength: 1024}
+        text: {type: string, maxLength: 65536}
+    KnowledgePrivatePreview:
+      type: object
+      additionalProperties: false
+      required: [source, can_index, reason]
+      properties:
+        source: {$ref: '#/components/schemas/KnowledgePrivateSource'}
+        can_index: {type: boolean}
+        reason: {type: string, enum: [ready, unsupported_format]}
+    KnowledgePrivateSelection:
+      type: object
+      additionalProperties: false
+      required: [id, kind, source_id, revision, format, version, state, task_state, attempts, error_code]
+      properties:
+        title: {type: string, maxLength: 1024}
+
+        id: {type: string, pattern: '^kp_[0-9a-f]{32}$'}
+        kind: {type: string, enum: [personal_document, community_thread]}
+        source_id: {type: string}
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        format: {type: string, enum: [text, markdown, campusdoc]}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+        state: {type: string, enum: [pending, ready, unavailable]}
+        task_state: {type: string, enum: ['', pending, processing, retry, idle, dead]}
+        attempts: {type: integer, minimum: 0, maximum: 5}
+        error_code: {type: string, enum: ['', source_unavailable, key_unavailable, storage_unavailable]}
+    KnowledgePrivateSelections:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/KnowledgePrivateSelection'}}
+    KnowledgePrivateWithdrawn:
+      type: object
+      additionalProperties: false
+      required: [withdrawn]
+      properties:
+        withdrawn: {type: boolean, enum: [true]}
+    KnowledgePrivateSearchRequest:
+      type: object
+      additionalProperties: false
+      description: POST body only, no URL query or persisted query. At most 1024 UTF-8 bytes and 16 terms. All owner candidates rechecked before totals. Five second deadline and 4 MiB corpus limit fail closed.
+      required: [query]
+      properties:
+        query: {type: string, minLength: 1, maxLength: 1024}
+    KnowledgePrivateSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+    KnowledgePrivateSearchHit:
+      type: object
+      additionalProperties: false
+      required: [id, kind, source_id, revision, title, snippet, score]
+      properties:
+        id: {type: string, pattern: '^kp_[0-9a-f]{32}$'}
+        kind: {type: string, enum: [personal_document, community_thread]}
+        source_id: {type: string}
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        title: {type: string}
+        snippet: {type: string, maxLength: 240}
+        score: {type: integer}
+    KnowledgePrivateSearchPage:
+      type: object
+      additionalProperties: false
+      required: [items, total]
+      properties:
+        items: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/KnowledgePrivateSearchHit'}}
+        total: {type: integer, minimum: 0, maximum: 100}
+    KnowledgePrivateSourcePreflightRequest:
+      type: object
+      additionalProperties: false
+      description: Read-only private source preflight using a current User JWT and live session. Strict JSON at most 1024 bytes; no URL query parameters, duplicate, null, unknown fields or invalid Unicode. IDs are canonical positive decimal int64 strings, maximum 9223372036854775807. The current document owner, live version, document lifecycle and both knowledge and personal-documents features are rechecked. This does not select a source, extract bytes, create an index or authorize any future request.
+      required: [document_id, version_id]
+      properties:
+        document_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+        version_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+    KnowledgePrivateSourcePreflight:
+      type: object
+      additionalProperties: false
+      description: Metadata-only readiness. Private intake is available only with protected external key custody, PostgreSQL and current supported source facts. No body, title, owner, storage object, digest or key is returned. Unsupported formats are distinguished from unavailable protected private storage. Re-run current preflight after any document change; a successful preflight response is not an indexing grant.
+      required: [document_id, version_id, format, can_index, reason]
+      properties:
+        document_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+        version_id: {type: string, pattern: '^[1-9][0-9]{0,18}$', maxLength: 19}
+        format: {type: string, enum: [text, markdown, campusdoc, pdf, docx]}
+        can_index: {type: boolean}
+        reason: {type: string, enum: [ready, private_storage_unavailable, unsupported_format]}
+    KnowledgeMCPRequest:
+      type: object
+      additionalProperties: false
+      description: MCP 2025-11-25 stateless Streamable HTTP JSON response profile. Single JSON-RPC object, maximum 32 KiB. Separate integration_mcp knowledge.public.read whitelist for this exact public collection. POST requires Accept application/json and text/event-stream; subsequent calls require MCP-Protocol-Version. Origin, cookies and URL queries rejected. initialize, ping, tools/list, tools/call, notifications/initialized and notifications/cancelled only. No SSE, sessions or Admin tools. Notifications return 202 without a body; GET returns 405 after authorization. Responses use JSON-RPC directly rather than the platform data envelope.
+      required: [jsonrpc, method]
+      properties:
+        jsonrpc: {type: string, enum: ['2.0']}
+        id:
+          oneOf:
+            - {type: string, minLength: 1, maxLength: 128}
+            - {type: integer, minimum: -9007199254740991, maximum: 9007199254740991}
+        method: {type: string, enum: [initialize, ping, tools/list, tools/call, notifications/initialized, notifications/cancelled]}
+        params: {type: object}
+    KnowledgeMCPResponse:
+      type: object
+      description: Direct JSON-RPC 2.0 result or error. Tool execution failures have isError true and fixed public error codes; no partial data. Only knowledge_search and knowledge_source_read tools, whose structuredContent matches KnowledgeSearchPage and KnowledgeSource respectively. Content text repeats the structured result as untrusted data.
+      additionalProperties: false
+      required: [jsonrpc, id]
+      properties:
+        jsonrpc: {type: string, enum: ['2.0']}
+        id: {}
+        result: {type: object}
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: integer}
+            message: {type: string}
+    KnowledgeIntegrationSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, page, page_size]
+      description: Read-only POST search; at most 32 KiB strict JSON with no duplicate, null, unknown fields or invalid Unicode. No URL query parameters or browser credentials. Requires the exact knowledge.search endpoint and public_collection scope; knowledge.source.read endpoint rules alone do not authorize search. Query is at most 1024 UTF-8 bytes and 16 distinct letter/number terms; all current origin checks precede total and paging.
+      properties:
+        query: {type: string, minLength: 1, maxLength: 1024}
+        page: {type: integer, minimum: 1, maximum: 100000}
+        page_size: {type: integer, minimum: 1, maximum: 50}
+    KnowledgeCollectionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - status
+      properties:
+        title: &id001
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: UTF-8 bytes <=1024; nonblank and single line.
+        status: &id002
+          type: string
+          enum:
+          - active
+          - disabled
+    KnowledgeCollectionUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - status
+      - version
+      properties:
+        title: *id001
+        status: *id002
+        version: &id006
+          type: string
+          pattern: ^[1-9][0-9]*$
+    KnowledgeOfficialCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - content
+      - format
+      - status
+      properties:
+        title: *id001
+        content: &id003
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: UTF-8 bytes <=65536, text/Markdown data only; never interpreted
+            or fetched.
+        format: &id004
+          type: string
+          enum:
+          - text
+          - markdown
+        status: &id005
+          type: string
+          enum:
+          - draft
+          - published
+          - withdrawn
+    KnowledgeOfficialUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - content
+      - format
+      - status
+      - version
+      properties:
+        title: *id001
+        content: *id003
+        format: *id004
+        status: *id005
+        version: *id006
+    KnowledgeSelectionCreate:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - source_id
+      - active
+      - collection_version
+      properties:
+        kind: &id007
+          type: string
+          enum:
+          - thread
+          - board
+          - official
+        source_id: &id008
+          type: string
+        active: &id009
+          type: boolean
+        collection_version: *id006
+    KnowledgeSelectionUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - source_id
+      - active
+      - collection_version
+      - version
+      properties:
+        kind: *id007
+        source_id: *id008
+        active: *id009
+        collection_version: *id006
+        version: *id006
+    KnowledgeCollection:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - title
+      - status
+      - created_by_admin_id
+      properties:
+        id: *id008
+        version: *id006
+        title: *id001
+        status: *id002
+        created_by_admin_id: *id008
+    KnowledgeOfficial:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - title
+      - content
+      - format
+      - status
+      - created_by_admin_id
+      properties:
+        id: *id008
+        version: *id006
+        title: *id001
+        content: *id003
+        format: *id004
+        status: *id005
+        created_by_admin_id: *id008
+    KnowledgeSelection:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - collection_id
+      - kind
+      - source_id
+      - active
+      properties:
+        id: *id008
+        version: *id006
+        collection_id: *id008
+        kind: *id007
+        source_id: *id008
+        active:
+          type: boolean
+    KnowledgeMember:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - collection_id
+      - selection_id
+      - selection_version
+      - kind
+      - source_id
+      - source_revision
+      properties:
+        id: *id008
+        version: *id006
+        collection_id: *id008
+        selection_id: *id008
+        selection_version: *id006
+        kind: &id010
+          type: string
+          enum:
+          - community.thread
+          - richtext.article
+          - knowledge.official
+        source_id: *id008
+        source_revision: *id008
+    KnowledgeState:
+      type: object
+      additionalProperties: false
+      required:
+      - collection
+      - selections
+      - members
+      properties:
+        collection:
+          $ref: '#/components/schemas/KnowledgeCollection'
+        selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSelection'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeMember'
+    KnowledgeRefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - collection_version
+      - selection_version
+      - page
+      properties:
+        collection_version: *id006
+        selection_version: *id006
+        page:
+          type: integer
+          minimum: 1
+          maximum: 100000
+    KnowledgeRefresh:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - page
+      - next_page
+      - examined
+      - materialized
+      - skipped_unsupported
+      - has_more
+      properties:
+        state:
+          $ref: '#/components/schemas/KnowledgeState'
+        page:
+          type: integer
+        next_page:
+          type: integer
+        examined:
+          type: integer
+        materialized:
+          type: integer
+        skipped_unsupported:
+          type: integer
+        has_more:
+          type: boolean
+    KnowledgeRemoveMember:
+      type: object
+      additionalProperties: false
+      required:
+      - version
+      properties:
+        version: *id006
+    KnowledgeOfficialRevision:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - source_id
+      - official_version
+      - snapshot
+      - changed_by_admin_id
+      - changed_at_ms
+      properties:
+        id: *id008
+        version: *id006
+        source_id: *id008
+        official_version: *id006
+        snapshot:
+          $ref: '#/components/schemas/KnowledgeOfficial'
+        changed_by_admin_id: *id008
+        changed_at_ms:
+          type: integer
+    KnowledgeHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_before
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeOfficialRevision'
+        next_before:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          description: 0 means end; pass other value as before for next 50 revisions.
+    KnowledgeSourceReference:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - id
+      - revision
+      properties:
+        kind: *id010
+        id: *id008
+        revision: *id008
+    KnowledgeCandidate:
+      type: object
+      additionalProperties: false
+      required:
+      - reference
+      - category_id
+      - title
+      - content
+      - format
+      - url
+      properties:
+        reference:
+          $ref: '#/components/schemas/KnowledgeSourceReference'
+        category_id: *id008
+        title: *id001
+        content: *id003
+        format: *id008
+        url: *id008
+    KnowledgeSource:
+      type: object
+      additionalProperties: false
+      required:
+      - member_id
+      - collection_id
+      - revision
+      - source
+      properties:
+        member_id: *id008
+        collection_id: *id008
+        revision: *id008
+        source:
+          $ref: '#/components/schemas/KnowledgeCandidate'
+    KnowledgeSourcePage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSource'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+    KnowledgeSearchExplanation:
+      type: object
+      additionalProperties: false
+      required: [terms, title_terms, chunk_terms, title_weight, chunk_weight]
+      properties:
+        terms:
+          type: array
+          minItems: 1
+          maxItems: 16
+          uniqueItems: true
+          items: {type: string}
+        title_terms:
+          type: array
+          maxItems: 16
+          uniqueItems: true
+          items: {type: string}
+        chunk_terms:
+          type: array
+          maxItems: 16
+          uniqueItems: true
+          items: {type: string}
+        title_weight: {type: integer, enum: [4]}
+        chunk_weight: {type: integer, enum: [1]}
+    KnowledgeSearchCitation:
+      type: object
+      additionalProperties: false
+      required: [collection_id, member_id, visibility_revision, source, generation, chunk_index, url]
+      properties:
+        collection_id: {type: string, pattern: '^kc_[0-9a-f]{32}$'}
+        member_id: {type: string, pattern: '^km_[0-9a-f]{32}$'}
+        visibility_revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        source:
+          $ref: '#/components/schemas/KnowledgeSourceReference'
+        generation: {type: string, pattern: '^[1-9][0-9]*$'}
+        chunk_index: {type: integer, minimum: 0}
+        url:
+          type: string
+          description: Current host-verified origin URL. To reopen the exact citation proof use the collection/member source endpoint with visibility_revision as revision; this URL alone is not a historical proof.
+    KnowledgeSearchHit:
+      type: object
+      additionalProperties: false
+      required: [title, snippet, score, explanation, citation]
+      properties:
+        title: {type: string, maxLength: 1024}
+        snippet:
+          type: string
+          maxLength: 240
+          description: Original plain-text data, possibly containing literal Markdown. Render as untrusted text, never HTML or instructions.
+        score: {type: integer, minimum: 1, maximum: 80}
+        explanation:
+          $ref: '#/components/schemas/KnowledgeSearchExplanation'
+        citation:
+          $ref: '#/components/schemas/KnowledgeSearchCitation'
+    KnowledgeSearchPage:
+      type: object
+      additionalProperties: false
+      required: [items, total, page, page_size, provider, generation]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/KnowledgeSearchHit'
+        total: {type: integer, minimum: 0, maximum: 1000}
+        page: {type: integer, minimum: 1, maximum: 100000}
+        page_size: {type: integer, minimum: 1, maximum: 50}
+        provider: {type: string, enum: [builtin.lexical/v1]}
+        generation: {type: string, pattern: '^[1-9][0-9]*$'}
+    KnowledgeCollectionList:
+      type: array
+      items:
+        $ref: '#/components/schemas/KnowledgeCollection'
+    KnowledgeOfficialList:
+      type: array
+      items:
+        $ref: '#/components/schemas/KnowledgeOfficial'
+    KnowledgeIndexDiagnostics:
+      type: object
+      additionalProperties: false
+      description: Admin-only execution snapshot. Projection counts and ready generations do not confer current source readability. No body, lease token or cursor is exposed.
+      required: [collection_id, collection_version, job_version, state, phase, attempts, last_error, ready_generation, run_generation, available_at_ms, selections, active_selections, members, projected_documents, observed_at_ms, retryable]
+      properties:
+        collection_id: {type: string, pattern: '^kc_[0-9a-f]{32}$'}
+        collection_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        job_version: {type: string, pattern: '^(0|[1-9][0-9]*)$'}
+        state: {type: string, enum: [unconfigured, pending, processing, retry, dead, idle]}
+        phase: {type: string}
+        attempts: {type: integer, minimum: 0}
+        last_error: {type: string, enum: ['', page_failed, lease_expired]}
+        ready_generation: {type: string, pattern: '^(0|[1-9][0-9]*)$'}
+        run_generation: {type: string, pattern: '^(0|[1-9][0-9]*)$'}
+        available_at_ms: {type: string, pattern: '^(0|[1-9][0-9]*)$'}
+        selections: {type: integer, minimum: 0}
+        active_selections: {type: integer, minimum: 0}
+        members: {type: integer, minimum: 0}
+        projected_documents: {type: integer, minimum: 0}
+        observed_at_ms: {type: string, pattern: '^[1-9][0-9]*$'}
+        retryable: {type: boolean}
+    KnowledgeIndexRetry:
+      type: object
+      additionalProperties: false
+      required: [collection_version, version]
+      properties:
+        collection_version: {type: string, pattern: '^[1-9][0-9]*$'}
+        version: {type: string, pattern: '^[1-9][0-9]*$'}
+    KnowledgeIndexAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted: {type: boolean, enum: [true]}
+    PluginV5AdminCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            type: boolean
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - grant
+          consumes:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/consumes
+          host_resources:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/host_resources
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - approved
+        - consumes
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - revoke
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - purge_release
+        required:
+        - version
+        - idempotency_key
+        - kind
+    PluginV5UserCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            type: boolean
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - consent
+          purpose_hash:
+            type: string
+            pattern: ^sha256:[0-9a-f]{64}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - accepted
+        - purpose_hash
+    PluginV5Installation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        owner_user_id:
+          type: string
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        desired_version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        installed:
+          type: boolean
+        desired:
+          enum:
+          - enabled
+          - disabled
+          - uninstalled
+        observed:
+          enum:
+          - pending
+          - ready
+          - failed
+          - stopped
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        revision:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        observed_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        active_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        config_digest:
+          type: string
+      required:
+      - publisher
+      - plugin_key
+      - owner_user_id
+      - version
+      - desired_version
+      - installed
+      - desired
+      - observed
+      - generation
+      - revision
+      - observed_generation
+      - active_generation
+      - error_code
+      - config_digest
+    PluginV5Operation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        id:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+        owner_user_id:
+          type: string
+        kind:
+          enum:
+          - import
+          - install
+          - enable
+          - disable
+          - upgrade
+          - uninstall
+          - configure
+          - grant
+          - revoke
+          - consent
+          - retry
+          - purge_release
+        status:
+          enum:
+          - queued
+          - working
+          - waiting
+          - done
+          - failed
+          - superseded
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        purge_data:
+          type: boolean
+        attempts:
+          type: integer
+          minimum: 0
+      required:
+      - publisher
+      - plugin_key
+      - version
+      - id
+      - owner_user_id
+      - kind
+      - status
+      - generation
+      - error_code
+      - purge_data
+      - attempts
+    PluginV5InventoryEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        release:
+          type: object
+          description: Immutable coordinate/digest/manifest/release envelope; storage
+            is last observed availability, never trust/authorization.
+        installation:
+          $ref: '#/components/schemas/PluginV5Installation'
+        grant:
+          type: object
+        consent:
+          type: object
+        configuration:
+          type: object
+          description: Current domain only, ordinary values and opaque Secret refs; no
+            other owner or system configuration in User response.
+        purpose_hash:
+          type: string
+      required:
+      - release
+      - purpose_hash
+    PluginV5Inventory:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PluginV5InventoryEntry'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+    PluginV5Import:
+      type: object
+      additionalProperties: false
+      properties:
+        package:
+          type: string
+          format: binary
+        release:
+          type: string
+          description: Detached JSON Ed25519 release envelope, at most1 MiB.
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_.:-]+$
+      required:
+      - package
+      - release
+      - idempotency_key
     EmptyObject:
       type: object
       additionalProperties: false

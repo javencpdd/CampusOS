@@ -1,75 +1,24 @@
-import { createReadStream, existsSync, statSync } from 'node:fs'
-import { createServer } from 'node:http'
-import { extname, join, normalize, resolve, sep } from 'node:path'
+import { createServer, request as upstreamRequest } from 'node:http'
 
-const root = resolve(process.env.CAMPUSOS_PLUGIN_V4_DIR || '/workspace/plugins', '.installed')
 const port = Number(process.env.CAMPUSOS_PLUGIN_UI_PORT || '3003')
-// Native disposable drills bind loopback; containers retain their internal bind.
 const host = process.env.CAMPUSOS_PLUGIN_UI_HOST || '0.0.0.0'
-const frameAncestors = process.env.CAMPUSOS_PLUGIN_UI_FRAME_ANCESTORS || '*'
-const mimeTypes = new Map([
-  ['.html', 'text/html; charset=utf-8'],
-  ['.js', 'text/javascript; charset=utf-8'],
-  ['.mjs', 'text/javascript; charset=utf-8'],
-  ['.css', 'text/css; charset=utf-8'],
-  ['.json', 'application/json; charset=utf-8'],
-  ['.svg', 'image/svg+xml'],
-  ['.png', 'image/png'],
-  ['.jpg', 'image/jpeg'],
-  ['.jpeg', 'image/jpeg'],
-  ['.webp', 'image/webp'],
-  ['.woff2', 'font/woff2'],
-])
-
-function csp() {
-  return [
-    "default-src 'none'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self'",
-    "connect-src 'none'",
-    "worker-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-    `frame-ancestors ${frameAncestors}`,
-  ].join('; ')
+const upstream = new URL(process.env.CAMPUSOS_PLUGIN_UI_UPSTREAM || 'http://api:3004')
+if (upstream.protocol !== 'http:' || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash) throw new Error('Invalid dedicated UI upstream')
+function fail(response, status) {
+  response.writeHead(status, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store', 'Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'", 'X-Content-Type-Options':'nosniff' })
+  response.end(status === 200 ? 'ok' : 'unavailable')
 }
-
-function send(response, status, message) {
-  response.writeHead(status, {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Cache-Control': 'no-store',
-    'Content-Security-Policy': csp(),
-    'X-Content-Type-Options': 'nosniff',
+// Finite asset gateway: no API proxy, filesystem reads, redirects, credentials
+// or source-directory publication. Authorization is rechecked by the UI host.
+createServer((request,response) => {
+  if(request.url === '/health' && request.method === 'GET') return fail(response,200)
+  if(!['GET','HEAD'].includes(request.method) || !/^\/ui\/[0-9a-f]{32}\//.test(request.url || '') || request.headers['sec-fetch-dest'] === 'serviceworker' || request.headers['sec-fetch-dest'] === 'document') return fail(response,404)
+  const headers = { host:request.headers.host, 'sec-fetch-dest':request.headers['sec-fetch-dest'] || '' }
+  const proxy = upstreamRequest(upstream,{ method:request.method,path:request.url,headers,timeout:10000 }, incoming => {
+    if(incoming.statusCode !== 200){ incoming.resume();return fail(response,404) }
+    const safeHeaders = Object.fromEntries(['content-type','content-security-policy','cache-control','x-content-type-options','referrer-policy','permissions-policy','origin-agent-cluster'].filter(key=>incoming.headers[key]).map(key=>[key,incoming.headers[key]]))
+    response.writeHead(200,safeHeaders);incoming.pipe(response)
   })
-  response.end(message)
-}
-
-createServer((request, response) => {
-  if (request.url === '/health') return send(response, 200, 'ok')
-  if (request.headers['sec-fetch-dest'] === 'serviceworker') return send(response, 403, 'service worker is not allowed')
-  const pathname = new URL(request.url || '/', 'http://plugin-ui.invalid').pathname
-  if (!pathname.startsWith('/plugins/')) return send(response, 404, 'not found')
-  const relative = normalize(pathname.slice('/plugins/'.length)).replace(/^([/\\])+/, '')
-  const target = resolve(root, relative)
-  if (!target.startsWith(`${root}${sep}`) || !existsSync(target)) return send(response, 404, 'not found')
-  let stat
-  try {
-    stat = statSync(target)
-  } catch {
-    return send(response, 404, 'not found')
-  }
-  if (!stat.isFile() || !mimeTypes.has(extname(target).toLowerCase())) return send(response, 404, 'not found')
-  response.writeHead(200, {
-    'Content-Type': mimeTypes.get(extname(target).toLowerCase()),
-    'Content-Length': stat.size,
-    'Cache-Control': extname(target).toLowerCase() === '.html' ? 'no-store' : 'public, max-age=31536000, immutable',
-    'Content-Security-Policy': csp(),
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
-    'Referrer-Policy': 'no-referrer',
-    'X-Content-Type-Options': 'nosniff',
-  })
-  createReadStream(target).pipe(response)
-}).listen(port, host, () => console.log(`CampusOS plugin UI gateway listening on ${port}`))
+  proxy.on('timeout',()=>proxy.destroy());proxy.on('error',()=>{if(!response.headersSent)fail(response,502);else response.destroy()})
+  response.on('close',()=>proxy.destroy());proxy.end()
+}).listen(port,host,()=>console.log(`CampusOS v5 UI gateway listening on ${port}`))

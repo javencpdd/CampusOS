@@ -16,6 +16,8 @@ ARG TARGETOS
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-$(go env GOARCH)}" \
     go build -trimpath -ldflags="-s -w" -o /out/campusos-server ./cmd/server
+RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH:-$(go env GOARCH)}" \
+    go build -trimpath -ldflags="-s -w" -o /out/campusosctl ./cmd/campusosctl
 
 FROM ${API_RUNTIME_IMAGE} AS api
 ARG CAMPUSOS_VERSION=1.1.0-dev
@@ -28,6 +30,7 @@ RUN apk add --no-cache bash ca-certificates curl tini tzdata "postgresql${POSTGR
     && adduser -S -D -H -u 10001 -G campusos campusos
 WORKDIR /app
 COPY --from=api-builder --chown=campusos:campusos /out/campusos-server ./bin/campusos-server
+COPY --from=api-builder --chown=campusos:campusos /out/campusosctl ./bin/campusosctl
 COPY --chown=campusos:campusos migrations ./migrations
 COPY --chown=campusos:campusos modules ./modules
 COPY --chown=campusos:campusos data ./seed-data
@@ -59,6 +62,7 @@ WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
+COPY sdk/typescript/src/ /src/sdk/typescript/src/
 RUN pnpm build
 
 FROM ${NGINX_IMAGE} AS web
@@ -75,6 +79,7 @@ WORKDIR /src/admin
 COPY admin/package.json admin/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY admin/ ./
+COPY sdk/typescript/src/ /src/sdk/typescript/src/
 ARG VITE_WEB_URL=
 ARG VITE_DOCS_URL=
 ARG VITE_GITHUB_URL=https://github.com/javencpdd/CampusOS

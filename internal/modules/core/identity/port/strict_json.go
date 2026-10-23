@@ -20,7 +20,11 @@ var errStrictJSON = errors.New("invalid policy JSON object")
 // before contract precedence is applied. Semantic field validation stays with
 // the exact-schema parsers; nesting is bounded independently of the byte limit.
 func decodeStrictObject(raw []byte) (map[string]json.RawMessage, error) {
-	if len(raw) == 0 || len(raw) > policyJSONLimit || !utf8.Valid(raw) {
+	return decodeStrictObjectLimit(raw, policyJSONLimit)
+}
+
+func decodeStrictObjectLimit(raw []byte, limit int) (map[string]json.RawMessage, error) {
+	if len(raw) == 0 || len(raw) > limit || !utf8.Valid(raw) {
 		return nil, errStrictJSON
 	}
 	syntax := json.NewDecoder(bytes.NewReader(raw))
@@ -128,6 +132,26 @@ func strictJSONValue(dec *json.Decoder, depth int) error {
 		}
 	default:
 		return errStrictJSON
+	}
+	return nil
+}
+
+// ValidateClosedHTTPObject shares the duplicate/Unicode/depth rules without
+// enlarging the fixed G1 policy codec. The owning endpoint supplies its byte
+// budget and exact required fields; this performs no authentication.
+func ValidateClosedHTTPObject(raw []byte, fields []string, limit int) error {
+	if limit < 1 || limit > 1024*1024 || !resourceJSONUnicodeValid(raw) {
+		return errStrictJSON
+	}
+	values, e := decodeStrictObjectLimit(raw, limit)
+	if e != nil || len(values) != len(fields) {
+		return errStrictJSON
+	}
+	for _, field := range fields {
+		v, ok := values[field]
+		if !ok || bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
+			return errStrictJSON
+		}
 	}
 	return nil
 }

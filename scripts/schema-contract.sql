@@ -5,13 +5,15 @@ DECLARE
 BEGIN
     SELECT string_agg(item, ', ' ORDER BY item) INTO missing
     FROM unnest(ARRAY[
-        'schema_migrations', 'schema_migration_locks',
+        'knowledge_private_sources','knowledge_private_tasks','knowledge_index_jobs','knowledge_index_documents','knowledge_index_backfill_checkpoints','knowledge_index_tasks','knowledge_collections','knowledge_official_sources','knowledge_official_revisions','knowledge_source_selections','knowledge_collection_sources',
+ 'schema_migrations', 'schema_migration_locks', 'instance_recovery_epochs', 'integration_principals', 'integration_credentials',
         'users', 'accounts', 'identity_admin_accounts', 'sessions', 'roles', 'user_roles',
         'identity_legacy_email_placeholders', 'identity_reserved_identifiers',
         'identity_email_challenges', 'identity_challenge_rate_limits', 'identity_challenge_policies', 'identity_account_recovery_cases',
         'permission_definitions', 'role_permissions', 'route_operations', 'route_permission_bindings', 'authorization_audits',
         'categories', 'threads', 'posts', 'category_thread_type_policies', 'mutual_aid_details', 'secondhand_details', 'plugins', 'plugin_permissions', 'plugin_logs',
-        'plugin_publishers', 'plugin_versions', 'plugin_capability_declarations', 'plugin_admin_grants',
+        'plugin_packages','plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations', 'plugin_v5_event_deliveries',
+        'plugin_publishers', 'plugin_versions', 'plugin_package_identities', 'plugin_capability_declarations', 'plugin_admin_grants',
         'plugin_user_consents', 'plugin_delegations', 'plugin_secret_values', 'plugin_configurations', 'plugin_authorization_decisions',
         'user_spaces', 'user_space_contents', 'richtext_article_contents',
         'richtext_article_assets', 'user_assets', 'richtext_article_attachments', 'plugin_ui_invocations', 'asset_lifecycle_audits',
@@ -29,7 +31,8 @@ BEGIN
 
     SELECT string_agg(expected, ', ' ORDER BY expected) INTO missing
     FROM unnest(ARRAY[
-        'users.id', 'users.status', 'users.auth_version', 'users.must_change_password',
+        'knowledge_private_sources.owner_user_id','knowledge_private_sources.ciphertext','knowledge_private_sources.nonce','knowledge_private_sources.consent_version','knowledge_private_tasks.lease_token','knowledge_private_tasks.consent_version','knowledge_index_jobs.data','knowledge_index_jobs.facts_version','knowledge_index_jobs.state','knowledge_index_jobs.available_at_ms','knowledge_index_jobs.lease_until_ms','knowledge_index_jobs.lease_token','knowledge_index_documents.data','knowledge_index_documents.facts_version','knowledge_index_documents.collection_id','knowledge_index_documents.selection_id','knowledge_index_documents.generation','knowledge_index_backfill_checkpoints.target_kind','knowledge_index_backfill_checkpoints.after_id','knowledge_index_backfill_checkpoints.completed_passes','knowledge_index_backfill_checkpoints.next_scan_at','knowledge_index_backfill_checkpoints.updated_at','knowledge_index_tasks.target_kind','knowledge_index_tasks.target_id','knowledge_index_tasks.target_version','knowledge_index_tasks.status','knowledge_collections.facts_version','knowledge_collections.data','knowledge_official_sources.facts_version','knowledge_official_revisions.source_id','knowledge_source_selections.collection_id','knowledge_collection_sources.selection_id',
+ 'users.id', 'users.status', 'users.auth_version', 'users.must_change_password',
         'accounts.identifier_normalized', 'accounts.verification_state', 'accounts.credential_version',
         'identity_admin_accounts.user_id', 'identity_admin_accounts.credential_account_id',
         'identity_admin_accounts.status', 'identity_admin_accounts.version',
@@ -46,7 +49,7 @@ BEGIN
         'categories.node_kind', 'categories.lifecycle_status', 'categories.version', 'categories.color',
         'threads.author_id', 'threads.category_id', 'threads.status', 'threads.thread_type',
         'threads.publication_status', 'threads.moderation_status', 'threads.deletion_status', 'threads.current_revision', 'threads.facts_version',
-        'admin_role_permissions.facts_version',
+        'admin_role_permissions.facts_version', 'integration_principals.facts_version', 'integration_principals.created_by_admin_id', 'integration_credentials.digest', 'integration_credentials.prefix', 'integration_credentials.purpose', 'integration_credentials.rules', 'integration_credentials.facts_version',
         'richtext_article_contents.facts_version', 'user_assets.facts_version', 'richtext_article_attachments.facts_version',
 		'user_spaces.facts_version','user_space_style_snapshots.facts_version','user_storage_quotas.facts_version',
         'roles.facts_version', 'user_roles.facts_version', 'role_permissions.facts_version', 'permission_definitions.facts_version',
@@ -95,6 +98,7 @@ BEGIN
         'schema_migrations.checksum', 'schema_migrations.execution_ms', 'schema_migrations.executor',
         'plugins.publisher_id', 'plugin_publishers.slug', 'plugin_publishers.trust_status',
         'plugin_versions.plugin_id', 'plugin_versions.package_digest', 'plugin_versions.permission_fingerprint', 'plugin_versions.activated_at',
+        'plugin_package_identities.publisher', 'plugin_package_identities.plugin_key', 'plugin_package_identities.version', 'plugin_package_identities.package_digest', 'plugin_package_identities.created_at',
         'plugin_capability_declarations.plugin_version_id', 'plugin_capability_declarations.capability_code',
         'plugin_admin_grants.policy_revision', 'plugin_user_consents.purpose_hash',
         'plugin_delegations.token_digest', 'plugin_secret_values.ciphertext',
@@ -336,6 +340,8 @@ BEGIN
         RAISE EXCEPTION 'post authority facts or deletion actor guards missing or disabled';
     END IF;
 
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.integration_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
+       (SELECT count(*) FROM (VALUES ('public.integration_principals','trg_integration_principal_facts'),('public.integration_credentials','trg_integration_credential_facts')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_integration_facts()'))<>2 THEN RAISE EXCEPTION 'missing managed Integration facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.user_scope_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
        (SELECT count(*) FROM (VALUES ('public.roles','trg_roles_user_scope_facts_version'),('public.user_roles','trg_user_roles_user_scope_facts_version'),('public.role_permissions','trg_role_permissions_user_scope_facts_version'),('public.permission_definitions','trg_permission_definitions_user_scope_facts_version')) x(tbl,trg) JOIN pg_trigger t ON t.tgrelid=to_regclass(x.tbl) AND t.tgname=x.trg WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=23 AND t.tgfoid=to_regprocedure('public.advance_user_scope_facts_version()'))<>4 THEN RAISE EXCEPTION 'missing managed User scoped execution facts guard'; END IF;
     IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.richtext_asset_binding_facts_version_seq') AND NOT seqcycle AND seqtypid='bigint'::regtype AND seqincrement=1) OR
@@ -366,6 +372,19 @@ BEGIN
             RAISE EXCEPTION 'business actor domain columns or legacy provenance guard missing/disabled: %',actor_guard.table_name;
         END IF;
     END LOOP;
+
+    IF (SELECT count(*) FROM (VALUES ('plugin_package_identity_write_once',27),('plugin_package_identity_no_truncate',34)) x(name,kind)
+        JOIN pg_trigger t ON t.tgrelid='public.plugin_package_identities'::regclass AND t.tgname=x.name
+        WHERE NOT t.tgisinternal AND t.tgenabled IN('O','A') AND t.tgtype=x.kind
+        AND t.tgfoid=to_regprocedure('public.reject_plugin_package_identity_mutation()')) <> 2 THEN
+        RAISE EXCEPTION 'missing or disabled plugin package identity immutability guards';
+    END IF;
+
+    FOREACH missing IN ARRAY ARRAY['plugin_package_releases','plugin_installations','plugin_user_installations','plugin_v5_admin_grants','plugin_v5_user_consents','plugin_v5_configurations','plugin_operations'] LOOP
+      IF (SELECT count(*) FROM pg_trigger WHERE tgrelid=to_regclass('public.'||missing) AND NOT tgisinternal AND tgenabled IN('O','A') AND tgfoid=to_regprocedure('public.guard_plugin_v5_state()'))<>2 THEN RAISE EXCEPTION 'missing v5 state history guard: %',missing; END IF;
+      IF NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.'||missing) AND attname='state' AND attnotnull AND atttypid='jsonb'::regtype) THEN RAISE EXCEPTION 'missing v5 state fact: %',missing; END IF;
+    END LOOP;
+    IF NOT EXISTS(SELECT 1 FROM pg_sequence WHERE seqrelid=to_regclass('public.plugin_v5_generations') AND NOT seqcycle AND seqtypid='bigint'::regtype) THEN RAISE EXCEPTION 'missing v5 monotonic generation sequence'; END IF;
 
     SELECT string_agg(format('%s.%s', conrelid::regclass, conname), ', ' ORDER BY conrelid::regclass::text, conname)
     INTO missing

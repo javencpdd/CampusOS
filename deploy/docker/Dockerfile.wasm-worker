@@ -1,0 +1,5 @@
+# Build context contains only the host-built static worker binary.
+FROM scratch
+COPY campusos-wasm-worker /runner
+USER 65534:65534
+ENTRYPOINT ["/runner"]

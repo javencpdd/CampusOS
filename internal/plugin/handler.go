@@ -2,10 +2,7 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -255,196 +252,19 @@ func (h *Handler) UninstallPlugin(c *gin.Context) {
 // ExportPlugin 导出标准插件包
 // GET /api/v1/plugins/:name/export
 func (h *Handler) ExportPlugin(c *gin.Context) {
-	name := c.Param("name")
-	tempFile, err := os.CreateTemp("", "campusos-plugin-export-*.tar.gz")
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-	tempPath := tempFile.Name()
-	tempFile.Close()
-	defer os.Remove(tempPath)
-
-	info, err := h.manager.ExportPackage(name, tempPath)
-	if err != nil {
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		response.Error(c, status, 60004, err.Error())
-		return
-	}
-
-	filename := info.Manifest.Name + "-" + info.Manifest.Version + PluginPackageExtension
-	c.Header("Content-Type", "application/gzip")
-	c.FileAttachment(tempPath, filename)
+	response.Error(c, http.StatusServiceUnavailable, 60005, "插件安装与回退暂不可用，请稍后重试。")
 }
 
 // ImportPluginPackage 导入标准插件包
 // POST /api/v1/plugin-packages/import
 func (h *Handler) ImportPluginPackage(c *gin.Context) {
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, 60005, "plugin package file is required")
-		return
-	}
-	filename := strings.ToLower(fileHeader.Filename)
-	if !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, PluginPackageExtension) {
-		response.Error(c, http.StatusBadRequest, 60005, "plugin package must be a .tar.gz file")
-		return
-	}
-
-	tempDir, err := os.MkdirTemp("", "campusos-plugin-upload-*")
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-	defer os.RemoveAll(tempDir)
-
-	packagePath := filepath.Join(tempDir, "upload.tar.gz")
-	if err := c.SaveUploadedFile(fileHeader, packagePath); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-
-	replace := c.PostForm("replace") == "true" || c.Query("replace") == "true"
-	precheck, err := PrecheckPluginPackage(packagePath, h.pluginsDir)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-	pluginName := "unknown"
-	if precheck.Manifest != nil {
-		pluginName = precheck.Manifest.Name
-	}
-	actorID, actorName := currentActor(c)
-	auditMetadata := map[string]interface{}{
-		"actor_id":                 actorID,
-		"actor_name":               actorName,
-		"checksum":                 precheck.Checksum,
-		"package_size":             precheck.PackageSize,
-		"risk_level":               precheck.RiskLevel,
-		"risk_score":               precheck.RiskScore,
-		"risk_reasons":             precheck.RiskReasons,
-		"replace":                  replace,
-		"conflict":                 precheck.Conflict,
-		"existing_version":         precheck.ExistingVersion,
-		"import_version":           precheck.ImportVersion,
-		"version_change":           precheck.VersionChange,
-		"added_permissions":        precheck.AddedPermissions,
-		"removed_permissions":      precheck.RemovedPermissions,
-		"requires_reauthorization": precheck.RequiresReauthorization,
-		"data_schema_change":       precheck.DataSchemaChange,
-		"signature_status":         precheck.SignatureStatus,
-		"capability_changes":       precheck.CapabilityChanges,
-		"precheck_warnings":        precheck.Warnings,
-	}
-	if precheck.Manifest != nil {
-		auditMetadata["scope"] = precheck.Manifest.Scope
-	}
-	if !precheck.Allowed {
-		auditMetadata["outcome"] = "precheck_failed"
-		auditMetadata["errors"] = precheck.Errors
-		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import rejected by precheck", auditMetadata)
-		response.Error(c, http.StatusBadRequest, 60005, "plugin package precheck failed: "+strings.Join(precheck.Errors, "; "))
-		return
-	}
-	// A semantic version is an immutable security identity in v1. Reject a
-	// changed package before replacing files; otherwise code and authorization
-	// facts could momentarily disagree even though runtime access is fail-closed.
-	if h.authorization != nil && precheck.Manifest != nil {
-		if active, activeErr := h.authorization.ActiveVersion(c.Request.Context(), precheck.Manifest.Name); activeErr == nil && active.Version == precheck.Manifest.Version && active.PackageDigest != strings.ToLower(precheck.Checksum) {
-			auditMetadata["outcome"] = "immutable_version_conflict"
-			h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import rejected because version content changed", auditMetadata)
-			response.Error(c, http.StatusConflict, 60004, "相同插件版本的包内容不可变；请提升 Manifest version 后重新导入。")
-			return
-		}
-	}
-	if precheck.Conflict && !replace {
-		auditMetadata["outcome"] = "conflict_without_replace"
-		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "warn", "plugin package import blocked by version conflict", auditMetadata)
-		response.Error(c, http.StatusConflict, 60004, "plugin with the same name already exists; enable replace to overwrite")
-		return
-	}
-	installed, err := h.manager.ImportPackageContext(c.Request.Context(), packagePath, h.pluginsDir, replace)
-	if err != nil {
-		auditMetadata["outcome"] = "failed"
-		auditMetadata["error"] = err.Error()
-		h.manager.RecordPluginAudit(c.Request.Context(), pluginName, "error", "plugin package import failed", auditMetadata)
-		status := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "already installed") || strings.Contains(err.Error(), "already exists") {
-			status = http.StatusConflict
-		}
-		response.Error(c, status, 60004, err.Error())
-		return
-	}
-	auditMetadata["outcome"] = "imported"
-	hotReloaded := replace && installed.Manifest.IsUserLevel() && installed.Status == StatusRunning
-	auditMetadata["hot_reloaded"] = hotReloaded
-	h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "info", "plugin package imported by admin", auditMetadata)
-	authorizationSynced := h.authorization == nil
-	if h.authorization != nil {
-		if _, syncErr := h.authorization.SyncInstalled(c.Request.Context(), installed, actorID); syncErr != nil {
-			auditMetadata["authorization_sync_error"] = syncErr.Error()
-			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "error", "plugin authorization facts sync failed after import", auditMetadata)
-			response.Error(c, http.StatusConflict, 60004, "插件包已导入，但授权事实同步失败；插件保持默认拒绝，请检查版本摘要后重试同步："+syncErr.Error())
-			return
-		}
-		authorizationSynced = true
-	}
-	marketSynced := true
-	if h.market != nil && h.market.Available() && (installed.Manifest.IsV2() || installed.Manifest.IsV3()) && installed.Manifest.Runtime != "builtin" {
-		if err := h.market.SyncCatalog(c.Request.Context(), h.manager.ListPlugins()); err != nil {
-			marketSynced = false
-			auditMetadata["market_sync_error"] = err.Error()
-			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "warn", "plugin market catalog sync failed after import", auditMetadata)
-		} else if _, err := h.market.RecordImportedRelease(c.Request.Context(), installed.Manifest, precheck.Checksum, precheck.SignatureStatus, actorID); err != nil {
-			marketSynced = false
-			auditMetadata["release_record_error"] = err.Error()
-			h.manager.RecordPluginAudit(c.Request.Context(), installed.Manifest.Name, "warn", "plugin market release record failed after import", auditMetadata)
-		}
-	}
-
-	payload := h.pluginPayload(installed)
-	payload["hot_reloaded"] = hotReloaded
-	payload["market_synced"] = marketSynced
-	payload["authorization_synced"] = authorizationSynced
-	response.Success(c, payload)
+	response.Error(c, http.StatusServiceUnavailable, 60005, "插件安装与回退暂不可用，请稍后重试。")
 }
 
 // PrecheckPluginPackage 校验插件包并预览权限、文件和冲突
 // POST /api/v1/plugin-packages/precheck
 func (h *Handler) PrecheckPluginPackage(c *gin.Context) {
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, 60005, "plugin package file is required")
-		return
-	}
-	filename := strings.ToLower(fileHeader.Filename)
-	if !strings.HasSuffix(filename, ".tar.gz") && !strings.HasSuffix(filename, PluginPackageExtension) {
-		response.Error(c, http.StatusBadRequest, 60005, "plugin package must be a .tar.gz file")
-		return
-	}
-
-	tempDir, err := os.MkdirTemp("", "campusos-plugin-precheck-upload-*")
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-	defer os.RemoveAll(tempDir)
-
-	packagePath := filepath.Join(tempDir, "upload.tar.gz")
-	if err := c.SaveUploadedFile(fileHeader, packagePath); err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-
-	precheck, err := PrecheckPluginPackage(packagePath, h.pluginsDir)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, 60004, err.Error())
-		return
-	}
-	response.Success(c, precheck)
+	response.Error(c, http.StatusServiceUnavailable, 60005, "插件安装与回退暂不可用，请稍后重试。")
 }
 
 // ListVersionSnapshots returns verified pre-update snapshots.
@@ -460,30 +280,7 @@ func (h *Handler) ListVersionSnapshots(c *gin.Context) {
 
 // RollbackVersionSnapshot restores one verified user-plugin package and hot reloads it when needed.
 func (h *Handler) RollbackVersionSnapshot(c *gin.Context) {
-	name := c.Param("name")
-	var req struct {
-		SnapshotID string `json:"snapshot_id"`
-	}
-	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil || req.SnapshotID == "" {
-		response.Error(c, http.StatusBadRequest, 60005, "snapshot_id is required")
-		return
-	}
-	installed, err := h.manager.RollbackVersionSnapshot(name, req.SnapshotID, h.pluginsDir)
-	if err != nil {
-		response.Error(c, lifecycleErrorStatus(err), 60004, err.Error())
-		return
-	}
-	actorID, actorName := currentActor(c)
-	if h.authorization != nil {
-		if _, syncErr := h.authorization.SyncInstalled(c.Request.Context(), installed, actorID); syncErr != nil {
-			response.Error(c, http.StatusConflict, 60004, "版本文件已恢复，但授权版本同步失败；插件保持默认拒绝："+syncErr.Error())
-			return
-		}
-	}
-	h.manager.RecordPluginAudit(c.Request.Context(), name, "warn", "plugin rollback requested by admin", map[string]interface{}{
-		"actor_id": actorID, "actor_name": actorName, "snapshot_id": req.SnapshotID,
-	})
-	response.Success(c, h.pluginPayload(installed))
+	response.Error(c, http.StatusServiceUnavailable, 60005, "插件安装与回退暂不可用，请稍后重试。")
 }
 
 func currentActor(c *gin.Context) (string, string) {

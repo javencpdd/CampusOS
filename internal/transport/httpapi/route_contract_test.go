@@ -44,3 +44,36 @@ func TestRuntimeRoutesMatchGeneratedContractSource(t *testing.T) {
 		t.Fatalf("runtime/contract route mismatch: missing from contract=%v, missing from runtime=%v", missing, extra)
 	}
 }
+
+func TestRuntimeKnowledgePrivatePreflightKeepsUserAuthority(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	root, err := projectaudit.FindRepositoryRoot(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	contracts, err := projectaudit.ParseServerRoutes(filepath.Join(root, "internal/transport/httpapi/router.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const operation = "http.knowledge.private.source.preflight"
+	var source projectaudit.RouteContract
+	for _, contract := range contracts {
+		if contract.OperationCode == operation {
+			source = contract
+		}
+	}
+	router := Build(Dependencies{})
+	found := false
+	for _, descriptor := range router.RouteDescriptors() {
+		if descriptor.OperationCode != operation {
+			continue
+		}
+		found = true
+		if string(descriptor.Audience) != source.Audience || descriptor.Auth != source.Auth || descriptor.Auth != "jwt+current-user-session+document-owner" || descriptor.Owner != "feature.knowledge" || descriptor.Audit != "none" || descriptor.PermissionCode != "" || descriptor.Permission != "" || descriptor.FeatureID != "knowledge" {
+			t.Fatal("runtime preflight cannot inherit anonymous public source authority", descriptor, source)
+		}
+	}
+	if !found {
+		t.Fatal("private preflight runtime descriptor missing")
+	}
+}

@@ -1,0 +1,12 @@
+schema: campusos.module/v1
+id: feature.knowledge
+feature_id: knowledge
+name: knowledge
+display_name: "Knowledge"
+version: "1.2.0-dev"
+description: "Public collections with checked Community/RichText/official sources; immutable requests, resident source invalidation and fenced durable paginated index execution/reconciliation. Versioned public text projections remain untrusted and rechecked on read; built-in public lexical retrieval, public search/citation HTTP and Integration Key protected current-source reads and single-collection search are available. Machine search and source reads require their independent exact endpoint/collection whitelist and current origin ACL. Standard MCP 2025-11-25 stateless JSON tools and managed v5 public collection Host/Go-TypeScript SDK readers are available with independent current authority checks. Web anonymous public collection search/current citation and independent Admin collection/official/source management, metadata-only index diagnostics/metrics and fenced audited retry are available. User-only explicit per-source private text indexing/search is available only with a protected external per-selection key vault; encrypted durable snapshots and fenced metadata jobs, current owner/origin rechecks, withdrawal/key retirement and offline-restore consent discard. Private data is never exposed to MCP/Integration/plugin Host. External Providers and egress remain unavailable."
+kind: builtin-feature
+activation_mode: hot-gated
+default_enabled: false
+dependencies: [core.community, core.identity, core.reliability, core.feature-registry, feature.controlled-richtext-article, feature.personal-documents]
+implementation: internal/modules/features/knowledge
