@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -476,6 +475,23 @@ func (s *CollectionService) OfficialHistory(ctx context.Context, id string, befo
 // Board eligibility uses Community's current catalogue; a closed board can
 // still be read, whereas archived boards/parents cannot supply new or old bytes.
 func (s *CollectionService) board(ctx context.Context, id string) (string, error) {
+	if reader, ok := s.categories.(communityport.SourceBoardFactsReader); ok {
+		board, parent, err := reader.ReadSourceBoardFacts(ctx, id)
+		if err != nil {
+			return "", ErrSourceUnavailable
+		}
+		if board.ID != id || board.NodeKind != domain.CategoryNodeBoard || board.LifecycleStatus != domain.CategoryLifecycleActive || board.Version < 1 {
+			return "", ErrNotFound
+		}
+		stamp := fmt.Sprintf("%s:%d", id, board.Version)
+		if board.ParentID != "" {
+			if parent.ID != board.ParentID || parent.NodeKind != domain.CategoryNodeGroup || parent.LifecycleStatus != domain.CategoryLifecycleActive || parent.Version < 1 {
+				return "", ErrNotFound
+			}
+			stamp += fmt.Sprintf(":%s:%d", parent.ID, parent.Version)
+		}
+		return stamp, nil
+	}
 	rows, e := s.categories.ListSourceCategories(ctx)
 	if e != nil {
 		return "", ErrSourceUnavailable
@@ -511,9 +527,18 @@ func (s *CollectionService) origin(ctx context.Context, kind, id string) (Public
 		if row.Status != "published" || row.Version < 1 || !titleValid(row.Title) || !textValid(row.Content, MaxSourceBodyBytes) || (row.Format != "text" && row.Format != "markdown") {
 			return PublicThreadCandidate{}, ErrNotFound
 		}
-		raw, _ := json.Marshal(row)
-		h := sha256.Sum256(append([]byte("campusos.knowledge.official/v1\x00"), raw...))
-		return PublicThreadCandidate{Reference: SourceReference{Kind: OfficialKind, ID: id, Revision: hex.EncodeToString(h[:])}, Title: row.Title, Content: row.Content, Format: row.Format, URL: "/knowledge/officials/" + id}, nil
+		revision, e := memoRevision(ctx, revisionMemoSlot{"official", id}, row, len(row.Title)+len(row.Content), func() (string, error) {
+			raw, e := json.Marshal(row)
+			if e != nil {
+				return "", e
+			}
+			h := sha256.Sum256(append([]byte("campusos.knowledge.official/v1\x00"), raw...))
+			return hex.EncodeToString(h[:]), nil
+		})
+		if e != nil {
+			return PublicThreadCandidate{}, ErrSourceUnavailable
+		}
+		return PublicThreadCandidate{Reference: SourceReference{Kind: OfficialKind, ID: id, Revision: revision}, Title: row.Title, Content: row.Content, Format: row.Format, URL: "/knowledge/officials/" + id}, nil
 	case PublicThreadKind:
 		return s.plain.PreviewPublicThread(ctx, id)
 	case PublicArticleKind:
@@ -827,19 +852,52 @@ func (s *CollectionService) visible(ctx context.Context, state CollectionState, 
 	}
 	// A member's observed revision is diagnostic only. Current origin facts,
 	// collection/rule generation and board lifecycle authorize every returned byte.
-	raw, _ := json.Marshal([]any{state.Collection, rule, m, source.Reference, stamp})
-	digest := sha256.Sum256(raw)
-	revision := hex.EncodeToString(digest[:])
+	bound := struct {
+		Collection Collection
+		Rule       Selection
+		Member     Member
+		Source     SourceReference
+		Board      string
+	}{state.Collection, rule, m, source.Reference, stamp}
+	revision, e := memoRevision(ctx, revisionMemoSlot{"visibility", m.ID}, bound, len(state.Collection.Title)+len(stamp)+len(m.SourceRevision), func() (string, error) {
+		// Preserve the exact persisted visibility-revision wire contract.
+		raw, err := json.Marshal([]any{state.Collection, rule, m, source.Reference, stamp})
+		if err != nil {
+			return "", err
+		}
+		digest := sha256.Sum256(raw)
+		return hex.EncodeToString(digest[:]), nil
+	})
+	if e != nil {
+		return empty, e
+	}
 	request := collectionPolicy(state.Collection, m, revision)
 	decision, e := (policy.ResourcePolicy{}).DecideResource(request)
 	if e != nil || decision.Effect != "allow" {
 		return empty, ErrNotFound
 	}
-	current, e := s.origin(ctx, m.Kind, m.SourceID)
-	if e != nil {
-		return empty, e
+	current := source
+	pinned := false
+	// Only the concrete plain-source adapter can prove that its own G1 row
+	// is immutable in this callback. The retrieval return phase still opens
+	// current G1 again; memory/custom adapters keep the two-origin comparison.
+	if plain, ok := s.plain.(*PublicSourceService); ok && m.Kind == PublicThreadKind {
+		if pin, ok := plain.query.(communityport.SourceReadPin); ok {
+			pinned = pin.SourceReadPinned(ctx, m.SourceID)
+		}
+		if pinned {
+			if e = plain.check(ctx); e != nil {
+				return empty, e
+			}
+		}
 	}
-	if !reflect.DeepEqual(source, current) {
+	if !pinned {
+		current, e = s.origin(ctx, m.Kind, m.SourceID)
+		if e != nil {
+			return empty, e
+		}
+	}
+	if source != current {
 		return empty, ErrSourceChanged
 	}
 	if rule.Kind == "board" {

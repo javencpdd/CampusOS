@@ -176,7 +176,6 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		SMTPStartTLS: s.cfg.Email.SMTPStartTLS,
 	})
 	communityModule := communitycore.NewModule()
-	knowledgeModule := knowledge.NewModule(func() bool { return features.Registry() != nil && features.Registry().Enabled(knowledge.FeatureID) })
 	academicTermModule := academicterm.NewModule()
 	storageModule := corestorage.NewModule(corestorage.ModuleConfig{Root: corestorage.DefaultRoot, QuotaBytes: corestorage.DefaultQuotaBytes})
 	appearanceModule := appearance.NewModule(appearance.ModuleConfig{FeatureRegistry: features.Registry})
@@ -255,6 +254,17 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 			return personaldocuments.PDFPreviewInvocation{ID: invocation.ID}, nil
 		},
 	})
+	knowledgeModule := knowledge.NewModuleWithPrivateDocuments(func() bool {
+		return features.Registry() != nil && features.Registry().Enabled(knowledge.FeatureID)
+	}, privateDocumentMetadataAdapter{module: personalDocumentsModule, enabled: func() bool {
+		if features.Registry() == nil {
+			return false
+		}
+		// Original Documents uses restart activation. New private intake closes
+		// immediately on a pending disable and never enables ahead of restart.
+		state, found := features.Registry().Get(personaldocuments.FeatureID)
+		return found && state.Enabled && state.DesiredEnabled
+	}})
 	mutualAidModule := mutualaid.NewModule(mutualaid.ModuleConfig{
 		Enabled: func() bool { return features.Registry() != nil && features.Registry().Enabled(mutualaid.FeatureID) },
 	})

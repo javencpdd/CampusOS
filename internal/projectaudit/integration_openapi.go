@@ -28,9 +28,9 @@ func integrationOpenAPISchemas() string {
       properties:
         id: {type: string, minLength: 1, maxLength: 128}
         channel: {type: string, enum: [integration_http, integration_mcp]}
-        endpoint: {type: string, enum: [public_thread.read, public_thread_read]}
-        action: {type: string, enum: [community.thread.read]}
-        resource_kind: {type: string, enum: [community.thread]}
+        endpoint: {type: string, enum: [public_thread.read, public_thread_read, knowledge.source.read, knowledge.search, knowledge.public.read]}
+        action: {type: string, enum: [community.thread.read, knowledge.source.read]}
+        resource_kind: {type: string, enum: [community.thread, public_collection]}
         resource_ids: {type: array, minItems: 1, maxItems: 32, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]*$'}}
         status: {type: string, enum: [active, suspended, revoked]}
         not_before_ms: {type: integer, minimum: 0, maximum: 9007199254740991}

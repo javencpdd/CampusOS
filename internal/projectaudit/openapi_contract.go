@@ -3,6 +3,7 @@ package projectaudit
 type operationProfile struct {
 	RequestSchema       string
 	ResponseSchema      string
+	DirectJSON          bool
 	ResponseContentType string
 	ContentType         string
 	SuccessStatus       string

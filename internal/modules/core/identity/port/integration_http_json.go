@@ -5,6 +5,19 @@ import (
 	"strconv"
 )
 
+// DecodeIntegrationJSONObject is the same bounded exact decoder for machine
+// protocol DTOs with optional fields. Returned bytes are untrusted intent only.
+func DecodeIntegrationJSONObject(raw []byte, required, optional []string) (map[string]json.RawMessage, error) {
+	if !resourceJSONUnicodeValid(raw) {
+		return nil, ErrIntegrationInputInvalid
+	}
+	m, err := strictObject(raw, required, optional)
+	if err != nil {
+		return nil, ErrIntegrationInputInvalid
+	}
+	return m, nil
+}
+
 // ValidateIntegrationHTTPJSON applies the shared bounded/duplicate/Unicode
 // decoder to the public management DTO, never to supplied Principal/facts.
 func ValidateIntegrationHTTPJSON(raw []byte, fields []string) error {

@@ -413,4 +413,7 @@ type V5HostEndpoint struct {
 	FeatureID string
 	Authorize func(context.Context, string, PluginV5Consume, json.RawMessage) (string, error)
 	Call      func(context.Context, string, PluginV5Consume, json.RawMessage, io.Writer) error
+	// Optional compiled result proof binds the buffered bytes to Authorize.
+	// Knowledge requires it so an intermediate result cannot survive an ABA.
+	ResultStamp func(json.RawMessage) string
 }

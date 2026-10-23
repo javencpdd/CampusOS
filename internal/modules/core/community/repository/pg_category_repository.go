@@ -72,6 +72,12 @@ func (r *PgCategoryRepository) ListForSource(ctx context.Context) ([]*domain.Cat
 	if _, ok := transaction.FromContext(ctx); !ok {
 		return nil, errors.New("source category transaction required")
 	}
+	if rows, ok := r.sourceReadCategories(ctx); ok {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return rows, nil
+	}
 	return r.list(ctx, `WHERE deleted_at IS NULL`, nil, true)
 }
 

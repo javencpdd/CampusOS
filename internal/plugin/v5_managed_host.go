@@ -14,7 +14,10 @@ import (
 
 func (h *V5ManagedRuntime) BindHost(code string, e V5HostEndpoint) error {
 	// This finite catalog is a contract allowlist, not a registration wildcard.
-	if code != "community.thread.public.read" || e.Feature == nil || e.FeatureID == "" || e.Authorize == nil || e.Call == nil {
+	if (code != "community.thread.public.read" && code != V5KnowledgeSearch && code != V5KnowledgeSourceRead) || e.Feature == nil || e.FeatureID == "" || e.Authorize == nil || e.Call == nil {
+		return ErrV5CallTarget
+	}
+	if (code == V5KnowledgeSearch || code == V5KnowledgeSourceRead) && e.ResultStamp == nil {
 		return ErrV5CallTarget
 	}
 	h.mu.Lock()
@@ -141,6 +144,9 @@ func (h *V5ManagedRuntime) HostCall(ctx context.Context, credential string, enve
 	}
 	if err != nil {
 		return nil, ErrV5RuntimeMissing
+	}
+	if endpoint.ResultStamp != nil && endpoint.ResultStamp(raw) != stamp {
+		return nil, ErrV5Denied
 	}
 	if _, _, _, _, err := h.hostCallProof(callCtx, credential, call.Target.ID, true); err != nil {
 		return nil, err

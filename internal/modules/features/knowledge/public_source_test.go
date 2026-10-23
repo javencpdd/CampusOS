@@ -22,6 +22,81 @@ import (
 
 type queryFunc func(context.Context, string) (*domain.Thread, error)
 
+type pinnedQuery struct {
+	queryFunc
+	onPin func()
+}
+
+func (q pinnedQuery) SourceReadPinned(context.Context, string) bool {
+	q.onPin()
+	return true
+}
+
+func TestPublicCandidatePinnedReadFinalGuardReturnsNoBytes(t *testing.T) {
+	for _, mode := range []string{"disable", "cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			enabled := true
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			q := pinnedQuery{queryFunc(func(context.Context, string) (*domain.Thread, error) { return publicFixture(), nil }), func() {
+				if mode == "disable" {
+					enabled = false
+				} else {
+					cancel()
+				}
+			}}
+			s, err := NewPublicSourceService(q, func() bool { return enabled })
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := s.PreviewPublicThread(ctx, publicFixture().ID)
+			want := ErrDisabled
+			if mode == "cancel" {
+				want = context.Canceled
+			}
+			noCandidate(t, got, err, want)
+		})
+	}
+}
+
+func TestVisiblePinnedSourceRechecksFeatureAndCancellation(t *testing.T) {
+	for _, mode := range []string{"disable", "cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			f := fixtureCollections(t)
+			state := f.selection(t, f.collection(t), "thread", publicFixture().ID)
+			if len(state.Members) != 1 {
+				t.Fatal("source member missing")
+			}
+			enabled, pins := true, 0
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			q := pinnedQuery{queryFunc(func(context.Context, string) (*domain.Thread, error) { return publicFixture(), nil }), func() {
+				pins++
+				if pins == 2 {
+					if mode == "disable" {
+						enabled = false
+					} else {
+						cancel()
+					}
+				}
+			}}
+			plain, err := NewPublicSourceService(q, func() bool { return enabled })
+			if err != nil {
+				t.Fatal(err)
+			}
+			f.s.plain = plain
+			got, err := f.s.visible(ctx, state, state.Members[0])
+			want := ErrDisabled
+			if mode == "cancel" {
+				want = context.Canceled
+			}
+			if got != (VisibleSource{}) || !errors.Is(err, want) {
+				t.Fatal("pinned visible source leaked", got, err)
+			}
+		})
+	}
+}
+
 func (f queryFunc) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
 	return f(ctx, id)
 }
@@ -303,6 +378,7 @@ func TestPublicCandidateModuleContract(t *testing.T) {
 	_ = app.Provide("platform.reliability.service", reliability.NewService(transaction.NewMemory(), reliability.NewMemoryStore()))
 	_ = app.Provide("identity.admin-execution-authority", identityport.AdminExecutionAuthorityReader(fixture.admins))
 	_ = app.Provide("identity.admin-session-authority", identityport.AdminSessionAuthorityReader(noAdminSession{}))
+	_ = app.Provide("identity.integration-read-gateway", integrationReadFunc(denyIntegrationRead))
 	_ = app.Provide("community.source-category-catalog", fixture.cat)
 	if e := m.Register(app); e != nil {
 		t.Fatal(e)

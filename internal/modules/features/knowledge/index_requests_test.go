@@ -263,6 +263,7 @@ func TestIndexRequestsModuleRegistersBeforeWorkerAndRetainsStopBarrier(t *testin
 		"platform.reliability.service":       f.s.reliable,
 		"identity.admin-execution-authority": identityport.AdminExecutionAuthorityReader(f.admins),
 		"identity.admin-session-authority":   identityport.AdminSessionAuthorityReader(noAdminSession{}),
+		"identity.integration-read-gateway":  integrationReadFunc(denyIntegrationRead),
 	} {
 		if e := app.Provide(name, value); e != nil {
 			t.Fatal(e)

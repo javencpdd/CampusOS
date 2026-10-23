@@ -104,6 +104,7 @@ func Build(d Dependencies) *Router {
 
 	r.Use(observability.Middleware(d.Metrics))
 	r.Use(middleware.Recovery(d.Metrics))
+	r.Use(knowledgeNoStore)
 	r.Use(middleware.CORS())
 	r.Use(middleware.TraceID())
 	r.Use(middleware.Logger())
@@ -120,8 +121,9 @@ func Build(d Dependencies) *Router {
 			Prefix: "/api/v1/schedule", FeatureID: "personal-schedule",
 			AllowWhenDisabled: []platformfeature.AllowedPath{{Method: http.MethodGet, Path: "/api/v1/schedule/status"}},
 		},
-		platformfeature.PathRule{Prefix: "/api/v1/knowledge", FeatureID: "knowledge"},
-		platformfeature.PathRule{Prefix: "/api/v1/admin/knowledge", FeatureID: "knowledge"},
+		platformfeature.PathRule{Prefix: "/api/v1/knowledge", FeatureID: "knowledge", DisabledHandler: knowledge.DisabledHTTP},
+		platformfeature.PathRule{Prefix: "/api/v1/integration/knowledge", FeatureID: "knowledge", DisabledHandler: knowledge.DisabledHTTP},
+		platformfeature.PathRule{Prefix: "/api/v1/admin/knowledge", FeatureID: "knowledge", DisabledHandler: knowledge.DisabledHTTP},
 		platformfeature.PathRule{Prefix: "/api/v1/documents", FeatureID: "personal-documents"},
 		platformfeature.PathRule{
 			Prefix: "/api/v1/mutual-aid", FeatureID: "mutual-aid",
@@ -141,6 +143,10 @@ func Build(d Dependencies) *Router {
 	integration.Operation("http.identity.integration_self.read").GET("/integration/identity/me", d.Identity.Integration.Me)
 	integration.Operation("http.integration.public_thread.read").GET("/integration/threads/:id", d.Integration.IntegrationThread)
 	integration.Operation("http.integration.public_thread.mcp_read").POST("/integration/mcp/tools/:name/call", d.Integration.IntegrationMCP)
+	integration.Operation("http.integration.knowledge.source.read").GET("/integration/knowledge/collections/:id/sources/:member_id/revisions/:revision", d.Knowledge.IntegrationSource)
+	integration.Operation("http.integration.knowledge.search").POST("/integration/knowledge/collections/:id/search", d.Knowledge.IntegrationSearch)
+	integration.Operation("http.integration.knowledge.mcp").POST("/integration/knowledge/collections/:id/mcp", d.Knowledge.IntegrationMCP)
+	integration.Operation("http.integration.knowledge.mcp.stream").GET("/integration/knowledge/collections/:id/mcp", d.Knowledge.IntegrationMCP)
 	public := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudiencePublic, d.Permissions)
 	{
 		public.GET("", APIIndex)
@@ -153,6 +159,7 @@ func Build(d Dependencies) *Router {
 		public.GET("/ui/runtime-manifest", middleware.OptionalJWT(d.JWT, d.SessionVerifier), runtimeHTTPHandler.RuntimeManifest)
 		public.GET("/ui/events", runtimeHTTPHandler.Events)
 		public.Operation("http.knowledge.collection.list").GET("/knowledge/collections", d.Knowledge.Collections)
+		public.Operation("http.knowledge.search.public").GET("/knowledge/collections/:id/search", d.Knowledge.Search)
 		public.Operation("http.knowledge.source.list").GET("/knowledge/collections/:id/sources", d.Knowledge.Sources)
 		public.Operation("http.knowledge.source.read").GET("/knowledge/collections/:id/sources/:member_id", d.Knowledge.Source)
 		public.GET("/richtext/status", d.RichText.Status)
@@ -200,6 +207,7 @@ func Build(d Dependencies) *Router {
 	authenticated := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAuthenticated, d.Permissions)
 	authenticated.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
+		authenticated.Operation("http.knowledge.private.source.preflight").POST("/knowledge/private/sources/preflight", d.Knowledge.PrivateSourcePreflight)
 		authenticated.POST("/auth/logout", userHandler.Logout)
 		authenticated.POST("/auth/logout-all", userHandler.LogoutAll)
 		authenticated.GET("/auth/sessions", userHandler.ListSessions)
@@ -375,6 +383,8 @@ func Build(d Dependencies) *Router {
 	admin.Use(middleware.RequireAdminDomainAccess(d.AdminJWT, d.AdminSessions, nil))
 	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.collection.inventory").GET("/admin/knowledge/collections", d.Knowledge.Inventory)
 	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.collection.read").GET("/admin/knowledge/collections/:id", d.Knowledge.State)
+	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.index.diagnostics").GET("/admin/knowledge/collections/:id/index", d.Knowledge.IndexDiagnostics)
+	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.index.retry").POST("/admin/knowledge/collections/:id/index/retry", d.Knowledge.RetryIndex)
 	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.official.inventory").GET("/admin/knowledge/officials", d.Knowledge.Inventory)
 	admin.PermissionCode("knowledge.collection.read").Operation("http.knowledge.official.history").GET("/admin/knowledge/officials/:id/revisions", d.Knowledge.History)
 	admin.PermissionCode("knowledge.collection.manage").Operation("http.knowledge.collection.create").POST("/admin/knowledge/collections", d.Knowledge.SaveCollection)

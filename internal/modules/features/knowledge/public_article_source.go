@@ -77,12 +77,18 @@ func (s *PublicArticleSourceService) read(ctx context.Context, id string) (Publi
 		Contract string
 		Source   richtext.PublicTextSource
 	}{"campusos.knowledge.public-article-candidate/v1", source}
-	wire, err := json.Marshal(bound)
+	revision, err := memoRevision(ctx, revisionMemoSlot{"article", id}, bound, len(source.Title)+len(source.Text), func() (string, error) {
+		wire, e := json.Marshal(bound)
+		if e != nil {
+			return "", e
+		}
+		h := sha256.Sum256(wire)
+		return hex.EncodeToString(h[:]), nil
+	})
 	if err != nil {
 		return empty, ErrSourceUnavailable
 	}
-	h := sha256.Sum256(wire)
-	return PublicArticleCandidate{Reference: SourceReference{Kind: PublicArticleKind, ID: id, Revision: hex.EncodeToString(h[:])}, Title: source.Title, Content: source.Text, Format: "text", CategoryID: source.CategoryID, URL: "/threads/" + id}, nil
+	return PublicArticleCandidate{Reference: SourceReference{Kind: PublicArticleKind, ID: id, Revision: revision}, Title: source.Title, Content: source.Text, Format: "text", CategoryID: source.CategoryID, URL: "/threads/" + id}, nil
 }
 func (s *PublicArticleSourceService) PreviewPublicArticle(ctx context.Context, id string) (PublicArticleCandidate, error) {
 	var empty PublicArticleCandidate

@@ -20,7 +20,9 @@ const events=read('internal/plugin/v5_events.go');assert(events.includes('transa
 const catalog=JSON.parse(read('docs/api/plugin-v5-host-catalog-current.json'));
 assert.deepEqual(catalog.items.slice(0,4).map(x=>x.code),['community.thread.public.read','plugin.lifecycle.subscribe','community.thread.public.subscribe','knowledge.source.public.subscribe']);
 assert(catalog.items.slice(0,4).every(x=>x.scope_kind==='public'&&x.data_classification==='public'&&x.consent_required===false));
-assert.deepEqual(catalog.items.slice(4).map(x=>x.code),['ui.resource.selected.read','ui.surface.open']);
-assert(catalog.items.slice(4).every(x=>x.scope_kind==='self'&&x.data_classification==='sensitive'&&x.consent_required===true));
+assert.deepEqual(catalog.items.slice(4,6).map(x=>x.code),['ui.resource.selected.read','ui.surface.open']);
+assert(catalog.items.slice(4,6).every(x=>x.scope_kind==='self'&&x.data_classification==='sensitive'&&x.consent_required===true));
+assert.deepEqual(catalog.items.slice(6).map(x=>x.code),['knowledge.public.search','knowledge.public.source.read']);
+assert(catalog.items.slice(6).every(x=>x.scope_kind==='collection'&&x.data_classification==='public'&&x.consent_required===false&&Array.isArray(x.available_public_collection_ids)&&x.available_public_collection_ids.length===0));
 execFileSync(process.execPath,['scripts/check-v12-03c-native-dispatch.mjs'],{stdio:'inherit'});
 console.log('03c composed cutover: typed managed dispatch and independent metadata delivery; legacy production authority retired');

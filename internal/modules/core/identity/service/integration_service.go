@@ -44,12 +44,15 @@ func NewIntegrationService(repo repository.IntegrationRepository, admins port.Ad
 	return s
 }
 
-// The two endpoints are compiled host inventory. Client-supplied names cannot
+// These endpoints are compiled host inventory. Client-supplied names cannot
 // register an endpoint or opt an existing Admin MCP tool into machine access.
 func IntegrationEndpoints() []port.IntegrationAccessEndpoint {
 	return []port.IntegrationAccessEndpoint{
 		{Channel: "integration_http", ID: "public_thread.read", Action: "community.thread.read", ResourceKind: "community.thread", Enabled: true, IntegrationAllowed: true},
 		{Channel: "integration_mcp", ID: "public_thread_read", Action: "community.thread.read", ResourceKind: "community.thread", Enabled: true, IntegrationAllowed: true},
+		{Channel: "integration_http", ID: "knowledge.source.read", Action: "knowledge.source.read", ResourceKind: "public_collection", Enabled: true, IntegrationAllowed: true},
+		{Channel: "integration_http", ID: "knowledge.search", Action: "knowledge.source.read", ResourceKind: "public_collection", Enabled: true, IntegrationAllowed: true},
+		{Channel: "integration_mcp", ID: "knowledge.public.read", Action: "knowledge.source.read", ResourceKind: "public_collection", Enabled: true, IntegrationAllowed: true},
 	}
 }
 func integrationEndpoint(t port.IntegrationAccessTarget) (port.IntegrationAccessEndpoint, bool) {

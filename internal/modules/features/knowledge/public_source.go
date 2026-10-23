@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 )
 
 const (
@@ -158,12 +159,18 @@ func (s *PublicSourceService) read(ctx context.Context, id string) (PublicThread
 		FactsVersion                                                 int64
 		ContentRevision                                              int
 	}{"campusos.knowledge.public-thread-candidate/v1", id, row.CategoryID, string(row.ThreadType), row.ContentFormat, row.Title, row.Content, row.FactsVersion, row.CurrentRevision}
-	wire, err := json.Marshal(bound)
+	revision, err := memoRevision(ctx, revisionMemoSlot{"thread", id}, bound, len(row.Title)+len(row.Content), func() (string, error) {
+		wire, e := json.Marshal(bound)
+		if e != nil {
+			return "", e
+		}
+		digest := sha256.Sum256(wire)
+		return hex.EncodeToString(digest[:]), nil
+	})
 	if err != nil {
 		return empty, ErrSourceUnavailable
 	}
-	digest := sha256.Sum256(wire)
-	return PublicThreadCandidate{Reference: SourceReference{Kind: PublicThreadKind, ID: id, Revision: hex.EncodeToString(digest[:])}, CategoryID: row.CategoryID, Title: row.Title, Content: row.Content, Format: row.ContentFormat, URL: "/threads/" + id}, nil
+	return PublicThreadCandidate{Reference: SourceReference{Kind: PublicThreadKind, ID: id, Revision: revision}, CategoryID: row.CategoryID, Title: row.Title, Content: row.Content, Format: row.ContentFormat, URL: "/threads/" + id}, nil
 }
 
 func (s *PublicSourceService) PreviewPublicThread(ctx context.Context, id string) (PublicThreadCandidate, error) {
@@ -174,6 +181,15 @@ func (s *PublicSourceService) PreviewPublicThread(ctx context.Context, id string
 	initial, err := s.read(ctx, id)
 	if err != nil {
 		return empty, err
+	}
+	// G1 above already checked the current row. A domain-owned pin makes the
+	// duplicate read within this preview redundant; final callers still reopen
+	// G1. Unlocked/memory adapters keep the original two-read comparison.
+	if pin, ok := s.query.(communityport.SourceReadPin); ok && pin.SourceReadPinned(ctx, id) {
+		if err := s.check(ctx); err != nil {
+			return empty, err
+		}
+		return initial, nil
 	}
 	current, err := s.read(ctx, id)
 	if err != nil {

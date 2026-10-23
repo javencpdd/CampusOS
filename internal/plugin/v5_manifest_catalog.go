@@ -45,6 +45,13 @@ type v5ReleaseEnvelope struct {
 // This function performs no signature, package-byte, trust, grant, installation
 // or execution verification. Successful validation is not an authority proof.
 func ValidatePluginV5Manifest(manifest, hostCatalog, extensionCatalog, release []byte) (*PluginV5Manifest, error) {
+	return validatePluginV5Manifest(manifest, hostCatalog, extensionCatalog, release, true)
+}
+
+// Package verification validates declared scopes as intent. Only the explicit
+// snapshot validator proves catalog membership; current Host calls recheck the
+// exact granted collection against the Knowledge Port on every read.
+func validatePluginV5Manifest(manifest, hostCatalog, extensionCatalog, release []byte, availability bool) (*PluginV5Manifest, error) {
 	m, err := ParsePluginV5Manifest(manifest)
 	if err != nil {
 		return nil, err
@@ -73,7 +80,8 @@ func ValidatePluginV5Manifest(manifest, hostCatalog, extensionCatalog, release [
 	}
 	for _, c := range m.Consumes {
 		item, ok := capabilities[c.Capability]
-		if !ok || item.ScopeKind != c.Scope.Kind || !v5Subset(c.Scope.CollectionIDs, item.Collections) || !v5Subset(c.Scope.Keys, item.Keys) {
+		declaredKnowledge := !availability && (c.Capability == V5KnowledgeSearch || c.Capability == V5KnowledgeSourceRead)
+		if !ok || item.ScopeKind != c.Scope.Kind || (!declaredKnowledge && !v5Subset(c.Scope.CollectionIDs, item.Collections)) || !v5Subset(c.Scope.Keys, item.Keys) {
 			return nil, ErrPluginV5ManifestCapability
 		}
 	}

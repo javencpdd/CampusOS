@@ -219,6 +219,23 @@ func (g *moduleContentQuery) ListPublicThreads(ctx context.Context, filter domai
 	return g.module.threadService.ListPublicThreads(ctx, filter)
 }
 
+func (g *moduleContentQuery) SourceThreadIDs(ctx context.Context, board, after string, limit int) ([]string, error) {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return nil, errors.New("community source inventory is unavailable")
+	}
+	return g.module.threadService.SourceThreadIDs(ctx, board, after, limit)
+}
+
+func (g *moduleContentQuery) WithSourceReadSnapshot(ctx context.Context, ids []string, read func(context.Context) error) error {
+	if g == nil || g.module == nil || g.module.threadService == nil {
+		return errors.New("community source reader unavailable")
+	}
+	return g.module.threadService.WithSourceReadSnapshot(ctx, ids, read)
+}
+func (g *moduleContentQuery) SourceReadPinned(ctx context.Context, id string) bool {
+	return g != nil && g.module != nil && g.module.threadService != nil && g.module.threadService.SourceReadPinned(ctx, id)
+}
+
 func (g *moduleContentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
 	if g == nil || g.module == nil || g.module.threadService == nil {
 		return nil, errors.New("community content query is unavailable")
@@ -264,6 +281,23 @@ func (g *contentQuery) ListPublicThreads(ctx context.Context, filter domain.Thre
 		return nil, 0, errors.New("community content query is unavailable")
 	}
 	return g.threadSvc.ListPublicThreads(ctx, filter)
+}
+
+func (g *contentQuery) SourceThreadIDs(ctx context.Context, board, after string, limit int) ([]string, error) {
+	if g == nil || g.threadSvc == nil {
+		return nil, errors.New("community source inventory is unavailable")
+	}
+	return g.threadSvc.SourceThreadIDs(ctx, board, after, limit)
+}
+
+func (g *contentQuery) WithSourceReadSnapshot(ctx context.Context, ids []string, read func(context.Context) error) error {
+	if g == nil || g.threadSvc == nil {
+		return errors.New("community source reader unavailable")
+	}
+	return g.threadSvc.WithSourceReadSnapshot(ctx, ids, read)
+}
+func (g *contentQuery) SourceReadPinned(ctx context.Context, id string) bool {
+	return g != nil && g.threadSvc != nil && g.threadSvc.SourceReadPinned(ctx, id)
 }
 
 func (g *contentQuery) GetPublicThread(ctx context.Context, id string) (*domain.Thread, error) {
@@ -505,4 +539,37 @@ func (g *moduleCategoryCatalog) ListSourceCategories(ctx context.Context) ([]*do
 		return nil, errors.New("checked source categories unavailable")
 	}
 	return reader.ListForSource(ctx)
+}
+
+func (g *moduleCategoryCatalog) ReadSourceBoardFacts(ctx context.Context, id string) (communityport.SourceCategoryFact, communityport.SourceCategoryFact, error) {
+	if g != nil && g.module != nil {
+		if r, ok := g.module.categories.(communityport.SourceBoardFactsReader); ok {
+			return r.ReadSourceBoardFacts(ctx, id)
+		}
+	}
+	var board, parent communityport.SourceCategoryFact
+	rows, err := g.ListSourceCategories(ctx)
+	if err != nil {
+		return board, parent, err
+	}
+	project := func(c *domain.Category) communityport.SourceCategoryFact {
+		v := communityport.SourceCategoryFact{ID: c.ID, NodeKind: c.NodeKind, LifecycleStatus: c.LifecycleStatus, Version: c.Version}
+		if c.ParentID != nil {
+			v.ParentID = *c.ParentID
+		}
+		return v
+	}
+	for _, c := range rows {
+		if c != nil && c.ID == id {
+			board = project(c)
+			break
+		}
+	}
+	for _, c := range rows {
+		if c != nil && c.ID == board.ParentID {
+			parent = project(c)
+			break
+		}
+	}
+	return board, parent, nil
 }

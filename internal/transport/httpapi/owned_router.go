@@ -243,6 +243,9 @@ func (g *ownedGroup) handle(method, path string, handlers ...gin.HandlerFunc) {
 				descriptor.Audit = "required-command+outbox"
 			}
 		}
+		if operation == "http.knowledge.private.source.preflight" {
+			descriptor.Auth = "jwt+current-user-session+document-owner"
+		}
 	}
 	if strings.HasPrefix(operation, "http.identity.integration.") {
 		descriptor.Auth = "jwt+current-admin-session+permission+recent-mfa+browser-csrf"
@@ -363,7 +366,7 @@ func routeDescriptorID(method, path string) string {
 }
 
 func routeFeature(path string) string {
-	if strings.HasPrefix(path, "/api/v1/knowledge") || strings.HasPrefix(path, "/api/v1/admin/knowledge") {
+	if strings.HasPrefix(path, "/api/v1/knowledge") || strings.HasPrefix(path, "/api/v1/admin/knowledge") || strings.HasPrefix(path, "/api/v1/integration/knowledge") {
 		return "knowledge"
 	}
 	switch {

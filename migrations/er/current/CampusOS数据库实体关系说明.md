@@ -1,17 +1,17 @@
 # CampusOS 数据库实体关系说明
 
-<!-- campusos-er:schema_sha256=1ae6d3fc24dc12fd59e9ffe73d74bdd7ffe6a023e33aa0b631f3006f72015db7;tables=120;foreign_keys=136 -->
+<!-- campusos-er:schema_sha256=742e95f7c7370ab34761af8f0ba549437bbc193bc4e2d7b007a7091698cab9c6;tables=122;foreign_keys=136 -->
 > 本文档由 `migrations/tools/generate_er.py` 从 migration UP 文件自动生成，请勿手工维护生成区。
 
 ![CampusOS 数据库 ER 图](./CampusOS数据库ER图.png)
 
 - 可缩放版本：[打开 SVG ER 图](./CampusOS数据库ER图.svg)
-- 实体表：**120**
+- 实体表：**122**
 - 物理外键：**136**
 - 一对一/可选一对一关系：**16**
 - 一对多关系：**120**
 - 推断的逻辑多对多关系：**9**
-- Schema 指纹：`1ae6d3fc24dc12fd59e9ffe73d74bdd7ffe6a023e33aa0b631f3006f72015db7`
+- Schema 指纹：`742e95f7c7370ab34761af8f0ba549437bbc193bc4e2d7b007a7091698cab9c6`
 
 ## 1. 生成范围与判定规则
 
@@ -49,6 +49,7 @@
 - `000030_knowledge_sources.up.sql`
 - `000031_knowledge_index_requests.up.sql`
 - `000032_knowledge_index_backfill.up.sql`
+- `000033_knowledge_index_execution.up.sql`
 
 - **PK**：主键；**FK**：外键；**UQ**：全局唯一；**NN**：非空。
 - 一对一仅在外键列集合同时构成主键或非部分唯一约束时判定。
@@ -165,6 +166,8 @@
 | 其他平台数据 | `knowledge_collection_sources` | 5 | `id` | 2 | 0 |
 | 其他平台数据 | `knowledge_collections` | 3 | `id` | 0 | 2 |
 | 其他平台数据 | `knowledge_index_backfill_checkpoints` | 5 | `target_kind` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_documents` | 6 | `id` | 0 | 0 |
+| 其他平台数据 | `knowledge_index_jobs` | 7 | `id` | 0 | 0 |
 | 其他平台数据 | `knowledge_index_tasks` | 6 | `id` | 0 | 0 |
 | 其他平台数据 | `knowledge_official_revisions` | 4 | `id` | 1 | 0 |
 | 其他平台数据 | `knowledge_official_sources` | 3 | `id` | 0 | 1 |
@@ -2746,6 +2749,37 @@
 | `completed_passes` | `bigint` | NN | 否 | `0` |
 | `next_scan_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
 | `updated_at` | `timestamptz` | NN | 否 | `clock_timestamp()` |
+
+#### `knowledge_index_documents`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_index_epoch_seq')` |
+| `collection_id` | `text` | NN | 否 | `—` |
+| `selection_id` | `text` | NN | 否 | `—` |
+| `generation` | `bigint` | NN | 否 | `—` |
+
+#### `knowledge_index_jobs`
+
+- 主键：`id`
+- 唯一列集：无全局唯一列集
+- 出站外键：0；入站外键：0
+
+| 字段 | 数据类型 | 标记 | 可空 | 默认值 |
+| --- | --- | --- | --- | --- |
+| `id` | `text` | PK | 是 | `—` |
+| `data` | `jsonb` | NN | 否 | `—` |
+| `facts_version` | `bigint` | NN | 否 | `nextval('knowledge_index_epoch_seq')` |
+| `state` | `text` | NN | 否 | `—` |
+| `available_at_ms` | `bigint` | NN | 否 | `—` |
+| `lease_until_ms` | `bigint` | NN | 否 | `—` |
+| `lease_token` | `bigint` | NN | 否 | `—` |
 
 #### `knowledge_index_tasks`
 

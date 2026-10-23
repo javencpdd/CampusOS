@@ -82,7 +82,7 @@ func (c *indexRequestConsumer) consume(ctx context.Context, event reliability.Ev
 	switch payload.Operation {
 	case "official.save":
 		kind = "official"
-	case "collection.save", "selection.save", "selection.refresh", "member.remove":
+	case "collection.save", "selection.save", "selection.refresh", "member.remove", "index.retry":
 	default:
 		return reliability.Permanent(ErrIndexEventInvalid)
 	}
@@ -91,7 +91,7 @@ func (c *indexRequestConsumer) consume(ctx context.Context, event reliability.Ev
 	}
 	// Feature-off still records cleanup intent. No source reader, principal,
 	// index, remote call or body enters this metadata-only transaction.
-	return c.reliable.CheckedRead(ctx, func(tx context.Context) error {
+	err := c.reliable.CheckedRead(ctx, func(tx context.Context) error {
 		if c.stopped.Load() {
 			return ErrIndexConsumerStopped
 		}
@@ -103,6 +103,26 @@ func (c *indexRequestConsumer) consume(ctx context.Context, event reliability.Ev
 		}
 		return tx.Err()
 	})
+	// Release the official row lock before taking job locks: execution locks the
+	// collection/job before reading an official. Both commits precede the Core
+	// receipt; failure here is retried, with the immutable request deduplicated.
+	if err == nil && kind == "official" {
+		if store, ok := c.store.(indexStore); ok {
+			err = c.reliable.CheckedRead(ctx, func(tx context.Context) error {
+				if c.stopped.Load() {
+					return ErrIndexConsumerStopped
+				}
+				if e := store.invalidateIndexes(tx); e != nil {
+					return e
+				}
+				if c.stopped.Load() {
+					return ErrIndexConsumerStopped
+				}
+				return tx.Err()
+			})
+		}
+	}
+	return err
 }
 func (c *indexRequestConsumer) stop() {
 	if c != nil {

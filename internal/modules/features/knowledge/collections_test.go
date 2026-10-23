@@ -11,6 +11,7 @@ import (
 
 	community "github.com/campusos/CampusOS/internal/modules/core/community"
 	"github.com/campusos/CampusOS/internal/modules/core/community/domain"
+	communityport "github.com/campusos/CampusOS/internal/modules/core/community/port"
 	"github.com/campusos/CampusOS/internal/modules/core/community/repository"
 	"github.com/campusos/CampusOS/internal/modules/core/community/service"
 	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
@@ -38,6 +39,52 @@ func (a *collectionAdmins) LoadAdminExecutionAuthority(ctx context.Context, q id
 }
 
 type catalogue struct{ rows []*domain.Category }
+
+type factCatalogue struct {
+	communityport.SourceCategoryCatalog
+	board, parent communityport.SourceCategoryFact
+}
+
+func (c *factCatalogue) ReadSourceBoardFacts(context.Context, string) (communityport.SourceCategoryFact, communityport.SourceCategoryFact, error) {
+	return c.board, c.parent, nil
+}
+
+func TestSourceBoardFactsNeverCarryEligibility(t *testing.T) {
+	f := fixtureCollections(t)
+	valid := factCatalogue{SourceCategoryCatalog: f.cat, board: communityport.SourceCategoryFact{ID: "91003", ParentID: "91004", NodeKind: domain.CategoryNodeBoard, LifecycleStatus: domain.CategoryLifecycleActive, Version: 5}, parent: communityport.SourceCategoryFact{ID: "91004", NodeKind: domain.CategoryNodeGroup, LifecycleStatus: domain.CategoryLifecycleActive, Version: 7}}
+	f.s.categories = &valid
+	if stamp, err := f.s.board(t.Context(), "91003"); err != nil || stamp != "91003:5:91004:7" {
+		t.Fatal(stamp, err)
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(*factCatalogue)
+	}{
+		{"wrong_board", func(c *factCatalogue) { c.board.ID = "91005" }},
+		{"board_epoch", func(c *factCatalogue) { c.board.Version = 0 }},
+		{"archived_board", func(c *factCatalogue) { c.board.LifecycleStatus = domain.CategoryLifecycleArchived }},
+		{"board_kind", func(c *factCatalogue) { c.board.NodeKind = domain.CategoryNodeGroup }},
+		{"wrong_parent", func(c *factCatalogue) { c.board.ParentID = "91005" }},
+		{"missing_parent", func(c *factCatalogue) { c.parent.ID = "" }},
+		{"parent_epoch", func(c *factCatalogue) { c.parent.Version = 0 }},
+		{"archived_parent", func(c *factCatalogue) { c.parent.LifecycleStatus = domain.CategoryLifecycleArchived }},
+		{"parent_kind", func(c *factCatalogue) { c.parent.NodeKind = domain.CategoryNodeBoard }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := valid
+			tc.change(&c)
+			f.s.categories = &c
+			if stamp, err := f.s.board(t.Context(), "91003"); stamp != "" || !errors.Is(err, ErrNotFound) {
+				t.Fatal("facts became an eligibility cache", stamp, err)
+			}
+		})
+	}
+	f.s.categories = &valid
+	valid.parent.Version++
+	if stamp, err := f.s.board(t.Context(), "91003"); err != nil || stamp != "91003:5:91004:8" {
+		t.Fatal("current epoch not reopened", stamp, err)
+	}
+}
 
 func (c *catalogue) ListSourceCategories(context.Context) ([]*domain.Category, error) {
 	return c.rows, nil

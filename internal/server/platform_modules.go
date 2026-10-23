@@ -399,6 +399,9 @@ func (m *pluginPlatformModule) Start(ctx context.Context) error {
 	if err := m.app.Provide("plugin.v5.dispatcher", m.managed); err != nil {
 		return err
 	}
+	if err := m.bindKnowledgeHost(); err != nil {
+		return err
+	}
 	var publicMetadata plugin.V5MetadataAuthorizer
 	if value, ok := m.app.Lookup("community.content-query"); ok {
 		if reader, ok := value.(communityport.ContentQuery); ok && reader != nil {

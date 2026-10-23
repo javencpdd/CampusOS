@@ -551,3 +551,6 @@ export type {
   PluginV5AdminInstallationCommand,
   PluginV5InstallationErrorCode,
 } from "./plugin-v5-installation.js";
+
+export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
+export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";

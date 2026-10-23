@@ -64,6 +64,15 @@
             <el-menu-item index="/threads">帖子治理</el-menu-item>
             <el-menu-item index="/reviews">内容审核</el-menu-item>
             <el-menu-item index="/categories">版块管理</el-menu-item>
+            <el-menu-item
+              v-if="
+                adminStore.profile?.permission_codes.includes(
+                  'knowledge.collection.read',
+                )
+              "
+              index="/knowledge"
+              >知识来源管理</el-menu-item
+            >
           </el-sub-menu>
           <el-sub-menu index="extensions">
             <template #title

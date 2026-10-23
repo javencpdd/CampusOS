@@ -11,7 +11,7 @@ import (
 
 func TestKnowledgeHTTPClosedBodyAndBrowserCSRF(t *testing.T) {
 	f := fixtureCollections(t)
-	h := NewHandler(f.s, noAdminSession{})
+	h := NewHandler(f.s, noAdminSession{}, nil)
 	for _, tc := range []struct {
 		name, raw           string
 		browser, csrf, want bool

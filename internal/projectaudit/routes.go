@@ -228,7 +228,7 @@ func moduleOwnerFor(handler, path string) string {
 		return "feature.secondhand"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "feature.personal-schedule"
-	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"):
+	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"), strings.HasPrefix(path, APIPrefix+"/integration/knowledge/"):
 		return "feature.knowledge"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):
 		return "feature.personal-documents"
@@ -292,7 +292,7 @@ func featureForRoute(path string) string {
 		return "pdf-viewer"
 	case strings.HasPrefix(path, APIPrefix+"/schedule"):
 		return "personal-schedule"
-	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"):
+	case strings.HasPrefix(path, APIPrefix+"/knowledge"), strings.HasPrefix(path, APIPrefix+"/admin/knowledge"), strings.HasPrefix(path, APIPrefix+"/integration/knowledge/"):
 		return "knowledge"
 	case strings.HasPrefix(path, APIPrefix+"/documents"):
 		return "personal-documents"
@@ -455,13 +455,14 @@ func OpenAPI(routes []RouteContract) []byte {
 			fmt.Fprintf(&out, "      x-campusos-module-owner: %s\n", route.ModuleOwner)
 			fmt.Fprintf(&out, "      x-campusos-scope: %s\n", route.Scope)
 			fmt.Fprintf(&out, "      x-campusos-operation: %s\n", route.OperationCode)
-			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") {
+			if strings.Contains(route.Auth, "admin-account") || strings.Contains(route.Auth, "current-admin-session") || route.OperationCode == "http.knowledge.private.source.preflight" || route.Audience == "integration" || strings.Contains(route.OperationCode, "http.identity.admin_") || route.Auth == "none+current-origin-policy" {
 				fmt.Fprintf(&out, "      x-campusos-auth: %s\n", route.Auth)
 			}
 			if route.PermissionCode != "" {
 				fmt.Fprintf(&out, "      x-campusos-permission: %s\n", route.PermissionCode)
 			}
-			if route.Auth != "none" {
+			authenticated := route.Auth != "none" && route.Auth != "none+current-origin-policy"
+			if authenticated {
 				if route.Auth == "admin-refresh-cookie+csrf" {
 					out.WriteString("      security:\n        - adminRefreshCookie: []\n")
 				} else if route.Audience == "integration" {
@@ -473,17 +474,23 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 			}
 			parameters := openAPIPathParameters(path)
+			knowledgeQuery := knowledgeOpenAPIQueryParameters(route.OperationCode)
 			requiresAdminCSRF := (strings.HasPrefix(route.OperationCode, "http.identity.admin_") || strings.Contains(route.Auth, "current-admin-session")) && strings.Contains(route.Auth, "csrf")
 			requiresCSRF := strings.Contains(route.Auth, "csrf") && !requiresAdminCSRF
-			if len(parameters) > 0 || profile.Paginated || requiresCSRF || requiresAdminCSRF {
+			if len(parameters) > 0 || profile.Paginated || requiresCSRF || requiresAdminCSRF || knowledgeQuery != "" {
 				out.WriteString("      parameters:\n")
 				for _, parameter := range parameters {
+					if contract := knowledgeOpenAPIPathParameter(route.OperationCode, parameter); contract != "" {
+						out.WriteString(contract)
+						continue
+					}
 					fmt.Fprintf(&out, "        - name: %s\n          in: path\n          required: true\n          schema:\n            type: string\n", parameter)
 				}
 				if profile.Paginated {
 					out.WriteString("        - name: page\n          in: query\n          schema: { type: integer, minimum: 1, default: 1 }\n")
 					out.WriteString("        - name: page_size\n          in: query\n          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }\n")
 				}
+				out.WriteString(knowledgeQuery)
 				if requiresAdminCSRF {
 					out.WriteString("        - name: X-Admin-CSRF-Token\n          in: header\n          required: false\n          description: Required for browser/cookie requests; CLI body refresh requires explicit server compatibility configuration.\n          schema: {type: string}\n")
 				}
@@ -501,6 +508,28 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 			}
 			out.WriteString("      responses:\n")
+			if profile.DirectJSON {
+				// MCP has direct JSON-RPC and empty notification/unsupported-stream
+				// replies. Middleware may still reject with the platform envelope.
+				if profile.SuccessStatus == "405" {
+					out.WriteString("        '405':\n          description: SSE is unsupported; empty body, Allow POST\n")
+				} else {
+					fmt.Fprintf(&out, "        '%s':\n          description: Direct JSON-RPC result or protocol/tool error\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/%s'\n", profile.SuccessStatus, profile.ResponseSchema)
+				}
+				seen := map[string]bool{profile.SuccessStatus: true}
+				for _, status := range append([]string{"400"}, profile.AdditionalErrors...) {
+					if seen[status] {
+						continue
+					}
+					seen[status] = true
+					if status == "202" {
+						out.WriteString("        '202':\n          description: Notification accepted; empty body\n")
+					} else {
+						fmt.Fprintf(&out, "        '%s':\n          description: JSON-RPC transport rejection or platform ingress/Feature rejection\n          content:\n            application/json:\n              schema:\n                oneOf:\n                  - $ref: '#/components/schemas/%s'\n                  - $ref: '#/components/schemas/Envelope'\n", status, profile.ResponseSchema)
+					}
+				}
+				continue
+			}
 			fmt.Fprintf(&out, "        '%s':\n", profile.SuccessStatus)
 			if profile.SuccessStatus == "204" {
 				out.WriteString("          description: No Content\n")
@@ -508,7 +537,9 @@ func OpenAPI(routes []RouteContract) []byte {
 				fmt.Fprintf(&out, "          description: Success\n          content:\n            %s:\n              schema: { type: string, format: binary }\n", profile.ResponseContentType)
 			} else {
 				out.WriteString("          description: Success\n          content:\n            application/json:\n              schema:\n")
-				if profile.ResponseSchema == "" {
+				if profile.DirectJSON {
+					fmt.Fprintf(&out, "                $ref: '#/components/schemas/%s'\n", profile.ResponseSchema)
+				} else if profile.ResponseSchema == "" {
 					out.WriteString("                $ref: '#/components/schemas/Envelope'\n")
 				} else {
 					out.WriteString("                allOf:\n                  - $ref: '#/components/schemas/Envelope'\n                  - type: object\n                    properties:\n                      data:\n")
@@ -517,7 +548,7 @@ func OpenAPI(routes []RouteContract) []byte {
 			}
 			out.WriteString("        '400':\n          $ref: '#/components/responses/BadRequest'\n")
 			statuses := append([]string(nil), profile.AdditionalErrors...)
-			if route.Auth != "none" {
+			if authenticated {
 				statuses = append(statuses, "401", "403")
 			}
 			seen := map[string]bool{"400": true, profile.SuccessStatus: true}
@@ -527,6 +558,10 @@ func OpenAPI(routes []RouteContract) []byte {
 				}
 				seen[status] = true
 				switch status {
+				case "202":
+					out.WriteString("        '202':\n          description: Notification accepted; no response body\n")
+				case "405", "406", "415":
+					fmt.Fprintf(&out, "        '%s':\n          description: Unsupported transport request\n", status)
 				case "401":
 					out.WriteString("        '401':\n          $ref: '#/components/responses/Unauthorized'\n")
 				case "429":
@@ -606,6 +641,12 @@ func applyResourceGovernanceContract(route *RouteContract) {
 				route.Audit = "required-command+outbox"
 			}
 		}
+		if route.OperationCode == "http.knowledge.private.source.preflight" {
+			route.Auth = "jwt+current-user-session+document-owner"
+			route.Ownership = "current-document-owner"
+			route.Scope = "self+current-document-version"
+			route.Audit = "none"
+		}
 	}
 
 	if strings.HasPrefix(route.OperationCode, "http.identity.integration.") {
@@ -623,6 +664,12 @@ func applyResourceGovernanceContract(route *RouteContract) {
 		route.Scope = "current-integration-self"
 		route.Ownership = "current-integration-self"
 		route.Audit = "none"
+	}
+	if route.OperationCode == "http.integration.knowledge.source.read" || route.OperationCode == "http.integration.knowledge.search" || strings.HasPrefix(route.OperationCode, "http.integration.knowledge.mcp") {
+		route.Auth = "integration-digest+current-facts+whitelist+source-acl"
+		route.Scope = "endpoint+public-collection+current-origin"
+		route.Ownership = "current-origin-and-collection"
+		route.Audit = "required-command+outbox"
 	}
 
 	switch route.OperationCode {

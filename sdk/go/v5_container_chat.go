@@ -40,10 +40,11 @@ type V5RuntimeConfiguration struct {
 type V5ContainerChatHandler func(context.Context, V5RuntimeConfiguration, V5ChatRequest) (V5ChatResponse, error)
 
 type v5ContainerFrame struct {
-	Contract string          `json:"contract"`
-	Kind     string          `json:"kind"`
-	Payload  json.RawMessage `json:"payload,omitempty"`
-	Failed   bool            `json:"failed,omitempty"`
+	Contract   string          `json:"contract"`
+	Kind       string          `json:"kind"`
+	Capability string          `json:"capability,omitempty"`
+	Payload    json.RawMessage `json:"payload,omitempty"`
+	Failed     bool            `json:"failed,omitempty"`
 }
 
 // ServeV5ContainerChat serves sequential HTTP/1.1 exchanges on an existing
@@ -53,7 +54,11 @@ type v5ContainerFrame struct {
 // A handler is synchronous, so arbitrary handler code still requires the
 // host's native timeout/kill boundary. No detached handler can return late data.
 func ServeV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHandler) error {
-	if ctx == nil || input == nil || output == nil || handler == nil {
+	return serveV5ContainerChat(ctx, input, output, handler, nil)
+}
+
+func serveV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHandler, hostHandler V5ContainerChatHostHandler) error {
+	if ctx == nil || input == nil || output == nil || (handler == nil && hostHandler == nil) {
 		return ErrV5ContainerChatProtocol
 	}
 	stop := context.AfterFunc(ctx, func() {
@@ -114,7 +119,21 @@ func ServeV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Wr
 				err = ErrV5ContainerChatProtocol
 			}
 			if err == nil {
-				reply = v5ContainerInvoke(ctx, handler, configuration, call)
+				selected := handler
+				if hostHandler != nil {
+					selected = func(callCtx context.Context, cfg V5RuntimeConfiguration, req V5ChatRequest) (V5ChatResponse, error) {
+						count := 0
+						transport := func(hostCtx context.Context, code string, payload json.RawMessage) (json.RawMessage, error) {
+							count++
+							if count > 32 || callCtx.Err() != nil || hostCtx == nil || hostCtx.Err() != nil {
+								return nil, ErrV5ContainerChatProtocol
+							}
+							return v5ContainerHostExchange(callCtx, reader, bounded, output, code, payload)
+						}
+						return hostHandler(callCtx, cfg, req, transport)
+					}
+				}
+				reply = v5ContainerInvoke(ctx, selected, configuration, call)
 			}
 		}
 		if err != nil {
@@ -152,8 +171,11 @@ func (r *v5ContainerReader) Read(p []byte) (int, error) {
 }
 
 func v5ContainerHTTPRequest(r *http.Request, method string) bool {
+	return v5ContainerHTTPMethod(r, method, false)
+}
+func v5ContainerHTTPMethod(r *http.Request, method string, hostResult bool) bool {
 	if r.Method != http.MethodPost || r.Proto != "HTTP/1.1" || r.Host != "container" || r.RequestURI != v5ContainerService+method ||
-		(method != "Configure" && method != "Health" && method != "Invoke") || r.Header.Get("Content-Type") != "application/json" ||
+		(method != "Configure" && method != "Health" && method != "Invoke" && !(hostResult && method == "HostResult")) || r.Header.Get("Content-Type") != "application/json" ||
 		r.ContentLength < 1 || r.ContentLength > v5ContainerMaxFrame || len(r.TransferEncoding) != 0 || len(r.Trailer) != 0 ||
 		r.Header.Get("Content-Encoding") != "" || r.Header.Get("Expect") != "" || r.Header.Get("Upgrade") != "" {
 		return false

@@ -30,7 +30,7 @@ func (p *PgRepository) requestCurrentIndex(ctx context.Context, kind, id string)
 		return IndexRequest{}, e
 	}
 	request := IndexRequest{ID: indexRequestID(kind, id, version), TargetKind: kind, TargetID: id, TargetVersion: version, Status: "pending"}
-	_, e = transaction.ExecutorFor(ctx, p.pool).Exec(ctx, `INSERT INTO knowledge_index_tasks(id,target_kind,target_id,target_version) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING`, request.ID, kind, id, version)
+	inserted, e := transaction.ExecutorFor(ctx, p.pool).Exec(ctx, `INSERT INTO knowledge_index_tasks(id,target_kind,target_id,target_version) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING`, request.ID, kind, id, version)
 	if e != nil {
 		return IndexRequest{}, e
 	}
@@ -40,6 +40,11 @@ func (p *PgRepository) requestCurrentIndex(ctx context.Context, kind, id string)
 	}
 	if request.TargetKind != kind || request.TargetID != id || request.TargetVersion != version || request.Status != "pending" {
 		return IndexRequest{}, ErrConflict
+	}
+	if kind == "collection" {
+		if e = p.ensureIndexJob(ctx, id, inserted.RowsAffected() > 0); e != nil {
+			return IndexRequest{}, e
+		}
 	}
 	return request, nil
 }
@@ -51,8 +56,8 @@ func (m *MemoryRepository) requestCurrentIndex(ctx context.Context, kind, id str
 		return IndexRequest{}, ErrSourceUnavailable
 	}
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if e := ctx.Err(); e != nil {
+		m.mu.Unlock()
 		return IndexRequest{}, e
 	}
 	target := collections
@@ -64,16 +69,27 @@ func (m *MemoryRepository) requestCurrentIndex(ctx context.Context, kind, id str
 	if previous, ok := m.rows[indexRequestRecords][key]; ok {
 		var request IndexRequest
 		e := json.Unmarshal(previous.Data, &request)
+		m.mu.Unlock()
+		if e == nil && kind == "collection" {
+			e = m.ensureIndexJob(ctx, id, false)
+		}
 		return request, e
 	}
 	request := IndexRequest{ID: key, TargetKind: kind, TargetID: id, TargetVersion: version, Status: "pending", CreatedAt: time.Now().UTC()}
 	data, e := json.Marshal(request)
 	if e != nil {
+		m.mu.Unlock()
 		return IndexRequest{}, e
 	}
 	if m.rows[indexRequestRecords] == nil {
 		m.rows[indexRequestRecords] = map[string]record{}
 	}
 	m.rows[indexRequestRecords][key] = record{ID: key, Data: data}
+	m.mu.Unlock()
+	if kind == "collection" {
+		if e = m.ensureIndexJob(ctx, id, true); e != nil {
+			return IndexRequest{}, e
+		}
+	}
 	return request, nil
 }

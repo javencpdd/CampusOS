@@ -54,6 +54,74 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/integration/knowledge/collections/:id/sources/:member_id/revisions/:revision",
+      "handler": "knowledgeHandler.IntegrationSource",
+      "module_owner": "feature.knowledge",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.knowledge.source.read",
+      "legacy_aliases": [
+        "http.get.api.v1.integration.knowledge.collections.id.sources.member_id.revisions.revision",
+        "httpapi.get.api.v1.integration.knowledge.collections.id.sources.member_id.revisions.revision"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "endpoint+public-collection+current-origin",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integration/knowledge/collections/:id/search",
+      "handler": "knowledgeHandler.IntegrationSearch",
+      "module_owner": "feature.knowledge",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.knowledge.search",
+      "legacy_aliases": [
+        "http.post.api.v1.integration.knowledge.collections.id.search",
+        "httpapi.post.api.v1.integration.knowledge.collections.id.search"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "endpoint+public-collection+current-origin",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integration/knowledge/collections/:id/mcp",
+      "handler": "knowledgeHandler.IntegrationMCP",
+      "module_owner": "feature.knowledge",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.knowledge.mcp",
+      "legacy_aliases": [
+        "http.post.api.v1.integration.knowledge.collections.id.mcp",
+        "httpapi.post.api.v1.integration.knowledge.collections.id.mcp"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "endpoint+public-collection+current-origin",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/integration/knowledge/collections/:id/mcp",
+      "handler": "knowledgeHandler.IntegrationMCP",
+      "module_owner": "feature.knowledge",
+      "audience": "integration",
+      "auth": "integration-digest+current-facts+whitelist+source-acl",
+      "operation_code": "http.integration.knowledge.mcp.stream",
+      "legacy_aliases": [
+        "http.get.api.v1.integration.knowledge.collections.id.mcp",
+        "httpapi.get.api.v1.integration.knowledge.collections.id.mcp"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "endpoint+public-collection+current-origin",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1",
       "handler": "httpapi.APIIndex",
       "module_owner": "core.platform-api",
@@ -216,6 +284,23 @@
       "legacy_aliases": [
         "http.get.api.v1.knowledge.collections",
         "httpapi.get.api.v1.knowledge.collections"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-origin",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/collections/:id/search",
+      "handler": "knowledgeHandler.Search",
+      "module_owner": "feature.knowledge",
+      "audience": "public",
+      "auth": "none+current-origin-policy",
+      "operation_code": "http.knowledge.search.public",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.collections.id.search",
+        "httpapi.get.api.v1.knowledge.collections.id.search"
       ],
       "ownership": "current-origin-and-collection",
       "scope": "public-collection+current-origin",
@@ -934,6 +1019,23 @@
       "ownership": "resource-policy",
       "scope": "parent-public+published-posts",
       "audit": "request-log-read",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/sources/preflight",
+      "handler": "knowledgeHandler.PrivateSourcePreflight",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+document-owner",
+      "operation_code": "http.knowledge.private.source.preflight",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.sources.preflight",
+        "httpapi.post.api.v1.knowledge.private.sources.preflight"
+      ],
+      "ownership": "current-document-owner",
+      "scope": "self+current-document-version",
+      "audit": "none",
       "stability": "experimental"
     },
     {
@@ -3743,6 +3845,44 @@
       "ownership": "knowledge-managed",
       "scope": "knowledge.collection_inventory/all",
       "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/knowledge/collections/:id/index",
+      "handler": "knowledgeHandler.IndexDiagnostics",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission",
+      "permission": "collection:read",
+      "permission_code": "knowledge.collection.read",
+      "operation_code": "http.knowledge.index.diagnostics",
+      "legacy_aliases": [
+        "http.get.api.v1.admin.knowledge.collections.id.index",
+        "httpapi.get.api.v1.admin.knowledge.collections.id.index"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/knowledge/collections/:id/index/retry",
+      "handler": "knowledgeHandler.RetryIndex",
+      "module_owner": "feature.knowledge",
+      "audience": "admin",
+      "auth": "jwt+current-admin-session+permission+recent-mfa+browser-csrf",
+      "permission": "collection:manage",
+      "permission_code": "knowledge.collection.manage",
+      "operation_code": "http.knowledge.index.retry",
+      "legacy_aliases": [
+        "http.post.api.v1.admin.knowledge.collections.id.index.retry",
+        "httpapi.post.api.v1.admin.knowledge.collections.id.index.retry"
+      ],
+      "ownership": "knowledge-managed",
+      "scope": "knowledge.collection_inventory/all",
+      "audit": "required-command+outbox",
       "stability": "experimental"
     },
     {

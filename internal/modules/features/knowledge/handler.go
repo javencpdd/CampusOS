@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -17,12 +18,18 @@ import (
 )
 
 type Handler struct {
-	service   *CollectionService
-	authority identityport.AdminSessionAuthorityReader
+	privateSources *privateSourcePreflight
+	userVerifier   identityport.SessionVerifier
+	userStrength   identityport.SessionStrengthReader
+	service        *CollectionService
+	authority      identityport.AdminSessionAuthorityReader
+	retrieval      PublicRetrieval
+	machine        identityport.IntegrationReadGateway
+	mcp            publicMCPState
 }
 
-func NewHandler(s *CollectionService, a identityport.AdminSessionAuthorityReader) *Handler {
-	return &Handler{s, a}
+func NewHandler(s *CollectionService, a identityport.AdminSessionAuthorityReader, retrieval PublicRetrieval) *Handler {
+	return &Handler{service: s, authority: a, retrieval: retrieval}
 }
 func (h *Handler) resolver(c *gin.Context) identityport.SessionPrincipalResolver {
 	id := c.GetString("admin_account_id")
@@ -41,11 +48,11 @@ func knowledgeError(c *gin.Context, e error) {
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
 	case errors.Is(e, ErrConflict), errors.Is(e, ErrSourceChanged), errors.Is(e, identityport.ErrPolicyFactsChanged):
 		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
-	case errors.Is(e, ErrNotFound), errors.Is(e, ErrSourceUnavailable), errors.Is(e, ErrUnsupportedSource), errors.Is(e, ErrSourceTooLarge):
+	case errors.Is(e, ErrPrivateSourceMissing), errors.Is(e, ErrNotFound), errors.Is(e, ErrSourceUnavailable), errors.Is(e, ErrUnsupportedSource), errors.Is(e, ErrSourceTooLarge):
 		response.ErrorDescriptor(c, apperror.ResourceNotFound, nil)
 	case errors.Is(e, ErrMFARequired):
 		response.ErrorDescriptor(c, apperror.IdentityMFAStepUpRequired, nil)
-	case errors.Is(e, identityport.ErrAdminSessionPrincipalUnavailable):
+	case errors.Is(e, identityport.ErrUserSessionPrincipalUnavailable), errors.Is(e, identityport.ErrAdminSessionPrincipalUnavailable):
 		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
 	case errors.Is(e, ErrDenied):
 		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
@@ -57,6 +64,14 @@ func knowledgeError(c *gin.Context, e error) {
 		response.ErrorDescriptor(c, apperror.KnowledgeUnavailable, nil)
 	}
 }
+
+// DisabledHTTP keeps the Feature path gate consistent with errors from current
+// service checks, including a hot disable after a request entered the router.
+func DisabledHTTP(c *gin.Context) {
+	c.Abort()
+	knowledgeError(c, ErrDisabled)
+}
+
 func (h *Handler) ready(c *gin.Context) bool {
 	c.Header("Cache-Control", "private, no-store")
 	if h == nil || h.service == nil {
@@ -318,12 +333,76 @@ func (h *Handler) Sources(c *gin.Context) {
 	}
 	response.Success(c, out)
 }
+
+// Search has the same anonymous-current-origin boundary as Source. Credentials
+// supplied by a client cannot widen the public corpus or select a Provider.
+func (h *Handler) Search(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	if nilSourceAdapter(h.retrieval) {
+		knowledgeError(c, ErrRetrievalProvider)
+		return
+	}
+	// Bound the encoded query before decoding; a UTF-8 byte needs at most three
+	// bytes in percent encoding. Do not use URL.Query: it discards parse errors.
+	if len(c.Request.URL.RawQuery) > 3*MaxSearchQueryBytes+128 {
+		knowledgeError(c, ErrInvalid)
+		return
+	}
+	query, e := url.ParseQuery(c.Request.URL.RawQuery)
+	if e != nil || len(query["query"]) != 1 {
+		knowledgeError(c, ErrInvalid)
+		return
+	}
+	req := PublicSearchRequest{CollectionID: c.Param("id"), Query: query.Get("query"), Page: 1, PageSize: 20}
+	for key, values := range query {
+		if len(values) != 1 || (key != "query" && key != "page" && key != "page_size") {
+			knowledgeError(c, ErrInvalid)
+			return
+		}
+		if key == "query" {
+			continue
+		}
+		n, err := strconv.Atoi(values[0])
+		if err != nil || strconv.Itoa(n) != values[0] {
+			knowledgeError(c, ErrInvalid)
+			return
+		}
+		if key == "page" {
+			req.Page = n
+		} else {
+			req.PageSize = n
+		}
+	}
+	raw, e := io.ReadAll(io.LimitReader(c.Request.Body, 1))
+	if e != nil || len(raw) > 0 {
+		knowledgeError(c, ErrInvalid)
+		return
+	}
+	out, e := h.retrieval.SearchPublic(c.Request.Context(), req)
+	if e != nil {
+		knowledgeError(c, e)
+		return
+	}
+	response.Success(c, out)
+}
+
 func (h *Handler) Source(c *gin.Context) {
 	if !h.ready(c) {
 		return
 	}
-	for k, v := range c.Request.URL.Query() {
-		if k != "revision" || len(v) != 1 {
+	if len(c.Request.URL.RawQuery) > 256 {
+		knowledgeError(c, ErrInvalid)
+		return
+	}
+	query, e := url.ParseQuery(c.Request.URL.RawQuery)
+	if e != nil {
+		knowledgeError(c, ErrInvalid)
+		return
+	}
+	for k, v := range query {
+		if k != "revision" || len(v) != 1 || v[0] == "" {
 			knowledgeError(c, ErrInvalid)
 			return
 		}
@@ -333,10 +412,36 @@ func (h *Handler) Source(c *gin.Context) {
 		knowledgeError(c, ErrInvalid)
 		return
 	}
-	out, e := h.service.Source(c.Request.Context(), c.Param("id"), c.Param("member_id"), c.Query("revision"))
+	out, e := h.service.Source(c.Request.Context(), c.Param("id"), c.Param("member_id"), query.Get("revision"))
 	if e != nil {
 		knowledgeError(c, e)
 		return
 	}
 	response.Success(c, out)
+}
+
+func (h *Handler) IndexDiagnostics(c *gin.Context) {
+	if !h.ready(c) || !noQuery(c) {
+		return
+	}
+	out, e := h.service.IndexDiagnostics(c.Request.Context(), c.Param("id"), h.resolver(c))
+	if e != nil {
+		knowledgeError(c, e)
+		return
+	}
+	response.Success(c, out)
+}
+func (h *Handler) RetryIndex(c *gin.Context) {
+	var req struct {
+		CollectionVersion int64 `json:"collection_version,string"`
+		Version           int64 `json:"version,string"`
+	}
+	if !h.body(c, &req, "collection_version", "version") {
+		return
+	}
+	if e := h.service.RetryIndex(c.Request.Context(), c.Param("id"), req.CollectionVersion, req.Version, h.resolver(c)); e != nil {
+		knowledgeError(c, e)
+		return
+	}
+	response.Success(c, map[string]bool{"accepted": true})
 }

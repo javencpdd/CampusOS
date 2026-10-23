@@ -13,7 +13,8 @@ import (
 func v5Marshal(v any) ([]byte, error) { return json.Marshal(v) }
 
 // CurrentPluginV5Catalogs publishes host-owned package contracts, not runnable
-// providers.03c binds only these implemented read/subscription contracts.
+// providers. Collection availability is empty in this static contract; it is
+// not a live inventory or authorization proof.
 // There are no synthetic collections, private readers or arbitrary Host calls.
 func CurrentPluginV5Catalogs() ([]byte, []byte) {
 	items := []v5HostCapability{}
@@ -23,7 +24,14 @@ func CurrentPluginV5Catalogs() ([]byte, []byte) {
 	for _, code := range []string{"ui.resource.selected.read", "ui.surface.open"} {
 		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
 	}
-	host, _ := json.Marshal(v5HostManifestCatalog{Contract: "campusos.host-capabilities/v1", HostContract: "campusos.host/v1", Items: items})
+	wireItems := []any{}
+	for _, item := range items {
+		wireItems = append(wireItems, item)
+	}
+	for _, code := range []string{V5KnowledgeSearch, V5KnowledgeSourceRead} {
+		wireItems = append(wireItems, map[string]any{"code": code, "scope_kind": "collection", "data_classification": "public", "consent_required": false, "available_public_collection_ids": []string{}})
+	}
+	host, _ := json.Marshal(map[string]any{"contract": "campusos.host-capabilities/v1", "host_contract": "campusos.host/v1", "items": wireItems})
 	points := []v5ExtensionDescriptor{
 		{Point: "preview.renderer", ContractVersion: "v1", InputSchema: "campusos.preview.renderer.request/v1", OutputSchema: "campusos.preview.renderer.response/v1", Capabilities: []string{"pdf"}, DataModes: []string{"authorized_resource"}},
 		{Point: "ai.chat", ContractVersion: "v1", InputSchema: "campusos.ai.chat.request/v1", OutputSchema: "campusos.ai.chat.response/v1", Capabilities: []string{"text"}, DataModes: []string{"public_only", "no_host_private_data"}},
@@ -48,7 +56,7 @@ func ValidatePluginV5SourceDeclaration(raw []byte) (*PluginV5Manifest, error) {
 	if err != nil {
 		return nil, ErrPluginV5PackageInvalid
 	}
-	return ValidatePluginV5Manifest(raw, host, ext, wire)
+	return validatePluginV5Manifest(raw, host, ext, wire, false)
 }
 
 type PluginV5TrustKey struct {
@@ -125,7 +133,7 @@ func VerifyPluginV5Release(raw, envelope, trustBytes []byte) (*PluginV5Package, 
 		return nil, err
 	}
 	host, ext := CurrentPluginV5Catalogs()
-	if _, err = ValidatePluginV5Manifest(p.files[PluginV5ManifestFile], host, ext, envelope); err != nil {
+	if _, err = validatePluginV5Manifest(p.files[PluginV5ManifestFile], host, ext, envelope, false); err != nil {
 		return nil, err
 	}
 	var r v5ReleaseEnvelope

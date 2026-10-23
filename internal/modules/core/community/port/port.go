@@ -39,6 +39,33 @@ type SourceCategoryCatalog interface {
 	ListSourceCategories(context.Context) ([]*domain.Category, error)
 }
 
+// SourceCategoryFact is an immutable value projection, never an eligibility
+// decision. Consumers must check lifecycle, hierarchy and versions themselves.
+type SourceCategoryFact = domain.SourceCategoryFact
+type SourceBoardFactsReader interface {
+	ReadSourceBoardFacts(context.Context, string) (SourceCategoryFact, SourceCategoryFact, error)
+}
+
+// SourceReferenceInventory enumerates bounded owning-domain IDs for durable
+// first-party reconciliation. IDs can be private, deleted or unsupported; this
+// grants no content access. Every body still requires GetPublicThread/Policy.
+// after is a numeric source ID boundary, never a commit/event watermark.
+type SourceReferenceInventory interface {
+	SourceThreadIDs(context.Context, string, string, int) ([]string, error)
+}
+
+// SourceReadSnapshot is an optional internal read-only batching seam. Public
+// G1 checks still run per source; snapshots cannot survive a checked callback.
+type SourceReadSnapshot interface {
+	WithSourceReadSnapshot(context.Context, []string, func(context.Context) error) error
+}
+
+// SourceReadPin certifies only an immutable repository row in the current
+// callback, never an allow. The public reader must still run G1 first.
+type SourceReadPin interface {
+	SourceReadPinned(context.Context, string) bool
+}
+
 type ContentQuery interface {
 	GetPublicThread(context.Context, string) (*domain.Thread, error)
 	ListPublicThreads(context.Context, domain.ThreadListFilter) ([]*domain.Thread, int64, error)

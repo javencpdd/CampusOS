@@ -147,6 +147,31 @@ func (s *IntegrationService) ReadForIntegration(ctx context.Context, raw string,
 	return data, nil
 }
 
+// CheckForIntegration authorizes control-plane cancellation only, without
+// waiting for an in-flight read's row locks. No data, principal or allow ticket
+// escapes. Resource reads must still use ReadForIntegration and its transaction.
+func (s *IntegrationService) CheckForIntegration(ctx context.Context, raw string, target port.IntegrationAccessTarget) error {
+	e, ok := integrationEndpoint(target)
+	if !ok {
+		return ErrIntegrationDenied
+	}
+	b, err := s.binding(ctx, raw, false)
+	if err != nil {
+		return err
+	}
+	input := s.input(b, target, e, "integration.control")
+	p := policy.IntegrationRuntimePolicy{}
+	d, err := p.DecideIntegrationAccess(input)
+	if err != nil {
+		return err
+	}
+	fresh, err := s.binding(ctx, raw, false)
+	if err != nil {
+		return err
+	}
+	return p.CheckIntegrationAccessDecision(input, d, s.input(fresh, target, e, input.RequestID))
+}
+
 // Self identifies only this currently authenticated machine. It grants no
 // resource authority and never returns the secret, digest or Admin identity.
 type IntegrationSelf struct {

@@ -10,7 +10,7 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000032（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000033（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
         恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列）</el-tag
       >
@@ -331,8 +331,10 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+  {name: "knowledge_index_jobs", title: "知识索引执行与断点", domain: "community", purpose: "每集合独立保存请求代次、租约围栏、有限重试、来源/成员分页断点和已完成代次；周期复核消失目标。", fields: ["id","data","facts_version","state","available_at_ms","lease_until_ms","lease_token"], migration: "000033", relationshipNote: "id逻辑引用集合，无FK以保留消失目标清理任务；请求表仍不可变pending，只有完成代次可进入当前来源复核。非空拒绝down。"},
+  {name: "knowledge_index_documents", title: "公开知识文本投影", domain: "community", purpose: "当前G1复核后的Community/RichText/官方公开文本分块与来源/规则修订、解析器/分块器/Profile指纹及构建代次。", fields: ["id","data","facts_version","collection_id","selection_id","generation"], migration: "000033", relationshipNote: "集合/规则/成员均逻辑引用以允许删除对账；正文是非可信数据，输出仍复核来源和完成代次，未提供检索/AI/出站权。非空拒绝down。"},
   {name: "knowledge_index_backfill_checkpoints", title: "知识元数据补扫断点", domain: "community", purpose: "常驻补扫器按集合/官方资料分别保存分页进度与下次扫描时限；请求和断点原子提交。", fields: ["target_kind","after_id","completed_passes","next_scan_at","updated_at"], migration: "000032", relationshipNote: "after_id是可缺失的逻辑枚举边界，不是来源/权限快照或事件ID水位；每轮完成后从头周期重扫，有断点拒绝down，不代表索引或权威全量对账就绪。"},
-  {name: "knowledge_index_tasks", title: "知识索引任务请求", domain: "community", purpose: "Outbox常驻消费者保存当前目标版本的待处理元数据请求；尚无索引执行或ready状态。", fields: ["id","target_kind","target_id","target_version","status","created_at"], migration: "000031", relationshipNote: "target_kind区分集合/官方资料，target_id为逻辑引用；允许缺失目标的0版本清理意图，不存正文/ACL/凭据或event_id游标。当前请求不可更新/删除/清空，非空拒绝down。"},
+  {name: "knowledge_index_tasks", title: "知识索引任务请求", domain: "community", purpose: "Outbox常驻消费者保存当前目标版本的不可变pending请求；执行状态由独立jobs保存。", fields: ["id","target_kind","target_id","target_version","status","created_at"], migration: "000031", relationshipNote: "target_kind区分集合/官方资料，target_id为逻辑引用；允许缺失目标的0版本清理意图，不存正文/ACL/凭据或event_id游标。当前请求不可更新/删除/清空，非空拒绝down。"},
   {name: "knowledge_collections", title: "公开知识集合", domain: "community", purpose: "公开集合展示/启停与当前不可复用版本；默认关闭Feature。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "Admin创建者是独立管理域逻辑审计引用，不外键到User。"},
   {name: "knowledge_official_sources", title: "官方知识资料", domain: "community", purpose: "有界text/Markdown正文及draft/published/withdrawn生命周期。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "当前内容与追加修订同必需审计事务；不抓取URL或执行指令。"},
   {name: "knowledge_official_revisions", title: "官方资料修订历史", domain: "community", purpose: "每次官方写入追加完整内容、状态与显式Admin变更者；数据库禁止修改/删除/清空。", fields: ["id", "data", "source_id", "facts_version"], migration: "000030", relationshipNote: "source_id外键到官方资料；版本是历史事实，不是公开授权。"},
@@ -1941,6 +1943,9 @@ const databaseTables: DbTable[] = [
 ];
 
 const relations: Relation[] = [
+ {id:"knowledge-collection-index-job",source:"knowledge_collections",target:"knowledge_index_jobs",sourceCardinality:"1",targetCardinality:"1",label:"逻辑集合执行任务（无FK，缺失时仍清理）",domains:["community"]},
+ {id:"knowledge-rule-index-document",source:"knowledge_source_selections",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑规则修订投影（无FK）",domains:["community"]},
+ {id:"knowledge-job-index-document",source:"knowledge_index_jobs",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑collection_id与完成generation（无FK）",domains:["community"]},
  {id:"knowledge-collection-backfill-cursor",source:"knowledge_collections",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"collection枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
  {id:"knowledge-official-backfill-cursor",source:"knowledge_official_sources",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"official枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
  {id: "knowledge-collection-index-intent",source:"knowledge_collections",target:"knowledge_index_tasks",sourceCardinality:"1",targetCardinality:"N",label:"target_kind=collection 的逻辑目标引用（无FK）",domains:["community"]},
@@ -3121,6 +3126,7 @@ const storageRows = [
 ];
 
 const migrations = [
+ {version:"000033",file:"000033_knowledge_index_execution.up.sql",title:"v1.2 公开知识索引执行与投影",scope:"Knowledge 有界分页对账",summary:"独立任务租约/有限重试/持久断点和公开文本投影；来源/规则修订与Profile指纹、原子整页提交、周期消失目标清理。非空拒绝down，保留版本序列高水位，不改旧表。",tables:["knowledge_index_jobs","knowledge_index_documents"]},
  {version:"000032",file:"000032_knowledge_index_backfill.up.sql",title:"v1.2 知识元数据补扫断点",scope:"Knowledge 周期补扫",summary:"两个逻辑目标域分别按ID分页，当前版本请求和断点同事务；完成后等待再从头重扫，无正文/授权/事件游标，非空拒绝down。",tables:["knowledge_index_backfill_checkpoints"]},
  {version:"000031",file:"000031_knowledge_index_requests.up.sql",title:"v1.2 索引任务请求",scope:"Knowledge 元数据队列",summary:"按当前集合/官方资料代次幂等入队，任务持久化后才允许Outbox回执；无正文/授权副本/执行器，非空拒绝down。",tables:["knowledge_index_tasks"]},
   {version: "000030", file: "000030_knowledge_sources.up.sql", title: "v1.2 知识集合与来源", scope: "Knowledge 自有事实", summary: "集合/官方资料及不可变修订/选择规则/显式成员五表，匿名来源逐次复核；独立Admin read/manage权限与审计，非空拒绝down，序列高水位保留。", tables: ["knowledge_collections","knowledge_official_sources","knowledge_official_revisions","knowledge_source_selections","knowledge_collection_sources"]},

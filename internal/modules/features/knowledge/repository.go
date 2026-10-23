@@ -35,7 +35,7 @@ const (
 
 func table(k recordKind) (string, error) {
 	switch k {
-	case collections, officials, selections, members, revisions:
+	case collections, officials, selections, members, revisions, indexJobs, indexDocuments:
 		return "knowledge_" + string(k), nil
 	}
 	return "", ErrInvalid
@@ -44,10 +44,13 @@ func table(k recordKind) (string, error) {
 type record struct {
 	ID      string
 	Version int64
-	Data    json.RawMessage
+	// A byte slice uses pgx's raw JSONB scan plan. RawMessage would invoke
+	// json.Unmarshal during Scan and then again in decode, for every row.
+	Data []byte
 }
 
-// list is capped by its caller. Projection rows contain references, never origin bodies.
+// list is capped by its caller. Collection members contain references; index
+// documents are private derived public text and never confer read authority.
 type Repository interface {
 	lockInventory(context.Context, recordKind) error
 	get(context.Context, recordKind, string, bool) (record, error)
@@ -57,18 +60,34 @@ type Repository interface {
 	deleteMember(context.Context, string) error
 }
 
+// Repository facts_version is authoritative. Decode the payload once instead
+// of constructing/marshalling a temporary JSON map for every member/document.
 func decode[T any](r record) (T, error) {
 	var v T
-	data := map[string]json.RawMessage{}
-	if err := json.Unmarshal(r.Data, &data); err != nil {
-		return v, err
+	if e := json.Unmarshal(r.Data, &v); e != nil {
+		return v, e
 	}
-	wire, _ := json.Marshal(r.Version)
-	data["version"], _ = json.Marshal(string(wire))
-	raw, _ := json.Marshal(data)
-	err := json.Unmarshal(raw, &v)
-	return v, err
+	switch p := any(&v).(type) {
+	case *Collection:
+		p.Version = r.Version
+	case *Official:
+		p.Version = r.Version
+	case *OfficialRevision:
+		p.Version = r.Version
+	case *Selection:
+		p.Version = r.Version
+	case *Member:
+		p.Version = r.Version
+	case *IndexJob:
+		p.Version = r.Version
+	case *IndexDocument:
+		p.Version = r.Version
+	default:
+		return v, ErrInvalid
+	}
+	return v, nil
 }
+
 func encoded(v any) (json.RawMessage, error) {
 	b, e := json.Marshal(v)
 	if e != nil {
@@ -97,6 +116,11 @@ func (p *PgRepository) lockInventory(ctx context.Context, k recordKind) error {
 	return e
 }
 func (p *PgRepository) get(ctx context.Context, k recordKind, id string, write bool) (record, error) {
+	if k == officials && !write {
+		if r, ok := p.sourceReadOfficial(ctx, id); ok {
+			return r, ctx.Err()
+		}
+	}
 	t, e := table(k)
 	if e != nil {
 		return record{}, e

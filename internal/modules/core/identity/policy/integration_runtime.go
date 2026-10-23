@@ -7,7 +7,8 @@ import (
 )
 
 // Runtime v2 adds exactly the existing Community public-thread read pair.
-// v1 remains unchanged; no registered Knowledge resource producer exists yet.
+// v1 remains unchanged. The compiled host inventory determines which concrete
+// Knowledge/Community endpoints are currently available to machine callers.
 type IntegrationRuntimePolicy struct{}
 
 func runtimeShape(r port.IntegrationAccessInput) error {
