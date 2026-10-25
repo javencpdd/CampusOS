@@ -10,6 +10,10 @@ import (
 )
 
 func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.SessionPrincipalResolver, id string, expectedBinding int64, request ChatRequest) (ManagedResult, error) {
+	return s.invoke(ctx, resolve, id, expectedBinding, request, "", nil)
+}
+
+func (s *ManagedService) invoke(ctx context.Context, resolve identityport.SessionPrincipalResolver, id string, expectedBinding int64, request ChatRequest, requiredProfile string, guard func(context.Context) error) (ManagedResult, error) {
 	ctx, overallCancel := context.WithTimeout(ctx, 65*time.Second)
 	defer overallCancel()
 	var empty ManagedResult
@@ -37,6 +41,18 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 	if e != nil || !p.Enabled {
 		return empty, ErrManagedUnavailable
 	}
+	if requiredProfile != "" && (p.ID != requiredProfile || p.Definition != "builtin.local-openai.text") {
+		return empty, ErrManagedDenied
+	}
+	checkPolicy := func(c context.Context) error {
+		if guard != nil && guard(c) != nil {
+			return ErrManagedConflict
+		}
+		return nil
+	}
+	if e = checkPolicy(ctx); e != nil {
+		return empty, e
+	}
 	if request.MaxTokens == 0 {
 		request.MaxTokens = p.MaxTokens
 	}
@@ -63,6 +79,9 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 	defer stopInstance()
 	run := ManagedRun{Contract: ManagedContractVersion, ID: id, Owner: principal.Actor.ID, ProfileID: p.ID, ProfileRevision: p.Revision, BindingRevision: b.Revision, InstanceID: instance.ID, State: "reserved", Lease: managedNow() + p.TimeoutMS + 5000}
 	e = s.command(callCtx, "call.reserve", "user", principal.Actor.ID, id, func(tx context.Context) error {
+		if e := checkPolicy(tx); e != nil {
+			return e
+		}
 		if _, e := bound(tx); e != nil {
 			return ErrManagedDenied
 		}
@@ -90,7 +109,10 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 		if _, e = bound(tx); e != nil {
 			return ErrManagedDenied
 		}
-		return s.check(tx)
+		if e := s.check(tx); e != nil {
+			return e
+		}
+		return checkPolicy(tx)
 	})
 	if e != nil {
 		return empty, managedPublicError(e)
@@ -99,7 +121,10 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 		if _, e := bound(c); e != nil {
 			return ErrManagedDenied
 		}
-		return s.current(c, p, b)
+		if e := s.current(c, p, b); e != nil {
+			return e
+		}
+		return checkPolicy(c)
 	}
 	// A known protection failure is still pre-dispatch: release its reservation.
 	// Re-open at the transport boundary as well; this probe grants no reusable
@@ -109,6 +134,9 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 	e = protectionErr
 	if e == nil {
 		e = s.command(callCtx, "call.dispatch", "user", principal.Actor.ID, id, func(tx context.Context) error {
+			if e := checkPolicy(tx); e != nil {
+				return e
+			}
 			if _, e := bound(tx); e != nil {
 				return ErrManagedDenied
 			}
@@ -129,7 +157,10 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 			if _, e = bound(tx); e != nil {
 				return ErrManagedDenied
 			}
-			return s.check(tx)
+			if e := s.check(tx); e != nil {
+				return e
+			}
+			return checkPolicy(tx)
 		})
 	}
 	var response *ChatResponse
@@ -140,20 +171,7 @@ func (s *ManagedService) Invoke(ctx context.Context, resolve identityport.Sessio
 		reason := make(chan error, 1)
 		go func() {
 			defer close(watchDone)
-			ticker := time.NewTicker(100 * time.Millisecond)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-watchCtx.Done():
-					return
-				case <-ticker.C:
-					if err := before(watchCtx); err != nil {
-						reason <- err
-						cancel()
-						return
-					}
-				}
-			}
+			monitorManagedProof(watchCtx, before, reason, cancel)
 		}()
 		response, e = s.execute(callCtx, p, b, request, before)
 		stopWatch()
@@ -328,5 +346,28 @@ func (s *ManagedService) reconcile(ctx context.Context) {
 			return
 		}
 		_, _ = s.settle(ctx, id, "unknown", "expired", TokenUsage{})
+	}
+}
+
+// Cancelling the observer after a successful transport must not turn its
+// interrupted current-fact read into a fictitious authority revocation. Parent
+// cancellation is already checked by execute and all final return boundaries.
+func monitorManagedProof(ctx context.Context, before func(context.Context) error, reason chan<- error, cancel context.CancelFunc) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := before(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+				reason <- err
+				cancel()
+				return
+			}
+		}
 	}
 }

@@ -80,7 +80,7 @@ func validatePluginV5Manifest(manifest, hostCatalog, extensionCatalog, release [
 	}
 	for _, c := range m.Consumes {
 		item, ok := capabilities[c.Capability]
-		declaredKnowledge := !availability && (c.Capability == V5KnowledgeSearch || c.Capability == V5KnowledgeSourceRead)
+		declaredKnowledge := !availability && (c.Capability == V5KnowledgeSearch || c.Capability == V5KnowledgeSourceRead || c.Capability == V5KnowledgeAnswer)
 		if !ok || item.ScopeKind != c.Scope.Kind || (!declaredKnowledge && !v5Subset(c.Scope.CollectionIDs, item.Collections)) || !v5Subset(c.Scope.Keys, item.Keys) {
 			return nil, ErrPluginV5ManifestCapability
 		}

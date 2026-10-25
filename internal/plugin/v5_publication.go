@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 func v5Marshal(v any) ([]byte, error) { return json.Marshal(v) }
@@ -24,11 +25,14 @@ func CurrentPluginV5Catalogs() ([]byte, []byte) {
 	for _, code := range []string{"ui.resource.selected.read", "ui.surface.open"} {
 		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
 	}
+	for _, code := range []string{V5AIChatLocal, V5AIChatRemote} {
+		items = append(items, v5HostCapability{Code: code, ScopeKind: "self", DataClassification: "sensitive", ConsentRequired: true})
+	}
 	wireItems := []any{}
 	for _, item := range items {
 		wireItems = append(wireItems, item)
 	}
-	for _, code := range []string{V5KnowledgeSearch, V5KnowledgeSourceRead} {
+	for _, code := range []string{V5KnowledgeSearch, V5KnowledgeSourceRead, V5KnowledgeAnswer} {
 		wireItems = append(wireItems, map[string]any{"code": code, "scope_kind": "collection", "data_classification": "public", "consent_required": false, "available_public_collection_ids": []string{}})
 	}
 	host, _ := json.Marshal(map[string]any{"contract": "campusos.host-capabilities/v1", "host_contract": "campusos.host/v1", "items": wireItems})
@@ -166,10 +170,12 @@ func VerifyPluginV5Release(raw, envelope, trustBytes []byte) (*PluginV5Package, 
 // identities only. A recorded identity never replaces current signature/trust
 // verification. Installation/operation state belongs to subsequent 03b slices.
 type PluginV5PackageCatalog struct {
-	mu    sync.Mutex
-	trust []byte
-	store PluginV5IdentityStore
+	mu        sync.Mutex
+	trust     []byte
+	store     PluginV5IdentityStore
+	readTrust atomic.Pointer[v5ReadTrust]
 }
+type v5ReadTrust struct{ data []byte }
 
 func NewPluginV5PackageCatalog(trust []byte) (*PluginV5PackageCatalog, error) {
 	return NewPluginV5PackageCatalogWithIdentityStore(trust, NewMemoryPluginV5IdentityStore())
@@ -184,7 +190,9 @@ func NewPluginV5PackageCatalogWithIdentityStore(trust []byte, store PluginV5Iden
 	if store == nil {
 		return nil, ErrPluginV5IdentityUnavailable
 	}
-	return &PluginV5PackageCatalog{trust: bytes.Clone(trust), store: store}, nil
+	c := &PluginV5PackageCatalog{trust: bytes.Clone(trust), store: store}
+	c.readTrust.Store(&v5ReadTrust{data: c.trust})
+	return c, nil
 }
 func (c *PluginV5PackageCatalog) SetTrust(trust []byte) error {
 	if c == nil {
@@ -196,6 +204,41 @@ func (c *PluginV5PackageCatalog) SetTrust(trust []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.trust = bytes.Clone(trust)
+	c.readTrust.Store(&v5ReadTrust{data: c.trust})
+	return nil
+}
+
+// withVerifiedRead is exclusively for current runtime facts, never a durable
+// publication/mutation. A caller may already hold domain database row locks.
+// Holding the publication mutex across a DB wait here would invert that order
+// against another observer. Verify the immutable bytes and write-once identity,
+// then fence the whole detached read with an immutable current-trust snapshot.
+// Even A->B->A creates another snapshot and invalidates the result. No allow or
+// signature result survives this call; mutation paths retain WithVerified.
+func (c *PluginV5PackageCatalog) withVerifiedRead(ctx context.Context, raw, envelope []byte, read func(*PluginV5Package) error) error {
+	if c == nil || c.store == nil || read == nil || ctx.Err() != nil {
+		return ErrPluginV5IdentityUnavailable
+	}
+	trust := c.readTrust.Load()
+	if trust == nil {
+		return ErrPluginV5PackageSignature
+	}
+	p, e := VerifyPluginV5Release(raw, envelope, trust.data)
+	if e != nil {
+		return e
+	}
+	if e = c.store.RecordPluginV5Identity(ctx, PluginV5PackageIdentity{Publisher: p.Manifest.Publisher, Key: p.Manifest.Key, Version: p.Manifest.Version, Digest: p.Digest}); e != nil {
+		return e
+	}
+	if c.readTrust.Load() != trust || ctx.Err() != nil {
+		return ErrPluginV5PackageSignature
+	}
+	if e = read(p); e != nil {
+		return e
+	}
+	if c.readTrust.Load() != trust || ctx.Err() != nil {
+		return ErrPluginV5PackageSignature
+	}
 	return nil
 }
 func (c *PluginV5PackageCatalog) VerifyAndRecord(raw, envelope []byte) (*PluginV5Package, error) {

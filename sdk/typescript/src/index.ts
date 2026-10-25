@@ -554,3 +554,6 @@ export type {
 
 export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
 export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";
+
+export { modelChat, knowledgeAnswer } from "./ai-knowledge-host.js";
+export type { ModelProfile, AIKnowledgeCapability, AIKnowledgeTransport, ModelChatRequest, PublicAnswerRequest, ModelChatAnswer, RAGEvidence, PublicRAGAnswer } from "./ai-knowledge-host.js";

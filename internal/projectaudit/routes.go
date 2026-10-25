@@ -666,6 +666,14 @@ func applyResourceGovernanceContract(route *RouteContract) {
 			}
 
 		}
+		if strings.HasPrefix(route.OperationCode, "http.knowledge.rag.") {
+			route.Auth = "jwt+current-user-session+current-origin-policy"
+			route.Scope = "public-collection+current-model-binding"
+			route.Ownership = "current-origin-and-collection"
+		}
+		if route.OperationCode == "http.knowledge.rag.public" || route.OperationCode == "http.knowledge.private.rag.answer" {
+			route.Audit = "required-command+outbox"
+		}
 	}
 
 	if strings.HasPrefix(route.OperationCode, "http.identity.integration.") {

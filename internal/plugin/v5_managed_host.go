@@ -14,7 +14,7 @@ import (
 
 func (h *V5ManagedRuntime) BindHost(code string, e V5HostEndpoint) error {
 	// This finite catalog is a contract allowlist, not a registration wildcard.
-	if (code != "community.thread.public.read" && code != V5KnowledgeSearch && code != V5KnowledgeSourceRead) || e.Feature == nil || e.FeatureID == "" || e.Authorize == nil || e.Call == nil {
+	if (code != "community.thread.public.read" && code != V5KnowledgeSearch && code != V5KnowledgeSourceRead && code != V5KnowledgeAnswer && code != V5AIChatLocal && code != V5AIChatRemote) || e.Feature == nil || e.FeatureID == "" || e.Authorize == nil || e.Call == nil {
 		return ErrV5CallTarget
 	}
 	if (code == V5KnowledgeSearch || code == V5KnowledgeSourceRead) && e.ResultStamp == nil {
@@ -100,6 +100,13 @@ func (h *V5ManagedRuntime) HostCall(ctx context.Context, credential string, enve
 		return nil, err
 	}
 	callCtx, cancel := context.WithDeadline(ctx, time.UnixMilli(call.DeadlineMS))
+	if invocation, ok := ctx.Value(v5InvocationKey{}).(v5Invocation); ok && invocation.instance == i.id && invocation.owner == i.owner {
+		invocation.require = func(c context.Context, code string) (PluginV5Consume, error) {
+			_, _, s, _, e := h.hostCallProof(c, credential, code, true)
+			return s, e
+		}
+		callCtx = context.WithValue(callCtx, v5InvocationKey{}, invocation)
+	}
 	defer func() {
 		if e := callCtx.Err(); e != nil {
 			out = nil

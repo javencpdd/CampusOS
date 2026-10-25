@@ -207,7 +207,20 @@ type openAIChatResponse struct {
 	SystemFingerprint *string `json:"system_fingerprint"`
 	ServiceTier       *string `json:"service_tier"`
 	Model             string  `json:"model"`
-	Choices           []struct {
+	// llama.cpp's bounded numeric performance metadata is informational only.
+	// It cannot add model content, modalities, tools or invocation authority.
+	Timings *struct {
+		CacheN              float64 `json:"cache_n"`
+		PromptN             float64 `json:"prompt_n"`
+		PromptMS            float64 `json:"prompt_ms"`
+		PromptPerTokenMS    float64 `json:"prompt_per_token_ms"`
+		PromptPerSecond     float64 `json:"prompt_per_second"`
+		PredictedN          float64 `json:"predicted_n"`
+		PredictedMS         float64 `json:"predicted_ms"`
+		PredictedPerTokenMS float64 `json:"predicted_per_token_ms"`
+		PredictedPerSecond  float64 `json:"predicted_per_second"`
+	} `json:"timings"`
+	Choices []struct {
 		Index    int             `json:"index"`
 		Logprobs json.RawMessage `json:"logprobs"`
 		Message  struct {

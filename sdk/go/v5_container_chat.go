@@ -54,11 +54,11 @@ type v5ContainerFrame struct {
 // A handler is synchronous, so arbitrary handler code still requires the
 // host's native timeout/kill boundary. No detached handler can return late data.
 func ServeV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHandler) error {
-	return serveV5ContainerChat(ctx, input, output, handler, nil)
+	return serveV5ContainerChat(ctx, input, output, handler, nil, nil)
 }
 
-func serveV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHandler, hostHandler V5ContainerChatHostHandler) error {
-	if ctx == nil || input == nil || output == nil || (handler == nil && hostHandler == nil) {
+func serveV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHandler, hostHandler V5ContainerChatHostHandler, sourceHandler V5ContainerSourceHostHandler) error {
+	if ctx == nil || input == nil || output == nil || (handler == nil && hostHandler == nil && sourceHandler == nil) {
 		return ErrV5ContainerChatProtocol
 	}
 	stop := context.AfterFunc(ctx, func() {
@@ -113,6 +113,28 @@ func serveV5ContainerChat(ctx context.Context, input io.ReadCloser, output io.Wr
 				err = ErrV5ContainerChatProtocol
 			}
 		case "Invoke":
+			fields, parseErr := v5ContainerObject(frame.Payload, nil, nil, v5ContainerMaxJSON)
+			if sourceHandler != nil && parseErr == nil && fields["binding_id"] != nil {
+				if !configured {
+					return ErrV5ContainerChatProtocol
+				}
+				call, e := v5ContainerSourceRequest(frame.Payload)
+				if e != nil {
+					return e
+				}
+				reply = v5ContainerSourceInvoke(ctx, configuration, call, func(c context.Context, cfg V5RuntimeConfiguration, q V5KnowledgeRequest) (V5KnowledgeResponse, error) {
+					count := 0
+					host := func(h context.Context, code string, p json.RawMessage) (json.RawMessage, error) {
+						count++
+						if count > 32 || h == nil || h.Err() != nil || c.Err() != nil {
+							return nil, ErrV5ContainerChatProtocol
+						}
+						return v5ContainerHostExchange(c, reader, bounded, output, code, p)
+					}
+					return sourceHandler(c, cfg, q, host)
+				})
+				break
+			}
 			var call V5ChatRequest
 			call, err = v5ContainerChatRequest(frame.Payload)
 			if !configured {

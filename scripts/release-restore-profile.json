@@ -1,0 +1,16 @@
+{
+  "schema": "campusos.release-restore-profile/v1",
+  "scope": "owned_native_official_v3_backup_apply_quarantine_review_two_epochs",
+  "threads": 10000,
+  "private_threads": 1,
+  "owners": 2,
+  "documents_per_owner": 2,
+  "signed_packages": 1,
+  "disabled_installations": 3,
+  "encrypted_secret_history_rows": 5,
+  "original_objects": 2,
+  "gomaxprocs": 2,
+  "max_restore_to_reviewed_health_seconds": 180,
+  "review_time": "automated trusted local operator exact-inventory review, not a human-review or production SLA",
+  "browser_docker_api_AI_private_index_or_full_release": "not_run"
+}

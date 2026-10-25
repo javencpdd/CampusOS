@@ -18,6 +18,9 @@ import (
 )
 
 type Handler struct {
+	publicRAG      *PublicLocalRAG
+	privateRAG     *PrivateLocalRAG
+	ragModel       ManagedRAGModel
 	privateSources *privateSourcePreflight
 	privateIndex   *PrivateIndexService
 	userVerifier   identityport.SessionVerifier
@@ -45,9 +48,9 @@ func (h *Handler) resolver(c *gin.Context) identityport.SessionPrincipalResolver
 func knowledgeError(c *gin.Context, e error) {
 	c.Header("Cache-Control", "private, no-store")
 	switch {
-	case errors.Is(e, ErrInvalid), errors.Is(e, ErrInvalidReference):
+	case errors.Is(e, ErrInvalid), errors.Is(e, ErrInvalidReference), errors.Is(e, ErrRAGStepUnsupported):
 		response.ErrorDescriptor(c, apperror.RequestInvalid, nil)
-	case errors.Is(e, ErrConflict), errors.Is(e, ErrSourceChanged), errors.Is(e, identityport.ErrPolicyFactsChanged):
+	case errors.Is(e, ErrConflict), errors.Is(e, ErrSourceChanged), errors.Is(e, identityport.ErrPolicyFactsChanged), errors.Is(e, ErrRAGConsent), errors.Is(e, ErrRAGChanged):
 		response.ErrorDescriptor(c, apperror.ResourceConflict, nil)
 	case errors.Is(e, ErrPrivateSourceMissing), errors.Is(e, ErrNotFound), errors.Is(e, ErrSourceUnavailable), errors.Is(e, ErrUnsupportedSource), errors.Is(e, ErrSourceTooLarge):
 		response.ErrorDescriptor(c, apperror.ResourceNotFound, nil)
@@ -55,7 +58,7 @@ func knowledgeError(c *gin.Context, e error) {
 		response.ErrorDescriptor(c, apperror.IdentityMFAStepUpRequired, nil)
 	case errors.Is(e, identityport.ErrUserSessionPrincipalUnavailable), errors.Is(e, identityport.ErrAdminSessionPrincipalUnavailable):
 		response.ErrorDescriptor(c, apperror.AuthInvalidToken, nil)
-	case errors.Is(e, ErrDenied):
+	case errors.Is(e, ErrDenied), errors.Is(e, ErrRAGDenied):
 		response.ErrorDescriptor(c, apperror.PermissionDenied, nil)
 	case errors.Is(e, ErrDisabled):
 		response.ErrorDescriptor(c, apperror.KnowledgeDisabled, nil)

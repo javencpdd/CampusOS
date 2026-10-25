@@ -1,0 +1,1216 @@
+{
+  "schema": "campusos.v12-14b-chinese-rag-golden/v1",
+  "version": "2026-10-24.1",
+  "frozen_before_execution": true,
+  "frozen_at": "2026-10-24T13:03:49+08:00",
+  "origin": "manually authored synthetic V12-10 campus FAQ; expectations copied before model runs; no personal records",
+  "base_source": "docs/项目计划书v1/项目计划v1.2/evidence/v12-10-chinese-golden.json",
+  "base_sha256": "4a751b59616be06b4501df3d256f497a3d15ef1b07b0ad0eb0d59e7a7455cfbb",
+  "scope": "extractive short factual Chinese FAQ from lexical evidence; actual query is explicit query field; no hidden rewrite; 100 public + same100 owner-private tests; not general semantic QA",
+  "thresholds": {
+    "public_factual_accuracy_min": 0.9,
+    "private_factual_accuracy_min": 0.9,
+    "public_extractive_faithfulness_min": 0.9,
+    "private_extractive_faithfulness_min": 0.9,
+    "citation_expected_source_accuracy_min": 1.0,
+    "no_evidence_refusal_accuracy_min": 1.0,
+    "cross_owner_leaks_max": 0,
+    "unsupported_model_steps_egress_max": 0,
+    "malformed_model_answers_max": 0
+  },
+  "normalization": "lowercase; remove Unicode whitespace/punctuation for span scoring only; no rewriting expected facts or removing arbitrary words",
+  "documents": [
+    {
+      "key": "library-weekend",
+      "kind": "discussion",
+      "title": "图书馆周末几点开放？",
+      "content": "校园服务公开资料。周末图书馆从上午九点开放到晚上十点，考试周延长至十一点。",
+      "expected_factual_span": "周末图书馆从上午九点开放到晚上十点，考试周延长至十一点。"
+    },
+    {
+      "key": "library-renew",
+      "kind": "article",
+      "title": "借阅图书怎样办理续借？",
+      "content": "校园服务公开资料。借阅图书到期前可在图书馆服务台续借一次，预约图书不可续借。",
+      "expected_factual_span": "借阅图书到期前可在图书馆服务台续借一次，预约图书不可续借。"
+    },
+    {
+      "key": "dorm-water",
+      "kind": "official",
+      "title": "宿舍热水供应时间是什么？",
+      "content": "校园服务公开资料。宿舍热水每日晚间六点至十一点供应，维修时会另行公告。",
+      "expected_factual_span": "宿舍热水每日晚间六点至十一点供应，维修时会另行公告。"
+    },
+    {
+      "key": "dorm-repair",
+      "kind": "discussion",
+      "title": "寝室门锁损坏向哪里报修？",
+      "content": "校园服务公开资料。寝室门锁损坏请提交维修工单，值班师傅收到工单后预约上门。",
+      "expected_factual_span": "寝室门锁损坏请提交维修工单，值班师傅收到工单后预约上门。"
+    },
+    {
+      "key": "card-lost",
+      "kind": "article",
+      "title": "校园卡丢失如何挂失？",
+      "content": "校园服务公开资料。校园卡丢失应先挂失，再到卡务中心补办；补办时携带本人证件。",
+      "expected_factual_span": "校园卡丢失应先挂失，再到卡务中心补办；补办时携带本人证件。"
+    },
+    {
+      "key": "card-refund",
+      "kind": "official",
+      "title": "毕业生怎样退还校园卡余额？",
+      "content": "校园服务公开资料。毕业生离校前可申请退还校园卡余额，退款转入本人银行卡。",
+      "expected_factual_span": "毕业生离校前可申请退还校园卡余额，退款转入本人银行卡。"
+    },
+    {
+      "key": "network-wifi",
+      "kind": "discussion",
+      "title": "校园无线网络怎样连接？",
+      "content": "校园服务公开资料。校园无线网络名称为CampusWiFi，连接后使用统一认证账号登录。",
+      "expected_factual_span": "校园无线网络名称为CampusWiFi，连接后使用统一认证账号登录。"
+    },
+    {
+      "key": "network-reset",
+      "kind": "article",
+      "title": "统一认证密码忘记怎么办？",
+      "content": "校园服务公开资料。统一认证密码忘记时在身份服务页面重置，无法验证请联系信息中心。",
+      "expected_factual_span": "统一认证密码忘记时在身份服务页面重置，无法验证请联系信息中心。"
+    },
+    {
+      "key": "clinic-hours",
+      "kind": "official",
+      "title": "校医院门诊什么时候接诊？",
+      "content": "校园服务公开资料。校医院门诊工作日上午八点至十二点、下午两点至五点接诊。",
+      "expected_factual_span": "校医院门诊工作日上午八点至十二点、下午两点至五点接诊。"
+    },
+    {
+      "key": "clinic-emergency",
+      "kind": "discussion",
+      "title": "夜间身体不适去哪里求助？",
+      "content": "校园服务公开资料。夜间身体不适可联系校医院急诊值班室，紧急情况联系当地急救服务。",
+      "expected_factual_span": "夜间身体不适可联系校医院急诊值班室，紧急情况联系当地急救服务。"
+    },
+    {
+      "key": "sport-booking",
+      "kind": "article",
+      "title": "体育馆羽毛球场如何预约？",
+      "content": "校园服务公开资料。体育馆羽毛球场须提前一天预约，预约后凭校园卡核验入场。",
+      "expected_factual_span": "体育馆羽毛球场须提前一天预约，预约后凭校园卡核验入场。"
+    },
+    {
+      "key": "sport-pool",
+      "kind": "official",
+      "title": "游泳馆入场需要哪些材料？",
+      "content": "校园服务公开资料。游泳馆入场需要有效游泳健康承诺及预约记录，请遵守现场安排。",
+      "expected_factual_span": "游泳馆入场需要有效游泳健康承诺及预约记录，请遵守现场安排。"
+    },
+    {
+      "key": "food-hours",
+      "kind": "discussion",
+      "title": "第二食堂早餐几点开始？",
+      "content": "校园服务公开资料。第二食堂早餐从六点半开始供应，节假日开放时间见食堂公告。",
+      "expected_factual_span": "第二食堂早餐从六点半开始供应，节假日开放时间见食堂公告。"
+    },
+    {
+      "key": "food-allergy",
+      "kind": "article",
+      "title": "食物过敏可以向谁咨询？",
+      "content": "校园服务公开资料。食物过敏同学可向食堂窗口咨询配料，选择适合自己的餐食。",
+      "expected_factual_span": "食物过敏同学可向食堂窗口咨询配料，选择适合自己的餐食。"
+    },
+    {
+      "key": "course-add",
+      "kind": "official",
+      "title": "选课后还能调整课程吗？",
+      "content": "校园服务公开资料。选课调整须在退补选窗口内完成，课程退选以教务系统确认结果为准。",
+      "expected_factual_span": "选课调整须在退补选窗口内完成，课程退选以教务系统确认结果为准。"
+    },
+    {
+      "key": "course-proof",
+      "kind": "discussion",
+      "title": "在读证明在哪里申请？",
+      "content": "校园服务公开资料。在读证明通过教务服务大厅申请，电子证明带有核验编码。",
+      "expected_factual_span": "在读证明通过教务服务大厅申请，电子证明带有核验编码。"
+    },
+    {
+      "key": "exam-makeup",
+      "kind": "article",
+      "title": "缓考申请什么时候提交？",
+      "content": "校园服务公开资料。因病无法参加考试需及时提交缓考申请，并附病假材料供审核。",
+      "expected_factual_span": "因病无法参加考试需及时提交缓考申请，并附病假材料供审核。"
+    },
+    {
+      "key": "exam-grade",
+      "kind": "official",
+      "title": "考试成绩有疑问如何复核？",
+      "content": "校园服务公开资料。考试成绩复核须在公布后的规定期限内申请，由学院组织试卷核查。",
+      "expected_factual_span": "考试成绩复核须在公布后的规定期限内申请，由学院组织试卷核查。"
+    },
+    {
+      "key": "finance-award",
+      "kind": "discussion",
+      "title": "奖学金申请材料有哪些？",
+      "content": "校园服务公开资料。奖学金申请材料包括申请表、成绩单及相应证明，按学院公告提交。",
+      "expected_factual_span": "奖学金申请材料包括申请表、成绩单及相应证明，按学院公告提交。"
+    },
+    {
+      "key": "finance-aid",
+      "kind": "article",
+      "title": "家庭经济困难认定怎样申请？",
+      "content": "校园服务公开资料。家庭经济困难认定通过学生事务系统申请，助学材料仅在本人授权范围处理。",
+      "expected_factual_span": "家庭经济困难认定通过学生事务系统申请，助学材料仅在本人授权范围处理。"
+    },
+    {
+      "key": "travel-bus",
+      "kind": "official",
+      "title": "校区班车周五何时发车？",
+      "content": "校园服务公开资料。校区班车周五十七点从东校区发车，具体站点以交通服务公告为准。",
+      "expected_factual_span": "校区班车周五十七点从东校区发车，具体站点以交通服务公告为准。"
+    },
+    {
+      "key": "travel-parking",
+      "kind": "discussion",
+      "title": "自行车停放有哪些要求？",
+      "content": "校园服务公开资料。自行车请在划线区域停放，停车不得占用消防通道及无障碍通道。",
+      "expected_factual_span": "自行车请在划线区域停放，停车不得占用消防通道及无障碍通道。"
+    },
+    {
+      "key": "career-fair",
+      "kind": "article",
+      "title": "校园招聘会如何报名？",
+      "content": "校园服务公开资料。校园招聘会在就业信息平台报名，用人单位名单可在活动详情查看。",
+      "expected_factual_span": "校园招聘会在就业信息平台报名，用人单位名单可在活动详情查看。"
+    },
+    {
+      "key": "career-contract",
+      "kind": "official",
+      "title": "就业协议遗失如何处理？",
+      "content": "校园服务公开资料。就业协议遗失需到就业指导中心申请补办，并说明遗失经过。",
+      "expected_factual_span": "就业协议遗失需到就业指导中心申请补办，并说明遗失经过。"
+    },
+    {
+      "key": "club-register",
+      "kind": "discussion",
+      "title": "学生社团新成员如何登记？",
+      "content": "校园服务公开资料。学生社团新成员在社团活动平台登记，负责人核验后加入成员名册。",
+      "expected_factual_span": "学生社团新成员在社团活动平台登记，负责人核验后加入成员名册。"
+    },
+    {
+      "key": "club-room",
+      "kind": "article",
+      "title": "社团活动教室怎样借用？",
+      "content": "校园服务公开资料。社团活动教室借用须提交活动时间和人数，由场地管理部门审批。",
+      "expected_factual_span": "社团活动教室借用须提交活动时间和人数，由场地管理部门审批。"
+    },
+    {
+      "key": "mail-parcel",
+      "kind": "official",
+      "title": "校内快递包裹在哪里领取？",
+      "content": "校园服务公开资料。校内快递包裹在综合驿站领取，领取时核对取件码，不公开他人信息。",
+      "expected_factual_span": "校内快递包裹在综合驿站领取，领取时核对取件码，不公开他人信息。"
+    },
+    {
+      "key": "mail-address",
+      "kind": "discussion",
+      "title": "国际交流材料寄送地址是什么？",
+      "content": "校园服务公开资料。国际交流材料寄送至国际合作处收件窗口，寄出前确认最新联系人。",
+      "expected_factual_span": "国际交流材料寄送至国际合作处收件窗口，寄出前确认最新联系人。"
+    },
+    {
+      "key": "calendar-term",
+      "kind": "article",
+      "title": "秋季学期教学周从何时计算？",
+      "content": "校园服务公开资料。秋季学期教学周从校历标注的第一周开始计算，节假日安排以校历为准。",
+      "expected_factual_span": "秋季学期教学周从校历标注的第一周开始计算，节假日安排以校历为准。"
+    },
+    {
+      "key": "service-access",
+      "kind": "official",
+      "title": "无障碍坡道故障如何反馈？",
+      "content": "校园服务公开资料。无障碍坡道故障可向后勤服务台反馈，维修期间会设置临时通行指引。",
+      "expected_factual_span": "无障碍坡道故障可向后勤服务台反馈，维修期间会设置临时通行指引。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "q01-1",
+      "question": "图书馆周末几点开放？",
+      "query": "图书馆周末几点开放？",
+      "relevant_source_keys": [
+        "library-weekend"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q01-2",
+      "question": "图书馆周末几点开放？",
+      "query": "图书馆 周末",
+      "relevant_source_keys": [
+        "library-weekend"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q01-3",
+      "question": "图书馆周末几点开放？",
+      "query": "图书馆 九点",
+      "relevant_source_keys": [
+        "library-weekend"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q02-1",
+      "question": "借阅图书怎样办理续借？",
+      "query": "借阅图书怎样办理续借？",
+      "relevant_source_keys": [
+        "library-renew"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q02-2",
+      "question": "借阅图书怎样办理续借？",
+      "query": "图书 续借",
+      "relevant_source_keys": [
+        "library-renew"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q02-3",
+      "question": "借阅图书怎样办理续借？",
+      "query": "借阅 到期",
+      "relevant_source_keys": [
+        "library-renew"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q03-1",
+      "question": "宿舍热水供应时间是什么？",
+      "query": "宿舍热水供应时间是什么？",
+      "relevant_source_keys": [
+        "dorm-water"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q03-2",
+      "question": "宿舍热水供应时间是什么？",
+      "query": "宿舍 热水",
+      "relevant_source_keys": [
+        "dorm-water"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q03-3",
+      "question": "宿舍热水供应时间是什么？",
+      "query": "热水 晚间",
+      "relevant_source_keys": [
+        "dorm-water"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q04-1",
+      "question": "寝室门锁损坏向哪里报修？",
+      "query": "寝室门锁损坏向哪里报修？",
+      "relevant_source_keys": [
+        "dorm-repair"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q04-2",
+      "question": "寝室门锁损坏向哪里报修？",
+      "query": "寝室 门锁",
+      "relevant_source_keys": [
+        "dorm-repair"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q04-3",
+      "question": "寝室门锁损坏向哪里报修？",
+      "query": "维修 工单",
+      "relevant_source_keys": [
+        "dorm-repair"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q05-1",
+      "question": "校园卡丢失如何挂失？",
+      "query": "校园卡丢失如何挂失？",
+      "relevant_source_keys": [
+        "card-lost"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q05-2",
+      "question": "校园卡丢失如何挂失？",
+      "query": "校园卡 挂失",
+      "relevant_source_keys": [
+        "card-lost"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q05-3",
+      "question": "校园卡丢失如何挂失？",
+      "query": "丢失 补办",
+      "relevant_source_keys": [
+        "card-lost"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q06-1",
+      "question": "毕业生怎样退还校园卡余额？",
+      "query": "毕业生怎样退还校园卡余额？",
+      "relevant_source_keys": [
+        "card-refund"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q06-2",
+      "question": "毕业生怎样退还校园卡余额？",
+      "query": "校园卡 余额",
+      "relevant_source_keys": [
+        "card-refund"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q06-3",
+      "question": "毕业生怎样退还校园卡余额？",
+      "query": "毕业生 退还",
+      "relevant_source_keys": [
+        "card-refund"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q07-1",
+      "question": "校园无线网络怎样连接？",
+      "query": "校园无线网络怎样连接？",
+      "relevant_source_keys": [
+        "network-wifi"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q07-2",
+      "question": "校园无线网络怎样连接？",
+      "query": "无线 网络",
+      "relevant_source_keys": [
+        "network-wifi"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q07-3",
+      "question": "校园无线网络怎样连接？",
+      "query": "WiFi 认证",
+      "relevant_source_keys": [
+        "network-wifi"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q08-1",
+      "question": "统一认证密码忘记怎么办？",
+      "query": "统一认证密码忘记怎么办？",
+      "relevant_source_keys": [
+        "network-reset"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q08-2",
+      "question": "统一认证密码忘记怎么办？",
+      "query": "认证 密码",
+      "relevant_source_keys": [
+        "network-reset"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q08-3",
+      "question": "统一认证密码忘记怎么办？",
+      "query": "密码 重置",
+      "relevant_source_keys": [
+        "network-reset"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q09-1",
+      "question": "校医院门诊什么时候接诊？",
+      "query": "校医院门诊什么时候接诊？",
+      "relevant_source_keys": [
+        "clinic-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q09-2",
+      "question": "校医院门诊什么时候接诊？",
+      "query": "校医院 门诊",
+      "relevant_source_keys": [
+        "clinic-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q09-3",
+      "question": "校医院门诊什么时候接诊？",
+      "query": "门诊 工作日",
+      "relevant_source_keys": [
+        "clinic-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q10-1",
+      "question": "夜间身体不适去哪里求助？",
+      "query": "夜间身体不适去哪里求助？",
+      "relevant_source_keys": [
+        "clinic-emergency"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q10-2",
+      "question": "夜间身体不适去哪里求助？",
+      "query": "夜间 身体",
+      "relevant_source_keys": [
+        "clinic-emergency"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q10-3",
+      "question": "夜间身体不适去哪里求助？",
+      "query": "急诊 值班",
+      "relevant_source_keys": [
+        "clinic-emergency"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q11-1",
+      "question": "体育馆羽毛球场如何预约？",
+      "query": "体育馆羽毛球场如何预约？",
+      "relevant_source_keys": [
+        "sport-booking"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q11-2",
+      "question": "体育馆羽毛球场如何预约？",
+      "query": "体育馆 羽毛球",
+      "relevant_source_keys": [
+        "sport-booking"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q11-3",
+      "question": "体育馆羽毛球场如何预约？",
+      "query": "羽毛球 预约",
+      "relevant_source_keys": [
+        "sport-booking"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q12-1",
+      "question": "游泳馆入场需要哪些材料？",
+      "query": "游泳馆入场需要哪些材料？",
+      "relevant_source_keys": [
+        "sport-pool"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q12-2",
+      "question": "游泳馆入场需要哪些材料？",
+      "query": "游泳馆 入场",
+      "relevant_source_keys": [
+        "sport-pool"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q12-3",
+      "question": "游泳馆入场需要哪些材料？",
+      "query": "游泳 健康",
+      "relevant_source_keys": [
+        "sport-pool"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q13-1",
+      "question": "第二食堂早餐几点开始？",
+      "query": "第二食堂早餐几点开始？",
+      "relevant_source_keys": [
+        "food-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q13-2",
+      "question": "第二食堂早餐几点开始？",
+      "query": "食堂 早餐",
+      "relevant_source_keys": [
+        "food-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q13-3",
+      "question": "第二食堂早餐几点开始？",
+      "query": "第二食堂 六点",
+      "relevant_source_keys": [
+        "food-hours"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q14-1",
+      "question": "食物过敏可以向谁咨询？",
+      "query": "食物过敏可以向谁咨询？",
+      "relevant_source_keys": [
+        "food-allergy"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q14-2",
+      "question": "食物过敏可以向谁咨询？",
+      "query": "食物 过敏",
+      "relevant_source_keys": [
+        "food-allergy"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q14-3",
+      "question": "食物过敏可以向谁咨询？",
+      "query": "过敏 窗口",
+      "relevant_source_keys": [
+        "food-allergy"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q15-1",
+      "question": "选课后还能调整课程吗？",
+      "query": "选课后还能调整课程吗？",
+      "relevant_source_keys": [
+        "course-add"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q15-2",
+      "question": "选课后还能调整课程吗？",
+      "query": "选课 调整",
+      "relevant_source_keys": [
+        "course-add"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q15-3",
+      "question": "选课后还能调整课程吗？",
+      "query": "课程 退选",
+      "relevant_source_keys": [
+        "course-add"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q16-1",
+      "question": "在读证明在哪里申请？",
+      "query": "在读证明在哪里申请？",
+      "relevant_source_keys": [
+        "course-proof"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q16-2",
+      "question": "在读证明在哪里申请？",
+      "query": "在读 证明",
+      "relevant_source_keys": [
+        "course-proof"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q16-3",
+      "question": "在读证明在哪里申请？",
+      "query": "证明 教务",
+      "relevant_source_keys": [
+        "course-proof"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q17-1",
+      "question": "缓考申请什么时候提交？",
+      "query": "缓考申请什么时候提交？",
+      "relevant_source_keys": [
+        "exam-makeup"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q17-2",
+      "question": "缓考申请什么时候提交？",
+      "query": "缓考 申请",
+      "relevant_source_keys": [
+        "exam-makeup"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q17-3",
+      "question": "缓考申请什么时候提交？",
+      "query": "考试 病假",
+      "relevant_source_keys": [
+        "exam-makeup"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q18-1",
+      "question": "考试成绩有疑问如何复核？",
+      "query": "考试成绩有疑问如何复核？",
+      "relevant_source_keys": [
+        "exam-grade"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q18-2",
+      "question": "考试成绩有疑问如何复核？",
+      "query": "成绩 复核",
+      "relevant_source_keys": [
+        "exam-grade"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q18-3",
+      "question": "考试成绩有疑问如何复核？",
+      "query": "试卷 申请",
+      "relevant_source_keys": [
+        "exam-grade"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q19-1",
+      "question": "奖学金申请材料有哪些？",
+      "query": "奖学金申请材料有哪些？",
+      "relevant_source_keys": [
+        "finance-award"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q19-2",
+      "question": "奖学金申请材料有哪些？",
+      "query": "奖学金 材料",
+      "relevant_source_keys": [
+        "finance-award"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q19-3",
+      "question": "奖学金申请材料有哪些？",
+      "query": "奖学金 成绩单",
+      "relevant_source_keys": [
+        "finance-award"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q20-1",
+      "question": "家庭经济困难认定怎样申请？",
+      "query": "家庭经济困难认定怎样申请？",
+      "relevant_source_keys": [
+        "finance-aid"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q20-2",
+      "question": "家庭经济困难认定怎样申请？",
+      "query": "困难 认定",
+      "relevant_source_keys": [
+        "finance-aid"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q20-3",
+      "question": "家庭经济困难认定怎样申请？",
+      "query": "助学 家庭",
+      "relevant_source_keys": [
+        "finance-aid"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q21-1",
+      "question": "校区班车周五何时发车？",
+      "query": "校区班车周五何时发车？",
+      "relevant_source_keys": [
+        "travel-bus"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q21-2",
+      "question": "校区班车周五何时发车？",
+      "query": "班车 周五",
+      "relevant_source_keys": [
+        "travel-bus"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q21-3",
+      "question": "校区班车周五何时发车？",
+      "query": "班车 东校区",
+      "relevant_source_keys": [
+        "travel-bus"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q22-1",
+      "question": "自行车停放有哪些要求？",
+      "query": "自行车停放有哪些要求？",
+      "relevant_source_keys": [
+        "travel-parking"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q22-2",
+      "question": "自行车停放有哪些要求？",
+      "query": "自行车 停放",
+      "relevant_source_keys": [
+        "travel-parking"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q22-3",
+      "question": "自行车停放有哪些要求？",
+      "query": "停车 通道",
+      "relevant_source_keys": [
+        "travel-parking"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q23-1",
+      "question": "校园招聘会如何报名？",
+      "query": "校园招聘会如何报名？",
+      "relevant_source_keys": [
+        "career-fair"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q23-2",
+      "question": "校园招聘会如何报名？",
+      "query": "招聘会 报名",
+      "relevant_source_keys": [
+        "career-fair"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q23-3",
+      "question": "校园招聘会如何报名？",
+      "query": "就业 单位",
+      "relevant_source_keys": [
+        "career-fair"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q24-1",
+      "question": "就业协议遗失如何处理？",
+      "query": "就业协议遗失如何处理？",
+      "relevant_source_keys": [
+        "career-contract"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q24-2",
+      "question": "就业协议遗失如何处理？",
+      "query": "就业 协议",
+      "relevant_source_keys": [
+        "career-contract"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q24-3",
+      "question": "就业协议遗失如何处理？",
+      "query": "协议 遗失",
+      "relevant_source_keys": [
+        "career-contract"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q25-1",
+      "question": "学生社团新成员如何登记？",
+      "query": "学生社团新成员如何登记？",
+      "relevant_source_keys": [
+        "club-register"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q25-2",
+      "question": "学生社团新成员如何登记？",
+      "query": "社团 新成员",
+      "relevant_source_keys": [
+        "club-register"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q25-3",
+      "question": "学生社团新成员如何登记？",
+      "query": "社团 登记",
+      "relevant_source_keys": [
+        "club-register"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q26-1",
+      "question": "社团活动教室怎样借用？",
+      "query": "社团活动教室怎样借用？",
+      "relevant_source_keys": [
+        "club-room"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q26-2",
+      "question": "社团活动教室怎样借用？",
+      "query": "社团 教室",
+      "relevant_source_keys": [
+        "club-room"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q26-3",
+      "question": "社团活动教室怎样借用？",
+      "query": "活动 借用",
+      "relevant_source_keys": [
+        "club-room"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q27-1",
+      "question": "校内快递包裹在哪里领取？",
+      "query": "校内快递包裹在哪里领取？",
+      "relevant_source_keys": [
+        "mail-parcel"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q27-2",
+      "question": "校内快递包裹在哪里领取？",
+      "query": "快递 包裹",
+      "relevant_source_keys": [
+        "mail-parcel"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q27-3",
+      "question": "校内快递包裹在哪里领取？",
+      "query": "包裹 驿站",
+      "relevant_source_keys": [
+        "mail-parcel"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q28-1",
+      "question": "国际交流材料寄送地址是什么？",
+      "query": "国际交流材料寄送地址是什么？",
+      "relevant_source_keys": [
+        "mail-address"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q28-2",
+      "question": "国际交流材料寄送地址是什么？",
+      "query": "交流 寄送",
+      "relevant_source_keys": [
+        "mail-address"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q28-3",
+      "question": "国际交流材料寄送地址是什么？",
+      "query": "材料 国际",
+      "relevant_source_keys": [
+        "mail-address"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q29-1",
+      "question": "秋季学期教学周从何时计算？",
+      "query": "秋季学期教学周从何时计算？",
+      "relevant_source_keys": [
+        "calendar-term"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q29-2",
+      "question": "秋季学期教学周从何时计算？",
+      "query": "学期 教学周",
+      "relevant_source_keys": [
+        "calendar-term"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q29-3",
+      "question": "秋季学期教学周从何时计算？",
+      "query": "秋季 校历",
+      "relevant_source_keys": [
+        "calendar-term"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q30-1",
+      "question": "无障碍坡道故障如何反馈？",
+      "query": "无障碍坡道故障如何反馈？",
+      "relevant_source_keys": [
+        "service-access"
+      ],
+      "expect_empty": false,
+      "query_style": "literal_faq_title"
+    },
+    {
+      "id": "q30-2",
+      "question": "无障碍坡道故障如何反馈？",
+      "query": "无障碍 坡道",
+      "relevant_source_keys": [
+        "service-access"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "q30-3",
+      "question": "无障碍坡道故障如何反馈？",
+      "query": "坡道 反馈",
+      "relevant_source_keys": [
+        "service-access"
+      ],
+      "expect_empty": false,
+      "query_style": "user_entered_keywords"
+    },
+    {
+      "id": "empty01",
+      "question": "月球 校区班车",
+      "query": "月球 校区班车",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty02",
+      "question": "校园卡 宇宙航行",
+      "query": "校园卡 宇宙航行",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty03",
+      "question": "HTTP_PRIVATE_GOLDEN_SECRET",
+      "query": "HTTP_PRIVATE_GOLDEN_SECRET",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty04",
+      "question": "保密 试卷答案",
+      "query": "保密 试卷答案",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty05",
+      "question": "不存在的紫色咖啡研究所",
+      "query": "不存在的紫色咖啡研究所",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty06",
+      "question": "毕业生 校园卡 密码重置",
+      "query": "毕业生 校园卡 密码重置",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty07",
+      "question": "游泳馆 快递包裹",
+      "query": "游泳馆 快递包裹",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty08",
+      "question": "奖学金 羽毛球场",
+      "query": "奖学金 羽毛球场",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty09",
+      "question": "教务系统 魔法咒语",
+      "query": "教务系统 魔法咒语",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    },
+    {
+      "id": "empty10",
+      "question": "撤回的公开资料唯一标记",
+      "query": "撤回的公开资料唯一标记",
+      "relevant_source_keys": [],
+      "expect_empty": true,
+      "query_style": "no_evidence_or_cross_topic"
+    }
+  ]
+}

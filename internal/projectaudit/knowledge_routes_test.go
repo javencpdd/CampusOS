@@ -108,7 +108,7 @@ func TestKnowledgeRoutesCurrentAuthorityAndClosedDTOs(t *testing.T) {
 			}
 		} else if strings.HasPrefix(r.OperationCode, "http.knowledge.private.") {
 			expectedAudit := "none"
-			if r.OperationCode == "http.knowledge.private.select" || r.OperationCode == "http.knowledge.private.withdraw" || r.OperationCode == "http.knowledge.private.retry" {
+			if r.OperationCode == "http.knowledge.private.select" || r.OperationCode == "http.knowledge.private.withdraw" || r.OperationCode == "http.knowledge.private.retry" || r.OperationCode == "http.knowledge.private.rag.answer" {
 				expectedAudit = "required-command+outbox"
 			}
 			expectedAuth, expectedScope, expectedOwner := "jwt+current-user-session+source-owner", "self+current-source-version", "current-source-owner"
@@ -120,11 +120,15 @@ func TestKnowledgeRoutesCurrentAuthorityAndClosedDTOs(t *testing.T) {
 			if r.Audience != "authenticated" || r.Auth != expectedAuth || r.Scope != expectedScope || r.Ownership != expectedOwner || r.PermissionCode != "" || r.Permission != "" || r.Audit != expectedAudit {
 				t.Fatal("private preflight must recheck the current User and document owner without granting a mutation", r)
 			}
+		} else if strings.HasPrefix(r.OperationCode, "http.knowledge.rag.") {
+			if r.Audience != "authenticated" || r.Auth != "jwt+current-user-session+current-origin-policy" || r.Scope != "public-collection+current-model-binding" {
+				t.Fatal("RAG current User proof missing", r)
+			}
 		} else if r.Auth != "none+current-origin-policy" || r.Scope != "public-collection+current-origin" {
 			t.Fatal("public source must recheck origin", r)
 		}
 	}
-	if count != 27 || writes != 9 {
+	if count != 32 || writes != 9 {
 		t.Fatal("Knowledge route inventory incomplete", count, writes)
 	}
 }

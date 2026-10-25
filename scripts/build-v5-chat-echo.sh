@@ -68,11 +68,13 @@ require github.com/campusos/CampusOS/sdk/go v0.0.0
 replace github.com/campusos/CampusOS/sdk/go => ../sdk
 TEXT
 
+author_go_cache="${CAMPUSOS_AUTHOR_GOCACHE:-$out/go-cache}"
+
 author_go() {
   env -i PATH="$PATH" HOME="$out/home" TMPDIR="$out/tmp" \
     GOENV=off GOWORK=off GOFLAGS= GOTOOLCHAIN=local \
     GOPROXY=off GOSUMDB=off GOPATH="$out/gopath" GOMODCACHE="$out/gomodcache" \
-    GOCACHE="$out/go-cache" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    GOCACHE="$author_go_cache" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     "$author_go_binary" "$@"
 }
 

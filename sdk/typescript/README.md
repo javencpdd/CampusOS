@@ -113,3 +113,7 @@ publication order. See the [independent identity contract](../../docs/api/v1.2�
 Run make v12-g1-exit-check for the DTO/error/evidence matrix or
 make contracts-check for every target checker. These declarations do not
 activate v5 in the current runtime.
+
+## v1.2 AI / Knowledge 双向接入
+
+更新时间：2026-10-25（Asia/Shanghai）。新增精确本机/远程Profile模型与公开引用问答 DTO/helper；模型调用要求当前User、管理员独立批准及用户同意，并保留预算与必需结算。来源贡献的公开归属由宿主逐项重核。Go SDK另提供双贡献点的有界Container管道；消费许可与贡献注册分别处理。详见[接入合同](../../docs/api/v1.2插件AI与Knowledge双向接入合同.md)及[独立作者包](../../plugins/campusos.ai-knowledge/README.md)。

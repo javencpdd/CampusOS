@@ -102,7 +102,7 @@ func (f *V5Factory) Prepare(ctx context.Context, s plugin.V5RuntimeSpec, b plugi
 	stopPreparation := context.AfterFunc(f.life, cancelPreparation)
 	defer stopPreparation()
 	r := s.Effective
-	if ctx.Err() != nil || b == nil || s.Program.Digest() != "" || s.Container.PackageDigest() == "" || s.Container.Coordinate() != s.Coordinate || s.Generation < 1 || s.ExpiresAtMS <= time.Now().UnixMilli() || r.MemoryMB < 1 || r.MemoryMB > 256 || r.CPUMillis < 1 || r.CPUMillis > 1000 || r.MaxConcurrency != 1 || r.TimeoutMS < 1 || r.TimeoutMS > 5000 || r.StorageBytes < 1 || r.StorageBytes > 1<<20 || len(r.NetworkTargets) != 0 || len(s.Configuration) > 65536 || !json.Valid(s.Configuration) {
+	if ctx.Err() != nil || b == nil || s.Program.Digest() != "" || s.Container.PackageDigest() == "" || s.Container.Coordinate() != s.Coordinate || s.Generation < 1 || s.ExpiresAtMS <= time.Now().UnixMilli() || r.MemoryMB < 1 || r.MemoryMB > 256 || r.CPUMillis < 1 || r.CPUMillis > 1000 || r.MaxConcurrency != 1 || r.TimeoutMS < 1 || r.TimeoutMS > plugin.V5ModelMaxTimeoutMS || r.StorageBytes < 1 || r.StorageBytes > 1<<20 || len(r.NetworkTargets) != 0 || len(s.Configuration) > 65536 || !json.Valid(s.Configuration) {
 		return nil, plugin.ErrV5RuntimeMissing
 	}
 	image, err := ResolveLocalImage(ctx, s.Container)

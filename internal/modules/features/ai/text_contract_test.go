@@ -166,3 +166,16 @@ func TestTextContractDefinitionCopiesDoNotChangeProvider(t *testing.T) {
 		t.Fatal("mutable declaration escaped")
 	}
 }
+
+func TestLlamaNumericTimingMetadataDoesNotWidenTextContract(t *testing.T) {
+	base := `{"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"timings":`
+	var out openAIChatResponse
+	if err := decodeTextResponse([]byte(base+`{"cache_n":0,"prompt_n":191,"prompt_ms":4164.5,"prompt_per_token_ms":21.8,"prompt_per_second":45.8,"predicted_n":22,"predicted_ms":8455.5,"predicted_per_token_ms":402.6,"predicted_per_second":2.48}}`), &out); err != nil || out.Timings == nil || out.Choices[0].Message.Content != "ok" {
+		t.Fatal("numeric runtime metadata", err)
+	}
+	for _, raw := range []string{`{"tools":["fetch"]}`, `{"prompt_ms":"unsafe"}`, `{"prompt_n":1,"prompt_n":2}`} {
+		if decodeTextResponse([]byte(base+raw+`}`), &out) == nil {
+			t.Fatal("unrecognized metadata accepted")
+		}
+	}
+}

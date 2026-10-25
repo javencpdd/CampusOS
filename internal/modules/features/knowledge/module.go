@@ -22,33 +22,50 @@ const (
 )
 
 type Module struct {
-	privateReader     PrivateDocumentMetadataReader
-	privateFullReader PrivateSourceReader
-	privateVault      *PrivateVault
-	privateIndex      *PrivateIndexService
-	meter             observability.Meter
-	app               *platformmodule.AppContext
-	collections       *CollectionService
-	handler           *Handler
-	enabled           func() bool
-	service           *PublicSourceService
-	articles          *PublicArticleSourceService
-	indexRequests     *indexRequestConsumer
-	backfill          *indexBackfiller
-	indexer           *IndexService
-	sourceEvents      *indexSourceConsumer
-	retrieval         *RetrievalService
+	pluginSourceAdapter PublicPluginSourceAdapter
+	pluginSources       *pluginSourceService
+	managedRAGModel     ManagedRAGModel
+	publicManagedRAG    *PublicLocalRAG
+	privateManagedRAG   *PrivateLocalRAG
+	ragModel            LocalAnswerModel
+	rag                 *PublicLocalRAG
+	privateRAGModel     PrivateLocalAnswerModel
+	privateRAG          *PrivateLocalRAG
+	privateReader       PrivateDocumentMetadataReader
+	privateFullReader   PrivateSourceReader
+	privateVault        *PrivateVault
+	privateIndex        *PrivateIndexService
+	meter               observability.Meter
+	app                 *platformmodule.AppContext
+	collections         *CollectionService
+	handler             *Handler
+	enabled             func() bool
+	service             *PublicSourceService
+	articles            *PublicArticleSourceService
+	indexRequests       *indexRequestConsumer
+	backfill            *indexBackfiller
+	indexer             *IndexService
+	sourceEvents        *indexSourceConsumer
+	retrieval           *RetrievalService
 }
 
-func NewModule(enabled func() bool) *Module { return &Module{enabled: enabled} }
+func NewModule(enabled func() bool) *Module                         { return &Module{enabled: enabled} }
+func (m *Module) ConfigurePluginSource(a PublicPluginSourceAdapter) { m.pluginSourceAdapter = a }
 func NewModuleWithPrivateDocuments(enabled func() bool, reader PrivateDocumentMetadataReader) *Module {
 	return &Module{enabled: enabled, privateReader: reader}
 }
 func (m *Module) ConfigurePrivateIndex(reader PrivateSourceReader, vault *PrivateVault) {
 	m.privateFullReader, m.privateVault = reader, vault
 }
-func (m *Module) PrivateIndex() *PrivateIndexService { return m.privateIndex }
-func (m *Module) ID() string                         { return ModuleID }
+func (m *Module) ConfigurePublicLocalRAG(model LocalAnswerModel)         { m.ragModel = model }
+func (m *Module) PublicLocalRAG() *PublicLocalRAG                        { return m.rag }
+func (m *Module) ConfigurePrivateLocalRAG(model PrivateLocalAnswerModel) { m.privateRAGModel = model }
+func (m *Module) PrivateLocalRAG() *PrivateLocalRAG                      { return m.privateRAG }
+func (m *Module) PrivateIndex() *PrivateIndexService                     { return m.privateIndex }
+func (m *Module) ConfigureManagedRAG(model ManagedRAGModel)              { m.managedRAGModel = model }
+func (m *Module) PublicRAG() *PublicLocalRAG                             { return m.publicManagedRAG }
+func (m *Module) PrivateRAG() *PrivateLocalRAG                           { return m.privateManagedRAG }
+func (m *Module) ID() string                                             { return ModuleID }
 func (m *Module) Dependencies() []string {
 	return []string{"core.community", "core.identity", reliability.ModuleID, "core.feature-registry", richtext.ModuleID, "feature.personal-documents"}
 }
@@ -120,6 +137,16 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		}
 		return nil
 	})
+	reliable.RegisterConsumer("knowledge.private.rag.approved.v1", "knowledge.private.rag.metadata", func(_ context.Context, event reliability.Event) error {
+		if identityport.ValidateClosedHTTPObject(event.Payload, []string{"id", "step", "profile"}, 1024) != nil {
+			return ErrInvalid
+		}
+		var payload map[string]string
+		if json.Unmarshal(event.Payload, &payload) != nil || !opaque("ar_", payload["id"]) || payload["step"] != "chat" || (payload["profile"] != "local-chat" && payload["profile"] != "remote-chat") {
+			return ErrInvalid
+		}
+		return nil
+	})
 	m.sourceEvents = sourceConsumer
 	m.indexRequests = consumer
 	m.backfill = backfill
@@ -157,8 +184,23 @@ func (m *Module) Start(ctx context.Context) error {
 		}
 	}
 	if m.collections != nil && m.handler != nil {
+		if m.pluginSources != nil {
+			m.pluginSources.start()
+		}
+		if m.publicManagedRAG != nil {
+			m.publicManagedRAG.start()
+		}
+		if m.privateManagedRAG != nil {
+			m.privateManagedRAG.start()
+		}
+		if m.rag != nil {
+			m.rag.start()
+		}
 		if m.privateIndex != nil {
 			m.privateIndex.start(ctx)
+		}
+		if m.privateRAG != nil {
+			m.privateRAG.start()
 		}
 		if m.handler.privateSources != nil {
 			m.handler.privateSources.stopped.Store(false)
@@ -230,7 +272,17 @@ func (m *Module) Start(ctx context.Context) error {
 	if e = m.app.Provide(PortPublicRetrieval, PublicRetrieval(m.retrieval)); e != nil {
 		return e
 	}
+	if !nilSourceAdapter(m.ragModel) {
+		m.rag = newPublicLocalRAG(m.retrieval, service, m.indexer, m.ragModel)
+		if e = m.app.Provide(PortPublicLocalRAG, m.rag); e != nil {
+			return e
+		}
+	}
 	if e = m.app.Provide(PortCollections, service); e != nil {
+		return e
+	}
+	m.pluginSources = newPluginSourceService(service, m.pluginSourceAdapter)
+	if e = m.app.Provide(PortPluginPublicSource, PluginPublicSource(m.pluginSources)); e != nil {
 		return e
 	}
 	m.indexRequests.resume()
@@ -239,6 +291,13 @@ func (m *Module) Start(ctx context.Context) error {
 	m.handler.privateSources = &privateSourcePreflight{reader: m.privateReader, enabled: m.enabled}
 	m.handler.userVerifier, m.handler.userStrength = verifier, strength
 	m.handler.machine = machine
+	if !nilSourceAdapter(m.managedRAGModel) {
+		m.publicManagedRAG = newPublicManagedRAG(m.retrieval, service, m.indexer, m.managedRAGModel)
+		m.handler.publicRAG, m.handler.ragModel = m.publicManagedRAG, m.managedRAGModel
+		if e = m.app.Provide(PortPublicRAG, m.publicManagedRAG); e != nil {
+			return e
+		}
+	}
 	if pg, ok := repo.(*PgRepository); ok && !nilSourceAdapter(m.privateFullReader) && m.privateVault != nil {
 		var schemaReady bool
 		_ = pg.pool.QueryRow(ctx, `SELECT to_regclass('knowledge_private_sources') IS NOT NULL AND to_regclass('knowledge_private_tasks') IS NOT NULL`).Scan(&schemaReady)
@@ -246,6 +305,19 @@ func (m *Module) Start(ctx context.Context) error {
 			m.privateIndex = &PrivateIndexService{repo: pg, vault: m.privateVault, reader: m.privateFullReader, reliable: reliable, enabled: m.enabled}
 			m.handler.privateIndex = m.privateIndex
 			m.privateIndex.start(ctx)
+			if !nilSourceAdapter(m.managedRAGModel) {
+				m.privateManagedRAG = newPrivateManagedRAG(m.privateIndex, m.managedRAGModel)
+				m.handler.privateRAG = m.privateManagedRAG
+				if e = m.app.Provide(PortPrivateRAG, m.privateManagedRAG); e != nil {
+					return e
+				}
+			}
+			if !nilSourceAdapter(m.privateRAGModel) {
+				m.privateRAG = newPrivateLocalRAG(m.privateIndex, m.privateRAGModel)
+				if e = m.app.Provide(PortPrivateLocalRAG, m.privateRAG); e != nil {
+					return e
+				}
+			}
 		}
 	}
 	if e = m.backfill.start(ctx); e != nil {
@@ -258,6 +330,21 @@ func (m *Module) Collections() *CollectionService { return m.collections }
 func (m *Module) Indexer() *IndexService          { return m.indexer }
 func (m *Module) Retrieval() PublicRetrieval      { return m.retrieval }
 func (m *Module) Stop(ctx context.Context) error {
+	if m.pluginSources != nil {
+		m.pluginSources.stop()
+	}
+	if m.privateManagedRAG != nil {
+		m.privateManagedRAG.stop()
+	}
+	if m.publicManagedRAG != nil {
+		m.publicManagedRAG.stop()
+	}
+	if m.privateRAG != nil {
+		m.privateRAG.stop()
+	}
+	if m.rag != nil {
+		m.rag.stop()
+	}
 	if m.privateIndex != nil {
 		m.privateIndex.stop()
 	}

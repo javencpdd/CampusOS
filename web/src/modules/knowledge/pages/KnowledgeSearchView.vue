@@ -87,6 +87,7 @@
           <router-link v-if="originalThreadPath" :to="originalThreadPath">打开原帖</router-link>
         </template>
       </section>
+      <RAGAnswerPanel v-if="collectionID" :collection-i-d="collectionID" />
     </template>
   </main>
 </template>
@@ -100,6 +101,8 @@ import {
   type KnowledgeSource,
   type PublicCollection,
 } from '../api'
+
+import RAGAnswerPanel from '../components/RAGAnswerPanel.vue'
 
 type CatalogState = 'loading' | 'ready' | 'empty' | 'disabled' | 'error'
 type ReadState = 'idle' | 'loading' | 'ready' | 'error'

@@ -523,7 +523,7 @@ func (s *V5Platform) ExecutionFacts(ctx context.Context, c V5Coordinate, owner s
 	if err != nil {
 		return out, err
 	}
-	err = s.catalog.WithVerified(ctx, archive, r.Release, func(p *PluginV5Package) error {
+	err = s.catalog.withVerifiedRead(ctx, archive, r.Release, func(p *PluginV5Package) error {
 		return s.reliable.CheckedRead(ctx, func(tx context.Context) error {
 			if owner != "" {
 				users, ok := s.Users.(identity.UserCommandReader)

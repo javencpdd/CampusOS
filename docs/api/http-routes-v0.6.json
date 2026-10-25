@@ -1023,6 +1023,91 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/knowledge/rag/status",
+      "handler": "knowledgeHandler.RAGStatus",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+current-origin-policy",
+      "operation_code": "http.knowledge.rag.status",
+      "legacy_aliases": [
+        "http.get.api.v1.knowledge.rag.status",
+        "httpapi.get.api.v1.knowledge.rag.status"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-model-binding",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/rag/public",
+      "handler": "knowledgeHandler.RAGPublicAnswer",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+current-origin-policy",
+      "operation_code": "http.knowledge.rag.public",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.rag.public",
+        "httpapi.post.api.v1.knowledge.rag.public"
+      ],
+      "ownership": "current-origin-and-collection",
+      "scope": "public-collection+current-model-binding",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/rag/prepare",
+      "handler": "knowledgeHandler.RAGPrivatePrepare",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.rag.prepare",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.rag.prepare",
+        "httpapi.post.api.v1.knowledge.private.rag.prepare"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/rag/answer",
+      "handler": "knowledgeHandler.RAGPrivateAnswer",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.rag.answer",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.rag.answer",
+        "httpapi.post.api.v1.knowledge.private.rag.answer"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "required-command+outbox",
+      "stability": "experimental"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/private/rag/revoke",
+      "handler": "knowledgeHandler.RAGPrivateRevoke",
+      "module_owner": "feature.knowledge",
+      "audience": "authenticated",
+      "auth": "jwt+current-user-session+source-owner",
+      "operation_code": "http.knowledge.private.rag.revoke",
+      "legacy_aliases": [
+        "http.post.api.v1.knowledge.private.rag.revoke",
+        "httpapi.post.api.v1.knowledge.private.rag.revoke"
+      ],
+      "ownership": "current-source-owner",
+      "scope": "self+current-source-version",
+      "audit": "none",
+      "stability": "experimental"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/knowledge/private/status",
       "handler": "knowledgeHandler.PrivateStatus",
       "module_owner": "feature.knowledge",

@@ -285,6 +285,11 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		state, ok := features.Registry().Get(ai.FeatureID)
 		return ok && state.Enabled && state.DesiredEnabled
 	})
+	aiModule.ConfigurePluginText(aiPluginTextAdapter{owner: s})
+	knowledgeModule.ConfigurePluginSource(knowledgePluginSourceAdapter{owner: s})
+	knowledgeModule.ConfigurePublicLocalRAG(publicLocalModelAdapter{module: aiModule})
+	knowledgeModule.ConfigurePrivateLocalRAG(publicLocalModelAdapter{module: aiModule})
+	knowledgeModule.ConfigureManagedRAG(managedRAGModelAdapter{module: aiModule})
 	webhookModule := webhook.NewModule(metricsCollector, webhook.Config{EgressPolicy: webhook.EgressPolicy{
 		AllowedHosts:        s.cfg.Webhook.AllowedHosts,
 		AllowPrivateNetwork: s.cfg.Webhook.AllowPrivateNetwork,

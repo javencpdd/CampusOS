@@ -159,7 +159,7 @@ func captureCommand(args []string) error {
 		}
 	}
 
-	client := &http.Client{Timeout: 8 * time.Second}
+	client := capacityClient()
 	result := report{Schema: reportSchema, GeneratedAt: time.Now().UTC(), Target: strings.TrimRight(*baseURL, "/"), Samples: *samples}
 	for _, endpoint := range publicEndpoints {
 		measurement, measureErr := measureEndpoint(context.Background(), client, *baseURL, endpoint, *samples, "")
@@ -188,6 +188,13 @@ func captureCommand(args []string) error {
 		result.Reliability = reliability
 	}
 	return writeJSON(*output, result)
+}
+
+func capacityClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	return &http.Client{Timeout: 8 * time.Second, Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
 func compareCommand(args []string) error {
@@ -235,18 +242,18 @@ func measureEndpoint(ctx context.Context, client *http.Client, baseURL string, e
 		}
 		started := time.Now()
 		response, err := client.Do(request)
-		elapsed := float64(time.Since(started).Microseconds()) / 1000
 		if err != nil {
 			if attempt >= 0 {
 				result.ErrorCount++
 			}
 			continue
 		}
-		_, readErr := io.Copy(io.Discard, io.LimitReader(response.Body, 4<<20))
+		read, readErr := io.Copy(io.Discard, io.LimitReader(response.Body, (4<<20)+1))
 		_ = response.Body.Close()
+		elapsed := float64(time.Since(started).Microseconds()) / 1000
 		if attempt >= 0 {
 			result.StatusCounts[fmt.Sprintf("%d", response.StatusCode)]++
-			if readErr != nil {
+			if readErr != nil || read > 4<<20 {
 				result.ErrorCount++
 				continue
 			}
@@ -397,6 +404,10 @@ func compareReports(baseline, candidate report, limits budget) []string {
 			violations = append(violations, "candidate has an unbaselined endpoint "+current.Name)
 			continue
 		}
+		if previous.Path != current.Path {
+			violations = append(violations, current.Name+" changed its measured path")
+			continue
+		}
 		if limits.RequireSuccessfulRequests && (previous.ErrorCount > 0 || current.ErrorCount > 0 || !allSuccessful(previous.StatusCounts) || !allSuccessful(current.StatusCounts)) {
 			violations = append(violations, current.Name+" has failed or non-2xx requests")
 			continue
@@ -509,6 +520,9 @@ func requireLoopback(rawURL string) error {
 	}
 	if parsed.User != nil || parsed.Hostname() == "" {
 		return errors.New("capacity target must have a host and no URL credentials")
+	}
+	if (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
+		return errors.New("capacity target must be an origin without path, query or fragment")
 	}
 	host := parsed.Hostname()
 	if strings.EqualFold(host, "localhost") {

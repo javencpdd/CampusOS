@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"sync"
 	"time"
 
@@ -47,7 +48,11 @@ func (c *V5RuntimeCoordinator) broker(ctx context.Context, token, code string, r
 	if err != nil {
 		return nil, err
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	timeout := int64(5000)
+	if code == V5AIChatLocal || code == V5AIChatRemote || code == V5KnowledgeAnswer {
+		timeout = v5ChatMaxTimeoutMS
+	}
+	deadline := time.Now().Add(time.Duration(timeout) * time.Millisecond)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
 		deadline = d
 	}
@@ -262,7 +267,7 @@ func (s *V5Platform) runtimeSpec(ctx context.Context, op V5Operation) (V5Runtime
 		if err != nil || g.Resources == nil {
 			return ErrV5Denied
 		}
-		ceiling := security.ResourceSet{NetworkTargets: []string{}, StorageBytes: 1 << 20, CPUMillis: 1000, MemoryMB: 256, MaxConcurrency: 1, TimeoutMS: 5000}
+		ceiling := security.ResourceSet{NetworkTargets: []string{}, StorageBytes: 1 << 20, CPUMillis: 1000, MemoryMB: 256, MaxConcurrency: 1, TimeoutMS: v5RuntimeTimeoutCeiling(m, g)}
 		expiry := g.ExpiresAtMS
 		if expiry == 0 {
 			expiry = s.now().Add(24 * time.Hour).UnixMilli()
@@ -332,4 +337,22 @@ func (c *V5RuntimeCoordinator) Close(ctx context.Context) error {
 	}
 	c.active = map[string]v5CoordinatedRuntime{}
 	return c.leader.Release(ctx)
+}
+
+// Longer model work requires an exact independently approved model declaration.
+// Every other runtime retains the original five-second deployment ceiling.
+func v5RuntimeTimeoutCeiling(m *PluginV5Manifest, g V5Grant) int64 {
+	if m.Runtime == "container" && g.Approved {
+		for _, declared := range m.Consumes {
+			if declared.Capability != V5AIChatLocal && declared.Capability != V5AIChatRemote {
+				continue
+			}
+			for _, approved := range g.Consumes {
+				if reflect.DeepEqual(declared, approved) {
+					return v5ChatMaxTimeoutMS
+				}
+			}
+		}
+	}
+	return 5000
 }

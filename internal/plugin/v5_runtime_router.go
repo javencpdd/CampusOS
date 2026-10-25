@@ -27,7 +27,7 @@ func (f *V5RuntimeRouter) Prepare(ctx context.Context, s V5RuntimeSpec, b V5Runt
 		return nil, ErrV5RuntimeMissing
 	}
 	r := s.Effective
-	if target == nil || ctx.Err() != nil || r.MemoryMB < 1 || r.MemoryMB > 256 || r.CPUMillis < 1 || r.CPUMillis > 1000 || r.MaxConcurrency != 1 || r.TimeoutMS < 1 || r.TimeoutMS > 5000 {
+	if target == nil || ctx.Err() != nil || r.MemoryMB < 1 || r.MemoryMB > 256 || r.CPUMillis < 1 || r.CPUMillis > 1000 || r.MaxConcurrency != 1 || r.TimeoutMS < 1 || r.TimeoutMS > v5ChatMaxTimeoutMS {
 		return nil, ErrV5RuntimeMissing
 	}
 	f.mu.Lock()

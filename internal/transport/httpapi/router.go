@@ -207,6 +207,11 @@ func Build(d Dependencies) *Router {
 	authenticated := newOwnedGroup(v1.Group(""), routeRegistry, platformroute.AudienceAuthenticated, d.Permissions)
 	authenticated.Use(middleware.JWTAuth(d.JWT, d.SessionVerifier))
 	{
+		authenticated.Operation("http.knowledge.rag.status").GET("/knowledge/rag/status", d.Knowledge.RAGStatus)
+		authenticated.Operation("http.knowledge.rag.public").POST("/knowledge/rag/public", d.Knowledge.RAGPublicAnswer)
+		authenticated.Operation("http.knowledge.private.rag.prepare").POST("/knowledge/private/rag/prepare", d.Knowledge.RAGPrivatePrepare)
+		authenticated.Operation("http.knowledge.private.rag.answer").POST("/knowledge/private/rag/answer", d.Knowledge.RAGPrivateAnswer)
+		authenticated.Operation("http.knowledge.private.rag.revoke").POST("/knowledge/private/rag/revoke", d.Knowledge.RAGPrivateRevoke)
 		authenticated.Operation("http.knowledge.private.status").GET("/knowledge/private/status", d.Knowledge.PrivateStatus)
 		authenticated.Operation("http.knowledge.private.preview").POST("/knowledge/private/preview", d.Knowledge.PrivatePreview)
 		authenticated.Operation("http.knowledge.private.list").GET("/knowledge/private/selections", d.Knowledge.PrivateSelections)

@@ -190,3 +190,5 @@ export type { PluginV5PublisherTrustKey, PluginV5PublisherTrustStore, PluginV5Pa
 export type { PluginV5Coordinate, PluginV5Installation, PluginV5Operation, PluginV5InstallationCommand, PluginV5AdminInstallationCommand, PluginV5InstallationErrorCode, } from "./plugin-v5-installation.js";
 export { knowledgeSearch, knowledgeSource } from "./knowledge-public.js";
 export type { KnowledgeHostTransport, KnowledgeSearchRequest, KnowledgeSourceRequest, KnowledgeReference, KnowledgeCitation, KnowledgeSearchHit, KnowledgeSearchPage, KnowledgeSource } from "./knowledge-public.js";
+export { modelChat, knowledgeAnswer } from "./ai-knowledge-host.js";
+export type { ModelProfile, AIKnowledgeCapability, AIKnowledgeTransport, ModelChatRequest, PublicAnswerRequest, ModelChatAnswer, RAGEvidence, PublicRAGAnswer } from "./ai-knowledge-host.js";

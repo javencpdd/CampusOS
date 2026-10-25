@@ -1,6 +1,9 @@
 package projectaudit
 
 func knowledgeProfile(operation string) (operationProfile, bool) {
+	if p, ok := ragProfile(operation); ok {
+		return p, true
+	}
 	if p, ok := privateIndexProfile(operation); ok {
 		return p, true
 	}
@@ -95,7 +98,7 @@ func knowledgeOpenAPIPathParameter(operation, name string) string {
 }
 
 func knowledgeOpenAPISchemas() string {
-	return privateIndexSchemas() + `    KnowledgePrivateSourcePreflightRequest:
+	return ragSchemas() + privateIndexSchemas() + `    KnowledgePrivateSourcePreflightRequest:
       type: object
       additionalProperties: false
       description: Read-only private source preflight using a current User JWT and live session. Strict JSON at most 1024 bytes; no URL query parameters, duplicate, null, unknown fields or invalid Unicode. IDs are canonical positive decimal int64 strings, maximum 9223372036854775807. The current document owner, live version, document lifecycle and both knowledge and personal-documents features are rechecked. This does not select a source, extract bytes, create an index or authorize any future request.

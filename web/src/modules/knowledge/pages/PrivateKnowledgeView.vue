@@ -3,7 +3,7 @@
     <header>
       <RouterLink to="/knowledge">公开知识检索</RouterLink>
       <h1>我的私人知识</h1>
-      <p>只有逐项选入的本人内容才会加入私人索引。仅供本人检索，不授权向 AI 或其他提供方发送内容。</p>
+      <p>只有逐项选入的本人内容才会加入私人索引。索引仅供本人检索；向模型发送内容需在问答区另作本次明确同意。</p>
     </header>
     <p v-if="error" role="alert">{{ error }} 请刷新当前状态后重试。</p>
     <p v-if="notice" role="status">{{ notice }}</p>
@@ -40,10 +40,17 @@
           />我同意将这一项的当前版本加入仅本人可检索的私人索引</label
         ><button :disabled="busy || !canSelect || !consent" @click="select">确认选入这一项</button>
       </div>
+      <RAGAnswerPanel v-if="ragSelection" :selection="ragSelection" :key="ragSelection.id" />
       <h2>已选来源</h2>
       <p v-if="rows.length === 0">尚未选择来源，默认不入库。</p>
       <ul>
-        <li v-for="row in rows" :key="row.id">
+        <li v-for="row in rows" :key="row.id" :data-selection-id="row.id">
+          <button
+            :disabled="busy || row.state !== 'ready'"
+            @click="ragSelection = { id: row.id, revision: row.revision }"
+          >
+            对这一项提问
+          </button>
           <span
             >{{ row.title || (row.kind === 'personal_document' ? '文档 ' : '帖子 ') + row.source_id }} ·
             {{ stateLabel(row) }}</span
@@ -84,6 +91,8 @@ import {
   type PrivateSelection,
   type PrivateHit,
 } from '../private-api'
+import RAGAnswerPanel from '../components/RAGAnswerPanel.vue'
+const ragSelection = ref<{ id: string; revision: string } | null>(null)
 const route = useRoute()
 const status = ref<PrivateStatus | null>(null),
   rows = ref<PrivateSelection[]>([]),
@@ -106,6 +115,7 @@ let generation = 0,
   controller: AbortController | null = null,
   disposed = false
 function clearOutput() {
+  ragSelection.value = null
   hits.value = []
   source.value = null
   searched.value = false

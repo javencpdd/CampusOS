@@ -150,6 +150,9 @@ func (h *V5ManagedRuntime) Invoke(ctx context.Context, consumer V5Consumer, b V5
 	if err != nil || g.Resources == nil {
 		return nil, ErrV5Denied
 	}
+	if v5WireInt(request["deadline_ms"]) > min(g.Resources.TimeoutMS, int64(v5ChatMaxTimeoutMS)) {
+		return nil, ErrV5CallDeadline
+	}
 	if err := decideV5Dispatch("host_to_plugin", call, v5ManagedFacts(i, g, call, consumer.Feature != nil && consumer.Feature.Enabled(consumer.FeatureID))); err != nil {
 		return nil, err
 	}
@@ -186,7 +189,8 @@ func (h *V5ManagedRuntime) Invoke(ctx context.Context, consumer V5Consumer, b V5
 	})
 	defer stopGuard()
 	w := &v5BoundedOutput{ctx: callCtx, limit: int(call.ResponseLimitBytes)}
-	err = i.adapter.Invoke(context.WithValue(callCtx, v5NestedCallKey{}, i.id), V5ChatTarget{info, i.owner}, bytes.Clone(payload), w)
+	invokeCtx := v5BindInvocation(callCtx, i, resolve, principal)
+	err = i.adapter.Invoke(context.WithValue(invokeCtx, v5NestedCallKey{}, i.id), V5ChatTarget{info, i.owner}, bytes.Clone(payload), w)
 	raw, writeErr := w.finish()
 	if writeErr != nil {
 		return nil, writeErr

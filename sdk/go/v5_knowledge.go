@@ -115,18 +115,18 @@ func KnowledgeSource(ctx context.Context, host V5HostTransport, q V5KnowledgeSou
 }
 
 // Host calls are synchronous yields on the already-owned pipe. The ordinary
-// chat server remains HostResult-free. This variant allows only the three
-// compiled public readers, at most 32 yields under the original Invoke deadline.
+// chat server remains HostResult-free. This variant allows only the finite compiled
+// public-read/model/answer capabilities, at most 32 yields under the original Invoke deadline.
 type V5ContainerChatHostHandler func(context.Context, V5RuntimeConfiguration, V5ChatRequest, V5HostTransport) (V5ChatResponse, error)
 
 func ServeV5ContainerChatWithHost(ctx context.Context, input io.ReadCloser, output io.Writer, handler V5ContainerChatHostHandler) error {
 	if handler == nil {
 		return ErrV5ContainerChatProtocol
 	}
-	return serveV5ContainerChat(ctx, input, output, nil, handler)
+	return serveV5ContainerChat(ctx, input, output, nil, handler, nil)
 }
 func v5ContainerHostExchange(ctx context.Context, reader *bufio.Reader, bounded *v5ContainerReader, output io.Writer, code string, payload json.RawMessage) (json.RawMessage, error) {
-	if code != V5KnowledgeSearch && code != V5KnowledgeSourceRead && code != "community.thread.public.read" {
+	if code != V5KnowledgeSearch && code != V5KnowledgeSourceRead && code != "community.thread.public.read" && code != V5AIChatLocal && code != V5AIChatRemote && code != V5KnowledgeAnswer {
 		return nil, ErrV5ContainerChatProtocol
 	}
 	if _, e := v5ContainerObject(payload, nil, nil, v5ContainerMaxJSON); e != nil {

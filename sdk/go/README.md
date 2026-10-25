@@ -56,8 +56,12 @@ CAMPUSOS_AUTHOR_GO=/path/to/go1.25/bin/go bash scripts/build-v5-chat-echo.sh --o
 
 ## 当前作者验收边界
 
-独立离线SDK/作者模块、真实CLI签名包及同一只读Server/SPA中的两owner typed调用、配置代次、重载/升级/撤权/卸载/GC已在V12-08a当前Linux范围验收，详见[.134](../../docs/进度/v1.2-dev/v1.2.134-dev.md)。合同消费者由测试程序编译接入实际managed Dispatcher并提供当前Identity resolver，标准生产服务没有任意Provider调用端点。SDK的DTO/服务协议不提供owner或资源授权；内建AI/RAG实际接入仍属14c，Windows验收延期。
+独立离线SDK/作者模块、真实CLI签名包及同一只读Server/SPA中的两owner typed调用、配置代次、重载/升级/撤权/卸载/GC已在V12-08a当前Linux范围验收，详见[.134](../../docs/进度/v1.2-dev/v1.2.134-dev.md)。合同消费者由测试程序编译接入实际managed Dispatcher并提供当前Identity resolver，标准生产服务没有任意Provider调用端点。SDK的DTO/服务协议不提供owner或资源授权；内建AI/RAG实际接入见下节14c，Windows验收延期。
 
 ## V12-11 受管公开知识调用
 
 `KnowledgeSearch` / `KnowledgeSource` 使用 `V5HostTransport`，不接受平台Token或URL。`ServeV5ContainerChatWithHost` 可在既有独占管道同步yield只读Host，保持原始期限和32次上限；普通chat接口仍拒绝HostResult。两项能力必须在manifest声明 `collection` Scope并获得当前Grant，当前原来源ACL仍每次重验。详见[合同与可构建示例](../../docs/api/v1.2公开知识MCP与HostSDK合同.md)。这些接口不授予私人知识或内建AI/外部Provider接入。
+
+## v1.2 AI / Knowledge 双向接入
+
+更新时间：2026-10-25（Asia/Shanghai）。新增精确本机/远程Profile模型与公开引用问答 DTO/helper；模型调用要求当前User、管理员独立批准及用户同意，并保留预算与必需结算。来源贡献的公开归属由宿主逐项重核。Go SDK另提供双贡献点的有界Container管道；消费许可与贡献注册分别处理。详见[接入合同](../../docs/api/v1.2插件AI与Knowledge双向接入合同.md)及[独立作者包](../../plugins/campusos.ai-knowledge/README.md)。

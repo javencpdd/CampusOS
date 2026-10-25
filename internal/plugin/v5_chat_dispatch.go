@@ -18,7 +18,7 @@ const (
 	V5ChatMaxRequestBytes  = 64 * 1024
 	V5ChatMaxResponseBytes = 256 * 1024
 	v5ChatMaxConcurrency   = 8
-	v5ChatMaxTimeoutMS     = 30000
+	v5ChatMaxTimeoutMS     = V5ModelMaxTimeoutMS
 )
 
 var (

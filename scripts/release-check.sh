@@ -4,14 +4,6 @@ set -euo pipefail
 export GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}"
 VERSION="$(go run ./cmd/campusosctl version)"
 
-cleanup() {
-  rm -f examples/plugins/grpc-example/plugin
-  rm -f examples/plugins/campus-welcome/plugin
-  rm -f examples/plugins/schedule-helper/plugin
-  rm -f examples/plugins/v2-managed-example/plugin
-}
-trap cleanup EXIT
-
 echo "==> contracts"
 go run ./cmd/campusos-contracts --check
 make error-contract-check
@@ -57,26 +49,17 @@ echo "==> Go tests"
 GOCACHE="${GOCACHE:-/tmp/campusos-go-cache}" go test ./... -count=1
 
 echo "==> database"
-./scripts/migrate.sh up
-./scripts/database-check.sh all
-make v1-database-baseline-check
+make release-database-check
 python3 skills/sources/campusos-data-architecture-sync/scripts/check_architecture_sync.py --root .
 
 if [[ "${RUN_V13_CAPACITY_DRILL:-true}" == "true" ]]; then
-  echo "==> isolated v0.13 capacity drill"
-  make v13-capacity-drill
+  echo "==> owned current-identity bounded capacity reads"
+  make release-capacity-check
 fi
 
-echo "==> plugin templates"
+echo "==> current v5 author packages (not runtime installation)"
 go test ./modules -count=1
-go run ./cmd/campusosctl plugin dev examples/plugins/campus-welcome --json
-(cd examples/plugins/campus-welcome && go test ./... -count=1)
-go run ./cmd/campusosctl plugin dev examples/plugins/grpc-example --json
-go run ./cmd/campusosctl plugin dev examples/plugins/schedule-helper --json
-(cd examples/plugins/schedule-helper && go test ./... -count=1)
-go run ./cmd/campusosctl plugin dev examples/plugins/v2-managed-example --json
-(cd examples/plugins/v2-managed-example && go test ./... -count=1)
-go run ./cmd/campusosctl plugin dev examples/plugins/wasm-example --json
+make plugin-v5-release-check
 
 echo "==> frontend builds"
 (cd web && pnpm lint && pnpm exec prettier --check src tests && pnpm build)
@@ -92,6 +75,8 @@ bash -n scripts/*.sh scripts/smoke/*.sh
 git diff --check
 
 if [[ "${RUN_RESTORE_DRILL:-true}" == "true" ]]; then
+  echo "==> owned current native official restore"
+  make release-restore-check
   echo "==> isolated restore drill"
   ./scripts/restore-drill.sh
 fi

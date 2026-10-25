@@ -146,3 +146,28 @@ func TestV5ManagedStopCancelsAndClosesAdmission(t *testing.T) {
 		t.Fatal("new call after withdrawal")
 	}
 }
+
+func TestManagedDurationCannotBorrowTimeSpentCheckingGrant(t *testing.T) {
+	v, _, _, proof, features := newV5ChatTestDispatcher(t, v5ChatTestTransport(v5ChatReply))
+	ctx := t.Context()
+	h := NewV5ManagedRuntime(NewV5ContributionDirectory(v.s))
+	i, _ := v.s.installation(ctx, v.c, "1001")
+	if _, e := h.Publish(ctx, v.c, "1001", i.Generation, time.Minute, v5ManagedTestAdapter{invoke: v5ManagedReply}); e != nil {
+		t.Fatal(e)
+	}
+	b, e := h.Select(ctx, "1001", v5ContributionQueries()[1], nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	g, _ := v.s.grant(ctx, v.c)
+	var q map[string]any
+	json.Unmarshal(v5ManagedPayload(b), &q)
+	q["deadline_ms"] = g.Resources.TimeoutMS + 1
+	raw := mustV5JSON(q)
+	// Absolute envelope is short and valid; the requested duration still exceeds
+	// the grant regardless of time spent on current-fact database checks.
+	out, e := h.Invoke(ctx, V5Consumer{Feature: features, FeatureID: "contract-chat-consumer"}, b, v5ManagedEnvelope(b, raw), raw, proof)
+	if e != ErrV5CallDeadline || len(out) > 0 {
+		t.Fatal("over-grant duration admitted", e)
+	}
+}

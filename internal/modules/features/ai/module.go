@@ -8,6 +8,7 @@ import (
 	"github.com/campusos/CampusOS/internal/platform/reliability"
 	"github.com/campusos/CampusOS/internal/platform/security"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strconv"
 
 	platformmodule "github.com/campusos/CampusOS/internal/platform/module"
 	"github.com/campusos/CampusOS/pkg/config"
@@ -26,13 +27,18 @@ func (s statusReader) Status() ServiceStatus { return s.service.Status() }
 const portCallLogStore = "integration.ai.adapter.call-log-store"
 
 type Module struct {
-	config  config.AIConfig
-	app     *platformmodule.AppContext
-	service *Service
-	handler *Handler
-	managed *ManagedService
-	enabled func() bool
+	config            config.AIConfig
+	app               *platformmodule.AppContext
+	service           *Service
+	handler           *Handler
+	managed           *ManagedService
+	enabled           func() bool
+	pluginTextAdapter PluginTextAdapter
+	pluginText        *pluginTextService
 }
+
+// ConfigurePluginText binds an optional trusted adapter before module startup.
+func (m *Module) ConfigurePluginText(adapter PluginTextAdapter) { m.pluginTextAdapter = adapter }
 
 func NewModule(config config.AIConfig, enabled ...func() bool) *Module {
 	m := &Module{config: config, enabled: func() bool { return config.Enabled }}
@@ -53,6 +59,20 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	m.app = app
 	if value, ok := app.Lookup("platform.reliability.service"); ok {
 		if reliable, ok := value.(*reliability.Service); ok {
+			reliable.RegisterConsumer("plugin.ai.authorized.v1", "ai.plugin.metadata", func(_ context.Context, event reliability.Event) error {
+				if identityport.ValidateClosedHTTPObject(event.Payload, []string{"publisher", "key", "version", "generation", "profile_id", "run_id"}, 2048) != nil {
+					return ErrManagedDenied
+				}
+				var p map[string]string
+				if json.Unmarshal(event.Payload, &p) != nil || !validText(p["publisher"], 128, true) || !validText(p["key"], 128, true) || !validText(p["version"], 64, true) || !managedIDValid("ar_", p["run_id"]) || (p["profile_id"] != "local-chat" && p["profile_id"] != "remote-chat") {
+					return ErrManagedDenied
+				}
+				n, e := strconv.ParseInt(p["generation"], 10, 64)
+				if e != nil || n < 1 {
+					return ErrManagedDenied
+				}
+				return nil
+			})
 			reliable.RegisterConsumer("ai.managed.changed.v1", "ai.managed.metadata", func(_ context.Context, event reliability.Event) error {
 				var payload map[string]string
 				if json.Unmarshal(event.Payload, &payload) != nil || len(payload) != 2 || len(payload["id"]) > 128 {
@@ -71,7 +91,11 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 
 func (m *Module) Start(ctx context.Context) error {
 	if m.managed != nil {
-		return m.managed.start(ctx)
+		if err := m.managed.start(ctx); err != nil {
+			return err
+		}
+		m.pluginText.start()
+		return nil
 	}
 	var pool *pgxpool.Pool
 	if value, ok := m.app.Lookup("integration.ai.adapter.pool"); ok {
@@ -94,6 +118,7 @@ func (m *Module) Start(ctx context.Context) error {
 		}
 	}
 	m.managed = managed
+	m.pluginText = newPluginTextService(m.pluginTextAdapter, m.enabled)
 	m.service = &Service{enabled: m.config.Enabled, provider: "managed", managed: managed}
 	if value, ok := m.app.Lookup(portCallLogStore); ok {
 		if store, ok := value.(CallLogStore); ok {
@@ -106,9 +131,21 @@ func (m *Module) Start(ctx context.Context) error {
 	if err = m.app.Provide(PortManagedChat, ManagedChat(managed)); err != nil {
 		return err
 	}
+	if err = m.app.Provide(PortLocalCheckedChat, LocalCheckedChat(managed)); err != nil {
+		return err
+	}
+	if err = m.app.Provide(PortCheckedChat, CheckedChat(managed)); err != nil {
+		return err
+	}
+	if err = m.app.Provide(PortPluginText, PluginText(m.pluginText)); err != nil {
+		return err
+	}
 	return m.app.Provide(PortStatus, StatusReader(statusReader{service: m.service}))
 }
 func (m *Module) Stop(context.Context) error {
+	if m.pluginText != nil {
+		m.pluginText.stop()
+	}
 	if m.managed != nil {
 		m.managed.stop()
 	}

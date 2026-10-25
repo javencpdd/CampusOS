@@ -271,6 +271,30 @@ backup:
 restore-drill:
 	./scripts/restore-drill.sh
 
+.PHONY: plugin-v5-release-check
+plugin-v5-release-check:
+	python3 scripts/check-v5-release-authors.py $(if $(V5_RELEASE_WORK),--work "$(V5_RELEASE_WORK)")
+
+.PHONY: release-database-check
+release-database-check:
+	python3 scripts/check-release-database.py $(if $(RELEASE_DB_WORK),--work "$(RELEASE_DB_WORK)")
+
+.PHONY: release-database-drill
+release-database-drill:
+	python3 scripts/test-release-database-gate.py $(if $(RELEASE_DB_DRILL_WORK),--work "$(RELEASE_DB_DRILL_WORK)")
+
+.PHONY: release-capacity-check
+release-capacity-check:
+	python3 scripts/check-release-capacity.py $(if $(RELEASE_CAPACITY_WORK),--work "$(RELEASE_CAPACITY_WORK)")
+
+.PHONY: release-restore-check
+release-restore-check:
+	python3 scripts/check-release-restore.py $(if $(RELEASE_RESTORE_WORK),--work "$(RELEASE_RESTORE_WORK)")
+
+.PHONY: release-restore-drill
+release-restore-drill:
+	python3 scripts/test-release-restore-gate.py $(if $(RELEASE_RESTORE_DRILL_WORK),--work "$(RELEASE_RESTORE_DRILL_WORK)")
+
 release-check:
 	./scripts/release-check.sh
 

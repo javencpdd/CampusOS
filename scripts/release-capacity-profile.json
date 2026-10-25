@@ -1,0 +1,37 @@
+{
+  "schema": "campusos.release-capacity-profile/v1",
+  "scope": "bounded_public_and_current_admin_reads_same_binary_two_fresh_processes",
+  "samples_per_endpoint": 20,
+  "warmup_attempts_per_endpoint": 1,
+  "concurrency": 1,
+  "discussion_threads": 10001,
+  "public_discussion_threads": 10000,
+  "private_discussion_threads": 1,
+  "mutual_aid_threads": 0,
+  "secondhand_threads": 0,
+  "gomaxprocs": 2,
+  "gomemlimit": "256MiB",
+  "max_p95_ms": 1000,
+  "max_sampled_rss_bytes": 536870912,
+  "rss_sample_interval_ms": 20,
+  "endpoints": {
+    "health": "/api/v1/health",
+    "thread_list": "/api/v1/threads?page=1&page_size=20",
+    "mutual_aid_list": "/api/v1/mutual-aid/threads?page=1&page_size=20",
+    "secondhand_list": "/api/v1/secondhand/threads?page=1&page_size=20",
+    "admin_admission_list": "/api/v1/identity/admin-accounts?page=1&page_size=20",
+    "admin_mfa_policy": "/api/v1/identity/mfa-policy",
+    "metrics_summary": "/api/v1/metrics/summary",
+    "reliability_summary": "/api/v1/platform/reliability/summary"
+  },
+  "budget": {
+    "schema": "campusos.capacity-budget/v1",
+    "max_p95_regression_ratio": 0.2,
+    "max_p95_absolute_regression_ms": 8,
+    "max_goroutine_growth_ratio": 0.2,
+    "max_heap_alloc_growth_ratio": 0.5,
+    "max_db_empty_wait_seconds": 1,
+    "max_queue_age_seconds": 300,
+    "require_successful_requests": true
+  }
+}
