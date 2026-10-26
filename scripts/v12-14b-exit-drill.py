@@ -22,6 +22,8 @@ def main(work):
  web_build={str(p.relative_to(REPO)):sha(p) for p in (work/'web-dist').rglob('*') if p.is_file()}
  frozen=sources();(work/'source-freeze.json').write_text(json.dumps(frozen,ensure_ascii=False,indent=2)+'\n')
  env={k:os.environ[k] for k in ['PATH','HOME'] if k in os.environ};env.update(GOCACHE=str(REPO/'.cache/v12-g0/go-cache'),GOMAXPROCS='2',GOTOOLCHAIN='auto',GOFLAGS='-buildvcs=false',CAMPUSOS_SKIP_DOTENV='true',CAMPUSOS_ENV='test',TMPDIR='/tmp')
+ (work/'docker-config').mkdir(mode=0o700)
+ env.update(DOCKER_HOST='unix:///var/run/docker.sock',DOCKER_CONFIG=str(work/'docker-config'))
  name='campusos-v14b-private-'+secrets.token_hex(6);password=secrets.token_hex(24);commands=[];started=False;port=None;report=None
  def run(label,args,extra={}):
   begin=time.monotonic()
@@ -38,7 +40,7 @@ def main(work):
   binaries={str(p.relative_to(REPO)):sha(p) for p in (work/'native').iterdir()}
   run('pg-start',['docker','run','--rm','--pull=never','-d','--name',name,'--tmpfs','/var/lib/postgresql/data:rw,size=768m','-e','POSTGRES_USER=campusos','-e','POSTGRES_DB='+DATABASE,'-e','POSTGRES_PASSWORD','-p','127.0.0.1::5432','postgres:16-alpine'],{'POSTGRES_PASSWORD':password});started=True
   for _ in range(120):
-   if subprocess.run(['docker','exec',name,'pg_isready','-U','campusos','-d',DATABASE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   if subprocess.run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','campusos','-d',DATABASE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
    time.sleep(.25)
   else:raise AssertionError('owned PG deadline')
   port=int(run('pg-port',['docker','port',name,'5432/tcp']).strip().rsplit(':',1)[1])

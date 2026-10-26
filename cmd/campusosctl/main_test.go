@@ -54,7 +54,7 @@ func TestIdentityResetPasswordRejectsNonSystemAccountBeforeTerminalRead(t *testi
 	}
 }
 
-func TestIdentityRestoreAdminAdmissionRejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+func TestIdentityRestoreAdminAdmissionRejectsLegacyUserIDBeforeTerminalRead(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -62,20 +62,39 @@ func TestIdentityRestoreAdminAdmissionRejectsInvalidArgumentsBeforeTerminalRead(
 	if code == 0 {
 		t.Fatal("expected administrator admission recovery command to reject an invalid user ID")
 	}
-	if !strings.Contains(stderr.String(), "positive --user-id") {
+	if !strings.Contains(stderr.String(), "legacy --user-id recovery is retired") {
 		t.Fatalf("unexpected identity command error: %s", stderr.String())
 	}
 }
 
-func TestIdentityResetMFARejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+func TestIdentityResetMFARejectsLegacyUserIDBeforeTerminalRead(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := run([]string{"identity", "reset-mfa", "--user-id", "0", "--reason", "lost device"}, &stdout, &stderr)
 	if code == 0 {
 		t.Fatal("expected local MFA recovery command to reject an invalid user ID")
 	}
-	if !strings.Contains(stderr.String(), "positive --user-id") {
+	if !strings.Contains(stderr.String(), "legacy --user-id recovery is retired") {
 		t.Fatalf("unexpected identity command error: %s", stderr.String())
+	}
+}
+
+func TestIndependentAdminLocalRecoveryRequiresTerminalAndNeverAcceptsSecretFlags(t *testing.T) {
+	for _, args := range [][]string{
+		{"reset-password"},
+		{"reset-mfa", "--account-id", "adm.opaque", "--reason", "lost device"},
+		{"restore-admin-admission", "--account-id", "461101", "--reason", "operator review"},
+	} {
+		var out, errout bytes.Buffer
+		if code := runIdentity(args, &out, &errout, nil); code == 0 || !strings.Contains(errout.String(), "interactive terminal input is required") {
+			t.Fatal(args[0], code, errout.String())
+		}
+	}
+	for _, flag := range []string{"--password", "--bootstrap-secret", "--ticket"} {
+		var out, errout bytes.Buffer
+		if code := runIdentity([]string{"reset-password", flag, "PRIVATE_FLAG_CANARY"}, &out, &errout, nil); code == 0 || !strings.Contains(errout.String(), "usage:") || strings.Contains(out.String()+errout.String(), "PRIVATE_FLAG_CANARY") {
+			t.Fatal(flag, code, "secret flag was accepted or echoed")
+		}
 	}
 }
 

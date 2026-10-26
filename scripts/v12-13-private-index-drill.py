@@ -21,6 +21,8 @@ def main(work):
  for name in ['native','runtime','keys','shims']:(work/name).mkdir(mode=0o700)
  frozen=sources();(work/'source-freeze.json').write_text(json.dumps(frozen,ensure_ascii=False,indent=2)+'\n')
  env={k:os.environ[k] for k in ['PATH','HOME'] if k in os.environ};env.update(GOCACHE=str(REPO/'.cache/v12-g0/go-cache'),GOMAXPROCS='2',GOTOOLCHAIN='auto',GOFLAGS='-buildvcs=false',CAMPUSOS_SKIP_DOTENV='true',CAMPUSOS_ENV='test',TMPDIR='/tmp')
+ (work/'docker-config').mkdir(mode=0o700)
+ env.update(DOCKER_HOST='unix:///var/run/docker.sock',DOCKER_CONFIG=str(work/'docker-config'))
  name='campusos-v13-index-'+secrets.token_hex(6);password=secrets.token_hex(24);commands=[];started=False;port=None;report=None
  def run(label,args,extra={}):
   begin=time.monotonic()
@@ -29,6 +31,9 @@ def main(work):
   return (work/(label+'.log')).read_text()
  def sql(db,statement):return run('sql-'+str(len(commands)),['docker','exec',name,'psql','-U','campusos','-d',db,'-XAt','-v','ON_ERROR_STOP=1','-c',statement])
  def mandatory(log,name):assert '--- PASS: '+name+' ' in log and not any(x in log for x in ['--- FAIL','--- SKIP','DATA RACE'])
+ def private_roundtrip(label):
+  ddl='BEGIN;\n'+(REPO/'migrations/000034_knowledge_private_index.down.sql').read_text()+'\n'+(REPO/'migrations/000034_knowledge_private_index.up.sql').read_text()+'\nCOMMIT;'
+  return sql(DATABASE,ddl)
  try:
   run('build-server',['go','test','-race','-c','-o',str(work/'native/server.test'),'./internal/server'])
   run('build-knowledge',['go','test','-race','-c','-o',str(work/'native/knowledge.test'),'./internal/modules/features/knowledge'])
@@ -38,13 +43,13 @@ def main(work):
   bundles={str(p.relative_to(REPO)):sha(p) for p in (work/'web-dist').rglob('*') if p.is_file()}
   run('pg-start',['docker','run','--rm','--pull=never','-d','--name',name,'--tmpfs','/var/lib/postgresql/data:rw,size=768m','-e','POSTGRES_USER=campusos','-e','POSTGRES_DB='+DATABASE,'-e','POSTGRES_PASSWORD','-p','127.0.0.1::5432','postgres:16-alpine'],{'POSTGRES_PASSWORD':password});started=True
   for _ in range(120):
-   if subprocess.run(['docker','exec',name,'pg_isready','-U','campusos','-d',DATABASE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   if subprocess.run(['docker','exec',name,'pg_isready','-h','127.0.0.1','-U','campusos','-d',DATABASE],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
    time.sleep(.25)
   else:raise AssertionError('owned PG deadline')
   port=int(run('pg-port',['docker','port',name,'5432/tcp']).strip().rsplit(':',1)[1])
   pg={'PSQL_MODE':'docker','POSTGRES_CONTAINER':name,'DB_USER':'campusos','DB_NAME':DATABASE,'DB_PASSWORD':password,'DB_HOST':'127.0.0.1','DB_PORT':str(port)}
-  run('migrate-up',['bash','scripts/migrate.sh','up'],pg);epoch=int(sql(DATABASE,"SELECT nextval('knowledge_private_epoch_seq')").strip());run('migrate-empty-down',['bash','scripts/migrate.sh','down'],pg);run('migrate-reup',['bash','scripts/migrate.sh','up'],pg);assert int(sql(DATABASE,"SELECT nextval('knowledge_private_epoch_seq')").strip())>epoch;run('migrate-check',['bash','scripts/migrate.sh','check'],pg);run('migrate-status',['bash','scripts/migrate.sh','status'],pg);run('database-entry',['bash','scripts/database-check.sh','all'],pg)
-  assert sql(DATABASE,"SELECT count(*) FROM pg_tables WHERE schemaname='public';SELECT max(version)::int FROM schema_migrations").splitlines()==['126','34']
+  run('migrate-up',['bash','scripts/migrate.sh','up'],pg);epoch=int(sql(DATABASE,"SELECT nextval('knowledge_private_epoch_seq')").strip());private_roundtrip('empty-private34-roundtrip');assert int(sql(DATABASE,"SELECT nextval('knowledge_private_epoch_seq')").strip())>epoch;run('migrate-check',['bash','scripts/migrate.sh','check'],pg);run('migrate-status',['bash','scripts/migrate.sh','status'],pg);run('database-entry',['bash','scripts/database-check.sh','all'],pg)
+  assert sql(DATABASE,"SELECT count(*) FROM pg_tables WHERE schemaname='public';SELECT max(version)::int FROM schema_migrations").splitlines()==['132','35']
   dump=['docker','exec',name,'pg_dump','-U','campusos','-d',DATABASE,'--schema-only','--no-owner','--no-privileges'];before=run('schema-before',dump)
   # The offline recovery CLI needs libpq's psql. This owned shim transports
   # the exact SQL bytes over stdin to the already-owned PG container; no fake DB.
@@ -91,14 +96,13 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
   old_before=sql(DATABASE,fingerprint_sql)
   assert sql(DATABASE,'SELECT (SELECT count(*) FROM knowledge_private_sources)+(SELECT count(*) FROM knowledge_private_tasks)').strip()=='0'
   last_epoch=int(sql(DATABASE,'SELECT last_value FROM knowledge_private_epoch_seq').strip())
-  run('migrate-populated-old-domain-down',['bash','scripts/migrate.sh','down'],pg)
-  run('migrate-populated-old-domain-reup',['bash','scripts/migrate.sh','up'],pg)
+  private_roundtrip('populated-old-domain-private34-roundtrip')
   assert sql(DATABASE,fingerprint_sql)==old_before,'original business rows or old sequence high water changed'
   assert int(sql(DATABASE,"SELECT nextval('knowledge_private_epoch_seq')").strip())>last_epoch,'consent/lease epoch reused'
   proof['migration_original_tables_and_sequences_preserved']=True
   run('database-exit',['bash','scripts/database-check.sh','all'],pg);after=run('schema-after',dump);assert norm(before)==norm(after),'whole Schema changed during target'
   assert sources()==frozen,'source changed during frozen target';assert all(sha(REPO/p)==h for p,h in binaries.items());assert all(sha(REPO/p)==h for p,h in bundles.items())
-  report=dict(schema='campusos.v12-13-exit/v1',status='passed',stage='V12-13',stage_status='completed_current_linux_scope',implementation='passed',automation='passed',target_environment='passed_linux_actual_modules_router_pg16_browser_full_backup_restore',proof=proof,source_sha256=frozen,binary_sha256=binaries,built_web_sha256=bundles,dependency={str(PRIOR.relative_to(REPO)):PRIOR_SHA},schema_before_after_sha256=hashlib.sha256(norm(after).encode()).hexdigest(),public_tables=126,migration_version=34,windows='deferred_by_user_not_run',commit_or_push=False,scope_limits=['private derived text only; original source storage/backup remains owned by original module','text/Markdown/CampusDoc and owned discussion text posts; PDF/DOCX/article/image extraction unsupported','no AI/egress or private MCP/Integration/plugin Host capability','Linux key vault ACL contract; native Windows protection not accepted','normal production modules/router in native host; no standalone cmd/server deployment claim'])
+  report=dict(schema='campusos.v12-13-exit/v1',status='passed',stage='V12-13',stage_status='completed_current_linux_scope',implementation='passed',automation='passed',target_environment='passed_linux_actual_modules_router_pg16_browser_full_backup_restore',proof=proof,source_sha256=frozen,binary_sha256=binaries,built_web_sha256=bundles,dependency={str(PRIOR.relative_to(REPO)):PRIOR_SHA},schema_before_after_sha256=hashlib.sha256(norm(after).encode()).hexdigest(),public_tables=132,migration_version=35,windows='deferred_by_user_not_run',commit_or_push=False,scope_limits=['private derived text only; original source storage/backup remains owned by original module','text/Markdown/CampusDoc and owned discussion text posts; PDF/DOCX/article/image extraction unsupported','no AI/egress or private MCP/Integration/plugin Host capability','Linux key vault ACL contract; native Windows protection not accepted','normal production modules/router in native host; no standalone cmd/server deployment claim'])
  finally:
   cleanup={'postgres_started':started,'errors':[],'credentials_persisted':False}
   if started:

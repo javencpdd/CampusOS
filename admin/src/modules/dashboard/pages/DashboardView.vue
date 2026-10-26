@@ -39,8 +39,8 @@
         <el-card shadow="hover" class="stat-card stat-plugins">
           <div class="stat-content">
             <div class="stat-info">
-              <div class="stat-title">插件数量</div>
-              <div class="stat-value">{{ stats.plugins }}</div>
+              <div class="stat-title">插件版本</div>
+              <div class="stat-value">{{ stats.plugins ?? '—' }}</div>
             </div>
             <el-icon class="stat-icon"><Connection /></el-icon>
           </div>
@@ -139,11 +139,11 @@ import { ref, onMounted } from 'vue'
 import { threadApi, categoryApi } from '@/modules/community/api'
 import { userApi } from '@/modules/identity/api'
 import { eventApi } from '@/modules/operations/api'
-import { pluginApi } from '@/modules/plugins/api'
+import { pluginV5Api } from '@/modules/plugins/v5-api'
 import { User, Document, FolderOpened, Connection, Bell, Reading, DataAnalysis } from '@element-plus/icons-vue'
 
 const loading = ref(false)
-const stats = ref({ users: 0, threads: 0, categories: 0, plugins: 0 })
+const stats = ref({ users: 0, threads: 0, categories: 0, plugins: null as number | null })
 const threads = ref<any[]>([])
 const events = ref<any[]>([])
 
@@ -170,8 +170,17 @@ onMounted(async () => {
     events.value = (eRes as any)?.data?.items || []
 
     try {
-      const p = await pluginApi.list()
-      stats.value.plugins = (p as any)?.data?.total || 0
+      let after = ''
+      let total = 0
+      const cursors = new Set<string>()
+      do {
+        const page = await pluginV5Api.list(after)
+        total += page.data.items.length
+        after = page.data.next_cursor || ''
+        if (after && cursors.has(after)) throw new Error('插件目录分页游标重复')
+        cursors.add(after)
+      } while (after)
+      stats.value.plugins = total
     } catch {
       // 插件接口可能不可用
     }

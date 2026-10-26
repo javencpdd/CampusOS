@@ -30,16 +30,7 @@ make reliability-check
 make outbox-check
 make failure-injection-check
 make v12-failure-injection-check
-make identity-email-check
-make identity-challenge-check
-make identity-registration-check
-make identity-session-check
-make identity-recovery-check
-make email-delivery-check
-make category-hierarchy-check
-make structured-thread-check
-make mutual-aid-check
-make secondhand-check
+python3 scripts/check-release-legacy.py
 
 echo "==> data and generated file governance"
 make data-governance-check
@@ -77,13 +68,15 @@ git diff --check
 if [[ "${RUN_RESTORE_DRILL:-true}" == "true" ]]; then
   echo "==> owned current native official restore"
   make release-restore-check
+  echo "==> owned current Docker official restore"
+  make release-restore-docker-check
   echo "==> isolated restore drill"
   ./scripts/restore-drill.sh
 fi
 
 if [[ "${RUN_BROWSER_SMOKE:-true}" == "true" ]]; then
   echo "==> browser smoke"
-  ./scripts/smoke/browser-smoke.sh
+  make release-browser-check
 fi
 
 echo "CampusOS ${VERSION} release check passed"

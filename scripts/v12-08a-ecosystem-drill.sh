@@ -82,7 +82,7 @@ elif [[ "$mode" == target || "$mode" == diagnose ]]; then
  trap cleanup EXIT
  password="$(python3 -c 'import secrets;print(secrets.token_hex(24))')"
  docker_local run --pull=never -d --name "$owned" --tmpfs /var/lib/postgresql/data -e POSTGRES_DB=campusos_v12_08a_exit -e POSTGRES_USER=campusos -e POSTGRES_PASSWORD="$password" -p 127.0.0.1::5432 postgres:16-alpine >"$work/pg-create.log"
- for attempt in $(seq 1 80); do if docker_local exec "$owned" pg_isready -U campusos -d campusos_v12_08a_exit >/dev/null 2>&1; then break; fi; sleep .5; done
+ for attempt in $(seq 1 80); do if docker_local exec "$owned" pg_isready -h 127.0.0.1 -U campusos -d campusos_v12_08a_exit >/dev/null 2>&1; then break; fi; sleep .5; done
  migrate_local up >"$work/migration.log" 2>&1
  docker_local image inspect "$(cat "$work/image-tag.txt")" >"$work/image-before.json"
  schema before

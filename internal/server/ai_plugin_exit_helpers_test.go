@@ -251,13 +251,14 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 	port := value.(ai.PluginText)
 	value, _ = s.appContext.Lookup(knowledge.PortPluginPublicSource)
 	sourcePort := value.(knowledge.PluginPublicSource)
+	const invocationTimeout = 25 * time.Second
 	invoke := func(cctx context.Context, r identity.SessionPrincipalResolver, mode string, q sdk.V5AIChatRequest) (string, error) {
 		intent := struct {
 			Mode string `json:"mode"`
 			sdk.V5AIChatRequest
 		}{mode, q}
 		wire, _ := json.Marshal(intent)
-		out, e := port.AnswerText(cctx, r, ai.PluginTextRequest{Publisher: m.Publisher, Key: m.Key, Version: m.Version, ContributionID: "chat-main", RequestID: "owned14c-joint", Prompt: string(wire), TimeoutMS: 25000})
+		out, e := port.AnswerText(cctx, r, ai.PluginTextRequest{Publisher: m.Publisher, Key: m.Key, Version: m.Version, ContributionID: "chat-main", RequestID: "owned14c-joint", Prompt: string(wire), TimeoutMS: invocationTimeout.Milliseconds()})
 		return out.Text, e
 	}
 	waitIndex := func() {
@@ -381,9 +382,11 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 	}
 	sql(`CREATE FUNCTION owned14c_reserve_barrier() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(141458); RETURN NEW; END $$;CREATE TRIGGER owned14c_reserve_barrier BEFORE INSERT ON ai_model_runs FOR EACH ROW EXECUTE FUNCTION owned14c_reserve_barrier()`)
 	barrierQ := request("model")
+	barrierCtx, stopBarrier := context.WithTimeout(ctx, invocationTimeout)
+	defer stopBarrier()
 	callDone := make(chan error, 1)
 	go func() {
-		text, e := invoke(ctx, user, "model", barrierQ)
+		text, e := invoke(barrierCtx, user, "model", barrierQ)
 		if e == nil && !strings.Contains(text, "MODEL_RESULT_14C") {
 			e = fmt.Errorf("barrier output mismatch")
 		}
@@ -397,7 +400,7 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 		time.Sleep(10 * time.Millisecond)
 	}
 	factsDone := make(chan error, 1)
-	go func() { _, e := platform.ExecutionFacts(ctx, coordinate, "461101"); factsDone <- e }()
+	go func() { _, e := platform.ExecutionFacts(barrierCtx, coordinate, "461101"); factsDone <- e }()
 	time.Sleep(40 * time.Millisecond)
 	if count(`SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT id, username%'`) < 1 {
 		t.Fatal("actual account row wait absent")
@@ -406,22 +409,26 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 		t.Fatal(err)
 	}
 	lockConn.Release()
+	// The observed SQL wait chain above tests the actual lock order. Finishing
+	// the RPC also requires host result checks and the guest/dispatcher return;
+	// retain its already-approved deadline instead of a separate two-second one.
 	select {
 	case e := <-callDone:
 		if e != nil {
 			t.Fatal("current-trust model guard under actual PG observer", e)
 		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("publication/account lock inversion")
+	case <-barrierCtx.Done():
+		t.Fatal("model RPC under actual PG observer exceeded invocation deadline", barrierCtx.Err())
 	}
 	select {
 	case e := <-factsDone:
 		if e != nil {
 			t.Fatal(e)
 		}
-	case <-time.After(time.Second):
-		t.Fatal("runtime observer did not finish")
+	case <-barrierCtx.Done():
+		t.Fatal("runtime observer exceeded invocation deadline", barrierCtx.Err())
 	}
+	stopBarrier()
 	sql(`DROP TRIGGER owned14c_reserve_barrier ON ai_model_runs;DROP FUNCTION owned14c_reserve_barrier()`)
 	check("real_PG_reservation_row_lock_and_concurrent_runtime_observer_reentrant_guard_without_catalog_mutex_inversion")
 
@@ -530,9 +537,11 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 		}
 		model.mode.Store("wait")
 		q := request(mode)
+		requestCtx, stopRequest := context.WithTimeout(ctx, invocationTimeout)
+		defer stopRequest()
 		done := make(chan error, 1)
 		go func() {
-			out, e := invoke(ctx, user, mode, q)
+			out, e := invoke(requestCtx, user, mode, q)
 			if out != "" {
 				e = fmt.Errorf("late output released")
 			}
@@ -540,27 +549,48 @@ func runPluginAIKnowledgeExit(t *testing.T, s *Server, pool *pgxpool.Pool, priva
 		}()
 		select {
 		case <-model.started:
-		case <-time.After(3 * time.Second):
-			t.Fatal(label, "no real model request")
+		case e := <-done:
+			t.Fatal(label, "invocation ended before real model request", e)
+		case <-requestCtx.Done():
+			t.Fatal(label, "no real model request within invocation deadline", requestCtx.Err())
 		}
 		if out, e := invoke(ctx, user, "model", request("model")); e == nil || out != "" {
 			t.Fatal("per-instance concurrency exceeded")
 		}
-		begin := time.Now()
+		// A natural timeout or another operation must not be counted as a
+		// cancellation caused by the following Feature change.
+		select {
+		case e := <-done:
+			t.Fatal(label, "invocation ended before Feature change", e)
+		default:
+		}
+		select {
+		case <-model.cancelled:
+			t.Fatal(label, "model request cancelled before Feature change")
+		default:
+		}
+		if e := requestCtx.Err(); e != nil {
+			t.Fatal(label, "invocation deadline passed before Feature change", e)
+		}
+		cancellationDeadline := time.Now().Add(2 * time.Second)
 		change()
 		select {
 		case e := <-done:
 			if e == nil {
 				t.Fatal(label, "released answer")
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(time.Until(cancellationDeadline)):
 			t.Fatal(label, "did not cancel before model timeout")
 		}
 		select {
 		case <-model.cancelled:
-		case <-time.After(2*time.Second - time.Since(begin)):
+		case <-time.After(time.Until(cancellationDeadline)):
 			t.Fatal(label, "no HTTP peer cancellation receipt")
 		}
+		if time.Now().After(cancellationDeadline) {
+			t.Fatal(label, "cancellation and HTTP peer receipt exceeded two seconds")
+		}
+		stopRequest()
 		model.mode.Store("plain")
 		if recover != nil {
 			recover()

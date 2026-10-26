@@ -252,10 +252,11 @@ func TestKnowledgeRetrievalExitPostgres(t *testing.T) {
 		t.Fatal("capacity fixtures drift")
 	}
 	type sample struct {
-		Status int     `json:"status"`
-		MS     float64 `json:"milliseconds"`
-		Bytes  int     `json:"bytes"`
-		Error  string  `json:"error,omitempty"`
+		Status        int     `json:"status"`
+		MS            float64 `json:"milliseconds"`
+		Bytes         int     `json:"bytes"`
+		Error         string  `json:"error,omitempty"`
+		HTTPErrorBody string  `json:"http_error_body,omitempty"`
 	}
 	client := &http.Client{Timeout: 8 * time.Second}
 	get := func(path string) (json.RawMessage, sample) {
@@ -266,7 +267,7 @@ func TestKnowledgeRetrievalExitPostgres(t *testing.T) {
 		}
 		defer r.Body.Close()
 		raw, e := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-		s := sample{r.StatusCode, float64(time.Since(begin).Microseconds()) / 1000, len(raw), ""}
+		s := sample{Status: r.StatusCode, MS: float64(time.Since(begin).Microseconds()) / 1000, Bytes: len(raw)}
 		if e != nil {
 			s.Error = "body read"
 		}
@@ -281,6 +282,12 @@ func TestKnowledgeRetrievalExitPostgres(t *testing.T) {
 		}
 		if json.Unmarshal(raw, &env) != nil {
 			s.Error = "invalid envelope"
+		}
+		if s.Status != http.StatusOK {
+			// Owned synthetic target diagnostics; retain the actual failure
+			// envelope independently of transport/content validation. Expected
+			// non-200 guard responses must preserve their original Error semantics.
+			s.HTTPErrorBody = string(raw)
 		}
 		return env.Data, s
 	}

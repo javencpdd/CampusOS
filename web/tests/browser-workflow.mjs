@@ -7,6 +7,7 @@ const docsURL = (process.env.DOCS_URL || 'http://localhost:3002').replace(/\/$/,
 const apiURL = (process.env.API_BASE_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '')
 const email = process.env.CAMPUSOS_ADMIN_EMAIL || 'admin@campusos.local'
 const password = process.env.CAMPUSOS_ADMIN_PASSWORD || 'Admin@123456'
+const adminIdentifier = process.env.CAMPUSOS_ADMIN_USERNAME || email
 
 if (!chrome) throw new Error('CHROME_BIN is required')
 
@@ -16,7 +17,7 @@ let accessToken = ''
 
 async function login(page, baseURL, emailPlaceholder, passwordPlaceholder, endpoint = '/auth/login') {
   await page.goto(`${baseURL}/login`, { waitUntil: 'domcontentloaded' })
-  await page.getByPlaceholder(emailPlaceholder).fill(email)
+  await page.getByPlaceholder(emailPlaceholder).fill(endpoint === '/admin/identity/login' ? adminIdentifier : email)
   await page.getByPlaceholder(passwordPlaceholder).fill(password)
   const responsePromise = page.waitForResponse(
     (response) => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(endpoint),
@@ -152,11 +153,15 @@ try {
 
   const adminContext = await browser.newContext()
   const adminPage = await adminContext.newPage()
-  await login(adminPage, adminURL, '请输入管理员邮箱', '请输入密码', '/auth/admin/login')
+  await login(adminPage, adminURL, '请输入管理员用户名或邮箱', '请输入密码', '/admin/identity/login')
   await adminPage.getByText('用户总数', { exact: true }).waitFor()
   await adminPage.goto(`${adminURL}/plugins`, { waitUntil: 'domcontentloaded' })
-  await adminPage.getByRole('main').getByText('外部插件', { exact: true }).first().waitFor()
-  await adminPage.getByText(/已安装 \d+ 个插件/).waitFor()
+  await adminPage.getByRole('heading', { name: '插件管理', exact: true }).waitFor()
+  const versions = adminPage.getByRole('navigation', { name: '插件版本', exact: true })
+  await versions.waitFor()
+  if (process.env.CAMPUSOS_OWNED_BROWSER_TARGET === 'true') {
+    await versions.getByRole('button').filter({ hasText: 'backup-offline' }).waitFor()
+  }
   await adminPage.goto(`${adminURL}/features`, { waitUntil: 'domcontentloaded' })
   await adminPage.getByRole('heading', { name: '内置功能', exact: true }).waitFor()
   await adminPage.getByText('core.moderation', { exact: true }).waitFor()
@@ -187,7 +192,15 @@ try {
   await docsPage.goto(`${docsURL}/guide/permission-configuration`, { waitUntil: 'domcontentloaded' })
   await docsPage.getByRole('heading', { name: /CampusOS 权限配置入门/ }).waitFor()
   await docsPage.goto(`${docsURL}/plugins/schedule-plugin-tutorial`, { waitUntil: 'domcontentloaded' })
-  await docsPage.getByRole('heading', { name: /以课表为例编写 CampusOS 插件/ }).waitFor()
+  await docsPage.getByRole('heading', { name: '课表插件教程：历史材料' }).waitFor()
+  await docsPage.getByRole('link', { name: 'PDF Viewer', exact: true }).click()
+  await docsPage.waitForURL(/\/plugins\/pdf-viewer-tutorial(?:\.html)?$/)
+  await docsPage
+    .getByRole('heading', { name: /PDF Viewer/ })
+    .first()
+    .waitFor()
+  await docsPage.getByRole('link', { name: 'v5 Manifest与包检查', exact: true }).click()
+  await docsPage.getByRole('heading', { name: 'v5 Manifest 与包校验' }).waitFor()
   await docsContext.close()
   console.log(
     'browser workflow passed: auth, thread CRUD, reply, privacy, account security, permissions, admin plugins/features/appearance/admission/MFA policy, architecture, onboarding and permission docs',

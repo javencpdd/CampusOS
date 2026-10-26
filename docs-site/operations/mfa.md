@@ -1,29 +1,35 @@
 # 管理员 MFA 与恢复
 
-## 启用前检查
+> 更新时间：2026-10-26 01:44（Asia/Shanghai）
 
-在部署环境设置 `AUTH_MFA_ACTIVE_KEY_ID`、`AUTH_MFA_ENCRYPTION_KEYS`、`AUTH_MFA_ISSUER` 和 `AUTH_BOOTSTRAP_ADMIN_SECRET`。生产环境不得使用开发默认值。MFA 密钥不得写入仓库、插件、资源包、数据库普通配置、日志或导出包。
+独立 Admin 的 TOTP、MFA 票据和会话与普通 User 分开存储和校验。User 的认证器、恢复码、邮件找回或管理员辅助 Case 不能作为独立 Admin 的恢复证明。
 
-后台“身份与权限 -> MFA 策略”显示聚合覆盖率：不显示个人 TOTP Secret、恢复码或完整身份资料。建议顺序为：
+## 启用与部署配置
 
-1. `off`：先让管理员自行启用认证器并保存恢复码。
-2. `enrollment_grace`：配置截止日期，督促仍未注册的管理员完成配置。
-3. `required`：只有覆盖率和本机恢复条件满足时才允许保存；所有管理 API 都要求近期 Step-up。
+部署环境应设置 `AUTH_MFA_ACTIVE_KEY_ID`、`AUTH_MFA_ENCRYPTION_KEYS`、`AUTH_MFA_ISSUER` 和 `AUTH_BOOTSTRAP_ADMIN_SECRET`。生产环境不能使用开发默认值，密钥不得进入仓库、插件、资源包、日志或配置导出。
+
+在管理端使用本人 MFA 入口完成认证器注册与近期 Step-up。独立 Admin 本人接口为 `/api/v1/admin/identity/mfa/enroll`、`/confirm` 和 `/step-up`，必须使用当前本域会话及 Admin CSRF；确认注册后需用新的 TOTP 时间步完成 Step-up。
+
+`/mfa-policy` 页面保留的是 User 关联管理员策略兼容能力。其 `off`、宽限期或聚合覆盖率不能替代独立 Admin 的 TOTP 状态、当前角色与具体管理端点的权限/MFA 检查。
 
 ## 丢失认证器
 
-优先使用仍保存的一次性恢复码。若所有认证器和恢复码都丢失，服务器本机上的受控恢复命令是唯一后门：
+当前独立 Admin 没有已开放的公网恢复票据消费 HTTP；不能因存在恢复票据仓储而假设有远程找回入口。普通 User 的一次性恢复码只适用于自己的 User 域。
+
+独立 Admin 认证器丢失时，在可信服务器的交互式 TTY 执行：
 
 ```bash
-campusosctl identity reset-mfa --user-id <管理员用户ID> --reason "lost device"
+campusosctl identity reset-mfa --account-id adm.example --reason "lost independent Admin authenticator"
 ```
 
-命令要求交互式终端、精确确认文本和隐藏输入的 `AUTH_BOOTSTRAP_ADMIN_SECRET`。它清除 MFA 和恢复码、撤销全部 Session、写入审计并触发不含敏感内容的安全通知。恢复后必须重新登录、重新注册 MFA 和保存新恢复码。
+把示例 ID 替换为实际不透明 Admin `account_id`。旧 `--user-id` 已退役，旧准入兼容页的 `user_id` 不能用于本命令。操作者必须逐字确认 `RESET-MFA adm.example`，再隐藏输入已配置的 `AUTH_BOOTSTRAP_ADMIN_SECRET`；Secret 不接受参数、管道或 CI 输入。
 
-暂停管理员准入与重置 MFA 是不同流程。前者使用 `campusosctl identity restore-admin-admission`；详细边界见 [管理员准入与恢复](./admin-admission.md)。
+目标须是现有、活跃、具备有效本域凭据和待确认或已启用 TOTP 因子的独立 Admin。成功后关闭该 Admin 的 TOTP，消费旧 Admin MFA/恢复票据，并撤销其全部会话及刷新凭据；保留已有角色绑定，不授予新权限，不修改 User 域。所有变更、必需审计和 Outbox 在同一事务提交，失败则整体回滚。重新登录后应立即注册新的认证器；已吊销的 Admin 不可借此恢复。
+
+账号暂停与 TOTP 丢失是不同操作。暂停账号应使用带 `--account-id` 的 `restore-admin-admission`，见[管理员准入与紧急恢复](./admin-admission.md)；只有固定系统 Admin 邮箱可通过[本机密码恢复](../api/account-recovery.md)重置密码。
 
 ## 密钥轮换
 
-先把新旧密钥同时放入 `AUTH_MFA_ENCRYPTION_KEYS`，将 `AUTH_MFA_ACTIVE_KEY_ID` 切到新 key ID，确认旧信封已迁移或失效后才删除旧密钥。直接删除旧密钥会让关联记录无法安全读取。
+先保留新旧密钥的兼容读取能力，再将 `AUTH_MFA_ACTIVE_KEY_ID` 切换到新 key ID。确认旧信封已经迁移或失效后再移除旧密钥，不能用删除密钥代替用户或管理员的受控恢复。
 
-完整 API 和错误码见 [多因素认证 API](../api/mfa.md)。
+普通 User 的 TOTP/恢复码接口见[多因素认证 API](../api/mfa.md)；独立 Admin 的接口应按本页所述本域路径使用。

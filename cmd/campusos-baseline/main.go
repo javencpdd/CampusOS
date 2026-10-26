@@ -21,13 +21,14 @@ import (
 	"time"
 
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
+	"github.com/campusos/CampusOS/internal/plugin"
 	pluginv4 "github.com/campusos/CampusOS/internal/plugin/v4"
 	"gopkg.in/yaml.v3"
 )
 
 // baselineSchema is deliberately versioned so a stored G0 snapshot can be
 // interpreted without guessing which evidence fields were available.
-const baselineSchema = "campusos.v14-g0-baseline/v3"
+const baselineSchema = "campusos.v14-g0-baseline/v4"
 
 type snapshot struct {
 	Schema              string              `json:"schema"`
@@ -41,6 +42,7 @@ type snapshot struct {
 	ExternalPlugins     pluginSnapshot      `json:"external_plugins"`
 	V4PluginSources     v4PluginSnapshot    `json:"v4_plugin_sources"`
 	V4InstalledReleases v4PluginSnapshot    `json:"v4_installed_releases"`
+	V5PluginSources     v5PluginSnapshot    `json:"v5_plugin_sources"`
 	Resources           resourceSnapshot    `json:"resources"`
 	Tooling             toolingSnapshot     `json:"tooling"`
 	UserStorage         storageSnapshot     `json:"user_storage"`
@@ -110,6 +112,19 @@ type v4PluginItem struct {
 	Version string `json:"version"`
 	Runtime string `json:"runtime"`
 	Digest  string `json:"digest,omitempty"`
+}
+
+type v5PluginSnapshot struct {
+	Count    int            `json:"count"`
+	Packages []v5PluginItem `json:"packages"`
+	SHA256   string         `json:"sha256"`
+}
+
+type v5PluginItem struct {
+	Publisher string `json:"publisher"`
+	Key       string `json:"key"`
+	Version   string `json:"version"`
+	Runtime   string `json:"runtime"`
 }
 
 type resourceSnapshot struct {
@@ -271,6 +286,9 @@ func collect(root string, live bool, baseURL string, samples int) (*snapshot, er
 		return nil, err
 	}
 	if result.V4InstalledReleases, err = collectV4InstalledReleases(absRoot); err != nil {
+		return nil, err
+	}
+	if result.V5PluginSources, err = collectV5PluginSources(absRoot); err != nil {
 		return nil, err
 	}
 	if result.Resources, err = collectResources(absRoot); err != nil {
@@ -637,12 +655,53 @@ func collectV4PluginSources(root string) (v4PluginSnapshot, error) {
 	result := v4PluginSnapshot{Packages: []v4PluginItem{}}
 	manifests := make([]string, 0, len(paths))
 	for _, path := range paths {
+		if _, err := os.Stat(filepath.Join(path, "plugin.json")); err == nil {
+			// Current v5 declarations have their own inventory and validation.
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return v4PluginSnapshot{}, err
+		}
 		manifest, err := pluginv4.ValidateSourceDirectory(path)
 		if err != nil {
 			return v4PluginSnapshot{}, fmt.Errorf("inspect v4 source %s: %w", path, err)
 		}
 		result.Packages = append(result.Packages, v4PluginItem{Key: manifest.Key, Version: manifest.Version, Runtime: manifest.Backend.Runtime})
 		manifests = append(manifests, filepath.Join(path, "plugin.yaml"))
+	}
+	result.Count = len(result.Packages)
+	result.SHA256 = digestFiles(root, manifests)
+	return result, nil
+}
+
+func collectV5PluginSources(root string) (v5PluginSnapshot, error) {
+	paths, err := pluginv4.FindSourcePackages(filepath.Join(root, "plugins"))
+	if err != nil {
+		return v5PluginSnapshot{}, err
+	}
+	result := v5PluginSnapshot{Packages: []v5PluginItem{}}
+	var manifests []string
+	for _, path := range paths {
+		file := filepath.Join(path, "plugin.json")
+		info, err := os.Lstat(file)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return v5PluginSnapshot{}, err
+		}
+		if !info.Mode().IsRegular() {
+			return v5PluginSnapshot{}, fmt.Errorf("v5 source manifest must be a regular file: %s", file)
+		}
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			return v5PluginSnapshot{}, err
+		}
+		manifest, err := plugin.ValidatePluginV5SourceDeclaration(raw)
+		if err != nil {
+			return v5PluginSnapshot{}, fmt.Errorf("inspect v5 source %s: %w", path, err)
+		}
+		result.Packages = append(result.Packages, v5PluginItem{Publisher: manifest.Publisher, Key: manifest.Key, Version: manifest.Version, Runtime: manifest.Runtime})
+		manifests = append(manifests, file)
 	}
 	result.Count = len(result.Packages)
 	result.SHA256 = digestFiles(root, manifests)

@@ -232,8 +232,12 @@ func TestAssetAdminLifecyclePostgreSQLCurrentFactsABAAndGuards(t *testing.T) {
 				}()
 			}
 			if mode == "reference_guard" {
+				var originalForeignKey string
+				if err := g.pool.QueryRow(ctx, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='richtext_article_assets'::regclass AND conname='fk_richtext_article_assets_user_asset'").Scan(&originalForeignKey); err != nil {
+					t.Fatal(err)
+				}
 				defer func() {
-					if _, err := g.pool.Exec(context.Background(), "ALTER TABLE richtext_article_assets ADD CONSTRAINT fk_richtext_article_assets_user_asset FOREIGN KEY(asset_id) REFERENCES user_assets(id) ON DELETE SET NULL"); err != nil {
+					if _, err := g.pool.Exec(context.Background(), "ALTER TABLE richtext_article_assets ADD CONSTRAINT fk_richtext_article_assets_user_asset "+originalForeignKey); err != nil {
 						t.Fatal(err)
 					}
 				}()

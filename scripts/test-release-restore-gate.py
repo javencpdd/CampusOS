@@ -21,22 +21,24 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def main(work):
+def main(work, backend='native'):
+    owned = OWNED if backend == 'native' else ROOT / '.cache/release-restore-docker-drill'
     if work is None:
-        OWNED.mkdir(parents=True, exist_ok=True)
-        work = Path(tempfile.mkdtemp(prefix='acceptance-', dir=OWNED))
+        owned.mkdir(parents=True, exist_ok=True)
+        work = Path(tempfile.mkdtemp(prefix='acceptance-', dir=owned))
     else:
         work = work.resolve()
-        if not work.is_relative_to(OWNED) or work == OWNED:
+        if not work.is_relative_to(owned) or work == owned:
             raise RuntimeError('drill work must be new and below .cache/release-restore-drill')
         work.mkdir(parents=True, exist_ok=False)
     work.chmod(0o700)
     nonce = secrets.token_hex(12)
-    good = ROOT / '.cache/release-restore' / ('acceptance-' + nonce + '-positive')
-    bad = ROOT / '.cache/release-restore' / ('acceptance-' + nonce + '-loss')
+    target = ROOT / ('.cache/release-restore' if backend == 'native' else '.cache/release-restore-docker')
+    good = target / ('acceptance-' + nonce + '-positive')
+    bad = target / ('acceptance-' + nonce + '-loss')
     env = os.environ | {'DB_NAME': 'forbidden_parent_db', 'POSTGRES_CONTAINER': 'forbidden-parent-container',
                         'DATABASE_DSN': 'postgres://forbidden.invalid/unused', 'CAMPUSOS_SKIP_DOTENV': 'false'}
-    command = lambda path: ['make', 'release-restore-check', 'RELEASE_RESTORE_WORK=' + str(path)]
+    command = lambda path: ['make', 'release-restore-check' if backend == 'native' else 'release-restore-docker-check', 'RELEASE_RESTORE_WORK=' + str(path)]
     commands = []
 
     def run(label, args, use_env=env):
@@ -55,14 +57,14 @@ def main(work):
     if run('existing-work', command(good)) == 0 or 'FileExistsError' not in (work / 'existing-work.log').read_text():
         raise RuntimeError('existing evidence directory was not rejected')
     invalid = work / 'not-a-restore-gate-directory'
-    if run('outside-work', ['python3', 'scripts/check-release-restore.py', '--work', str(invalid)]) == 0 or invalid.exists():
+    if run('outside-work', ['python3', 'scripts/check-release-restore.py', '--backend', backend, '--work', str(invalid)]) == 0 or invalid.exists():
         raise RuntimeError('outside-scope output directory was not rejected')
     if sha(good / 'report.json') != original_report or any(sha(ROOT / p) != h for p, h in before.items()):
         raise RuntimeError('output rejection modified accepted evidence')
     with (work / 'database-loss.log').open('wb') as output:
         child = subprocess.Popen(command(bad), cwd=ROOT, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
         try:
-            end = time.monotonic() + 180
+            end = time.monotonic() + 300
             while not (bad / 'scope.json').exists():
                 if child.poll() is not None or time.monotonic() > end:
                     raise RuntimeError('actual failure target did not attest its scope')
@@ -91,11 +93,13 @@ def main(work):
         raise RuntimeError('real PG loss was masked as accepted recovery')
     if cleanup['errors'] or cleanup['credentials_persisted'] or not all(cleanup[k] for k in ('api_stopped', 'container_removed', 'ports_closed', 'dotenv_removed')):
         raise RuntimeError('actual failure leaked owned resources or credentials')
+    if backend == 'docker' and not all(cleanup['docker'][k] for k in ('owned_containers_removed', 'owned_image_removed', 'owned_network_removed', 'owned_base_alias_removed', 'borrowed_base_preserved')):
+        raise RuntimeError('actual Docker failure leaked resources or changed borrowed base')
     for path, digest in proof['source_sha256'].items():
         if sha(ROOT / path) != digest:
             raise RuntimeError('execution inputs changed during the drill')
     artifacts = {str(p.relative_to(ROOT)): sha(p) for directory in (work, good, bad) for p in sorted(directory.rglob('*')) if p.is_file()}
-    report = {'schema': 'campusos.release-restore-drill/v1', 'status': 'passed', 'positive_report': str((good / 'report.json').relative_to(ROOT)),
+    report = {'schema': 'campusos.release-restore-drill/v1', 'backend': backend, 'status': 'passed', 'positive_report': str((good / 'report.json').relative_to(ROOT)),
               'positive': proof, 'failure_work': str(bad.relative_to(ROOT)), 'failure_exit': status,
               'actual_failure_commands': failed, 'failure_cleanup': cleanup, 'existing_evidence_unchanged': True,
               'outside_scope_rejected': True, 'parent_DB_targets_ignored': True, 'no_mock_PostgreSQL_or_commands': True,
@@ -108,4 +112,6 @@ def main(work):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path)
-    main(parser.parse_args().work)
+    parser.add_argument('--backend', choices=('native', 'docker'), default='native')
+    args = parser.parse_args()
+    main(args.work, args.backend)

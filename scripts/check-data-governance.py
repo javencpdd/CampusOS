@@ -7,8 +7,10 @@ import hashlib
 import json
 import os
 import re
+import struct
 from pathlib import Path
 import sys
+import zlib
 
 
 ROOT = Path(os.environ.get("CAMPUSOS_GOVERNANCE_ROOT", Path(__file__).resolve().parents[1])).resolve()
@@ -23,6 +25,8 @@ RESOURCE_TYPES = {
     "personas": "persona",
     "knowledge-metadata": "knowledge-metadata",
 }
+# Built-in static assets are not installable campusos.resource/v1 packages.
+STATIC_RESOURCE_FILES = {"branding": {"default-logo.png"}}
 RESERVED_MODULE_NAMES = {
     "moderation",
     "category-moderation",
@@ -68,11 +72,13 @@ def validate_resources(errors: list[str]) -> None:
     resources = DATA / "resources"
     actual_kinds = {path.name for path in resources.iterdir() if path.is_dir()}
     missing = sorted(set(RESOURCE_TYPES) - actual_kinds)
-    unexpected = sorted(actual_kinds - set(RESOURCE_TYPES))
+    unexpected = sorted(actual_kinds - set(RESOURCE_TYPES) - set(STATIC_RESOURCE_FILES))
     if missing:
         fail(errors, f"data/resources is missing resource kinds: {', '.join(missing)}")
     if unexpected:
         fail(errors, f"data/resources has undeclared resource kinds: {', '.join(unexpected)}")
+
+    validate_static_resources(errors)
 
     for kind_dir, expected_type in RESOURCE_TYPES.items():
         root = resources / kind_dir
@@ -102,6 +108,95 @@ def validate_resources(errors: list[str]) -> None:
             for path in package.rglob("*"):
                 if path.is_file() and path.name in PLUGIN_MARKERS:
                     fail(errors, f"resource contains plugin runtime marker: {path.relative_to(ROOT)}")
+
+
+def validate_png_pixels(compressed: bytes, width: int, height: int, depth: int, color: int, interlace: int) -> None:
+    # Each PNG pass is scanlines of one filter byte plus packed pixel bits.
+    # IHDR has already bounded dimensions and validated this color/depth pair.
+    bits_per_pixel = depth * {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[color]
+    passes = ((0, 0, 1, 1),) if not interlace else (
+        (0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8),
+        (2, 0, 4, 4), (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2),
+    )
+    scanlines = []
+    for x, y, step_x, step_y in passes:
+        pass_width = max(0, (width - x + step_x - 1) // step_x)
+        pass_height = max(0, (height - y + step_y - 1) // step_y)
+        if pass_width and pass_height:
+            scanlines.append((1 + (pass_width * bits_per_pixel + 7) // 8, pass_height))
+    expected = sum(stride * rows for stride, rows in scanlines)
+    decoder = zlib.decompressobj()
+    # One extra byte detects an expansion beyond the IHDR-derived bound. Do not
+    # call flush(): it would remove the output cap on an attacker-controlled PNG.
+    pixels = decoder.decompress(compressed, expected + 1)
+    if len(pixels) != expected or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+        raise ValueError("PNG pixel stream length or termination")
+    offset = 0
+    for stride, rows in scanlines:
+        for _ in range(rows):
+            if pixels[offset] > 4:
+                raise ValueError("PNG scanline filter")
+            offset += stride
+
+
+def validate_static_resources(errors: list[str]) -> None:
+    for directory, allowed in STATIC_RESOURCE_FILES.items():
+        root = DATA / "resources" / directory
+        # Older layouts may omit optional built-in branding entirely.
+        if not root.exists() and not root.is_symlink():
+            continue
+        if root.is_symlink() or not root.is_dir():
+            fail(errors, f"static resource group must be a real directory: {root.relative_to(ROOT)}")
+            continue
+        if {path.name for path in root.iterdir()} != allowed:
+            fail(errors, f"static resource group has missing or undeclared files: {root.relative_to(ROOT)}")
+        for name in allowed:
+            path = root / name
+            if path.is_symlink() or not path.is_file():
+                fail(errors, f"static resource must be a regular file: {path.relative_to(ROOT)}")
+                continue
+            if not 0 < path.stat().st_size <= 2 * 1024 * 1024:
+                fail(errors, f"static logo exceeds the 2 MiB image limit: {path.relative_to(ROOT)}")
+                continue
+            data = path.read_bytes()
+            # Match homepage's existing logo bounds and validate PNG framing,
+            # CRCs and bounded scanlines without an image-library dependency.
+            try:
+                if data[:8] != b"\x89PNG\r\n\x1a\n":
+                    raise ValueError("PNG signature")
+                offset, chunks, image_data = 8, [], []
+                while offset < len(data):
+                    length = struct.unpack_from(">I", data, offset)[0]
+                    end = offset + 12 + length
+                    if end > len(data):
+                        raise ValueError("truncated chunk")
+                    kind = data[offset + 4:offset + 8]
+                    payload = data[offset + 8:end - 4]
+                    crc = struct.unpack_from(">I", data, end - 4)[0]
+                    if zlib.crc32(kind + payload) != crc:
+                        raise ValueError("chunk CRC")
+                    if not chunks:
+                        if kind != b"IHDR" or length != 13:
+                            raise ValueError("IHDR")
+                        width, height, depth, color, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
+                        depths = {0: {1, 2, 4, 8, 16}, 2: {8, 16}, 3: {1, 2, 4, 8}, 4: {8, 16}, 6: {8, 16}}
+                        if not (0 < width <= 1024 and 0 < height <= 1024) or depth not in depths.get(color, set()) or compression or filtering or interlace not in (0, 1):
+                            raise ValueError("image bounds or format")
+                    elif kind == b"IHDR":
+                        raise ValueError("duplicate IHDR")
+                    if kind == b"IDAT":
+                        image_data.append(payload)
+                    chunks.append(kind)
+                    offset = end
+                    if kind == b"IEND":
+                        if length or end != len(data):
+                            raise ValueError("IEND")
+                        break
+                if chunks[-1:] != [b"IEND"] or b"IDAT" not in chunks:
+                    raise ValueError("incomplete PNG")
+                validate_png_pixels(b"".join(image_data), width, height, depth, color, interlace)
+            except (ValueError, struct.error, zlib.error):
+                fail(errors, f"static logo must be a bounded PNG with valid chunks: {path.relative_to(ROOT)}")
 
 
 def validate_plugins(errors: list[str]) -> None:

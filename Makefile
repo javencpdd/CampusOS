@@ -216,6 +216,7 @@ frontend-budget:
 
 data-governance-check:
 	python3 scripts/check-data-governance.py
+	python3 scripts/test-data-governance.py
 	./scripts/test-v10-layout-migration.sh
 
 generated-files-check:
@@ -294,6 +295,17 @@ release-restore-check:
 .PHONY: release-restore-drill
 release-restore-drill:
 	python3 scripts/test-release-restore-gate.py $(if $(RELEASE_RESTORE_DRILL_WORK),--work "$(RELEASE_RESTORE_DRILL_WORK)")
+
+.PHONY: release-restore-docker-check release-restore-docker-drill
+release-restore-docker-check:
+	python3 scripts/check-release-restore.py --backend docker $(if $(RELEASE_RESTORE_WORK),--work "$(RELEASE_RESTORE_WORK)")
+
+release-restore-docker-drill:
+	python3 scripts/test-release-restore-gate.py --backend docker $(if $(RELEASE_RESTORE_DRILL_WORK),--work "$(RELEASE_RESTORE_DRILL_WORK)")
+
+.PHONY: release-browser-check
+release-browser-check:
+	python3 scripts/check-release-restore.py --browser $(if $(RELEASE_BROWSER_WORK),--work "$(RELEASE_BROWSER_WORK)")
 
 release-check:
 	./scripts/release-check.sh

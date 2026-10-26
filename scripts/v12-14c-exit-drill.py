@@ -37,6 +37,8 @@ def main(work):
     (work / 'source-freeze.json').write_text(json.dumps(frozen, ensure_ascii=False, indent=2) + '\n')
     env = {k: os.environ[k] for k in ('PATH', 'HOME') if k in os.environ}
     env.update(GOCACHE='/tmp/campusos-go-cache', GOMAXPROCS='2', GOFLAGS='-buildvcs=false', CAMPUSOS_SKIP_DOTENV='true')
+    (work/'docker-config').mkdir(mode=0o700)
+    env.update(DOCKER_HOST='unix:///var/run/docker.sock',DOCKER_CONFIG=str(work/'docker-config'))
     commands, started, image_started, port, summary = [], False, False, None, None
     container = 'campusos-owned14c-' + secrets.token_hex(6)
     tag = 'localhost/campusos-owned14c-echo:' + secrets.token_hex(8)
@@ -81,7 +83,7 @@ def main(work):
         run('pg-start', ['docker', 'run', '--rm', '--pull=never', '-d', '--name', container, '--tmpfs', '/var/lib/postgresql/data:rw,size=512m', '-e', 'POSTGRES_USER=campusos', '-e', 'POSTGRES_DB=' + DATABASE, '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', 'postgres:16-alpine'], {'POSTGRES_PASSWORD': password})
         started = True
         for _ in range(120):
-            if subprocess.run(['docker', 'exec', container, 'pg_isready', '-U', 'campusos', '-d', DATABASE], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+            if subprocess.run(['docker', 'exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'campusos', '-d', DATABASE], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
                 break
             time.sleep(.25)
         else:

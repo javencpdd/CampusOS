@@ -66,6 +66,7 @@
         v-model:current-page="page"
         :page-size="20"
         :total="total"
+        :pager-count="isCompact ? 5 : 7"
         @current-change="loadThreads"
         layout="prev, pager, next"
       />

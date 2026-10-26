@@ -451,17 +451,24 @@ func TestKnowledgePrivateIndexPostgres(t *testing.T) {
 			t.Fatal(name, e)
 		}
 	}
-	downCmd := exec.CommandContext(ctx, "bash", filepath.Join(repoRoot, "scripts/migrate.sh"), "down")
-	downCmd.Env = os.Environ()
-	downLog, e := os.Create(filepath.Join(root, "private-down-refused.log"))
+	// Under current Schema35, the private-domain guard is the original34 SQL.
+	// Execute those exact bytes in an actual transaction; latest-down would
+	// test the unrelated AI35 domain instead.
+	privateDown, e := os.ReadFile(filepath.Join(repoRoot, "migrations/000034_knowledge_private_index.down.sql"))
 	if e != nil {
 		t.Fatal(e)
 	}
-	downCmd.Stdout, downCmd.Stderr = downLog, downLog
-	e = downCmd.Run()
-	downLog.Close()
-	if e == nil {
-		t.Fatal("nonempty private rollback was allowed")
+	rollback, e := pool.Begin(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, e = rollback.Exec(ctx, string(privateDown))
+	_ = rollback.Rollback(ctx)
+	if e == nil || !strings.Contains(e.Error(), "private selections exist; owner withdrawal and key retirement required before rollback") {
+		t.Fatal("original private34 nonempty guard required", e)
+	}
+	if err := os.WriteFile(filepath.Join(root, "private-down-refused.log"), []byte(e.Error()+"\n"), 0600); err != nil {
+		t.Fatal(err)
 	}
 	var present int
 	if e = pool.QueryRow(ctx, `SELECT count(*) FROM knowledge_private_sources`).Scan(&present); e != nil || present != 2 {

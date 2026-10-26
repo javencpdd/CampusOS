@@ -2,6 +2,7 @@
 """Build the current-source test union; do not infer closure from report names."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -24,6 +25,10 @@ for path in sorted(Path('docs/项目计划书v1/项目计划v1.2/evidence').glob
         reports.append({'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'tests':names})
         required.update(names)
 historical = set(required)
+if os.environ.get('CAMPUSOS_FINAL_ACCEPTANCE') == 'true':
+    for name, paths in source.items():
+        if paths[0].endswith('/identity/service/integration_postgres_test.go') or name == 'TestIntegrationActualServerBrowserLifecycle':
+            required.add(name)
 for name in source:
     if name.startswith(('TestAdminSPA','TestPostgreSQLAdminMFA','TestPostgreSQLAdminSession','TestAdminMFA')) or name == 'TestAdminDomainHTTPBootstrapLoginAndCrossDomainRejection':
         required.add(name)

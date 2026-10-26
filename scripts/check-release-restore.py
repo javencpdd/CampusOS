@@ -49,20 +49,22 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def main(work):
+def main(work, backend='native', browser=False):
+    owned = (ROOT / '.cache/release-browser') if browser else (OWNED if backend == 'native' else ROOT / '.cache/release-restore-docker')
+    profile_path = (ROOT / 'scripts/release-browser-profile.json') if browser else (PROFILE if backend == 'native' else ROOT / 'scripts/release-restore-docker-profile.json')
     if sys.platform != 'linux':
         raise RuntimeError('native Linux and local Docker socket required; Windows remains deferred')
     if work is None:
-        OWNED.mkdir(parents=True, exist_ok=True)
-        work = Path(tempfile.mkdtemp(prefix='acceptance-', dir=OWNED))
+        owned.mkdir(parents=True, exist_ok=True)
+        work = Path(tempfile.mkdtemp(prefix='acceptance-', dir=owned))
     else:
         work = work.resolve()
-        if not work.is_relative_to(OWNED) or work == OWNED:
-            raise RuntimeError('work must be a new directory below .cache/release-restore')
+        if not work.is_relative_to(owned) or work == owned:
+            raise RuntimeError('work must be a new directory below the selected owned restore backend')
         work.mkdir(parents=True, exist_ok=False)
     work.chmod(0o700)
-    frozen, profile_hash = sources(), sha(PROFILE)
-    profile = json.loads(PROFILE.read_text())
+    frozen, profile_hash = sources(), sha(profile_path)
+    profile = json.loads(profile_path.read_text())
     (work / 'source-freeze.json').write_text(json.dumps(frozen, indent=2) + '\n')
     machine = {'system': platform.platform(), 'machine': platform.machine(), 'cpu_count': os.cpu_count(),
                'cpu_affinity': sorted(os.sched_getaffinity(0)),
@@ -86,7 +88,8 @@ def main(work):
     secret_values = [password, key, login_password, jwt, mfa, machine_key]
     commands, checks, http_checks, processes, epochs, seconds = [], [], [], [], [], []
     attempted, container_id, pg_port, api_port, process = False, None, None, None, None
-    scope, binaries = {}, {}
+    scope, binaries, docker = {}, {}, None
+    api_ports = set()
     cleanup = {'errors': [], 'api_stopped': False, 'container_removed': False,
                'ports_closed': False, 'dotenv_removed': False, 'credentials_persisted': False}
 
@@ -99,12 +102,32 @@ def main(work):
         return raw
 
     def run(label, args, extra=None, cwd=ROOT, stdin=None, failure=False, timeout=300):
+        transport = docker.rewrite(label, args, extra or {}) if docker else None
+        if transport:
+            tool_name, args, extra = transport
         begin = time.monotonic()
-        result = subprocess.run([str(a) for a in args], cwd=cwd, env=env | (extra or {}), input=stdin,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
+        if label == 'actual-browser':
+            child = subprocess.Popen([str(a) for a in args], cwd=cwd, env=env | (extra or {}),
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                output, _ = child.communicate(input=stdin, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                output, _ = child.communicate()
+            finally:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            result = subprocess.CompletedProcess(args, child.returncode, output)
+        else:
+            result = subprocess.run([str(a) for a in args], cwd=cwd, env=env | (extra or {}), input=stdin,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
         (work / (label + '.log')).write_bytes(redact(result.stdout))
         commands.append({'name': label, 'args': [str(a) for a in args], 'exit_code': result.returncode,
                          'expected_failure': failure, 'seconds': round(time.monotonic() - begin, 3)})
+        if transport:
+            docker.finished(tool_name, result.returncode)
         if (result.returncode == 0) == failure:
             raise RuntimeError(label + ' unexpected status; inspect retained log')
         return result.stdout.decode(errors='replace').strip()
@@ -179,7 +202,22 @@ def main(work):
                       'OBSERVABILITY_PROMETHEUS_ENABLED': 'false', 'GIN_MODE': 'release', 'CAMPUSOS_RUN_MIGRATIONS': 'false'}
 
     def start(label, db, root, blocked=False):
-        nonlocal process
+        nonlocal process, api_port
+        if docker and db == TARGET:
+            port = docker.start(label, app_env(db, root), blocked)
+            if blocked:
+                return
+            api_port = port
+            api_ports.add(port)
+            end = time.monotonic() + 40
+            while True:
+                try:
+                    http(label + '-ready', '/health', record=False)
+                    return
+                except (OSError, RuntimeError, ValueError):
+                    if time.monotonic() > end:
+                        raise RuntimeError('Docker API readiness deadline') from None
+                    time.sleep(.1)
         log = (work / (label + '-server.log')).open('wb')
         args = ['bwrap', '--die-with-parent', '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc', '--tmpfs', '/tmp',
                 '--bind', str(root), str(root), '--ro-bind', str(native), str(native), '--chdir', str(root), '--', str(native / 'server')]
@@ -236,15 +274,25 @@ def main(work):
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait(timeout=5)
         process = None
+        if docker:
+            docker.stop()
 
     try:
+        if browser:
+            for folder in ('web', 'admin', 'docs-site'):
+                run(folder + '-build', ['pnpm', '--dir', folder, 'build'], timeout=600)
         for package, filename in [('./cmd/server', 'server'), ('./cmd/campusosctl', 'campusosctl')]:
-            run('build-' + filename, ['go', 'build', '-o', native / filename, package], timeout=600)
+            run('build-' + filename, ['go', 'build', '-o', native / filename, package],
+                {'CGO_ENABLED': '0'} if backend == 'docker' else {}, timeout=600)
         for package, filename in [('./internal/plugin', 'plugin.test'), ('./internal/server', 'server.test')]:
             run('build-' + filename, ['go', 'test', '-race', '-c', '-o', native / filename, package], timeout=600)
         binaries = {str(p.relative_to(ROOT)): sha(p) for p in sorted(native.iterdir())}
         write('binary-freeze.json', binaries)
         env['CAMPUSOSCTL'] = str(native / 'campusosctl')
+        if backend == 'docker':
+            from release_restore_docker import DockerRecovery
+            docker = DockerRecovery(ROOT, work, native, name, nonce, LABEL, run, profile)
+            docker.prepare()
         engine = run('docker-version', ['docker', 'version', '--format={{.Server.Os}}/{{.Server.Arch}}'])
         if not engine.startswith('linux/'):
             raise RuntimeError('local Linux Docker required')
@@ -254,12 +302,13 @@ def main(work):
             raise RuntimeError('cached PG16 actual RepoDigest required; no image pull')
         attempted = True
         container_id = run('pg-start', ['docker', 'run', '-d', '--pull=never', '--name', name, '--label', LABEL + '=' + nonce,
+                                      *(['--network', docker.network_id] if docker else []),
                                       '--tmpfs', '/var/lib/postgresql/data:rw,size=1g', '-e', 'POSTGRES_USER=campusos',
                                       '-e', 'POSTGRES_DB=' + SEED, '-e', 'POSTGRES_PASSWORD', '-p', '127.0.0.1::5432', refs[0]], {'POSTGRES_PASSWORD': password})
         if not re.fullmatch(r'[0-9a-f]{64}', container_id):
             raise RuntimeError('missing owned container identity')
         end = time.monotonic() + 30
-        while subprocess.run(['docker', 'exec', name, 'pg_isready', '-U', 'campusos', '-d', SEED], env=env,
+        while subprocess.run(['docker', 'exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'campusos', '-d', SEED], env=env,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5).returncode != 0:
             if time.monotonic() > end:
                 raise RuntimeError('PG readiness deadline')
@@ -276,7 +325,7 @@ def main(work):
         version = json.loads(sql('pg-version', SEED, "SELECT jsonb_build_object('database',current_database(),'user',current_user,'version_num',current_setting('server_version_num')::int,'version',version(),'data_directory',current_setting('data_directory'));"))
         if version['database'] != SEED or version['user'] != 'campusos' or version['data_directory'] != '/var/lib/postgresql/data' or not 160000 <= version['version_num'] < 170000:
             raise RuntimeError('actual PG16 target mismatch')
-        scope = {'container': name, 'container_id': container_id, 'owner_label': nonce, 'seed_database': SEED,
+        scope = {'backend': backend, 'container': name, 'container_id': container_id, 'owner_label': nonce, 'seed_database': SEED,
                  'restored_database': TARGET, 'pg_port': pg_port, 'image_id': image['id'], 'image_digest': refs[0],
                  'engine': engine, 'pg_version': version, 'dotenv_loaded': False, 'operator_DB_variables_inherited': False,
                  'shared_service_used': False}
@@ -297,6 +346,13 @@ def main(work):
         reference_schema = schema('schema-roundtrip-reference', reference)
         checks.append('owned pinned PG16/loopback/tmpfs; current35/132/143 and full independent Schema roundtrip reference')
         shutil.copytree(ROOT / 'migrations', source / 'migrations')
+        if browser:
+            names = subprocess.check_output(['git', 'ls-files', '-z', 'data/resources'], cwd=ROOT).decode().split('\0')
+            for filename in names:
+                if filename and (ROOT / filename).is_file():
+                    target = source / filename
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(ROOT / filename, target)
         with os.fdopen(os.open(source / '.env', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
             stream.write('CAMPUSOS_SECRET_ENCRYPTION_KEYS=owned:' + key + '\nJWT_SECRET=' + jwt + '\n')
         seed_env = {'CAMPUSOS_V12_BACKUP_DSN': dsn(SEED), 'CAMPUSOS_V12_BACKUP_ROOT': str(source),
@@ -304,9 +360,12 @@ def main(work):
         mandatory('offline-fixture', native / 'plugin.test', 'TestV12BackupRestoreOffline', seed_env)
         mandatory('identity-and-thread-fixture', native / 'server.test', 'TestV12RecoverySeedAccountsAndCapacity',
                   seed_env | {'CAMPUSOS_RECOVERY_PASSWORD': login_password, 'CAMPUSOS_RECOVERY_MACHINE_KEY': machine_key})
+        if browser:
+            sql('browser-managed-term-fixture', SEED, "INSERT INTO academic_terms(id,year,semester,first_week_start,status,is_default) VALUES(9808080,2026,'fall','2026-08-31','open',true);")
         with socket.socket() as reservation:
             reservation.bind(('127.0.0.1', 0))
             api_port = reservation.getsockname()[1]
+        api_ports.add(api_port)
         scope['api_port'] = api_port
         write('scope.json', scope)
         start('source', SEED, source)
@@ -332,6 +391,8 @@ def main(work):
  'disabled_installations',(SELECT count(*) FROM plugin_installations WHERE state->>'desired'='disabled')+(SELECT count(*) FROM plugin_user_installations WHERE state->>'desired'='disabled'),
  'encrypted_secret_history_rows',(SELECT count(*) FROM plugin_secret_values WHERE plugin_id=8808001));"""
         dataset = json.loads(sql('dataset-before-backup', SEED, dataset_statement))
+        if browser:
+            dataset['academic_terms'] = int(sql('browser-term-count', SEED, 'SELECT count(*) FROM academic_terms;'))
         expected_dataset = {k: profile[k] for k in dataset if k != 'documents'}
         expected_dataset['documents'] = profile['documents_per_owner'] * profile['owners']
         fixture = json.loads((source / 'data/config/v12-backup-fixture.json').read_text())
@@ -376,6 +437,15 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
             if applied['phase'] != 'quarantined' or not applied['egress_paused'] or applied['epoch'] in epochs:
                 raise RuntimeError('restore must allocate a fresh quarantined authentication epoch')
             epochs.append(applied['epoch'])
+            applied_files = {str(f.relative_to(restored / 'data')): sha(f) for f in (restored / 'data').rglob('*')
+                             if f.is_file() and f.name != '.campusos-recovery.json'}
+            backup_data = {n.removeprefix('data/'): h for n, h in expected_files.items() if n.startswith('data/')}
+            # Entry-point logs/dist folders are operational output, not part of
+            # the restored business set; apply replaces every backed-up tree.
+            applied_business = {n: h for n, h in applied_files.items() if not n.startswith(('logs/', 'dist/'))}
+            if applied_business != backup_data:
+                raise RuntimeError('actual applied business files differ from verified archive')
+            write(phase + '-applied-files.json', {'status': 'passed', 'files': applied_business})
             mandatory(phase + '-restored-facts', native / 'plugin.test', 'TestV12RecoveryRestoredSecretsPackagesAndObjects',
                       {'CAMPUSOS_V12_BACKUP_DSN': dsn(TARGET), 'CAMPUSOS_RECOVERY_DATA_ROOT': str(restored / 'data'), 'CAMPUSOS_V12_BACKUP_KEY': key})
             reconcile = json.loads(run(phase + '-object-reconcile', [native / 'campusosctl', 'storage', 'reconcile', '--root', restored / 'data/personal-space', '--dry-run'], cli_env))
@@ -453,24 +523,50 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
                 old['admin'] = current_admin
             run(phase + '-migration-check', ['bash', 'scripts/migrate.sh', 'check'], pg_env(TARGET))
             run(phase + '-database-check', ['bash', 'scripts/database-check.sh', 'all'], pg_env(TARGET))
-            if json.loads(sql(phase + '-dataset', TARGET, dataset_statement)) != dataset:
+            restored_dataset = json.loads(sql(phase + '-dataset', TARGET, dataset_statement))
+            if browser:
+                restored_dataset['academic_terms'] = int(sql(phase + '-term-count', TARGET, 'SELECT count(*) FROM academic_terms;'))
+            if restored_dataset != dataset:
                 raise RuntimeError('restored dataset differs from frozen source')
             checks.append(phase + ' actual official apply/fresh epoch/exact Secret and Object bytes/reconcile/current inventory/blocked startup/stale review/current HTTP/online apply refusal/full Schema')
-        if sources() != frozen or sha(PROFILE) != profile_hash or sha(work / 'frozen-profile.json') != manifest_hash or any(sha(ROOT / p) != h for p, h in binaries.items()):
+        if browser:
+            start('browser-reviewed', TARGET, restored)
+            private = work / 'private-browser-input.json'
+            with os.fdopen(os.open(private, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
+                json.dump({'backend': 'http://127.0.0.1:' + str(api_port), 'password': login_password,
+                           'chrome': shutil.which('google-chrome') or shutil.which('chromium'), 'output': str(work / 'browser')}, stream)
+            try:
+                run('actual-browser', ['node', 'scripts/release-browser.mjs', private], timeout=900)
+            finally:
+                private.unlink(missing_ok=True)
+            stop_api()
+            checks.append('actual built Web/Admin/Docs/business/style-packs/responsive on owned current-identity API')
+        if sources() != frozen or sha(profile_path) != profile_hash or sha(work / 'frozen-profile.json') != manifest_hash or any(sha(ROOT / p) != h for p, h in binaries.items()):
             raise RuntimeError('sources/profile/hardware manifest/prebuilt ELFs changed during gate')
         checks.append('sources/profile/hardware and4prebuilt ELFs unchanged; no shared target or new product Schema')
     except BaseException as error:
         write('failure.json', {'status': 'failed', 'error_type': type(error).__name__, 'scope': scope})
         raise
     finally:
-        stop_api()
+        try:
+            stop_api()
+        except Exception as error:
+            cleanup['errors'].append(str(error))
         for p, log, label in processes:
             log.close()
             path = work / (label + '-server.log')
             path.write_bytes(redact(path.read_bytes()))
         cleanup['api_stopped'] = all(p.poll() is not None for p, _, _ in processes)
         (source / '.env').unlink(missing_ok=True)
+        (work / 'private-browser-input.json').unlink(missing_ok=True)
+        if browser:
+            for path in (work / 'browser').rglob('*'):
+                if path.is_file() and path.suffix in ('.log', '.json', '.txt'):
+                    path.write_bytes(redact(path.read_bytes()))
         cleanup['dotenv_removed'] = not (source / '.env').exists()
+        if not attempted:
+            cleanup['container_removed'] = True
+            cleanup['ports_closed'] = True
         if attempted:
             try:
                 present = run('containers-before-cleanup', ['docker', 'ps', '-a', '--format={{.Names}}']).splitlines()
@@ -482,7 +578,7 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
                 after = run('containers-after-cleanup', ['docker', 'ps', '-a', '--format={{.Names}}']).splitlines()
                 cleanup['container_removed'] = name not in after
                 closed = []
-                for port in (pg_port, api_port):
+                for port in ({pg_port} | api_ports):
                     if port is not None:
                         with socket.socket() as sock:
                             sock.settimeout(.5)
@@ -490,6 +586,12 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
                 cleanup['ports_closed'] = bool(closed) and all(closed)
                 if not cleanup['container_removed'] or not cleanup['ports_closed']:
                     raise RuntimeError('owned resources remain')
+            except Exception as error:
+                cleanup['errors'].append(str(error))
+        if docker:
+            try:
+                docker.cleanup()
+                cleanup['docker'] = docker.report
             except Exception as error:
                 cleanup['errors'].append(str(error))
         write('commands.json', commands)
@@ -501,13 +603,16 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
         raise RuntimeError('success requires verified cleanup')
     checks.append('owned APIs/container/tmpfs/ports and private dotenv removed; credential bytes absent from retained evidence')
     write('report.json', {'schema': 'campusos.release-restore/v1', 'status': 'passed', 'implementation': 'passed',
-                         'automation': 'passed', 'target_environment': 'local_Linux_normal_native_API_official_restore_owned_PG16',
+                         'automation': 'passed', 'target_environment': 'local_Linux_normal_' + backend + '_API_official_restore_owned_PG16',
                          'scope': scope, 'profile': manifest, 'source_sha256': frozen, 'binary_sha256': binaries,
                          'checks': checks, 'http_checks': http_checks, 'commands': commands, 'cleanup': cleanup,
                          'epochs': epochs, 'restore_review_health_seconds': seconds, 'archive_sha256': sha(archive),
                          'backup_file_count': len(expected_files), 'backup_file_sha256': expected_files,
+                         'applied_business_file_count': len(applied_business), 'backend': backend,
                          'schema_roundtrip_reference_sha256': hashlib.sha256(reference_schema.encode()).hexdigest(),
-                         'browser_Docker_API_AI_private_index_capacity_or_full_release': False,
+                         'docker': docker.report if docker else None,
+                         'browser': json.loads((work / 'browser/browser.json').read_text()) if browser else None,
+                         'AI_private_index_capacity_or_full_release': False,
                          'artifact_sha256': {str(p.relative_to(ROOT)): sha(p) for p in sorted(work.rglob('*')) if p.is_file()}})
     print(json.dumps({'status': 'passed', 'checks': len(checks), 'report': str(work / 'report.json')}))
 
@@ -515,4 +620,7 @@ raise SystemExit(subprocess.run(['docker','exec','-i',os.environ['POSTGRES_CONTA
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, help='new exclusive directory below .cache/release-restore')
-    main(parser.parse_args().work)
+    parser.add_argument('--backend', choices=('native', 'docker'), default='native')
+    parser.add_argument('--browser', action='store_true')
+    args = parser.parse_args()
+    main(args.work, args.backend, args.browser)
