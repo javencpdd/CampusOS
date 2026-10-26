@@ -1,0 +1,12 @@
+{
+  "contract": "campusos.plugin-package/v1",
+  "transport": "Go and CLI only; no installation HTTP operation in03a",
+  "errors": [
+    {"code": "plugin.package_invalid", "http_status": 400, "retryable": false},
+    {"code": "plugin.package_digest_mismatch", "http_status": 400, "retryable": false},
+    {"code": "plugin.package_signature_invalid", "http_status": 400, "retryable": false},
+    {"code": "plugin.release_digest_conflict", "http_status": 409, "retryable": false},
+    {"code": "plugin.package_identity_unavailable", "http_status": 503, "retryable": true},
+    {"code": "plugin.legacy_protocol_removed", "http_status": 400, "retryable": false}
+  ]
+}

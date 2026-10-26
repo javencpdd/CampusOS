@@ -54,9 +54,11 @@ services:
   maintenance:
     image: campusos-api:${CAMPUSOS_IMAGE_TAG:-1.1.0-dev}
     profiles: ["maintenance"]
-    user: "0:0"
+    user: "10001:10001"
     entrypoint: ["/sbin/tini", "--"]
     environment:
+      DATABASE_DSN: postgres://${POSTGRES_USER:-campusos}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-campusos}?sslmode=disable
+      CAMPUSOS_SKIP_DOTENV: "true"
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER:-campusos}
@@ -65,14 +67,13 @@ services:
     volumes:
       - campusos-data:/app/data
       - ./backups:/backups:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - FOWNER
     networks:
       - backend
 

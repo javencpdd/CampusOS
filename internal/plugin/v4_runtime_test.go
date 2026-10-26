@@ -32,7 +32,7 @@ func TestV4ReleaseUsesSeparateCatalogAndProjectsAnIsolatedFrame(t *testing.T) {
 	manager := NewManager()
 	manager.RegisterRuntime("none", NewNoneRuntime())
 	manifest := testV4RuntimeManifest(t)
-	installed, err := manager.RegisterV4Release(V4Release{Release: pluginv4.InstalledRelease{Manifest: manifest, Path: t.TempDir(), Digest: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}, PublicPath: "plugins/campusos.pdf-viewer/2.0.0-dev.1-test", UIOrigin: "http://localhost:3003"})
+	installed, err := registerHistoricalV4Release(t, manager, V4Release{Release: pluginv4.InstalledRelease{Manifest: manifest, Path: t.TempDir(), Digest: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}, PublicPath: "plugins/campusos.pdf-viewer/2.0.0-dev.1-test", UIOrigin: "http://localhost:3003"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestV4RuntimeManifestTemplateOriginUsesBrowserFacingHost(t *testing.T) {
 	manager := NewManager()
 	manager.RegisterRuntime("none", NewNoneRuntime())
 	manifest := testV4RuntimeManifest(t)
-	if _, err := manager.RegisterV4Release(V4Release{
+	if _, err := registerHistoricalV4Release(t, manager, V4Release{
 		Release:    pluginv4.InstalledRelease{Manifest: manifest, Path: t.TempDir(), Digest: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
 		PublicPath: "plugins/campusos.pdf-viewer/2.0.0-dev.1-test",
 		UIOrigin:   "http://{host}:3003",
@@ -91,4 +91,23 @@ func TestV4RuntimeManifestTemplateOriginUsesBrowserFacingHost(t *testing.T) {
 	if !strings.Contains(recorder.Body.String(), want) {
 		t.Fatalf("runtime manifest did not retain the browser-facing host: %s", recorder.Body.String())
 	}
+}
+
+// This retired DTO fixture only exercises isolated rendering. Production has
+// no v4-to-Manager adapter or loader after 03a.
+func registerHistoricalV4Release(t *testing.T, m *Manager, release V4Release) (*Plugin, error) {
+	t.Helper()
+	if err := m.v4.put(release); err != nil {
+		return nil, err
+	}
+	manifest := &Manifest{APIVersion: ManifestAPIVersionV3, HostAPIVersion: HostAPIVersionV3, Name: release.Release.Manifest.Key, Version: release.Release.Manifest.Version, Runtime: "none", Scope: ScopeSystem}
+	for _, c := range release.Release.Manifest.Capabilities {
+		manifest.CapabilityDeclarations = append(manifest.CapabilityDeclarations, CapabilityRequest{Code: c.Code, Required: c.Required, Purpose: c.Purpose, Scope: c.Scope})
+	}
+	if err := manifest.Validate(); err != nil {
+		return nil, err
+	}
+	p := &Plugin{ID: manifest.Name, Manifest: manifest, Status: StatusInstalled, BackendState: BackendInstalled, FrontendState: FrontendLoaded, Health: HealthUnknown, DesiredEnabled: true, Directory: release.Release.Path, Checksum: strings.TrimPrefix(release.Release.Digest, "sha256:"), IsolatedUI: true}
+	m.catalog.plugins[p.ID] = p
+	return clonePlugin(p), nil
 }

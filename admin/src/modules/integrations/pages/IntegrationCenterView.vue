@@ -6,6 +6,7 @@
         <p>统一查看插件、AI、个人主页、Webhook、MCP、Message 和基础观测状态。每项能力都标明当前成熟度和使用边界。</p>
       </div>
       <div class="header-actions">
+		<el-button @click="$router.push('/integrations/principals')">机器集成凭据</el-button>
         <el-button plain :icon="Document" @click="openDocs()">集成说明</el-button>
         <el-button :loading="loading" @click="loadAll">
           <el-icon><Refresh /></el-icon>

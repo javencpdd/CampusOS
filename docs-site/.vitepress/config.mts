@@ -40,6 +40,7 @@ export default defineConfig({
           { text: '项目介绍', link: '/guide/introduction' },
           { text: '系统架构', link: '/guide/architecture' },
           { text: '模块与插件边界', link: '/guide/module-plugin-resource-boundaries' },
+          { text: '受管 AI 模型', link: '/guide/managed-ai' },
           { text: '数据目录', link: '/reference/data-layout' },
         ],
       },
@@ -78,9 +79,9 @@ export default defineConfig({
       {
         text: '插件开发',
         items: [
-          { text: 'v4 自包含插件体系', link: '/plugins/overview' },
+          { text: '插件体系（历史/迁移）', link: '/plugins/overview' },
           { text: 'PDF Viewer 入门教程', link: '/plugins/pdf-viewer-tutorial' },
-          { text: 'v4 Manifest 与配置', link: '/plugins/manifest' },
+          { text: 'v5 Manifest 与包检查', link: '/plugins/manifest' },
           { text: '隔离 UI、Bridge 与 Gateway', link: '/plugins/frontend-runtime' },
           { text: '三层授权与资源访问', link: '/plugins/authorization-v3' },
           { text: '打包、安装与生命周期', link: '/plugins/package-import' },

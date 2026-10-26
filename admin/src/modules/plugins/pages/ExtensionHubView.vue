@@ -240,7 +240,7 @@ import { useRouter } from "vue-router";
 import { Refresh } from "@element-plus/icons-vue";
 import { featureApi } from "@/modules/features/api";
 import { mapBuiltinFeatures } from "@/modules/features/catalog";
-import { pluginApi } from "@/modules/plugins/api";
+import { pluginV5Api } from "@/modules/plugins/v5-api";
 import { useLayoutCapability } from "@/shared/layout/useLayoutCapability";
 
 const router = useRouter();
@@ -326,12 +326,19 @@ const go = (path: string) => router.push(path);
 const load = async () => {
   loading.value = true;
   try {
-    const [pluginResponse, featureResponse, marketResponse] = await Promise.all(
-      [pluginApi.list(), featureApi.list(), pluginApi.marketOverview()],
-    );
-    plugins.value = itemsOf(pluginResponse);
+    const [pluginResponse, featureResponse] = await Promise.all([
+      pluginV5Api.list(),
+      featureApi.list(),
+    ]);
+    plugins.value = itemsOf(pluginResponse).map((entry: any) => ({
+      name: `${entry.release.publisher}/${entry.release.plugin_key}`,
+      version: entry.release.version,
+      runtime: entry.release.manifest.runtime,
+      status: entry.installation?.observed || "stopped",
+      description: entry.release.manifest.display_name,
+    }));
     features.value = mapBuiltinFeatures(itemsOf(featureResponse));
-    market.value = dataOf(marketResponse) || {};
+    market.value = {};
   } finally {
     loading.value = false;
   }

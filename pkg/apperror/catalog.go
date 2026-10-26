@@ -8,8 +8,21 @@ import (
 const CatalogVersion = "campusos.errors/v1"
 
 var (
-	RequestInvalid   = descriptor("platform", "request.invalid", 10001, 400, "invalid request", false)
-	ResourceConflict = descriptor("platform", "resource.conflict", 10004, 409, "resource conflict", false)
+	KnowledgeDisabled        = descriptor("knowledge", "knowledge.disabled", 89301, 503, "知识集合已停用", false)
+	KnowledgeCapacity        = descriptor("knowledge", "knowledge.capacity_exceeded", 89302, 409, "知识集合达到容量上限，请缩小集合或规则范围", false)
+	KnowledgeUnavailable     = descriptor("knowledge", "knowledge.unavailable", 89303, 503, "知识集合暂时无法读取，请稍后重试", true)
+	PluginV5Unavailable      = descriptor("plugin-platform", "plugin.platform_unavailable", 88001, 503, "插件服务暂不可用，请稍后重试", true)
+	PluginV5NotFound         = descriptor("plugin-platform", "plugin.not_found", 88002, 404, "未找到可访问的插件或操作", false)
+	PluginV5Denied           = descriptor("plugin-platform", "plugin.permission_denied", 88003, 403, "当前会话、权限、MFA 或授权不满足操作要求", false)
+	PluginV5Conflict         = descriptor("plugin-platform", "plugin.lifecycle_generation_conflict", 88004, 409, "状态已变化，请刷新后重试", false)
+	PluginV5Invalid          = descriptor("plugin-platform", "plugin.lifecycle_invalid", 88005, 400, "请求格式无效，请检查版本与操作参数", false)
+	PluginV5Rollback         = descriptor("plugin-platform", "plugin.lifecycle_rollback_unverifiable", 88006, 409, "无法验证数据兼容性，请使用相同数据版本的保留模式包", false)
+	PluginV5LegacyRetired    = descriptor("plugin-platform", "plugin.legacy_retired", 88007, 410, "旧插件入口已退役，请使用 plugin-v5 接口", false)
+	PluginV5PackageConflict  = descriptor("plugin-platform", "plugin.release_digest_conflict", 88008, 409, "该发布坐标已绑定其他包摘要，请提升版本", false)
+	PluginV5PackageSignature = descriptor("plugin-platform", "plugin.package_signature_invalid", 88009, 400, "包签名或当前发布者信任无效", false)
+	PluginV5PackageDigest    = descriptor("plugin-platform", "plugin.package_digest_mismatch", 88010, 400, "包或准备文件完整性校验失败", false)
+	RequestInvalid           = descriptor("platform", "request.invalid", 10001, 400, "invalid request", false)
+	ResourceConflict         = descriptor("platform", "resource.conflict", 10004, 409, "resource conflict", false)
 	// Keep the cause server-side, but give every client a safe next action.
 	InternalError    = descriptor("platform", "internal.error", 10006, 500, "系统暂时无法完成该操作，请稍后重试；如持续出现，请联系管理员。", true)
 	AuthRequired     = descriptor("identity", "auth.required", 20001, 401, "unauthorized", false)
@@ -47,6 +60,7 @@ var (
 	IdentityMFAPolicyInvalid                 = descriptor("identity", "identity.mfa.policy_invalid", 10017, 400, "multi-factor authentication policy is invalid", false)
 	IdentityMFAPolicySafety                  = descriptor("identity", "identity.mfa.policy_safety", 10018, 409, "multi-factor authentication policy safety requirements are not met", false)
 	IdentityMFAStepUpRequired                = descriptor("identity", "identity.mfa.step_up_required", 10019, 403, "recent multi-factor authentication is required", false)
+	IdentityIntegrationUnavailable           = descriptor("identity", "identity.integration.unavailable", 50301, 503, "machine integration is temporarily unavailable", true)
 
 	AcademicTermInvalid             = descriptor("academic-term", "academic_term.invalid", 74001, 400, "学期请求无效", false)
 	AcademicTermNotAvailable        = descriptor("academic-term", "academic_term.not_available", 74002, 404, "学期不存在或当前不可用", false)
@@ -101,6 +115,8 @@ var (
 )
 
 var catalog = []Descriptor{
+	KnowledgeDisabled, KnowledgeCapacity, KnowledgeUnavailable,
+	PluginV5Unavailable, PluginV5NotFound, PluginV5Denied, PluginV5Conflict, PluginV5Invalid, PluginV5Rollback, PluginV5LegacyRetired, PluginV5PackageConflict, PluginV5PackageSignature, PluginV5PackageDigest,
 	RequestInvalid, ResourceConflict, InternalError, AuthRequired, AuthInvalidToken, PermissionDenied, ResourceNotFound,
 	IdentityChallengeInvalid, IdentityChallengeRateLimited, IdentityRegistrationVerificationRequired,
 	IdentityAdminAdmissionInvalid, IdentityAdminAdmissionNotFound, IdentityAdminAdmissionVersionConflict,
@@ -108,6 +124,7 @@ var catalog = []Descriptor{
 	IdentityMFAInvalid, IdentityMFATicketInvalid, IdentityMFAFactorInvalid, IdentityMFAEnrollmentRequired,
 	IdentityMFAUnavailable, IdentityMFAReplay, IdentityMFANotEnabled, IdentityMFAPolicyInvalid, IdentityMFAPolicySafety,
 	IdentityMFAStepUpRequired,
+	IdentityIntegrationUnavailable,
 	AcademicTermInvalid, AcademicTermNotAvailable, AcademicTermAlreadyExists, AcademicTermClosed,
 	AcademicTermDefaultUnavailable, AcademicTermVersionConflict, AcademicTermHasSchedules,
 	ScheduleObjectUnavailable, PersonalScheduleDisabled,

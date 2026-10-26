@@ -30,6 +30,15 @@
             />
           </div>
           <div v-if="isOwnThread" class="article-actions">
+            <RouterLink
+              v-if="
+                !isTrashed &&
+                (thread.thread_type || 'discussion') === 'discussion' &&
+                ['text', 'markdown'].includes(thread.content_format)
+              "
+              :to="{ path: '/knowledge/private', query: { kind: 'community_thread', source_id: thread.id } }"
+              >加入私人知识</RouterLink
+            >
             <el-button v-if="isTrashed" type="success" size="small" :loading="articleOperating" @click="restoreOwnTrash"
               >恢复回收站内容</el-button
             >

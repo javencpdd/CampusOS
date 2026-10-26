@@ -47,6 +47,15 @@ func (r *PgThreadRepository) Create(ctx context.Context, thread *domain.Thread) 
 }
 
 func (r *PgThreadRepository) GetByID(ctx context.Context, id string) (*domain.Thread, error) {
+	if row, ok := r.sourceReadThread(ctx, id); ok {
+		if e := ctx.Err(); e != nil {
+			return nil, e
+		}
+		if row == nil {
+			return nil, ErrThreadNotFound
+		}
+		return row, nil
+	}
 	t, err := scanThread(r.db(ctx).QueryRow(ctx, selectThreadSQL("id = $1"), id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -61,9 +70,25 @@ func (r *PgThreadRepository) RecheckPublicThread(ctx context.Context, id string,
 	if expectedVersion < 1 {
 		return nil, ErrThreadNotFound
 	}
+	if !incrementView {
+		if row, ok := r.sourceReadThread(ctx, id); ok {
+			if e := ctx.Err(); e != nil {
+				return nil, e
+			}
+			if row == nil || row.FactsVersion != expectedVersion || row.PublicationStatus != domain.PublicationStatusPublished || row.ModerationStatus != domain.ModerationStatusClear || row.DeletionStatus != domain.DeletionStatusActive || row.DeletedAt != nil {
+				return nil, ErrThreadNotFound
+			}
+			return row, nil
+		}
+	}
 	where := `id = $1 AND facts_version = $2 AND publication_status = 'published'
 		AND moderation_status = 'clear' AND deletion_status = 'active'`
 	query := selectThreadSQL(where)
+	if transaction.Active(ctx) && !incrementView {
+		// A composed Integration read keeps the same checked public row until
+		// its machine audit/commit. Concurrent take-down waits for this read.
+		query += ` FOR SHARE`
+	}
 	if incrementView {
 		// The UPDATE locks the current row and PostgreSQL re-evaluates the
 		// predicate after a concurrent writer commits before returning it.

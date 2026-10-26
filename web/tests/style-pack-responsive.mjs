@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
+import { enrollOwnedAdminMFA } from './helpers/admin-mfa.mjs'
 
 const chrome = process.env.CHROME_BIN
 const webURL = (process.env.WEB_URL || 'http://localhost:3000').replace(/\/$/, '')
@@ -61,7 +62,7 @@ async function login(page) {
 
 async function loginAdmin(page) {
   await page.goto(`${adminURL}/login`, { waitUntil: 'domcontentloaded' })
-  await page.getByPlaceholder('请输入管理员邮箱').fill(email)
+  await page.getByPlaceholder('请输入管理员用户名或邮箱').fill(process.env.CAMPUSOS_ADMIN_USERNAME || email)
   await page.getByPlaceholder('请输入密码').fill(password)
   await Promise.all([
     page.waitForURL((url) => url.origin === adminURL && url.pathname === '/', { timeout: 15_000 }),
@@ -197,6 +198,7 @@ try {
   adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
   const adminPage = await adminContext.newPage()
   await loginAdmin(adminPage)
+  if (process.env.CAMPUSOS_OWNED_BROWSER_TARGET === 'true') await enrollOwnedAdminMFA(adminPage)
 
   for (const pack of homepagePacks) {
     await applyHomepagePack(adminPage, pack)

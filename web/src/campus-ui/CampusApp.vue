@@ -64,6 +64,7 @@
         <div v-if="!isCompact" class="primary-nav" aria-label="站点主导航">
           <router-link to="/">首页</router-link>
           <router-link to="/threads">全部帖子</router-link>
+          <router-link to="/knowledge">知识检索</router-link>
           <template v-for="node in categoryNavigation" :key="node.key">
             <el-dropdown v-if="node.kind === 'group'" trigger="click" @command="openCategoryBoard">
               <button type="button" class="category-nav-group" :aria-label="`打开${node.name}下的板块`">
@@ -100,6 +101,9 @@
             <router-link class="mobile-navigation-link" to="/" @click="closeMobileNavigation">首页</router-link>
             <router-link class="mobile-navigation-link" to="/threads" @click="closeMobileNavigation"
               >全部帖子</router-link
+            >
+            <router-link class="mobile-navigation-link" to="/knowledge" @click="closeMobileNavigation"
+              >知识检索</router-link
             >
             <template v-for="node in categoryNavigation" :key="`mobile:${node.key}`">
               <section v-if="node.kind === 'group'" class="mobile-navigation-group">

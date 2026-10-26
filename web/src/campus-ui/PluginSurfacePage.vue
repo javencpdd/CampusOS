@@ -77,10 +77,10 @@ const frameIdentity = computed<PluginFrameIdentity | undefined>(() => {
 })
 const frameURL = computed(() => {
   const frame = surface.value?.frame
-  return frame && invocationID.value ? isolatedPluginFrameURL(frame.src, invocationID.value) : ''
+  return frame ? isolatedPluginFrameURL(frame.src, invocationID.value) : ''
 })
 const requestFromFrame = (request: PluginBridgeRequest) => {
-  if (!surface.value || !invocationID.value) return Promise.reject(new Error('预览上下文不可用。'))
+  if (!surface.value) return Promise.reject(new Error('插件上下文不可用。'))
   return handleIsolatedPluginRequest(surface.value, invocationID.value, request)
 }
 </script>

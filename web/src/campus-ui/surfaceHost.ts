@@ -1,6 +1,7 @@
 import { readonly, ref } from 'vue'
 import router from '@/router'
 import { useUIRuntimeStore } from '@/modules/plugin-runtime/store'
+import { issuePreviewSessionHandoff } from '@/modules/identity/previewSessionHandoff'
 
 export type SurfacePresentation = 'modal' | 'drawer' | 'fullscreen' | 'new-tab'
 
@@ -39,7 +40,8 @@ export const openPluginSurface = (request: SurfaceOpenRequest) => {
     ) {
       throw new Error('该插件未注册可用的同源预览页面，请使用弹窗或下载附件。')
     }
-    const target = `${route.path}?invocation=${encodeURIComponent(request.invocationID)}`
+    const handoff = issuePreviewSessionHandoff()
+    const target = `${route.path}?invocation=${encodeURIComponent(request.invocationID)}&preview_handoff=${handoff}`
     window.open(target, '_blank', 'noopener,noreferrer')
     return
   }

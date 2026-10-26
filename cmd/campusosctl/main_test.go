@@ -10,43 +10,24 @@ import (
 
 	platformversion "github.com/campusos/CampusOS/internal/platform/version"
 	"github.com/campusos/CampusOS/internal/plugin"
-	campusossdk "github.com/campusos/CampusOS/sdk/go"
 )
 
 func TestPluginInitCreatesScaffold(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "sample-plugin")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	code := run([]string{"plugin", "init", "sample-plugin", "--dir", dir}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "sample-plugin", "--dir", dir}, &out, &errout) != 0 {
+		t.Fatal(errout.String())
 	}
-	if !strings.Contains(stdout.String(), "created plugin scaffold") {
-		t.Fatalf("unexpected stdout: %s", stdout.String())
-	}
-
-	manifest, err := plugin.LoadManifest(filepath.Join(dir, "plugin.yaml"))
+	raw, err := os.ReadFile(filepath.Join(dir, plugin.PluginV5ManifestFile))
 	if err != nil {
-		t.Fatalf("load manifest: %v", err)
+		t.Fatal(err)
 	}
-	if manifest.Name != "sample-plugin" || manifest.Runtime != "wasm" {
-		t.Fatalf("unexpected manifest: %#v", manifest)
+	m, err := plugin.ParsePluginV5Manifest(raw)
+	if err != nil || m.Key != "sample-plugin" || m.Runtime != "none" || m.APIVersion != "campusos.plugin/v5" {
+		t.Fatalf("manifest: %v", err)
 	}
-	if manifest.Config["entrypoint"] != "handle_event" {
-		t.Fatalf("expected wasm entrypoint config, got %#v", manifest.Config)
-	}
-	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
-		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
-	}
-	if manifest.Compatibility.CampusOS != ">=0.6.0 <0.14.0" {
-		t.Fatalf("unexpected CampusOS compatibility range: %q", manifest.Compatibility.CampusOS)
-	}
-	if manifest.Compatibility.SDKGo != campusossdk.SDKVersion {
-		t.Fatalf("unexpected Go SDK compatibility: %q", manifest.Compatibility.SDKGo)
-	}
-	if _, err := os.Stat(filepath.Join(dir, "README.md")); err != nil {
-		t.Fatalf("expected README: %v", err)
+	if _, err = os.Stat(filepath.Join(dir, "plugin.yaml")); !os.IsNotExist(err) {
+		t.Fatal("generated a legacy wire manifest")
 	}
 }
 
@@ -73,7 +54,7 @@ func TestIdentityResetPasswordRejectsNonSystemAccountBeforeTerminalRead(t *testi
 	}
 }
 
-func TestIdentityRestoreAdminAdmissionRejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+func TestIdentityRestoreAdminAdmissionRejectsLegacyUserIDBeforeTerminalRead(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -81,59 +62,57 @@ func TestIdentityRestoreAdminAdmissionRejectsInvalidArgumentsBeforeTerminalRead(
 	if code == 0 {
 		t.Fatal("expected administrator admission recovery command to reject an invalid user ID")
 	}
-	if !strings.Contains(stderr.String(), "positive --user-id") {
+	if !strings.Contains(stderr.String(), "legacy --user-id recovery is retired") {
 		t.Fatalf("unexpected identity command error: %s", stderr.String())
 	}
 }
 
-func TestIdentityResetMFARejectsInvalidArgumentsBeforeTerminalRead(t *testing.T) {
+func TestIdentityResetMFARejectsLegacyUserIDBeforeTerminalRead(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	code := run([]string{"identity", "reset-mfa", "--user-id", "0", "--reason", "lost device"}, &stdout, &stderr)
 	if code == 0 {
 		t.Fatal("expected local MFA recovery command to reject an invalid user ID")
 	}
-	if !strings.Contains(stderr.String(), "positive --user-id") {
+	if !strings.Contains(stderr.String(), "legacy --user-id recovery is retired") {
 		t.Fatalf("unexpected identity command error: %s", stderr.String())
 	}
 }
 
-func TestPluginInitCreatesGRPCScaffold(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "grpc-plugin")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+func TestIndependentAdminLocalRecoveryRequiresTerminalAndNeverAcceptsSecretFlags(t *testing.T) {
+	for _, args := range [][]string{
+		{"reset-password"},
+		{"reset-mfa", "--account-id", "adm.opaque", "--reason", "lost device"},
+		{"restore-admin-admission", "--account-id", "461101", "--reason", "operator review"},
+	} {
+		var out, errout bytes.Buffer
+		if code := runIdentity(args, &out, &errout, nil); code == 0 || !strings.Contains(errout.String(), "interactive terminal input is required") {
+			t.Fatal(args[0], code, errout.String())
+		}
+	}
+	for _, flag := range []string{"--password", "--bootstrap-secret", "--ticket"} {
+		var out, errout bytes.Buffer
+		if code := runIdentity([]string{"reset-password", flag, "PRIVATE_FLAG_CANARY"}, &out, &errout, nil); code == 0 || !strings.Contains(errout.String(), "usage:") || strings.Contains(out.String()+errout.String(), "PRIVATE_FLAG_CANARY") {
+			t.Fatal(flag, code, "secret flag was accepted or echoed")
+		}
+	}
+}
 
-	code := run([]string{"plugin", "init", "grpc-plugin", "--runtime", "grpc", "--dir", dir}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+func TestPluginInitRejectsRemovedRuntime(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "sample-plugin")
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "sample-plugin", "--runtime", "grpc", "--dir", dir}, &out, &errout) == 0 {
+		t.Fatal("legacy runtime accepted")
 	}
-
-	manifest, err := plugin.LoadManifest(filepath.Join(dir, "plugin.yaml"))
-	if err != nil {
-		t.Fatalf("load manifest: %v", err)
-	}
-	if manifest.Runtime != "grpc" {
-		t.Fatalf("expected grpc runtime, got %q", manifest.Runtime)
-	}
-	if manifest.Config["command"] != "./plugin" {
-		t.Fatalf("expected grpc command config, got %#v", manifest.Config)
-	}
-	if manifest.ConfigSchema == nil || len(manifest.ConfigSchema.Fields) == 0 {
-		t.Fatalf("expected config schema fields, got %#v", manifest.ConfigSchema)
-	}
-	if manifest.ConfigSchema.Fields[0].Key != "command" {
-		t.Fatalf("expected command schema field, got %#v", manifest.ConfigSchema.Fields[0])
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatal("rejected init wrote source")
 	}
 }
 
 func TestPluginInitRejectsBuiltinModules(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "builtin-plugin")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	code := run([]string{"plugin", "init", "builtin-plugin", "--runtime", "builtin", "--dir", dir}, &stdout, &stderr)
-	if code == 0 || !strings.Contains(stderr.String(), "modules/*/module.yaml") {
-		t.Fatalf("expected builtin separation error, code=%d stderr=%s", code, stderr.String())
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "builtin-plugin", "--runtime", "builtin"}, &out, &errout) == 0 {
+		t.Fatal("builtin runtime accepted as external package")
 	}
 }
 
@@ -212,240 +191,137 @@ styles: [styles/theme.css]
 }
 
 func TestPluginInspectPrintsManifestSummary(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`
-name: inspected-plugin
-version: "0.1.0"
-runtime: wasm
-events:
-  subscribe:
-    - thread.created
-storage:
-  type: none
-config_schema:
-  fields:
-    - key: theme
-      label: "Theme"
-      type: select
-      options:
-        - label: "Light"
-          value: "light"
-`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	dir := filepath.Join(t.TempDir(), "sample-plugin")
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "sample-plugin", "--dir", dir}, &out, &errout) != 0 {
+		t.Fatal(errout.String())
 	}
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := run([]string{"plugin", "inspect", dir}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected exit code 0, got %d stderr=%s", code, stderr.String())
+	out.Reset()
+	if run([]string{"plugin", "inspect", dir}, &out, &errout) != 0 {
+		t.Fatal(errout.String())
 	}
-
-	var summary map[string]interface{}
-	if err := json.Unmarshal(stdout.Bytes(), &summary); err != nil {
-		t.Fatalf("decode summary: %v", err)
-	}
-	if summary["name"] != "inspected-plugin" || summary["runtime"] != "wasm" {
-		t.Fatalf("unexpected summary: %#v", summary)
-	}
-	if summary["config_schema"] == nil {
-		t.Fatalf("expected config_schema in summary: %#v", summary)
+	var summary map[string]any
+	if json.Unmarshal(out.Bytes(), &summary) != nil || summary["key"] != "sample-plugin" || summary["api_version"] != "campusos.plugin/v5" || summary["installed"] != false {
+		t.Fatal("invalid summary")
 	}
 }
 
 func TestPluginInitRejectsInvalidName(t *testing.T) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	code := run([]string{"plugin", "init", "InvalidName"}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatalf("expected non-zero exit")
-	}
-	if !strings.Contains(stderr.String(), "can only contain") {
-		t.Fatalf("unexpected stderr: %s", stderr.String())
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "InvalidName"}, &out, &errout) == 0 {
+		t.Fatal("invalid name accepted")
 	}
 }
 
 func TestPluginPackRejectsInvalidConfigSchema(t *testing.T) {
-	sourceDir := filepath.Join(t.TempDir(), "invalid-schema")
-	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
-		t.Fatalf("create source dir: %v", err)
+	dir := testV5CLISource(t)
+	p := filepath.Join(dir, plugin.PluginV5ManifestFile)
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.yaml"), []byte(`
-name: invalid-schema
-version: "0.1.0"
-runtime: wasm
-storage:
-  type: none
-config:
-  module: "plugin.wasm"
-config_schema:
-  fields:
-    - key: layout
-      type: select
-`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	var m map[string]any
+	if json.Unmarshal(raw, &m) != nil {
+		t.Fatal("json")
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), []byte("wasm"), 0o644); err != nil {
-		t.Fatalf("write wasm: %v", err)
+	m["configuration"].(map[string]any)["install_script"] = "do-not-run"
+	raw, _ = json.Marshal(m)
+	if os.WriteFile(p, raw, 0600) != nil {
+		t.Fatal("write")
 	}
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := run([]string{"plugin", "pack", sourceDir}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatalf("expected invalid schema to fail")
+	var out, errout bytes.Buffer
+	output := filepath.Join(t.TempDir(), "package.tar.gz")
+	if run([]string{"plugin", "pack", dir, "--out", output}, &out, &errout) == 0 {
+		t.Fatal("invalid schema accepted")
 	}
-	if !strings.Contains(stderr.String(), "requires options") {
-		t.Fatalf("unexpected stderr: %s", stderr.String())
+	if _, err = os.Stat(output); !os.IsNotExist(err) {
+		t.Fatal("invalid pack wrote output")
 	}
 }
 
 func TestPluginPackAndInstall(t *testing.T) {
-	sourceDir := filepath.Join(t.TempDir(), "packable")
-	if err := os.MkdirAll(filepath.Join(sourceDir, "data"), 0o755); err != nil {
-		t.Fatalf("create data dir: %v", err)
+	dir := testV5CLISource(t)
+	output := filepath.Join(t.TempDir(), "package.tar.gz")
+	var out, errout bytes.Buffer
+	if os.MkdirAll(filepath.Join(dir, "data"), 0700) != nil || os.WriteFile(filepath.Join(dir, "data", "runtime.db"), []byte("not-shipped"), 0600) != nil {
+		t.Fatal("fixture")
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.yaml"), []byte(`
-name: packable
-version: "0.1.0"
-runtime: wasm
-storage:
-  type: none
-config:
-  module: "plugin.wasm"
-  entrypoint: "handle_event"
-`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	if run([]string{"plugin", "pack", dir, "--out", output}, &out, &errout) != 0 {
+		t.Fatal(errout.String())
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), []byte("wasm"), 0o644); err != nil {
-		t.Fatalf("write wasm: %v", err)
+	raw, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "data", "runtime.db"), []byte("do not package"), 0o644); err != nil {
-		t.Fatalf("write runtime data: %v", err)
+	p, err := plugin.InspectPluginV5Package(raw)
+	if err != nil || p.FileCount != 2 {
+		t.Fatal("pack copied source or data")
 	}
-
-	packagePath := filepath.Join(t.TempDir(), "packable.campusos-plugin.tar.gz")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	code := run([]string{"plugin", "pack", sourceDir, "--out", packagePath}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("pack exit code %d stderr=%s", code, stderr.String())
+	target := filepath.Join(t.TempDir(), "installed")
+	if run([]string{"plugin", "install", output, "--dir", target}, &out, &errout) == 0 {
+		t.Fatal("03a performed an installation")
 	}
-	if _, err := os.Stat(packagePath); err != nil {
-		t.Fatalf("expected package: %v", err)
-	}
-
-	installDir := t.TempDir()
-	stdout.Reset()
-	stderr.Reset()
-	code = run([]string{"plugin", "install", packagePath, "--dir", installDir}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("install exit code %d stderr=%s", code, stderr.String())
-	}
-	if _, err := plugin.LoadManifest(filepath.Join(installDir, "packable", "plugin.yaml")); err != nil {
-		t.Fatalf("expected installed manifest: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(installDir, "packable", "data", "runtime.db")); !os.IsNotExist(err) {
-		t.Fatalf("expected runtime data to be excluded, stat err=%v", err)
+	if _, err = os.Stat(target); !os.IsNotExist(err) {
+		t.Fatal("install changed files")
 	}
 }
 
 func TestPluginInstallRefusesExistingDirectory(t *testing.T) {
-	sourceDir := filepath.Join(t.TempDir(), "existing-plugin")
-	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
-		t.Fatalf("create source dir: %v", err)
+	target := t.TempDir()
+	sentinel := filepath.Join(target, "keep")
+	if os.WriteFile(sentinel, []byte("retained"), 0600) != nil {
+		t.Fatal("write")
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.yaml"), []byte(`
-name: existing-plugin
-version: "0.1.0"
-runtime: wasm
-storage:
-  type: none
-config:
-  module: "plugin.wasm"
-`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "install", "old.tar.gz", "--dir", target}, &out, &errout) == 0 {
+		t.Fatal("legacy install accepted")
 	}
-	if err := os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), []byte("wasm"), 0o644); err != nil {
-		t.Fatalf("write wasm: %v", err)
-	}
-
-	packagePath := filepath.Join(t.TempDir(), "existing-plugin.campusos-plugin.tar.gz")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	if code := run([]string{"plugin", "pack", sourceDir, "--out", packagePath}, &stdout, &stderr); code != 0 {
-		t.Fatalf("pack failed: %s", stderr.String())
-	}
-
-	installDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(installDir, "existing-plugin"), 0o755); err != nil {
-		t.Fatalf("create existing plugin: %v", err)
-	}
-	stdout.Reset()
-	stderr.Reset()
-	code := run([]string{"plugin", "install", packagePath, "--dir", installDir}, &stdout, &stderr)
-	if code == 0 {
-		t.Fatalf("expected install to fail for existing directory")
-	}
-	if !strings.Contains(stderr.String(), "already exists") {
-		t.Fatalf("unexpected stderr: %s", stderr.String())
+	raw, err := os.ReadFile(sentinel)
+	if err != nil || string(raw) != "retained" {
+		t.Fatal("rejected install mutated existing data")
 	}
 }
 
 func TestPluginVerifyRejectsUnknownPermission(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte(`
-name: unknown-permission
-version: "0.1.0"
-runtime: wasm
-config:
-  module: plugin.wasm
-permissions:
-  api:
-    - resource: database
-      actions: [superuser]
-storage:
-  type: none
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "plugin.wasm"), []byte{0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00}, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var stdout, stderr bytes.Buffer
-	code := run([]string{"plugin", "verify", dir, "--json"}, &stdout, &stderr)
-	if code == 0 || !strings.Contains(stderr.String(), "not in the Host API permission catalog") {
-		t.Fatalf("expected unknown permission rejection, code=%d stderr=%s", code, stderr.String())
-	}
-}
-
-func TestPluginDevBuildsGRPCTemplate(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	dir := testV5CLISource(t)
+	path := filepath.Join(dir, plugin.PluginV5ManifestFile)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sourceDir := filepath.Join(root, "examples", "plugins", "grpc-example")
+	var m map[string]any
+	if json.Unmarshal(raw, &m) != nil {
+		t.Fatal("json")
+	}
+	m["consumes"] = []any{map[string]any{"capability": "host.db.query", "scope": map[string]any{"kind": "public"}, "purpose": "Forbidden DB access", "required": false}}
+	raw, _ = json.Marshal(m)
+	if os.WriteFile(path, raw, 0600) != nil {
+		t.Fatal("write")
+	}
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "validate", dir}, &out, &errout) == 0 || !strings.Contains(errout.String(), "capability_unpublished") {
+		t.Fatal("unknown capability accepted")
+	}
+}
+
+func TestRemovedPluginCommandsCannotExecuteSource(t *testing.T) {
 	dir := t.TempDir()
-	for _, name := range []string{"go.mod", "main.go", "main_test.go", "plugin.yaml"} {
-		payload, readErr := os.ReadFile(filepath.Join(sourceDir, name))
-		if readErr != nil {
-			t.Fatalf("read template %s: %v", name, readErr)
+	if os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte("api_version: campusos.plugin/v4\n"), 0600) != nil {
+		t.Fatal("write")
+	}
+	for _, command := range []string{"v4", "dev", "build", "test", "doctor", "conformance", "watch"} {
+		var out, errout bytes.Buffer
+		if run([]string{"plugin", command, dir}, &out, &errout) == 0 {
+			t.Fatalf("legacy command %s accepted", command)
 		}
-		if writeErr := os.WriteFile(filepath.Join(dir, name), payload, 0o600); writeErr != nil {
-			t.Fatalf("copy template %s: %v", name, writeErr)
-		}
 	}
-	var stdout, stderr bytes.Buffer
-	code := run([]string{"plugin", "dev", dir, "--json"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("expected dev command success, code=%d stderr=%s", code, stderr.String())
+}
+func testV5CLISource(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "sample-plugin")
+	var out, errout bytes.Buffer
+	if run([]string{"plugin", "init", "sample-plugin", "--dir", dir}, &out, &errout) != 0 {
+		t.Fatal(errout.String())
 	}
-	var result commandResult
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		t.Fatal(err)
-	}
-	if result.Status != "pass" || result.Runtime != "grpc" {
-		t.Fatalf("unexpected dev result: %#v", result)
-	}
+	return dir
 }

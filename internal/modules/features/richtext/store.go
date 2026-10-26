@@ -141,6 +141,15 @@ func (s *PgStore) updateArticle(ctx context.Context, article *Article, expected 
 }
 
 func (s *PgStore) GetArticleByThreadID(ctx context.Context, threadID string) (*Article, error) {
+	if a, ok := s.sourceReadArticle(ctx, threadID); ok {
+		if e := ctx.Err(); e != nil {
+			return nil, e
+		}
+		if a == nil {
+			return nil, ErrArticleNotFound
+		}
+		return a, nil
+	}
 	return s.getArticle(ctx, `thread_id=$1 AND deleted_at IS NULL`, threadID, false)
 }
 
@@ -157,6 +166,10 @@ func (s *PgStore) getArticle(ctx context.Context, where string, value string, lo
 		query += " FOR UPDATE"
 	}
 	row := s.db(ctx).QueryRow(ctx, query, value)
+	return scanSourceArticle(row)
+}
+
+func scanSourceArticle(row interface{ Scan(...any) error }) (*Article, error) {
 	article := &Article{}
 	var contentJSON []byte
 	err := row.Scan(&article.ID, &article.ThreadID, &article.Title, &article.Summary, &article.CoverURL,

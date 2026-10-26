@@ -1,0 +1,42 @@
+{
+  "schema": "campusos.v12-10-capacity-profile/v1",
+  "frozen_before_execution": true,
+  "purpose": "phase10 bounded public lexical engineering acceptance, not production SLA; no comparisons to unlike G0 endpoints",
+  "host": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "kernel": "6.8.0-138-generic",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
+    "logical_cpus": 72,
+    "affinity_cpus": 72,
+    "memory_bytes": 33519296512
+  },
+  "origin_threads": 10000,
+  "unindexed_private_documents": 200,
+  "owners": 2,
+  "installed_external_plugins": 0,
+  "collection_projection_rows": 1000,
+  "unique_public_sources": 999,
+  "discussion_sources": 979,
+  "richtext_sources": 10,
+  "official_sources": 10,
+  "selected_private_threads": 10,
+  "corpus_text_max_bytes": 4194304,
+  "concurrency": 8,
+  "samples_per_endpoint": 100,
+  "endpoints": [
+    "selective_search",
+    "broad_search_first_page",
+    "exact_citation_reopen"
+  ],
+  "max_p95_ms": 1000,
+  "max_api_rss_bytes": 536870912,
+  "max_failed_requests": 0,
+  "max_unauthorized_results": 0,
+  "max_resident_index_ready_seconds": 180,
+  "max_restart_to_ready_seconds": 120,
+  "api_gomaxprocs": 2,
+  "postgres": "cached PG16 isolated loopback tmpfs1GiB",
+  "candidate_strategy_comparison": "measure existing checked full scan before optimization; parameterized PostgreSQL lexical-hint option must retain owning-origin G1 before results; no pg_trgm/extension/network dependency required without measured need",
+  "windows": "deferred_by_user_not_run"
+}

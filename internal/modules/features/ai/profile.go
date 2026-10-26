@@ -11,6 +11,9 @@ func BindPostgreSQLAdapter(app *platformmodule.AppContext, pool *pgxpool.Pool) e
 	if pool == nil {
 		return fmt.Errorf("AI PostgreSQL pool is required")
 	}
+	if err := app.Provide("integration.ai.adapter.pool", pool); err != nil {
+		return err
+	}
 	return app.Provide(portCallLogStore, CallLogStore(NewPgCallLogger(pool)))
 }
 

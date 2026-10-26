@@ -75,6 +75,17 @@ export const useUserStore = defineStore('user', () => {
     if (restorePromise) return restorePromise
     restorePromise = (async () => {
       try {
+        if (token.value) {
+          const checkingToken = token.value
+          const current: any = await authApi.me()
+          if (checkingToken !== token.value || checkingToken !== getAccessToken()) return false
+          if (current?.code !== 0 || !current?.data) {
+            clearSession()
+            return false
+          }
+          user.value = current.data.user || current.data
+          return true
+        }
         const refreshed: any = await authApi.refresh()
         if (refreshed?.code !== 0 || !refreshed?.data?.access_token) {
           clearSession()

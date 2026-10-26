@@ -46,3 +46,30 @@ func TestPathGateAllowsOnlyDeclaredStatusPathWhenFeatureIsDisabled(t *testing.T)
 		t.Fatalf("only the declared read-only status route may bypass the gate, got %d", wrongMethod.Code)
 	}
 }
+
+func TestPathGateOwnerDisabledContractStillAborts(t *testing.T) {
+	registry := NewRegistry(nil)
+	if e := registry.Register(Definition{ID: "owned", Mode: HotGated, DefaultEnabled: false}); e != nil {
+		t.Fatal(e)
+	}
+	called := false
+	r := gin.New()
+	r.Use(PathGate(registry, PathRule{Prefix: "/owned", FeatureID: "owned", DisabledHandler: func(c *gin.Context) {
+		c.Header("Cache-Control", "private, no-store")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "owner.disabled"})
+	}}))
+	r.GET("/owned", func(c *gin.Context) { called = true; c.Status(200) })
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/owned", nil))
+	if called || w.Code != 503 || w.Header().Get("Cache-Control") != "private, no-store" {
+		t.Fatal("gate did not abort with owner contract", w.Code)
+	}
+	if _, e := registry.Request("owned", true); e != nil {
+		t.Fatal(e)
+	}
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/owned", nil))
+	if !called || w.Code != 200 {
+		t.Fatal("enabled path failed", w.Code)
+	}
+}

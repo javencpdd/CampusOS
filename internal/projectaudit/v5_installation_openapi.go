@@ -1,0 +1,569 @@
+package projectaudit
+
+func v5InstallationOpenAPISchemas() string {
+	return `    PluginV5AdminCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            type: boolean
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - grant
+          consumes:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/consumes
+          host_resources:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/host_resources
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - approved
+        - consumes
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - revoke
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - purge_release
+        required:
+        - version
+        - idempotency_key
+        - kind
+    PluginV5UserCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - install
+            - enable
+            - disable
+            - upgrade
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            type: boolean
+          kind:
+            enum:
+            - uninstall
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_generation
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - configure
+          values:
+            type: object
+            maxProperties: 32
+          secret_refs:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: string
+              maxLength: 256
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - values
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            const: '0'
+          approved:
+            const: false
+          accepted:
+            const: false
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - retry
+          operation_id:
+            type: string
+            pattern: ^[0-9a-f]{32}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - operation_id
+      - type: object
+        additionalProperties: false
+        properties:
+          version:
+            $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+          idempotency_key:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_.:-]+$
+          expected_generation:
+            const: '0'
+          expected_revision:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,18})$
+          approved:
+            const: false
+          accepted:
+            type: boolean
+          purge_data:
+            const: false
+          kind:
+            enum:
+            - consent
+          purpose_hash:
+            type: string
+            pattern: ^sha256:[0-9a-f]{64}$
+        required:
+        - version
+        - idempotency_key
+        - kind
+        - expected_revision
+        - accepted
+        - purpose_hash
+    PluginV5Installation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        owner_user_id:
+          type: string
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        desired_version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        installed:
+          type: boolean
+        desired:
+          enum:
+          - enabled
+          - disabled
+          - uninstalled
+        observed:
+          enum:
+          - pending
+          - ready
+          - failed
+          - stopped
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        revision:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        observed_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        active_generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        config_digest:
+          type: string
+      required:
+      - publisher
+      - plugin_key
+      - owner_user_id
+      - version
+      - desired_version
+      - installed
+      - desired
+      - observed
+      - generation
+      - revision
+      - observed_generation
+      - active_generation
+      - error_code
+      - config_digest
+    PluginV5Operation:
+      type: object
+      additionalProperties: false
+      properties:
+        publisher:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/publisher
+        plugin_key:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/key
+        version:
+          $ref: https://campusos.local/schemas/plugin-v5-manifest-v1.schema.json#/properties/version
+        id:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+        owner_user_id:
+          type: string
+        kind:
+          enum:
+          - import
+          - install
+          - enable
+          - disable
+          - upgrade
+          - uninstall
+          - configure
+          - grant
+          - revoke
+          - consent
+          - retry
+          - purge_release
+        status:
+          enum:
+          - queued
+          - working
+          - waiting
+          - done
+          - failed
+          - superseded
+        generation:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        error_code:
+          type: string
+        purge_data:
+          type: boolean
+        attempts:
+          type: integer
+          minimum: 0
+      required:
+      - publisher
+      - plugin_key
+      - version
+      - id
+      - owner_user_id
+      - kind
+      - status
+      - generation
+      - error_code
+      - purge_data
+      - attempts
+    PluginV5InventoryEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        release:
+          type: object
+          description: Immutable coordinate/digest/manifest/release envelope; storage
+            is last observed availability, never trust/authorization.
+        installation:
+          $ref: '#/components/schemas/PluginV5Installation'
+        grant:
+          type: object
+        consent:
+          type: object
+        configuration:
+          type: object
+          description: Current domain only, ordinary values and opaque Secret refs; no
+            other owner or system configuration in User response.
+        purpose_hash:
+          type: string
+      required:
+      - release
+      - purpose_hash
+    PluginV5Inventory:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/PluginV5InventoryEntry'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+    PluginV5Import:
+      type: object
+      additionalProperties: false
+      properties:
+        package:
+          type: string
+          format: binary
+        release:
+          type: string
+          description: Detached JSON Ed25519 release envelope, at most1 MiB.
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^[A-Za-z0-9_.:-]+$
+      required:
+      - package
+      - release
+      - idempotency_key
+`
+}

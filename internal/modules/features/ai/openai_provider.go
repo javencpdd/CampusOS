@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	identityport "github.com/campusos/CampusOS/internal/modules/core/identity/port"
 	"io"
 	"net/http"
 	"strings"
@@ -72,16 +73,31 @@ func NewOpenAICompatibleProvider(config OpenAICompatibleConfig, opts ...OpenAIPr
 	for _, opt := range opts {
 		opt(provider)
 	}
+	// Never follow a provider redirect or silently retry a POST elsewhere.
+	client := *provider.client
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	provider.client = &client
 	return provider, nil
 }
+
+func (p *OpenAICompatibleProvider) Definition() Definition { return textDefinition() }
 
 func (p *OpenAICompatibleProvider) Name() string {
 	return p.config.providerName()
 }
 
 func (p *OpenAICompatibleProvider) ChatCompletion(ctx context.Context, request ChatRequest) (*ChatResponse, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
+	}
 	if err := request.validate(); err != nil {
 		return nil, err
+	}
+	if request.Model != "" && request.Model != p.config.Model {
+		return nil, newGatewayError(ErrInvalidRequest, "per-call model override is not supported", nil)
 	}
 	if strings.TrimSpace(p.config.APIKey) == "" {
 		return nil, newGatewayError(ErrProviderConfig, "API key is required", nil)
@@ -115,27 +131,36 @@ func (p *OpenAICompatibleProvider) ChatCompletion(ctx context.Context, request C
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, newGatewayError(ErrProviderResponse, "read provider response", err)
-	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		message := redactSecret(string(respBody), p.config.APIKey)
-		return nil, newProviderHTTPError(ErrProviderResponse, resp.StatusCode, message, nil)
+		return nil, newProviderHTTPError(ErrProviderResponse, resp.StatusCode, "provider returned non-success status [REDACTED]", nil)
+	}
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxChatResponseBytes+1))
+	if err != nil {
+		return nil, classifyContextError(err)
+	}
+	if len(respBody) > MaxChatResponseBytes {
+		return nil, newGatewayError(ErrProviderResponse, "provider response exceeds limit", nil)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
 	}
 
 	var parsed openAIChatResponse
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
+	if err := decodeTextResponse(respBody, &parsed); err != nil {
 		return nil, newGatewayError(ErrProviderResponse, "decode provider response", err)
 	}
-	if len(parsed.Choices) == 0 {
+	if len(parsed.Choices) != 1 {
 		return nil, newGatewayError(ErrProviderResponse, "provider response has no choices", nil)
 	}
-	content := parsed.Choices[0].Message.Content
+	choice := parsed.Choices[0]
+	if choice.Message.Role != "assistant" || forbiddenResponseValue(choice.Message.ToolCalls) || forbiddenResponseValue(choice.Message.FunctionCall) || forbiddenResponseValue(choice.Message.Audio) || forbiddenResponseValue(choice.Message.Refusal) || forbiddenResponseValue(choice.Message.Annotations) || (choice.FinishReason != "stop" && choice.FinishReason != "length") {
+		return nil, newGatewayError(ErrProviderResponse, "unsupported AI response modality or finish reason", nil)
+	}
+	content := choice.Message.Content
 	if content == "" {
 		return nil, newGatewayError(ErrProviderResponse, "provider response content is empty", nil)
 	}
-	return &ChatResponse{
+	result := &ChatResponse{
 		Provider:     p.Name(),
 		Model:        parsed.Model,
 		Content:      content,
@@ -145,7 +170,14 @@ func (p *OpenAICompatibleProvider) ChatCompletion(ctx context.Context, request C
 			CompletionTokens: parsed.Usage.CompletionTokens,
 			TotalTokens:      parsed.Usage.TotalTokens,
 		},
-	}, nil
+	}
+	if err := validateTextResponse(result); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
+	}
+	return result, nil
 }
 
 func classifyContextError(err error) error {
@@ -161,13 +193,6 @@ func classifyContextError(err error) error {
 	return newGatewayError(ErrProviderRequest, "call provider", err)
 }
 
-func redactSecret(value, secret string) string {
-	if secret == "" {
-		return value
-	}
-	return strings.ReplaceAll(value, secret, "[REDACTED]")
-}
-
 type openAIChatRequest struct {
 	Model       string    `json:"model"`
 	Messages    []Message `json:"messages"`
@@ -176,18 +201,69 @@ type openAIChatRequest struct {
 }
 
 type openAIChatResponse struct {
-	Model   string `json:"model"`
+	ID                string  `json:"id"`
+	Object            string  `json:"object"`
+	Created           int64   `json:"created"`
+	SystemFingerprint *string `json:"system_fingerprint"`
+	ServiceTier       *string `json:"service_tier"`
+	Model             string  `json:"model"`
+	// llama.cpp's bounded numeric performance metadata is informational only.
+	// It cannot add model content, modalities, tools or invocation authority.
+	Timings *struct {
+		CacheN              float64 `json:"cache_n"`
+		PromptN             float64 `json:"prompt_n"`
+		PromptMS            float64 `json:"prompt_ms"`
+		PromptPerTokenMS    float64 `json:"prompt_per_token_ms"`
+		PromptPerSecond     float64 `json:"prompt_per_second"`
+		PredictedN          float64 `json:"predicted_n"`
+		PredictedMS         float64 `json:"predicted_ms"`
+		PredictedPerTokenMS float64 `json:"predicted_per_token_ms"`
+		PredictedPerSecond  float64 `json:"predicted_per_second"`
+	} `json:"timings"`
 	Choices []struct {
-		Message      Message `json:"message"`
-		FinishReason string  `json:"finish_reason"`
+		Index    int             `json:"index"`
+		Logprobs json.RawMessage `json:"logprobs"`
+		Message  struct {
+			Role         string          `json:"role"`
+			Content      string          `json:"content"`
+			ToolCalls    json.RawMessage `json:"tool_calls"`
+			FunctionCall json.RawMessage `json:"function_call"`
+			Audio        json.RawMessage `json:"audio"`
+			Refusal      json.RawMessage `json:"refusal"`
+			Annotations  json.RawMessage `json:"annotations"`
+		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
-		PromptTokens     int `json:"prompt_tokens"`
-		CompletionTokens int `json:"completion_tokens"`
-		TotalTokens      int `json:"total_tokens"`
+		PromptTokens      int             `json:"prompt_tokens"`
+		CompletionTokens  int             `json:"completion_tokens"`
+		TotalTokens       int             `json:"total_tokens"`
+		PromptDetails     json.RawMessage `json:"prompt_tokens_details"`
+		CompletionDetails json.RawMessage `json:"completion_tokens_details"`
 	} `json:"usage"`
 }
 
 func (p *OpenAICompatibleProvider) String() string {
 	return fmt.Sprintf("%s %s", p.Name(), p.config.Model)
+}
+
+func forbiddenResponseValue(raw json.RawMessage) bool {
+	value := strings.TrimSpace(string(raw))
+	return value != "" && value != "null" && value != "[]"
+}
+
+func decodeTextResponse(raw []byte, out *openAIChatResponse) error {
+	// Wrap the response to reuse duplicate/Unicode/depth checks while permitting
+	// the protocol's nullable response metadata, unlike required request fields.
+	wrapped := append([]byte(`{"value":`), raw...)
+	wrapped = append(wrapped, '}')
+	if len(wrapped) > MaxChatResponseBytes || identityport.ValidateClosedHTTPObject(wrapped, []string{"value"}, MaxChatResponseBytes) != nil {
+		return newGatewayError(ErrProviderResponse, "invalid AI response JSON", nil)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(out) != nil {
+		return newGatewayError(ErrProviderResponse, "unsupported AI response fields", nil)
+	}
+	return nil
 }

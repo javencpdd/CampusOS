@@ -1,26 +1,21 @@
-# CampusOS 自包含插件源码
+# CampusOS v5 插件源码与包
 
-> 更新时间：2026-09-21（Asia/Shanghai）
-> 状态：R11-01、R11-03 已完成；PDF 用户端隔离 UI、Host Bridge、静态网关和实际迁出已完成。Admin 动态 Host、用户安装生命周期、升级/卸载和完整浏览器/恢复验收仍待后续 R11 任务实施。
+> 更新时间：2026-10-16（Asia/Shanghai）
 
-这里是受版本控制的插件**源码**，每个一级非点号目录是一份 `campusos.plugin/v4` 源包。
-已安装包必须位于本目录的 `.installed/`，安装暂存位于 `.staging/`；源码和暂存目录均不作为生产自动执行入口，运行时只发现通过校验的 `.installed/`。
+当前源码使用完整`campusos.plugin/v5`的`plugin.json`，不再自动发现或适配旧`plugin.yaml`、v4 `.installed`目录及开发源开关。主CLI的pack/sign/verify只处理v5，安装与启用由03b及后续阶段提供。
 
-```text
-plugins/<plugin-key>/
-  plugin.yaml
-  config/{system,user}.{schema,defaults}.json
-  frontend/{user,admin}/
-  backend/                 # 可选
-  storage/sqlite/          # 可选
-  tests/
+- `campusos.pdf-viewer/`：两个UI audience的无后端包，已重建旧PDF示例的发布合同与构建产物。
+- `campusos.chat-echo/`：无UI的Go/WASI包，使用Go SDK的`ai.chat/v1` DTO，不调用模型或宿主能力。
+
+显式构建与声明检查：
+
+```bash
+bash scripts/build-v5-examples.sh
+go run ./cmd/campusos-plugin-v5-check -root plugins
 ```
 
-当前可执行的源码合同检查：
+`make contracts-check`包含同一生产目录声明检查，不构建或执行插件。实际包只能包含`plugin.json`、`dist/`、`schemas/`及可选README/LICENSE；编译产物不进入Git。构建器只在开发者显式运行时执行，不由包元数据触发。
 
-```powershell
-go run ./cmd/campusos-plugin-v4-check -root plugins
-```
+查看[包与签名操作说明](../docs/help/插件v5包与签名操作说明.md)及[阶段进度](../docs/进度/v1.2-dev/v1.2.114-dev.md)。历史v4类型/校验器留作旧数据和测试参考，生产入口已退役；不得把旧目录或CLI当成v5安装后门。
 
-`make plugin-v4-check` 与 `make contracts-check` 会执行同一检查。该检查不会构建、安装、运行或授予插件权限。详情见
-[v1.1 插件自包含与动态加载重构计划](../docs/项目计划书v1/项目计划v1.1/02-v1.1插件自包含与动态加载重构计划书.md)。
+- `campusos.ai-knowledge/`：14c双向Go SDK示例，单独批准的本机/远程模型与公开问答Host消费，以及由Knowledge重核当前原来源的公开贡献；[构建与授权](campusos.ai-knowledge/README.md)。更新时间：2026-10-25（Asia/Shanghai）。

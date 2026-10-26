@@ -10,9 +10,9 @@
         </p>
       </div>
       <el-tag type="info" effect="plain"
-        >当前迁移 000001 - 000024（v1.1 基线 + v1.2
+        >当前迁移 000001 - 000035（v1.1 基线 + v1.2
         授权审计/插件版本/配置仓储/身份委托/管理身份域/管理员会话/MFA
-        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本）</el-tag
+        恢复/准入解耦/管理域授权/FK 索引补齐/帖子与管理权限事实版本/v5包身份账本/安装/独立元数据队列/受管AI模型）</el-tag
       >
     </section>
 
@@ -331,6 +331,36 @@ const domainFilter = ref<"all" | "identity" | "space" | "plugin">("all");
 const selectedTable = ref("users");
 
 const databaseTables: DbTable[] = [
+  {name: "ai_model_profiles", title: "受管模型 Profile", domain: "integration", purpose: "固定部署定义、模型、精确端点、启停与非复用修订；无调用方覆盖。", fields: ["id", "revision", "definition", "model", "enabled", "secret_ref", "timeout_ms", "max_tokens", "max_concurrent"], migration: "000035", relationshipNote: "secret_ref逻辑引用ai_model_secrets.id，双向绑定由AEAD和服务复核；定义为编译内置，不依赖插件。"},
+  {name: "ai_model_secrets", title: "受管 AI Secret 密文", domain: "integration", purpose: "独立AI密钥环加密凭据，AAD绑定Profile、定义、精确端点、用途和引用。", fields: ["id", "profile_id", "key_id", "nonce", "ciphertext", "endpoint", "purpose"], migration: "000035", relationshipNote: "profile_id外键Profile；仅Broker执行边界解密，主密钥不入数据库或备份。"},
+  {name: "ai_model_bindings", title: "Chat 模型绑定", domain: "integration", purpose: "唯一chat绑定与非复用CAS版本，当前Admin/MFA变更取消旧实例。", fields: ["name", "profile_id", "revision"], migration: "000035", relationshipNote: "profile_id外键Profile；重启保留选择，不从默认配置覆盖。"},
+  {name: "ai_model_budgets", title: "持久请求单位预算", domain: "integration", purpose: "每Profile预留和结算，分发后未知结果保守收费1；令牌不是货币账单。", fields: ["profile_id", "quota", "charged", "reserved"], migration: "000035", relationshipNote: "profile_id外键Profile，锁序binding→profile→budget→run；恢复不清零。"},
+  {name: "ai_model_runs", title: "受管模型执行元数据", domain: "integration", purpose: "仅owner逻辑引用、Profile/Binding修订、Instance、状态、租约与用量；无提示词和答案。", fields: ["id", "owner_id", "profile_id", "profile_revision", "binding_revision", "instance_id", "state", "lease_until_ms", "charged_units", "usage_known"], migration: "000035", relationshipNote: "profile_id外键Profile；owner_id为当前User逻辑引用，逐次会话复核，无Admin/机器同号复用。"},
+  {name: "ai_model_run_events", title: "受管执行有序事件", domain: "integration", purpose: "每run最多started/usage/terminal三项版本化元数据，禁止改写历史。", fields: ["run_id", "ordinal", "kind"], migration: "000035", relationshipNote: "run_id外键执行；事件顺序及正文脱敏由事务和服务共同保障，取消不重放模型。"},
+ {name:"knowledge_private_sources",title:"私人知识逐项同意与密文",domain:"community",purpose:"本人逐项选择的精确原来源修订与AEAD密文；无默认入库或外发同意。",fields:["id","owner_user_id","kind","source_id","revision","format","consent_version","state","nonce","ciphertext"],migration:"000034",relationshipNote:"owner_user_id外键users；来源为逻辑引用。独立外置每选择密钥，不进入应用备份；先退役删钥再撤回。新请求逐次原域复核，非空拒绝down。"},
+ {name:"knowledge_private_tasks",title:"私人密文索引任务",domain:"community",purpose:"只调度已加密快照的发布与当前事实对账；不持有User凭据或读取原始字节。",fields:["source_id","consent_version","state","attempts","lease_token","lease_until_ms","available_at_ms","error_code"],migration:"000034",relationshipNote:"source_id外键私人选择并级联清理；源行→任务锁序、单赢家租约、5次尝试与显式本人重试，不复用围栏。"},
+  {name: "knowledge_index_jobs", title: "知识索引执行与断点", domain: "community", purpose: "每集合独立保存请求代次、租约围栏、有限重试、来源/成员分页断点和已完成代次；周期复核消失目标。", fields: ["id","data","facts_version","state","available_at_ms","lease_until_ms","lease_token"], migration: "000033", relationshipNote: "id逻辑引用集合，无FK以保留消失目标清理任务；请求表仍不可变pending，只有完成代次可进入当前来源复核。非空拒绝down。"},
+  {name: "knowledge_index_documents", title: "公开知识文本投影", domain: "community", purpose: "当前G1复核后的Community/RichText/官方公开文本分块与来源/规则修订、解析器/分块器/Profile指纹及构建代次。", fields: ["id","data","facts_version","collection_id","selection_id","generation"], migration: "000033", relationshipNote: "集合/规则/成员均逻辑引用以允许删除对账；正文是非可信数据，输出仍复核来源和完成代次，未提供检索/AI/出站权。非空拒绝down。"},
+  {name: "knowledge_index_backfill_checkpoints", title: "知识元数据补扫断点", domain: "community", purpose: "常驻补扫器按集合/官方资料分别保存分页进度与下次扫描时限；请求和断点原子提交。", fields: ["target_kind","after_id","completed_passes","next_scan_at","updated_at"], migration: "000032", relationshipNote: "after_id是可缺失的逻辑枚举边界，不是来源/权限快照或事件ID水位；每轮完成后从头周期重扫，有断点拒绝down，不代表索引或权威全量对账就绪。"},
+  {name: "knowledge_index_tasks", title: "知识索引任务请求", domain: "community", purpose: "Outbox常驻消费者保存当前目标版本的不可变pending请求；执行状态由独立jobs保存。", fields: ["id","target_kind","target_id","target_version","status","created_at"], migration: "000031", relationshipNote: "target_kind区分集合/官方资料，target_id为逻辑引用；允许缺失目标的0版本清理意图，不存正文/ACL/凭据或event_id游标。当前请求不可更新/删除/清空，非空拒绝down。"},
+  {name: "knowledge_collections", title: "公开知识集合", domain: "community", purpose: "公开集合展示/启停与当前不可复用版本；默认关闭Feature。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "Admin创建者是独立管理域逻辑审计引用，不外键到User。"},
+  {name: "knowledge_official_sources", title: "官方知识资料", domain: "community", purpose: "有界text/Markdown正文及draft/published/withdrawn生命周期。", fields: ["id", "data", "facts_version"], migration: "000030", relationshipNote: "当前内容与追加修订同必需审计事务；不抓取URL或执行指令。"},
+  {name: "knowledge_official_revisions", title: "官方资料修订历史", domain: "community", purpose: "每次官方写入追加完整内容、状态与显式Admin变更者；数据库禁止修改/删除/清空。", fields: ["id", "data", "source_id", "facts_version"], migration: "000030", relationshipNote: "source_id外键到官方资料；版本是历史事实，不是公开授权。"},
+  {name: "knowledge_source_selections", title: "知识来源选择规则", domain: "community", purpose: "独立存储单篇/公开板块/官方规则与当前active及代次。", fields: ["id", "data", "collection_id", "facts_version"], migration: "000030", relationshipNote: "collection_id外键到集合；来源ID逻辑关联Community或官方域，不复制来源ACL。"},
+  {name: "knowledge_collection_sources", title: "知识集合显式成员", domain: "community", purpose: "每条规则的独立来源引用、观察修订和规则代次；无Community正文副本。", fields: ["id", "data", "collection_id", "selection_id", "facts_version"], migration: "000030", relationshipNote: "集合及(selection_id,collection_id)复合外键；每次输出复核当前来源/板块/规则，成员不授予出站权限。"},
+  {name: "plugin_packages", title: "v5 包族", domain: "plugin", purpose: "按发布者与插件键区分包族，不对应账号身份。", fields: ["publisher", "plugin_key", "created_at"], migration: "000027", relationshipNote: "与发布版本一对多，不外键绑定User/Admin。"},
+  {name: "plugin_package_releases", title: "v5 发布目录", domain: "plugin", purpose: "保存签名包元数据、可用性与修订；真实字节由摘要定位受管文件。", fields: ["record_id", "state", "publisher", "plugin_key", "version"], migration: "000027", relationshipNote: "FK到包族和000026不可变摘要账本；历史不删除。"},
+  {name: "plugin_installations", title: "v5 全局安装", domain: "plugin", purpose: "安装事实与desired/observed/current代次分离，审批不自动安装/启用。", fields: ["record_id", "state", "publisher", "plugin_key", "version", "desired_version", "generation", "revision"], migration: "000027", relationshipNote: "current与desired分别FK到发布版本；全局安装唯一。"},
+  {name: "plugin_user_installations", title: "v5 用户安装", domain: "plugin", purpose: "由当前User会话派生owner，状态与全局安装独立。", fields: ["record_id", "state", "owner_user_id", "version", "desired_version", "generation", "revision"], migration: "000027", relationshipNote: "FK到User、全局安装及current/desired发布版本；owner不可变。"},
+  {name: "plugin_v5_admin_grants", title: "v5 管理员批准", domain: "plugin", purpose: "按发布版本记录精确typed consumes和资源上限，不等于资源ACL。", fields: ["record_id", "state", "publisher", "plugin_key", "version", "revision"], migration: "000027", relationshipNote: "FK到发布版本，重批不复活旧代次或旧同意。"},
+  {name: "plugin_v5_user_consents", title: "v5 用户同意", domain: "plugin", purpose: "按版本、owner、用途摘要和Grant修订绑定同意。", fields: ["record_id", "state", "owner_user_id", "revision"], migration: "000027", relationshipNote: "FK到User和发布版本，不引用可变展示名。"},
+  {name: "plugin_v5_configurations", title: "v5 分域配置", domain: "plugin", purpose: "按版本和system/User域保留配置与不透明Secret ref，禁止明文凭据。", fields: ["record_id", "state", "owner_user_id", "revision"], migration: "000027", relationshipNote: "FK到发布版本与可空User；系统域owner为空。"},
+  {name: "plugin_operations", title: "v5 持久生命周期操作", domain: "plugin", purpose: "幂等意图、租约、重试、准备绑定与进度；同事务审计和Outbox。", fields: ["record_id", "state", "actor_kind", "actor_id", "idempotency_key", "revision"], migration: "000027", relationshipNote: "FK到发布版本；actor是显式域审计标识，不以User外键误绑Admin。"},
+  {name: "instance_recovery_epochs", title: "实例恢复认证围栏", domain: "system", purpose: "可信离线恢复的新认证代次、隔离/授权复核与必需证据；普通HTTP配置不可修改。", fields: ["singleton", "epoch", "archive_sha256", "phase", "inventory_sha256", "reviewed_by", "egress_paused", "audit"], migration: "000029", relationshipNote: "单行运维状态，不外键依赖User/Admin；operator为可信本地审计引用。非空拒绝down，文件标记与DB一致方可启动。"},
+  {name: "plugin_v5_event_deliveries", title: "v5 独立元数据事件队列", domain: "plugin", purpose: "仅保留白名单资源引用、修订及投递状态；插件回调不占用Core事务或Outbox工作器。", fields: ["id", "state", "source_event_id", "instance_id", "publisher", "plugin_key", "version", "instance_generation"], migration: "000028", relationshipNote: "FK到发布版本；来源事件为逻辑引用，独立租约/重试/死信保留证据，重启不复活旧实例。"},
+  { name: "plugin_package_identities", title: "v5 包不可变发布身份", domain: "plugin", purpose: "按publisher/key/version永久固定首个已验证包摘要，跨进程/重启拒绝同版本不同字节；不保存包字节、信任凭据、安装或授权状态。", fields: ["publisher", "plugin_key", "version", "package_digest", "created_at"], migration: "000026", relationshipNote: "独立于旧Manager与plugin_versions，不转换旧身份，不外键关联User/Admin；publisher来自当前受信包声明，信任仍须每次重新验证。" },
+  { name: "integration_principals", title: "独立机器集成身份", domain: "identity", purpose: "保存机器名称、当前启停/永久撤销及非复用事实版本，独立于 User/Admin/插件身份。", fields: ["id","name","status","facts_version","created_by_admin_id","created_at","updated_at"], migration: "000025", relationshipNote: "integration_credentials.principal_id 外键引用本表；created_by_admin_id 为独立 Admin 域逻辑审计关联，不关联用户 ID。" },
+  { name: "integration_credentials", title: "机器集成凭据摘要与白名单", domain: "identity", purpose: "仅存256位随机token的单向摘要、可辨识前缀、用途、有效期、精确通道/端点/资源规则及撤销事实；不保存原始凭据。", fields: ["id","principal_id","prefix","digest","purpose","status","rules","not_before_ms","expires_at_ms","facts_version","created_by_admin_id"], migration: "000025", relationshipNote: "principal_id 显式外键且禁止级联删除；created_by_admin_id 为 Admin 逻辑审计关联；生命周期命令关联平台必需审计/Outbox。" },
   {
     name: "schema_migrations",
     title: "迁移执行记录",
@@ -1921,6 +1951,39 @@ const databaseTables: DbTable[] = [
 ];
 
 const relations: Relation[] = [
+  {id: "ai_model_profiles-ai_model_secrets", source: "ai_model_profiles", target: "ai_model_secrets", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_bindings", source: "ai_model_profiles", target: "ai_model_bindings", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_budgets", source: "ai_model_profiles", target: "ai_model_budgets", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_profiles-ai_model_runs", source: "ai_model_profiles", target: "ai_model_runs", sourceCardinality: "1", targetCardinality: "N", label: "profile_id FK", domains: ["integration"]},
+  {id: "ai_model_runs-ai_model_run_events", source: "ai_model_runs", target: "ai_model_run_events", sourceCardinality: "1", targetCardinality: "N", label: "run_id FK", domains: ["integration"]},
+ {id:"knowledge-collection-index-job",source:"knowledge_collections",target:"knowledge_index_jobs",sourceCardinality:"1",targetCardinality:"1",label:"逻辑集合执行任务（无FK，缺失时仍清理）",domains:["community"]},
+ {id:"private-source-owner",source:"users",target:"knowledge_private_sources",sourceCardinality:"1",targetCardinality:"N",label:"私人选择owner外键",domains:["identity","community"]},
+ {id:"private-source-task",source:"knowledge_private_sources",target:"knowledge_private_tasks",sourceCardinality:"1",targetCardinality:"1",label:"同意修订与级联任务",domains:["community"]},
+ {id:"knowledge-rule-index-document",source:"knowledge_source_selections",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑规则修订投影（无FK）",domains:["community"]},
+ {id:"knowledge-job-index-document",source:"knowledge_index_jobs",target:"knowledge_index_documents",sourceCardinality:"1",targetCardinality:"N",label:"逻辑collection_id与完成generation（无FK）",domains:["community"]},
+ {id:"knowledge-collection-backfill-cursor",source:"knowledge_collections",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"collection枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
+ {id:"knowledge-official-backfill-cursor",source:"knowledge_official_sources",target:"knowledge_index_backfill_checkpoints",sourceCardinality:"N",targetCardinality:"1",label:"official枚举的逻辑边界after_id（无FK，可缺失）",domains:["community"]},
+ {id: "knowledge-collection-index-intent",source:"knowledge_collections",target:"knowledge_index_tasks",sourceCardinality:"1",targetCardinality:"N",label:"target_kind=collection 的逻辑目标引用（无FK）",domains:["community"]},
+ {id: "knowledge-official-index-intent",source:"knowledge_official_sources",target:"knowledge_index_tasks",sourceCardinality:"1",targetCardinality:"N",label:"target_kind=official 的逻辑目标引用（无FK）",domains:["community"]},
+  {id: "knowledge_collections-knowledge_source_selections", source: "knowledge_collections", target: "knowledge_source_selections", sourceCardinality: "1", targetCardinality: "N", label: "集合到选择规则 FK", domains: ["community"]},
+  {id: "knowledge_collections-knowledge_collection_sources", source: "knowledge_collections", target: "knowledge_collection_sources", sourceCardinality: "1", targetCardinality: "N", label: "集合到显式成员 FK", domains: ["community"]},
+  {id: "knowledge_source_selections-knowledge_collection_sources", source: "knowledge_source_selections", target: "knowledge_collection_sources", sourceCardinality: "1", targetCardinality: "N", label: "规则/集合复合 FK", domains: ["community"]},
+  {id: "knowledge_official_sources-knowledge_official_revisions", source: "knowledge_official_sources", target: "knowledge_official_revisions", sourceCardinality: "1", targetCardinality: "N", label: "官方来源修订 FK", domains: ["community"]},
+  {id: "v5-27-0", source: "plugin_packages", target: "plugin_package_releases", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key (FK)", domains: ["plugin"]},
+  {id: "v5-27-1", source: "plugin_package_identities", target: "plugin_package_releases", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-27-2", source: "plugin_package_releases", target: "plugin_installations", sourceCardinality: "1", targetCardinality: "0..N", label: "current/desired version (FK)", domains: ["plugin"]},
+  {id: "v5-27-3", source: "plugin_installations", target: "plugin_user_installations", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key (FK)", domains: ["plugin"]},
+  {id: "v5-27-4", source: "plugin_package_releases", target: "plugin_user_installations", sourceCardinality: "1", targetCardinality: "0..N", label: "current/desired version (FK)", domains: ["plugin"]},
+  {id: "v5-27-5", source: "users", target: "plugin_user_installations", sourceCardinality: "1", targetCardinality: "0..N", label: "owner_user_id (FK, RESTRICT)", domains: ["plugin"]},
+  {id: "v5-27-6", source: "plugin_package_releases", target: "plugin_v5_admin_grants", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-27-7", source: "plugin_package_releases", target: "plugin_v5_user_consents", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-27-8", source: "users", target: "plugin_v5_user_consents", sourceCardinality: "1", targetCardinality: "0..N", label: "owner_user_id (FK, RESTRICT)", domains: ["plugin"]},
+  {id: "v5-27-9", source: "plugin_package_releases", target: "plugin_v5_configurations", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-27-10", source: "users", target: "plugin_v5_configurations", sourceCardinality: "1", targetCardinality: "0..N", label: "owner_user_id (可空 FK, RESTRICT)", domains: ["plugin"]},
+  {id: "v5-27-11", source: "plugin_package_releases", target: "plugin_operations", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  {id: "v5-28-0", source: "plugin_package_releases", target: "plugin_v5_event_deliveries", sourceCardinality: "1", targetCardinality: "0..N", label: "publisher/plugin_key/version (FK)", domains: ["plugin"]},
+  { id: "integration-principal-credentials", source: "integration_principals", target: "integration_credentials", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> principal_id (FK, RESTRICT)", domains: ["identity"] },
+  { id: "admin-integration-principals", source: "admin_accounts", target: "integration_principals", sourceCardinality: "1", targetCardinality: "0..N", label: "id -> created_by_admin_id（逻辑审计关联，非FK）", domains: ["identity"] },
   {
     id: "users-admin-accounts",
     source: "users",
@@ -2959,6 +3022,12 @@ const relations: Relation[] = [
 ];
 
 const storageRows = [
+ {path:"PostgreSQL ai_model_* / 独立AI密钥",category:"受管模型与预算",type:"primary",purpose:"持久模型绑定、AEAD凭据密文、请求单位预算与执行事件，无Prompt或答案。",contents:["主密钥AI_ENCRYPTION_KEYS由部署单独托管，不进入应用备份","恢复隔离停用Profile并推进绑定；只结算未决请求，不重放、不清零预算"],note:"本地模型由运维预先运行；网关固定loopback端点，不安装模型或启动守护进程。缺钥/错钥失败关闭。"},
+ {path:"KNOWLEDGE_PRIVATE_KEY_DIR（外置目录）",category:"私人索引密钥",type:"primary",purpose:"Linux0700目录/0600每选择密钥和不可复用的退役标记，位于所有应用备份来源之外。",contents:["每次本人选择独立AES-GCM密钥；数据库/WAL/应用备份只含密文", "撤回先fsync退役标记并删钥，旧数据库恢复不能恢复已撤回密钥", "退役标记永久保留；不保存正文或owner名称，密钥不进入应用备份"],note:"未配置/权限不足/缺钥/Windows未验收时禁止私人索引；丢钥需本人重新选择重建，不从旧备份恢复授权或退役密钥。"},
+ { path: "PostgreSQL / plugin_v5_event_deliveries", category: "v5 事件证据", type: "primary", purpose: "独立于Core Outbox的元数据投递及重试证据。", contents: ["白名单资源引用、状态、修订与5分钟期限", "实例代次、单赢家租约、5次尝试与死信"], note: "禁止正文/Prompt/Secret或请求自证提交；备份与v5目录一同保留，重启后旧凭据和发布不恢复。" },
+ { path: "PLUGIN_DATA_DIR/v5/", category: "v5 受管插件文件", type: "primary", purpose: "完整签名包、按owner与代次隔离的私有准备配置及数据。", contents: ["packages/<sha256>.tar.gz：不可变完整包，不解压到宿主源码", "prepared/<publisher>/<key>/system|user-ID/<generation>.json：私有配置快照，不经HTTP公开", "data/<publisher>/<key>/system|user-ID：初始私有数据视图，卸载默认保留", "checkpoints/<publisher>/<key>/system|user-ID/<operation-ID>.json：摘要固定的版本/配置/有界私有文件检查点，无Grant或Consent", "restored-data/<publisher>/<key>/system|user-ID/<generation>/：独立恢复视图，真实ready后与版本原子切换数据库指针"], note: "与000026/27数据库作为同一备份集合；显式owner purge清理本owner的配置、原数据、恢复视图和检查点；release GC须无current/desired/回退检查点的已安装引用；插件检查点不恢复Grant/Consent；整库恢复另须新认证代次、废止旧凭据及按盘点指纹授权重核；不自动恢复插件授权或出站。" },
+ { path: "data/.campusos-recovery.json", category: "恢复启动围栏", type: "primary", purpose: "SQL/文件恢复前先持久设置隔离，失败后保留；与DB认证代次/复核指纹逐项一致才可启动。", contents: ["仅代次、归档/盘点摘要及状态，不含密钥", "普通备份不带入旧标记，每次恢复新生成"], note: "恢复API保持停止；只有可信本地运维可按当前盘点明确复核。插件与出站仍须独立重新批准。" },
+ { path: "部署环境 / .env（普通备份集合外）", category: "独立部署密钥", type: "primary", purpose: "由可信运维独立保管Secret与MFA解密材料及认证配置。", contents: ["v3普通备份不归档根.env；仅备份数据库密文与受管数据", "部署密钥不得放入data/config等普通数据目录；密钥材料另行安全恢复"], note: "缺失或错误密钥不能解密恢复的Secret。v3 apply先完整校验，恢复后生成新认证代次并隔离；本地运维按当前授权盘点指纹复核后才允许启动；旧v1/v2可能含明文密钥，须按敏感备份保管。" },
   {
     path: "PostgreSQL",
     category: "关系数据",
@@ -3074,6 +3143,17 @@ const storageRows = [
 ];
 
 const migrations = [
+  {version: "000035", file: "000035_ai_managed_gateway.up.sql", title: "v1.2 受管 AI 模型与执行", scope: "内置文本模型", summary: "六表持久Profile/Secret/Binding/请求预算/执行/顺序事件；独立Admin管理权限。非空拒绝down，保留非复用版本序列。", tables: ["ai_model_profiles", "ai_model_secrets", "ai_model_bindings", "ai_model_budgets", "ai_model_runs", "ai_model_run_events"]},
+ {version:"000034",file:"000034_knowledge_private_index.up.sql",title:"v1.2 私人来源与加密索引任务",scope:"Knowledge 本人逐项选择",summary:"默认不入库、每选择AEAD密文与外置密钥、耐久任务及非复用租约围栏；撤回/源失效删钥和级联清理。非空拒绝down。",tables:["knowledge_private_sources","knowledge_private_tasks"]},
+ {version:"000033",file:"000033_knowledge_index_execution.up.sql",title:"v1.2 公开知识索引执行与投影",scope:"Knowledge 有界分页对账",summary:"独立任务租约/有限重试/持久断点和公开文本投影；来源/规则修订与Profile指纹、原子整页提交、周期消失目标清理。非空拒绝down，保留版本序列高水位，不改旧表。",tables:["knowledge_index_jobs","knowledge_index_documents"]},
+ {version:"000032",file:"000032_knowledge_index_backfill.up.sql",title:"v1.2 知识元数据补扫断点",scope:"Knowledge 周期补扫",summary:"两个逻辑目标域分别按ID分页，当前版本请求和断点同事务；完成后等待再从头重扫，无正文/授权/事件游标，非空拒绝down。",tables:["knowledge_index_backfill_checkpoints"]},
+ {version:"000031",file:"000031_knowledge_index_requests.up.sql",title:"v1.2 索引任务请求",scope:"Knowledge 元数据队列",summary:"按当前集合/官方资料代次幂等入队，任务持久化后才允许Outbox回执；无正文/授权副本/执行器，非空拒绝down。",tables:["knowledge_index_tasks"]},
+  {version: "000030", file: "000030_knowledge_sources.up.sql", title: "v1.2 知识集合与来源", scope: "Knowledge 自有事实", summary: "集合/官方资料及不可变修订/选择规则/显式成员五表，匿名来源逐次复核；独立Admin read/manage权限与审计，非空拒绝down，序列高水位保留。", tables: ["knowledge_collections","knowledge_official_sources","knowledge_official_revisions","knowledge_source_selections","knowledge_collection_sources"]},
+  {version: "000029", file: "000029_instance_recovery_epochs.up.sql", title: "v1.2 整库恢复认证代次", scope: "离线恢复与安全开服", summary: "独立单行围栏，认证代次/归档/授权盘点指纹与必需审计；无种子，有记录拒绝down，空域down/up保留所有旧数据。", tables: ["instance_recovery_epochs"]},
+  {version: "000028", file: "000028_plugin_v5_event_deliveries.up.sql", title: "v1.2 v5 元数据投递队列", scope: "Plugin Platform 提交后事件", summary: "单表有限元数据载荷，独立租约/5次重试/死信与代次围栏，不保留Core正文或Secret；非空拒绝down，旧表/序列不变。", tables: ["plugin_v5_event_deliveries"]},
+  {version: "000027", file: "000027_plugin_v5_installations.up.sql", title: "v1.2 v5 安装与操作事实", scope: "Plugin Platform 包目录/分域安装与授权/生命周期", summary: "8张表，独立安装/Grant/Consent/配置，单调代次与租约，审计/Outbox同事务；无默认发布或授权，有数据拒绝down，空域回滚保留代次序列。", tables: ["plugin_packages", "plugin_package_releases", "plugin_installations", "plugin_user_installations", "plugin_v5_admin_grants", "plugin_v5_user_consents", "plugin_v5_configurations", "plugin_operations"]},
+  { version: "000026", file: "000026_plugin_package_identities.up.sql", title: "v1.2 v5 包身份持久化", scope: "Plugin Platform 不可变发布坐标与摘要", summary: "单表复合主键固定首个摘要，数据库禁止更新/删除/清空；非空拒绝down，空域down/up保留全部既有数据，不创建安装/Grant/Operation或默认发布记录。", tables: ["plugin_package_identities"] },
+  { version: "000025", file: "000025_integration_identity.up.sql", title: "v1.2 独立机器集成与摘要凭据", scope: "Identity Integration Principal 与当前凭据生命周期", summary: "两个独立表、摘要/精确白名单/终态守卫及非复用序列；Admin管理权限独立播种。存在机器数据时拒绝down；空域down/up保留序列高水位，既有24版数据/typed主体均保留。", tables: ["integration_principals", "integration_credentials", "permission_definitions / admin_role_permissions（两个管理码）"] },
   {
     version: "000001",
     file: "000001_v1_1_schema_baseline.up.sql",

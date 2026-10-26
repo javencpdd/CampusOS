@@ -1,0 +1,22 @@
+{
+  "schema": "campusos.release-browser-profile/v1",
+  "scope": "owned_current_User_Admin_Docs_business_style_and_seven_viewport_browser",
+  "threads": 10000,
+  "private_threads": 1,
+  "owners": 2,
+  "academic_terms": 1,
+  "documents_per_owner": 2,
+  "signed_packages": 1,
+  "disabled_installations": 3,
+  "encrypted_secret_history_rows": 5,
+  "original_objects": 2,
+  "gomaxprocs": 2,
+  "max_restore_to_reviewed_health_seconds": 180,
+  "review_time": "automated trusted local operator exact-inventory review, not a human-review or production SLA",
+  "browser_workflows": [
+    "render_web_admin_docs",
+    "business",
+    "style_packs_all",
+    "responsive_seven_viewports"
+  ]
+}

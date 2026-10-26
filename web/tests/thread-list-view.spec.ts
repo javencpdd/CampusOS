@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ElPagination } from 'element-plus'
 import ThreadListView from '../src/modules/community/pages/ThreadListView.vue'
 import { categoryApi, threadApi } from '../src/modules/community/api'
 import { resetCategoryCatalog } from '../src/modules/community/useCategoryCatalog'
@@ -10,12 +11,13 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }))
 
+const layout = vi.hoisted(() => ({ compact: true }))
 vi.mock('@/shared/layout/useLayoutCapability', async () => {
   const { ref } = await import('vue')
   return {
     useLayoutCapability: () => ({
-      mode: ref('compact-portrait'),
-      isCompact: ref(true),
+      mode: ref(layout.compact ? 'compact-portrait' : 'wide'),
+      isCompact: ref(layout.compact),
     }),
   }
 })
@@ -38,6 +40,7 @@ describe('thread list view taxonomy', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     resetCategoryCatalog()
+    layout.compact = true
   })
 
   it('resolves board chips from one shared category tree without per-row requests', async () => {
@@ -80,5 +83,30 @@ describe('thread list view taxonomy', () => {
       .find((link) => (link.props('to') as any)?.query?.category_id === 'board-2')
     expect(boardLink).toBeTruthy()
     expect(boardLink!.props('to')).toEqual({ path: '/threads', query: { category_id: 'board-2' } })
+    wrapper.unmount()
+  })
+
+  it.each([
+    { compact: true, visiblePages: 5 },
+    { compact: false, visiblePages: 7 },
+  ])('keeps large-list pagination navigable with compact=$compact', async ({ compact, visiblePages }) => {
+    layout.compact = compact
+    vi.spyOn(categoryApi, 'tree').mockResolvedValue({ data: [] } as never)
+    const list = vi.spyOn(threadApi, 'list').mockResolvedValue({
+      code: 0,
+      data: { items: [], pagination: { total: 10000 } },
+    } as never)
+    const wrapper = mount(ThreadListView, {
+      global: { components: { ElPagination }, stubs: { ...stubs, ElPagination: false }, directives: { loading: {} } },
+    })
+    await flushPromises()
+    expect(wrapper.findAll('.el-pager li.number')).toHaveLength(visiblePages)
+    await wrapper.get('button.btn-next').trigger('click')
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, page_size: 20 }))
+    await wrapper.get('button.btn-prev').trigger('click')
+    await flushPromises()
+    expect(list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, page_size: 20 }))
+    wrapper.unmount()
   })
 })

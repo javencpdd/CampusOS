@@ -11,6 +11,9 @@ type PathRule struct {
 	Prefix            string
 	FeatureID         string
 	AllowWhenDisabled []AllowedPath
+	// DisabledHandler lets the owning module preserve its stable error/cache
+	// contract. The gate always aborts, including when the handler does not.
+	DisabledHandler gin.HandlerFunc
 }
 
 // AllowedPath is an explicit, read-only route exception for a disabled
@@ -37,6 +40,11 @@ func PathGate(registry *Registry, rules ...PathRule) gin.HandlerFunc {
 			if strings.HasPrefix(c.Request.URL.Path, rule.Prefix) &&
 				!registry.Enabled(rule.FeatureID) &&
 				!rule.allowsWhenDisabled(c.Request.Method, c.Request.URL.Path) {
+				if rule.DisabledHandler != nil {
+					c.Abort()
+					rule.DisabledHandler(c)
+					return
+				}
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"code": 50301, "msg": "built-in feature is disabled", "data": gin.H{"feature_id": rule.FeatureID}})
 				return
 			}

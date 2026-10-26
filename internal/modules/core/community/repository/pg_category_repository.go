@@ -68,8 +68,25 @@ func (r *PgCategoryRepository) ListChildren(ctx context.Context, parentID string
 	return r.list(ctx, `WHERE deleted_at IS NULL AND parent_id = $1`, []any{parentID})
 }
 
-func (r *PgCategoryRepository) list(ctx context.Context, clause string, args []any) ([]*domain.Category, error) {
-	rows, err := r.db(ctx).Query(ctx, categorySelectSQL+" "+clause+" ORDER BY sort_order ASC, created_at ASC", args...)
+func (r *PgCategoryRepository) ListForSource(ctx context.Context) ([]*domain.Category, error) {
+	if _, ok := transaction.FromContext(ctx); !ok {
+		return nil, errors.New("source category transaction required")
+	}
+	if rows, ok := r.sourceReadCategories(ctx); ok {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return rows, nil
+	}
+	return r.list(ctx, `WHERE deleted_at IS NULL`, nil, true)
+}
+
+func (r *PgCategoryRepository) list(ctx context.Context, clause string, args []any, source ...bool) ([]*domain.Category, error) {
+	order := " ORDER BY sort_order ASC, created_at ASC"
+	if len(source) > 0 && source[0] {
+		order = " ORDER BY id FOR SHARE"
+	}
+	rows, err := r.db(ctx).Query(ctx, categorySelectSQL+" "+clause+order, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -1,10 +1,12 @@
 schema: campusos.module/v1
 id: feature.ai-gateway
+feature_id: ai-gateway
 name: ai-gateway
 display_name: "AI Gateway"
 version: "0.11.0"
-description: "Configured AI provider gateway, rate limits, and call audit."
+description: "Managed built-in text models, encrypted secrets, durable request budgets and ordered execution events."
 kind: builtin-feature
 activation_mode: restart
 default_enabled: true
+dependencies: [core.identity, core.reliability, core.feature-registry]
 implementation: internal/modules/features/ai

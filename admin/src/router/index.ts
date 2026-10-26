@@ -8,6 +8,7 @@ import { integrationRoutes } from "../modules/integrations/routes";
 import { operationRoutes } from "../modules/operations/routes";
 import { pluginRoutes } from "../modules/plugins/routes";
 import { adminAuthGuard } from "../modules/identity/navigation";
+import { knowledgeRoutes } from "../modules/knowledge/routes";
 import { legacyAdminRedirects } from "./legacyRedirects";
 const router = createRouter({
   history: createWebHistory(),
@@ -37,6 +38,7 @@ const router = createRouter({
         ...academicTermRoutes,
         ...communityRoutes,
         ...featureRoutes,
+        ...knowledgeRoutes,
         ...appearanceRoutes,
         ...pluginRoutes,
         ...integrationRoutes,

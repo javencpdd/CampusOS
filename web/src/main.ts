@@ -2,21 +2,19 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import 'element-plus/dist/index.css'
 import './styles/responsive.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { useUserStore } from './modules/identity/store'
+import { receivePreviewSessionHandoff } from './modules/identity/previewSessionHandoff'
 
 const app = createApp(App)
 const pinia = createPinia()
 
-// 注册所有图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
-}
-
 app.use(pinia)
 const userStore = useUserStore(pinia)
-app.use(router)
-
-void userStore.restore().finally(() => app.mount('#app'))
+void (async () => {
+  const token = await receivePreviewSessionHandoff()
+  if (token) userStore.updateAccessToken(token)
+  app.use(router)
+  await userStore.restore()
+})().finally(() => app.mount('#app'))

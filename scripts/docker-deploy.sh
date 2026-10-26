@@ -121,16 +121,14 @@ ensure_runtime_volumes() {
 backup_stack() {
   local container_id backup_output archive_path archive_name staging_dir
   mkdir -p "$ROOT_DIR/backups"
-  container_id="$(compose ps -q api)"
+  container_id="$(compose ps -a -q api)"
   if [[ -z "$container_id" ]]; then
-    echo "CampusOS API container is not running." >&2
+    echo "A created API container is required to copy its persistent volume backup." >&2
     return 1
   fi
-
+  compose stop web admin api
   staging_dir="/app/data/.backup-staging"
-  compose exec -T api sh -c \
-    'mkdir -p "$1" && rm -f "$1"/campusos-backup-*.tar.gz' _ "$staging_dir"
-  backup_output="$(compose exec -T api /app/scripts/backup.sh "$staging_dir")"
+  backup_output="$(compose run --pull never --rm --no-deps maintenance /app/scripts/backup.sh "$staging_dir")"
   archive_path="${backup_output##*$'\n'}"
   if [[ "$archive_path" != "$staging_dir"/campusos-backup-*.tar.gz ]]; then
     echo "CampusOS API returned an unexpected backup path: $archive_path" >&2
@@ -139,10 +137,10 @@ backup_stack() {
 
   archive_name="$(basename "$archive_path")"
   docker cp "$container_id:$archive_path" "$ROOT_DIR/backups/"
-  compose exec -T api rm -f "$archive_path"
+  compose run --pull never --rm --no-deps maintenance rm -f "$archive_path"
   LAST_BACKUP_HOST_PATH="$ROOT_DIR/backups/$archive_name"
   chmod 0600 "$LAST_BACKUP_HOST_PATH"
-  echo "Backup copied to $LAST_BACKUP_HOST_PATH"
+  echo "Backup copied to $LAST_BACKUP_HOST_PATH; API/Web/Admin remain stopped for offline consistency."
 }
 
 restore_stack() {
@@ -170,10 +168,9 @@ restore_stack() {
   esac
   relative_path="${archive_path#"$backup_root"/}"
 
-  compose build api
   ensure_runtime_networks
   ensure_runtime_volumes
-  compose run --rm --no-deps maintenance \
+  compose run --pull never --rm --no-deps maintenance \
     /app/scripts/restore.sh verify "/backups/$relative_path"
 
   container_id="$(compose ps -q api)"
@@ -186,11 +183,10 @@ restore_stack() {
 
   compose stop web admin api
   compose up -d --wait --wait-timeout "${CAMPUSOS_DOCKER_WAIT_TIMEOUT:-300}" postgres redis nats
-  compose run --rm --no-deps maintenance \
+  compose run --pull never --rm --no-deps maintenance \
     /app/scripts/docker-restore.sh "/backups/$relative_path" --confirm
-  compose up -d --wait --wait-timeout "${CAMPUSOS_DOCKER_WAIT_TIMEOUT:-300}"
   compose ps
-  echo "Restore completed. Preserve the source .env.docker until login, MFA and integration checks pass."
+  echo "Restore quarantined. Keep traffic offline; run local recovery status, review the exact authorization inventory, and complete recovery review before starting the API."
 }
 
 command="${1:-up}"

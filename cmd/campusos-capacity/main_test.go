@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPercentileUsesNearestRank(t *testing.T) {
@@ -24,10 +28,56 @@ func TestRequireLoopbackRejectsRemoteAndCredentials(t *testing.T) {
 			t.Fatalf("target %q: %v", target, err)
 		}
 	}
-	for _, target := range []string{"https://example.test", "ftp://localhost", "http://token@localhost:8080"} {
+	for _, target := range []string{"https://example.test", "ftp://localhost", "http://token@localhost:8080", "http://localhost/api", "http://localhost/?x=1", "http://localhost/#secret"} {
 		if err := requireLoopback(target); err == nil {
 			t.Fatalf("unsafe target %q was accepted", target)
 		}
+	}
+}
+
+func TestMeasurementIncludesBodyAndRejectsOversizeAndRedirects(t *testing.T) {
+	redirectCalls := 0
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { redirectCalls++; w.WriteHeader(200) }))
+	defer target.Close()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/body":
+			w.WriteHeader(200)
+			w.(http.Flusher).Flush()
+			time.Sleep(25 * time.Millisecond)
+			_, _ = w.Write([]byte("complete"))
+		case "/large":
+			_, _ = w.Write([]byte(strings.Repeat("x", (4<<20)+1)))
+		case "/redirect":
+			http.Redirect(w, r, target.URL, http.StatusFound)
+		}
+	}))
+	defer server.Close()
+	client := capacityClient()
+	defer client.CloseIdleConnections()
+	for _, path := range []string{"/body", "/large", "/redirect"} {
+		got, err := measureEndpoint(context.Background(), client, server.URL, endpointDefinition{Name: path, Path: path}, 3, "Bearer private")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path == "/body" {
+			if got.ErrorCount != 0 || got.P50MS < 25 {
+				t.Fatalf("body omitted from timing: %+v", got)
+			}
+		} else if got.ErrorCount != 3 {
+			t.Fatalf("invalid response accepted: %+v", got)
+		}
+	}
+	if redirectCalls != 0 {
+		t.Fatalf("followed redirect %d times", redirectCalls)
+	}
+}
+
+func TestCompareRejectsChangedPath(t *testing.T) {
+	baseline := report{Endpoints: []endpointResult{{Name: "metrics", Path: "/old"}}}
+	candidate := report{Endpoints: []endpointResult{{Name: "metrics", Path: "/new"}}}
+	if got := compareReports(baseline, candidate, budget{}); len(got) != 1 {
+		t.Fatalf("changed path accepted: %v", got)
 	}
 }
 

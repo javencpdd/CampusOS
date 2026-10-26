@@ -2,6 +2,8 @@ package ai
 
 import (
 	"context"
+	"errors"
+	"reflect"
 	"time"
 )
 
@@ -41,8 +43,11 @@ func WithClock(now func() time.Time) GatewayOption {
 }
 
 func NewGateway(provider Provider, config GatewayConfig, opts ...GatewayOption) (*Gateway, error) {
-	if provider == nil {
+	if provider == nil || (reflect.ValueOf(provider).Kind() == reflect.Pointer && reflect.ValueOf(provider).IsNil()) {
 		return nil, newGatewayError(ErrProviderConfig, "provider is required", nil)
+	}
+	if err := provider.Definition().validate(); err != nil {
+		return nil, err
 	}
 	gateway := &Gateway{
 		provider: provider,
@@ -59,19 +64,40 @@ func (g *Gateway) ChatCompletion(ctx context.Context, request ChatRequest) (*Cha
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if request.Model == "" {
-		request.Model = g.config.DefaultModel
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
 	}
-	if request.Source == "" {
-		request.Source = g.config.DefaultSource
+	if err := g.provider.Definition().validate(); err != nil {
+		return nil, err
 	}
+	if request.Model != "" && request.Model != g.config.DefaultModel || request.Source != "" && request.Source != g.config.DefaultSource {
+		return nil, newGatewayError(ErrInvalidRequest, "per-call model/source override is not supported", nil)
+	}
+	request.Model = g.config.DefaultModel
+	request.Source = g.config.DefaultSource
 	if request.Source == "" {
 		request.Source = "unknown"
+	}
+	if err := request.validate(); err != nil {
+		return nil, err
+	}
+	request.Messages = append([]Message(nil), request.Messages...)
+	if request.Temperature != nil {
+		v := *request.Temperature
+		request.Temperature = &v
+	}
+	if request.Metadata != nil {
+		copy := make(map[string]string, len(request.Metadata))
+		for k, v := range request.Metadata {
+			copy[k] = v
+		}
+		request.Metadata = copy
 	}
 
 	start := g.now()
 	release, err := g.acquire(ctx)
 	if err != nil {
+		err = safeGatewayError(err)
 		status := CallStatusError
 		if gatewayErr, ok := err.(*GatewayError); ok && gatewayErr.Code == ErrRateLimited {
 			status = CallStatusRateLimited
@@ -82,13 +108,25 @@ func (g *Gateway) ChatCompletion(ctx context.Context, request ChatRequest) (*Cha
 			Model:     request.Model,
 			Source:    request.Source,
 			Status:    status,
-			Error:     err.Error(),
+			Error:     safeGatewayError(err).Error(),
 		})
 		return nil, err
 	}
 	defer release()
 
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
+	}
 	response, err := g.provider.ChatCompletion(ctx, request)
+	if ctx.Err() != nil {
+		response, err = nil, classifyContextError(ctx.Err())
+	}
+	if err == nil {
+		err = validateTextResponse(response)
+	}
+	if err != nil {
+		err = safeGatewayError(err)
+	}
 	entry := CallLog{
 		Timestamp: start,
 		Provider:  g.provider.Name(),
@@ -105,9 +143,12 @@ func (g *Gateway) ChatCompletion(ctx context.Context, request ChatRequest) (*Cha
 	entry.Status = CallStatusSuccess
 	entry.Usage = response.Usage
 	if entry.Model == "" {
-		entry.Model = response.Model
+		entry.Model = g.config.DefaultModel
 	}
 	g.log(ctx, entry)
+	if err := ctx.Err(); err != nil {
+		return nil, classifyContextError(err)
+	}
 	return response, nil
 }
 
@@ -123,4 +164,28 @@ func (g *Gateway) log(ctx context.Context, entry CallLog) {
 		return
 	}
 	_ = g.logger.Log(ctx, entry)
+}
+
+// Provider payloads, URLs, keys and wrapped vendor errors never become log or
+// caller messages. Context sentinels retain their programmatic identity.
+func safeGatewayError(err error) *GatewayError {
+	if errors.Is(err, context.Canceled) {
+		return newGatewayError(ErrContextCancelled, "context cancelled", context.Canceled)
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return newGatewayError(ErrContextDeadline, "context deadline exceeded", context.DeadlineExceeded)
+	}
+	code := ErrProviderRequest
+	status := 0
+	var typed *GatewayError
+	if errors.As(err, &typed) {
+		switch typed.Code {
+		case ErrInvalidRequest, ErrUnsupportedCapability, ErrProviderConfig, ErrProviderRequest, ErrProviderResponse, ErrRateLimited:
+			code = typed.Code
+		}
+		if typed.StatusCode >= 100 && typed.StatusCode <= 599 {
+			status = typed.StatusCode
+		}
+	}
+	return newProviderHTTPError(code, status, string(code), nil)
 }

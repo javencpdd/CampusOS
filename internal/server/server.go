@@ -10,6 +10,7 @@ import (
 	"github.com/campusos/CampusOS/internal/modules/features/ai"
 	"github.com/campusos/CampusOS/internal/modules/features/appearance/runtime"
 	"github.com/campusos/CampusOS/internal/modules/features/integration"
+	"github.com/campusos/CampusOS/internal/modules/features/knowledge"
 	"github.com/campusos/CampusOS/internal/modules/features/mcp"
 	"github.com/campusos/CampusOS/internal/modules/features/message"
 	"github.com/campusos/CampusOS/internal/modules/features/mutualaid"
@@ -47,6 +48,7 @@ type Server struct {
 	space             *space.Module
 	richtext          *richtext.Module
 	schedule          *schedule.Module
+	knowledge         *knowledge.Module
 	personalDocuments *personaldocuments.Module
 	mutualAid         *mutualaid.Module
 	secondhand        *secondhand.Module
@@ -58,6 +60,7 @@ type Server struct {
 	integration       *integration.Module
 	reliability       *reliability.Module
 	appContext        *platformmodule.AppContext
+	pluginUI          *plugin.V5UIHost
 }
 
 func New(cfg *config.Config) *Server { return &Server{cfg: cfg} }

@@ -1,0 +1,39 @@
+{
+  "schema": "campusos.v12-08b-capacity-profile/v1",
+  "frozen_before_execution": true,
+  "purpose": "fixed synthetic Linux recovery/capacity engineering acceptance; not a production SLA",
+  "host": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "kernel": "6.8.0-138-generic",
+    "cpu_model": "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
+    "logical_cpus": 72,
+    "affinity_cpus": 72,
+    "memory_bytes": 33519292416
+  },
+  "threads": 10000,
+  "personal_documents": 200,
+  "owners": 2,
+  "installed_signed_plugins": 1,
+  "concurrency": 8,
+  "samples_per_endpoint": 100,
+  "endpoints": [
+    "health",
+    "threads",
+    "private_documents",
+    "private_document_download",
+    "cross_owner_denial",
+    "plugin_inventory"
+  ],
+  "max_p95_ms": 1000,
+  "max_api_rss_bytes": 536870912,
+  "max_failed_requests": 0,
+  "max_unauthorized_successes": 0,
+  "max_restore_to_reviewed_health_seconds": 180,
+  "review_time": "automated trusted test-operator exact inventory review included; real human review duration is not an SLA",
+  "docker_api_cpu_limit": 2,
+  "docker_api_memory_limit_bytes": 805306368,
+  "api_gomaxprocs": 2,
+  "postgres": "owned PostgreSQL16 tmpfs 1GiB",
+  "windows": "deferred_by_user_not_run"
+}

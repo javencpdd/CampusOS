@@ -123,6 +123,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 	}{
 		{portCategoryReader, communityport.NewRepositoryCategoryReader(m.categories)},
 		{portCategoryCatalog, &moduleCategoryCatalog{module: m}},
+		{"community.source-category-catalog", communityport.SourceCategoryCatalog(&moduleCategoryCatalog{module: m})},
 		{portThreadPort, communityport.NewRepositoryThreadPort(m.threads)},
 		{portPostPort, communityport.NewRepositoryPostPort(m.posts)},
 	} {

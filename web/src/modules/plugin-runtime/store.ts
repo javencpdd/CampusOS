@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/modules/identity/session'
+import { installPluginFramePolicy } from '../../../../sdk/typescript/src/plugin-frame-policy'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import router from '@/router'
@@ -20,16 +22,54 @@ export const useUIRuntimeStore = defineStore('ui-runtime', () => {
   let retryTimer: number | undefined
   let syncPromise: Promise<void> | null = null
   let syncQueued = false
+  let identity = getAccessToken()
+  let poll: ReturnType<typeof setInterval> | undefined
+  const clearPrivate = () => {
+    registry.clear()
+    revision.value = 0
+    navigation.value = []
+    surfaces.value = new Map()
+    actions.value = new Map()
+    slots.value = new Map()
+  }
 
   const degradedPlugins = computed(() =>
     Array.from(surfaces.value.values()).filter((surface) => surface.lifecycle.health !== 'healthy'),
   )
 
   const syncOnce = async () => {
+    const token = getAccessToken()
+    if (token !== identity) {
+      identity = token
+      clearPrivate()
+    }
     try {
       const envelope = (await uiRuntimeApi.manifest()) as any
       const manifest = envelope.data as UIRuntimeManifest
-      if (manifest.revision < revision.value) return
+      manifest.plugins = manifest.plugins.filter((plugin) => plugin.runtime === 'builtin')
+      let uiFailure = ''
+      if (token) {
+        try {
+          let after = '',
+            count = 0
+          do {
+            const ui: any = await uiRuntimeApi.v5Manifest(after)
+            if (ui.code !== 0 || !Array.isArray(ui.data?.plugins)) throw new Error('插件 UI 清单不可用。')
+            installPluginFramePolicy(ui.data.frame_src)
+            manifest.plugins.push(...ui.data.plugins)
+            after = ui.data.next_cursor || ''
+            if (++count >= 4 && after) throw new Error('插件清单超过本次加载上限。')
+          } while (after)
+        } catch {
+          manifest.plugins = manifest.plugins.filter((plugin) => plugin.runtime === 'builtin')
+          uiFailure = '插件隔离界面暂不可用，可继续使用内置功能和下载。'
+        }
+      }
+      if (token !== getAccessToken()) {
+        clearPrivate()
+        syncQueued = true
+        return
+      }
       const snapshot = registry.replace(manifest)
       revision.value = snapshot.revision
       navigation.value = snapshot.navigation
@@ -41,8 +81,9 @@ export const useUIRuntimeStore = defineStore('ui-runtime', () => {
           .map((surface) => surface.module_id)
           .filter((moduleID): moduleID is string => Boolean(moduleID)),
       )
-      error.value = ''
+      error.value = uiFailure
     } catch (cause: any) {
+      clearPrivate()
       error.value = cause?.error?.message || cause?.msg || cause?.message || '插件界面运行时同步失败'
     }
   }
@@ -80,6 +121,14 @@ export const useUIRuntimeStore = defineStore('ui-runtime', () => {
   const initialize = async () => {
     await sync()
     connect()
+    if (!poll)
+      poll = setInterval(() => {
+        if (getAccessToken() !== identity) {
+          identity = getAccessToken()
+          clearPrivate()
+        }
+        void sync()
+      }, 4000)
   }
   const surface = (id: string) => surfaces.value.get(id)
   const action = (id: string) => actions.value.get(id)

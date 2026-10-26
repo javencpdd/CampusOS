@@ -178,11 +178,15 @@ func TestAssetOwnerLifecyclePostgreSQLCurrentFactsAndIntegrityGuards(t *testing.
 							t.Fatal(err)
 						}
 					case "image_fk_duplicate":
+						var originalForeignKey string
+						if err := pool.QueryRow(ctx, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='richtext_article_assets'::regclass AND conname='fk_richtext_article_assets_user_asset'").Scan(&originalForeignKey); err != nil {
+							t.Fatal(err)
+						}
 						if _, err := pool.Exec(ctx, "ALTER TABLE richtext_article_assets DROP CONSTRAINT fk_richtext_article_assets_user_asset; ALTER TABLE richtext_article_attachments ADD CONSTRAINT asset_owner_duplicate_fk FOREIGN KEY(asset_id) REFERENCES user_assets(id) ON DELETE RESTRICT"); err != nil {
 							t.Fatal(err)
 						}
 						t.Cleanup(func() {
-							if _, err := pool.Exec(context.Background(), "ALTER TABLE richtext_article_attachments DROP CONSTRAINT asset_owner_duplicate_fk; ALTER TABLE richtext_article_assets ADD CONSTRAINT fk_richtext_article_assets_user_asset FOREIGN KEY(asset_id) REFERENCES user_assets(id) ON DELETE SET NULL"); err != nil {
+							if _, err := pool.Exec(context.Background(), "ALTER TABLE richtext_article_attachments DROP CONSTRAINT asset_owner_duplicate_fk; ALTER TABLE richtext_article_assets ADD CONSTRAINT fk_richtext_article_assets_user_asset "+originalForeignKey); err != nil {
 								t.Error(err)
 							}
 						})

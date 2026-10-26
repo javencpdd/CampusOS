@@ -1,0 +1,88 @@
+{
+  "schema": "campusos.v12-06-windows-deferral/v1",
+  "generated_at": "2026-10-19T12:10:33.870048+08:00",
+  "stage": "V12-06",
+  "stage_status": "in_progress",
+  "user_instruction": "window相关的内容可以延后",
+  "scope_decision": "user_authorized_windows_deferral",
+  "linux_scope": "completed",
+  "windows_scope": "deferred",
+  "windows_native_acceptance": "not_run",
+  "linux_followup_may_proceed": true,
+  "v12_07_started": false,
+  "full_cross_platform_exit": "not_completed",
+  "code_or_schema_changed": false,
+  "prior_linux_report": {
+    "path": "docs/项目计划书v1/项目计划v1.2/evidence/v12-06-runtime-portable-linux.json",
+    "sha256": "5164ccd8f633587133ffa0d23265f2ad90057f02b13b61edad5cf045dadf1e1c",
+    "source_files_verified": 2073,
+    "raw_artifacts_verified": 114,
+    "top_level": 20,
+    "pass_events": 110,
+    "common_gates": 13,
+    "final_document_gates": 5
+  },
+  "prior_documents_archive": {
+    "docs/进度/v1.2-dev/v1.2.127-dev.md": {
+      "path": ".cache/v12-06-windows-deferral/predecessor-documents/docs/进度/v1.2-dev/v1.2.127-dev.md",
+      "sha256": "06c73ad27811bddefcc67eac9e1af820da29a2e98a3f52867dcf5895b9fad41d"
+    },
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": {
+      "path": ".cache/v12-06-windows-deferral/predecessor-documents/docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md",
+      "sha256": "4f5780e513453ca52c01e064c4a41b473346e1d201907af8d79cd0932a425ef6"
+    },
+    "docs/api/v1.2插件Container执行沙箱合同.md": {
+      "path": ".cache/v12-06-windows-deferral/predecessor-documents/docs/api/v1.2插件Container执行沙箱合同.md",
+      "sha256": "6e5358bb29b4f9e475ebf36d7f2d4b8ca4bcccfc89ef11d82fd76b62f2606421"
+    },
+    "docs/architecture/配置与运行边界.md": {
+      "path": ".cache/v12-06-windows-deferral/predecessor-documents/docs/architecture/配置与运行边界.md",
+      "sha256": "c4dda448fe317db254ce81a802ae57a43a7e373bd48032bf42f79b579836900a"
+    },
+    "docs-site/deployment/configuration.md": {
+      "path": ".cache/v12-06-windows-deferral/predecessor-documents/docs-site/deployment/configuration.md",
+      "sha256": "654bb42455bc78ba4168c40a4bdd2f753bcef76cd1821e2820b26b1219d89723"
+    }
+  },
+  "current_document_gates": {
+    "docs-links": "passed",
+    "docs-build": "not_run",
+    "line-endings": "passed",
+    "diff": "passed"
+  },
+  "docs_build_blocker": {
+    "action": "make docs-build",
+    "attempts": 3,
+    "executed": false,
+    "result": "automatic_approval_review_unavailable",
+    "reason": "Automatic approval review failed: Selected model is at capacity. The action was not executed because automatic approval review could not be completed. This is a review failure, not a determination that the action is unsafe.",
+    "approval_bypassed": false
+  },
+  "documents_sha256": {
+    "docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "c5df0681e0be6e81fe542a5ee5558b5edb94ee8b5a8232a74a4d85a7842baa58",
+    "docs/api/v1.2插件Container执行沙箱合同.md": "095ec43635cf55f267204dc57416db43f7746a85557fbc2d58fde3220740159c",
+    "docs/architecture/配置与运行边界.md": "e0c2c9f18e3cb3bfbcb0f0dc72edc2b1b738e7fa50bb06a96e6ce8e4fdfbed87",
+    "docs/architecture/当前架构概览.md": "6003700f316faa2298714b2e32f495ab0ace0716a84a74f56ca51152ac77eeff",
+    "docs/help/插件v5包与签名操作说明.md": "76bd379c1eaa47ba33f9202d3338328d34c3070654f5c7fdaf9a957a8984b3af",
+    "docs-site/deployment/configuration.md": "78621a51cb3fed262f027e873bdef4a653eb134cecaaa9600ad6506e3efad2e2",
+    "docs-site/plugins/overview.md": "6bb99a751c38a02a37ebba48eaf90483d423ea002bd29df4edb4e5883ef65e27",
+    "docs-site/project/current-roadmap.md": "c504f207c4872fc9887b0825040e56ca05a17868b2531cbb748a8c7979efd5c5",
+    "docs/进度/v1.2-dev/v1.2.128-dev.md": "09387f91b46265376c8be4485aaf644a221c90e1fbac6c502f5db5163a01e55b"
+  },
+  "artifacts_sha256": {
+    ".cache/v12-06-windows-deferral/approval-review.json": "8480b0cd29f0e919c685c282172978ce78dc6997dee4a95ef72a5bb4034d6ba8",
+    ".cache/v12-06-windows-deferral/diff.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".cache/v12-06-windows-deferral/docs-links.log": "87bb34839558bd5e1f7b935471ded8695f10ac9ccad3138633ca8f2ab52c27d9",
+    ".cache/v12-06-windows-deferral/line-endings.log": "3a60cdcfe50079e3f572725c33f4c0a09118deb7159471a9b73226602fae14c9",
+    ".cache/v12-06-windows-deferral/predecessor-documents/docs/api/v1.2插件Container执行沙箱合同.md": "6e5358bb29b4f9e475ebf36d7f2d4b8ca4bcccfc89ef11d82fd76b62f2606421",
+    ".cache/v12-06-windows-deferral/predecessor-documents/docs/architecture/配置与运行边界.md": "c4dda448fe317db254ce81a802ae57a43a7e373bd48032bf42f79b579836900a",
+    ".cache/v12-06-windows-deferral/predecessor-documents/docs/进度/v1.2-dev/v1.2.127-dev.md": "06c73ad27811bddefcc67eac9e1af820da29a2e98a3f52867dcf5895b9fad41d",
+    ".cache/v12-06-windows-deferral/predecessor-documents/docs/项目计划书v1/项目计划v1.2/00-v1.2版本优化计划书.md": "4f5780e513453ca52c01e064c4a41b473346e1d201907af8d79cd0932a425ef6",
+    ".cache/v12-06-windows-deferral/predecessor-documents/docs-site/deployment/configuration.md": "654bb42455bc78ba4168c40a4bdd2f753bcef76cd1821e2820b26b1219d89723",
+    ".cache/v12-06-windows-deferral/preflight.json": "4c3e4dfb885f1ee099ff38847593643b729ef66ad976e43bd7aeded6049bd724",
+    ".cache/v12-06-windows-deferral/unchanged-code-audit.json": "3bd6f7ea6bb29092ba7a3e8a77a9704ef6e755ef90bad08969c7c42e29fdb5dd"
+  },
+  "historical_reports_modified": false,
+  "exit_checker_modified": false,
+  "commit_or_push": false
+}

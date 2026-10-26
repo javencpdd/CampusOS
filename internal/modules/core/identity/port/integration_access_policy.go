@@ -3,6 +3,7 @@ package port
 import (
 	"encoding/json"
 	"errors"
+	"github.com/campusos/CampusOS/internal/modules/core/identity/integrationmodel"
 	"strconv"
 )
 
@@ -39,17 +40,7 @@ type IntegrationAccessEndpoint struct {
 	IntegrationAllowed bool   `json:"integration_allowed"`
 }
 
-type IntegrationAccessRule struct {
-	ID           string   `json:"id"`
-	Channel      string   `json:"channel"`
-	Endpoint     string   `json:"endpoint"`
-	Action       string   `json:"action"`
-	ResourceKind string   `json:"resource_kind"`
-	ResourceIDs  []string `json:"resource_ids"`
-	Status       string   `json:"status"`
-	NotBeforeMS  int64    `json:"not_before_ms"`
-	ExpiresAtMS  int64    `json:"expires_at_ms"`
-}
+type IntegrationAccessRule = integrationmodel.Rule
 
 type IntegrationAccessFacts struct {
 	IntegrationID      string                    `json:"integration_id"`
