@@ -113,6 +113,12 @@ v12-g1-exit-check:
 plugin-v5-check:
 	go run ./cmd/campusos-plugin-v5-check -root plugins
 
+.PHONY: qqbot-check
+qqbot-check:
+	node integrations/napcat-campusos/tools/catalog.mjs --check
+	node --test integrations/napcat-campusos/tests/*.test.mjs
+	python3 -m unittest scripts/test_napcat_group.py
+
 .PHONY: capability-contract-write
 capability-contract-write:
 	go run ./cmd/campusos-capability-contract --write

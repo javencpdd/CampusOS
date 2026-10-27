@@ -82,6 +82,7 @@ export default defineConfig({
         items: [
           { text: '插件体系（历史/迁移）', link: '/plugins/overview' },
           { text: 'PDF Viewer 入门教程', link: '/plugins/pdf-viewer-tutorial' },
+          { text: 'QQ 文档助手（OneBot）', link: '/plugins/qqbot-napcat-tutorial' },
           { text: 'v5 Manifest 与包检查', link: '/plugins/manifest' },
           { text: '隔离 UI、Bridge 与 Gateway', link: '/plugins/frontend-runtime' },
           { text: '三层授权与资源访问', link: '/plugins/authorization-v3' },
