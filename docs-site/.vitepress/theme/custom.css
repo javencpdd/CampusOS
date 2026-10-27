@@ -111,6 +111,13 @@
 }
 
 @media (max-width: 720px) {
+  /* Protocol identifiers must scroll inside their table, not widen the page. */
+  .vp-doc table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
   .vp-doc h1 {
     font-size: 29px;
   }

@@ -8,7 +8,7 @@ import (
 // from host-supplied facts only. Its zero value requires no cache, repository,
 // credential verifier or ambient clock. Acceptance is not an authenticated
 // session; it is only the domain-separation verdict for one consumption.
-type IdentityDomainPolicy struct{}
+type IdentityDomainPolicy struct{ AdminMFAOptional bool }
 
 var _ port.IdentityDomainPolicy = IdentityDomainPolicy{}
 
@@ -16,7 +16,7 @@ var _ port.IdentityDomainPolicy = IdentityDomainPolicy{}
 // isolation, role-based auto-activation, account status, credential binding to
 // the target domain, challenge domain/target binding, then the admin lifecycle
 // operation rules. Unknown conditions deny closed.
-func (IdentityDomainPolicy) EvaluateIdentityDomain(r port.IdentityDomainInput) error {
+func (p IdentityDomainPolicy) EvaluateIdentityDomain(r port.IdentityDomainInput) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (IdentityDomainPolicy) EvaluateIdentityDomain(r port.IdentityDomainInput) e
 		if op.ActorKind != "admin" {
 			return deny("identity.admin_actor_required")
 		}
-		if !op.ActorMFA {
+		if !op.ActorMFA && !p.AdminMFAOptional {
 			return deny("identity.admin_mfa_required")
 		}
 		if (op.Kind == "suspend" || op.Kind == "revoke") && op.TargetIsSecurityAdmin && op.ActiveSecurityAdmins <= 1 {

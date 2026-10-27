@@ -13,7 +13,7 @@ func (RichTextAssetPurgePolicy) DecideRichTextAssetPurge(r port.RichTextAssetPur
 	}
 	d := port.RichTextAssetPurgeDecision{Request: r, Effect: "deny", Reason: "policy.asset_purge_denied"}
 	state := r.Facts.Status == "trashed" || r.Facts.Status == "quarantined" || r.Facts.Status == "purging"
-	if r.Principal.Actor.Kind == "admin" && r.Principal.Audience == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state && r.Facts.ReferenceCount == 0 {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state && r.Facts.ReferenceCount == 0 {
 		d.Effect, d.Reason = "allow", "policy.asset_purge"
 	}
 	return d, nil

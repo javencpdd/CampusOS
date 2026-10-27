@@ -156,7 +156,9 @@ func (s *Server) startInfrastructure() (*infrastructureBootstrap, error) {
 		MFAActiveKeyID:        s.cfg.Auth.MFAActiveKeyID,
 		MFAEncryptionKeys:     s.cfg.Auth.MFAEncryptionKeys,
 		MFAIssuer:             s.cfg.Auth.MFAIssuer,
+		AdminMFAOptional:      s.cfg.Auth.AdminMFADisabled,
 		BootstrapAdminSecret:  s.cfg.Auth.BootstrapAdminSecret,
+		AdminBootstrapSecret:  s.cfg.Auth.AdminBootstrapSecret,
 		RefreshBodyCompat:     s.cfg.Auth.RefreshBodyCompat,
 		CookieSecure:          s.cfg.Deployment.Environment == "production",
 	})

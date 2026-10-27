@@ -14,7 +14,7 @@ func (RichTextAssetAdminPolicy) DecideRichTextAssetAdmin(r port.RichTextAssetAdm
 	}
 	d := port.RichTextAssetAdminDecision{Request: r, Effect: "deny", Reason: "policy.asset_admin_lifecycle_denied"}
 	state := r.Operation == "quarantine" && (r.Facts.Status == "active" || r.Facts.Status == "trashed") || r.Operation == "restore" && r.Facts.Status == "quarantined"
-	if r.Principal.Actor.Kind == "admin" && r.Principal.Audience == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state {
 		d.Effect, d.Reason = "allow", "policy.asset_admin_lifecycle"
 	}
 	return d, nil

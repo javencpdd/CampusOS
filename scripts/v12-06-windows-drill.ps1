@@ -12,7 +12,7 @@ if (-not [Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.Int
     throw "Requires native Windows; WSL and PowerShell-on-Linux cannot certify this target."
 }
 
-$python = Get-Command python.exe -CommandType Application -ErrorAction Stop
+$python = Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
 $runner = Join-Path $PSScriptRoot "v12-06-portable-drill.py"
 $arguments = @($runner, $Mode)
 if ($WorkDirectory) { $arguments += $WorkDirectory }

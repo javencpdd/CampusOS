@@ -12,6 +12,7 @@ export type AdminSelfProfile = {
   permission_codes: string[];
   authentication_strength: "password" | "mfa";
   mfa_enrolled: boolean;
+  mfa_required?: boolean;
   session_expires_at: string;
   mfa_expires_at?: string;
 };

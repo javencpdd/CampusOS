@@ -40,7 +40,7 @@ func (s *BoardGovernanceAuthorityService) LoadAdminExecutionAuthority(ctx contex
 		if err != nil {
 			return adminExecutionBinding{}, err
 		}
-		if current.AccountID != p.Actor.ID || current.SessionID != p.CredentialID || current.AuthenticationStrength != p.AuthenticationStrength || current.AccountVersion < 1 || current.SessionVersion < 1 || !s.now().Before(current.ExpiresAt) {
+		if current.AccountID != p.Actor.ID || current.SessionID != p.CredentialID || current.AuthenticationStrength != p.AuthenticationStrength || current.AdminMFAOptional != p.AdminMFAOptional || current.AccountVersion < 1 || current.SessionVersion < 1 || !s.now().Before(current.ExpiresAt) {
 			return adminExecutionBinding{}, identityport.ErrAdminSessionPrincipalUnavailable
 		}
 		current.ExpiresAt = current.ExpiresAt.UTC()
@@ -60,7 +60,7 @@ func (s *BoardGovernanceAuthorityService) LoadAdminExecutionAuthority(ctx contex
 	}
 	a := identityport.AdminExecutionAuthority{Principal: p, Query: q, ExpiresAtMS: binding.Session.ExpiresAt.UnixMilli(), Binding: binding}
 	strength := true
-	if q.RequiresCurrentMFA() {
+	if q.RequiresCurrentMFA() && !binding.Session.AdminMFAOptional {
 		strength = p.AuthenticationStrength == "mfa" && binding.Session.MFAAuthenticatedAt != nil
 		if strength {
 			expiry := binding.Session.MFAAuthenticatedAt.Add(AdminGovernanceMFAWindow)

@@ -60,12 +60,13 @@ type UserLookup interface {
 
 // Service evaluates and commits board-governance delegation proposals.
 type Service struct {
-	delegations repository.DelegationRepository
-	users       UserLookup
-	catalog     repository.AuthorizationRepository
-	reliable    *reliability.Service
-	now         func() time.Time
-	policy      port.BoardDelegationPolicy
+	delegations      repository.DelegationRepository
+	users            UserLookup
+	catalog          repository.AuthorizationRepository
+	reliable         *reliability.Service
+	now              func() time.Time
+	policy           port.BoardDelegationPolicy
+	adminMFAOptional bool
 }
 
 func NewService(delegations repository.DelegationRepository, users UserLookup, catalog repository.AuthorizationRepository) *Service {
@@ -91,12 +92,16 @@ func (s *Service) SetReliability(reliable *reliability.Service) {
 // SetClock replaces the wall clock in tests; production keeps time.Now.
 func (s *Service) SetClock(now func() time.Time) { s.now = now }
 
+// Deployment composition only. Execution windows and delegation bounds remain required.
+func (s *Service) SetAdminMFAOptional(optional bool) { s.adminMFAOptional = optional }
+
 func (s *Service) principal(actor Actor) port.PrincipalContext {
 	return port.PrincipalContext{
 		Contract:               port.PrincipalContract,
 		Actor:                  port.PrincipalRef{Kind: "admin", ID: actor.ID},
 		Audience:               "admin",
 		AuthenticationStrength: actor.AuthenticationStrength,
+		AdminMFAOptional:       s.adminMFAOptional,
 		CredentialID:           actor.CredentialID,
 	}
 }
@@ -373,7 +378,7 @@ func (s *Service) executeGrantCommand(ctx context.Context, actor Actor, recipien
 // requireManagementAuthority gates bound administration on a current
 // identity.role.assign management window held by an MFA admin.
 func (s *Service) requireManagementAuthority(ctx context.Context, actor Actor) error {
-	if actor.AuthenticationStrength != "mfa" {
+	if actor.AuthenticationStrength != "mfa" && !(s.adminMFAOptional && actor.AuthenticationStrength == "password") {
 		return errors.New("delegation.mfa_required")
 	}
 	rows, err := s.delegations.ListByKindSubject(ctx, repository.DelegationKindManagement, actor.ID)

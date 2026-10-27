@@ -21,6 +21,21 @@ SPEC.loader.exec_module(MODULE)
 
 
 class LanAccessTest(unittest.TestCase):
+    def firewall_fixture(self) -> tuple[dict, list, set[int]]:
+        return (
+            {
+                "name": "CampusOS-Dev-UI-LAN-192.168.31.0-24",
+                "display_name": "CampusOS Dev UI (WLAN subnet only)",
+                "enabled": "True", "direction": "Inbound", "action": "Allow",
+                "profiles": "Private, Public", "edge_traversal": "Block", "protocol": "TCP",
+                "local_ports": ["3000", "3001", "3002", "3003"],
+                "local_addresses": ["192.168.31.188"],
+                "remote_addresses": ["192.168.31.0/24"], "interfaces": ["WLAN"],
+            },
+            [MODULE.LanInterface("192.168.31.188", "WLAN", "trusted", "Public", 24)],
+            {3000, 3001, 3002, 3003},
+        )
+
     def test_load_env_uses_last_value_and_strips_quotes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "test.env"
@@ -83,15 +98,76 @@ class LanAccessTest(unittest.TestCase):
         routes = json.dumps([{"dst": "default", "dev": "eth0"}])
         self.assertEqual(
             MODULE.parse_linux_interfaces(addresses, routes),
-            [
-                MODULE.LanInterface(
-                    "192.168.10.23",
-                    "eth0",
-                    "192.168.10.0/24",
-                    "Linux",
-                )
-            ],
+            [MODULE.LanInterface("192.168.10.23", "eth0", "192.168.10.0/24", "Linux")],
         )
+
+    def test_firewall_recognizes_owned_name_and_actual_filters(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        result = MODULE.assess_windows_firewall_rules([rule], interfaces, ports)
+        self.assertTrue(result.ready)
+        self.assertFalse(result.unsafe)
+        self.assertEqual(result.details, ())
+        rule["remote_addresses"] = ["192.168.31.0/255.255.255.0"]
+        self.assertTrue(MODULE.assess_windows_firewall_rules([rule], interfaces, ports).ready)
+
+    def test_firewall_accepts_legacy_display_name_only_with_safe_filters(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        rule.update(name="legacy-generated-name", display_name=MODULE.FIREWALL_RULE_NAME)
+        self.assertTrue(MODULE.assess_windows_firewall_rules([rule], interfaces, ports).ready)
+
+    def test_firewall_accepts_bounded_port_range_and_split_rules(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        rule["local_ports"] = "3000-3003"
+        self.assertTrue(MODULE.assess_windows_firewall_rules([rule], interfaces, ports).ready)
+        rule["local_ports"] = ["3000", "3001"]
+        other = {**rule, "name": rule["name"] + "-second", "local_ports": ["3002", "3003"]}
+        self.assertTrue(MODULE.assess_windows_firewall_rules([rule, other], interfaces, ports).ready)
+
+    def test_firewall_rejects_broad_filters_even_if_safe_rule_also_exists(self) -> None:
+        good, interfaces, ports = self.firewall_fixture()
+        for key, value in {
+            "remote_addresses": ["Any"], "local_addresses": ["Any"],
+            "interfaces": ["Any"], "local_ports": ["3000-3003", "8080"],
+            "protocol": "Any", "profiles": "Any", "edge_traversal": "Allow",
+        }.items():
+            with self.subTest(filter=key):
+                broad = {**good, "name": good["name"] + "-broad", key: value}
+                result = MODULE.assess_windows_firewall_rules([good, broad], interfaces, ports)
+                self.assertFalse(result.ready)
+                self.assertTrue(result.unsafe)
+
+    def test_firewall_rejects_wider_remote_network_or_stale_interface(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        for changes in (
+            {"remote_addresses": ["192.168.0.0/16"]},
+            {"local_addresses": ["192.168.31.189"]},
+            {"interfaces": ["Ethernet"]},
+        ):
+            with self.subTest(changes=changes):
+                self.assertFalse(MODULE.assess_windows_firewall_rules([{**rule, **changes}], interfaces, ports).ready)
+
+    def test_firewall_disabled_or_wrong_profile_cannot_prove_access(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        for changes in ({"enabled": "False"}, {"profiles": "Private"}, {"direction": "Outbound"}):
+            with self.subTest(changes=changes):
+                result = MODULE.assess_windows_firewall_rules([{**rule, **changes}], interfaces, ports)
+                self.assertFalse(result.ready)
+                self.assertFalse(result.unsafe)
+
+    def test_firewall_does_not_audit_unrelated_rules_or_guess_missing_prefix(self) -> None:
+        rule, interfaces, ports = self.firewall_fixture()
+        unrelated = {**rule, "name": "other-software", "local_ports": ["Any"]}
+        self.assertTrue(MODULE.assess_windows_firewall_rules([rule, unrelated], interfaces, ports).ready)
+        explicit = [MODULE.LanInterface("192.168.31.188", "explicit", "", "Unknown")]
+        unknown = MODULE.assess_windows_firewall_rules([rule], explicit, ports)
+        self.assertFalse(unknown.ready)
+        self.assertFalse(unknown.unsafe)
+
+    def test_firewall_port_parser_rejects_unbounded_or_invalid_ranges(self) -> None:
+        _, _, ports = self.firewall_fixture()
+        for value in ("Any", "1-65535", "3003-3000", "3000-3004", "3000-3001-3002", "0", "65536"):
+            with self.subTest(value=value):
+                self.assertIsNone(MODULE.firewall_ports(value, ports))
 
 
 if __name__ == "__main__":

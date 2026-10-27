@@ -6,10 +6,34 @@
     :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <p v-if="!admin.profile?.mfa_enrolled">
-      为当前管理员配置认证器后，即可确认需要 MFA 的管理操作。
-    </p>
-    <template v-if="enrollmentURL">
+    <el-alert
+      v-if="!mfaRequired"
+      type="warning"
+      :closable="false"
+      title="当前部署未强制管理员 MFA，无需配置认证器即可执行已获授权的管理操作。"
+    />
+    <template v-else>
+      <p>这是管理员二次身份验证，不是邮箱验证码，也不是登录密码。</p>
+      <ol v-if="!admin.profile?.mfa_enrolled" class="mfa-guide">
+        <li>准备支持 TOTP 的认证器（不限定手机或品牌）。</li>
+        <li>
+          点击下方“开始配置管理员认证器”，在认证器中添加账号；可使用添加链接，或手动复制密钥并选择基于时间的验证码。
+        </li>
+        <li>输入认证器显示的 6 位动态验证码，点击“完成配置”。</li>
+        <li>
+          等待下一组验证码，再确认管理员身份。验证有效期为 15
+          分钟，过期后需要重新验证。
+        </li>
+      </ol>
+      <p v-else>
+        打开已绑定的认证器，输入当前管理员对应的 6 位验证码；验证有效期为 15
+        分钟。
+      </p>
+      <p>
+        请勿分享认证器密钥或添加链接。验证码无效时，检查设备时间是否自动同步；已用过的验证码不能重复使用。
+      </p>
+    </template>
+    <template v-if="mfaRequired && enrollmentURL">
       <p>
         <a :href="enrollmentURL">在认证器中添加当前管理员</a>，或手动输入密钥。
       </p>
@@ -24,7 +48,7 @@
     </template>
     <el-alert v-if="notice" :title="notice" type="info" :closable="false" />
     <el-form
-      v-if="admin.profile?.mfa_enrolled || enrollmentURL"
+      v-if="mfaRequired && (admin.profile?.mfa_enrolled || enrollmentURL)"
       label-position="top"
       @submit.prevent="submit"
     >
@@ -41,15 +65,19 @@
     <template #footer>
       <el-button @click="emit('update:modelValue', false)">取消</el-button>
       <el-button
-        v-if="!admin.profile?.mfa_enrolled && !enrollmentURL"
+        v-if="mfaRequired && !admin.profile?.mfa_enrolled && !enrollmentURL"
         type="primary"
         :loading="loading"
         @click="enroll"
         >开始配置管理员认证器</el-button
       >
-      <el-button v-else type="primary" :loading="loading" @click="submit">{{
-        enrollmentURL ? "完成配置" : "确认身份"
-      }}</el-button>
+      <el-button
+        v-else-if="mfaRequired"
+        type="primary"
+        :loading="loading"
+        @click="submit"
+        >{{ enrollmentURL ? "完成配置" : "确认身份" }}</el-button
+      >
     </template>
   </el-dialog>
 </template>
@@ -61,6 +89,7 @@ import { useAdminStore } from "@/modules/identity/store";
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [boolean]; confirmed: [] }>();
 const admin = useAdminStore();
+const mfaRequired = computed(() => admin.profile?.mfa_required !== false);
 const code = ref(""),
   enrollmentURL = ref(""),
   notice = ref(""),
@@ -76,6 +105,7 @@ const reset = () => {
 watch(() => props.modelValue, reset, { flush: "sync" });
 watch(() => admin.user?.id, reset, { flush: "sync" });
 watch(() => admin.token, reset, { flush: "sync" });
+watch(() => admin.profile?.mfa_required, reset, { flush: "sync" });
 onBeforeUnmount(reset);
 const enrollmentSecret = computed(() => {
   try {
@@ -95,7 +125,7 @@ const current = (c: ReturnType<typeof context>) =>
   c.token === admin.token &&
   c.id === admin.user?.id;
 async function enroll() {
-  if (loading.value || !admin.isLoggedIn) return;
+  if (loading.value || !admin.isLoggedIn || !mfaRequired.value) return;
   const c = context();
   loading.value = true;
   try {
@@ -118,7 +148,7 @@ async function enroll() {
   }
 }
 async function submit() {
-  if (loading.value || !admin.isLoggedIn) return;
+  if (loading.value || !admin.isLoggedIn || !mfaRequired.value) return;
   if (!/^\d{6}$/.test(code.value)) {
     ElMessage.warning("请输入 6 位认证器验证码");
     return;

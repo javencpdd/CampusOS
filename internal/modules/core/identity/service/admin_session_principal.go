@@ -86,5 +86,5 @@ func (s *AdminSessionService) CurrentAdminSession(ctx context.Context, subject, 
 		at := session.MFAAuthenticatedAt.UTC()
 		mfaAt = &at
 	}
-	return identityport.AdminSessionAuthority{AccountID: account.ID, SessionID: session.ID, AuthenticationStrength: strength, AccountVersion: account.Version, SessionVersion: session.Version, ExpiresAt: session.ExpiresAt.UTC(), MFAAuthenticatedAt: mfaAt}, nil
+	return identityport.AdminSessionAuthority{AccountID: account.ID, SessionID: session.ID, AuthenticationStrength: strength, AccountVersion: account.Version, SessionVersion: session.Version, ExpiresAt: session.ExpiresAt.UTC(), MFAAuthenticatedAt: mfaAt, AdminMFAOptional: s.mfaOptional}, nil
 }

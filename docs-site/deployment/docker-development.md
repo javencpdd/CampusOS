@@ -1,9 +1,15 @@
 # Docker 跨平台开发环境
 
+> 更新时间：2026-10-27（Asia/Shanghai）
+
 这套开发环境让 Windows 和 Linux 开发者只安装 Git、Docker 与 Compose v2，就能修改并运行 CampusOS。
 Go、Node.js、pnpm、PostgreSQL、Redis 和 NATS 都在 Linux 容器中，不依赖 Ubuntu 22.04 宿主。
 
 ## 与部署栈的区别
+
+独立管理端 MFA 默认开启。部署者可在 `.env.dev.local` 设置 `AUTH_ADMIN_MFA_REQUIRED=false` 关闭二次验证要求，改值后执行 `up`，不需要重新构建。关闭不跳过密码、会话、角色/资源权限、CSRF 和审计；生产或局域网建议保留 `true`。后台 MFA 页面展示实际生效状态，开启时提供 TOTP 认证器绑定与 6 位验证码引导，详见[管理员初始化与安全配置](./bootstrap-security.md)。
+
+## 开发与部署栈对照
 
 | 项目 | `compose.dev.yml` | `compose.deploy.yml` |
 | --- | --- | --- |
@@ -167,40 +173,48 @@ Linux、WSL2 或 Git Bash 使用 `./scripts/docker-dev.sh lan-check`。Windows �
 启动器也会拒绝非 loopback 值。浏览器通过 Web/Admin 的同源 Vite 代理访问 API，因此无需暴露 8080。
 Admin 中指向 Web/Docs 的本地 companion URL 会自动换成浏览器正在访问的局域网主机名。
 
-修改后运行 `docker-dev.* up` 即可无构建地应用端口/绑定配置。若只想强制重新创建三个 UI 容器：
+修改后运行 `docker-dev.* up` 即可无构建地应用端口、绑定和 API 的插件 Origin/Parents 配置，不需要先 `down`；只有依赖、Dockerfile 或容器入口变化才需要 `rebuild`。
+
+Windows 如需添加规则，应在管理员 PowerShell 中先确认网络可信，再将接口、本地地址、远端子网与端口全部限定。下面地址仅为示例，必须替换为实际值；不要为了开发自动把 Public 网络改成 Private，也不要开放 API/数据库端口：
 
 ```powershell
-docker compose `
-  --env-file deploy/docker/.env.dev.local `
-  -f compose.dev.yml `
-  up -d --no-build --no-deps --force-recreate web admin docs
-```
-
-Windows 还需要在管理员 PowerShell 中为“专用网络”添加窄范围防火墙规则：
-
-```powershell
+$lanInterface = 'WLAN'
+$lanAddress = '192.168.1.20'
+$lanSubnet = '192.168.1.0/24'
+$ruleName = "CampusOS-Dev-UI-LAN-$lanAddress"
 New-NetFirewallRule `
-  -DisplayName "CampusOS Dev UI (Private LAN)" `
+  -Name $ruleName `
+  -DisplayName 'CampusOS Dev UI (WLAN subnet only)' `
   -Direction Inbound `
   -Action Allow `
+  -Enabled True `
   -Protocol TCP `
-  -LocalPort 3000-3003 `
-  -Profile Private `
-  -RemoteAddress LocalSubnet
+  -LocalPort 3000,3001,3002,3003 `
+  -Profile Public,Private `
+  -InterfaceAlias $lanInterface `
+  -LocalAddress $lanAddress `
+  -RemoteAddress $lanSubnet `
+  -EdgeTraversalPolicy Block
 ```
+
+`lan-check` 会读取自有 `CampusOS-Dev-UI-LAN-*` 或历史命名规则的实际过滤器，不能仅以“存在同名规则”当作安全证据。DHCP 地址、接口或子网改变后需要重新核对配置与规则。
 
 Linux 同样可能被宿主防火墙拦截。Ubuntu/Debian 用 `sudo ufw status`，Fedora/RHEL 用
 `sudo firewall-cmd --get-active-zones` 和 `sudo firewall-cmd --list-ports` 检查；其他发行版检查
 nftables/iptables。若需放行，只允许可信 LAN 子网访问 TCP 3000–3003，不要直接创建面向任意来源的规则。
 
 脚本会自动输出应使用的开发机 IPv4；局域网设备分别访问
-`http://<开发机IPv4>:3000`、`:3001`、`:3002`。其中 `:3003` 是只服务已校验不可变插件产物的跨 Origin 网关；普通用户不需要直接打开它，但远程浏览器加载 PDF 等隔离插件时必须能连接该端口。v5 UI Origin 由显式配置生成，不能使用 Docker 内部 `api` 名称。远程设备须使用指向开发机的专用通配 DNS 域，设置 `CAMPUSOS_PLUGIN_UI_DOMAIN`、`CAMPUSOS_PLUGIN_UI_SCHEME` 和精确的 `CAMPUSOS_PLUGIN_UI_PARENTS` 后运行 `rebuild`；默认 `*.localhost` 仅适用于开发机浏览器。若仍无法连接，检查 Windows 当前网络类别或 Linux
+`http://<开发机IPv4>:3000`、`:3001`、`:3002`。其中 `:3003` 是只服务已校验不可变插件产物的跨 Origin 网关；普通用户不需要直接打开它，但远程浏览器加载 PDF 等隔离插件时必须能连接该端口。v5 UI Origin 由显式配置生成，不能使用 Docker 内部 `api` 名称。远程设备须使用指向开发机的专用通配 DNS 域，设置 `CAMPUSOS_PLUGIN_UI_DOMAIN`、`CAMPUSOS_PLUGIN_UI_SCHEME` 和精确的 `CAMPUSOS_PLUGIN_UI_PARENTS` 后运行 `up`；默认 `*.localhost` 仅适用于开发机浏览器。若仍无法连接，检查 Windows 当前网络类别或 Linux
 防火墙、路由器/AP 客户端隔离，以及两台设备是否处于可互访网段。不要配置公网端口转发；Admin 3001
-只应在可信测试网络短期开放。关闭局域网访问时把三个 UI bind 和 opt-in 恢复为模板默认值。Windows
-如果创建过项目规则，再删除：
+只应在可信测试网络短期开放。没有自有通配 DNS 时，经部署者同意可临时使用 [sslip.io 的嵌入 IP 子域解析](https://sslip.io/)，例如开发机 `192.168.1.20` 使用 `CAMPUSOS_PLUGIN_UI_DOMAIN=192.168.1.20.sslip.io`，Parents 明确包含 `http://192.168.1.20:3000`、`:3001` 及仍需使用的 localhost Origin。这只用于开发，依赖设备 DNS/网络策略，不是生产 TLS 或公共服务方案。
+
+本机 `lan-check` 通过不等于远端已经通过。最后须从第二台设备验证三端页面、通配子域的 `:3003/health`、个人文档与文章附件的 PDF 预览，并确认直接访问开发机 `:8080` 失败；同时记录设备/浏览器和结果，不提交密码、Token 或租约凭据。
+
+关闭局域网访问时把四个 UI bind 和 opt-in 恢复为模板默认值。Windows 如创建过规则，只删除刚创建并核对的精确 Name，不使用通配删除：
 
 ```powershell
-Remove-NetFirewallRule -DisplayName "CampusOS Dev UI (Private LAN)"
+Get-NetFirewallRule -Name $ruleName -ErrorAction Stop
+Remove-NetFirewallRule -Name $ruleName
 ```
 
 | 服务 | 地址 |
@@ -213,14 +227,14 @@ Remove-NetFirewallRule -DisplayName "CampusOS Dev UI (Private LAN)"
 | Redis | `127.0.0.1:56379` |
 | NATS | `127.0.0.1:54222` |
 
-开发管理员：
+历史用户域开发兼容账号（不是当前管理端账号）：
 
 ```text
 邮箱：admin@campusos.local
 密码：Admin@123456
 ```
 
-这些固定值只允许在 loopback 开发栈使用。
+这些固定值只允许在 loopback 开发栈使用，开放局域网前应改用自行设置的强密码。管理端使用独立 `admin_accounts`，不会自动创建默认超级用户；首次部署请按[初始管理员安全](bootstrap-security.md)设置独立初始化凭证并显式创建管理域账号。
 
 ### Windows Docker Hub 代理
 

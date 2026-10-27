@@ -19,6 +19,8 @@ function currentProfile(value: any): value is AdminSelfProfile {
     typeof value.account.username === "string" &&
     ["password", "mfa"].includes(value.authentication_strength) &&
     typeof value.mfa_enrolled === "boolean" &&
+    (value.mfa_required === undefined ||
+      typeof value.mfa_required === "boolean") &&
     Number.isFinite(Date.parse(value.session_expires_at)) &&
     Array.isArray(value.roles) &&
     value.roles.every(

@@ -35,6 +35,7 @@ type AdminDomainConfig struct {
 	Admin port.IdentityDomainConfig
 	// BootstrapEnabled gates the controlled first-security-admin entry.
 	BootstrapEnabled bool
+	AdminMFAOptional bool
 }
 
 // DefaultAdminDomainConfig returns the v1.2 default separation; deployments
@@ -69,7 +70,7 @@ func NewAdminDomainService(admins repository.AdminDomainRepository, catalog repo
 		catalog: catalog,
 		now:     time.Now,
 		config:  config,
-		policy:  policy.IdentityDomainPolicy{},
+		policy:  policy.IdentityDomainPolicy{AdminMFAOptional: config.AdminMFAOptional},
 	}
 }
 

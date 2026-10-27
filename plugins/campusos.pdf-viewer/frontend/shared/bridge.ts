@@ -19,6 +19,7 @@ type ConnectMessage = {
 
 export class PluginBridgeClient {
   private port?: MessagePort
+  private cancelConnect?: () => void
   private sequence = 0
   private readonly pending = new Map<string, { resolve: (value: unknown) => void; reject: (reason: Error) => void }>()
 
@@ -33,12 +34,25 @@ export class PluginBridgeClient {
   ) {}
 
   connect(): Promise<void> {
+    if (this.port || this.cancelConnect) return Promise.reject(new Error('插件已连接或正在连接宿主。'))
     return new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(() => reject(new Error('连接宿主超时，请关闭后重试。')), 10_000)
+      let active = true
+      const cleanup = () => {
+        window.removeEventListener('message', listener)
+        window.clearTimeout(timeout)
+        this.cancelConnect = undefined
+      }
+      const fail = (message: string) => {
+        if (!active) return
+        active = false
+        cleanup()
+        reject(new Error(message))
+      }
       const listener = (event: MessageEvent<ConnectMessage>) => {
         const data = event.data
         const port = event.ports[0]
         if (
+          !active ||
           event.origin !== this.hostOrigin ||
           event.source !== window.parent ||
           !port ||
@@ -51,26 +65,36 @@ export class PluginBridgeClient {
         ) {
           return
         }
-        window.removeEventListener('message', listener)
-        window.clearTimeout(timeout)
+        active = false
+        cleanup()
         this.port = port
         port.onmessage = (portEvent) => this.receive(portEvent.data as BridgeResponse)
         port.start()
-        port.postMessage({ type: 'campusos.bridge.handshake', version: bridgeVersion, challenge: data.challenge })
+        port.postMessage({
+          type: 'campusos.bridge.handshake',
+          version: bridgeVersion,
+          challenge: data.challenge,
+        })
         resolve()
       }
+      const timeout = window.setTimeout(() => fail('连接宿主超时，请关闭后重试。'), 10_000)
+      this.cancelConnect = () => fail('插件连接已关闭。')
       window.addEventListener('message', listener)
-      window.parent.postMessage(
-        {
-          type: 'campusos.bridge.ready',
-          version: bridgeVersion,
-          plugin_key: this.identity.pluginKey,
-          plugin_version: this.identity.pluginVersion,
-          surface_id: this.identity.surfaceID,
-          audience: this.identity.audience,
-        },
-        this.hostOrigin,
-      )
+      try {
+        window.parent.postMessage(
+          {
+            type: 'campusos.bridge.ready',
+            version: bridgeVersion,
+            plugin_key: this.identity.pluginKey,
+            plugin_version: this.identity.pluginVersion,
+            surface_id: this.identity.surfaceID,
+            audience: this.identity.audience,
+          },
+          this.hostOrigin,
+        )
+      } catch {
+        fail('无法连接宿主，请关闭后重试。')
+      }
     })
   }
 
@@ -84,6 +108,7 @@ export class PluginBridgeClient {
   }
 
   close() {
+    this.cancelConnect?.()
     this.port?.close()
     this.port = undefined
     for (const pending of this.pending.values()) pending.reject(new Error('插件连接已关闭。'))

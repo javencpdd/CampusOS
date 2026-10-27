@@ -23,13 +23,15 @@ type PrincipalRef struct {
 // result. Only a trusted domain adapter may construct it after authenticating
 // and checking current credential/delegation state. Parsing it grants nothing.
 type PrincipalContext struct {
-	Contract               string        `json:"contract"`
-	Actor                  PrincipalRef  `json:"actor"`
-	Audience               string        `json:"audience"`
-	AuthenticationStrength string        `json:"authentication_strength"`
-	CredentialID           string        `json:"credential_id,omitempty"`
-	EffectiveSubject       *PrincipalRef `json:"effective_subject,omitempty"`
-	DelegationID           string        `json:"delegation_id,omitempty"`
+	Contract               string       `json:"contract"`
+	Actor                  PrincipalRef `json:"actor"`
+	Audience               string       `json:"audience"`
+	AuthenticationStrength string       `json:"authentication_strength"`
+	// Trusted deployment fact, not an authentication upgrade or a client option.
+	AdminMFAOptional bool          `json:"-"`
+	CredentialID     string        `json:"credential_id,omitempty"`
+	EffectiveSubject *PrincipalRef `json:"effective_subject,omitempty"`
+	DelegationID     string        `json:"delegation_id,omitempty"`
 }
 
 func validOpaqueID(value string) bool {
@@ -58,6 +60,9 @@ func (p PrincipalContext) Validate() error {
 			return ErrPrincipalInvalid
 		}
 		return ErrPrincipalContractUnsupported
+	}
+	if p.AdminMFAOptional && p.Actor.Kind != "admin" {
+		return ErrPrincipalInvalid
 	}
 	if p.Actor.Kind == "anonymous" {
 		if p.Actor.ID != "" || p.Audience != "public" || p.AuthenticationStrength != "none" ||
@@ -156,4 +161,12 @@ func ParsePrincipalJSON(raw []byte) (PrincipalContext, error) {
 		return PrincipalContext{}, err
 	}
 	return p, nil
+}
+
+// SatisfiesAdminMFARequirement checks a host-derived requirement without
+// mislabelling a password-only session as MFA. Callers must still authenticate
+// and recheck the current independent Admin session, authority and resource.
+func (p PrincipalContext) SatisfiesAdminMFARequirement() bool {
+	return p.Validate() == nil && p.Actor.Kind == "admin" && p.Audience == "admin" &&
+		(p.AuthenticationStrength == "mfa" || p.AdminMFAOptional && p.AuthenticationStrength == "password")
 }

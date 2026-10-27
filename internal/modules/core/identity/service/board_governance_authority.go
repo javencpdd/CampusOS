@@ -107,7 +107,7 @@ func (s *BoardGovernanceAuthorityService) LoadBoardGovernanceAuthority(ctx conte
 		if err != nil {
 			return identityport.BoardGovernanceAuthority{}, err
 		}
-		if current.AccountID != p.Actor.ID || current.SessionID != p.CredentialID || current.AuthenticationStrength != p.AuthenticationStrength || current.AccountVersion < 1 || current.SessionVersion < 1 || !now.Before(current.ExpiresAt) {
+		if current.AccountID != p.Actor.ID || current.SessionID != p.CredentialID || current.AuthenticationStrength != p.AuthenticationStrength || current.AdminMFAOptional != p.AdminMFAOptional || current.AccountVersion < 1 || current.SessionVersion < 1 || !now.Before(current.ExpiresAt) {
 			return identityport.BoardGovernanceAuthority{}, identityport.ErrAdminSessionPrincipalUnavailable
 		}
 		if current.MFAAuthenticatedAt != nil {
@@ -129,17 +129,21 @@ func (s *BoardGovernanceAuthorityService) LoadBoardGovernanceAuthority(ctx conte
 			if f.Binding.AccountID != p.Actor.ID || f.Binding.ID == "" || f.Binding.RoleID != f.Role.ID || f.Binding.Status != "active" || f.Binding.RevokedAt != nil || f.Binding.Version < 1 || f.PermissionFactsVersion < 1 {
 				return identityport.BoardGovernanceAuthority{}, identityport.ErrGovernanceAuthorityUnavailable
 			}
-			if f.PermissionCode != q.Action || p.AuthenticationStrength != "mfa" || current.MFAAuthenticatedAt == nil {
+			if f.PermissionCode != q.Action || !p.SatisfiesAdminMFARequirement() || !current.AdminMFAOptional && current.MFAAuthenticatedAt == nil {
 				continue
 			}
 			expires := current.ExpiresAt
-			if mfaExpiry := current.MFAAuthenticatedAt.Add(AdminGovernanceMFAWindow); mfaExpiry.Before(expires) {
-				expires = mfaExpiry
+			requiredStrength := "password"
+			if !current.AdminMFAOptional {
+				requiredStrength = "mfa"
+				if mfaExpiry := current.MFAAuthenticatedAt.Add(AdminGovernanceMFAWindow); mfaExpiry.Before(expires) {
+					expires = mfaExpiry
+				}
 			}
 			if !now.Before(expires) {
 				continue
 			}
-			authority.Grants = append(authority.Grants, identityport.ResourcePolicyGrant{SubjectKind: "admin", SubjectID: p.Actor.ID, Action: q.Action, BoardID: q.BoardID, ExpiresAtMS: expires.UnixMilli(), Status: "active", RequiredStrength: "mfa"})
+			authority.Grants = append(authority.Grants, identityport.ResourcePolicyGrant{SubjectKind: "admin", SubjectID: p.Actor.ID, Action: q.Action, BoardID: q.BoardID, ExpiresAtMS: expires.UnixMilli(), Status: "active", RequiredStrength: requiredStrength})
 			break
 		}
 	}

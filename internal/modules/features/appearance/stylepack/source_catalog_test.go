@@ -49,3 +49,15 @@ func TestSpaceStyleCatalogDirectoryReaderRejectsEscapesAndHidesHostErrors(t *tes
 		})
 	}
 }
+
+func TestSpaceStyleCatalogRejectsRegularFileRoot(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("RESOURCE_DIR", root)
+	if err := os.WriteFile(SourceRoot("personal-space"), []byte("not a directory"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	items, err := ListSourcePacksStrict("personal-space")
+	if err == nil || items != nil {
+		t.Fatal("regular file root looked like an empty catalog", items, err)
+	}
+}

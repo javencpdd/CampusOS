@@ -1,4 +1,4 @@
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf.mjs'
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import workerSource from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import { PluginBridgeClient } from '../shared/bridge'
@@ -22,7 +22,8 @@ function renderCanvas(canvas: HTMLCanvasElement, page: PDFPageProxy) {
 
 async function renderPDF(client: PluginBridgeClient, handle: string) {
   const description = (await client.request('resource.describe', { handle })) as PDFResourceDescription
-  if (!Number.isSafeInteger(description.size) || description.size < 5) throw new Error('宿主未返回有效的 PDF 文件大小。')
+  if (!Number.isSafeInteger(description.size) || description.size < 5)
+    throw new Error('宿主未返回有效的 PDF 文件大小。')
   const initialLength = Math.min(description.size, 1024 * 1024)
   const first = (await client.request('resource.readRange', { handle, offset: 0, length: initialLength })) as {
     offset: number
@@ -55,7 +56,7 @@ if (!hostOrigin || new URL(hostOrigin).origin !== hostOrigin || window.parent ==
   const client = new PluginBridgeClient(
     {
       pluginKey: 'campusos.pdf-viewer',
-      pluginVersion: '3.0.0-dev.3',
+      pluginVersion: '3.0.0-dev.4',
       surfaceID: 'preview',
       audience: 'user',
     },

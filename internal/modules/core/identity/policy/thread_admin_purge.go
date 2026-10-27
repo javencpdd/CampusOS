@@ -9,7 +9,7 @@ func (ThreadAdminPurgePolicy) DecideThreadAdminPurge(r port.ThreadAdminPurgeRequ
 		return port.ThreadAdminPurgeDecision{}, err
 	}
 	d := port.ThreadAdminPurgeDecision{Request: r, Effect: "deny", Reason: "policy.thread_admin_purge_denied"}
-	if r.Principal.Actor.Kind == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && r.Thread.DeletionStatus == "trashed" && !r.PhysicalDeleted {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && r.Thread.DeletionStatus == "trashed" && !r.PhysicalDeleted {
 		d.Effect, d.Reason = "allow", "policy.thread_admin_purge"
 	}
 	return d, nil

@@ -2,7 +2,7 @@
   "api_version": "campusos.plugin/v5",
   "publisher": "campusos",
   "key": "pdf-viewer",
-  "version": "3.0.0-dev.3",
+  "version": "3.0.0-dev.4",
   "host_contracts": [
     "campusos.host/v1"
   ],
@@ -53,12 +53,12 @@
     {
       "audience": "user",
       "entrypoint": "dist/user/index.html",
-      "digest": "sha256:b96d5a1af89014994c525d4172a233bb3084c30c351d467eb3428b24f08540c3"
+      "digest": "sha256:71c3334ff55b4e833772d26ad818e0f8185c15f530bb6d537b67e49fde988355"
     },
     {
       "audience": "admin",
       "entrypoint": "dist/admin/index.html",
-      "digest": "sha256:4f8ccc6c181c4454434d8a13b49ba51e53e3e1476b2eee62440e3e6439775564"
+      "digest": "sha256:9319ee3331ba3904036de7f051d59b2bf9cbde2b14355affea6c9769ef93c8bf"
     }
   ]
 }

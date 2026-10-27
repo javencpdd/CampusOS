@@ -94,7 +94,7 @@ func (s *IntegrationService) admin(ctx context.Context, code string, resolve por
 		return a, ErrIntegrationDenied
 	}
 	if !a.Allowed || s.now().UnixMilli() >= a.ExpiresAtMS {
-		if code == "identity.integration.manage" && (a.Principal.AuthenticationStrength != "mfa" || s.now().UnixMilli() >= a.ExpiresAtMS) {
+		if code == "identity.integration.manage" && (!a.Principal.SatisfiesAdminMFARequirement() || s.now().UnixMilli() >= a.ExpiresAtMS) {
 			return a, ErrIntegrationMFARequired
 		}
 		return a, ErrIntegrationDenied

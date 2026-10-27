@@ -352,6 +352,18 @@ func SnapshotSourcePacksStrict(pluginName string) ([]SourcePackInfo, map[string]
 
 func listSourcePacks(pluginName string, strictDelivery bool, packages map[string]*Package) ([]SourcePackInfo, error) {
 	root := SourceRoot(pluginName)
+	// On Windows, ReadDir on a regular file can be reported as not-exist.
+	// Check the root type explicitly so a broken catalog never looks empty.
+	info, err := os.Stat(root)
+	if os.IsNotExist(err) {
+		return []SourcePackInfo{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("source style pack root is not a directory")
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		if os.IsNotExist(err) {

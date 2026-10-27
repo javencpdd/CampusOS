@@ -30,6 +30,14 @@ func validateDeployment(cfg *config.Config) error {
 	if cfg.Auth.AllowDevelopmentDefaultAdmin && environment != "development" {
 		return fmt.Errorf("AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN is allowed only when CAMPUSOS_ENV=development")
 	}
+	if proof := strings.TrimSpace(cfg.Auth.AdminBootstrapSecret); proof != "" {
+		if len(proof) < 16 || len(proof) > 4096 {
+			return fmt.Errorf("AUTH_ADMIN_BOOTSTRAP_SECRET must contain 16 to 4096 bytes when enabled")
+		}
+		if proof == strings.TrimSpace(cfg.Auth.BootstrapAdminSecret) {
+			return fmt.Errorf("AUTH_ADMIN_BOOTSTRAP_SECRET must differ from the legacy user bootstrap secret")
+		}
+	}
 	if environment == "production" {
 		if len(strings.TrimSpace(cfg.Auth.BootstrapAdminSecret)) < 16 {
 			return fmt.Errorf("AUTH_BOOTSTRAP_ADMIN_SECRET with at least 16 characters is required when CAMPUSOS_ENV=production")

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"net/http"
 	"strings"
@@ -13,16 +15,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const AdminBootstrapSecretHeader = "X-CampusOS-Bootstrap-Secret"
+
 // AdminDomainHandler exposes the independent admin identity domain over HTTP:
 // admin login/refresh/logout, bootstrap and account lifecycle, and TOTP
 // step-up. All authenticated routes sit behind the admin-domain middleware;
 // user tokens never reach these handlers.
 type AdminDomainHandler struct {
-	lifecycle   *service.AdminDomainService
-	sessions    *service.AdminSessionService
-	mfa         *service.AdminMFAService
-	currentSelf *service.AdminSelfService
-	sessionHTTP SessionHTTPConfig
+	lifecycle           *service.AdminDomainService
+	sessions            *service.AdminSessionService
+	mfa                 *service.AdminMFAService
+	currentSelf         *service.AdminSelfService
+	sessionHTTP         SessionHTTPConfig
+	bootstrapProof      [sha256.Size]byte
+	bootstrapConfigured bool
 }
 
 func NewAdminDomainHandler(lifecycle *service.AdminDomainService, sessions *service.AdminSessionService, mfa *service.AdminMFAService, currentSelf ...*service.AdminSelfService) *AdminDomainHandler {
@@ -31,6 +37,20 @@ func NewAdminDomainHandler(lifecycle *service.AdminDomainService, sessions *serv
 		h.currentSelf = currentSelf[0]
 	}
 	return h
+}
+
+// SetBootstrapSecret binds the HTTP entry to deployment custody. Only a digest
+// is retained; merely enabling the lifecycle's bootstrap policy is not proof
+// that an anonymous request is the operator.
+func (h *AdminDomainHandler) SetBootstrapSecret(secret string) {
+	h.bootstrapProof = [sha256.Size]byte{}
+	h.bootstrapConfigured = false
+	secret = strings.TrimSpace(secret)
+	if len(secret) < 16 || len(secret) > 4096 {
+		return
+	}
+	h.bootstrapProof = sha256.Sum256([]byte(secret))
+	h.bootstrapConfigured = true
 }
 
 type adminLoginRequest struct {
@@ -152,6 +172,18 @@ func (h *AdminDomainHandler) Logout(c *gin.Context) {
 
 // POST /api/v1/admin/identity/bootstrap
 func (h *AdminDomainHandler) Bootstrap(c *gin.Context) {
+	c.Header("Cache-Control", "private, no-store")
+	proofs := c.Request.Header.Values(AdminBootstrapSecretHeader)
+	if !h.bootstrapConfigured || h.lifecycle == nil || len(proofs) != 1 || len(proofs[0]) < 16 || len(proofs[0]) > 4096 {
+		response.Error(c, http.StatusForbidden, 20004, "bootstrap denied")
+		return
+	}
+	proof := sha256.Sum256([]byte(proofs[0]))
+	if subtle.ConstantTimeCompare(proof[:], h.bootstrapProof[:]) != 1 {
+		response.Error(c, http.StatusForbidden, 20004, "bootstrap denied")
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
 	var req struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
