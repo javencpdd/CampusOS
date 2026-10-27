@@ -1,4 +1,4 @@
-import { PDFDataRangeTransport } from 'pdfjs-dist/build/pdf.mjs'
+import { PDFDataRangeTransport } from 'pdfjs-dist'
 import { PluginBridgeClient } from './bridge'
 
 export interface PDFResourceDescription {

@@ -92,6 +92,38 @@ describe("Admin self MFA and independent login UI", () => {
     expect(w.text()).not.toContain("普通用户端");
     w.unmount();
   });
+  it("explains enrollment steps and does not require an email code or password", () => {
+    const w = mountMFA();
+    expect(w.text()).toContain("支持 TOTP");
+    expect(w.text()).toContain("6 位动态验证码");
+    expect(w.text()).toContain("15 分钟");
+    expect(w.text()).toContain("不是邮箱验证码");
+    w.unmount();
+  });
+  it("does not enroll or step up when the current deployment disables MFA", async () => {
+    admin.profile.mfa_required = false;
+    const w = mountMFA(),
+      v = w.vm as any;
+    await v.enroll();
+    v.code = "123456";
+    await v.submit();
+    expect(enrollMFA).not.toHaveBeenCalled();
+    expect(confirmMFA).not.toHaveBeenCalled();
+    expect(stepUpMFA).not.toHaveBeenCalled();
+    expect(w.text()).not.toContain("开始配置管理员认证器");
+    w.unmount();
+  });
+  it("clears enrollment secrets when the deployment requirement changes", async () => {
+    const w = mountMFA(),
+      v = w.vm as any;
+    await v.enroll();
+    expect(v.enrollmentSecret).toBeTruthy();
+    admin.profile.mfa_required = false;
+    await flushPromises();
+    expect(v.enrollmentSecret).toBe("");
+    expect(v.enrollmentURL).toBe("");
+    w.unmount();
+  });
   it("configures the own Admin factor, then requests a new code instead of replaying confirmation", async () => {
     const w = mountMFA(),
       v = w.vm as any;

@@ -23,6 +23,7 @@ type AdminSessionAuthority struct {
 	SessionVersion         int64
 	ExpiresAt              time.Time
 	MFAAuthenticatedAt     *time.Time
+	AdminMFAOptional       bool `json:"-"`
 }
 
 type AdminSessionAuthorityReader interface {
@@ -52,7 +53,7 @@ func ResolveAdminSessionPrincipal(ctx context.Context, reader AdminSessionAuthor
 	if first.AccountID != bound.UserID || first.SessionID != bound.SessionID || first.AccountVersion < 1 || first.SessionVersion < 1 || first.ExpiresAt.IsZero() || (first.AuthenticationStrength == "mfa" && first.MFAAuthenticatedAt == nil) {
 		return fail(nil)
 	}
-	p := PrincipalContext{Contract: PrincipalContract, Actor: PrincipalRef{Kind: "admin", ID: bound.UserID}, Audience: "admin", AuthenticationStrength: first.AuthenticationStrength, CredentialID: bound.SessionID}
+	p := PrincipalContext{Contract: PrincipalContract, Actor: PrincipalRef{Kind: "admin", ID: bound.UserID}, Audience: "admin", AuthenticationStrength: first.AuthenticationStrength, CredentialID: bound.SessionID, AdminMFAOptional: first.AdminMFAOptional}
 	if err := p.Validate(); err != nil {
 		return fail(err)
 	}

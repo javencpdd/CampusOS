@@ -12,7 +12,7 @@ func (PersonalSpaceQuotaAdminPolicy) DecidePersonalSpaceQuotaAdmin(r port.Person
 		return port.PersonalSpaceQuotaAdminDecision{}, err
 	}
 	d := port.PersonalSpaceQuotaAdminDecision{Request: r, Effect: "deny", Reason: "policy.space_quota_admin_denied"}
-	if r.Principal.Actor.Kind == "admin" && r.Principal.Audience == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS {
 		d.Effect, d.Reason = "allow", "policy.space_quota_admin"
 	}
 	return d, nil

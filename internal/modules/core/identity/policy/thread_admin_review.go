@@ -9,7 +9,7 @@ func (ThreadAdminReviewPolicy) DecideThreadAdminReview(r port.ThreadAdminReviewR
 		return port.ThreadAdminReviewDecision{}, err
 	}
 	d := port.ThreadAdminReviewDecision{Request: r, Effect: "deny", Reason: "policy.thread_admin_review_denied"}
-	if r.Principal.Actor.Kind == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && r.Thread.DeletionStatus == "active" && r.Thread.ModerationStatus == "pending" {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && r.Thread.DeletionStatus == "active" && r.Thread.ModerationStatus == "pending" {
 		d.Effect, d.Reason = "allow", "policy.thread_admin_review"
 	}
 	return d, nil

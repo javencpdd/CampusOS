@@ -40,6 +40,34 @@ func TestValidateDeploymentRequiresProductionBootstrapSecret(t *testing.T) {
 	}
 }
 
+func TestValidateDeploymentBoundsIndependentAdminBootstrapSecret(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		proof   string
+		wantErr bool
+	}{
+		{"disabled", "", false},
+		{"independent", "independent-management-bootstrap-secret", false},
+		{"short", "short", true},
+		{"reused_user_secret", "legacy-user-bootstrap-secret", true},
+		{"oversized", strings.Repeat("x", 4097), true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := &config.Config{
+				Deployment: config.DeploymentConfig{Environment: "development", InstanceMode: "single"},
+				Auth:       config.AuthConfig{BootstrapAdminSecret: "legacy-user-bootstrap-secret", AdminBootstrapSecret: test.proof},
+			}
+			err := validateDeployment(cfg)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("configuration acceptance mismatch: %v", err)
+			}
+			if err != nil && !strings.Contains(err.Error(), "AUTH_ADMIN_BOOTSTRAP_SECRET") {
+				t.Fatalf("unexpected rejection: %v", err)
+			}
+		})
+	}
+}
+
 func TestValidateDeploymentRejectsFakeEmailOutsideLocalProfiles(t *testing.T) {
 	cfg := &config.Config{
 		Deployment: config.DeploymentConfig{Environment: "staging", InstanceMode: "single"},

@@ -85,7 +85,8 @@ def main(work):
     name = 'campusos-release-capacity-' + nonce
     password, admin_password = secrets.token_hex(24), secrets.token_hex(24) + 'A!'
     jwt, mfa_key, bootstrap = secrets.token_hex(32), secrets.token_hex(32), secrets.token_hex(32)
-    secret_values = [password, admin_password, jwt, mfa_key, bootstrap]
+    admin_bootstrap = secrets.token_hex(32)
+    secret_values = [password, admin_password, jwt, mfa_key, bootstrap, admin_bootstrap]
     commands, checks, http_checks, rss, processes = [], [], [], {}, []
     scope, binary, captures = {}, {}, {}
     attempted, container_id, pg_port, api_port, process = False, None, None, None, None
@@ -128,10 +129,10 @@ def main(work):
 
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-    def http(label, method, path, body=None, token=None, expected=200, record=True):
+    def http(label, method, path, body=None, token=None, expected=200, record=True, headers=None):
         req = urllib.request.Request('http://127.0.0.1:' + str(api_port) + path,
                                      data=json.dumps(body).encode() if body is not None else None,
-                                     headers={'Content-Type': 'application/json'} | ({'Authorization': 'Bearer ' + token} if token else {}), method=method)
+                                     headers={'Content-Type': 'application/json'} | ({'Authorization': 'Bearer ' + token} if token else {}) | (headers or {}), method=method)
         try:
             response = opener.open(req, timeout=8)
         except urllib.error.HTTPError as error:
@@ -271,6 +272,7 @@ ANALYZE users; ANALYZE categories; ANALYZE threads;
                          'NATS_URL': 'nats://127.0.0.1:1', 'EMAIL_PROVIDER': 'fake', 'AI_ENABLED': 'false',
                          'HOST_API_ENABLED': 'false', 'AUTH_PASSWORD_HASH_ENABLED': 'true',
                          'AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN': 'false', 'AUTH_BOOTSTRAP_ADMIN_SECRET': bootstrap,
+                         'AUTH_ADMIN_BOOTSTRAP_SECRET': admin_bootstrap,
                          'AUTH_REFRESH_BODY_COMPAT': 'false', 'JWT_SECRET': jwt, 'AUTH_MFA_ACTIVE_KEY_ID': 'capacity',
                          'AUTH_MFA_ENCRYPTION_KEYS': 'capacity:' + mfa_key, 'PLUGIN_DATA_DIR': str(runtime / 'data/plugin_data'),
                          'OBSERVABILITY_PROMETHEUS_ENABLED': 'false', 'GIN_MODE': 'release',
@@ -281,7 +283,12 @@ ANALYZE users; ANALYZE categories; ANALYZE threads;
                  'shared_service_used': False, 'dataset': dataset}
         write('scope.json', scope)
         start('setup')
-        http('bootstrap', 'POST', '/api/v1/admin/identity/bootstrap', {'username': 'capacity-admin', 'email': 'capacity-admin@example.test', 'password': admin_password, 'reason': 'owned capacity gate'})
+        bootstrap_body = {'username': 'capacity-admin', 'email': 'capacity-admin@example.test', 'password': admin_password, 'reason': 'owned capacity gate'}
+        http('bootstrap-proof-missing', 'POST', '/api/v1/admin/identity/bootstrap', bootstrap_body, expected=403)
+        http('bootstrap-proof-wrong', 'POST', '/api/v1/admin/identity/bootstrap', bootstrap_body, expected=403,
+             headers={'X-CampusOS-Bootstrap-Secret': 'not-the-owned-bootstrap-proof'})
+        http('bootstrap', 'POST', '/api/v1/admin/identity/bootstrap', bootstrap_body,
+             headers={'X-CampusOS-Bootstrap-Secret': admin_bootstrap})
         login = http('login', 'POST', '/api/v1/admin/identity/login', {'username': 'capacity-admin', 'password': admin_password})
         token = login['access_token']
         secret_values.append(token)

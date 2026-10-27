@@ -67,7 +67,7 @@ func (ResourcePolicy) DecideResource(r port.ResourcePolicyRequest) (port.Resourc
 				break
 			}
 		}
-		if p.Actor.Kind == "admin" && p.AuthenticationStrength != "mfa" {
+		if p.Actor.Kind == "admin" && !p.SatisfiesAdminMFARequirement() {
 			allow = false
 		}
 		write = true

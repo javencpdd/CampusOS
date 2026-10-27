@@ -9,6 +9,7 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: includeLastUpdated,
   head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/campusos-logo.png' }],
     ['meta', { name: 'theme-color', content: '#166534' }],
     ['meta', { name: 'color-scheme', content: 'light dark' }],
   ],

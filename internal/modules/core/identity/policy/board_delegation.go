@@ -37,7 +37,7 @@ func (BoardDelegationPolicy) DecideBoardDelegation(r port.BoardDelegationRequest
 	if p.Actor.Kind != "admin" {
 		return deny("delegation.actor_denied"), nil
 	}
-	if p.AuthenticationStrength != "mfa" {
+	if !p.SatisfiesAdminMFARequirement() {
 		return deny("delegation.mfa_required"), nil
 	}
 	if r.Management.Actor != p.Actor ||

@@ -18,7 +18,7 @@ func (ThreadAdminLifecyclePolicy) DecideThreadAdminLifecycle(r port.ThreadAdminL
 	case "direct_restore":
 		state = r.Thread.DeletionStatus == "active" && r.Thread.ModerationStatus == "taken_down"
 	}
-	if r.Principal.Actor.Kind == "admin" && r.Principal.AuthenticationStrength == "mfa" && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state {
+	if r.Principal.SatisfiesAdminMFARequirement() && r.ExecutionAllowed && r.EvaluatedAtMS < r.ExecutionExpiresAtMS && state {
 		d.Effect, d.Reason = "allow", "policy.thread_admin_lifecycle"
 	}
 	return d, nil

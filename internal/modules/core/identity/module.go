@@ -53,6 +53,8 @@ type Config struct {
 	MFAEncryptionKeys     map[string]string
 	MFAIssuer             string
 	BootstrapAdminSecret  string
+	AdminBootstrapSecret  string
+	AdminMFAOptional      bool
 	RefreshBodyCompat     bool
 	CookieSecure          bool
 }
@@ -232,6 +234,7 @@ func (m *Module) Register(app *platformmodule.AppContext) error {
 		authorizationCatalog = catalog
 	}
 	m.delegationService = delegationsvc.NewService(m.delegations, m.users, authorizationCatalog)
+	m.delegationService.SetAdminMFAOptional(m.config.AdminMFAOptional)
 	m.permissionService.SetDelegationService(m.delegationService)
 	m.adminSessions = adminSessionRepository
 	m.adminSecurity = adminSecurityRepository
@@ -385,6 +388,7 @@ func (m *Module) Start(context.Context) error {
 	userHandler.SetAdminAccessService(m.adminAccessService)
 	userHandler.SetMFAService(mfa)
 	adminHandler := handler.NewAdminDomainHandler(m.adminDomainService, m.adminSessionService, m.adminMFAService, service.NewAdminSelfService(m.adminSessionService, m.adminDomains, m.adminSecurity))
+	adminHandler.SetBootstrapSecret(m.config.AdminBootstrapSecret)
 	adminHandler.SetSessionHTTPConfig(handler.SessionHTTPConfig{RefreshBodyCompat: m.config.RefreshBodyCompat, CookieSecure: m.config.CookieSecure})
 	m.handlers = HTTPHandlers{
 		User:            userHandler,
@@ -509,10 +513,13 @@ func (m *Module) startAdminDomainServices(catalog repository.AuthorizationReposi
 		AccessTTL: accessTTL, RefreshTTL: refreshTTL,
 	})
 	domainConfig := service.DefaultAdminDomainConfig()
-	domainConfig.BootstrapEnabled = len(m.config.BootstrapAdminSecret) >= 16
+	bootstrapSecret := strings.TrimSpace(m.config.AdminBootstrapSecret)
+	domainConfig.BootstrapEnabled = len(bootstrapSecret) >= 16 && len(bootstrapSecret) <= 4096
+	domainConfig.AdminMFAOptional = m.config.AdminMFAOptional
 	m.adminDomainService = service.NewAdminDomainService(m.adminDomains, catalog, domainConfig)
 	m.adminDomainService.SetReliability(reliable)
 	m.adminSessionService = service.NewAdminSessionService(m.adminDomains, m.adminSessions, m.adminJWT)
+	m.adminSessionService.SetMFAOptional(m.config.AdminMFAOptional)
 	m.adminSessionService.SetReliability(reliable)
 	// Minimal test configurations may omit MFA keys; the admin MFA service
 	// stays unavailable there rather than failing module startup.

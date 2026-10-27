@@ -18,6 +18,7 @@ from typing import Any
 
 
 FIREWALL_RULE_NAME = "CampusOS Dev UI (Private LAN)"
+FIREWALL_RULE_PREFIX = "CampusOS-Dev-UI-LAN-"
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,14 @@ class LanInterface:
     interface: str
     network: str
     category: str
+    prefix_length: int | None = None
+
+
+@dataclass(frozen=True)
+class FirewallAssessment:
+    ready: bool
+    unsafe: bool
+    details: tuple[str, ...]
 
 
 SURFACES = (
@@ -209,6 +218,7 @@ $items = @(
           interface = [string]$configuration.InterfaceAlias
           network = if ($null -ne $profile) { [string]$profile.Name } else { '' }
           category = if ($null -ne $profile) { [string]$profile.NetworkCategory } else { 'Unknown' }
+          prefix_length = [int]$address.PrefixLength
         }
       }
     }
@@ -227,6 +237,7 @@ $items | ConvertTo-Json -Compress
             str(record.get("interface", "")),
             str(record.get("network", "")),
             str(record.get("category", "Unknown")),
+            int(record["prefix_length"]) if record.get("prefix_length") is not None else None,
         )
         for record in records
         if isinstance(record, dict) and record.get("address")
@@ -328,23 +339,117 @@ def select_interfaces(explicit_hosts: list[str], root: Path) -> list[LanInterfac
     return fallback_addresses()
 
 
-def windows_firewall_rule(root: Path) -> bool | None:
+def windows_firewall_rules(root: Path) -> list[dict[str, Any]] | None:
     if os.name != "nt":
         return None
     escaped_name = FIREWALL_RULE_NAME.replace("'", "''")
-    command = (
-        f"$rules = @(Get-NetFirewallRule -DisplayName '{escaped_name}' "
-        "-ErrorAction SilentlyContinue | Where-Object { "
-        "$_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' -and $_.Action -eq 'Allow' }); "
-        "if ($rules.Count -gt 0) { 'true' } else { 'false' }"
-    )
+    command = rf"""
+$ErrorActionPreference = 'Stop'
+$items = @(
+  Get-NetFirewallRule -PolicyStore ActiveStore | Where-Object {{
+    $_.DisplayName -eq '{escaped_name}' -or $_.Name -like '{FIREWALL_RULE_PREFIX}*'
+  }} | ForEach-Object {{
+    $rule = $_
+    $port = $rule | Get-NetFirewallPortFilter
+    $address = $rule | Get-NetFirewallAddressFilter
+    $interface = $rule | Get-NetFirewallInterfaceFilter
+    [pscustomobject]@{{
+      name = [string]$rule.Name
+      display_name = [string]$rule.DisplayName
+      enabled = [string]$rule.Enabled
+      direction = [string]$rule.Direction
+      action = [string]$rule.Action
+      profiles = [string]$rule.Profile
+      edge_traversal = [string]$rule.EdgeTraversalPolicy
+      protocol = [string]$port.Protocol
+      local_ports = @($port.LocalPort)
+      local_addresses = @($address.LocalAddress)
+      remote_addresses = @($address.RemoteAddress)
+      interfaces = @($interface.InterfaceAlias)
+    }}
+  }}
+)
+$items | ConvertTo-Json -Depth 4 -Compress
+"""
     try:
-        return run_command(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
-            root,
-        ).strip().lower() == "true"
+        return parse_json_records(run_command(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command], root,
+        ))
     except RuntimeError:
         return None
+
+
+def firewall_values(value: Any) -> set[str]:
+    values = value if isinstance(value, list) else [value]
+    return {part.strip() for item in values for part in str(item or "").split(",") if part.strip()}
+
+
+def firewall_ports(value: Any, expected: set[int]) -> set[int] | None:
+    ports: set[int] = set()
+    for token in firewall_values(value):
+        try:
+            bounds = token.split("-")
+            if len(bounds) == 1:
+                first = last = int(bounds[0])
+            elif len(bounds) == 2:
+                first, last = map(int, bounds)
+            else:
+                return None
+            if first < 1 or last > 65535 or last < first or last - first + 1 > len(expected):
+                return None
+            ports.update(range(first, last + 1))
+        except ValueError:
+            return None
+    return ports if ports and ports <= expected else None
+
+
+def assess_windows_firewall_rules(
+    rules: list[dict[str, Any]], interfaces: list[LanInterface], ports: set[int],
+) -> FirewallAssessment:
+    """Validate owned rules, not the whole Windows firewall policy or remote reachability."""
+    if not interfaces or any(interface.prefix_length is None for interface in interfaces):
+        return FirewallAssessment(False, False, ("current Windows LAN prefix metadata is unavailable; firewall scope was not verified",))
+    covered = {interface.address: set() for interface in interfaces}
+    details: list[str] = []
+    unsafe = False
+    for rule in rules:
+        name = str(rule.get("name", ""))
+        if not name.startswith(FIREWALL_RULE_PREFIX) and rule.get("display_name") != FIREWALL_RULE_NAME:
+            continue
+        if (str(rule.get("enabled", "")).lower() != "true" or
+                str(rule.get("direction", "")).lower() != "inbound" or
+                str(rule.get("action", "")).lower() != "allow"):
+            continue
+        selected_ports = firewall_ports(rule.get("local_ports"), ports)
+        profiles = firewall_values(rule.get("profiles"))
+        safe = (selected_ports is not None and str(rule.get("protocol", "")).upper() in {"TCP", "6"}
+                and str(rule.get("edge_traversal", "")).lower() == "block"
+                and bool(profiles) and profiles <= {"Public", "Private", "Domain"})
+        matched = False
+        for interface in interfaces:
+            try:
+                if interface.prefix_length is None:
+                    continue
+                address = ipaddress.ip_address(interface.address)
+                subnet = ipaddress.ip_network(f"{interface.address}/{interface.prefix_length}", strict=False)
+                local = {ipaddress.ip_network(value, strict=False) for value in firewall_values(rule.get("local_addresses"))}
+                remote = {ipaddress.ip_network(value, strict=False) for value in firewall_values(rule.get("remote_addresses"))}
+            except ValueError:
+                continue
+            if (local != {ipaddress.ip_network(f"{address}/32")} or remote != {subnet}
+                    or firewall_values(rule.get("interfaces")) != {interface.interface}):
+                continue
+            matched = True
+            profile = "Domain" if interface.category == "DomainAuthenticated" else interface.category
+            if safe and profile in profiles:
+                covered[interface.address].update(selected_ports or set())
+        if not safe or not matched:
+            unsafe = True
+            details.append(f'owned firewall rule "{name}" is not restricted to the current LAN IP/subnet/interface and UI TCP ports')
+    missing = [address for address, allowed in covered.items() if allowed != ports]
+    if not covered or missing:
+        details.append("no verified owned firewall rule covers every current LAN interface and UI port")
+    return FirewallAssessment(bool(covered) and not missing and not unsafe, unsafe, tuple(details))
 
 
 def probe_http(address: str, port: int, path: str, timeout: float) -> tuple[bool, str]:
@@ -443,10 +548,6 @@ def main() -> int:
             details += f", network={interface.network}"
         details += f", category={interface.category}"
         print(f"- {interface.address} ({details})")
-        if interface.category.lower() == "public":
-            warnings.append(
-                f"{interface.address} uses a Windows Public network profile; inbound LAN access may be blocked"
-            )
 
     print()
     print("Local probes through each LAN address:")
@@ -466,11 +567,20 @@ def main() -> int:
         if address_ok:
             successful_addresses.append(interface.address)
 
-    firewall = windows_firewall_rule(root)
-    if firewall is False:
-        warnings.append(f'Windows firewall rule "{FIREWALL_RULE_NAME}" is not enabled')
-    elif firewall is None and os.name == "nt":
-        warnings.append("Windows firewall state could not be determined")
+    if os.name == "nt":
+        firewall = windows_firewall_rules(root)
+        if firewall is None:
+            warnings.append("Windows firewall state could not be determined")
+        else:
+            assessment = assess_windows_firewall_rules(firewall, interfaces, set(effective_ports.values()))
+            if assessment.ready:
+                print("[PASS] Windows owned firewall rules restrict UI TCP ports to the current LAN IP/subnet/interface")
+            elif assessment.unsafe:
+                failures.extend(assessment.details)
+            else:
+                warnings.extend(assessment.details)
+            if not assessment.ready and any(interface.category.lower() == "public" for interface in interfaces):
+                warnings.append("Windows Public network profile has no verified current-LAN UI rule")
     elif sys.platform.startswith("linux"):
         if shutil.which("ufw"):
             warnings.append(

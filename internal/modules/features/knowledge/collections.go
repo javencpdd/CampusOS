@@ -175,7 +175,7 @@ func (s *CollectionService) admin(ctx context.Context, code string, resolve iden
 		return zero, ErrDenied
 	}
 	if !a.Allowed || a.ExpiresAtMS <= time.Now().UnixMilli() {
-		if code == "knowledge.collection.manage" && (a.Principal.AuthenticationStrength != "mfa" || a.ExpiresAtMS <= time.Now().UnixMilli()) {
+		if code == "knowledge.collection.manage" && (!a.Principal.SatisfiesAdminMFARequirement() || a.ExpiresAtMS <= time.Now().UnixMilli()) {
 			return zero, ErrMFARequired
 		}
 		return zero, ErrDenied

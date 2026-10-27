@@ -44,12 +44,13 @@ type AdminSessionTokens struct {
 // against the independent admin session store. The JWT manager must be the
 // admin domain manager; user-domain tokens never verify here.
 type AdminSessionService struct {
-	admins    repository.AdminDomainRepository
-	sessions  repository.AdminSessionRepository
-	jwt       *auth.JWTManager
-	reliable  *reliability.Service
-	now       func() time.Time
-	ipHashKey string
+	admins      repository.AdminDomainRepository
+	sessions    repository.AdminSessionRepository
+	jwt         *auth.JWTManager
+	reliable    *reliability.Service
+	now         func() time.Time
+	ipHashKey   string
+	mfaOptional bool
 }
 
 func NewAdminSessionService(admins repository.AdminDomainRepository, sessions repository.AdminSessionRepository, jwt *auth.JWTManager) *AdminSessionService {
@@ -70,6 +71,10 @@ func (s *AdminSessionService) SetReliability(reliable *reliability.Service) {
 func (s *AdminSessionService) SetClock(now func() time.Time) { s.now = now }
 
 func (s *AdminSessionService) SetIPHashKey(key string) { s.ipHashKey = key }
+
+// SetMFAOptional is deployment composition only; never call it from HTTP input.
+// It does not change stored authentication strength or enrollments.
+func (s *AdminSessionService) SetMFAOptional(optional bool) { s.mfaOptional = optional }
 
 func adminRefreshDigest(raw string) string {
 	digest := sha256.Sum256([]byte(raw))

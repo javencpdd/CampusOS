@@ -88,8 +88,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 | 官方文档 | `http://localhost:3002` |
 | API 健康检查 | `http://127.0.0.1:8080/api/v1/health` |
 
-首次管理员邮箱是 `admin@campusos.local`，密码是 `.env.docker` 中一次性的
-`AUTH_BOOTSTRAP_ADMIN_SECRET`。首次登录后立即修改密码并配置 MFA，不要把该值当作长期共享密码。
+当前管理端没有固定邮箱/密码的默认超级用户。`.env.docker` 中旧 `AUTH_BOOTSTRAP_ADMIN_SECRET` 仅用于用户域兼容引导/本地恢复，不会创建独立 `admin_accounts`。第一位管理域安全管理员须按[初始管理员安全](bootstrap-security.md)使用独立初始化配置和请求证明显式创建，随后关闭初始化并配置 MFA。
 
 ## 联网前配置
 

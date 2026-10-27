@@ -152,7 +152,15 @@
                 "管理员"
               }}
             </span>
-            <el-button text @click="mfaStepUpOpen = true">管理员认证</el-button>
+            <el-button
+              v-if="adminStore.profile?.mfa_required !== false"
+              text
+              @click="mfaStepUpOpen = true"
+              >管理员认证</el-button
+            >
+            <el-button v-else text @click="router.push('/mfa-policy')"
+              >MFA 已关闭</el-button
+            >
             <el-button text @click="handleLogout">
               <el-icon><SwitchButton /></el-icon>
               退出
@@ -160,6 +168,20 @@
           </div>
         </el-header>
         <el-main class="admin-main">
+          <el-alert
+            v-if="
+              adminStore.profile &&
+              adminStore.profile.mfa_required !== false &&
+              !adminStore.profile.mfa_enrolled
+            "
+            type="info"
+            :closable="false"
+            title="管理员二次验证已开启：首次敏感操作前，请先配置认证器。"
+          >
+            <el-button text @click="mfaStepUpOpen = true"
+              >查看配置引导</el-button
+            >
+          </el-alert>
           <router-view />
         </el-main>
       </el-container>
@@ -263,8 +285,17 @@ const handleLogout = async () => {
     await router.push("/login");
   }
 };
-const openMFAStepUp = () => {
-  mfaStepUpOpen.value = true;
+const openMFAStepUp = async () => {
+  // A deployment restart can re-enable MFA while this tab still has old facts.
+  if (adminStore.profile?.mfa_required === false) {
+    try {
+      if (!(await adminStore.restore())) return;
+    } catch {
+      ElMessage.warning("管理员认证配置已变化，请刷新页面后重试");
+      return;
+    }
+  }
+  if (adminStore.profile?.mfa_required !== false) mfaStepUpOpen.value = true;
 };
 
 onMounted(() => {

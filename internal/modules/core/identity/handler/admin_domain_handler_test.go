@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/campusos/CampusOS/internal/modules/core/identity/handler"
@@ -55,6 +56,7 @@ func newAdminDomainHTTPFixture(t *testing.T) *adminDomainHTTPFixture {
 	domainSessions.SetReliability(reliable)
 	mfa.SetReliability(reliable)
 	h := handler.NewAdminDomainHandler(lifecycle, domainSessions, mfa, service.NewAdminSelfService(domainSessions, admins, security))
+	h.SetBootstrapSecret("test-deployment-bootstrap-proof")
 	h.SetSessionHTTPConfig(handler.SessionHTTPConfig{RefreshBodyCompat: true})
 
 	router := gin.New()
@@ -80,6 +82,9 @@ func (f *adminDomainHTTPFixture) post(t *testing.T, path string, body any, token
 	payload, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
+	if path == "/api/v1/admin/identity/bootstrap" {
+		req.Header.Set(handler.AdminBootstrapSecretHeader, "test-deployment-bootstrap-proof")
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -88,6 +93,74 @@ func (f *adminDomainHTTPFixture) post(t *testing.T, path string, body any, token
 	var parsed map[string]any
 	_ = json.Unmarshal(recorder.Body.Bytes(), &parsed)
 	return recorder, parsed
+}
+
+func TestAdminDomainHTTPBootstrapRejectsMissingDeploymentProof(t *testing.T) {
+	f := newAdminDomainHTTPFixture(t)
+	payload := []byte(`{"username":"root","email":"root@example.test","password":"initial-password","reason":"first"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/identity/bootstrap", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	f.router.ServeHTTP(response, req)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("bootstrap without deployment proof: %d", response.Code)
+	}
+	count, err := f.admins.CountActiveSecurityAdmins(context.Background())
+	if err != nil || count != 0 {
+		t.Fatalf("unproven bootstrap changed accounts: count=%d err=%v", count, err)
+	}
+}
+
+func TestAdminDomainHTTPBootstrapRejectsInvalidDeploymentProof(t *testing.T) {
+	const secret = "test-deployment-bootstrap-proof"
+	for _, test := range []struct {
+		name       string
+		configured string
+		proofs     []string
+	}{
+		{"not_configured", "", []string{secret}},
+		{"short_configuration", "short", []string{secret}},
+		{"wrong_proof", secret, []string{"another-deployment-bootstrap-proof"}},
+		{"duplicate_proof", secret, []string{secret, secret}},
+		{"oversized_proof", secret, []string{strings.Repeat("x", 4097)}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newAdminDomainHTTPFixture(t)
+			f.handler.SetBootstrapSecret(test.configured)
+			payload := []byte(`{"username":"root","email":"root@example.test","password":"initial-password","reason":"first"}`)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/identity/bootstrap", bytes.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			for _, proof := range test.proofs {
+				req.Header.Add(handler.AdminBootstrapSecretHeader, proof)
+			}
+			recorder := httptest.NewRecorder()
+			f.router.ServeHTTP(recorder, req)
+			if recorder.Code != http.StatusForbidden || recorder.Header().Get("Cache-Control") != "private, no-store" {
+				t.Fatalf("invalid proof response: %d %v", recorder.Code, recorder.Header())
+			}
+			if strings.Contains(recorder.Body.String(), secret) {
+				t.Fatal("deployment proof leaked in response")
+			}
+			count, err := f.admins.CountActiveSecurityAdmins(context.Background())
+			if err != nil || count != 0 {
+				t.Fatalf("invalid proof changed accounts: count=%d err=%v", count, err)
+			}
+		})
+	}
+}
+
+func TestAdminDomainHTTPBootstrapBoundsRequestBody(t *testing.T) {
+	f := newAdminDomainHTTPFixture(t)
+	response, _ := f.post(t, "/api/v1/admin/identity/bootstrap", map[string]any{
+		"username": "root", "email": "root@example.test", "password": "initial-password", "reason": strings.Repeat("x", 5000),
+	}, "")
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("oversized bootstrap body: %d", response.Code)
+	}
+	count, err := f.admins.CountActiveSecurityAdmins(context.Background())
+	if err != nil || count != 0 {
+		t.Fatalf("oversized body changed accounts: count=%d err=%v", count, err)
+	}
 }
 
 func TestAdminDomainHTTPBootstrapLoginAndCrossDomainRejection(t *testing.T) {

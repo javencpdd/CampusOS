@@ -4,6 +4,7 @@ import argparse
 import ctypes
 import hashlib
 import json
+import ntpath
 import os
 from pathlib import Path
 import re
@@ -68,6 +69,17 @@ def snapshot():
     return {'head': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(), 'source_sha256': raw, 'canonical_source_sha256': canonical, 'dependencies': {str((EVIDENCE / n).relative_to(ROOT)).replace('\\', '/'): sha(EVIDENCE / n) for n in DEPS}}
 
 
+def frozen_migration_head(frozen):
+    versions = []
+    for name in frozen['source_sha256']:
+        match = re.fullmatch(r'migrations/(\d{6})_[^/]+\.up\.sql', name)
+        if match:
+            versions.append(int(match.group(1)))
+    require(versions and sorted(versions) == list(range(1, len(versions) + 1)),
+            'frozen migration sources must be a unique contiguous sequence')
+    return len(versions)
+
+
 def native_host(windows_required):
     actual = 'windows' if sys.platform == 'win32' else 'linux' if sys.platform.startswith('linux') else ''
     require(actual and (not windows_required or actual == 'windows'), 'requires native Windows Python; Linux/WSL/PowerShell-on-Linux cannot certify Windows')
@@ -88,7 +100,10 @@ def system_root():
 
 def clean_environment(work, host):
     if host == 'windows':
-        return {'SystemRoot': system_root(), 'USERPROFILE': str(work / 'home'), 'TEMP': str(work / 'tmp'), 'TMP': str(work / 'tmp'), 'GORACE': 'halt_on_error=1'}
+        root = system_root()
+        return {'SystemRoot': root, 'SystemDrive': ntpath.splitdrive(root)[0],
+                'USERPROFILE': str(work / 'home'), 'TEMP': str(work / 'tmp'),
+                'TMP': str(work / 'tmp'), 'GORACE': 'halt_on_error=1'}
     return {'PATH': '/usr/bin:/bin', 'HOME': str(work / 'home'), 'TMPDIR': str(work / 'tmp'), 'GORACE': 'halt_on_error=1'}
 
 
@@ -160,7 +175,8 @@ def verify(work, host, cross_host=False):
         require('-race=true' in info and f'GOOS={host}' in info and 'GOARCH=amd64' in info, f'{name}: native race build required')
         binary = work / f'native/{name}{".exe" if host == "windows" else ""}'
         require(binary.read_bytes().startswith(b'MZ' if host == 'windows' else b'\x7fELF'), f'{name}: native executable header mismatch')
-    require(int((work / 'schema-version.txt').read_text().strip()) == 28, 'migration head must remain 28')
+    require(int((work / 'schema-version.txt').read_text().strip()) == frozen_migration_head(frozen),
+            'database migration head differs from frozen source')
     require('linux cgroup=2' in (work / 'environment.txt').read_text(encoding='utf-8-sig'), 'actual Docker Linux/cgroup2 required')
     digests = load(work / 'repo-digests.json')
     require(len(digests) == 1 and re.fullmatch(r'localhost/campusos-owned-v12-06-runtime@sha256:[0-9a-f]{64}', digests[0]), 'exact owned image RepoDigest required')
@@ -181,7 +197,38 @@ def build_env(work, host):
     return env
 
 
+def windows_docker_env(base, work):
+    # Docker Desktop locates its bundled CLI plugins through ProgramFiles.
+    # Preserve that non-secret system path without inheriting PATH, APPDATA,
+    # credentials, proxy settings, or the caller's Docker configuration.
+    program_files = Path(os.environ.get('ProgramFiles', ''))
+    require(program_files.is_absolute() and program_files.is_dir(),
+            'native Windows ProgramFiles is required for Docker Buildx discovery')
+    return {**base, 'DOCKER_CONFIG': str(work / 'home'), 'ProgramFiles': str(program_files)}
+
+
+def windows_migration_env(docker_env, profile, owned, password):
+    # With PATHEXT absent, PowerShell resolves Docker Desktop's extensionless
+    # Unix `docker` shim before docker.exe and silently loses `docker ps`.
+    return {**docker_env,
+            'PATH': str(Path(profile['binary']).parent) + os.pathsep + str(Path(system_root()) / 'System32'),
+            'PATHEXT': '.COM;.EXE;.BAT;.CMD',
+            'DOCKER_HOST': profile['host'], 'CAMPUSOS_SKIP_DOTENV': 'true',
+            'PSQL_MODE': 'docker', 'POSTGRES_CONTAINER': owned,
+            'DB_HOST': '127.0.0.1', 'DB_PORT': '5432', 'DB_USER': 'campusos',
+            'DB_NAME': 'campusos_v12_06_container', 'DB_PASSWORD': password}
+
+
 def windows_target(work, go):
+    # Fail before native compilation or any Docker mutation when the official
+    # Windows launcher/migration runtime is unavailable.
+    pwsh = os.environ.get('CAMPUSOS_V12_06_PWSH') or shutil.which('pwsh.exe')
+    require(pwsh and Path(pwsh).is_file(), 'PowerShell 7.2+ pwsh.exe is required for native Windows acceptance')
+    version = run([pwsh, '-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.ToString()'],
+                  work / 'powershell-version.txt')
+    match = re.fullmatch(r'(\d+)\.(\d+)(?:\.\d+)?', version)
+    require(match and (int(match.group(1)), int(match.group(2))) >= (7, 2),
+            'PowerShell 7.2+ is required for native Windows acceptance')
     env = build_env(work, 'windows')
     require(run([go, 'env', 'GOHOSTOS'], work / 'go-host.txt', env=env) == 'windows', 'Go itself must be a native Windows toolchain')
     for name, package in [('image', './internal/plugin/container'), ('plugin', './internal/plugin'), ('wire', './internal/plugin/containerwire')]:
@@ -196,7 +243,8 @@ def windows_target(work, go):
     profile = load(work / 'native-platform.json')
     require(profile['goos'] == 'windows' and profile['goarch'] == 'amd64' and profile['system_root'] == system_root(), 'native OS API profile mismatch')
     docker = [profile['binary'], '--host=' + profile['host'], '--config=' + str(work / 'home')]
-    docker_env = {**base, 'DOCKER_CONFIG': str(work / 'home')}
+    docker_env = windows_docker_env(base, work)
+    run(docker + ['buildx', 'version'], work / 'buildx-version.txt', env=docker_env)
     info = run(docker + ['info', '--format', '{{.OSType}} cgroup={{.CgroupVersion}} driver={{.CgroupDriver}}'], work / 'environment.txt', env=docker_env)
     require(info.startswith('linux cgroup=2 '), 'requires Docker Desktop Linux containers/cgroup v2')
     baseline_text = run(docker + ['ps', '--all', '--filter=label=campusos.container.worker=v5', '--format={{.Names}}'], work / 'baseline-workers.txt', env=docker_env)
@@ -217,7 +265,9 @@ def windows_target(work, go):
         # UUID-owned names are registered before creation so failure cleanup can
         # remove a partially-created object without touching a shared resource.
         image_created = True
-        run(docker + ['build', '--pull=false', '--network=none', '--tag', tag, '--iidfile', str(work / 'image-id.txt'), str(image)], work / 'image-build.log', env=docker_env)
+        # The deliberately reduced process environment must still select
+        # BuildKit: the owned scratch Dockerfile uses COPY --chmod.
+        run(docker + ['build', '--pull=false', '--network=none', '--tag', tag, '--iidfile', str(work / 'image-id.txt'), str(image)], work / 'image-build.log', env={**docker_env, 'DOCKER_BUILDKIT': '1'})
         run(docker + ['image', 'inspect', '--format', '{{json .RepoDigests}}', tag], work / 'repo-digests.json', env=docker_env)
         digests = load(work / 'repo-digests.json')
         require(len(digests) == 1 and re.fullmatch(r'localhost/campusos-owned-v12-06-runtime@sha256:[0-9a-f]{64}', digests[0]), 'Docker local content store must expose the built RepoDigest; no registry fallback')
@@ -233,9 +283,7 @@ def windows_target(work, go):
         port_text = run(docker + ['port', owned, '5432/tcp'], work / 'postgres-port.txt', env=docker_env)
         match = re.fullmatch(r'127\.0\.0\.1:(\d+)', port_text)
         require(match, 'owned PostgreSQL must expose exactly one loopback ephemeral port')
-        migration_env = {**docker_env, 'PATH': str(Path(profile['binary']).parent) + os.pathsep + str(Path(system_root()) / 'System32'), 'DOCKER_HOST': profile['host'], 'CAMPUSOS_SKIP_DOTENV': 'true', 'PSQL_MODE': 'docker', 'POSTGRES_CONTAINER': owned, 'DB_HOST': '127.0.0.1', 'DB_PORT': '5432', 'DB_USER': 'campusos', 'DB_NAME': 'campusos_v12_06_container', 'DB_PASSWORD': password}
-        pwsh = shutil.which('pwsh.exe')
-        require(pwsh, 'PowerShell 7 pwsh.exe is required for the native migration script')
+        migration_env = windows_migration_env(docker_env, profile, owned, password)
         for action in ['up', 'check']:
             run([pwsh, '-NoProfile', '-NonInteractive', '-File', ROOT / 'scripts/migrate.ps1', action], work / f'migration-{action}.log', env=migration_env)
         test_env = {**base, 'CAMPUSOS_V5_CONTAINER_DATABASE_URL': f'postgres://campusos:{password}@127.0.0.1:{match[1]}/campusos_v12_06_container?sslmode=disable', 'CAMPUSOS_V5_CONTAINER_RUNTIME_REFERENCE': digests[0], 'CAMPUSOS_V5_CONTAINER_SERVER_BINARY': str(work / 'native/server.exe'), 'CAMPUSOS_V5_CONTAINER_SERVER_PROOF_DIR': str(work / 'server')}
@@ -252,13 +300,26 @@ def windows_target(work, go):
     finally:
         # Attempt both owned cleanups even if one fails, then propagate failure.
         errors = []
-        for created, args, label, key in [(pg_created, ['rm', '--force', '--volumes', owned], 'cleanup.log', 'postgres_removed'), (image_created, ['image', 'rm', tag], 'image-cleanup.log', 'runtime_image_removed')]:
-            if created:
-                try:
-                    run(docker + args, work / label, env=docker_env, timeout=30)
-                    cleanup[key] = True
-                except RuntimeError as error:
-                    errors.append(str(error))
+        if pg_created:
+            try:
+                run(docker + ['rm', '--force', '--volumes', owned], work / 'cleanup.log', env=docker_env, timeout=30)
+                cleanup['postgres_removed'] = True
+            except RuntimeError as error:
+                errors.append(str(error))
+        if image_created:
+            try:
+                # A failed build may never have created the owned tag. Check
+                # only that exact tag, so cleanup cannot hide the build error
+                # or remove an unrelated image.
+                found = run(docker + ['image', 'ls', '--filter', 'reference=' + tag, '--format', '{{.Repository}}:{{.Tag}}'], work / 'image-presence.log', env=docker_env, timeout=30)
+                require(found in {'', tag}, 'unexpected owned image tag inventory')
+                if found:
+                    run(docker + ['image', 'rm', tag], work / 'image-cleanup.log', env=docker_env, timeout=30)
+                else:
+                    (work / 'image-cleanup.log').write_text('Owned image tag was never created.\n', encoding='utf-8', newline='\n')
+                cleanup['runtime_image_removed'] = True
+            except RuntimeError as error:
+                errors.append(str(error))
         save(work / 'cleanup-proof.json', cleanup)
         # No password, DSN or native subprocess argv is copied to the report.
         for path in work.rglob('*.log'):
@@ -313,6 +374,9 @@ def validate_launcher(work, host):
 
 
 def gates(work, host, final=False):
+    if host == 'windows':
+        require(shutil.which('make.exe') or shutil.which('make'),
+                'GNU make is required for the unmodified native Windows common gates')
     verify(work, host)
     env = build_env(work, host)
     commands = {'evidence-validator': [sys.executable, '-m', 'unittest', 'discover', '-s', 'scripts', '-p', 'test_v12_06_portable_drill.py', '-v'], 'full-go': ['go', 'test', './...', '-count=1'], 'affected-race': ['go', 'test', '-race', './internal/plugin/...', './internal/server', './pkg/config', '-count=1'], 'contracts': ['make', 'contracts-check'], 'architecture': ['make', 'architecture-check'], 'docker-dev': ['make', 'docker-dev-test'], 'docker-deploy': ['make', 'docker-deploy-check'], 'readme': ['make', 'readme-check'], 'docs-links': ['make', 'docs-links'], 'docs-build': ['make', 'docs-build'], 'line-endings': [sys.executable, 'scripts/check-line-endings.py', '--include-untracked'], 'diff': ['git', 'diff', '--check']}
@@ -333,7 +397,9 @@ def seal(work, host):
     tests = verify(work, host)
     for prefix, expected in [('common', COMMON), ('final-document', FINAL)]:
         require((work / f'{prefix}-passed.txt').read_text().splitlines() == expected, f'{prefix}: incomplete gates')
-    report = {'schema': 'campusos.v12-06-native-runtime/v1', 'generated_at': datetime.now(timezone(timedelta(hours=8))).isoformat(), 'stage': 'V12-06', 'stage_status': 'in_progress', 'native_host': host, 'implementation': 'passed', 'automation': 'passed', 'target_environment': 'passed_for_this_host_only', 'targets': {host: 'passed'}, 'target': tests, 'native_windows_execution': host == 'windows', 'actual_docker': True, 'actual_postgres': True, 'actual_server': True, 'transports': ['http/1.1', 'unary-grpc+json/http2'], 'common_gates': {n: 'passed' for n in COMMON}, 'final_document_gates': {n: 'passed' for n in FINAL}, 'migration': {'current': 28, 'next': 29, 'changed': False}, **snapshot(), 'artifacts_sha256': {p.relative_to(ROOT).as_posix(): sha(p) for p in sorted(work.rglob('*')) if p.is_file()}, 'documents_sha256': {n: sha(ROOT / n) for n in DOCS}, 'remaining': 'Matching current-source native Linux and Windows reports plus raw artifacts are both required by exit mode.', 'commit_or_push': False, 'shared_database_reset': False}
+    current = snapshot()
+    migration_head = frozen_migration_head(current)
+    report = {'schema': 'campusos.v12-06-native-runtime/v1', 'generated_at': datetime.now(timezone(timedelta(hours=8))).isoformat(), 'stage': 'V12-06', 'stage_status': 'in_progress', 'native_host': host, 'implementation': 'passed', 'automation': 'passed', 'target_environment': 'passed_for_this_host_only', 'targets': {host: 'passed'}, 'target': tests, 'native_windows_execution': host == 'windows', 'actual_docker': True, 'actual_postgres': True, 'actual_server': True, 'transports': ['http/1.1', 'unary-grpc+json/http2'], 'common_gates': {n: 'passed' for n in COMMON}, 'final_document_gates': {n: 'passed' for n in FINAL}, 'migration': {'current': migration_head, 'next': migration_head + 1, 'changed': False}, **current, 'artifacts_sha256': {p.relative_to(ROOT).as_posix(): sha(p) for p in sorted(work.rglob('*')) if p.is_file()}, 'documents_sha256': {n: sha(ROOT / n) for n in DOCS}, 'remaining': 'Matching current-source native Linux and Windows reports plus raw artifacts are both required by exit mode.', 'commit_or_push': False, 'shared_database_reset': False}
     path = EVIDENCE / ('v12-06-runtime-windows.json' if host == 'windows' else 'v12-06-runtime-portable-linux.json')
     require(not path.exists(), 'report already sealed; preserve historical evidence')
     save(path, report)
@@ -342,6 +408,7 @@ def seal(work, host):
 
 def stage_exit():
     current = snapshot()
+    migration_head = frozen_migration_head(current)
     reports = {}
     for host, name in [('linux', 'v12-06-runtime-portable-linux.json'), ('windows', 'v12-06-runtime-windows.json')]:
         path = EVIDENCE / name
@@ -349,6 +416,7 @@ def stage_exit():
         report = load(path)
         require(report['native_host'] == host and report['targets'] == {host: 'passed'} and report['automation'] == 'passed', f'{host}: native report incomplete')
         require(report['native_windows_execution'] == (host == 'windows'), f'{host}: native execution flag mismatch')
+        require(report['migration'] == {'current': migration_head, 'next': migration_head + 1, 'changed': False}, f'{host}: migration source/report mismatch')
         require(report['canonical_source_sha256'] == current['canonical_source_sha256'] and report['dependencies'] == current['dependencies'], f'{host}: current source/dependencies mismatch')
         for key in ['artifacts_sha256', 'documents_sha256']:
             require(all((ROOT / name).is_file() and sha(ROOT / name) == value for name, value in report[key].items()), f'{host}: raw evidence/document hash mismatch')

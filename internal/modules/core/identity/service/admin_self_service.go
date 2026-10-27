@@ -32,6 +32,7 @@ type AdminSelfProfile struct {
 	PermissionCodes        []string         `json:"permission_codes"`
 	AuthenticationStrength string           `json:"authentication_strength"`
 	MFAEnrolled            bool             `json:"mfa_enrolled"`
+	MFARequired            bool             `json:"mfa_required"`
 	SessionExpiresAt       time.Time        `json:"session_expires_at"`
 	MFAExpiresAt           *time.Time       `json:"mfa_expires_at,omitempty"`
 }
@@ -77,7 +78,7 @@ func (s *AdminSelfService) load(ctx context.Context, p identityport.PrincipalCon
 		return adminSelfSnapshot{}, errors.Join(identityport.ErrAdminSessionPrincipalUnavailable, err)
 	}
 	authority, err := s.sessions.CurrentAdminSession(ctx, p.Actor.ID, p.CredentialID)
-	if err != nil || authority.AuthenticationStrength != p.AuthenticationStrength {
+	if err != nil || authority.AuthenticationStrength != p.AuthenticationStrength || authority.AdminMFAOptional != p.AdminMFAOptional {
 		return adminSelfSnapshot{}, errors.Join(identityport.ErrAdminSessionPrincipalUnavailable, err)
 	}
 	r := identityport.AdminSelfReadRequest{RequestID: "admin-current-self-read", PolicyVersion: identityport.AdminSelfReadPolicyVersion, Principal: p, AccountID: account.ID, Status: account.Status, SessionID: session.ID, AccountVersion: account.Version, SessionVersion: session.Version, ExpiresAtMS: authority.ExpiresAt.UnixMilli(), EvaluatedAtMS: s.sessions.now().UnixMilli()}
@@ -165,7 +166,7 @@ func (s *AdminSelfService) CurrentProfile(ctx context.Context, resolve identityp
 	if err != nil {
 		return nil, err
 	}
-	result := &AdminSelfProfile{Domain: "admin", Account: AdminSelfAccount{initial.Account.ID, initial.Account.Username, initial.Account.DisplayName, initial.Account.Status}, Roles: []AdminSelfRole{}, PermissionCodes: []string{}, AuthenticationStrength: initial.Authority.AuthenticationStrength, MFAEnrolled: initial.Method != nil && initial.Method.Status == "active", SessionExpiresAt: initial.Authority.ExpiresAt}
+	result := &AdminSelfProfile{Domain: "admin", Account: AdminSelfAccount{initial.Account.ID, initial.Account.Username, initial.Account.DisplayName, initial.Account.Status}, Roles: []AdminSelfRole{}, PermissionCodes: []string{}, AuthenticationStrength: initial.Authority.AuthenticationStrength, MFAEnrolled: initial.Method != nil && initial.Method.Status == "active", MFARequired: !initial.Authority.AdminMFAOptional, SessionExpiresAt: initial.Authority.ExpiresAt}
 	if initial.Authority.AuthenticationStrength == "mfa" && initial.Authority.MFAAuthenticatedAt != nil {
 		expires := initial.Authority.MFAAuthenticatedAt.Add(AdminGovernanceMFAWindow)
 		result.MFAExpiresAt = &expires

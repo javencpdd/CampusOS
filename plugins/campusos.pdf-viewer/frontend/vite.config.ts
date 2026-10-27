@@ -22,5 +22,5 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'jsdom' },
+  test: { environment: 'node', include: ['shared/**/*.spec.ts'] },
 })

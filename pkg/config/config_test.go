@@ -154,6 +154,19 @@ func TestLoadBootstrapConfiguration(t *testing.T) {
 	}
 }
 
+func TestLoadAdminBootstrapSecretDoesNotFallBackToUserBootstrap(t *testing.T) {
+	t.Setenv("AUTH_BOOTSTRAP_ADMIN_SECRET", "legacy-user-bootstrap-secret")
+	t.Setenv("AUTH_ADMIN_BOOTSTRAP_SECRET", "")
+	if cfg := Load(); cfg.Auth.AdminBootstrapSecret != "" {
+		t.Fatal("legacy user bootstrap enabled independent admin bootstrap")
+	}
+	t.Setenv("AUTH_ADMIN_BOOTSTRAP_SECRET", " independent-admin-bootstrap-secret ")
+	cfg := Load()
+	if cfg.Auth.AdminBootstrapSecret != "independent-admin-bootstrap-secret" || cfg.Auth.BootstrapAdminSecret != "legacy-user-bootstrap-secret" {
+		t.Fatal("bootstrap domains were not loaded independently")
+	}
+}
+
 func TestLoadChallengeSecretRing(t *testing.T) {
 	t.Setenv("AUTH_CHALLENGE_ACTIVE_KEY_ID", "rotation-v2")
 	t.Setenv("AUTH_CHALLENGE_HMAC_KEYS", "retired-v1:old-secret,rotation-v2:new-secret")

@@ -18,7 +18,7 @@ func (s *ManagedService) admin(ctx context.Context, code string, resolve identit
 	if e != nil {
 		return zero, e
 	}
-	if code == "ai.ai.manage" && (!a.Allowed || a.ExpiresAtMS <= managedNow()) && (a.Principal.AuthenticationStrength != "mfa" || a.ExpiresAtMS <= managedNow()) {
+	if code == "ai.ai.manage" && (!a.Allowed || a.ExpiresAtMS <= managedNow()) && (!a.Principal.SatisfiesAdminMFARequirement() || a.ExpiresAtMS <= managedNow()) {
 		return zero, ErrManagedMFA
 	}
 	if identityport.CheckAdminExecutionAuthority(a, a) != nil || a.Query != q || !a.Allowed || a.ExpiresAtMS <= managedNow() {

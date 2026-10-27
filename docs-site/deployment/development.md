@@ -110,9 +110,7 @@ SKIP_INFRA=true SKIP_MIGRATE=true make dev-all
 
 ## 开发管理员
 
-clean baseline migration 不创建默认用户、邮箱或密码。首次管理员由后端安全 bootstrap 或受控 CLI 创建，
-凭据必须通过当前环境的 `AUTH_BOOTSTRAP_ADMIN_SECRET` 等安全配置提供。不要依赖历史
-`admin@campusos.local / Admin@123456`，也不要把任何开发密码写回 migration、文档或 fixture。
+clean baseline migration 不创建管理域账号或固定密码。第一位安全管理员须通过独立 `AUTH_ADMIN_BOOTSTRAP_SECRET` 配置和请求头证明显式初始化，操作见[初始管理员安全](bootstrap-security.md)。旧 `AUTH_BOOTSTRAP_ADMIN_SECRET` 仍属于用户域兼容引导/本地恢复，不能自动开通管理域。不要把历史 `admin@campusos.local / Admin@123456` 当作管理端凭据，也不要把真实部署密码写回 migration、文档或 fixture。
 
 ## 验证改动
 

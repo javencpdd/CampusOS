@@ -62,8 +62,11 @@ type JWTConfig struct {
 }
 
 type AuthConfig struct {
-	PasswordHashEnabled          bool
-	BootstrapAdminSecret         string
+	PasswordHashEnabled  bool
+	BootstrapAdminSecret string
+	AdminBootstrapSecret string
+	// Zero value remains strict; only AUTH_ADMIN_MFA_REQUIRED=false opts out.
+	AdminMFADisabled             bool
 	AllowDevelopmentDefaultAdmin bool
 	ChallengeActiveKeyID         string
 	ChallengeHMACKeys            map[string]string
@@ -185,6 +188,8 @@ func Load() *Config {
 		Auth: AuthConfig{
 			PasswordHashEnabled:          getBool("AUTH_PASSWORD_HASH_ENABLED", true),
 			BootstrapAdminSecret:         strings.TrimSpace(get("AUTH_BOOTSTRAP_ADMIN_SECRET", "")),
+			AdminBootstrapSecret:         strings.TrimSpace(get("AUTH_ADMIN_BOOTSTRAP_SECRET", "")),
+			AdminMFADisabled:             strings.EqualFold(strings.TrimSpace(get("AUTH_ADMIN_MFA_REQUIRED", "true")), "false"),
 			AllowDevelopmentDefaultAdmin: getBool("AUTH_ALLOW_DEVELOPMENT_DEFAULT_ADMIN", strings.EqualFold(strings.TrimSpace(get("CAMPUSOS_ENV", "development")), "development")),
 			ChallengeActiveKeyID:         strings.TrimSpace(get("AUTH_CHALLENGE_ACTIVE_KEY_ID", "development-v1")),
 			ChallengeHMACKeys:            parseKeyedSecrets(get("AUTH_CHALLENGE_HMAC_KEYS", "development-v1:campusos-development-challenge-key-change-before-production")),
