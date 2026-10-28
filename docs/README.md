@@ -32,6 +32,7 @@
 | NapCat指定群诊断 | [登录、群范围及单条发送/读回](help/系统设计相关/NapCat指定群接入诊断.md)；仅诊断工具；实际群发送/读回与完整QQ插件分别验收 |
 | QQ文档助手插件 | [QQ文档助手开发教程](../docs-site/plugins/qqbot-napcat-tutorial.md)；[源码与安装](../integrations/napcat-campusos/README.md)；[开发计划](项目计划书v1/项目计划v1.2/03-QQ文档助手插件开发计划.md)；公开文档导航，独立于CampusOS v5安装合同 |
 | Docker数据库更新与恢复 | [当前数据库管理](help/系统设计相关/数据库管理指南.md)、[本机更新记录](进度/v1.2-dev/v1.2.174-dev.md)；旧库与备份保留，当前35条迁移及默认数据独立验收 |
+| 个人模型配置规划 | [个人模型连接与知识问答接入计划](项目计划书v1/项目计划v1.2/04-个人模型连接与知识问答接入计划.md)；API Key/地址及协议适配待实现，Coding Plan按供应商用途核验 |
 | Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v0.13风格包双端交付标准.md) |
 | 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v0.11权限管理与可靠审计设计入门.md) |
 | 可靠任务与 Webhook | [可靠任务运维](../docs-site/operations/reliable-tasks.md)、[故障恢复](help/系统设计相关/v0.13可靠任务指标告警与故障恢复Runbook.md) |
