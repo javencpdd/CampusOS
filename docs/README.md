@@ -1,6 +1,6 @@
 # CampusOS 文档门户
 
-> 更新时间：2026-10-28；运行版本标识：`v1.1.0-dev`；当前开发主线：`v1.2-dev`，整版 Final 未完成，尚未宣布正式发布。
+> 更新时间：2026-10-29；运行版本标识：`v1.1.0-dev`；当前开发主线：`v1.2-dev`，整版 Final 未完成，尚未宣布正式发布。
 > 仓库文档：架构、合同、Help、计划和可复验证据
 > 官方文档前端：[docs-site](../docs-site/README.md)
 
@@ -32,6 +32,7 @@
 | NapCat指定群诊断 | [登录、群范围及单条发送/读回](help/系统设计相关/NapCat指定群接入诊断.md)；仅诊断工具；实际群发送/读回与完整QQ插件分别验收 |
 | QQ文档助手插件 | [QQ文档助手开发教程](../docs-site/plugins/qqbot-napcat-tutorial.md)；[源码与安装](../integrations/napcat-campusos/README.md)；[开发计划](项目计划书v1/项目计划v1.2/03-QQ文档助手插件开发计划.md)；公开文档导航，独立于CampusOS v5安装合同 |
 | Docker数据库更新与恢复 | [当前数据库管理](help/系统设计相关/数据库管理指南.md)、[本机更新记录](进度/v1.2-dev/v1.2.174-dev.md)；旧库与备份保留，当前35条迁移及默认数据独立验收 |
+| 独立管理员首次初始化 | [Windows PowerShell与Linux交互命令](help/系统设计相关/v1.2独立管理员初始化与账号隔离.md)；按实际API配置选择凭证，Git不会同步机器配置或账号 |
 | 个人模型配置规划 | [个人模型连接与知识问答接入计划](项目计划书v1/项目计划v1.2/04-个人模型连接与知识问答接入计划.md)；API Key/地址及协议适配待实现，Coding Plan按供应商用途核验 |
 | Resource Package 或风格包 | [风格包与沙箱 SDK](../docs-site/plugins/style-packs.md)、[双端交付标准](help/系统设计相关/v0.13风格包双端交付标准.md) |
 | 权限、版主和审计 | [权限配置入门](../docs-site/guide/permission-configuration.md)、[权限与可靠审计](help/系统设计相关/v0.11权限管理与可靠审计设计入门.md) |

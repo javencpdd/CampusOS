@@ -59,6 +59,10 @@ jobs:
       - name: Check Git attributes, UTF-8 and line endings
         run: python scripts/check-line-endings.py
 
+      - name: Test Linux admin bootstrap command with isolated fixtures
+        if: runner.os == 'Linux'
+        run: python -m unittest scripts/test_bootstrap_admin.py -v
+
   backend:
     name: Backend Test
     runs-on: ubuntu-latest
