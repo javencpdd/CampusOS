@@ -70,7 +70,8 @@ const rootStyle = computed(() => {
   border-bottom-color: transparent;
 }
 .campus-theme-root[data-animation-preset='reveal'] :deep(.campus-shell-main > *) {
-  animation: campus-reveal 0.48s ease-out both;
+  /* Release the transform after entry so fixed dialogs stay viewport-bound. */
+  animation: campus-reveal 0.48s ease-out backwards;
 }
 @keyframes campus-reveal {
   from {

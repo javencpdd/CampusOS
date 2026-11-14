@@ -59,7 +59,8 @@
 .app-container[data-campusos-web] .create-thread,
 .app-container[data-campusos-web] .schedule-view,
 .app-container[data-campusos-web] .space-settings {
-  animation: campus-canvas-enter 360ms ease-out both;
+  /* Do not retain a containing block for fixed dialogs after page entry. */
+  animation: campus-canvas-enter 360ms ease-out backwards;
 }
 
 .app-container[data-campusos-web] .list-header,

@@ -1,5 +1,7 @@
 # app-style-pack.v2 开发说明
 
+> 最新更新时间：2026-11-14（Asia/Shanghai）。
+
 ## 1. 版本边界
 
 `page-style-pack.v1` 和 `target: web` 继续兼容。需要控制完整浏览器视口和 App Shell 时，使用：
@@ -10,6 +12,10 @@ target: web
 ```
 
 v2 可以设计 ThemeRoot、Header、导航、Hero、Footer、左右侧栏、主内容区、全宽/限宽、背景、字体、字距、间距、响应式和受控动画。它不能删除 PageOutlet、登录/用户菜单、安全提示和插件健康区域，也不能改变插件 API、权限、Method、参数、确认和审计。
+
+页面入场动画结束后应释放 `transform`，避免页面容器成为内部 `position: fixed` 弹窗的定位参照。ThemeRoot 的 `reveal` 与内置 Campus Canvas 使用 `animation-fill-mode: backwards`，保留入场效果并在结束后恢复正常定位。长弹窗由遮罩容器滚动，背景页在弹窗关闭或所属组件卸载后恢复滚动；不要通过关闭背景滚动锁绕过内容截断。
+
+修改主题动效后运行 `pnpm --dir web smoke:dialogs`。该浏览器回归覆盖默认/reveal/Campus Canvas、桌面/手机/横屏及减少动态效果模式，检查底部操作可达、上下滚动、关闭/Escape/卸载后的滚动锁释放。修改资源包文件后同步 `resource.json` 的目录 checksum。
 
 每个 v2 包必须同时声明 PC 与移动端支持，并在 CSS 中提供宽度媒体查询：
 
